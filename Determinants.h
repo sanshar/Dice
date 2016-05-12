@@ -3,6 +3,8 @@
 
 #include "global.h"
 
+int BitCount (long& u);
+
 class Determinant {
  public:
   // 0th position of 0th long is the first position
@@ -13,6 +15,16 @@ class Determinant {
   Determinant() {
     for (int i=0; i<DetLen; i++)
       repr[i] = 0;
+  }
+
+  bool connected(const Determinant& d) const {
+    int ndiff = 0; long u;
+    for (int i=0; i<DetLen; i++) {
+      u = repr[i] ^ d.repr[i];
+      ndiff += BitCount(u);
+    }
+    if (ndiff > 4) return false;
+    return true;
   }
 
   //the comparison between determinants is performed
@@ -61,7 +73,7 @@ class Determinant {
     }
   }
 
-  int getOpenClosed(char* open, char* closed) const {
+  int getOpenClosed(unsigned short* open, unsigned short* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
       if (getocc(i)) {closed[cindex] = i; cindex++;}

@@ -2,8 +2,11 @@
 #include <fstream>
 #include "string.h"
 #include <boost/algorithm/string.hpp>
+#include <algorithm>
+#include "math.h"
 
 using namespace boost;
+bool myfn(double i, double j) { return fabs(i)<fabs(j); }
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE) {
 
   ifstream dump(fcidump.c_str());
@@ -63,6 +66,20 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     else
       I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
   }
+  I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2.store.size(),myfn);
+  std::cout << "max Entry "<<I2.maxEntry<<std::endl;
+  I2.maxEntryPerPair = MatrixXd(norbs, norbs); I2.maxEntryPerPair *= 0.;
+
+  for (int i=0; i<norbs; i++)
+    for (int j=0; j<norbs; j++) {
+      double& entry = I2.maxEntryPerPair(i,j);
+      for (int k=0; k<norbs; k++)
+	for (int l=0; l<norbs; l++) {
+	  if ( fabs(I2(2*i,2*k,2*j,2*l)) > entry)
+	    entry = fabs(I2(2*i,2*k,2*j,2*l));
+	}
+    }
+
   return;
   
 }
