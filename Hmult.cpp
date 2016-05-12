@@ -19,6 +19,16 @@ double parity(char* d, int& sizeA, int& i) {
   return sgn;
 }
 
+int BitCount (long& u)
+{
+  unsigned int uCount=0 ;
+  
+  for(; u; u&=(u-1))
+    uCount++;
+  
+  return uCount ;
+}
+
 double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   double energy = 0.0;
 
@@ -58,6 +68,7 @@ double Hij_2Excite(int i, int j, int a, int b, twoInt& I2, char* ket, int& sizeA
     if (a > i) sgn*=-1 ;
     return sgn*(I2(a,i,b,j) - I2(a,j,b,i));
 }
+
 
 double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   int cre[2], des[2];cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;

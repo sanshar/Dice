@@ -60,4 +60,28 @@ Hmult(char* a_, int& sizeA_, oneInt& I1_, twoInt& I2_, double& coreE_) :
 
 
 };
+
+struct Hmult2 {
+  std::vector<std::vector<int> >& connections;
+  std::vector<std::vector<double> >& Helements;
+  
+  Hmult2(std::vector<std::vector<int> >& connections_, std::vector<std::vector<double> >& Helements_)
+  : connections(connections_), Helements(Helements_) {}
+
+  template <typename Derived>
+  void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
+    y*=0.0;
+    for (int i=0; i<x.rows(); i++) {
+      for (int j=0; j<connections[i].size(); j++) {
+	double hij = Helements[i][j];
+	int J = connections[i][j];
+	y(i,0) += hij*x(J,0);
+	if (i!= J) y(J,0) += hij*x(i,0);
+      }
+    }
+  }
+};
+
+
+
 #endif
