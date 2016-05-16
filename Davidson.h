@@ -56,7 +56,7 @@ double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, b
     r = sigma.col(0) - e0*b.col(0);
     double error = r.norm();
     if (print)
-      std::cout << iter<<" "<<e0<<"  "<<error<<std::endl;
+      std::cout <<"#"<< iter<<" "<<e0<<"  "<<error<<std::endl;
     iter++;
     if (error < tol || iter >20) {
       x0 = 1.*b.col(0);

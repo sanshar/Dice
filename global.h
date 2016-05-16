@@ -1,6 +1,7 @@
 #ifndef Global_HEADER_H
 #define Global_HEADER_H
 
-const int DetLen=3;
+typedef unsigned short ushort;
+const int DetLen=4;
  
 #endif

@@ -5,9 +5,10 @@
 #include "integral.h"
 
 using namespace Eigen;
-
+class Determinant;
 double parity(char* d, int& sizeA, int& i);
 double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 
 template <typename Derived>
@@ -83,5 +84,6 @@ struct Hmult2 {
 };
 
 
+double Hij(Determinant& bra, Determinant& ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 
 #endif

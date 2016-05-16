@@ -5,6 +5,7 @@
 #include "Hmult.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
+#include "Determinants.h"
 using namespace std;
 using namespace Eigen;
 
@@ -29,6 +30,21 @@ int BitCount (long& u)
   return uCount ;
 }
 
+double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
+  double energy = 0.0;
+  for (int i=0; i<sizeA; i++) {
+    int I = occ.at(i);
+    energy += I1(I,I);
+    for (int j=i+1; j<sizeA; j++) {
+      int  J = occ.at(j);
+      energy += I2.Direct(I/2,J/2);
+      if ( (I%2) == (J%2) )
+	energy -= I2.Exchange(I/2,J/2);
+    }
+  }
+  return energy+coreE;
+}
+
 double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   double energy = 0.0;
 
@@ -44,6 +60,8 @@ double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   }
   return energy+(coreE);
 }
+
+
 
 double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA) {
   //int a = cre[0], i = des[0];
@@ -105,6 +123,40 @@ double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& cor
   }
   return energy;
 
+}
+
+
+double Hij(Determinant& bra, Determinant& ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {  
+  int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
+  for (int i=0;i<DetLen;i++) {
+    u = bra.repr[i] ^ ket.repr[i];
+    b = u & bra.repr[i]; //the cre bits
+    k = u & ket.repr[i]; //the des bits
+    for (int j=0;j<64;j++) {
+      if (b == 0) break;
+      if (b>>1 & 1) {cre[ncre] = j; ncre++;}
+    }
+    for (int j=0;j<64;j++) {
+      if (k == 0) break;
+      if (k>>1 & 1) {des[ndes] = j; ndes++;}
+    }
+    
+  }
+  ///NOT YET IMPLEMENTED
+  /*
+  double energy = 0.0;
+  if (ncre == 0 && ndes == 0) {
+    return Energy(ket, sizeA, I1, I2, coreE);
+  }
+  else if (ncre ==1 && ndes == 1) {
+    return Hij_1Excite(des[0], cre[0], I1, I2, ket, sizeA);
+  }
+  else if (ncre==2 && ndes == 2){
+    int a=cre[0], b=cre[1], i=des[0], j=des[1];
+    return Hij_2Excite(i,j,a,b,I2, ket, sizeA);
+  }
+  return energy;
+  */
 }
 
 

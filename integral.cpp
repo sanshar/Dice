@@ -7,7 +7,8 @@
 
 using namespace boost;
 bool myfn(double i, double j) { return fabs(i)<fabs(j); }
-void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE) {
+void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE,
+		   std::vector<int>& irrep) {
 
   ifstream dump(fcidump.c_str());
   bool startScaling = false;
@@ -28,13 +29,24 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       break;
     }
     else if(startScaling == false) {
-      if (tok.size() > 4) {
+      if (boost::iequals(tok[0].substr(0,4),"&FCI")) {
 	if (boost::iequals(tok[1].substr(0,4), "NORB"))
 	  norbs = atoi(tok[2].c_str());
 	
 	if (boost::iequals(tok[3].substr(0,5), "NELEC"))
 	  nelec = atoi(tok[4].c_str());
       }
+      else if (boost::iequals(tok[0].substr(0,4),"ISYM"))
+	continue;
+      else if (boost::iequals(tok[0].substr(0,6),"ORBSYM")) {
+	for (int i=1;i<tok.size(); i++)
+	  irrep.push_back(atoi(tok[i].c_str()));
+      }
+      else {
+	for (int i=0;i<tok.size(); i++)
+	  irrep.push_back(atoi(tok[i].c_str()));
+      }
+
       index += 1;
     }
   }
@@ -67,17 +79,13 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
   }
   I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2.store.size(),myfn);
-  std::cout << "max Entry "<<I2.maxEntry<<std::endl;
-  I2.maxEntryPerPair = MatrixXd(norbs, norbs); I2.maxEntryPerPair *= 0.;
+  I2.Direct = MatrixXd(norbs, norbs); I2.Direct *= 0.;
+  I2.Exchange = MatrixXd(norbs, norbs); I2.Exchange *= 0.;
 
   for (int i=0; i<norbs; i++)
     for (int j=0; j<norbs; j++) {
-      double& entry = I2.maxEntryPerPair(i,j);
-      for (int k=0; k<norbs; k++)
-	for (int l=0; l<norbs; l++) {
-	  if ( fabs(I2(2*i,2*k,2*j,2*l)) > entry)
-	    entry = fabs(I2(2*i,2*k,2*j,2*l));
-	}
+      I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
+      I2.Exchange(i,j) = I2(2*i,2*j,2*i,2*j);
     }
 
   return;

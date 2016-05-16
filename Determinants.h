@@ -2,7 +2,9 @@
 #define Determinants_HEADER_H
 
 #include "global.h"
-
+#include <iostream>
+#include <vector>
+using namespace std;
 int BitCount (long& u);
 
 class Determinant {
@@ -17,6 +19,7 @@ class Determinant {
       repr[i] = 0;
   }
 
+
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
     for (int i=0; i<DetLen; i++) {
@@ -25,6 +28,44 @@ class Determinant {
     }
     if (ndiff > 4) return false;
     return true;
+  }
+
+  int ExcitationDistance(const Determinant& d) const {
+    int ndiff = 0; long u;
+    for (int i=0; i<DetLen; i++) {
+      u = repr[i] ^ d.repr[i];
+      ndiff += BitCount(u);
+    }
+    return ndiff/2;
+  }
+
+  //the excitation array should contain at least  
+  void ExactExcitation(const Determinant& d, unsigned short* excitation) const {
+    int ncre=0, ndes=0;
+    long u,b,k,one=1;
+    for (int i=0;i<DetLen;i++) {
+      u = d.repr[i] ^ repr[i];
+      b = u & d.repr[i]; //the cre bits
+      k = u & repr[i]; //the des bits
+      for (int j=0;j<64;j++) {
+	if (b == 0) break;
+	if (b & one) {
+	  if (ncre==4) {
+	    *excitation=-1;
+	    return;
+	  }
+	  *(excitation+ncre) = i*64+j; 
+	  ncre++; 
+	}
+	b=b>>1;
+      }
+      for (int j=0;j<64;j++) {
+	if (k == 0) break;
+	if (k & one) { if (ndes==4) {*excitation=-1;return;};*(excitation+4+ndes) = i*64+j; ndes++;}
+	k=k >> 1;
+      }
+      
+    }
   }
 
   //the comparison between determinants is performed
@@ -73,7 +114,32 @@ class Determinant {
     }
   }
 
+  friend ostream& operator<<(ostream& os, const Determinant& d) {
+    char det[norbs];
+    d.getRepArray(det);
+    for (int i=0; i<norbs; i++)
+      os<<(int)(det[i])<<" ";
+    os<<std::endl;
+    return os;
+  }
+
   int getOpenClosed(unsigned short* open, unsigned short* closed) const {
+    int oindex=0,cindex=0;
+    for (int i=0; i<norbs; i++) {
+      if (getocc(i)) {closed[cindex] = i; cindex++;}
+      else {open[oindex] = i; oindex++;}
+    }
+    return cindex;
+  }
+
+  void getOpenClosed(vector<int>& open, vector<int>& closed) const {
+    int oindex=0,cindex=0;
+    for (int i=0; i<norbs; i++) {
+      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+      else {open.at(oindex) = i; oindex++;}
+    }
+  }
+  int getOpenClosed(int* open, int* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
       if (getocc(i)) {closed[cindex] = i; cindex++;}
