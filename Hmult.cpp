@@ -1,6 +1,5 @@
 #include <iostream>
 #include <algorithm>
-//#include <stdio.h>
 #include "integral.h"
 #include "Hmult.h"
 #include <Eigen/Dense>
@@ -20,7 +19,28 @@ double parity(char* d, int& sizeA, int& i) {
   return sgn;
 }
 
+/*
 int BitCount (long& u)
+{
+  if (u==0) return 0;
+  unsigned int u2=u>>32, u1=u;
+  
+  u1 = u1
+    - ((u1 >> 1) & 033333333333)
+    - ((u1 >> 2) & 011111111111);
+  
+  
+  u2 = u2
+    - ((u2 >> 1) & 033333333333)
+    - ((u2 >> 2) & 011111111111);
+  
+  return (((u1 + (u1 >> 3))
+	   & 030707070707) % 63) +
+    (((u2 + (u2 >> 3))
+      & 030707070707) % 63);
+}
+
+int BitCountbkp (long& u)
 {
   unsigned int uCount=0 ;
   
@@ -29,7 +49,7 @@ int BitCount (long& u)
   
   return uCount ;
 }
-
+*/
 double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   double energy = 0.0;
   for (int i=0; i<sizeA; i++) {

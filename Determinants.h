@@ -4,35 +4,66 @@
 #include "global.h"
 #include <iostream>
 #include <vector>
+#include <boost/serialization/serialization.hpp>
+
 using namespace std;
-int BitCount (long& u);
+inline int BitCount (long& u)
+{
+  if (u==0) return 0;
+  unsigned int u2=u>>32, u1=u;
+  
+  u1 = u1
+    - ((u1 >> 1) & 033333333333)
+    - ((u1 >> 2) & 011111111111);
+  
+  
+  u2 = u2
+    - ((u2 >> 1) & 033333333333)
+    - ((u2 >> 2) & 011111111111);
+  
+  return (((u1 + (u1 >> 3))
+	   & 030707070707) % 63) +
+    (((u2 + (u2 >> 3))
+      & 030707070707) % 63);
+}
+
 
 class Determinant {
+
+ private:
+  friend class boost::serialization::access;
+  template<class Archive> 
+  void serialize(Archive & ar, const unsigned int version) {
+    for (int i=0; i<DetLen; i++)
+      ar & repr[i];
+  }
+
  public:
   // 0th position of 0th long is the first position
   // 63rd position of the last long is the last position
   long repr[DetLen];
   static int norbs;
+  static int EffDetLen;
 
   Determinant() {
-    for (int i=0; i<DetLen; i++)
+    for (int i=0; i<EffDetLen; i++)
       repr[i] = 0;
   }
 
 
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<EffDetLen; i++) {
       u = repr[i] ^ d.repr[i];
       ndiff += BitCount(u);
+      if (ndiff > 4) return false;
     }
-    if (ndiff > 4) return false;
     return true;
   }
 
   int ExcitationDistance(const Determinant& d) const {
     int ndiff = 0; long u;
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<EffDetLen; i++) {
       u = repr[i] ^ d.repr[i];
       ndiff += BitCount(u);
     }
@@ -43,7 +74,7 @@ class Determinant {
   void ExactExcitation(const Determinant& d, unsigned short* excitation) const {
     int ncre=0, ndes=0;
     long u,b,k,one=1;
-    for (int i=0;i<DetLen;i++) {
+    for (int i=0;i<EffDetLen;i++) {
       u = d.repr[i] ^ repr[i];
       b = u & d.repr[i]; //the cre bits
       k = u & repr[i]; //the des bits
@@ -70,7 +101,7 @@ class Determinant {
 
   //the comparison between determinants is performed
   bool operator<(const Determinant& d) const {
-    for (int i=DetLen-1; i>=0 ; i--) {
+    for (int i=EffDetLen-1; i>=0 ; i--) {
       if (repr[i] < d.repr[i]) return true;
       else if (repr[i] > d.repr[i]) return false;
     }
@@ -78,7 +109,7 @@ class Determinant {
   }
 
   bool operator==(const Determinant& d) const {
-    for (int i=DetLen-1; i>=0 ; i--) 
+    for (int i=EffDetLen-1; i>=0 ; i--) 
       if (repr[i] != d.repr[i]) return false;
     return true;    
   }
@@ -119,7 +150,6 @@ class Determinant {
     d.getRepArray(det);
     for (int i=0; i<norbs; i++)
       os<<(int)(det[i])<<" ";
-    os<<std::endl;
     return os;
   }
 

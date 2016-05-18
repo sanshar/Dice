@@ -55,6 +55,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     std::cout << "could not read the norbs or nelec"<<std::endl;
     exit(0);
   }
+  irrep.resize(norbs);
 
   long npair = norbs*(norbs+1)/2;
   I2.store.resize( npair*(npair+1)/2);
