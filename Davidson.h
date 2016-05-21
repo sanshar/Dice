@@ -38,7 +38,7 @@ double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, b
 	hsubspace(i,j) = b.col(i).dot(sigma.col(j)); 
 	hsubspace(j,i) = hsubspace(i,j);
       }
-    //std::cout << hsubspace<<std::endl;
+
     SelfAdjointEigenSolver<MatrixXd> eigensolver(hsubspace);
     if (eigensolver.info() != Success) abort();
 

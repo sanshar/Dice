@@ -19,6 +19,132 @@ using namespace std;
 using namespace Eigen;
 using namespace boost;
 
+//for each element in ci stochastic round to eps and put all the nonzero elements in newWts and their corresponding
+//indices in Sample1
+int sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1, std::vector<double>& newWts){
+  for (int i=0; i<ci.rows(); i++) {
+    if (abs(ci(i,0)) > eps) {
+      Sample1.push_back(i);
+      newWts.push_back(ci(i,0));
+    }
+    else if (((double) rand() / (RAND_MAX))*eps < abs(ci(i,0))) {
+      Sample1.push_back(i);
+      newWts.push_back( eps*ci(i,0)/abs(ci(i,0)));
+    }
+  }
+}
+
+
+void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    int niter = 10000;
+    //double eps = 0.001;
+    double AvgenergyEN = 0.0;
+    int currentIter = 0;
+    int sampleSize = 0;
+    int num_thrds = omp_get_max_threads();
+
+#pragma omp parallel for schedule(dynamic) 
+    for (int iter=0; iter<niter; iter++) {
+      //cout << norbs<<"  "<<nelec<<endl;
+      char psiArray[norbs]; 
+      vector<int> psiClosed(nelec,0); 
+      vector<int> psiOpen(norbs-nelec,0);
+      //char psiArray[norbs];
+      std::vector<double> wts1, wts2; std::vector<int> Sample1, Sample2;
+      wts1.reserve(1000); wts2.reserve(1000); Sample1.reserve(1000); Sample2.reserve(1000);
+      
+      Sample1.resize(0); wts1.resize(0); Sample2.resize(0); wts2.resize(0);
+      sample_round(ci, schd.eps, Sample1, wts1);
+      sample_round(ci, schd.eps, Sample2, wts2);
+      
+      map<Determinant, pair<double,double> > Psi1ab; 
+      for (int i=0; i<Sample1.size(); i++) {
+	int I = Sample1[i];
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+      }
+
+      //cout << SortedDets.size()<<"  "<<Psi1ab.size()<<"  "<<Sample1.size()<<endl;
+
+      for (int i=0; i<Sample2.size(); i++) {
+	int I = Sample2[i];
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+      }
+      
+      double energyEN = 0.0;
+      for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+	it->first.getOpenClosed(psiOpen, psiClosed);
+	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      }
+      sampleSize = Sample1.size();
+
+#pragma omp critical 
+      {
+	AvgenergyEN += energyEN; currentIter++;
+	std::cout << format("%4i  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	cout << endl;
+      }
+      
+    }
+
+}
+
+
+void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    char psiArray[norbs]; vector<int> psiClosed(nelec,0), psiOpen(norbs-nelec,0);
+    //char psiArray[norbs]; int psiOpen[nelec], psiClosed[norbs-nelec];
+    double energyEN = 0.0;
+    int num_thrds = omp_get_max_threads();
+
+    std::vector<std::map<Determinant, double>> Psi1(num_thrds);
+#pragma omp parallel for schedule(dynamic)
+    for (int i=0; i<Dets.size(); i++) {
+      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1[omp_get_thread_num()], SortedDets);
+      if (i%1000 == 0 && omp_get_thread_num()==0) cout <<"# "<<i<<endl;
+    }
+
+    for (int thrd=1; thrd<num_thrds; thrd++) 
+      for (map<Determinant, double>::iterator it=Psi1[thrd].begin(); it!=Psi1[thrd].end(); ++it)  {
+	if(Psi1[0].find(it->first) == Psi1[0].end())
+	  Psi1[0][it->first] = it->second;
+	else
+	  Psi1[0][it->first] += it->second;
+      }
+    Psi1.resize(1);
+
+
+    //cout << "adding contributions from "<<Psi1[0].size()<<" perturber states"<<endl;
+
+#pragma omp parallel
+    {
+      vector<int> psiOpen(norbs-nelec,0), psiClosed(nelec,0);
+      double thrdEnergy = 0.0;
+      size_t cnt = 0;
+      for (map<Determinant, double>::iterator it = Psi1[0].begin(); it != Psi1[0].end(); it++, cnt++) {
+	if (cnt%num_thrds == omp_get_thread_num()) {
+	  it->first.getOpenClosed(psiOpen, psiClosed);
+	  thrdEnergy += it->second*it->second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	}
+      }
+#pragma omp critical
+      {
+	cout << omp_get_thread_num()<<"  "<<thrdEnergy<<endl;
+	energyEN += thrdEnergy;
+      }
+    }
+
+    cout <<energyEN<<"  "<< -energyEN+E0<<"  "<<getTime()-startofCalc<<endl;
+
+}
+
+
 //this takes in a ci vector for determinants placed in Dets
 //it then does a CIPSI varitional calculation and the resulting
 //ci and dets are returned here
@@ -49,7 +175,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
   int iterstart = 0;
 
-  if (schd.restart) {
+  if (schd.restart || schd.fullrestart) {
     bool converged;
     readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd.prefix);
     std::cout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f\n") 
@@ -58,7 +184,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     detChar.resize(Dets.size()*norbs);
     for (int i=0; i<Dets.size(); i++) 
       Dets[i].getRepArray(&detChar[i*norbs]);
-    if (converged) {
+    if (converged && !schd.fullrestart) {
       cout << "# restarting from a converged calculation, moving to perturbative part.!!"<<endl;
       return E0;
     }
@@ -69,22 +195,28 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     double epsilon1 = schd.epsilon1[iter];
     std::vector<set<Determinant> > newDets(num_thrds);
 #pragma omp parallel for schedule(dynamic)
-    for (int i=0; i<SortedDets.size(); i++) 
+    for (int i=0; i<SortedDets.size(); i++) {
       getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), I1, I2, I2HB, coreE, E0, newDets[omp_get_thread_num()]);
+      //if (i%100000 == 0) cout << i<<" out of "<<SortedDets.size()<<endl;
+    }
 
-    for (int thrd=1; thrd<num_thrds; thrd++)
+    for (int thrd=1; thrd<num_thrds; thrd++) {
       for (set<Determinant>::iterator it=newDets[thrd].begin(); it!=newDets[thrd].end(); ++it) 
 	if(newDets[0].find(*it) == newDets[0].end())
 	  newDets[0].insert(*it);
+      newDets[thrd].clear();
+    }
+    //cout << "merged"<<endl;
 
     for (set<Determinant>::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) 
       if (SortedDets.find(*it) == SortedDets.end())
 	Dets.push_back(*it);
-
+    newDets[0].clear();
+    //cout << "merged 2"<<endl;
     
     //now diagonalize the hamiltonian
     detChar.resize(norbs* Dets.size()); 
-    MatrixXd X0(Dets.size(), 1); X0 *= 0.0; X0.block(0,0,ci.rows(),1) = 1.*ci; 
+    MatrixXd X0(Dets.size(), 1); X0.setZero(Dets.size(),1); X0.block(0,0,ci.rows(),1) = 1.*ci; 
     MatrixXd diag(Dets.size(), 1); diag.block(0,0,ci.rows(),1)= 1.*diagOld;
 
 #pragma omp parallel for schedule(dynamic)
@@ -92,6 +224,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       Dets[k].getRepArray(&detChar[norbs*k]);
       diag(k,0) = Energy(&detChar[norbs*k], norbs, I1, I2, coreE);
     }
+    //cout << "diag"<<endl;
 
     //update connetions
     connections.resize(Dets.size());
@@ -104,7 +237,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     //update connetions
     else {
 #pragma omp parallel for schedule(dynamic)
-      for (size_t i=0; i<Dets.size(); i++) 
+      for (size_t i=0; i<Dets.size(); i++) {
 	for (int j=max(SortedDets.size(),i); j<Dets.size(); j++) {
 	  if (Dets[i].connected(Dets[j])) {
 	    double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
@@ -115,6 +248,9 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 	    }
 	  }
 	}
+	//if (i%10000) cout << i<<"  "<<Dets.size()<<endl;
+      }
+
       for (int i=SortedDets.size(); i<Dets.size(); i++)
 	SortedDets[Dets[i]] = i;
     }
@@ -122,6 +258,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     double prevE0 = E0;
     //Hmult H(&detChar[0], norbs, I1, I2, coreE);
     Hmult2 H(connections, Helements);
+
     E0 = davidson(H, X0, diag, 5, schd.davidsonTol, false);
     std::cout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f") 
       %(iter) % epsilon1 % Dets.size() % E0 % (getTime()-startofCalc);
