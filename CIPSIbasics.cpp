@@ -66,13 +66,13 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
 	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
       }
 
-      //cout << SortedDets.size()<<"  "<<Psi1ab.size()<<"  "<<Sample1.size()<<endl;
 
       for (int i=0; i<Sample2.size(); i++) {
 	int I = Sample2[i];
 	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
       }
-      
+
+
       double energyEN = 0.0;
       for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
 	it->first.getOpenClosed(psiOpen, psiClosed);
@@ -87,7 +87,6 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
 	  %(currentIter) % (E0-energyEN) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	cout << endl;
       }
-      
     }
 
 }
@@ -159,9 +158,10 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
   //where in the original Dets list the current Det belongs 
   std::map<Determinant,int> SortedDets; SortedDets[Dets[0]]=0;
 
-  int norbs = 2.*I2.Direct.rows();
+  size_t norbs = 2.*I2.Direct.rows();
+  int Norbs = norbs;
   std::vector<char> detChar(norbs); Dets[0].getRepArray(&detChar[0]);
-  double E0 = Energy(&detChar[0], norbs, I1, I2, coreE);
+  double E0 = Energy(&detChar[0], Norbs, I1, I2, coreE);
   std::cout << "#HF = "<<E0<<std::endl;
 
   //this is essentially the hamiltonian, we have stored it in a sparse format
@@ -197,7 +197,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<SortedDets.size(); i++) {
       getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), I1, I2, I2HB, coreE, E0, newDets[omp_get_thread_num()]);
-      //if (i%100000 == 0) cout << i<<" out of "<<SortedDets.size()<<endl;
+      if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" out of "<<SortedDets.size()<<endl;
     }
 
     for (int thrd=1; thrd<num_thrds; thrd++) {
@@ -206,13 +206,11 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 	  newDets[0].insert(*it);
       newDets[thrd].clear();
     }
-    //cout << "merged"<<endl;
 
     for (set<Determinant>::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) 
       if (SortedDets.find(*it) == SortedDets.end())
 	Dets.push_back(*it);
     newDets[0].clear();
-    //cout << "merged 2"<<endl;
     
     //now diagonalize the hamiltonian
     detChar.resize(norbs* Dets.size()); 
@@ -220,9 +218,10 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     MatrixXd diag(Dets.size(), 1); diag.block(0,0,ci.rows(),1)= 1.*diagOld;
 
 #pragma omp parallel for schedule(dynamic)
-    for (int k=SortedDets.size(); k<Dets.size(); k++) {
+    for (size_t k=SortedDets.size(); k<Dets.size(); k++) {
       Dets[k].getRepArray(&detChar[norbs*k]);
-      diag(k,0) = Energy(&detChar[norbs*k], norbs, I1, I2, coreE);
+      diag(k,0) = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
+      if (k%1000000 == 0 && k!=0) cout <<"#"<< k<<"Hdiag out of "<<Dets.size()<<endl;     
     }
     //cout << "diag"<<endl;
 
@@ -238,9 +237,9 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     else {
 #pragma omp parallel for schedule(dynamic)
       for (size_t i=0; i<Dets.size(); i++) {
-	for (int j=max(SortedDets.size(),i); j<Dets.size(); j++) {
+	for (size_t j=max(SortedDets.size(),i); j<Dets.size(); j++) {
 	  if (Dets[i].connected(Dets[j])) {
-	    double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
+	    double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], Norbs, I1, I2, coreE);
 	    //double hij = Hij(Dets[i], Dets[j], norbs, I1, I2, coreE);
 	    if (abs(hij) > 1.e-10) {
 	      connections[i].push_back(j);
@@ -248,17 +247,17 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 	    }
 	  }
 	}
+	if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" Hij out of "<<Dets.size()<<endl;     
 	//if (i%10000) cout << i<<"  "<<Dets.size()<<endl;
       }
 
-      for (int i=SortedDets.size(); i<Dets.size(); i++)
+      for (size_t i=SortedDets.size(); i<Dets.size(); i++)
 	SortedDets[Dets[i]] = i;
     }
 
     double prevE0 = E0;
     //Hmult H(&detChar[0], norbs, I1, I2, coreE);
     Hmult2 H(connections, Helements);
-
     E0 = davidson(H, X0, diag, 5, schd.davidsonTol, false);
     std::cout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f") 
       %(iter) % epsilon1 % Dets.size() % E0 % (getTime()-startofCalc);
@@ -328,20 +327,21 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
 
 void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant, int>& SortedDets, int norbs, oneInt& int1, twoInt& int2, double coreE, char* detArray, vector<vector<int> >& connections, vector<vector<double> >& Helements) {
   size_t prevSize = SortedDets.size();
-
-  for (int i=prevSize; i<Dets.size(); i++) {
+  size_t Norbs = norbs;
+  for (size_t i=prevSize; i<Dets.size(); i++) {
     SortedDets[Dets[i]] = i;
     connections[i].push_back(i);
-    Helements[i].push_back(Energy(&detArray[i*norbs], norbs, int1, int2, coreE));
+    Helements[i].push_back(Energy(&detArray[i*Norbs], norbs, int1, int2, coreE));
   }
 
 #pragma omp parallel for schedule(dynamic)
-  for (int x=prevSize; x<Dets.size(); x++) {
+  for (size_t x=prevSize; x<Dets.size(); x++) {
     Determinant d = Dets[x];
     int open[norbs], closed[norbs]; 
     int nclosed = d.getOpenClosed(open, closed);
     int nopen = norbs-nclosed;
-
+    
+    if (x%100000 == 0) cout <<"update connections "<<x<<" out of "<<Dets.size()-prevSize<<endl;
     //loop over all single excitation and find if they are present in the list
     //on or before the current determinant
     for (int ia=0; ia<nopen*nclosed; ia++){
@@ -353,7 +353,7 @@ void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant, 
       if (it != SortedDets.end()) {
 	int y = it->second;
 	if (y <= x) { //avoid double counting
-	  double integral = Hij_1Excite(closed[i],open[a],int1,int2, &detArray[x*norbs], norbs);
+	  double integral = Hij_1Excite(closed[i],open[a],int1,int2, &detArray[x*Norbs], norbs);
 	  if (abs(integral) > 1.e-8) {
 	    connections[x].push_back(y);
 	    Helements[x].push_back(integral);
@@ -376,7 +376,7 @@ void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant, 
 	    if (it != SortedDets.end()) {
 	      int y = it->second;
 	      if (y <= x) { //avoid double counting
-		double integral = Hij_2Excite(closed[i], closed[j], open[a], open[b], int2, &detArray[x*norbs], norbs);
+		double integral = Hij_2Excite(closed[i], closed[j], open[a], open[b], int2, &detArray[x*Norbs], norbs);
 		if (abs(integral) > 1.e-8) {
 		  connections[x].push_back(y);
 		  Helements[x].push_back(integral);

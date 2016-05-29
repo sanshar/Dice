@@ -72,14 +72,28 @@ struct Hmult2 {
   template <typename Derived>
   void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
     y*=0.0;
+
+    int num_thrds = omp_get_max_threads();
+    std::vector<MatrixXd> yarray(num_thrds);
+    
+    for (int i=0; i<num_thrds; i++) {
+      yarray[i] = Eigen::MatrixXd::Zero(y.rows(),1);
+      //yarray[i] = 0.*y;
+    }
+
+#pragma omp parallel for schedule(dynamic)
     for (int i=0; i<x.rows(); i++) {
       for (int j=0; j<connections[i].size(); j++) {
 	double hij = Helements[i][j];
 	int J = connections[i][j];
-	y(i,0) += hij*x(J,0);
-	if (i!= J) y(J,0) += hij*x(i,0);
+	yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
+	if (i!= J) yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
       }
     }
+  
+
+    for (int i=0; i<num_thrds; i++)
+      y += yarray[i];
   }
 };
 
