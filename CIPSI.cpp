@@ -26,29 +26,6 @@ double getTime() {
 double startofCalc = getTime();
 
 
-int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
-  double prob = 1.0;
-  for (int s=0; s<Sample1.size(); s++) {
-
-    double rand_no = ((double) rand() / (RAND_MAX))*cumulative;
-    for (int i=0; i<ci.rows(); i++) {
-      if (rand_no < abs(ci(i,0))) {
-	Sample1[s] = i;
-	//newWts[s] = ci(i,0);
-	//prob = prob*ci(i,0)/cumulative;
-	newWts[s] = cumulative/Sample1.size();
-	//prob = prob*ci(i,0)/cumulative;
-	break;
-      }
-      rand_no -= abs(ci(i,0));
-    }
-  }
-
-  /*
-  for (int s=0; s<Sample1.size(); s++) 
-    newWts[s] = newWts[s]/prob;
-  */
-}
 
 
 void readInput(string input, std::vector<int>& occupied, CIPSIbasics::schedule& schd);
@@ -110,11 +87,12 @@ int main(int argc, char* argv[]) {
   if (!schd.stochastic) {
     CIPSIbasics::DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
-  else if (true){
+  else if (schd.SampleN == -1){
     CIPSIbasics::DoPerturbativeStochastic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else { 
     //Here I will implement the alias method
+    CIPSIbasics::DoPerturbativeStochastic2(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
   return 0;

@@ -34,6 +34,93 @@ int sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1, std::vecto
   }
 }
 
+int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
+  double prob = 1.0;
+  for (int s=0; s<Sample1.size(); s++) {
+
+    double rand_no = ((double) rand() / (RAND_MAX))*cumulative;
+    for (int i=0; i<ci.rows(); i++) {
+      if (rand_no < abs(ci(i,0))) {
+	Sample1[s] = i;
+	newWts[s] = ci(i,0) < 0. ? -cumulative/Sample1.size() : cumulative/Sample1.size();
+	break;
+      }
+      rand_no -= abs(ci(i,0));
+    }
+  }
+
+}
+
+void CIPSIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    int niter = 10000;
+    //double eps = 0.001;
+    int Nsample = schd.SampleN;
+    double AvgenergyEN = 0.0;
+    double AverageDen = 0.0;
+    int currentIter = 0;
+    int sampleSize = 0;
+    int num_thrds = omp_get_max_threads();
+
+    double cumulative = 0.0;
+    for (int i=0; i<ci.rows(); i++)
+      cumulative += abs(ci(i,0));
+
+#pragma omp parallel for schedule(dynamic) 
+    for (int iter=0; iter<niter; iter++) {
+      //cout << norbs<<"  "<<nelec<<endl;
+      char psiArray[norbs]; 
+      vector<int> psiClosed(nelec,0); 
+      vector<int> psiOpen(norbs-nelec,0);
+      //char psiArray[norbs];
+      std::vector<double> wts1(Nsample), wts2(Nsample); std::vector<int> Sample1(Nsample), Sample2(Nsample);
+      //wts1.reserve(Nsample); wts2.reserve(Nsample); Sample1.reserve(Nsample); Sample2.reserve(Nsample);
+      
+
+      sample_N(ci, cumulative, Sample1, wts1);
+      sample_N(ci, cumulative, Sample2, wts2);
+
+      double norm = 0.0;
+      for (int i=0; i<Sample1.size(); i++) {
+	double normi = 0.0;
+	for (int j=0; j<Sample2.size(); j++)
+	  if (Sample2[j] == Sample1[i]) normi += wts1[i]*wts2[j];
+	norm += normi;
+      }
+      
+      map<Determinant, pair<double,double> > Psi1ab; 
+      for (int i=0; i<Sample1.size(); i++) {
+	int I = Sample1[i];
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+      }
+
+
+      for (int i=0; i<Sample2.size(); i++) {
+	int I = Sample2[i];
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+      }
+
+
+      double energyEN = 0.0;
+      for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+	it->first.getOpenClosed(psiOpen, psiClosed);
+	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      }
+      sampleSize = Sample1.size();
+      AverageDen += norm;
+#pragma omp critical 
+      {
+	AvgenergyEN += energyEN; currentIter++;
+	std::cout << format("%4i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	cout << endl;
+      }
+    }
+
+}
+
 
 void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
@@ -42,6 +129,7 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
     int niter = 10000;
     //double eps = 0.001;
     double AvgenergyEN = 0.0;
+    double AverageDen = 0.0;
     int currentIter = 0;
     int sampleSize = 0;
     int num_thrds = omp_get_max_threads();
@@ -59,6 +147,15 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
       Sample1.resize(0); wts1.resize(0); Sample2.resize(0); wts2.resize(0);
       sample_round(ci, schd.eps, Sample1, wts1);
       sample_round(ci, schd.eps, Sample2, wts2);
+
+      double norm = 0.0;
+      for (int i=0; i<Sample1.size(); i++) {
+	for (int j=0; j<Sample2.size(); j++)
+	  if (Sample2[j] == Sample1[i]) {
+	    norm += wts1[i]*wts2[j];
+	    break;
+	  }
+      }
       
       map<Determinant, pair<double,double> > Psi1ab; 
       for (int i=0; i<Sample1.size(); i++) {
@@ -82,10 +179,13 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
 
 #pragma omp critical 
       {
+	AverageDen += norm;
 	AvgenergyEN += energyEN; currentIter++;
-	std::cout << format("%4i  %14.8f  %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	std::cout << format("%4i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	cout << endl;
+	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	//cout << endl;
       }
     }
 

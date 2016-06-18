@@ -18,6 +18,7 @@ namespace CIPSIbasics {
   struct schedule{
     double davidsonTol;
     double epsilon2;
+    int SampleN;
     std::vector<double> epsilon1;    
     bool restart;
     bool fullrestart;
@@ -38,6 +39,8 @@ namespace CIPSIbasics {
 		       twoInt& I2, twoIntHeatBath& I2HB, oneInt& I1, double& coreE);
 
   void DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+				twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
+  void DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
   void DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
