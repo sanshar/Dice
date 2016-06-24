@@ -84,8 +84,11 @@ int main(int argc, char* argv[]) {
 
 
   //now do the perturbative bit
-  if (!schd.stochastic) {
+  if (!schd.stochastic && schd.nblocks == 1) {
     CIPSIbasics::DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+  }
+  else if (!schd.stochastic) {
+    CIPSIbasics::DoDeterministic2(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1){
     CIPSIbasics::DoPerturbativeStochastic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);

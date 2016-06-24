@@ -51,6 +51,78 @@ int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::v
 
 }
 
+
+void CIPSIbasics::DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+				   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+  int nblocks = schd.nblocks;
+  std::vector<int> blockSizes(nblocks,0);
+  for (int i=0; i<nblocks; i++) {
+    if (i!=nblocks-1)
+      blockSizes[i] = Dets.size()/nblocks;
+    else
+      blockSizes[i] = Dets.size() - (nblocks-1)*Dets.size()/(nblocks);
+  }
+  int norbs = Determinant::norbs;
+  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+  double AvgenergyEN = 0.0;
+
+#pragma omp parallel for schedule(dynamic) 
+  for (int inter1 = 0; inter1 < nblocks; inter1++) {
+
+    vector<int> psiClosed(nelec,0); 
+    vector<int> psiOpen(norbs-nelec,0);
+
+    std::vector<double> wts1(blockSizes[inter1]);
+    std::vector<int> Sample1(blockSizes[inter1]);
+    for (int i=0; i<wts1.size(); i++) {
+      wts1[i] = ci(i+(inter1)*Dets.size()/nblocks ,0);
+      Sample1[i] = i+(inter1)*Dets.size()/nblocks ;
+    }
+
+    map<Determinant, pair<double,double> > Psi1ab; 
+    for (int i=0; i<Sample1.size(); i++) {
+      int I = Sample1[i];
+      CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+    }
+
+    double energyEN = 0.0;
+    for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+      it->first.getOpenClosed(psiOpen, psiClosed);
+      energyEN += it->second.first*it->second.first/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+    }
+    
+
+    for (int i=Sample1[Sample1.size()-1]+1; i<Dets.size(); i++) {
+      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+      if (i%1000 == 0 && omp_get_thread_num() == 0) cout <<i <<" out of "<<Dets.size()-Sample1.size()<<endl; 
+    }
+
+    for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+      it->first.getOpenClosed(psiOpen, psiClosed);
+      energyEN += 2.*it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+    }
+
+#pragma omp critical 
+    {
+      AvgenergyEN += energyEN;
+      
+      std::cout << format("%4i  %14.8f   %10.2f  %10i %4i") 
+	%(inter1) % (E0-AvgenergyEN) % (getTime()-startofCalc) % inter1 % (omp_get_thread_num());
+      cout << endl;
+    }
+  }
+  
+  {
+    std::cout <<"FINAL ANSWER "<<endl;
+    std::cout << format("%4i  %14.8f   %10.2f  %10i %4i") 
+      %(nblocks) % (E0-AvgenergyEN) % (getTime()-startofCalc) % nblocks % (0);
+    cout << endl;
+  }
+
+}
+
+
+
 void CIPSIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
     int norbs = Determinant::norbs;

@@ -26,6 +26,7 @@ namespace CIPSIbasics {
     double eps;
     string prefix;
     bool stochastic;
+    int nblocks;
   };
   
   void writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, map<Determinant,int>& SortedDets,
@@ -38,6 +39,8 @@ namespace CIPSIbasics {
   double DoVariational(MatrixXd& ci, vector<Determinant>& Dets, schedule& schd,
 		       twoInt& I2, twoIntHeatBath& I2HB, oneInt& I1, double& coreE);
 
+  void DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+			twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec);
   void DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
   void DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
