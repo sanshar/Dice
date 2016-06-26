@@ -3,6 +3,12 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "integral.h"
+#ifndef SERIAL
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
+#endif
+#include "communicate.h"
 
 using namespace Eigen;
 class Determinant;
@@ -73,6 +79,10 @@ struct Hmult2 {
   void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
     y*=0.0;
 
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
+
     int num_thrds = omp_get_max_threads();
     std::vector<MatrixXd> yarray(num_thrds);
     
@@ -83,6 +93,7 @@ struct Hmult2 {
 
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<x.rows(); i++) {
+      if (i%world.size() != world.rank()) continue;
       for (int j=0; j<connections[i].size(); j++) {
 	double hij = Helements[i][j];
 	int J = connections[i][j];
@@ -91,9 +102,13 @@ struct Hmult2 {
       }
     }
   
+    for (int i=1; i<num_thrds; i++)
+      yarray[0] += yarray[i];
 
-    for (int i=0; i<num_thrds; i++)
-      y += yarray[i];
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &yarray[0](0,0), yarray[0].rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    y = 1.*yarray[0];
   }
 };
 

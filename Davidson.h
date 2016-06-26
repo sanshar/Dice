@@ -6,6 +6,12 @@
 #include "Hmult.h"
 #include <Eigen/Dense>
 #include <iostream>
+#ifndef SERIAL
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
+#endif
+#include "communicate.h"
 
 using namespace Eigen;
 using namespace std;
@@ -18,6 +24,9 @@ void precondition(MatrixXd& r, MatrixXd& diag, double& e);
 //davidson, implemented very similarly to as implementeded in Block
 template<class T>
 double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, bool print) {
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
   x0 = x0/x0.norm();
   MatrixXd b(x0.rows(), maxCopies); b*=0.0;
   b.col(0) = 1.0*x0;
@@ -32,7 +41,7 @@ double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, b
       Eigen::Block<MatrixXd> bcol = b.block(0,i,b.rows(),1), sigmacol = sigma.block(0,i,sigma.rows(),1);
       H(bcol, sigmacol);
     }
-    MatrixXd hsubspace(bsize, bsize);hsubspace *= 0.;
+    MatrixXd hsubspace(bsize, bsize);hsubspace.setZero(bsize, bsize);
     for (int i=0; i<bsize; i++)
       for (int j=i; j<bsize; j++) {
 	hsubspace(i,j) = b.col(i).dot(sigma.col(j)); 
@@ -48,14 +57,13 @@ double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, b
     double e0 = eigensolver.eigenvalues()[0];
     r = sigma.col(0) - e0*b.col(0);
     double error = r.norm();
-    if (print)
-      std::cout <<"#"<< iter<<" "<<e0<<"  "<<error<<std::endl;
+    if (true)
+      pout <<"#"<< iter<<" "<<e0<<"  "<<error<<std::endl;
     iter++;
-    if (error < tol || iter >20) {
+    if (error < tol || iter >200) {
       x0 = 1.*b.col(0);
       return e0;
     }
-
 
     precondition(r,diag,e0);
     for (int i=0; i<bsize; i++) 
@@ -67,8 +75,8 @@ double davidson(T& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, b
       sigmaSize++;
     }
     else {
-      bsize = 3;
-      sigmaSize = 2;
+      bsize = 6;
+      sigmaSize = 5;
       b.col(bsize-1) = r/r.norm();
     }
   }

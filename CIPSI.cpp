@@ -12,6 +12,12 @@
 #include <list>
 #include <tuple>
 #include "boost/format.hpp"
+#ifndef SERIAL
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
+#endif
+#include "communicate.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -32,13 +38,21 @@ void readInput(string input, std::vector<int>& occupied, CIPSIbasics::schedule& 
 
 
 int main(int argc, char* argv[]) {
+
+#ifndef SERIAL
+  boost::mpi::environment env(argc, argv);
+  boost::mpi::communicator world;
+#endif
+
   startofCalc=getTime();
+  srand(startofCalc+world.rank());
   std::cout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
+
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
@@ -56,19 +70,25 @@ int main(int argc, char* argv[]) {
 
 
   int num_thrds;
-  std::vector<int> HFoccupied; double epsilon1, epsilon2, tol, dE;
+  std::vector<int> HFoccupied; //double epsilon1, epsilon2, tol, dE;
   CIPSIbasics::schedule schd;
-  readInput("input.dat", HFoccupied, schd); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
+  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
+#ifndef SERIAL
+  mpi::broadcast(world, HFoccupied, 0);
+  mpi::broadcast(world, schd, 0);
+#endif
 
   //make HF determinant
   Determinant d;
   for (int i=0; i<HFoccupied.size(); i++) {
     d.setocc(HFoccupied[i], true);
   }
+
+  //have the dets, ci coefficient and diagnoal on all processors
   MatrixXd ci(1,1); ci(0,0) = 1.0;
   std::vector<Determinant> Dets(1,d);
-  
+
   double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, I1, coreE);
 
   //print the 5 most important determinants and their weights
@@ -76,7 +96,7 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<5; i++) {
     compAbs comp;
     int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-    cout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
+    pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
     prevci(m,0) = 0.0;
   }
   prevci.resize(0,0);

@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include <map>
 #include <utility>
+#include "iowrapper.h"
 
 using namespace std;
 using namespace Eigen;
@@ -18,6 +19,14 @@ class compAbs {
   }
 };
 class oneInt {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+      ar & store \
+	& zero;
+    }
  public:
   std::vector<double> store;
   double zero ;
@@ -34,6 +43,17 @@ class oneInt {
 };
   
 class twoInt {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+      ar & store \
+	& maxEntry \
+	& Direct \
+	& Exchange \
+	& zero;
+    }
  public:
   std::vector<double> store;
   double maxEntry;
