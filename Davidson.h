@@ -20,6 +20,48 @@ using namespace std;
 
 
 void precondition(MatrixXd& r, MatrixXd& diag, double& e);
+template<class T> 
+void precondition(T& H, MatrixXd& r) {
+  for (int i=0; i<r.rows(); i++)
+    r(i,0) = r(i,0)/(H.Helements[i][0]);
+}
+
+//davidson, implemented very similarly to as implementeded in Block
+template<class T>
+double LinearSolver(T& H, MatrixXd& x0, MatrixXd& b, double tol, bool print) {
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
+
+  x0.setZero(x0.rows(),1);
+  MatrixXd r = 1.*b, p = 1.*b;
+  double rsold = (r.transpose()*r)(0,0);
+
+  int iter = 0;
+  while (true) {
+    MatrixXd Ap = 0.*p; H(p,Ap);
+    double alpha = rsold/(p.transpose()*Ap)(0,0);
+    x0 += alpha*p;
+    r -= alpha*Ap;
+
+    double rsnew = (r.transpose()*r)(0,0);
+    double ept = -(x0.transpose()*r + x0.transpose()*b)(0,0);
+    if (true)
+      pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
+    if (r.norm() < tol || iter > 100) { 
+      p.setZero(p.rows(),1); H(x0,p); p -=b; cout << (p.transpose()*p)(0,0)<<endl; 
+      return ept;
+    }      
+
+    p = r +(rsnew/rsold)*p;
+    rsold = rsnew;
+    iter++;
+  }
+
+  
+}
+
+
 
 //davidson, implemented very similarly to as implementeded in Block
 template<class T>

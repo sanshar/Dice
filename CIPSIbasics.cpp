@@ -97,8 +97,8 @@ int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::v
 }
 
 
-void CIPSIbasics::DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-				   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+void CIPSIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+				       twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
   int nblocks = schd.nblocks;
   std::vector<int> blockSizes(nblocks,0);
   for (int i=0; i<nblocks; i++) {
@@ -127,7 +127,7 @@ void CIPSIbasics::DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, doub
     map<Determinant, pair<double,double> > Psi1ab; 
     for (int i=0; i<Sample1.size(); i++) {
       int I = Sample1[i];
-      CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+      CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
     }
 
     double energyEN = 0.0;
@@ -138,7 +138,7 @@ void CIPSIbasics::DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, doub
     
 
     for (int i=Sample1[Sample1.size()-1]+1; i<Dets.size(); i++) {
-      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), 0.0, ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       if (i%1000 == 0 && omp_get_thread_num() == 0) cout <<i <<" out of "<<Dets.size()-Sample1.size()<<endl; 
     }
 
@@ -151,7 +151,7 @@ void CIPSIbasics::DoDeterministic2(vector<Determinant>& Dets, MatrixXd& ci, doub
     {
       AvgenergyEN += energyEN;
       
-      std::cout << format("%4i  %14.8f   %10.2f  %10i %4i") 
+      std::cout << format("%6i  %14.8f   %10.2f  %10i %4i") 
 	%(inter1) % (E0-AvgenergyEN) % (getTime()-startofCalc) % inter1 % (omp_get_thread_num());
       cout << endl;
     }
@@ -218,16 +218,16 @@ void CIPSIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd&
 	int I = Sample1[i];
 	std::vector<int>::iterator it = find(Sample2.begin(), Sample2.end(), I);
 	if (it != Sample2.end())
-	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets);
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
 	else
-	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
       for (int i=0; i<Sample2.size(); i++) {
 	int I = Sample2[i];
 	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), I);
 	if (it == Sample1.end())
-	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -242,13 +242,13 @@ void CIPSIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd&
       {
 	if (mpigetrank() == 0) {
 	  AvgenergyEN += energyEN; currentIter++;
-	  std::cout << format("%4i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
-	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  cout << endl;
 	}
 	else {
 	  AvgenergyEN += energyEN; currentIter++;
-	  ofs << format("%4i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  ofs << endl;
 
@@ -298,13 +298,13 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
       map<Determinant, pair<double,double> > Psi1ab; 
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
-	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 0);
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
       for (int i=0; i<Sample2.size(); i++) {
 	int I = Sample2[i];
-	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, 1);
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -319,8 +319,8 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
       {
 	AverageDen += norm;
 	AvgenergyEN += energyEN; currentIter++;
-	std::cout << format("%4i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	cout << endl;
 	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	//cout << endl;
@@ -340,45 +340,97 @@ void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     double energyEN = 0.0;
     int num_thrds = omp_get_max_threads();
 
-    std::vector<std::map<Determinant, double>> Psi1(num_thrds);
+    std::vector<std::map<Determinant, pair<double,double> > > Psi1(num_thrds);
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<Dets.size(); i++) {
-      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1[omp_get_thread_num()], SortedDets);
+      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1[omp_get_thread_num()], SortedDets, schd);
+      //cout << Dets.size()<<"  "<<i <<"  "<<Psi1[0].size()<<endl;
       if (i%1000 == 0 && omp_get_thread_num()==0) cout <<"# "<<i<<endl;
     }
 
     for (int thrd=1; thrd<num_thrds; thrd++) 
-      for (map<Determinant, double>::iterator it=Psi1[thrd].begin(); it!=Psi1[thrd].end(); ++it)  {
+      for (map<Determinant, pair<double, double> >::iterator it=Psi1[thrd].begin(); it!=Psi1[thrd].end(); ++it)  {
 	if(Psi1[0].find(it->first) == Psi1[0].end())
-	  Psi1[0][it->first] = it->second;
+	  Psi1[0][it->first].first = it->second.first;
 	else
-	  Psi1[0][it->first] += it->second;
+	  Psi1[0][it->first].first += it->second.first;
       }
     Psi1.resize(1);
 
 
     //cout << "adding contributions from "<<Psi1[0].size()<<" perturber states"<<endl;
 
+    //MatrixXd c1(Psi1[0].size(),1);
+    //double norm = 0.0;
+    cout << Psi1[0].size()<<endl;
 #pragma omp parallel
     {
       vector<int> psiOpen(norbs-nelec,0), psiClosed(nelec,0);
       double thrdEnergy = 0.0;
       size_t cnt = 0;
-      for (map<Determinant, double>::iterator it = Psi1[0].begin(); it != Psi1[0].end(); it++, cnt++) {
+      for (map<Determinant, pair<double, double> >::iterator it = Psi1[0].begin(); it != Psi1[0].end(); it++, cnt++) {
 	if (cnt%num_thrds == omp_get_thread_num()) {
+	  if (it->first.ExcitationDistance(Dets[0]) > schd.excitation) continue;
 	  it->first.getOpenClosed(psiOpen, psiClosed);
-	  thrdEnergy += it->second*it->second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	  double e = Energy(psiClosed, nelec, I1, I2, coreE)-E0; 
+	  thrdEnergy += it->second.first*it->second.first/e; 
+	  //cout << it->first<<endl;
+	  //c1(cnt,0) = -it->second/e;
+	  //norm += pow(it->second/e,2);
+	  //cout << -it->second/e<<"   "<<it->second<<"   "<<e<<endl;
 	}
       }
 #pragma omp critical
       {
-	cout << omp_get_thread_num()<<"  "<<thrdEnergy<<endl;
+	//	cout << omp_get_thread_num()<<"  "<<thrdEnergy<<endl;
 	energyEN += thrdEnergy;
       }
     }
 
     cout <<energyEN<<"  "<< -energyEN+E0<<"  "<<getTime()-startofCalc<<endl;
+    /*
+    cout << "norm "<<norm<<endl;
+    if (true) {
+      std::vector<Determinant> Psi1vec;
+      for (map<Determinant, double>::iterator it=Psi1[0].begin(); it!=Psi1[0].end(); ++it)  {
+	Psi1vec.push_back( it->first);
+      }
+      Psi1.clear();
 
+      std::vector<std::vector<int> > connections(Psi1vec.size());
+      std::vector<std::vector<double> > Helements(Psi1vec.size());
+
+      std::vector<char> detChar(norbs*Psi1vec.size(),0);
+#pragma omp parallel for schedule(dynamic)
+      for (size_t i=0; i<Psi1vec.size() ; i++) 
+	Psi1vec[i].getRepArray(&detChar[norbs*i]);
+
+      double pt3 = 0.0;
+      MatrixXd c2 = 0.*c1;
+      cout << "psi1 norm "<<c1.transpose()*c1<<endl;
+#pragma omp parallel for schedule(dynamic) reduction(+:pt3)
+      for (int i=0; i<c1.rows(); i++) {
+	for (int j=i+1; j<c1.rows(); j++)
+	  if (Psi1vec[i].connected(Psi1vec[j])) {
+	    double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
+
+	    if (abs(hij) > 1.e-10) {
+	      connections[i].push_back(j);
+	      Helements[i].push_back(hij);
+	    }
+	  
+	    pt3 += 2.*hij*c1(i,0)*c1(j,0);
+	  }
+	if (i%10000 == 0) cout << i<<"  out of "<<c1.rows()<<endl; 
+      }
+      cout << "pt3 "<<c2.transpose()*c2<<"  "<<c2.transpose()*c1<<"  "<<pt3<<"  "<<pt3-energyEN+E0<<endl;
+
+      Hmult2 H(connections, Helements);
+      c2 = 0.*c2;
+      H(c1,c2);
+      cout <<c2.transpose()*c1<<"  "<<c2.transpose()*c2<<endl;
+    }
+    */
 }
 
 
@@ -388,16 +440,14 @@ void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 //at input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
 double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, schedule& schd,
-				  twoInt& I2, twoIntHeatBath& I2HB, oneInt& I1, double& coreE) {
+				  twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE) {
 
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
   int num_thrds = omp_get_max_threads();
 
-  //make a copy of the input Dets and sort them but remember
-  //where in the original Dets list the current Det belongs 
-  std::map<Determinant,int> SortedDets; SortedDets[Dets[0]]=0;
+  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
 
   size_t norbs = 2.*I2.Direct.rows();
   int Norbs = norbs;
@@ -421,10 +471,13 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
   if (schd.restart || schd.fullrestart) {
     bool converged;
-    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd.prefix);
+    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd);
     pout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f\n") 
       %(iterstart) % schd.epsilon1[iterstart] % Dets.size() % E0 % (getTime()-startofCalc);
     iterstart++;
+    if (schd.onlyperturbative)
+      return E0;
+
     detChar.resize(Dets.size()*norbs);
     for (int i=0; i<Dets.size(); i++) 
       Dets[i].getRepArray(&detChar[i*norbs]);
@@ -438,21 +491,22 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
   //do the variational bit
   for (int iter=iterstart; iter<schd.epsilon1.size(); iter++) {
     double epsilon1 = schd.epsilon1[iter];
-    std::vector<map<Determinant, double> > newDets(num_thrds); //also include the connection magnitude so we can calculate the pt
+    std::vector<map<Determinant, pair<double,double> > > newDets(num_thrds); //also include the connection magnitude so we can calculate the pt
 
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<SortedDets.size(); i++) {
       if (i%world.size() != world.rank()) continue;
-      getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), ci(i,0), I1, I2, I2HB, coreE, E0, newDets[omp_get_thread_num()], SortedDets);
-      if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" out of "<<SortedDets.size()<<endl;
+      getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, newDets[omp_get_thread_num()], SortedDets, schd);
+      //cout << SortedDets.size()<<"  "<<i <<"  "<<newDets[0].size()<<endl;
+      //if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" out of "<<SortedDets.size()<<endl;
     }
 
     for (int thrd=1; thrd<num_thrds; thrd++) {
-      for (map<Determinant, double>::iterator it=newDets[thrd].begin(); it!=newDets[thrd].end(); ++it)  {
+      for (map<Determinant, pair<double, double> >::iterator it=newDets[thrd].begin(); it!=newDets[thrd].end(); ++it)  {
 	if(newDets[0].find(it->first) == newDets[0].end())
-	  newDets[0][it->first] = it->second;
+	  newDets[0][it->first].first = it->second.first;
 	else
-	  newDets[0][it->first] += it->second;
+	  newDets[0][it->first].first += it->second.first;
       }
       newDets[thrd].clear();
     }
@@ -460,22 +514,24 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     for (int proc = 0; proc < world.size(); proc++) {
       if (proc == mpigetrank() && proc != 0) world.send(0, proc, newDets[0]);
       if (mpigetrank() == 0 && proc != 0) {
-	map<Determinant, double> newDetsRecv;
+	map<Determinant, pair<double, double> > newDetsRecv;
 	world.recv(proc, proc, newDetsRecv);
 
-	for (map<Determinant, double>::iterator it=newDetsRecv.begin(); it!=newDetsRecv.end(); ++it) {
+	for (map<Determinant, pair<double, double> >::iterator it=newDetsRecv.begin(); it!=newDetsRecv.end(); ++it) {
 	  if(newDets[0].find(it->first) == newDets[0].end())
-	    newDets[0][it->first] = it->second;
+	    newDets[0][it->first].first = it->second.first;
 	  else
-	    newDets[0][it->first] += it->second;
+	    newDets[0][it->first].first += it->second.first;
 	}
       }
     }
     mpi::broadcast(world, newDets[0], 0);
     
-    for (map<Determinant, double>::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) 
+    for (map<Determinant, pair<double, double> >::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) {
+      if (it->first.ExcitationDistance(Dets[0]) > schd.excitation) continue;
       Dets.push_back(it->first);
-    
+    }
+
     //now diagonalize the hamiltonian
     detChar.resize(norbs* Dets.size()); 
     MatrixXd X0(Dets.size(), 1); X0.setZero(Dets.size(),1); X0.block(0,0,ci.rows(),1) = 1.*ci; 
@@ -489,7 +545,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       if (k % world.size() != world.rank() ) continue;
       Dets[k].getRepArray(&detChar[norbs*k]);
       diag(k,0) = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
-      double numerator = newDets[0][Dets[k]];
+      double numerator = newDets[0][Dets[k]].first;
       estimatedCorrection += numerator*numerator/(diag(k,0) - E0);
       if (k%1000000 == 0 && k!=0) cout <<"#"<< k<<"Hdiag out of "<<Dets.size()<<endl;     
     }
@@ -500,19 +556,16 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &detChar[SortedDets.size()*norbs], (Dets.size()-SortedDets.size())*norbs, MPI_CHAR, MPI_SUM, MPI_COMM_WORLD);
 #endif
-    pout << format(" %14.8f %10.2e\n") 
-      %(E0-estimatedCorrection) % Dets.size();
-    //pout << "newE estimate "<<E0-estimatedCorrection<<"  "<<Dets.size()<<endl;
-    //update connetions
+
     connections.resize(Dets.size());
     Helements.resize(Dets.size());
 
 
     //if (Dets.size() > 10000000)
-    if (false)
-      updateConnections(Dets, SortedDets, norbs, I1, I2, coreE, &detChar[0], connections, Helements);
+    //if (false)
+    //updateConnections(Dets, SortedDets, norbs, I1, I2, coreE, &detChar[0], connections, Helements);
     //update connetions
-    else {
+    {
 #pragma omp parallel for schedule(dynamic)
       for (size_t i=0; i<Dets.size() ; i++) {
 	if (i%world.size() != world.rank()) continue;
@@ -532,7 +585,8 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       }
 
       for (size_t i=SortedDets.size(); i<Dets.size(); i++)
-	SortedDets[Dets[i]] = i;
+	SortedDets.push_back(Dets[i]);
+      std::sort(SortedDets.begin(), SortedDets.end());
     }
 
     double prevE0 = E0;
@@ -542,18 +596,18 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
     E0 = davidson(H, X0, diag, 10, schd.davidsonTol, false);
     pout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f") 
       %(iter) % epsilon1 % Dets.size() % E0 % (getTime()-startofCalc);
-    //pout << endl;
+    pout << endl;
 
     ci.resize(Dets.size(),1); ci = 1.0*X0;
     diagOld.resize(Dets.size(),1); diagOld = 1.0*diag;
 
     
     if (abs(E0-prevE0) < schd.dE)  {
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd.prefix);
+      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd);
       break;
     }
     else 
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, false, schd.prefix);
+      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, false, schd);
 
 
 
@@ -562,16 +616,18 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
 }
 
-void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, map<Determinant,int>& SortedDets,
+
+
+void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					 MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
-					 double& E0, bool converged, string& prefix) {
+					 double& E0, bool converged, schedule& schd) {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
 
 
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , prefix.c_str(), world.rank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix.c_str(), world.rank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
     save << iter <<Dets<<SortedDets;
@@ -588,9 +644,9 @@ void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determin
 }
 
 
-void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determinant>& Dets, map<Determinant,int>& SortedDets,
+void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
-					double& E0, bool& converged, string& prefix) {
+					double& E0, bool& converged, schedule& schd) {
 
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -598,7 +654,7 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
 
 
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , prefix.c_str(), world.rank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix.c_str(), world.rank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     
@@ -611,12 +667,212 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
     for (int i=0; i<ci.rows(); i++)
       load >>  ci(i,0);
     load >> E0;
+    if (schd.onlyperturbative) {ifs.close();return;}
     load >> converged;
 
     load >> connections >> Helements;
     ifs.close();
 }
 
+
+  
+
+//this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
+//in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
+void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, pair<double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd) {
+
+  int norbs = d.norbs;
+  int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
+  int nclosed = d.getOpenClosed(open, closed);
+  int nopen = norbs-nclosed;
+  d.getRepArray(detArray);
+  
+  std::map<Determinant, pair<double,double> >::iterator det_it;
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
+    if (fabs(integral) > epsilon ) {
+      Determinant di = d;
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+      if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
+	det_it = Psi1.find(di);
+
+	if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*ci2);
+	else {det_it->second.first +=integral*ci1;det_it->second.second +=integral*ci2;}
+
+      }
+    }
+  }
+  
+  if (fabs(int2.maxEntry) <epsilon) return;
+
+  //#pragma omp parallel for schedule(dynamic)
+  for (int ij=0; ij<nclosed*nclosed; ij++) {
+
+    int i=ij/nclosed, j = ij%nclosed;
+    if (i<=j) continue;
+    int I = closed[i]/2, J = closed[j]/2;
+    std::pair<int,int> IJpair(max(I,J), min(I,J));
+    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+
+    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
+    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
+      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
+	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
+	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	//cout << a/2<<"  "<<schd.nvirt<<"  "<<nclosed/2<<endl;
+	if (!(d.getocc(a) || d.getocc(b))) {
+	  Determinant di = d;
+	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
+
+	    double sgn = 1.0;
+	    {
+	      int A = (closed[i]), B = closed[j], I= a, J = b; 
+	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
+	      if (B > J) sgn*=-1 ;
+	      if (I > J) sgn*=-1 ;
+	      if (I > B) sgn*=-1 ;
+	      if (A > J) sgn*=-1 ;
+	      if (A > B) sgn*=-1 ;
+	      if (A > I) sgn*=-1 ;
+	    }
+
+	    det_it = Psi1.find(di);
+
+	    if (det_it == Psi1.end()) Psi1[di] = make_pair(it->first*sgn*ci1, it->first*sgn*ci2);
+	    else {det_it->second.first += it->first*sgn*ci1; det_it->second.second += it->first*sgn*ci2;}
+
+	  }
+	}
+      }
+    }
+  }
+    /*
+    else {
+      for (int a=0; a<nopen; a++){
+	for (int b=0; b<a; b++){
+	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
+	  
+	  if (open[a]/2 > schd.nvirt+nclosed/2 || open[b]/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	  if (fabs(integral) > epsilon ) {
+	    Determinant di = d;
+	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+	    if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
+
+	      {
+		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
+		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
+		if (B > J) sgn*=-1 ;
+		if (I > J) sgn*=-1 ;
+		if (I > B) sgn*=-1 ;
+		if (A > J) sgn*=-1 ;
+		if (A > B) sgn*=-1 ;
+		if (A > I) sgn*=-1 ;
+		integral *= sgn;
+	      }
+	      det_it = Psi1.find(di);
+
+	      if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*ci2);
+	      else {det_it->second.first += integral*ci1; det_it->second.second += integral*ci2;}
+	    }
+	  }
+	}
+      }
+    }
+    */
+    
+  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
+  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
+  //dets.insert(thrdDeterminants[thrd][i]);
+  
+  return;
+}
+
+
+
+  
+
+/*
+
+void CIPSIbasics::DoPerturbativeDeterministicLCC(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+						 twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    char psiArray[norbs]; vector<int> psiClosed(nelec,0), psiOpen(norbs-nelec,0);
+    //char psiArray[norbs]; int psiOpen[nelec], psiClosed[norbs-nelec];
+    double energyEN = 0.0;
+    int num_thrds = omp_get_max_threads();
+
+    std::vector<std::map<Determinant, double>> Psi1(num_thrds);
+#pragma omp parallel for schedule(dynamic)
+    for (int i=0; i<Dets.size(); i++) {
+      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1[omp_get_thread_num()], SortedDets);
+      if (i%1000 == 0 && omp_get_thread_num()==0) cout <<"# "<<i<<endl;
+    }
+
+
+    for (int thrd=1; thrd<num_thrds; thrd++) 
+      for (map<Determinant, double>::iterator it=Psi1[thrd].begin(); it!=Psi1[thrd].end(); ++it)  {
+	if(Psi1[0].find(it->first) == Psi1[0].end())
+	  Psi1[0][it->first] = it->second;
+	else
+	  Psi1[0][it->first] += it->second;
+      }
+    Psi1.resize(1);
+
+    std::vector<Determinant> Psi1vec(Psi1[0].size()); MatrixXd b(Psi1[0].size(),1);
+
+    int iter = 0;
+    for (map<Determinant, double>::iterator it=Psi1[0].begin(); it!=Psi1[0].end(); ++it)  {
+      Psi1vec[iter]= it->first; b(iter,0) = it->second;
+      iter++;
+    }
+    Psi1.clear();
+
+    cout << "# total number of dets in Psi1 "<<Psi1vec.size()<<endl;
+    //this is essentially the hamiltonian, we have stored it in a sparse format
+    std::vector<std::vector<int> > connections(Psi1vec.size());
+    std::vector<std::vector<double> > Helements(Psi1vec.size());
+
+    std::vector<char> detChar(norbs*Psi1vec.size(),0);
+#pragma omp parallel for schedule(dynamic)
+    for (size_t i=0; i<Psi1vec.size() ; i++) 
+      Psi1vec[i].getRepArray(&detChar[norbs*i]);
+
+#pragma omp parallel for schedule(dynamic)
+    for (size_t i=0; i<Psi1vec.size() ; i++) {
+      for (size_t j=i; j<Psi1vec.size(); j++) {
+	if (Psi1vec[i].connected(Psi1vec[j])) {
+	  double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
+	  
+	  if (abs(hij) > 1.e-10) {
+	    connections[i].push_back(j);
+	    if (i == j) {
+	      Helements[i].push_back(hij - E0);
+	    }
+	    else {
+	      Helements[i].push_back(hij);
+	    }
+	  }
+	}
+      }
+      if (i%10000 == 0) cout <<i<<"  "<<Helements[i].size()<<"  out of "<<Psi1vec.size()<<endl;
+      //if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" Hij out of "<<Dets.size()<<endl;     
+      //if (i%10000) cout << i<<"  "<<Dets.size()<<endl;
+    }
+
+    MatrixXd X0 = 0.*b;
+    Hmult2 H(connections, Helements);
+    double Ep2 = LinearSolver(H, X0, b, schd.davidsonTol, true);
+
+    cout <<Ep2<<"  "<< Ep2+E0<<"  "<<getTime()-startofCalc<<endl;
+
+}
 
 
 void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant, int>& SortedDets, int norbs, oneInt& int1, twoInt& int2, double coreE, char* detArray, vector<vector<int> >& connections, vector<vector<double> >& Helements) {
@@ -688,539 +944,4 @@ void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant, 
   
 }
 
-  
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, double >& dets, std::vector<Determinant>& Psi0, bool additions) {
-  
-  int norbs = d.norbs;
-  int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
-  int nclosed = d.getOpenClosed(open, closed);
-  int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
-  
-  std::map<Determinant, double>::iterator det_it;
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
-    if (fabs(integral) > epsilon ) {
-      Determinant di = d;
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-	det_it = dets.find(di);
-
-	if (additions) {
-	  if (det_it == dets.end()) dets[di] = integral*ci;
-	  else det_it->second +=integral*ci;
-	}
-	else 
-	  if (det_it != dets.end()) det_it->second +=integral*ci;
-
-      }
-    }
-  }
-  
-  if (fabs(int2.maxEntry) <epsilon) return;
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int ij=0; ij<nclosed*nclosed; ij++) {
-
-    int i=ij/nclosed, j = ij%nclosed;
-    if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
-
-    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	    double sgn = 1.0;
-	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
-	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-	      if (B > J) sgn*=-1 ;
-	      if (I > J) sgn*=-1 ;
-	      if (I > B) sgn*=-1 ;
-	      if (A > J) sgn*=-1 ;
-	      if (A > B) sgn*=-1 ;
-	      if (A > I) sgn*=-1 ;
-	    }
-
-	    det_it = dets.find(di);
-	    if (additions) {
-	      if (det_it == dets.end()) dets[di] = it->first*ci*sgn;
-	      else det_it->second +=it->first*ci*sgn;
-	    }
-	    else 
-	      if (det_it != dets.end()) det_it->second +=it->first*ci*sgn;
-
-	  }
-	}
-      }
-    }
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
-	  
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	      {
-		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
-		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-		if (B > J) sgn*=-1 ;
-		if (I > J) sgn*=-1 ;
-		if (I > B) sgn*=-1 ;
-		if (A > J) sgn*=-1 ;
-		if (A > B) sgn*=-1 ;
-		if (A > I) sgn*=-1 ;
-		integral *= sgn;
-	      }
-	      det_it = dets.find(di);
-
-	      if (additions) {
-		if (det_it == dets.end()) dets[di] = integral*ci;
-		else det_it->second +=integral*ci;
-	      }
-	      else 
-		if (det_it != dets.end()) det_it->second +=integral*ci;
-	    }
-	  }
-	}
-      }
-    }
-  }
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
-  return;
-}
-
-
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, double coreE, double E0, std::map<Determinant, double >& dets, std::map<Determinant, int>& Psi0, bool additions) {
-  
-  int norbs = d.norbs;
-  int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
-  int nclosed = d.getOpenClosed(open, closed);
-  int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
-  
-  std::map<Determinant, double>::iterator det_it;
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
-    if (fabs(integral) > epsilon ) {
-      Determinant di = d;
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      //if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-      if (Psi0.find(di) == Psi0.end()) {
-	det_it = dets.find(di);
-
-	if (additions) {
-	  if (det_it == dets.end()) dets[di] = integral*ci;
-	  else det_it->second +=integral*ci;
-	}
-	else 
-	  if (det_it != dets.end()) det_it->second +=integral*ci;
-
-      }
-    }
-  }
-  
-  if (fabs(int2.maxEntry) <epsilon) return;
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int ij=0; ij<nclosed*nclosed; ij++) {
-
-    int i=ij/nclosed, j = ij%nclosed;
-    if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
-
-    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  //if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-	  if (Psi0.find(di) == Psi0.end()) {
-
-	    double sgn = 1.0;
-	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
-	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-	      if (B > J) sgn*=-1 ;
-	      if (I > J) sgn*=-1 ;
-	      if (I > B) sgn*=-1 ;
-	      if (A > J) sgn*=-1 ;
-	      if (A > B) sgn*=-1 ;
-	      if (A > I) sgn*=-1 ;
-	    }
-
-	    det_it = dets.find(di);
-	    if (additions) {
-	      if (det_it == dets.end()) dets[di] = it->first*ci*sgn;
-	      else det_it->second +=it->first*ci*sgn;
-	    }
-	    else 
-	      if (det_it != dets.end()) det_it->second +=it->first*ci*sgn;
-
-	  }
-	}
-      }
-    }
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
-	  
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    //if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-	    if (Psi0.find(di) == Psi0.end()) {
-
-	      {
-		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
-		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-		if (B > J) sgn*=-1 ;
-		if (I > J) sgn*=-1 ;
-		if (I > B) sgn*=-1 ;
-		if (A > J) sgn*=-1 ;
-		if (A > B) sgn*=-1 ;
-		if (A > I) sgn*=-1 ;
-		integral *= sgn;
-	      }
-	      det_it = dets.find(di);
-
-	      if (additions) {
-		if (det_it == dets.end()) dets[di] = integral*ci;
-		else det_it->second +=integral*ci;
-	      }
-	      else 
-		if (det_it != dets.end()) det_it->second +=integral*ci;
-	    }
-	  }
-	}
-      }
-    }
-  }
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
-  return;
-}
-
-
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, pair<double,double> >& dets, std::vector<Determinant>& Psi0, int oneOrTwo) {
-
-  int norbs = d.norbs;
-  int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
-  int nclosed = d.getOpenClosed(open, closed);
-  int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
-  
-  std::map<Determinant, pair<double,double> >::iterator det_it;
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
-    if (fabs(integral) > epsilon ) {
-      Determinant di = d;
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-	det_it = dets.find(di);
-
-	if (oneOrTwo == 0) {
-	  if (det_it == dets.end()) dets[di] = make_pair(integral*ci, 0.0);
-	  else det_it->second.first +=integral*ci;
-	}
-	else 
-	  if (det_it != dets.end()) det_it->second.second +=integral*ci;
-      }
-    }
-  }
-  
-  if (fabs(int2.maxEntry) <epsilon) return;
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int ij=0; ij<nclosed*nclosed; ij++) {
-
-    int i=ij/nclosed, j = ij%nclosed;
-    if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
-
-    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	    double sgn = 1.0;
-	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
-	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-	      if (B > J) sgn*=-1 ;
-	      if (I > J) sgn*=-1 ;
-	      if (I > B) sgn*=-1 ;
-	      if (A > J) sgn*=-1 ;
-	      if (A > B) sgn*=-1 ;
-	      if (A > I) sgn*=-1 ;
-	    }
-
-	    det_it = dets.find(di);
-	    //if (additions) {
-	    if (oneOrTwo == 0) {
-	      if (det_it == dets.end()) dets[di] = make_pair(it->first*sgn*ci, 0.0);
-	      //if (det_it == dets.end()) dets[di] = it->first*ci*sgn;
-	      else det_it->second.first +=it->first*ci*sgn;
-	    }
-	    else 
-	      if (det_it != dets.end()) det_it->second.second +=it->first*ci*sgn;
-
-	  }
-	}
-      }
-    }
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
-	  
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	      {
-		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
-		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-		if (B > J) sgn*=-1 ;
-		if (I > J) sgn*=-1 ;
-		if (I > B) sgn*=-1 ;
-		if (A > J) sgn*=-1 ;
-		if (A > B) sgn*=-1 ;
-		if (A > I) sgn*=-1 ;
-		integral *= sgn;
-	      }
-	      det_it = dets.find(di);
-
-	      if (oneOrTwo == 0) {
-		//if (additions) {
-		if (det_it == dets.end()) dets[di] = make_pair(integral*ci, 0.0);
-		//if (det_it == dets.end()) dets[di] = integral*ci;
-		else det_it->second.first +=integral*ci;
-	      }
-	      else 
-		if (det_it != dets.end()) det_it->second.second +=integral*ci;
-	    }
-	  }
-	}
-      }
-    }
-  }
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
-  return;
-}
-
-
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, pair<double,double> >& dets, std::vector<Determinant>& Psi0) {
-
-  int norbs = d.norbs;
-  int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
-  int nclosed = d.getOpenClosed(open, closed);
-  int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
-  
-  std::map<Determinant, pair<double,double> >::iterator det_it;
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
-    if (fabs(integral) > epsilon ) {
-      Determinant di = d;
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-	det_it = dets.find(di);
-
-	if (det_it == dets.end()) dets[di] = make_pair(integral*ci1, integral*ci2);
-	else {det_it->second.first +=integral*ci1;det_it->second.second +=integral*ci2;}
-
-      }
-    }
-  }
-  
-  if (fabs(int2.maxEntry) <epsilon) return;
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int ij=0; ij<nclosed*nclosed; ij++) {
-
-    int i=ij/nclosed, j = ij%nclosed;
-    if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
-
-    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	    double sgn = 1.0;
-	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
-	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-	      if (B > J) sgn*=-1 ;
-	      if (I > J) sgn*=-1 ;
-	      if (I > B) sgn*=-1 ;
-	      if (A > J) sgn*=-1 ;
-	      if (A > B) sgn*=-1 ;
-	      if (A > I) sgn*=-1 ;
-	    }
-
-	    det_it = dets.find(di);
-
-	    if (det_it == dets.end()) dets[di] = make_pair(it->first*sgn*ci1, it->first*sgn*ci2);
-	    else {det_it->second.first += it->first*sgn*ci1; det_it->second.second += it->first*sgn*ci2;}
-
-	  }
-	}
-      }
-    }
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
-	  
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	      {
-		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
-		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-		if (B > J) sgn*=-1 ;
-		if (I > J) sgn*=-1 ;
-		if (I > B) sgn*=-1 ;
-		if (A > J) sgn*=-1 ;
-		if (A > B) sgn*=-1 ;
-		if (A > I) sgn*=-1 ;
-		integral *= sgn;
-	      }
-	      det_it = dets.find(di);
-
-	      if (det_it == dets.end()) dets[di] = make_pair(integral*ci1, integral*ci2);
-	      else {det_it->second.first += integral*ci1; det_it->second.second += integral*ci2;}
-	    }
-	  }
-	}
-      }
-    }
-  }
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
-  return;
-}
-
-
-
-  
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, double coreE, double E0, std::set<Determinant>& dets) {
-  
-  int norbs = d.norbs;
-  unsigned short open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
-  int nclosed = d.getOpenClosed(open, closed);
-  int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
-  
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
-    if (fabs(integral) > epsilon ) {
-      Determinant di = d;
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      dets.insert(di);
-    }
-  }
-  
-  if (fabs(int2.maxEntry) <epsilon) return;
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int ij=0; ij<nclosed*nclosed; ij++) {
-    int i=ij/nclosed, j = ij%nclosed;
-    if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>,compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>, compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  dets.insert(di);
-	}
-      }
-    }
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = abs(int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]));
-	  
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    dets.insert(di);
-	  }
-	}
-      }
-    }
-  }
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
-  return;
-}
-
-
-
+*/

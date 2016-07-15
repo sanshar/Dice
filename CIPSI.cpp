@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
   MatrixXd ci(1,1); ci(0,0) = 1.0;
   std::vector<Determinant> Dets(1,d);
 
-  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, I1, coreE);
+  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE);
 
   //print the 5 most important determinants and their weights
   MatrixXd prevci = 1.*ci;
@@ -105,10 +105,11 @@ int main(int argc, char* argv[]) {
 
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
+    //CIPSIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     CIPSIbasics::DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (!schd.stochastic) {
-    CIPSIbasics::DoDeterministic2(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoBatchDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1){
     CIPSIbasics::DoPerturbativeStochastic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
