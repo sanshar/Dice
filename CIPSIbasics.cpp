@@ -260,8 +260,87 @@ void CIPSIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd&
 }
 
 
+void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+						      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+
+  boost::mpi::communicator world;
+  char file [5000];
+  sprintf (file, "output-%d.bkp" , world.rank() );
+  std::ofstream ofs(file);
+
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    int niter = 10000;
+    //double eps = 0.001;
+    int Nsample = schd.SampleN;
+    double AvgenergyEN = 0.0;
+    double AverageDen = 0.0;
+    int currentIter = 0;
+    int sampleSize = 0;
+    int num_thrds = omp_get_max_threads();
+
+    double cumulative = 0.0;
+    for (int i=0; i<ci.rows(); i++)
+      cumulative += abs(ci(i,0));
+
+#pragma omp parallel for schedule(dynamic) 
+    for (int iter=0; iter<niter; iter++) {
+      //cout << norbs<<"  "<<nelec<<endl;
+      char psiArray[norbs]; 
+      vector<int> psiClosed(nelec,0); 
+      vector<int> psiOpen(norbs-nelec,0);
+      //char psiArray[norbs];
+      std::vector<double> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
+
+      sample_N2(ci, cumulative, Sample1, wts1);
+
+      double norm = 0.0;
+      
+      map<Determinant, pair<double,double> > Psi1ab; 
+      for (int i=0; i<Sample1.size(); i++) {
+       int I = Sample1[i];
+       CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+      }
+
+
+      double energyEN = 0.0;
+      for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+	it->first.getOpenClosed(psiOpen, psiClosed);
+	energyEN += (it->second.first*it->second.first - it->second.second)/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	//energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      }
+      sampleSize = Sample1.size();
+
+#pragma omp critical 
+      {
+	if (mpigetrank() == 0) {
+	  AvgenergyEN += energyEN; currentIter++;
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  cout << endl;
+	}
+	else {
+	  AvgenergyEN += energyEN; currentIter++;
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  ofs << endl;
+
+	}
+      }
+    }
+    ofs.close();
+
+}
+
+
 void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+
+  boost::mpi::communicator world;
+  char file [5000];
+  sprintf (file, "output-%d.bkp" , world.rank() );
+  std::ofstream ofs(file);
+
     int norbs = Determinant::norbs;
     std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
     int niter = 10000;
@@ -298,13 +377,20 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
       map<Determinant, pair<double,double> > Psi1ab; 
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
-	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	//CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	std::vector<int>::iterator it = find(Sample2.begin(), Sample2.end(), I);
+	if (it != Sample2.end())
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	else
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
       for (int i=0; i<Sample2.size(); i++) {
 	int I = Sample2[i];
-	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), I);
+	if (it == Sample1.end())
+	  CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -317,17 +403,107 @@ void CIPSIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& 
 
 #pragma omp critical 
       {
-	AverageDen += norm;
-	AvgenergyEN += energyEN; currentIter++;
-	std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
-	cout << endl;
+	if (mpigetrank() == 0) {
+	  AvgenergyEN += energyEN; currentIter++;
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  cout << endl;
+	}
+	else {
+	  AvgenergyEN += energyEN; currentIter++;
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  ofs << endl;
+
+	}
+
+	//AverageDen += norm;
+	//AvgenergyEN += energyEN; currentIter++;
+	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	//%(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	//cout << endl;
 	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	//cout << endl;
       }
     }
-
+    ofs.close();
 }
+
+
+void CIPSIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+						     twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+
+  boost::mpi::communicator world;
+  char file [5000];
+  sprintf (file, "output-%d.bkp" , world.rank() );
+  std::ofstream ofs(file);
+
+    int norbs = Determinant::norbs;
+    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+    int niter = 10000;
+    //double eps = 0.001;
+    double AvgenergyEN = 0.0;
+    double AverageDen = 0.0;
+    int currentIter = 0;
+    int sampleSize = 0;
+    int num_thrds = omp_get_max_threads();
+
+#pragma omp parallel for schedule(dynamic) 
+    for (int iter=0; iter<niter; iter++) {
+      //cout << norbs<<"  "<<nelec<<endl;
+      char psiArray[norbs]; 
+      vector<int> psiClosed(nelec,0); 
+      vector<int> psiOpen(norbs-nelec,0);
+      //char psiArray[norbs];
+      std::vector<double> wts1; std::vector<int> Sample1;
+      wts1.reserve(1000);  Sample1.reserve(1000);
+      
+      Sample1.resize(0); wts1.resize(0);
+      sample_round(ci, schd.eps, Sample1, wts1);
+      
+      map<Determinant, pair<double,double> > Psi1ab; 
+      for (int i=0; i<Sample1.size(); i++) {
+	int I = Sample1[i];
+	CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+      }
+
+
+
+      double energyEN = 0.0;
+      for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+	it->first.getOpenClosed(psiOpen, psiClosed);
+	energyEN += (it->second.first*it->second.first - it->second.second)/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      }
+      sampleSize = Sample1.size();
+
+#pragma omp critical 
+      {
+	if (mpigetrank() == 0) {
+	  AvgenergyEN += energyEN; currentIter++;
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (1.0) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  cout << endl;
+	}
+	else {
+	  AvgenergyEN += energyEN; currentIter++;
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % (1.0) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  ofs << endl;
+
+	}
+
+	//AverageDen += norm;
+	//AvgenergyEN += energyEN; currentIter++;
+	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	//%(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	//cout << endl;
+	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	//cout << endl;
+      }
+    }
+    ofs.close();
+}
+
 
 
 void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
@@ -495,10 +671,9 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<SortedDets.size(); i++) {
-      if (i%world.size() != world.rank()) continue;
+      //if (i%world.size() != world.rank()) continue;
+      if (world.rank() != 0) continue;
       getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, newDets[omp_get_thread_num()], SortedDets, schd);
-      //cout << SortedDets.size()<<"  "<<i <<"  "<<newDets[0].size()<<endl;
-      //if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" out of "<<SortedDets.size()<<endl;
     }
 
     for (int thrd=1; thrd<num_thrds; thrd++) {
@@ -511,20 +686,31 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       newDets[thrd].clear();
     }
 
-    for (int proc = 0; proc < world.size(); proc++) {
-      if (proc == mpigetrank() && proc != 0) world.send(0, proc, newDets[0]);
-      if (mpigetrank() == 0 && proc != 0) {
-	map<Determinant, pair<double, double> > newDetsRecv;
-	world.recv(proc, proc, newDetsRecv);
+    /*
+    //mpi send
+    if (mpigetrank() != 0) {
+      for (int proc = 1; proc<world.size(); proc++)
+	if (proc == mpigetrank()) {world.send(0, proc*100+iter, newDets[0]); cout << "send "<<proc<<"  "<<newDets[0].size()<<endl;newDets[0].clear();}
+    }
 
+    //mpi recv
+    if (mpigetrank() == 0) {
+      cout << "0"<<"  "<<newDets[0].size()<<endl;
+      for (int proc = 1; proc < world.size(); proc++) {
+	map<Determinant, pair<double, double> > newDetsRecv;
+	world.recv(proc, proc*100+iter, newDetsRecv);
+	cout << proc <<" recv "<<newDetsRecv.size()<<endl;
 	for (map<Determinant, pair<double, double> >::iterator it=newDetsRecv.begin(); it!=newDetsRecv.end(); ++it) {
 	  if(newDets[0].find(it->first) == newDets[0].end())
 	    newDets[0][it->first].first = it->second.first;
 	  else
 	    newDets[0][it->first].first += it->second.first;
 	}
+	cout << proc<<"  "<<newDets[0].size()<<endl;
       }
     }
+    */
+
     mpi::broadcast(world, newDets[0], 0);
     
     for (map<Determinant, pair<double, double> >::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) {
@@ -545,14 +731,14 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       if (k % world.size() != world.rank() ) continue;
       Dets[k].getRepArray(&detChar[norbs*k]);
       diag(k,0) = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
-      double numerator = newDets[0][Dets[k]].first;
-      estimatedCorrection += numerator*numerator/(diag(k,0) - E0);
+      //double numerator = newDets[0][Dets[k]].first;
+      //estimatedCorrection += numerator*numerator/(diag(k,0) - E0);
       if (k%1000000 == 0 && k!=0) cout <<"#"<< k<<"Hdiag out of "<<Dets.size()<<endl;     
     }
     newDets[0].clear();
 
 #ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &estimatedCorrection, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //MPI_Allreduce(MPI_IN_PLACE, &estimatedCorrection, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &detChar[SortedDets.size()*norbs], (Dets.size()-SortedDets.size())*norbs, MPI_CHAR, MPI_SUM, MPI_COMM_WORLD);
 #endif
@@ -699,9 +885,14 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
 	det_it = Psi1.find(di);
 
-	if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*ci2);
-	else {det_it->second.first +=integral*ci1;det_it->second.second +=integral*ci2;}
-
+	if (schd.singleList) {
+	  if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*integral*ci2*ci1*(ci1/ci2-1.));
+	  else {det_it->second.first +=integral*ci1;det_it->second.second += integral*integral*ci2*ci1*(ci1/ci2-1.);}
+	}
+	else {
+	  if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*ci2);
+	  else {det_it->second.first +=integral*ci1;det_it->second.second +=integral*ci2;}
+	}
       }
     }
   }
@@ -718,7 +909,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
     std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
 
     //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
-    if (true && (ints != I2hb.sameSpin.end() || ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
+    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
 	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
@@ -743,9 +934,14 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
 	    det_it = Psi1.find(di);
 
-	    if (det_it == Psi1.end()) Psi1[di] = make_pair(it->first*sgn*ci1, it->first*sgn*ci2);
-	    else {det_it->second.first += it->first*sgn*ci1; det_it->second.second += it->first*sgn*ci2;}
-
+	    if (schd.singleList) {
+	      if (det_it == Psi1.end()) Psi1[di] = make_pair(it->first*sgn*ci1, it->first*it->first*ci2*ci1*(ci1/ci2-1.));
+	      else {det_it->second.first +=it->first*sgn*ci1;det_it->second.second += it->first*it->first*ci2*ci1*(ci1/ci2-1.);}
+	    }
+	    else {
+	      if (det_it == Psi1.end()) Psi1[di] = make_pair(it->first*sgn*ci1, it->first*sgn*ci2);
+	      else {det_it->second.first += it->first*sgn*ci1; det_it->second.second += it->first*sgn*ci2;}
+	    }
 	  }
 	}
       }

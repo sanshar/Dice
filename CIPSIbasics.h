@@ -36,7 +36,8 @@ namespace CIPSIbasics {
 	& stochastic \
 	& nblocks \
 	& excitation \
-	& onlyperturbative;
+	& onlyperturbative \
+	& singleList;
     }
 
   public:
@@ -54,6 +55,7 @@ namespace CIPSIbasics {
     int nblocks;
     int excitation;
     int nvirt;
+    bool singleList;
   };
   
   void writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
@@ -70,8 +72,12 @@ namespace CIPSIbasics {
 			twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec);
   void DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
+  void DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+					  twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
   void DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
+  void DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
   void DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 				   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) ;
 

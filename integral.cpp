@@ -82,6 +82,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       
       if(a==b&&b==c&&c==d&&d==0)
 	coreE = integral;
+      else if (b==c&&c==d&&d==0)
+	continue;//orbital energy
       else if (c==d&&d==0)
 	I1(2*(a-1),2*(b-1)) = integral;
       else

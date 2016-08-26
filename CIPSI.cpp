@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
 
   //print the 5 most important determinants and their weights
   MatrixXd prevci = 1.*ci;
-  for (int i=0; i<5; i++) {
+  for (int i=0; i<10; i++) {
     compAbs comp;
     int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
     pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
@@ -111,8 +111,14 @@ int main(int argc, char* argv[]) {
   else if (!schd.stochastic) {
     CIPSIbasics::DoBatchDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
-  else if (schd.SampleN == -1){
+  else if (schd.SampleN == -1 && schd.singleList){
+    CIPSIbasics::DoPerturbativeStochasticSingleList(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+  }
+  else if (schd.SampleN == -1 && !schd.singleList){
     CIPSIbasics::DoPerturbativeStochastic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+  }
+  else if (schd.SampleN != -1 && schd.singleList){
+    CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else { 
     //Here I will implement the alias method
