@@ -28,6 +28,7 @@ namespace CIPSIbasics {
 	& epsilon2 \
 	& SampleN \
 	& epsilon1 \
+	& onlyperturbative \
 	& restart \
 	& fullrestart \
 	& dE \
@@ -36,7 +37,7 @@ namespace CIPSIbasics {
 	& stochastic \
 	& nblocks \
 	& excitation \
-	& onlyperturbative \
+	& nvirt \
 	& singleList;
     }
 

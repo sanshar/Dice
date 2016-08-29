@@ -671,8 +671,8 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
 #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<SortedDets.size(); i++) {
-      //if (i%world.size() != world.rank()) continue;
-      if (world.rank() != 0) continue;
+      if (i%world.size() != world.rank()) continue;
+      //if (world.rank() != 0) continue;
       getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, newDets[omp_get_thread_num()], SortedDets, schd);
     }
 
@@ -686,33 +686,41 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       newDets[thrd].clear();
     }
 
-    /*
+
     //mpi send
     if (mpigetrank() != 0) {
-      for (int proc = 1; proc<world.size(); proc++)
-	if (proc == mpigetrank()) {world.send(0, proc*100+iter, newDets[0]); cout << "send "<<proc<<"  "<<newDets[0].size()<<endl;newDets[0].clear();}
+      for (int proc = 1; proc<world.size(); proc++) {
+	if (proc == mpigetrank()) {
+	  size_t newdetssize = newDets[0].size();
+	  world.send(0, proc, newdetssize);
+	  if (newDets[0].size() > 0) {
+	    world.send(0, proc, newDets[0]);
+	  }
+	  newDets[0].clear();
+	}
+      }
     }
 
     //mpi recv
     if (mpigetrank() == 0) {
-      cout << "0"<<"  "<<newDets[0].size()<<endl;
       for (int proc = 1; proc < world.size(); proc++) {
 	map<Determinant, pair<double, double> > newDetsRecv;
-	world.recv(proc, proc*100+iter, newDetsRecv);
-	cout << proc <<" recv "<<newDetsRecv.size()<<endl;
-	for (map<Determinant, pair<double, double> >::iterator it=newDetsRecv.begin(); it!=newDetsRecv.end(); ++it) {
-	  if(newDets[0].find(it->first) == newDets[0].end())
-	    newDets[0][it->first].first = it->second.first;
-	  else
-	    newDets[0][it->first].first += it->second.first;
+	size_t newdetsrecvsize=-1;
+	world.recv(proc, proc, newdetsrecvsize);
+	if (newdetsrecvsize > 0) {
+	  world.recv(proc, proc, newDetsRecv);
+	  for (map<Determinant, pair<double, double> >::iterator it=newDetsRecv.begin(); it!=newDetsRecv.end(); ++it) {
+	    if(newDets[0].find(it->first) == newDets[0].end())
+	      newDets[0][it->first].first = it->second.first;
+	    else
+	      newDets[0][it->first].first += it->second.first;
+	  }
 	}
-	cout << proc<<"  "<<newDets[0].size()<<endl;
       }
     }
-    */
 
     mpi::broadcast(world, newDets[0], 0);
-    
+
     for (map<Determinant, pair<double, double> >::iterator it=newDets[0].begin(); it!=newDets[0].end(); ++it) {
       if (it->first.ExcitationDistance(Dets[0]) > schd.excitation) continue;
       Dets.push_back(it->first);
