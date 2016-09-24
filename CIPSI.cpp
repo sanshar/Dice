@@ -21,6 +21,7 @@
 
 using namespace Eigen;
 using namespace boost;
+int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
 //get the current time
@@ -55,6 +56,7 @@ int main(int argc, char* argv[]) {
 
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
+  HalfDet::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
   if (Determinant::EffDetLen >DetLen) {
     cout << "change DetLen in global.h to "<<Determinant::EffDetLen<<" and recompile "<<endl;

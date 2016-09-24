@@ -27,6 +27,81 @@ inline int BitCount (long& u)
       & 030707070707) % 63);
 }
 
+class HalfDet {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive> 
+  void serialize(Archive & ar, const unsigned int version) {
+    for (int i=0; i<DetLen/2; i++)
+      ar & repr[i];
+  }
+ public:
+  long repr[DetLen/2];
+  static int norbs;
+  HalfDet() {
+    for (int i=0; i<DetLen/2; i++)
+      repr[i] = 0;
+  }
+
+  //the comparison between determinants is performed
+  bool operator<(const HalfDet& d) const {
+    for (int i=DetLen/2-1; i>=0 ; i--) {
+      if (repr[i] < d.repr[i]) return true;
+      else if (repr[i] > d.repr[i]) return false;
+    }
+    return false;
+  }
+
+  bool operator==(const HalfDet& d) const {
+    for (int i=DetLen/2-1; i>=0 ; i--) 
+      if (repr[i] != d.repr[i]) return false;
+    return true;    
+  }
+
+  //set the occupation of the ith orbital
+  void setocc(int i, bool occ) {
+    //assert(i< norbs);
+    long Integer = i/64, bit = i%64, one=1;
+    if (occ)
+      repr[Integer] |= one << bit;
+    else
+      repr[Integer] &= ~(one<<bit);
+  }
+
+  //get the occupation of the ith orbital
+  bool getocc(int i) const {
+    //assert(i< norbs);
+    long Integer = i/64, bit = i%64, reprBit = repr[Integer];
+    if(( reprBit>>bit & 1) == 0)
+      return false;
+    else
+      return true;
+  }
+  
+  int getClosed(vector<int>& closed){
+    int cindex = 0;
+    for (int i=0; i<32*DetLen; i++) {
+      if (getocc(i)) {closed[cindex] = i; cindex++;}
+    }
+    return cindex;
+  }
+
+  friend ostream& operator<<(ostream& os, const HalfDet& d) {
+    char det[norbs/2];
+    d.getRepArray(det);
+    for (int i=0; i<norbs/2; i++)
+      os<<(int)(det[i])<<" ";
+    return os;
+  }
+
+  void getRepArray(char* repArray) const {
+    for (int i=0; i<norbs/2; i++) {
+      if (getocc(i)) repArray[i] = 1;
+      else repArray[i] = 0;
+    }
+  }
+
+};
 
 class Determinant {
 
@@ -46,7 +121,7 @@ class Determinant {
   static int EffDetLen;
 
   Determinant() {
-    for (int i=0; i<EffDetLen; i++)
+    for (int i=0; i<DetLen; i++)
       repr[i] = 0;
   }
 
@@ -69,6 +144,24 @@ class Determinant {
     }
     return ndiff/2;
   }
+
+  HalfDet getAlpha() const {
+    HalfDet d;
+    for (int i=0; i<EffDetLen; i++)
+      for (int j=0; j<32; j++) {
+	d.setocc(i*32+j, getocc(i*64+j*2));
+      }
+    return d;
+  }
+
+  HalfDet getBeta() const {
+    HalfDet d;
+    for (int i=0; i<EffDetLen; i++)
+      for (int j=0; j<32; j++)
+	d.setocc(i*32+j, getocc(i*64+j*2+1));
+    return d;
+  }
+
 
   //the excitation array should contain at least  
   void ExactExcitation(const Determinant& d, unsigned short* excitation) const {
