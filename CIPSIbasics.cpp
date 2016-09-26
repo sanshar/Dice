@@ -625,49 +625,6 @@ void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     }
 
     cout <<energyEN<<"  "<< -energyEN+E0<<"  "<<getTime()-startofCalc<<endl;
-    /*
-    cout << "norm "<<norm<<endl;
-    if (true) {
-      std::vector<Determinant> Psi1vec;
-      for (map<Determinant, double>::iterator it=Psi1[0].begin(); it!=Psi1[0].end(); ++it)  {
-	Psi1vec.push_back( it->first);
-      }
-      Psi1.clear();
-
-      std::vector<std::vector<int> > connections(Psi1vec.size());
-      std::vector<std::vector<double> > Helements(Psi1vec.size());
-
-      std::vector<char> detChar(norbs*Psi1vec.size(),0);
-#pragma omp parallel for schedule(dynamic)
-      for (size_t i=0; i<Psi1vec.size() ; i++) 
-	Psi1vec[i].getRepArray(&detChar[norbs*i]);
-
-      double pt3 = 0.0;
-      MatrixXd c2 = 0.*c1;
-      cout << "psi1 norm "<<c1.transpose()*c1<<endl;
-#pragma omp parallel for schedule(dynamic) reduction(+:pt3)
-      for (int i=0; i<c1.rows(); i++) {
-	for (int j=i+1; j<c1.rows(); j++)
-	  if (Psi1vec[i].connected(Psi1vec[j])) {
-	    double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
-
-	    if (abs(hij) > 1.e-10) {
-	      connections[i].push_back(j);
-	      Helements[i].push_back(hij);
-	    }
-	  
-	    pt3 += 2.*hij*c1(i,0)*c1(j,0);
-	  }
-	if (i%10000 == 0) cout << i<<"  out of "<<c1.rows()<<endl; 
-      }
-      cout << "pt3 "<<c2.transpose()*c2<<"  "<<c2.transpose()*c1<<"  "<<pt3<<"  "<<pt3-energyEN+E0<<endl;
-
-      Hmult2 H(connections, Helements);
-      c2 = 0.*c2;
-      H(c1,c2);
-      cout <<c2.transpose()*c1<<"  "<<c2.transpose()*c2<<endl;
-    }
-    */
 }
 
 void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
@@ -771,100 +728,6 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
     if (index%100000 == 0 && index!= 0) {pout <<"#an-2 "<<index<<endl;}
   }
   pout << "#alphaN-2"<<endl;
-  /*
-  //pout << connections[0].size()<<"  2 alpha "<<endl;
-  //exit(0);
-  //beta double excitation
-  std::map<HalfDet, std::vector<int> >::iterator it = BetaNm2.begin();
-  for (; it!=BetaNm2.end(); it++) {
-    std::vector<int>& detIndex = it->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel 
-    {
-      for(int j=0; j<detIndex.size(); j++) {
-	if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
-	for (int k=max(localStart,j+1); k<detIndex.size(); k++) {
-	  int J = detIndex[j];int K = detIndex[k];
-	  if (K >= StartIndex && AlphaNr[J] == AlphaNr[K]) {
-	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()) {
-	      connections[J].push_back(K);
-	      double hij = Hij(&detChar[Norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
-	      Helements[J].push_back(hij);
-	    }
-	  }
-	}
-      }
-    }
-  }
-  pout << "betaN-2"<<endl;
-  //pout << connections[0].size()<<"  2 beta "<<endl;
-
-  
-  //beta-single excitation
-  it = BetaNm1.begin();
-  for (; it!=BetaNm1.end(); it++) {
-    std::vector<int>& detIndex = it->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel 
-    {
-      for(int j=0; j<detIndex.size(); j++) {
-	if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
-	for (int k=max(localStart,j+1); k<detIndex.size(); k++) {
-	  int J = detIndex[j];int K = detIndex[k];
-	  if (Dets[K].connected(Dets[J]))
-	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()) {
-	      connections[J].push_back(K);
-	      double hij = Hij(&detChar[Norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
-	      Helements[J].push_back(hij);
-	    }
-	}
-      }
-    }
-  }
-  pout << "alphabetaN-2"<<endl;
-  
-  //pout << connections[0].size()<<"  alpha-beta "<<endl;
-  
-  //alpha-single excitation
-  it = AlphaNm1.begin();
-  for (; it!=AlphaNm1.end(); it++) {
-    std::vector<int>& detIndex = it->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel 
-    {
-      for(int j=0; j<detIndex.size(); j++) {
-	if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
-	for (int k=max(localStart,j+1); k<detIndex.size(); k++) {
-	  int J = detIndex[j];int K = detIndex[k];
-	  if (K >= StartIndex && BetaNr[K] == BetaNr[J]) { //Dets j&k are related by single beta excitatin
-	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()) {
-	      connections[J].push_back(K);
-	      double hij = Hij(&detChar[Norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
-	      Helements[J].push_back(hij);
-	    }
-	  }
-	}
-      }
-    }
-    //pout << connections[0].size()<<"  1 alpha "<<endl;
-  }  
-    pout << "alphaN-1"<<endl;
-  */    
     
 }
   
@@ -921,21 +784,6 @@ void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& AlphaN,
     index++;
   }
 
-    /*
-    for (int j=0; j<nclosedb; j++) {
-      HalfDet dbj = db; dbj.setocc(closedb[j], false);
-      BetaNm1[dbj].push_back(i);
-      for (int k=j+1; k<nclosedb; k++) {
-	HalfDet dbjk = dbj; dbjk.setocc(closedb[k], false);
-	BetaNm2[dbjk].push_back(i);
-      }
-
-    }
-
-  }
-
-  
-    */
 
 }
 
@@ -1341,44 +1189,6 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       }
     }
   }
-    /*
-    else {
-      for (int a=0; a<nopen; a++){
-	for (int b=0; b<a; b++){
-	  double integral = int2(closed[i],open[a],closed[j],open[b]) - int2(closed[i],open[b],closed[j],open[a]);
-	  
-	  if (open[a]/2 > schd.nvirt+nclosed/2 || open[b]/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-	  if (fabs(integral) > epsilon ) {
-	    Determinant di = d;
-	    di.setocc(open[a], true), di.setocc(open[b], true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	    if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
-
-	      {
-		int A = (closed[i]), B = closed[j], I= open[a], J = open[b]; 
-		double sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
-		if (B > J) sgn*=-1 ;
-		if (I > J) sgn*=-1 ;
-		if (I > B) sgn*=-1 ;
-		if (A > J) sgn*=-1 ;
-		if (A > B) sgn*=-1 ;
-		if (A > I) sgn*=-1 ;
-		integral *= sgn;
-	      }
-	      det_it = Psi1.find(di);
-
-	      if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*ci2);
-	      else {det_it->second.first += integral*ci1; det_it->second.second += integral*ci2;}
-	    }
-	  }
-	}
-      }
-    }
-    */
-    
-  //for (int thrd=0; thrd<omp_get_max_threads(); thrd++)
-  //for (int i=0; i<thrdDeterminants[thrd].size(); i++)
-  //dets.insert(thrdDeterminants[thrd][i]);
-  
   return;
 }
 
@@ -1452,86 +1262,3 @@ void CIPSIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,i
 
   
 }
-  
-
-/*
-
-void CIPSIbasics::DoPerturbativeDeterministicLCC(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-						 twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
-
-    int norbs = Determinant::norbs;
-    std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-    char psiArray[norbs]; vector<int> psiClosed(nelec,0), psiOpen(norbs-nelec,0);
-    //char psiArray[norbs]; int psiOpen[nelec], psiClosed[norbs-nelec];
-    double energyEN = 0.0;
-    int num_thrds = omp_get_max_threads();
-
-    std::vector<std::map<Determinant, double>> Psi1(num_thrds);
-#pragma omp parallel for schedule(dynamic)
-    for (int i=0; i<Dets.size(); i++) {
-      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1[omp_get_thread_num()], SortedDets);
-      if (i%1000 == 0 && omp_get_thread_num()==0) cout <<"# "<<i<<endl;
-    }
-
-
-    for (int thrd=1; thrd<num_thrds; thrd++) 
-      for (map<Determinant, double>::iterator it=Psi1[thrd].begin(); it!=Psi1[thrd].end(); ++it)  {
-	if(Psi1[0].find(it->first) == Psi1[0].end())
-	  Psi1[0][it->first] = it->second;
-	else
-	  Psi1[0][it->first] += it->second;
-      }
-    Psi1.resize(1);
-
-    std::vector<Determinant> Psi1vec(Psi1[0].size()); MatrixXd b(Psi1[0].size(),1);
-
-    int iter = 0;
-    for (map<Determinant, double>::iterator it=Psi1[0].begin(); it!=Psi1[0].end(); ++it)  {
-      Psi1vec[iter]= it->first; b(iter,0) = it->second;
-      iter++;
-    }
-    Psi1.clear();
-
-    cout << "# total number of dets in Psi1 "<<Psi1vec.size()<<endl;
-    //this is essentially the hamiltonian, we have stored it in a sparse format
-    std::vector<std::vector<int> > connections(Psi1vec.size());
-    std::vector<std::vector<double> > Helements(Psi1vec.size());
-
-    std::vector<char> detChar(norbs*Psi1vec.size(),0);
-#pragma omp parallel for schedule(dynamic)
-    for (size_t i=0; i<Psi1vec.size() ; i++) 
-      Psi1vec[i].getRepArray(&detChar[norbs*i]);
-
-#pragma omp parallel for schedule(dynamic)
-    for (size_t i=0; i<Psi1vec.size() ; i++) {
-      for (size_t j=i; j<Psi1vec.size(); j++) {
-	if (Psi1vec[i].connected(Psi1vec[j])) {
-	  double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], norbs, I1, I2, coreE);
-	  
-	  if (abs(hij) > 1.e-10) {
-	    connections[i].push_back(j);
-	    if (i == j) {
-	      Helements[i].push_back(hij - E0);
-	    }
-	    else {
-	      Helements[i].push_back(hij);
-	    }
-	  }
-	}
-      }
-      if (i%10000 == 0) cout <<i<<"  "<<Helements[i].size()<<"  out of "<<Psi1vec.size()<<endl;
-      //if (i%1000000 == 0 && i!=0) cout <<"#"<< i<<" Hij out of "<<Dets.size()<<endl;     
-      //if (i%10000) cout << i<<"  "<<Dets.size()<<endl;
-    }
-
-    MatrixXd X0 = 0.*b;
-    Hmult2 H(connections, Helements);
-    double Ep2 = LinearSolver(H, X0, b, schd.davidsonTol, true);
-
-    cout <<Ep2<<"  "<< Ep2+E0<<"  "<<getTime()-startofCalc<<endl;
-
-}
-
-
-
-*/
