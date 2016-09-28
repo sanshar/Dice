@@ -3,7 +3,7 @@
 #include <cmath>
 #include <iomanip>
 
-#define N 500000
+#define N 1000000
 
 using namespace std;
 

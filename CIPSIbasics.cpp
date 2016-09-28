@@ -627,14 +627,8 @@ void CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     cout <<energyEN<<"  "<< -energyEN+E0<<"  "<<getTime()-startofCalc<<endl;
 }
 
-void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
-		      std::vector<int>& AlphaNr,
-		      std::map<HalfDet, std::vector<int> >& BetaN,
-		      std::vector<int>& BetaNr,		      
+void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 		      std::map<HalfDet, std::vector<int> >& AlphaNm1,
-		      std::map<HalfDet, std::vector<int> >& BetaNm1,
-		      std::map<HalfDet, std::vector<int> >& AlphaNm2,
-		      std::map<HalfDet, std::vector<int> >& BetaNm2,
 		      std::vector<Determinant>& Dets,
 		      int StartIndex,
 		      std::vector<std::vector<int> >&connections,
@@ -650,11 +644,7 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
 #endif
   int nprocs= world.size(), proc = world.rank();
 
-  //alpha double excitation
-  //for each alpha(N-2) string we know all the determinants [An,Bn] 
-  //and then for each [An,Bn] we have to know the beta(N) determinant  
   size_t norbs = Norbs;
-  //cout << "alphan-2  "<<AlphaNm2.size()<<endl;
 
   for (size_t k=StartIndex; k<Dets.size(); k++) {
     if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
@@ -664,7 +654,7 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
   }
 
 
-  pout <<"# "<< Dets.size()<<"  "<<AlphaN.size()<<"  "<<AlphaNm1.size()<<"  "<<AlphaNm2.size()<<endl;
+  pout <<"# "<< Dets.size()<<"  "<<BetaN.size()<<"  "<<AlphaNm1.size()<<endl;
   std::map<HalfDet, std::vector<int> >::iterator ita = AlphaNm1.begin();
   int index = 0;
   for (; ita!=AlphaNm1.end(); ita++) {
@@ -696,10 +686,9 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
   }
   pout << "#AlphaN-1"<<endl;
 
-  //pout << Dets.size()<<"  "<<BetaN.size()<<"  "<<BetaNm1.size()<<"  "<<BetaNm2.size()<<endl;
-  ita = AlphaNm2.begin();
+  ita = BetaN.begin();
   index = 0;
-  for (; ita!=AlphaNm2.end(); ita++) {
+  for (; ita!=BetaN.end(); ita++) {
     std::vector<int>& detIndex = ita->second;
     int localStart = detIndex.size();
     for (int j=0; j<detIndex.size(); j++)
@@ -714,7 +703,7 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
 	//if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
 	for (int k=max(localStart,j); k<detIndex.size(); k++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (K >= StartIndex && BetaNr[J] == BetaNr[K]) 	  {
+	  if (K >= StartIndex && Dets[J].connected(Dets[K])) 	  {
 	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()){
 	      connections[J].push_back(K);
 	      double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
@@ -725,27 +714,19 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& AlphaN,
       }
     }
     index++;
-    if (index%100000 == 0 && index!= 0) {pout <<"#an-2 "<<index<<endl;}
+    if (index%100000 == 0 && index!= 0) {pout <<"#bn "<<index<<endl;}
   }
-  pout << "#alphaN-2"<<endl;
     
 }
   
-void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& AlphaN,
-			 std::vector<int>& AlphaNr,
-			 std::map<HalfDet, std::vector<int> >& BetaN,
-			 std::vector<int>& BetaNr,
+void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			 std::map<HalfDet, std::vector<int> >& AlphaNm1,
-			 std::map<HalfDet, std::vector<int> >& BetaNm1,
-			 std::map<HalfDet, std::vector<int> >& AlphaNm2,
-			 std::map<HalfDet, std::vector<int> >& BetaNm2,
 			 std::vector<Determinant>& Dets,
 			 int StartIndex) {
   pout <<"#Making Helpers"<<endl;
   for (int i=StartIndex; i<Dets.size(); i++) {
     HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
 
-    AlphaN[da].push_back(i);
     BetaN[db].push_back(i);
 
     int norbs = 64*DetLen;
@@ -757,33 +738,8 @@ void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& AlphaN,
     for (int j=0; j<ncloseda; j++) {
       HalfDet daj = da; daj.setocc(closeda[j], false);
       AlphaNm1[daj].push_back(i);
-      for (int k=j+1; k<ncloseda; k++) {
-	HalfDet dajk = daj; dajk.setocc(closeda[k], false);
-	AlphaNm2[dajk].push_back(i);
-      }
     }
   }
-
-  std::map<HalfDet, std::vector<int> >::iterator ita = AlphaN.begin();
-  int index = 0;
-  AlphaNr.resize(Dets.size(),0);
-  for (;ita!= AlphaN.end(); ita++) {
-    std::vector<int>& detIndex = ita->second;
-    for(int j=0; j<detIndex.size(); j++) 
-      AlphaNr[detIndex[j]] = index;
-    index++;
-  }
-
-  std::map<HalfDet, std::vector<int> >::iterator itb = BetaN.begin();
-  index = 0;
-  BetaNr.resize(Dets.size(),0);
-  for (;itb!= BetaN.end(); itb++) {
-    std::vector<int>& detIndex = itb->second;
-    for(int j=0; j<detIndex.size(); j++) 
-      BetaNr[detIndex[j]] = index;
-    index++;
-  }
-
 
 }
 
@@ -795,9 +751,8 @@ void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& AlphaN,
 double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, schedule& schd,
 				  twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE) {
 
-  std::map<HalfDet, std::vector<int> > AlphaN, BetaN, AlphaNm1, BetaNm1, AlphaNm2, BetaNm2;
-  std::vector<int> AlphaNr, BetaNr;
-  PopulateHelperLists(AlphaN, AlphaNr, BetaN, BetaNr, AlphaNm1, BetaNm1, AlphaNm2, BetaNm2, Dets, 0);
+  std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1;
+  PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
 
 
 #ifndef SERIAL
@@ -829,7 +784,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
   if (schd.restart || schd.fullrestart) {
     bool converged;
-    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd, AlphaN, BetaN, AlphaNm1, AlphaNm2, AlphaNr, BetaNr);
+    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd, BetaN, AlphaNm1);
     pout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f\n") 
       %(iterstart) % schd.epsilon1[iterstart] % Dets.size() % E0 % (getTime()-startofCalc);
     iterstart++;
@@ -951,8 +906,8 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
     
     if (true) {
-      PopulateHelperLists(AlphaN, AlphaNr, BetaN, BetaNr, AlphaNm1, BetaNm1, AlphaNm2, BetaNm2, Dets, SortedDets.size());
-      MakeHfromHelpers(AlphaN, AlphaNr, BetaN, BetaNr, AlphaNm1, BetaNm1, AlphaNm2, BetaNm2, Dets, SortedDets.size(), connections, Helements,
+      PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+      MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), connections, Helements,
 		       &detChar[0], norbs, I1, I2, coreE);
     }
     //if (Dets.size() > 10000000) {
@@ -1009,11 +964,11 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
     
     if (abs(E0-prevE0) < schd.dE)  {
-      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, AlphaN, BetaN, AlphaNm1, AlphaNm2, AlphaNr, BetaNr);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
       break;
     }
     else {
-      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, false, schd, AlphaN, BetaN, AlphaNm1, AlphaNm2, AlphaNr, BetaNr);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, false, schd, BetaN, AlphaNm1);
     }
 
 
@@ -1027,11 +982,9 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					 MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 					 double& E0, bool converged, schedule& schd,   
-					 std::map<HalfDet, std::vector<int> >& AlphaN, 
 					 std::map<HalfDet, std::vector<int> >& BetaN, 
-					 std::map<HalfDet, std::vector<int> >& AlphaNm1, 
-					 std::map<HalfDet, std::vector<int> >& AlphaNm2, 
-					 std::vector<int>& AlphaNr, std::vector<int>& BetaNr) {
+					 std::map<HalfDet, std::vector<int> >& AlphaNm1) {
+
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
@@ -1051,7 +1004,7 @@ void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determin
     save << E0;
     save << converged;
     save << connections<<Helements;
-    save << AlphaN << AlphaNr<< BetaN<< BetaNr<< AlphaNm1<< AlphaNm2;
+    save << BetaN<< AlphaNm1;
     ofs.close();
 }
 
@@ -1059,11 +1012,9 @@ void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determin
 void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 					double& E0, bool& converged, schedule& schd,
-					std::map<HalfDet, std::vector<int> >& AlphaN, 
 					std::map<HalfDet, std::vector<int> >& BetaN, 
-					std::map<HalfDet, std::vector<int> >& AlphaNm1, 
-					std::map<HalfDet, std::vector<int> >& AlphaNm2, 
-					std::vector<int>& AlphaNr, std::vector<int>& BetaNr) {
+					std::map<HalfDet, std::vector<int> >& AlphaNm1) {
+
 
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -1088,7 +1039,7 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
     load >> converged;
 
     load >> connections >> Helements;
-    load >> AlphaN >> AlphaNr>> BetaN>> BetaNr>> AlphaNm1>> AlphaNm2;
+    load >> BetaN>> AlphaNm1;
     ifs.close();
 }
 
@@ -1118,9 +1069,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 	det_it = Psi1.find(di);
 
 	if (schd.singleList && schd.SampleN != -1) {
-	  //if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*integral*ci2*ci1*(ci1/ci2-1.));
 	  if (det_it == Psi1.end()) Psi1[di] = make_pair(integral*ci1, integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2));
-	  //else {det_it->second.first +=integral*ci1;det_it->second.second += integral*integral*ci2*ci1*(ci1/ci2-1.);}
 	  else {det_it->second.first +=integral*ci1;det_it->second.second += integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2);}
 	}
 	else if (schd.singleList && schd.SampleN == -1) {

@@ -65,19 +65,15 @@ namespace CIPSIbasics {
   void writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 			      double& E0, bool converged, schedule& schd,   
-			      std::map<HalfDet, std::vector<int> >& AlphaN, 
 			      std::map<HalfDet, std::vector<int> >& BetaN, 
-			      std::map<HalfDet, std::vector<int> >& AlphaNm1, 
-			      std::map<HalfDet, std::vector<int> >& AlphaNm2, 
-			      std::vector<int>& AlphaNr, std::vector<int>& BetaNr);
+			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
+
   void readVariationalResult(int& iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			     MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 			     double& E0, bool& converged, schedule& schd,
-			     std::map<HalfDet, std::vector<int> >& AlphaN, 
 			     std::map<HalfDet, std::vector<int> >& BetaN, 
-			     std::map<HalfDet, std::vector<int> >& AlphaNm1, 
-			     std::map<HalfDet, std::vector<int> >& AlphaNm2, 
-			     std::vector<int>& AlphaNr, std::vector<int>& BetaNr);
+			     std::map<HalfDet, std::vector<int> >& AlphaNm1);
+
 
   double DoVariational(MatrixXd& ci, vector<Determinant>& Dets, schedule& schd,
 		       twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE);
