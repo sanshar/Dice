@@ -17,9 +17,9 @@ void readInput(string input, std::vector<int>& occupied, CIPSIbasics::schedule& 
   schd.nblocks = 1;
   schd.restart = false;
   schd.fullrestart = false;
-  schd.davidsonTol = 1.e-3;
-  schd.epsilon2 = 1.e-6;
-  schd.dE = 1.e-6;
+  schd.davidsonTol = 5.e-5;
+  schd.epsilon2 = 1.e-8;
+  schd.dE = 1.e-8;
   schd.prefix = ".";
   schd.stochastic = true;
   schd.SampleN = -1;

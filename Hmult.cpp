@@ -55,6 +55,7 @@ double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& core
   for (int i=0; i<sizeA; i++) {
     int I = occ.at(i);
     energy += I1(I,I);
+
     for (int j=i+1; j<sizeA; j++) {
       int  J = occ.at(j);
       energy += I2.Direct(I/2,J/2);
@@ -81,7 +82,48 @@ double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
   return energy+(coreE);
 }
 
+//Assumes that the spin of i and a orbitals is the same
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, double Energyd) {
 
+  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A);
+  for (int I = 0; I<nclosed; I++) {
+    if (I == i) continue;
+    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
+    if ( (closed[I]%2) == (closed[i]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
+  }
+  return E;
+}
+
+//Assumes that the spin of i and a orbitals is the same
+//and the spins of j and b orbitals is the same
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, int j, int B, double Energyd) {
+
+  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j], closed[j]) + I1(B, B);
+
+  for (int I = 0; I<nclosed; I++) {
+    if (I == i) continue;
+    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
+    if ( (closed[I]%2) == (closed[i]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
+  }
+
+  for (int I=0; I<nclosed; I++) {
+    if (I == i || I == j) continue;
+    E = E - I2.Direct(closed[I]/2, closed[j]/2) + I2.Direct(closed[I]/2, B/2);
+    if ( (closed[I]%2) == (closed[j]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[j]/2) - I2.Exchange(closed[I]/2, B/2);
+  }
+
+  E = E - I2.Direct(A/2, closed[j]/2) + I2.Direct(A/2, B/2);
+  if ( (closed[i]%2) == (closed[j]%2) )
+    E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
+  
+
+  return E;
+}
 
 double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA) {
   //int a = cre[0], i = des[0];

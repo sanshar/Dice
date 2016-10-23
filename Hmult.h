@@ -16,6 +16,10 @@ double parity(char* d, int& sizeA, int& i);
 double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, int j, int B, double Energyd);
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, double Energyd);
 
 template <typename Derived>
 void multiplyH(MatrixBase<Derived>& x, MatrixBase<Derived>& y, char* a, int& sizeA, oneInt& I1, twoInt& I2, double& coreE)

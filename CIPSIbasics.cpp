@@ -70,9 +70,10 @@ void setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector<int>& alias,
 
 int sample_N2_alias(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
 
-  int niter = Sample1.size();
-  int totalSample = 0;
-  for (int index = 0; index<niter; ) {
+  int niter = Sample1.size(); //Sample1.resize(0); newWts.resize(0);
+
+  int sampleIndex = 0;
+  for (int index = 0; index<niter; index++) {
     int detIndex = floor(1.* ((double) rand() / (RAND_MAX))*ci.rows() );
 
     double rand_no = ((double) rand()/ (RAND_MAX));
@@ -81,21 +82,18 @@ int sample_N2_alias(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1,
 
     std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), detIndex);
     if (it == Sample1.end()) {
-      Sample1[index] = detIndex;
-      newWts[index] = ci(detIndex,0) < 0. ? -cumulative : cumulative;
-      index++; totalSample++;
+      Sample1[sampleIndex] = detIndex;
+      newWts[sampleIndex] = ci(detIndex,0) < 0. ? -cumulative : cumulative;
+      sampleIndex++;
     }
     else {
-      newWts[ distance(Sample1.begin(), it) ] += ci(detIndex,0) < 0. ? -cumulative : cumulative;
-      totalSample++;
+      newWts[distance(Sample1.begin(), it) ] += ci(detIndex,0) < 0. ? -cumulative : cumulative;
     }
   }
 
   for (int i=0; i<niter; i++)
-    newWts[i] /= totalSample;
-  return totalSample;
-  
-
+    newWts[i] /= niter;
+  return sampleIndex;
 }
 
 int sample_N2(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
@@ -353,24 +351,24 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
       std::vector<double> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
 
       //int Nmc = sample_N2(ci, cumulative, Sample1, wts1);
-      int Nmc = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
-
+      int distinctSample = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
+      int Nmc = Nsample;
       double norm = 0.0;
       
-      map<Determinant, pair<double,double> > Psi1ab; 
-      for (int i=0; i<Sample1.size(); i++) {
+      map<Determinant, std::tuple<double,double,double> > Psi1ab; 
+      for (int i=0; i<distinctSample; i++) {
        int I = Sample1[i];
-       CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd, Nmc);
+       CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd, Nmc, nelec);
       }
 
 
       double energyEN = 0.0;
-      for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
+      for (map<Determinant, std::tuple<double, double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
 	it->first.getOpenClosed(psiOpen, psiClosed);
-	energyEN += (it->second.first*it->second.first *Nmc/(Nmc-1)  - it->second.second)/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
-	//energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	double A = std::get<0>(it->second), B = std::get<1>(it->second), C = std::get<2>(it->second);
+	energyEN += (A*A *Nmc/(Nmc-1)  - B)/(C-E0); 
       }
-      sampleSize = Sample1.size();
+      sampleSize = distinctSample;
 
 #pragma omp critical 
       {
@@ -1132,6 +1130,101 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 	    else {
 	      if (det_it == Psi1.end()) Psi1[di] = make_pair(it->first*sgn*ci1, it->first*sgn*ci2);
 	      else {det_it->second.first += it->first*sgn*ci1; det_it->second.second += it->first*sgn*ci2;}
+	    }
+	  }
+	}
+      }
+    }
+  }
+  return;
+}
+
+
+//this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
+//in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
+void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
+
+  int norbs = d.norbs;
+  vector<int> closed(nelec,0); 
+  vector<int> open(norbs-nelec,0);
+  d.getOpenClosed(open, closed);
+  int nclosed = nelec;
+  char detArray[norbs], diArray[norbs];
+  int nopen = norbs-nclosed;
+  d.getRepArray(detArray);
+
+
+  double Energyd = Energy(closed, nclosed, int1, int2, coreE);
+  
+  std::map<Determinant, std::tuple<double,double, double> >::iterator det_it;
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    double integral = Hij_1Excite(closed[i],open[a],int1,int2, detArray, norbs);
+    if (fabs(integral) > epsilon ) {
+      Determinant di = d;
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+      if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
+	det_it = Psi1.find(di);
+
+	if (schd.singleList && schd.SampleN != -1) {
+	  if (det_it == Psi1.end()) {
+	    double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+	    Psi1[di] = std::tuple<double, double, double>(integral*ci1, integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2), E);
+	  }
+	  else {std::get<0>(det_it->second) +=integral*ci1; std::get<1>(det_it->second) += integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2);}
+	}
+      }
+    }
+  }
+  
+  if (fabs(int2.maxEntry) <epsilon) return;
+
+  //#pragma omp parallel for schedule(dynamic)
+  for (int ij=0; ij<nclosed*nclosed; ij++) {
+
+    int i=ij/nclosed, j = ij%nclosed;
+    if (i<=j) continue;
+    int I = closed[i]/2, J = closed[j]/2;
+    std::pair<int,int> IJpair(max(I,J), min(I,J));
+    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+
+    //THERE IS A BUG IN THE CODE WHEN USING HEATBATH INTEGRALS
+    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
+      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
+	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
+	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+
+
+	//cout << a/2<<"  "<<schd.nvirt<<"  "<<nclosed/2<<endl;
+	if (!(d.getocc(a) || d.getocc(b))) {
+	  Determinant di = d;
+	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
+
+	    double sgn = 1.0;
+	    {
+	      int A = (closed[i]), B = closed[j], I= a, J = b; 
+	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
+	      if (B > J) sgn*=-1 ;
+	      if (I > J) sgn*=-1 ;
+	      if (I > B) sgn*=-1 ;
+	      if (A > J) sgn*=-1 ;
+	      if (A > B) sgn*=-1 ;
+	      if (A > I) sgn*=-1 ;
+	    }
+
+	    det_it = Psi1.find(di);
+
+
+	    if (schd.singleList && schd.SampleN != -1) {
+	      if (det_it == Psi1.end()) {
+		double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
+		Psi1[di] = std::tuple<double,double,double>(it->first*sgn*ci1, it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2),E);
+	      }
+	      else {std::get<0>(det_it->second) +=it->first*sgn*ci1;std::get<1>(det_it->second) += it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2);}
 	    }
 	  }
 	}
