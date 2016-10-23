@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
+#include "input.h"
 #include "integral.h"
 #include "Hmult.h"
 #include "CIPSIbasics.h"
@@ -35,7 +36,7 @@ double startofCalc = getTime();
 
 
 
-void readInput(string input, std::vector<int>& occupied, CIPSIbasics::schedule& schd);
+void readInput(string input, std::vector<int>& occupied, schedule& schd);
 
 
 int main(int argc, char* argv[]) {
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
 
   int num_thrds;
   std::vector<int> HFoccupied; //double epsilon1, epsilon2, tol, dE;
-  CIPSIbasics::schedule schd;
+  schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
 #ifndef SERIAL

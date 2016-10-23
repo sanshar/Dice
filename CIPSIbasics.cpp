@@ -1,5 +1,6 @@
 #include "Determinants.h"
 #include "CIPSIbasics.h"
+#include "input.h"
 #include "integral.h"
 #include <vector>
 #include "math.h"

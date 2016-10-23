@@ -1,5 +1,5 @@
 #include "global.h"
-#include "CIPSIbasics.h"
+#include "input.h"
 #include <string>
 #include <fstream>
 #include <vector>
@@ -9,7 +9,7 @@
 using namespace std;
 using namespace boost;
 
-void readInput(string input, std::vector<int>& occupied, CIPSIbasics::schedule& schd) {
+void readInput(string input, std::vector<int>& occupied, schedule& schd) {
   ifstream dump(input.c_str());
   int maxiter = -1;
   vector<int> sweep_iter;
