@@ -19,6 +19,7 @@ void readInput(string input, std::vector<int>& occupied, schedule& schd) {
   schd.fullrestart = false;
   schd.davidsonTol = 5.e-5;
   schd.epsilon2 = 1.e-8;
+  schd.epsilon2Large = 1000.0;
   schd.dE = 1.e-8;
   schd.prefix = ".";
   schd.stochastic = true;
@@ -60,6 +61,8 @@ void readInput(string input, std::vector<int>& occupied, schedule& schd) {
       schd.io=false;
     else if (boost::iequals(ArgName, "epsilon2")) 
       schd.epsilon2 = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "epsilon2Large")) 
+      schd.epsilon2Large = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "onlyperturbative")) 
       schd.onlyperturbative = true;
     else if (boost::iequals(ArgName, "nblocks")) 

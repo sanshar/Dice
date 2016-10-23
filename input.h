@@ -14,6 +14,7 @@ private:
   {
     ar & davidsonTol				\
       & epsilon2				\
+      & epsilon2Large                           \
       & SampleN					\
       & epsilon1				\
       & onlyperturbative			\
@@ -33,6 +34,7 @@ private:
 public:
   double davidsonTol;
   double epsilon2;
+  double epsilon2Large;
   int SampleN;
   std::vector<double> epsilon1;    
   bool onlyperturbative;
