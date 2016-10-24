@@ -6,6 +6,9 @@
 #include <vector>
 #include <boost/serialization/serialization.hpp>
 
+class oneInt;
+class twoInt;
+
 using namespace std;
 inline int BitCount (long& u)
 {
@@ -27,6 +30,8 @@ inline int BitCount (long& u)
       & 030707070707) % 63);
 }
 
+
+//This is used to store just the alpha or the beta sub string of the entire determinant
 class HalfDet {
  private:
   friend class boost::serialization::access;
@@ -126,6 +131,7 @@ class Determinant {
   }
 
 
+  //Is the excitation between *this and d less than equal to 2.
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
     for (int i=0; i<EffDetLen; i++) {
@@ -136,6 +142,8 @@ class Determinant {
     return true;
   }
 
+  //Get the number of electrons that need to be excited to get determinant d from *this determinant
+  //e.g. single excitation will return 1
   int ExcitationDistance(const Determinant& d) const {
     int ndiff = 0; long u;
     for (int i=0; i<EffDetLen; i++) {
@@ -145,6 +153,7 @@ class Determinant {
     return ndiff/2;
   }
 
+  //Get HalfDet with just the alpha string
   HalfDet getAlpha() const {
     HalfDet d;
     for (int i=0; i<EffDetLen; i++)
@@ -154,6 +163,8 @@ class Determinant {
     return d;
   }
 
+
+  //get HalfDet with just the beta string
   HalfDet getBeta() const {
     HalfDet d;
     for (int i=0; i<EffDetLen; i++)
@@ -162,35 +173,6 @@ class Determinant {
     return d;
   }
 
-
-  //the excitation array should contain at least  
-  void ExactExcitation(const Determinant& d, unsigned short* excitation) const {
-    int ncre=0, ndes=0;
-    long u,b,k,one=1;
-    for (int i=0;i<EffDetLen;i++) {
-      u = d.repr[i] ^ repr[i];
-      b = u & d.repr[i]; //the cre bits
-      k = u & repr[i]; //the des bits
-      for (int j=0;j<64;j++) {
-	if (b == 0) break;
-	if (b & one) {
-	  if (ncre==4) {
-	    *excitation=-1;
-	    return;
-	  }
-	  *(excitation+ncre) = i*64+j; 
-	  ncre++; 
-	}
-	b=b>>1;
-      }
-      for (int j=0;j<64;j++) {
-	if (k == 0) break;
-	if (k & one) { if (ndes==4) {*excitation=-1;return;};*(excitation+4+ndes) = i*64+j; ndes++;}
-	k=k >> 1;
-      }
-      
-    }
-  }
 
   //the comparison between determinants is performed
   bool operator<(const Determinant& d) const {
@@ -201,6 +183,7 @@ class Determinant {
     return false;
   }
 
+  //check if the determinants are equal
   bool operator==(const Determinant& d) const {
     for (int i=EffDetLen-1; i>=0 ; i--) 
       if (repr[i] != d.repr[i]) return false;
@@ -238,6 +221,7 @@ class Determinant {
     }
   }
 
+  //Prints the determinant
   friend ostream& operator<<(ostream& os, const Determinant& d) {
     char det[norbs];
     d.getRepArray(det);
@@ -246,6 +230,7 @@ class Determinant {
     return os;
   }
 
+  //returns integer array containing the closed and open orbital indices
   int getOpenClosed(unsigned short* open, unsigned short* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
@@ -255,6 +240,7 @@ class Determinant {
     return cindex;
   }
 
+  //returns integer array containing the closed and open orbital indices
   void getOpenClosed(vector<int>& open, vector<int>& closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
@@ -262,6 +248,8 @@ class Determinant {
       else {open.at(oindex) = i; oindex++;}
     }
   }
+
+  //returns integer array containing the closed and open orbital indices
   int getOpenClosed(int* open, int* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
@@ -272,6 +260,46 @@ class Determinant {
   }
 
 };
+
+
+//how many occupied orbitals before i
+double parity(char* d, int& sizeA, int& i);
+//energy of the determinant given as char array
+double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+//energy of the determinant given as a integer vector
+double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+
+//energy of the new determinant formed by making a double excitation
+//INPUT
+// 1. closed - the list of occupied orbitals in the input determinant
+// 2. nclosed - the number of occupied orbitals
+// 3. I1, I2, coreE - one electron, two electron integrals and core energy
+// 4. i, A, j, B - orbital indides indicating a double excitation
+// 5. Energyd - energy of the determinant represented by the closed array string 
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, int j, int B, double Energyd);
+
+
+//energy of the new determinant formed by making a single excitation
+//INPUT
+// 1. closed - the list of occupied orbitals in the input determinant
+// 2. nclosed - the number of occupied orbitals
+// 3. I1, I2, coreE - one electron, two electron integrals and core energy
+// 4. i, A, - orbital indides indicating a single excitation
+// 5. Energyd - energy of the determinant represented by the closed array string 
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, double Energyd);
+
+//All these functions calcualte the <bra|H|ket> elements
+//1. this takes both bra and ket as char arrays
+double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+//2. This takes actual determinants
+double Hij(Determinant& bra, Determinant& ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+//3. this only takes the ket and the single excitation that gives a bra state
+double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA);
+//4. this only takes the ket and the double excitation that gives a bra state
+double Hij_2Excite(int i, int j, int a, int b, twoInt& I2, char* ket, int& sizeA);
+
 
 
 #endif
