@@ -1,6 +1,7 @@
 #include "global.h"
 #include "input.h"
 #include <string>
+#include <iostream>
 #include <fstream>
 #include <vector>
 #include <boost/format.hpp>

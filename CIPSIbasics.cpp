@@ -706,7 +706,8 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
     }
 
     if (mpigetrank() == 0)
-      cout <<"#Deterministic "<<energyEN<<"  "<< -energyEN+E0<<"  "<<getTime()-startofCalc<<endl;
+      pout << format("#Deterministic %13.8f %24.8f %12.2f\n")
+        % energyEN  % (-energyEN+E0) % (getTime()-startofCalc);
     return energyEN;
 }
 
@@ -767,7 +768,9 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
     index++;
     if (index%100000 == 0 && index!= 0) {pout <<"#an-1 "<<index<<endl;}
   }
-  pout << "#AlphaN-1"<<endl;
+  pout << format("#AlphaN-1 %49.2f\n")
+      % (getTime()-startofCalc);
+
 
   ita = BetaN.begin();
   index = 0;
@@ -806,7 +809,8 @@ void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			 std::map<HalfDet, std::vector<int> >& AlphaNm1,
 			 std::vector<Determinant>& Dets,
 			 int StartIndex) {
-  pout <<"#Making Helpers"<<endl;
+  pout << format("#Making Helpers %43.2f\n")
+      % (getTime()-startofCalc);
   for (int i=StartIndex; i<Dets.size(); i++) {
     HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
 
@@ -1072,6 +1076,8 @@ void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determin
   boost::mpi::communicator world;
 #endif
 
+    pout << format("#Begin writing variational wf %29.2f\n")
+      % (getTime()-startofCalc);
 
     char file [5000];
     sprintf (file, "%s/%d-variational.bkp" , schd.prefix.c_str(), world.rank() );
@@ -1089,6 +1095,9 @@ void CIPSIbasics::writeVariationalResult(int iter, MatrixXd& ci, vector<Determin
     save << connections<<Helements;
     save << BetaN<< AlphaNm1;
     ofs.close();
+
+    pout << format("#End   writing variational wf %29.2f\n")
+      % (getTime()-startofCalc);
 }
 
 
@@ -1103,6 +1112,8 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
   boost::mpi::communicator world;
 #endif
 
+    pout << format("#Begin reading variational wf %29.2f\n")
+      % (getTime()-startofCalc);
 
     char file [5000];
     sprintf (file, "%s/%d-variational.bkp" , schd.prefix.c_str(), world.rank() );
@@ -1124,6 +1135,9 @@ void CIPSIbasics::readVariationalResult(int& iter, MatrixXd& ci, vector<Determin
     load >> connections >> Helements;
     load >> BetaN>> AlphaNm1;
     ifs.close();
+
+    pout << format("#End   reading variational wf %29.2f\n")
+      % (getTime()-startofCalc);
 }
 
 
