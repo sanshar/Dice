@@ -726,21 +726,55 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
-  int nprocs= world.size(), proc = world.rank();
+  int nprocs= mpigetsize(), proc = mpigetrank();
 
   size_t norbs = Norbs;
 
-  for (size_t k=StartIndex; k<Dets.size(); k++) {
-    if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-    connections[k].push_back(k);
-    double hij = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
-    Helements[k].push_back(hij);
+#pragma omp parallel 
+  {
+    for (size_t k=StartIndex; k<Dets.size(); k++) {
+      if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+      connections[k].push_back(k);
+      double hij = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
+      Helements[k].push_back(hij);
+    }
   }
 
+  std::map<HalfDet, std::vector<int> >::iterator ita = BetaN.begin();
+  int index = 0;
+  for (; ita!=BetaN.end(); ita++) {
+    std::vector<int>& detIndex = ita->second;
+    int localStart = detIndex.size();
+    for (int j=0; j<detIndex.size(); j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+    
+#pragma omp parallel 
+    {
+      for (int k=localStart; k<detIndex.size(); k++) {
+      
+	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+	//if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
+	
+	for(int j=0; j<k; j++) {
+	  size_t J = detIndex[j];size_t K = detIndex[k];
+	  if (Dets[J].connected(Dets[K])) 	  {
+	      connections[K].push_back(J);
+	      //double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
+	      double hij = Hij(Dets[J], Dets[K], I1, I2, coreE);
+	      Helements[K].push_back(hij);
+	  }
+	}
+      }
+    }
+    index++;
+    if (index%100000 == 0 && index!= 0) {pout <<"#bn "<<index<<endl;}
+  }
 
   pout <<"# "<< Dets.size()<<"  "<<BetaN.size()<<"  "<<AlphaNm1.size()<<endl;
-  std::map<HalfDet, std::vector<int> >::iterator ita = AlphaNm1.begin();
-  int index = 0;
+  ita = AlphaNm1.begin();
+  index = 0;
   for (; ita!=AlphaNm1.end(); ita++) {
     std::vector<int>& detIndex = ita->second;
     int localStart = detIndex.size();
@@ -751,15 +785,17 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 
 #pragma omp parallel 
     {
-      for(int j=0; j<detIndex.size(); j++) {
-	if (detIndex[j]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-	for (int k=max(localStart,j+1); k<detIndex.size(); k++) {
+      for (int k=localStart; k<detIndex.size(); k++) {
+	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+
+	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
 	  if (Dets[J].connected(Dets[K]) ) {
-	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()){
-	      connections[J].push_back(K);
-	      double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
-	      Helements[J].push_back(hij);
+	    if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
+	      connections[K].push_back(J);
+	      double hij = Hij(Dets[J], Dets[K], I1, I2, coreE);
+	      //double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
+	      Helements[K].push_back(hij);
 	    }
 	  }
 	}
@@ -772,36 +808,6 @@ void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
       % (getTime()-startofCalc);
 
 
-  ita = BetaN.begin();
-  index = 0;
-  for (; ita!=BetaN.end(); ita++) {
-    std::vector<int>& detIndex = ita->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel 
-    {
-      for(int j=0; j<detIndex.size(); j++) {
-	if (detIndex[j]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-	//if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
-	for (int k=max(localStart,j); k<detIndex.size(); k++) {
-	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (K >= StartIndex && Dets[J].connected(Dets[K])) 	  {
-	    if (find(connections[J].begin(), connections[J].end(), K) == connections[J].end()){
-	      connections[J].push_back(K);
-	      double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
-	      Helements[J].push_back(hij);
-	    }
-	  }
-	}
-      }
-    }
-    index++;
-    if (index%100000 == 0 && index!= 0) {pout <<"#bn "<<index<<endl;}
-  }
     
 }
   
@@ -993,7 +999,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 
     
     if (true) {
-      PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+      PopulateHelperLists(BetaN, AlphaNm1, Dets, ci.size());
       MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), connections, Helements,
 		       &detChar[0], norbs, I1, I2, coreE);
     }
