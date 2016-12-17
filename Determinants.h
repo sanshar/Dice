@@ -130,6 +130,34 @@ class Determinant {
       repr[i] = 0;
   }
 
+  void parity(int& i, int& j, int& a, int& b, double& sgn) ;
+  void parity(const int& start, const int& end, double& parity) {
+
+    long one = 1;
+    long mask = (one<< (start%64))-one;
+    long result = repr[start/64]&mask;
+    int nonZeroBits = -BitCount(result);
+
+    for (int i=start/64; i<end/64; i++) {
+      nonZeroBits += BitCount(repr[i]);
+    }
+    mask = (one<< (end%64) )-one;
+
+    result = repr[end/64] & mask;
+    nonZeroBits += BitCount(result);
+
+
+    parity *= (-2.*(nonZeroBits%2)+1);
+    if (getocc(start)) parity *= -1.;
+
+    return;
+  }
+
+
+  double Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2);
+
+  double Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
+
 
   //Is the excitation between *this and d less than equal to 2.
   bool connected(const Determinant& d) const {
@@ -294,12 +322,13 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 //1. this takes both bra and ket as char arrays
 double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 //2. This takes actual determinants
-double Hij(Determinant& bra, Determinant& ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
+double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE);
 //3. this only takes the ket and the single excitation that gives a bra state
 double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA);
 //4. this only takes the ket and the double excitation that gives a bra state
 double Hij_2Excite(int i, int j, int a, int b, twoInt& I2, char* ket, int& sizeA);
 
+double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
 
 
 #endif

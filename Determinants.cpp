@@ -156,39 +156,88 @@ double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& cor
 
 }
 
+//i->a and j->b
+void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
+  parity(min(i, a), max(i,a), sgn); 
+  setocc(i, false); setocc(a,true);
+  parity(min(j, b), max(j,b), sgn);
+  setocc(i, true); setocc(a, false);
+  return;
+}
 
-double Hij(Determinant& bra, Determinant& ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {  
+double Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
+
+  double sgn = 1.0;
+  int I = min(i,j), J= max(i,j), A= min(a,b), B = max(a,b);
+  parity(min(I, A), max(I,A), sgn); 
+  parity(min(J, B), max(J,B), sgn);
+  if(A>J || B<I) sgn *= -1.;
+  return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
+}
+
+double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
+  double sgn = 1.0;
+  parity(min(a,i), max(a,i), sgn); 
+  
+  double energy = I1(a,i);
+  long one = 1;
+  for (int I=0; I<EffDetLen; I++) {
+
+    int loop = min(64, norbs-I*64);
+    for (long bit=0; bit<loop; bit++) {
+      int j = I*64+bit;
+      energy += (repr[I]>>bit&one) *(I2(a,i,j,j) - I2(a,j,i,j));
+      //if (repr[I]>>bit == 0) break;
+    }
+  }
+  return energy*sgn;
+}
+
+double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE) {  
   int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
-  for (int i=0;i<DetLen;i++) {
+  cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
+
+  for (int i=0;i<Determinant::EffDetLen;i++) {
     u = bra.repr[i] ^ ket.repr[i];
     b = u & bra.repr[i]; //the cre bits
     k = u & ket.repr[i]; //the des bits
     for (int j=0;j<64;j++) {
-      if (b == 0) break;
-      if (b>>1 & 1) {cre[ncre] = j; ncre++;}
+      if (b>>j == 0) break;
+      if (b>>j & 1) {cre[ncre] = j+i*64; ncre++;}
     }
     for (int j=0;j<64;j++) {
-      if (k == 0) break;
-      if (k>>1 & 1) {des[ndes] = j; ndes++;}
+      if (k>>j == 0) break;
+      if (k>>j & 1) {des[ndes] = j+i*64; ndes++;}
     }
     
   }
-  ///NOT YET IMPLEMENTED
-  /*
-  double energy = 0.0;
-  if (ncre == 0 && ndes == 0) {
-    return Energy(ket, sizeA, I1, I2, coreE);
+
+  if (ncre == 0) {
+    cout <<"Use the function for energy"<<endl;
+    exit(0);
   }
-  else if (ncre ==1 && ndes == 1) {
-    return Hij_1Excite(des[0], cre[0], I1, I2, ket, sizeA);
-  }
-  else if (ncre==2 && ndes == 2){
-    int a=cre[0], b=cre[1], i=des[0], j=des[1];
-    return Hij_2Excite(i,j,a,b,I2, ket, sizeA);
-  }
-  return energy;
-  */
+  else if (ncre ==1 ) 
+    return ket.Hij_1Excite(cre[0], des[0], I1, I2);
+  else if (ncre == 2)
+    return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
+  else 
+    return 0.;
 }
+
+double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
+  //int a = cre[0], i = des[0];
+  double sgn=1.0;
+  
+  double energy = I1(a,i);
+  for (int j=0; j<nclosed; j++) {
+    if (closed[j]>min(i,a)&& closed[j] <max(i,a))
+      sgn*=-1.;
+    energy += (I2(a,i,closed[j],closed[j]) - I2(a,closed[j],i,closed[j]));
+  }
+
+  return energy*sgn;
+}
+
 
 
 

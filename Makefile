@@ -5,7 +5,7 @@ FLAGS = -std=c++0x -fopenmp -g -O3 -I/home/sharma/apps/forServer/boost_1_53_0_mt
 LFLAGS = -L/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/stage/lib -lboost_serialization -lboost_mpi
 
 SRC_cisd = CISD.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
-SRC_cipsi = CIPSI.cpp CIPSIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
+SRC_cipsi = CIPSI.cpp CIPSIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp CIPSInonessential.cpp
 SRC_cipsi2 = CIPSI.cpp CIPSIbasics2.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
 SRC_Excitations = Excitations.cpp CIPSIbasics.cpp Determinants.cpp integral.cpp input.cpp
 

@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
   MatrixXd ci(1,1); ci(0,0) = 1.0;
   std::vector<Determinant> Dets(1,d);
 
-  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE);
+  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec);
 
   //print the 5 most important determinants and their weights
   MatrixXd prevci = 1.*ci;
