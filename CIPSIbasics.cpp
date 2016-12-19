@@ -29,23 +29,9 @@ using namespace Eigen;
 using namespace boost;
 
 
-int ipow(int base, int exp)
+void merge(Determinant *a, long low, long high, long mid, long* x, Determinant* c, long* cx)
 {
-  int result = 1;
-  while (exp)
-    {
-      if (exp & 1)
-	result *= base;
-      exp >>= 1;
-      base *= base;
-    }
-
-  return result;
-}
-
-void merge(Determinant *a, size_t low, size_t high, size_t mid, int* x, Determinant* c, int* cx)
-{
-  size_t i, j, k;
+  long i, j, k;
   i = low;
   k = low;
   j = mid + 1;
@@ -87,9 +73,9 @@ void merge(Determinant *a, size_t low, size_t high, size_t mid, int* x, Determin
     }
 }
 
-void mergesort(Determinant *a, int low, int high, int* x, Determinant* c, int* cx)
+void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx)
 {
-  int mid;
+  long mid;
   if (low < high)
     {
       mid=(low+high)/2;
@@ -99,6 +85,22 @@ void mergesort(Determinant *a, int low, int high, int* x, Determinant* c, int* c
     }
   return;
 }
+
+
+int ipow(int base, int exp)
+{
+  int result = 1;
+  while (exp)
+    {
+      if (exp & 1)
+	result *= base;
+      exp >>= 1;
+      base *= base;
+    }
+
+  return result;
+}
+
 
 //for each element in ci stochastic round to eps and put all the nonzero elements in newWts and their corresponding
 //indices in Sample1
@@ -278,10 +280,10 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
       CIPSIbasics::getDeterminants2Epsilon(Dets[I], abs(schd.epsilon2/ci(I,0)), abs(schd.epsilon2Large/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, numerator1B, numerator2B, det_energy, schd, Nmc, nelec);
     }
 
-      std::vector<int> index(Psi1.size());
-      for (int k=0; k<Psi1.size(); k++)
+      std::vector<long> index(Psi1.size());
+      for (size_t k=0; k<Psi1.size(); k++)
 	index[k] = k;
-      int* indexcopy = new int[Psi1.size()];
+      long* indexcopy = new long[Psi1.size()];
       Determinant* dc = new Determinant[Psi1.size()];
       mergesort(&Psi1[0], 0, Psi1.size()-1, &index[0], dc, indexcopy);
       delete [] indexcopy;
@@ -416,10 +418,10 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
       }
 
 
-      std::vector<int> index(Psi1.size());
-      for (int k=0; k<Psi1.size(); k++)
+      std::vector<long> index(Psi1.size());
+      for (size_t k=0; k<Psi1.size(); k++)
 	index[k] = k;
-      int* indexcopy = new int[Psi1.size()];
+      long* indexcopy = new long[Psi1.size()];
       Determinant* dc = new Determinant[Psi1.size()];
       mergesort(&Psi1[0], 0, Psi1.size()-1, &index[0], dc, indexcopy);
       delete [] indexcopy;
@@ -501,8 +503,8 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
     int num_thrds = omp_get_max_threads();
 
 
-    std::vector<std::map<Determinant, pair<double,double> > > det_map(num_thrds);
-    std::map<Determinant, pair<double,double> >::iterator det_it;
+    vector<vector<double> > uniqueNumerator(num_thrds), uniqueEnergy(num_thrds); 
+    vector<vector<Determinant> > uniqueDets(num_thrds);
 
 #pragma omp parallel 
     {
@@ -514,25 +516,44 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
       for (int i=0; i<Dets.size(); i++) {
 	if (i%(omp_get_num_threads()) != omp_get_thread_num()) continue;
 	CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator, det_energy, schd,0, nelec);
-	if (i%1000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
       }
 
 
-      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "Before sort "<<getTime()-startofCalc<<endl;
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before sort "<<getTime()-startofCalc<<endl;
 
-      for (int i=0; i<Psi1.size(); i++) {      
-	det_it = det_map[omp_get_thread_num()].lower_bound(Psi1[i]);
-	if (det_it != det_map[omp_get_thread_num()].end() && Psi1[i] == det_it->first) {
-	  det_it->second.first += numerator[i];
-	}
-	else {
-	  det_map[omp_get_thread_num()].insert(det_it, map<Determinant, pair<double, double> >::value_type(Psi1[i], pair<double, double>(numerator[i], det_energy[i]) ));
-	}
+      uniqueDets[omp_get_thread_num()].resize(Psi1.size());
+      long* detIndex =  new long[Psi1.size()];
+      long* detIndexcopy = new long[Psi1.size()];
+      for (size_t i=0; i<Psi1.size(); i++)
+	detIndex[i] = i;      
+      mergesort(&Psi1[0], 0, Psi1.size()-1, detIndex, &uniqueDets[omp_get_thread_num()][0], detIndexcopy);
+      delete [] detIndexcopy;
 
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before Remove duplicates "<<getTime()-startofCalc<<"  "<<Psi1.size()<<endl;
+      //cout << "#Before Remove duplicates "<<getTime()-startofCalc<<"  "<<Psi1.size()<<endl;
+
+      size_t uniqueSize = 0;
+      uniqueNumerator[omp_get_thread_num()].resize(Psi1.size()), uniqueEnergy[omp_get_thread_num()].resize(Psi1.size()); 
+      uniqueDets[omp_get_thread_num()][uniqueSize] = Psi1[0];
+      uniqueNumerator[omp_get_thread_num()][uniqueSize] = numerator[ detIndex[0]];
+      uniqueEnergy[omp_get_thread_num()][uniqueSize] = det_energy[ detIndex[0]];
+      for (size_t i=1; i <Psi1.size(); i++) {
+	if (!(Psi1[i] == Psi1[i-1])) {
+	  uniqueSize++;
+	  uniqueDets[omp_get_thread_num()][uniqueSize] = Psi1[i];
+	  uniqueNumerator[omp_get_thread_num()][uniqueSize] = numerator[ detIndex[i]];
+	  uniqueEnergy[omp_get_thread_num()][uniqueSize] = det_energy[ detIndex[i]];
+	}
+	else 
+	  uniqueNumerator[omp_get_thread_num()][uniqueSize] += numerator[detIndex[i]];
       }
+      Psi1.resize(0); numerator.resize(0); det_energy.resize(0);
+      uniqueDets[omp_get_thread_num()].resize(uniqueSize+1);
+      uniqueNumerator[omp_get_thread_num()].resize(uniqueSize+1); uniqueEnergy[omp_get_thread_num()].resize(uniqueSize+1);
 
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<uniqueDets.size()<<endl;
 
-      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "Unique determinants "<<getTime()-startofCalc<<endl;
 
       for (int level=0; level<ceil(log2(omp_get_num_threads())); level++) {
 #pragma omp barrier
@@ -540,66 +561,99 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
 
 	  int other_thrd = omp_get_thread_num()+ipow(2,level);
 
-	  for (map<Determinant, pair<double, double> >::iterator it=det_map[other_thrd].begin(); it!=det_map[other_thrd].end(); ++it)  {
-	    map<Determinant, pair<double, double> >::iterator det_it = det_map[omp_get_thread_num()].lower_bound( it->first );
-	    
-	    if(det_it != det_map[omp_get_thread_num()].end() && det_it->first == it->first)  
-	      det_it->second.first += it->second.first;
-	    else
-	      det_map[omp_get_thread_num()].insert(det_it, map<Determinant, pair<double, double> >::value_type(it->first, pair<double, double>(it->second.first, it->second.second) ) );
+	  vector<Determinant> tempDet = uniqueDets[omp_get_thread_num()]; 
+	  vector<double> tempNum = uniqueNumerator[omp_get_thread_num()]; 
+	  vector<double> tempEn = uniqueEnergy[omp_get_thread_num()];
+	  
+	  uniqueDets[omp_get_thread_num()].resize(tempDet.size()+uniqueDets[other_thrd].size()); 
+	  uniqueNumerator[omp_get_thread_num()].resize(tempDet.size()+uniqueDets[other_thrd].size(),0.0); 
+	  uniqueEnergy[omp_get_thread_num()].resize(tempDet.size()+uniqueDets[other_thrd].size());
+	  size_t k = 0, j=0, l = 0;
+	  
+	  //Merge determinants
+	  while (j<tempDet.size() && k <uniqueDets[other_thrd].size()) {
+	    if (tempDet[j] < uniqueDets[other_thrd][k]) {
+	      uniqueDets[omp_get_thread_num()][l] = tempDet[j];
+	      uniqueNumerator[omp_get_thread_num()][l] = tempNum[j];
+	      uniqueEnergy[omp_get_thread_num()][l] = tempEn[j];
+	      j++; l++;
+	    }
+	    else {
+	      uniqueDets[omp_get_thread_num()][l] = uniqueDets[other_thrd][k];
+	      uniqueNumerator[omp_get_thread_num()][l] = uniqueNumerator[other_thrd][k];
+	      uniqueEnergy[omp_get_thread_num()][l] = uniqueEnergy[other_thrd][k];
+	      k++;l++;
+	    }
 	  }
-	  det_map[other_thrd].clear();
+	  while (j<tempDet.size()) {
+	    uniqueDets[omp_get_thread_num()][l] = tempDet[j];
+	    uniqueNumerator[omp_get_thread_num()][l] = tempNum[j];
+	    uniqueEnergy[omp_get_thread_num()][l] = tempEn[j];
+	    j++; l++;
+	  }
+	  while (k<uniqueDets[other_thrd].size()) {
+	    uniqueDets[omp_get_thread_num()][l] = uniqueDets[other_thrd][k];
+	    uniqueNumerator[omp_get_thread_num()][l] = uniqueNumerator[other_thrd][k];
+	    uniqueEnergy[omp_get_thread_num()][l] = uniqueEnergy[other_thrd][k];
+	    k++;l++;
+	  }
+	  uniqueDets[other_thrd].clear(); uniqueNumerator[other_thrd].clear();uniqueEnergy[other_thrd].clear();
+	  tempDet.clear(); tempNum.clear(); tempEn.clear();
+
+	  //unique determinants
+	  size_t uniqueIndex = 0;
+	  for (size_t j=1; j<uniqueDets[omp_get_thread_num()].size(); j++) {
+	    if (!(uniqueDets[omp_get_thread_num()][j] == uniqueDets[omp_get_thread_num()][uniqueIndex])) {
+	      uniqueIndex ++;
+	      uniqueDets[omp_get_thread_num()][uniqueIndex] = uniqueDets[omp_get_thread_num()][j];
+	      uniqueNumerator[omp_get_thread_num()][uniqueIndex] = uniqueNumerator[omp_get_thread_num()][j];
+	      uniqueEnergy[omp_get_thread_num()][uniqueIndex] = uniqueEnergy[omp_get_thread_num()][j];
+	    }
+	    else {
+	      uniqueNumerator[omp_get_thread_num()][uniqueIndex] += uniqueNumerator[omp_get_thread_num()][j];
+	    }
+	  }
+	  uniqueDets[omp_get_thread_num()].resize(uniqueIndex+1);
+	  uniqueNumerator[omp_get_thread_num()].resize(uniqueIndex+1);
+	  uniqueEnergy[omp_get_thread_num()].resize(uniqueIndex+1);
 	}	  
 
       }
 
-      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "Merging "<<getTime()-startofCalc<<endl;
-
     }
-    det_map.resize(1);
-
-
-
+    uniqueDets.resize(1); uniqueNumerator.resize(1); uniqueEnergy.resize(1);
 
     double totalPT=0.0;
-#pragma omp parallel 
+
+#pragma omp parallel
     {
-      double PTEnergy = 0.0;
-      map<Determinant, pair<double, double> >::iterator map_it = det_map[0].begin();
-
       vector<Determinant>::iterator vec_it = SortedDets.begin();
-      size_t startIter = omp_get_thread_num() * (det_map[0].size()/omp_get_num_threads()) ;
-      size_t endIter = startIter +  (det_map[0].size()/omp_get_num_threads()) ;
-      if (omp_get_thread_num() == num_thrds-1) endIter = det_map[0].size();
-
-      size_t cnt = 0;
-      while(map_it != det_map[0].end() ) {
-	if (cnt <startIter) {cnt++; map_it++;}
-	else if (cnt >=endIter) break;
-	else if ( map_it->first < *vec_it ) {
-	  PTEnergy += map_it->second.first*map_it->second.first/(E0-map_it->second.second); 
-	  map_it++;
-	  cnt++;
+      double PTEnergy = 0.0;
+      for (size_t i=0; i<uniqueDets[0].size();) {
+     	if (i%(omp_get_num_threads()) != omp_get_thread_num()) {i++;continue;}
+	if (uniqueDets[0][i] < *vec_it) {
+	  PTEnergy += uniqueNumerator[0][i]*uniqueNumerator[0][i]/(E0-uniqueEnergy[0][i]);
+	  i++;
 	}
-	else if (*vec_it < map_it->first && vec_it != SortedDets.end())
-	  vec_it++;
-	else if (*vec_it < map_it->first && vec_it == SortedDets.end()) {
-	  PTEnergy += map_it->second.first*map_it->second.first/(E0-map_it->second.second); 
-	  map_it++;
-	  cnt++;
+	else if (*vec_it < uniqueDets[0][i] && vec_it != SortedDets.end())
+	  vec_it ++;
+	else if (*vec_it < uniqueDets[0][i] && vec_it == SortedDets.end()) {
+	  PTEnergy += uniqueNumerator[0][i]*uniqueNumerator[0][i]/(E0-uniqueEnergy[0][i]);
+	  i++;
 	}
 	else {
-	  vec_it++; map_it++;cnt++;
+	  vec_it++; i++;
 	}
       }
-
 #pragma omp critical
       {
 	totalPT += PTEnergy;
       }
+      
     }
+    
 
-    if (mpigetrank() == 0) cout << "Done energy "<<totalPT<<"  "<<getTime()-startofCalc<<endl;
+    if (mpigetrank() == 0) cout << "#Done energy "<<totalPT<<"  "<<getTime()-startofCalc<<endl;
     return totalPT;
 }
 
@@ -800,8 +854,8 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
 	getDeterminants(Dets[i], abs(epsilon1/ci(i,0)), ci(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0, newDets[omp_get_thread_num()], schd, 0, nelec);
       }
 
-      int* indices = new int[newDets[omp_get_thread_num()].size()];
-      int* ic = new int[newDets[omp_get_thread_num()].size()];
+      long* indices = new long[newDets[omp_get_thread_num()].size()];
+      long* ic = new long[newDets[omp_get_thread_num()].size()];
       Determinant* dc = new Determinant[newDets[omp_get_thread_num()].size()];
       mergesort(&newDets[omp_get_thread_num()][0], 0, newDets[omp_get_thread_num()].size()-1, indices, dc, ic);
       delete [] indices;delete [] ic;delete [] dc;
@@ -851,7 +905,7 @@ double CIPSIbasics::DoVariational(MatrixXd& ci, vector<Determinant>& Dets, sched
       else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) > mpigetsize()) {
 	continue ;
       } 
-      else {
+      else if ( mpigetrank()%ipow(2, level) == 0) {
 	int toproc = mpigetrank()-ipow(2,level);
 	world.send(toproc, mpigetrank(), newDets[0].size());
 	if (newDets[0].size() > 0) 
