@@ -8,6 +8,26 @@
 using namespace std;
 using namespace Eigen;
 
+void Determinant::initLexicalOrder(int nelec) {
+  LexicalOrder.setZero(norbs-nelec+1, nelec);
+  Matrix<size_t, Dynamic, Dynamic> NodeWts(norbs-nelec+2, nelec+1);
+  NodeWts(0,0) = 1;
+  for (int i=0; i<nelec+1; i++)
+    NodeWts(0,i) = 1;
+  for (int i=0; i<norbs-nelec+2; i++)
+    NodeWts(i,0) = 1;
+
+  for (int i=1; i<norbs-nelec+2; i++)
+    for (int j=1; j<nelec+1; j++)
+      NodeWts(i,j) = NodeWts(i-1, j) + NodeWts(i, j-1);
+
+  for (int i=0; i<norbs-nelec+1; i++) {
+    for (int j=0; j<nelec; j++) {
+      LexicalOrder(i,j) = NodeWts(i,j+1)-NodeWts(i,j);
+    }
+  }
+}
+
 double parity(char* d, int& sizeA, int& i) {
   double sgn = 1.;
   for (int j=0; i<sizeA; j++) {
@@ -193,7 +213,7 @@ double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
   return energy*sgn;
 }
 
-double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE) {  
+double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {  
   int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
   cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
 
@@ -216,12 +236,18 @@ double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     cout <<"Use the function for energy"<<endl;
     exit(0);
   }
-  else if (ncre ==1 ) 
+  else if (ncre ==1 ) {
+    orbDiff = cre[0]*bra.norbs+des[0];
     return ket.Hij_1Excite(cre[0], des[0], I1, I2);
-  else if (ncre == 2)
+  }
+  else if (ncre == 2) {
+    orbDiff = cre[1]*bra.norbs*bra.norbs*bra.norbs+des[1]*bra.norbs*bra.norbs+cre[0]*bra.norbs+des[0];
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
-  else 
+  }
+  else {
+    cout << "Should not be here"<<endl;
     return 0.;
+  }
 }
 
 double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {

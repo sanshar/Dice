@@ -9,6 +9,7 @@
 #include "CIPSIbasics.h"
 #include "Davidson.h"
 #include <Eigen/Dense>
+#include <Eigen/Core>
 #include <set>
 #include <list>
 #include <tuple>
@@ -25,6 +26,7 @@ using namespace boost;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
+Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 //get the current time
 double getTime() {
   struct timeval start;
@@ -59,10 +61,12 @@ int main(int argc, char* argv[]) {
   Determinant::norbs = norbs; //spin orbitals
   HalfDet::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
+  Determinant::initLexicalOrder(nelec);
   if (Determinant::EffDetLen >DetLen) {
     cout << "change DetLen in global.h to "<<Determinant::EffDetLen<<" and recompile "<<endl;
     exit(0);
   }
+
 
   //initialize the heatback integral
   std::vector<int> allorbs;
@@ -88,11 +92,12 @@ int main(int argc, char* argv[]) {
     d.setocc(HFoccupied[i], true);
   }
 
+
   //have the dets, ci coefficient and diagnoal on all processors
   MatrixXd ci(1,1); ci(0,0) = 1.0;
   std::vector<Determinant> Dets(1,d);
 
-  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec);
+  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
 
   //print the 5 most important determinants and their weights
   MatrixXd prevci = 1.*ci;
@@ -103,7 +108,6 @@ int main(int argc, char* argv[]) {
     prevci(m,0) = 0.0;
   }
   prevci.resize(0,0);
-
 
 
   //now do the perturbative bit

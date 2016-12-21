@@ -28,7 +28,8 @@ private:
       & excitation				\
       & nvirt					\
       & singleList				\
-      & io;
+      & io                                      \
+      & DoRDM;
   }
   
 public:
@@ -49,6 +50,7 @@ public:
   int nvirt;
   bool singleList;
   bool io;
+  bool DoRDM;
 };
 
 #endif

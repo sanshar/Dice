@@ -31,6 +31,7 @@ void readInput(string input, std::vector<int>& occupied, schedule& schd) {
   schd.singleList = true;
   int nocc = -1;;
   schd.io = true;
+  schd.DoRDM = false;
 
   while (dump.good()) {
 
@@ -66,6 +67,8 @@ void readInput(string input, std::vector<int>& occupied, schedule& schd) {
       schd.epsilon2Large = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "onlyperturbative")) 
       schd.onlyperturbative = true;
+    else if (boost::iequals(ArgName, "dordm")) 
+      schd.DoRDM = true;
     else if (boost::iequals(ArgName, "nblocks")) 
       schd.nblocks = atof(tok[1].c_str());
     else if (boost::iequals(ArgName , "davidsonTol")) 

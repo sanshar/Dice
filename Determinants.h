@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <boost/serialization/serialization.hpp>
+#include <Eigen/Dense>
+
 
 class oneInt;
 class twoInt;
@@ -124,12 +126,14 @@ class Determinant {
   long repr[DetLen];
   static int norbs;
   static int EffDetLen;
+  static Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> LexicalOrder;
 
   Determinant() {
     for (int i=0; i<DetLen; i++)
       repr[i] = 0;
   }
 
+  static void initLexicalOrder(int nelec);
   void parity(int& i, int& j, int& a, int& b, double& sgn) ;
   void parity(const int& start, const int& end, double& parity) {
 
@@ -158,10 +162,27 @@ class Determinant {
 
   double Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
 
+  size_t getLexicalOrder() {
+    size_t order = 0;
+    int pnelec = 0;
+    long one = 1;
+    for(int i=0; i<EffDetLen; i++) {
+      long reprBit = repr[i];
+      while (reprBit != 0) {
+	int pos = __builtin_ffsl(reprBit);
+	order += LexicalOrder(i*64+pos-1-pnelec, pnelec);
+	pnelec++;
+	//reprBit = reprBit
+	reprBit &= ~(one<<(pos-1));
+      }
+    }
+    return order;
+  }
 
   //Is the excitation between *this and d less than equal to 2.
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
+
     for (int i=0; i<EffDetLen; i++) {
       u = repr[i] ^ d.repr[i];
       ndiff += BitCount(u);
@@ -322,7 +343,7 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 //1. this takes both bra and ket as char arrays
 double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
 //2. This takes actual determinants
-double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE);
+double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
 //3. this only takes the ket and the single excitation that gives a bra state
 double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA);
 //4. this only takes the ket and the double excitation that gives a bra state
