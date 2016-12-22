@@ -8,6 +8,34 @@
 using namespace std;
 using namespace Eigen;
 
+double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
+  double energy = 0.0;
+  size_t one = 1;
+  vector<int> closed;
+  for(int i=0; i<EffDetLen; i++) {
+    long reprBit = repr[i];
+    while (reprBit != 0) {
+      int pos = __builtin_ffsl(reprBit);
+      closed.push_back(pos-1);
+      reprBit &= ~(one<<(pos-1));
+    }
+  }
+
+  for (int i=0; i<closed.size(); i++) {
+    int I = closed.at(i);
+    energy += I1(I,I);
+
+    for (int j=i+1; j<closed.size(); j++) {
+      int  J = closed.at(j);
+      energy += I2.Direct(I/2,J/2);
+      if ( (I%2) == (J%2) )
+	energy -= I2.Exchange(I/2,J/2);
+    }
+  }
+  return energy+coreE;
+}
+
+
 void Determinant::initLexicalOrder(int nelec) {
   LexicalOrder.setZero(norbs-nelec+1, nelec);
   Matrix<size_t, Dynamic, Dynamic> NodeWts(norbs-nelec+2, nelec+1);
@@ -63,7 +91,9 @@ double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
       energy += I1( i,i);
       for (int j=i; j<sizeA; j++) {
 	if (ket[j]){
-	  energy += I2(i,i,j,j) - I2(i,j,i,j);
+	  energy += I2.Direct(i/2,j/2);
+	  if ( i%2 == j%2)
+	    energy -= I2.Exchange(i/2,j/2);
 	}
       }
     }

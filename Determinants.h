@@ -133,6 +133,17 @@ class Determinant {
       repr[i] = 0;
   }
 
+  Determinant(const Determinant& d) {
+    for (int i=0; i<DetLen; i++)
+      repr[i] = d.repr[i];
+  }
+
+  void operator=(const Determinant& d) {
+    for (int i=0; i<DetLen; i++)
+      repr[i] = d.repr[i];
+  }
+
+  double Energy(oneInt& I1, twoInt& I2, double& coreE);
   static void initLexicalOrder(int nelec);
   void parity(int& i, int& j, int& a, int& b, double& sgn) ;
   void parity(const int& start, const int& end, double& parity) {

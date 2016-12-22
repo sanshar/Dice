@@ -554,11 +554,11 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
     
     //map<Determinant, std::tuple<double,double,double, double, double> > Psi1ab; 
     std::vector<Determinant> Psi1; std::vector<double>  numerator1A, numerator2A;
-    std::vector<double>  numerator1B, numerator2B;
+    vector<bool> present;
     std::vector<double>  det_energy;
     for (int i=0; i<distinctSample; i++) {
       int I = Sample1[i];
-      CIPSIbasics::getDeterminants2Epsilon(Dets[I], abs(schd.epsilon2/ci(I,0)), abs(schd.epsilon2Large/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, numerator1B, numerator2B, det_energy, schd, Nmc, nelec);
+      CIPSIbasics::getDeterminants2Epsilon(Dets[I], abs(schd.epsilon2/ci(I,0)), abs(schd.epsilon2Large/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, present, det_energy, schd, Nmc, nelec);
     }
 
       std::vector<long> index(Psi1.size());
@@ -579,8 +579,11 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
 	if (Psi1[i] < *vec_it) {
 	  currentNum1A += numerator1A[index[i]];
 	  currentNum2A += numerator2A[index[i]];
-	  currentNum1B += numerator1B[index[i]];
-	  currentNum2B += numerator2B[index[i]];
+	  if (present[index[i]]) {
+	    currentNum1B += numerator1A[index[i]];
+	    currentNum2B += numerator2A[index[i]];
+	  }
+
 	  if ( i == Psi1.size()-1) {
 	    energyEN += (currentNum1A*currentNum1A*Nmc/(Nmc-1) - currentNum2A)/(det_energy[index[i]] - E0);
 	    energyENLargeEps += (currentNum1B*currentNum1B*Nmc/(Nmc-1) - currentNum2B)/(det_energy[index[i]] - E0);
@@ -600,8 +603,11 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
 	else if (*vec_it <Psi1[i] && vec_it == SortedDets.end()) {
 	  currentNum1A += numerator1A[index[i]];
 	  currentNum2A += numerator2A[index[i]];
-	  currentNum1B += numerator1B[index[i]];
-	  currentNum2B += numerator2B[index[i]];
+	  if (present[index[i]]) {
+	    currentNum1B += numerator1A[index[i]];
+	    currentNum2B += numerator2A[index[i]];
+	  }
+
 	  if ( i == Psi1.size()-1) {
 	    energyEN += (currentNum1A*currentNum1A*Nmc/(Nmc-1) - currentNum2A)/(det_energy[index[i]] - E0);
 	    energyENLargeEps += (currentNum1B*currentNum1B*Nmc/(Nmc-1) - currentNum2B)/(det_energy[index[i]] - E0);
@@ -840,9 +846,30 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
     uniqueDEH[0].clear();
     
     if (mpigetrank() == 0) cout << "#Before mpi reduce "<<DataPerProc[mpigetrank()].Det->size()<<"  "<<getTime()-startofCalc<<"  "<<endl;
+
+    //Should probably use mpi SCatter/Gather instead of the current way3
     for (int proc = 0; proc<mpigetsize(); proc++) {
-      mpi::reduce(world, DataPerProc[proc], uniqueDEH[0], ElementWiseAddStitchDEH(), proc);
-      DataPerProc[proc].clear();
+
+      if (mpigetrank() == proc) {
+	uniqueDEH[0].deepCopy(DataPerProc[proc]);
+	DataPerProc[proc].clear();
+      
+	for (int proc2=0; proc2<mpigetsize(); proc2++) {
+	  if (proc2 == proc) continue;
+	  StitchDEH otherProc;
+	  world.recv(proc2, proc*mpigetsize()+proc2, *otherProc.Det);
+	  world.recv(proc2, proc*mpigetsize()+proc2, *otherProc.Num);
+	  world.recv(proc2, proc*mpigetsize()+proc2, *otherProc.Energy);
+	  uniqueDEH[0].merge(otherProc);
+	  uniqueDEH[0].RemoveDuplicates();
+	}
+      }
+      else {
+	world.send(proc, proc*mpigetsize()+mpigetrank(), *DataPerProc[proc].Det);
+	world.send(proc, proc*mpigetsize()+mpigetrank(), *DataPerProc[proc].Num);
+	world.send(proc, proc*mpigetsize()+mpigetrank(), *DataPerProc[proc].Energy);
+	DataPerProc[proc].clear();
+      }
     }
     if (mpigetrank() == 0) cout << "#after mpi reduce, before merge "<<DataPerProc[mpigetrank()].Det->size()<<"  "<<getTime()-startofCalc<<"  "<<endl;
     uniqueDEH[0].RemoveDuplicates();
@@ -873,7 +900,7 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
   double finalE = 0.;
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
   
-  if (mpigetrank() == 0) cout << "#Done energy "<<finalE<<"  "<<getTime()-startofCalc<<endl;
+  if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
   return finalE;
 }
 
@@ -1535,7 +1562,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1A, vector<double>& numerator2A, vector<double>& numerator1B, vector<double>& numerator2B, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];
@@ -1566,13 +1593,10 @@ void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double
       numerator1A.push_back(integral*ci1);
       numerator2A.push_back(integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2));
 
-      if (fabs(integral) >epsilonLarge) {
-	numerator1B.push_back(integral*ci1);
-	numerator2B.push_back(integral*integral*ci1*(ci1*Nmc/(Nmc-1)-ci2));
-      }
-      else {
-	numerator1B.push_back(0.0); numerator2B.push_back(0.0);
-      }
+      if (fabs(integral) >epsilonLarge) 
+	present.push_back(true);
+      else 
+	present.push_back(false);
 
       energy.push_back(E);
     }
@@ -1607,13 +1631,11 @@ void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double
 	  numerator2A.push_back(it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2));
 
 
-	  if (fabs(it->first) >epsilonLarge) {
-	    numerator1B.push_back(it->first*ci1*sgn);
-	    numerator2B.push_back(it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2));
-	  }
-	  else {
-	    numerator1B.push_back(0.0); numerator2B.push_back(0.0);
-	  }
+	  if (fabs(it->first) >epsilonLarge) 
+	    present.push_back(true);
+	  else 
+	    present.push_back(false);
+
 	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
 	  energy.push_back(E);
 
