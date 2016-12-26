@@ -30,7 +30,7 @@ using namespace Eigen;
 using namespace boost;
 
 void RemoveDuplicates(vector<Determinant>& Det) {
-  
+  if (Det.size() <= 1) return;
   std::vector<Determinant>& Detcopy = Det;
   size_t uniqueSize = 0;
   for (size_t i=1; i <Detcopy.size(); i++) {
@@ -195,24 +195,26 @@ public:
   void QuickSortAndRemoveDuplicates() {
     quickSort(&(Det->operator[](0)), 0, Det->size(), &(Num->operator[](0)), &(Energy->operator[](0)));
 
+    //if (Det->size() == 1) return;
+    if (Det->size() <= 1) return;
     
     std::vector<Determinant>& Detcopy = *Det;
     std::vector<double>& Numcopy = *Num;
     std::vector<double>& Ecopy = *Energy;
-    size_t uniqueSize = 0;
+    size_t uniqueSize = 1;
     for (size_t i=1; i <Detcopy.size(); i++) {
       if (!(Detcopy[i] == Detcopy[i-1])) {
-	uniqueSize++;
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
 	Energy->operator[](uniqueSize) = Ecopy[i];
+	uniqueSize++;
       }
       else 
 	Num->operator[](uniqueSize) += Numcopy[i];
     }
-    Det->resize(uniqueSize+1);
-    Num->resize(uniqueSize+1);
-    Energy->resize(uniqueSize+1);
+    Det->resize(uniqueSize);
+    Num->resize(uniqueSize);
+    Energy->resize(uniqueSize);
     
   }
 
@@ -226,6 +228,8 @@ public:
     mergesort(&Detcopy[0], 0, Detcopy.size()-1, detIndex, &( Det->operator[](0)), detIndexcopy);
     delete [] detIndexcopy;
 
+    //if (Det->size() == 1) return;
+    if (Det->size() <= 1) return;
     std::vector<double> Numcopy = *Num;
     std::vector<double> Ecopy = *Energy;
     size_t uniqueSize = 0;
@@ -283,6 +287,8 @@ public:
       std::vector<double>& Numcopy = *Num;
       std::vector<double>& Ecopy = *Energy;
 
+      if (Det->size() <= 1) return;
+      //if (Det->size() == 1) return;
       size_t uniqueSize = 0;
       for (size_t i=1; i <Detcopy.size(); i++) {
 	if (!(Detcopy[i] == Detcopy[i-1])) {
@@ -1095,7 +1101,6 @@ vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determina
   std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1;
   PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
 
-
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
@@ -1111,15 +1116,18 @@ vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determina
   pout << "#HF = "<<E0[0]<<std::endl;
 
   //this is essentially the hamiltonian, we have stored it in a sparse format
-  std::vector<std::vector<int> > connections(1, std::vector<int>(1,0));
-  std::vector<std::vector<double> > Helements(1, std::vector<double>(1,E0[0]));
-  std::vector<std::vector<size_t> > orbDifference(1, std::vector<size_t>(1, 0));
-  if (mpigetrank() != 0) {connections.resize(0); Helements.resize(0);orbDifference.resize(0);}
-
+  std::vector<std::vector<int> > connections; connections.resize(Dets.size());
+  std::vector<std::vector<double> > Helements;Helements.resize(Dets.size());
+  std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
+  MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
+		   norbs, I1, I2, coreE, orbDifference, DoRDM);
+  //if (mpigetrank() != 0) {connections.resize(0); Helements.resize(0);orbDifference.resize(0);}
 
   //keep the diagonal energies of determinants so we only have to generated
   //this for the new determinants in each iteration and not all determinants
-  MatrixXd diagOld(1,1); diagOld(0,0) = E0[0];
+  MatrixXd diagOld(Dets.size(),1); 
+  for (int i=0; i<Dets.size(); i++)
+    diagOld(i,0) = Dets[i].Energy(I1, I2, coreE);
   int prevSize = 0;
 
   int iterstart = 0;
@@ -1166,7 +1174,7 @@ vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determina
       //std::sort(newDets[omp_get_thread_num()].begin(), newDets[omp_get_thread_num()].end());
       //newDets[omp_get_thread_num()].erase(unique(newDets[omp_get_thread_num()].begin(), newDets[omp_get_thread_num()].end()),  newDets[omp_get_thread_num()].end());
       RemoveDuplicates(newDets[omp_get_thread_num()]);
-      
+
       for (int level=0; level<ceil(log2(omp_get_num_threads())); level++) {
 #pragma omp barrier
 	if (omp_get_thread_num()%ipow(2,level+1) == 0 && omp_get_thread_num() + ipow(2,level) < omp_get_num_threads() ) {
@@ -1176,6 +1184,7 @@ vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determina
 	  vector<Determinant> merged;
 
 	  std::merge(newDets[this_thrd].begin(), newDets[this_thrd].end(), newDets[other_thrd].begin(), newDets[other_thrd].end(), std::insert_iterator<vector<Determinant> >(merged, merged.end()));
+	  //merged.erase(std::unique(merged.begin(), merged.end()), merged.end() );
 	  RemoveDuplicates(merged);
 
 	  newDets[this_thrd] = merged;

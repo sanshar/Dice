@@ -10,7 +10,7 @@
 using namespace std;
 using namespace boost;
 
-void readInput(string input, std::vector<int>& occupied, schedule& schd) {
+void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd) {
   ifstream dump(input.c_str());
   int maxiter = -1;
   vector<int> sweep_iter;
@@ -52,13 +52,27 @@ void readInput(string input, std::vector<int>& occupied, schedule& schd) {
 
     if (boost::iequals(ArgName, "nocc")) {
       nocc = atoi(tok[1].c_str());
-      occupied.resize(nocc);
-      cout << "#";
-      for (int i=0; i<nocc; i++) {
-	dump >> occupied[i];
-	cout << occupied[i]<<" ";
+
+      std::string
+	Line;
+      vector<string> tok;
+
+      std::getline(dump, Line);      
+      boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
+      int index =0;
+      while (!boost::iequals(tok[0], "end")) {
+
+	occupied.push_back(vector<int>(nocc));
+	cout << "#";
+	for (int i=0; i<tok.size(); i++) {
+	  occupied[index][i] = atoi(tok[i].c_str());
+	  cout << occupied[index][i]<<" ";
+	}
+	cout <<endl;
+	std::getline(dump, Line);      
+	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
+	index++;
       }
-      cout <<endl;
     }
     else if (boost::iequals(ArgName, "noio")) 
       schd.io=false;

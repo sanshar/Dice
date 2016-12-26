@@ -67,6 +67,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     
     long npair = norbs*(norbs+1)/2;
     I2.store.resize( npair*(npair+1)/2);
+    //I2.store.resize( npair*npair, npair*npair);
     I1.store.resize(npair);
     coreE = 0.0;
     

@@ -38,7 +38,7 @@ double startofCalc = getTime();
 
 
 
-void readInput(string input, std::vector<int>& occupied, schedule& schd);
+void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
 
 
 int main(int argc, char* argv[]) {
@@ -56,9 +56,6 @@ int main(int argc, char* argv[]) {
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
-
-  if (mpigetrank() == 1)
-    cout << irrep.size()<<endl;
 
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
@@ -80,7 +77,7 @@ int main(int argc, char* argv[]) {
 
 
   int num_thrds;
-  std::vector<int> HFoccupied; //double epsilon1, epsilon2, tol, dE;
+  std::vector<std::vector<int> > HFoccupied; //double epsilon1, epsilon2, tol, dE;
   schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
@@ -89,16 +86,27 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, schd, 0);
 #endif
 
+  //have the dets, ci coefficient and diagnoal on all processors
+  vector<MatrixXd> ci(schd.nroots, MatrixXd::Zero(HFoccupied.size(),1)); 
+
   //make HF determinant
-  Determinant d;
-  for (int i=0; i<HFoccupied.size(); i++) {
-    d.setocc(HFoccupied[i], true);
+  vector<Determinant> Dets(HFoccupied.size());
+  for (int d=0;d<HFoccupied.size(); d++) {
+    for (int i=0; i<HFoccupied[d].size(); i++) {
+      Dets[d].setocc(HFoccupied[d][i], true);
+    }
   }
 
+  for (int i=0; i<schd.nroots; i++) {
+    ci[i].setRandom();
+    for (int j=0; j<i; j++) {
+      double overlap = (ci[i].transpose()*ci[j])(0,0);
+      ci[i] -= overlap*ci[j];
+    }
+    ci[i] = ci[i]/ci[i].norm();
+  }
+    //b.col(i) = b.col(i)/b.col(i).norm();
 
-  //have the dets, ci coefficient and diagnoal on all processors
-  vector<MatrixXd> ci(schd.nroots, MatrixXd(1,1)); ci[0](0,0) = 1.0;
-  std::vector<Determinant> Dets(1,d);
 
   vector<double> E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
 
