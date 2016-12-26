@@ -88,7 +88,7 @@ class HalfDet {
   int getClosed(vector<int>& closed){
     int cindex = 0;
     for (int i=0; i<32*DetLen; i++) {
-      if (getocc(i)) {closed[cindex] = i; cindex++;}
+      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
     }
     return cindex;
   }

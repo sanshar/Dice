@@ -57,6 +57,9 @@ int main(int argc, char* argv[]) {
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
 
+  if (mpigetrank() == 1)
+    cout << irrep.size()<<endl;
+
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
   HalfDet::norbs = norbs; //spin orbitals
@@ -94,45 +97,50 @@ int main(int argc, char* argv[]) {
 
 
   //have the dets, ci coefficient and diagnoal on all processors
-  MatrixXd ci(1,1); ci(0,0) = 1.0;
+  vector<MatrixXd> ci(schd.nroots, MatrixXd(1,1)); ci[0](0,0) = 1.0;
   std::vector<Determinant> Dets(1,d);
 
-  double E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
+  vector<double> E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
 
   //print the 5 most important determinants and their weights
-  MatrixXd prevci = 1.*ci;
-  for (int i=0; i<10; i++) {
-    compAbs comp;
-    int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-    pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
-    prevci(m,0) = 0.0;
+  for (int root=0; root<schd.nroots; root++) {
+    pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
+    MatrixXd prevci = 1.*ci[root];
+    for (int i=0; i<5; i++) {
+      compAbs comp;
+      int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
+      prevci(m,0) = 0.0;
+    }
   }
-  prevci.resize(0,0);
+  pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
-
+  I2.store.resize(0);
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
     //CIPSIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
-    CIPSIbasics::DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    for (int root=0; root<schd.nroots;root++) {
+      CIPSIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    }
   }
   else if (!schd.stochastic) {
-    CIPSIbasics::DoBatchDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1 && schd.singleList){
-    CIPSIbasics::DoPerturbativeStochasticSingleList(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoPerturbativeStochasticSingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1 && !schd.singleList){
-    CIPSIbasics::DoPerturbativeStochastic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
-    CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN != -1 && schd.singleList){
-    CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else { 
     //Here I will implement the alias method
-    CIPSIbasics::DoPerturbativeStochastic2(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    CIPSIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
   return 0;

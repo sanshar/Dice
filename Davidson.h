@@ -10,7 +10,7 @@ using namespace std;
 
 
 void precondition(MatrixXd& r, MatrixXd& diag, double& e);
-double davidson(Hmult2& H, MatrixXd& x0, MatrixXd& diag, int maxCopies, double tol, bool print);
+vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int maxCopies, double tol, bool print);
 double LinearSolver(Hmult2& H, MatrixXd& x0, MatrixXd& b, double tol, bool print);
 
 #endif

@@ -16,7 +16,7 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
     long reprBit = repr[i];
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
-      closed.push_back(pos-1);
+      closed.push_back(i*64+pos-1);
       reprBit &= ~(one<<(pos-1));
     }
   }
@@ -233,12 +233,14 @@ double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
   long one = 1;
   for (int I=0; I<EffDetLen; I++) {
 
-    int loop = min(64, norbs-I*64);
-    for (long bit=0; bit<loop; bit++) {
-      int j = I*64+bit;
-      energy += (repr[I]>>bit&one) *(I2(a,i,j,j) - I2(a,j,i,j));
-      //if (repr[I]>>bit == 0) break;
+    long reprBit = repr[I];
+    while (reprBit != 0) {
+      int pos = __builtin_ffsl(reprBit);
+      int j = I*64+pos-1;
+      energy += (I2(a,i,j,j) - I2(a,j,i,j));
+      reprBit &= ~(one<<(pos-1));
     }
+
   }
   return energy*sgn;
 }
@@ -251,15 +253,19 @@ double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     u = bra.repr[i] ^ ket.repr[i];
     b = u & bra.repr[i]; //the cre bits
     k = u & ket.repr[i]; //the des bits
-    for (int j=0;j<64;j++) {
-      if (b>>j == 0) break;
-      if (b>>j & 1) {cre[ncre] = j+i*64; ncre++;}
+
+    while(b != 0) {
+      int pos = __builtin_ffsl(b);
+      cre[ncre] = pos-1+i*64;
+      ncre++;
+      b &= ~(one<<(pos-1));
     }
-    for (int j=0;j<64;j++) {
-      if (k>>j == 0) break;
-      if (k>>j & 1) {des[ndes] = j+i*64; ndes++;}
+    while(k != 0) {
+      int pos = __builtin_ffsl(k);
+      des[ndes] = pos-1+i*64;
+      ndes++;
+      k &= ~(one<<(pos-1));
     }
-    
   }
 
   if (ncre == 0) {

@@ -26,21 +26,21 @@ namespace CIPSIbasics {
   int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts);
 
   
-  void writeVariationalResult(int iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+  void writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
-			      double& E0, bool converged, schedule& schd,   
+			      vector<double>& E0, bool converged, schedule& schd,   
 			      std::map<HalfDet, std::vector<int> >& BetaN, 
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
-  void readVariationalResult(int& iter, MatrixXd& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+  void readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			     MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
-			     double& E0, bool& converged, schedule& schd,
+			     vector<double>& E0, bool& converged, schedule& schd,
 			     std::map<HalfDet, std::vector<int> >& BetaN, 
 			     std::map<HalfDet, std::vector<int> >& AlphaNm1);
-  double DoVariational(MatrixXd& ci, vector<Determinant>& Dets, schedule& schd,
-		       twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
-		       bool DoRDM=false);
+  vector<double> DoVariational(vector<MatrixXd>& ci, vector<Determinant>& Dets, schedule& schd,
+			       twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
+			       bool DoRDM=false);
   void EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
-			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd);
+			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root);
 
 
 

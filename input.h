@@ -29,6 +29,7 @@ private:
       & nvirt					\
       & singleList				\
       & io                                      \
+      & nroots                                  \
       & DoRDM;
   }
   
@@ -50,6 +51,7 @@ public:
   int nvirt;
   bool singleList;
   bool io;
+  int nroots;
   bool DoRDM;
 };
 
