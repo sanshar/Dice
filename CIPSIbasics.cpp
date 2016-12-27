@@ -201,20 +201,20 @@ public:
     std::vector<Determinant>& Detcopy = *Det;
     std::vector<double>& Numcopy = *Num;
     std::vector<double>& Ecopy = *Energy;
-    size_t uniqueSize = 1;
+    size_t uniqueSize = 0;
     for (size_t i=1; i <Detcopy.size(); i++) {
       if (!(Detcopy[i] == Detcopy[i-1])) {
+	uniqueSize++;
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
 	Energy->operator[](uniqueSize) = Ecopy[i];
-	uniqueSize++;
       }
       else 
 	Num->operator[](uniqueSize) += Numcopy[i];
     }
-    Det->resize(uniqueSize);
-    Num->resize(uniqueSize);
-    Energy->resize(uniqueSize);
+    Det->resize(uniqueSize+1);
+    Num->resize(uniqueSize+1);
+    Energy->resize(uniqueSize+1);
     
   }
 

@@ -18,6 +18,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   if (mpigetrank() == 0) {
 
+    I2.ksym = false;
     ifstream dump(fcidump.c_str());
     bool startScaling = false;
     norbs = -1;
@@ -46,6 +47,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 	}
 	else if (boost::iequals(tok[0].substr(0,4),"ISYM"))
 	  continue;
+	else if (boost::iequals(tok[0].substr(0,4),"KSYM"))
+	  I2.ksym = true;
 	else if (boost::iequals(tok[0].substr(0,6),"ORBSYM")) {
 	  for (int i=1;i<tok.size(); i++)
 	    irrep.push_back(atoi(tok[i].c_str()));
@@ -66,6 +69,11 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     irrep.resize(norbs);
     
     long npair = norbs*(norbs+1)/2;
+    //I2.ksym = true;
+    if (I2.ksym) {
+      npair = norbs*norbs;
+    }
+    I2.norbs = norbs;
     I2.store.resize( npair*(npair+1)/2);
     //I2.store.resize( npair*npair, npair*npair);
     I1.store.resize(npair);
@@ -97,7 +105,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
 	I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
-	I2.Exchange(i,j) = I2(2*i,2*j,2*i,2*j);
+	I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
       }
     
   }

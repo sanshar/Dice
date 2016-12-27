@@ -105,7 +105,11 @@ vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int max
     iter++;
 
     if (error < tol || iter >200) {
-      if (iter >200) return eroots;
+      if (iter >200) {
+	cout << "Didnt converge"<<endl;
+	exit(0);
+	return eroots;
+      }
       convergedRoot++;
       pout << str(boost::format("#converged root:%3d -> Energy : %18.10g  \n") % (convergedRoot-1) % ei );
       if (convergedRoot == nroots) {

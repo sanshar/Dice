@@ -52,13 +52,17 @@ class twoInt {
 	& maxEntry \
 	& Direct \
 	& Exchange \
-	& zero;
+	& zero     \
+	& norbs   \
+	& ksym;
     }
  public:
   std::vector<double> store;
   double maxEntry;
   MatrixXd Direct, Exchange;
   double zero ;
+  size_t norbs;
+  bool ksym;
  twoInt() :zero(0.0),maxEntry(100.) {}
   inline double& operator()(int i, int j, int k, int l) {
     zero = 0.0;
@@ -66,11 +70,18 @@ class twoInt {
       return zero;
     }
     int I=i/2;int J=j/2;int K=k/2;int L=l/2;
-    
-    int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
-    int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
-    int A = max(IJ,KL), B = min(IJ,KL);
-    return store[A*(A+1)/2+B];
+
+    if(!ksym) {
+      int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+      int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+      int A = max(IJ,KL), B = min(IJ,KL);
+      return store[A*(A+1)/2+B];
+    }
+    else {
+      int IJ = I*norbs+J, KL = K*norbs+L;
+      int A = max(IJ,KL), B = min(IJ,KL);
+      return store[A*(A+1)/2+B];
+    }
   }
   
 };

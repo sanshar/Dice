@@ -24,14 +24,15 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
   for (int i=0; i<closed.size(); i++) {
     int I = closed.at(i);
     energy += I1(I,I);
-
     for (int j=i+1; j<closed.size(); j++) {
       int  J = closed.at(j);
       energy += I2.Direct(I/2,J/2);
-      if ( (I%2) == (J%2) )
-	energy -= I2.Exchange(I/2,J/2);
+      if ( (I%2) == (J%2) ) {
+	energy -= I2.Exchange(I/2, J/2);
+      }
     }
   }
+
   return energy+coreE;
 }
 
@@ -153,7 +154,7 @@ double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA) 
   double energy = I1(a,i);
   for (int j=0; j<sizeA; j++)
     if (ket[j] != 0)
-      energy += (I2(a,i,j,j) - I2(a,j,i,j));
+      energy += (I2(a,i,j,j) - I2(a,j,j,i));
   return energy*sgn;
 }
 
@@ -237,7 +238,7 @@ double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
       int j = I*64+pos-1;
-      energy += (I2(a,i,j,j) - I2(a,j,i,j));
+      energy += (I2(a,i,j,j) - I2(a,j,j,i));
       reprBit &= ~(one<<(pos-1));
     }
 
@@ -294,7 +295,7 @@ double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclos
   for (int j=0; j<nclosed; j++) {
     if (closed[j]>min(i,a)&& closed[j] <max(i,a))
       sgn*=-1.;
-    energy += (I2(a,i,closed[j],closed[j]) - I2(a,closed[j],i,closed[j]));
+    energy += (I2(a,i,closed[j],closed[j]) - I2(a,closed[j],closed[j], i));
   }
 
   return energy*sgn;
