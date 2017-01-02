@@ -32,6 +32,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   int nocc = -1;;
   schd.io = true;
   schd.nroots = 1;
+  schd.nPTiter = 1000000;
   schd.DoRDM = false;
 
   while (dump.good()) {
@@ -39,6 +40,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     std::string
       Line;
     std::getline(dump, Line);
+    trim(Line);
     cout << "#"<<Line<<endl;
 
     vector<string> tok;
@@ -58,11 +60,16 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       vector<string> tok;
 
       std::getline(dump, Line);      
+      trim(Line);
       boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
       int index =0;
       while (!boost::iequals(tok[0], "end")) {
 
 	occupied.push_back(vector<int>(nocc));
+	if (nocc != tok.size()) {
+	  cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
+	  exit(0);
+	}
 	cout << "#";
 	for (int i=0; i<tok.size(); i++) {
 	  occupied[index][i] = atoi(tok[i].c_str());
@@ -71,11 +78,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	cout <<endl;
 	std::getline(dump, Line);      
 	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
+	trim(Line);
 	index++;
       }
     }
     else if (boost::iequals(ArgName, "noio")) 
       schd.io=false;
+    else if (boost::iequals(ArgName, "nptiter")) 
+      schd.nPTiter=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon2")) 
       schd.epsilon2 = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "nroots")) 

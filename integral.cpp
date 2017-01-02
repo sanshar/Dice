@@ -74,11 +74,11 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       npair = norbs*norbs;
     }
     I2.norbs = norbs;
-    I2.store.resize( npair*(npair+1)/2);
+    I2.store.resize( npair*(npair+1)/2, 0.0);
     //I2.store.resize( npair*npair, npair*npair);
-    I1.store.resize(npair);
+    I1.store.resize(npair,0.0);
     coreE = 0.0;
-    
+
     while(!dump.eof()) {
       std::getline(dump, msg);
       trim(msg);
@@ -98,27 +98,49 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       else
 	I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
     }
+
+    //exit(0);
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2.store.size(),myfn);
-    I2.Direct = MatrixXd(norbs, norbs); I2.Direct *= 0.;
-    I2.Exchange = MatrixXd(norbs, norbs); I2.Exchange *= 0.;
+    I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
+    I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
     
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
 	I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
 	I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
       }
-    
   }
 
 #ifndef SERIAL
   boost::mpi::communicator world;
   mpi::broadcast(world, I1, 0);
-  mpi::broadcast(world, I2, 0);
+
+  size_t i2size = I2.store.size();
+  mpi::broadcast(world, i2size, 0);
+  if (mpigetrank() != 0)
+    I2.store.resize(i2size);
+
+  long intdim = I2.store.size();
+  long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
+  long maxIter = intdim/maxint; 
+  for (int i=0; i<maxIter; i++) {
+    MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+  }
+  MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2.store.size() - maxIter*maxint, MPI_DOUBLE, 0);
+
+  mpi::broadcast(world, I2.ksym, 0);
+  mpi::broadcast(world, I2.maxEntry, 0);
+  mpi::broadcast(world, I2.Direct, 0);
+  mpi::broadcast(world, I2.Exchange, 0);
+  mpi::broadcast(world, I2.norbs, 0);
+  mpi::broadcast(world, I2.zero, 0);
+
   mpi::broadcast(world, nelec, 0);
   mpi::broadcast(world, norbs, 0);
   mpi::broadcast(world, coreE, 0);
   mpi::broadcast(world, irrep, 0);
 #endif
+
   return;
     
 

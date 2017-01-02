@@ -285,8 +285,18 @@ class Determinant {
   friend ostream& operator<<(ostream& os, const Determinant& d) {
     char det[norbs];
     d.getRepArray(det);
-    for (int i=0; i<norbs; i++)
-      os<<(int)(det[i])<<" ";
+    for (int i=0; i<norbs/2; i++) {
+      if (det[2*i]==false && det[2*i+1] == false)
+	os<<0<<" ";
+      else if (det[2*i]==true && det[2*i+1] == false)
+	os<<"a"<<" ";
+      else if (det[2*i]==false && det[2*i+1] == true)
+	os<<"b"<<" ";
+      else if (det[2*i]==true && det[2*i+1] == true)
+	os<<2<<" ";
+      if (i%5 == 0 && i!= 0)
+	os <<"  ";
+    }
     return os;
   }
 

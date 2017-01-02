@@ -610,7 +610,7 @@ int CIPSIbasics::sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sa
 
 
 void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-								    twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+								    twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
   char file [5000];
@@ -625,7 +625,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
 
   int norbs = Determinant::norbs;
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-  int niter = 1000000;
+  int niter = schd.nPTiter;
   //double eps = 0.001;
   int Nsample = schd.SampleN;
   double AvgenergyEN = 0.0;
@@ -734,14 +734,14 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
     {
       if (mpigetrank() == 0) {
 	AvgenergyEN += -energyEN+energyENLargeEps+EptLarge; currentIter++;
-	std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % (norm) % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	cout << endl;
       }
       else {
 	AvgenergyEN += -energyEN+energyENLargeEps+EptLarge; currentIter++;
-	ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % (norm) % (E0+AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	ofs << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
+	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	ofs << endl;
 	
       }
@@ -752,7 +752,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
 }
 
 void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-						      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+						      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
   char file [5000];
@@ -761,7 +761,8 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
 
     int norbs = Determinant::norbs;
     std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-    int niter = 1000000;
+    int niter = schd.nPTiter;
+  //int niter = 1000000;
     //double eps = 0.001;
     int Nsample = schd.SampleN;
     double AvgenergyEN = 0.0;
@@ -850,6 +851,20 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
       {
 	if (mpigetrank() == 0) {
 	  AvgenergyEN += energyEN; currentIter++;
+	  std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % ("Root") % root % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  cout << endl;
+	}
+	else {
+	  AvgenergyEN += energyEN; currentIter++;
+	  ofs << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
+	    %(currentIter) % (E0-energyEN) % ("Root") % root % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  ofs << endl;
+	  
+	}
+      /*
+	if (mpigetrank() == 0) {
+	  AvgenergyEN += energyEN; currentIter++;
 	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  cout << endl;
@@ -862,6 +877,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
 	  ofs << endl;
 
 	}
+      */
       }
     }
     ofs.close();
@@ -1416,11 +1432,11 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
   d.getRepArray(detArray);
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
-  
+  bool parallelRegion = mpigetsize() == 1 ? false : true;
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
     double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
@@ -1430,10 +1446,13 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
-      if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
-	dets.pop_back();
-	continue;
+      if (parallelRegion) {
+	if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
+	  dets.pop_back();
+	  continue;
+	}
       }
+
 
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
 
@@ -1457,18 +1476,20 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
 	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 	
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  dets.push_back(d);
 	  Determinant& di = *dets.rbegin();
 	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	  
-	  if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
-	    dets.pop_back();
-	    continue;
+
+	  if (parallelRegion) {
+	    if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
+	      dets.pop_back();
+	      continue;
+	    }
 	  }
-	  
+
 	  double sgn = 1.0;
 	  di.parity(a, b, closed[i], closed[j], sgn);
 	  numerator.push_back(it->first*sgn*ci1);
@@ -1584,7 +1605,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
     double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
@@ -1610,7 +1631,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
 	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  dets.push_back(d);
@@ -1645,7 +1666,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
     double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
@@ -1678,7 +1699,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
 	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  dets.push_back(d);
@@ -1758,7 +1779,7 @@ void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
 	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  dets.push_back(d);

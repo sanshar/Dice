@@ -97,14 +97,19 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  for (int i=0; i<schd.nroots; i++) {
-    ci[i].setRandom();
-    for (int j=0; j<i; j++) {
-      double overlap = (ci[i].transpose()*ci[j])(0,0);
-      ci[i] -= overlap*ci[j];
+  if (mpigetrank() == 0) {
+    for (int i=0; i<schd.nroots; i++) {
+      ci[i].setRandom();
+      for (int j=0; j<i; j++) {
+	double overlap = (ci[i].transpose()*ci[j])(0,0);
+	ci[i] -= overlap*ci[j];
+      }
+      if (ci[i].norm() >1.e-8)
+	ci[i] = ci[i]/ci[i].norm();
     }
-    ci[i] = ci[i]/ci[i].norm();
   }
+
+  mpi::broadcast(world, ci, 0);
     //b.col(i) = b.col(i)/b.col(i).norm();
 
 
@@ -127,9 +132,9 @@ int main(int argc, char* argv[]) {
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
     //CIPSIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
-    for (int root=0; root<schd.nroots;root++) {
+    for (int root=0; root<schd.nroots;root++) 
       CIPSIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
-    }
+    
   }
   else if (!schd.stochastic) {
     CIPSIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
@@ -141,10 +146,12 @@ int main(int argc, char* argv[]) {
     CIPSIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
-    CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    for (int root=0; root<schd.nroots;root++) 
+      CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
   }
   else if (schd.SampleN != -1 && schd.singleList){
-    CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    for (int root=0; root<schd.nroots;root++) 
+      CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
   }
   else { 
     //Here I will implement the alias method

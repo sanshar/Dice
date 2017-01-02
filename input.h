@@ -30,6 +30,7 @@ private:
       & singleList				\
       & io                                      \
       & nroots                                  \
+      & nPTiter                                 \
       & DoRDM;
   }
   
@@ -52,6 +53,7 @@ public:
   bool singleList;
   bool io;
   int nroots;
+  int nPTiter;
   bool DoRDM;
 };
 
