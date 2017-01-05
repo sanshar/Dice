@@ -77,17 +77,17 @@ void Correlation(double v[],double w[],double n){
   };
   file_corr.close();
   rk = max(1.0,rk);
-  cerr << setprecision(10);
-  cerr << "\n";
-  cerr << "  Average :  " << aver              << endl;
-  cerr << "  N       :  " << double(n)         << endl;
-  cerr << "  Neff    :  " << neff              << endl;
-  cerr << "  Variance:  " << var               << endl;
-  cerr << "  Error   :  " << dev               << endl;
-  cerr << "  T corr  :  " << rk                << endl;
-  cerr << "  Neff    :  " << neff/rk           << endl;
-  cerr << "  Error   :  " << sqrt(var*rk/neff) << endl;
-  cerr << "\n";
+  cout << setprecision(10);
+  cout << "\n";
+  cout << "  Average :  " << aver              << endl;
+  cout << "  N       :  " << double(n)         << endl;
+  cout << "  Neff    :  " << neff              << endl;
+  cout << "  Variance:  " << var               << endl;
+  cout << "  Error   :  " << dev               << endl;
+  cout << "  T corr  :  " << rk                << endl;
+  cout << "  Neff    :  " << neff/rk           << endl;
+  cout << "  Error   :  " << sqrt(var*rk/neff) << endl;
+  cout << "\n";
   return;
 };
 

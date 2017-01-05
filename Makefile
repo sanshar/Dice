@@ -1,7 +1,7 @@
-CXX = mpicxx #$mpiicpc
-CC = mpicxx #mpiicpc
-FLAGS = -std=c++0x -fopenmp -g -O3 -I/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/  -I/home/sharma/apps/forServer/eigen
-#FLAGS = -std=c++0x -g -openmp -I/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/  -I/home/sharma/apps/forServer/eigen
+CXX = mpiicpc
+CC = mpiicpc
+FLAGS = -std=c++0x -openmp -g -O2 -I/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/  -I/home/sharma/apps/forServer/eigen
+#FLAGS = -std=c++0x -g -fopenmp -I/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/  -I/home/sharma/apps/forServer/eigen
 LFLAGS = -L/home/sharma/apps/forServer/boost_1_53_0_mt/boost_1_53_0/stage/lib -lboost_serialization -lboost_mpi
 
 SRC_cisd = CISD.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
@@ -18,7 +18,7 @@ OBJ_cipsi2+=$(SRC_cipsi2:.cpp=.o)
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 
 
-all: CIPSI stats CISD
+all: CIPSI stats 
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats

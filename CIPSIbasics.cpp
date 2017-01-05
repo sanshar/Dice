@@ -735,13 +735,13 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
       if (mpigetrank() == 0) {
 	AvgenergyEN += -energyEN+energyENLargeEps+EptLarge; currentIter++;
 	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	cout << endl;
       }
       else {
 	AvgenergyEN += -energyEN+energyENLargeEps+EptLarge; currentIter++;
 	ofs << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i %4i") 
-	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
+	  %(currentIter) % (E0-energyEN+energyENLargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	ofs << endl;
 	
       }
