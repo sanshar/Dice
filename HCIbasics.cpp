@@ -1,5 +1,5 @@
 #include "Determinants.h"
-#include "CIPSIbasics.h"
+#include "HCIbasics.h"
 #include "input.h"
 #include "integral.h"
 #include <vector>
@@ -380,7 +380,7 @@ class ElementWiseAddStitchDEH {
 
 //for each element in ci stochastic round to eps and put all the nonzero elements in newWts and their corresponding
 //indices in Sample1
-int CIPSIbasics::sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1, std::vector<double>& newWts){
+int HCIbasics::sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1, std::vector<double>& newWts){
   for (int i=0; i<ci.rows(); i++) {
     if (abs(ci(i,0)) > eps) {
       Sample1.push_back(i);
@@ -394,7 +394,7 @@ int CIPSIbasics::sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample
 }
 
 
-void CIPSIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
+void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
 				      vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root) {
   boost::mpi::communicator world;
 
@@ -500,7 +500,7 @@ void CIPSIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<
 
 }
 
-void CIPSIbasics::setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
+void HCIbasics::setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
   alias.resize(ci.rows());
   prob.resize(ci.rows());
   
@@ -526,7 +526,7 @@ void CIPSIbasics::setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector
   }
 }
 
-int CIPSIbasics::sample_N2_alias(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
+int HCIbasics::sample_N2_alias(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
 
   int niter = Sample1.size(); //Sample1.resize(0); newWts.resize(0);
 
@@ -554,7 +554,7 @@ int CIPSIbasics::sample_N2_alias(MatrixXd& ci, double& cumulative, std::vector<i
   return sampleIndex;
 }
 
-int CIPSIbasics::sample_N2(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
+int HCIbasics::sample_N2(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
   double prob = 1.0;
   int niter = Sample1.size();
   int totalSample = 0;
@@ -587,7 +587,7 @@ int CIPSIbasics::sample_N2(MatrixXd& ci, double& cumulative, std::vector<int>& S
   return totalSample;
 }
 
-int CIPSIbasics::sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
+int HCIbasics::sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts){
   double prob = 1.0;
   int niter = Sample1.size();
 
@@ -609,7 +609,7 @@ int CIPSIbasics::sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sa
 }
 
 
-void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 								    twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -660,7 +660,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
     std::vector<double>  det_energy;
     for (int i=0; i<distinctSample; i++) {
       int I = Sample1[i];
-      CIPSIbasics::getDeterminants2Epsilon(Dets[I], abs(schd.epsilon2/ci(I,0)), abs(schd.epsilon2Large/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, present, det_energy, schd, Nmc, nelec);
+      HCIbasics::getDeterminants2Epsilon(Dets[I], abs(schd.epsilon2/ci(I,0)), abs(schd.epsilon2Large/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, present, det_energy, schd, Nmc, nelec);
     }
 
 
@@ -751,7 +751,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Deter
   
 }
 
-void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 						      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -798,7 +798,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
       Psi1.reserve(initSize); numerator1.reserve(initSize); numerator2.reserve(initSize); det_energy.reserve(initSize);
       for (int i=0; i<distinctSample; i++) {
        int I = Sample1[i];
-       CIPSIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1, numerator2, det_energy, schd, Nmc, nelec);
+       HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1, numerator2, det_energy, schd, Nmc, nelec);
       }
 
 
@@ -884,7 +884,7 @@ void CIPSIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets,
 
 }
 
-double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -902,7 +902,7 @@ double CIPSIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matri
   {
     for (int i=0; i<Dets.size(); i++) {
       if (i%(omp_get_num_threads()) != omp_get_thread_num()) {continue;}
-      CIPSIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, 
+      HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, 
 				   I1, I2, I2HB, irrep, coreE, E0, 
 				   *uniqueDEH[omp_get_thread_num()].Det, 
 				   *uniqueDEH[omp_get_thread_num()].Num, 
@@ -1105,11 +1105,11 @@ void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 }
 
 //this takes in a ci vector for determinants placed in Dets
-//it then does a CIPSI varitional calculation and the resulting
+//it then does a HCI varitional calculation and the resulting
 //ci and dets are returned here
 //at input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
-vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant>& Dets, schedule& schd,
+vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant>& Dets, schedule& schd,
 					  twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					  , int nelec, bool DoRDM) {
 
@@ -1343,7 +1343,7 @@ vector<double> CIPSIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determina
 }
 
 
-void CIPSIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void HCIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					 MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 					 vector<double>& E0, bool converged, schedule& schd,   
 					 std::map<HalfDet, std::vector<int> >& BetaN, 
@@ -1377,7 +1377,7 @@ void CIPSIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<
 }
 
 
-void CIPSIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void HCIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 					MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 					vector<double>& E0, bool& converged, schedule& schd,
 					std::map<HalfDet, std::vector<int> >& BetaN, 
@@ -1420,7 +1420,7 @@ void CIPSIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];
@@ -1509,7 +1509,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 /*
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];
@@ -1592,7 +1592,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];
@@ -1650,7 +1650,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];
@@ -1724,7 +1724,7 @@ void CIPSIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, do
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void CIPSIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   char detArray[norbs], diArray[norbs];

@@ -1,5 +1,5 @@
-#ifndef CIPSI_HEADER_H
-#define CIPSI_HEADER_H
+#ifndef HCI_HEADER_H
+#define HCI_HEADER_H
 #include <vector>
 #include <Eigen/Dense>
 #include <set>
@@ -17,7 +17,7 @@ class twoInt;
 class twoIntHeatBath;
 class schedule;
 
-namespace CIPSIbasics {
+namespace HCIbasics {
 
   int sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1, std::vector<double>& newWts);
   void setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) ;

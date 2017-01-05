@@ -6,7 +6,7 @@
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
-#include "CIPSIbasics.h"
+#include "HCIbasics.h"
 #include "Davidson.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     //b.col(i) = b.col(i)/b.col(i).norm();
 
 
-  vector<double> E0 = CIPSIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
+  vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
 
   //print the 5 most important determinants and their weights
   for (int root=0; root<schd.nroots; root++) {
@@ -131,31 +131,31 @@ int main(int argc, char* argv[]) {
   I2.store.resize(0);
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
-    //CIPSIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     for (int root=0; root<schd.nroots;root++) 
-      CIPSIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
+      HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
     
   }
   else if (!schd.stochastic) {
-    CIPSIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    HCIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1 && schd.singleList){
-    CIPSIbasics::DoPerturbativeStochasticSingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    HCIbasics::DoPerturbativeStochasticSingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN == -1 && !schd.singleList){
-    CIPSIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    HCIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
     for (int root=0; root<schd.nroots;root++) 
-      CIPSIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
   }
   else if (schd.SampleN != -1 && schd.singleList){
     for (int root=0; root<schd.nroots;root++) 
-      CIPSIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
   }
   else { 
     //Here I will implement the alias method
-    CIPSIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    HCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
   return 0;
