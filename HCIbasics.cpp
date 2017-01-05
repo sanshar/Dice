@@ -615,7 +615,11 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
   boost::mpi::communicator world;
   char file [5000];
   sprintf (file, "output-%d.bkp" , world.rank() );
-  std::ofstream ofs(file);
+  std::ofstream ofs;
+  if (root == 0)
+    ofs.open(file, std::ofstream::out);
+  else
+    ofs.open(file, std::ofstream::app);
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
@@ -757,7 +761,12 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
   boost::mpi::communicator world;
   char file [5000];
   sprintf (file, "output-%d.bkp" , world.rank() );
-  std::ofstream ofs(file);
+  //std::ofstream ofs(file);
+  std::ofstream ofs;
+  if (root == 0)
+    ofs.open(file, std::ofstream::out);
+  else
+    ofs.open(file, std::ofstream::app);
 
     int norbs = Determinant::norbs;
     std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
