@@ -294,7 +294,7 @@ class Determinant {
 	os<<"b"<<" ";
       else if (det[2*i]==true && det[2*i+1] == true)
 	os<<2<<" ";
-      if (i%5 == 0 && i!= 0)
+      if ( (i+1)%5 == 0)
 	os <<"  ";
     }
     return os;
