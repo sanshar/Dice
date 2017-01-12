@@ -1227,8 +1227,8 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
 	vector<Determinant> newDetsRecv;
 	size_t newdetsrecvsize=-1;
 	int getproc = mpigetrank()+ipow(2,level);
-	world.recv(getproc, getproc, newdetsrecvsize);
-	if (newdetsrecvsize > 0) {
+	world.recv(getproc, mpigetsize()*level+getproc, newdetsrecvsize);
+	if (newdetsrecvsize > 0) {	  
 	  world.recv(getproc, getproc, newDetsRecv);
 	  vector<Determinant> merged;
 	  std::merge(newDets[0].begin(), newDets[0].end(), newDetsRecv.begin(), newDetsRecv.end(), std::insert_iterator<vector<Determinant> >(merged, merged.end()) );
@@ -1239,12 +1239,12 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
 	  newDets[0] = merged;
 	}
       }
-      else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) > mpigetsize()) {
+      else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) >= mpigetsize()) {
 	continue ;
       } 
       else if ( mpigetrank()%ipow(2, level) == 0) {
 	int toproc = mpigetrank()-ipow(2,level);
-	world.send(toproc, mpigetrank(), newDets[0].size());
+	world.send(toproc, mpigetsize()*level+mpigetrank(), newDets[0].size());
 	if (newDets[0].size() > 0) 
 	  world.send(toproc, mpigetrank(), newDets[0]);
 	newDets[0].resize(0);
@@ -1332,7 +1332,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
+      //writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++)
