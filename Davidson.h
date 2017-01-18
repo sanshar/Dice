@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <vector>
 
 class Hmult2;
 using namespace Eigen;

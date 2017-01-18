@@ -450,6 +450,7 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
   s2RDM *= 0.0;
 
 
+  if(mpigetrank() == 0) {
   char file [5000];
   sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
   std::ofstream ofs(file, std::ios::out);
@@ -497,7 +498,7 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
     boost::archive::binary_oarchive save(ofs);
     save << s2RDM;
   }
-
+  }
 }
 
 void HCIbasics::setUpAliasMethod(MatrixXd& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
