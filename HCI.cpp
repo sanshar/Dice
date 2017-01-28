@@ -38,7 +38,7 @@ double startofCalc = getTime();
 
 
 
-void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
+void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd, int nelec);
 
 
 int main(int argc, char* argv[]) {
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
   int num_thrds;
   std::vector<std::vector<int> > HFoccupied; //double epsilon1, epsilon2, tol, dE;
   schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
+  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd, nelec); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);

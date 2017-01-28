@@ -1,6 +1,7 @@
 CXX = mpiicpc
 CC = mpiicpc
 FLAGS = -ipo -xcore-avx2 -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I./boost/
+#FLAGS = -std=c++11 -qopenmp -g  -I/home/sash2458/apps/eigen -I./boost/
 
 LFLAGS = -L./boost/lib -lboost_serialization -lboost_mpi
 
@@ -101,5 +102,5 @@ CISD	: $(OBJ_cisd)
 	$(CXX)   $(FLAGS) $(OPT) -o  CISD $(OBJ_cisd) $(LFLAGS)
 
 clean :
-	find . -name "*.o"|xargs rm 2>/dev/null;rm CIST HCI
+	find . -name "*.o"|xargs rm 2>/dev/null;rm CIST HCI boost/lib/libboost_mpi.a boost/lib/libboost_serialization.a
 

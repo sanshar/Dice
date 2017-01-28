@@ -404,8 +404,12 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
   //also i>=j and k>=l
   MatrixXd twoRDM(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
   twoRDM *= 0.0;
+  int num_thrds = omp_get_max_threads();
 
+  //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
+    if ((i/num_thrds)%world.size() != world.rank()) continue;
+
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
@@ -444,6 +448,8 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
       }
     }
   }
+
+  MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   int nSpatOrbs = norbs/2;
   MatrixXd s2RDM(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
@@ -1188,6 +1194,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     {
       for (int i=0; i<SortedDets.size(); i++) {
 	if (i%(mpigetsize()*omp_get_num_threads()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) continue;
+	//cout << i<<"  "<<SortedDets.size()<<endl;
 	getDeterminants(Dets[i], abs(epsilon1/cMax(i,0)), cMax(i,0), 0.0, I1, I2, I2HB, irrep, coreE, E0[0], newDets[omp_get_thread_num()], schd, 0, nelec);
       }
 
@@ -1433,13 +1440,13 @@ void HCIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<De
 void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  char detArray[norbs], diArray[norbs];
+  //char detArray[norbs], diArray[norbs];
   vector<int> closed(nelec,0); 
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
+  //d.getRepArray(detArray);
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
   bool parallelRegion = mpigetsize() == 1 ? false : true;
@@ -1605,13 +1612,13 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, doub
 void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  char detArray[norbs], diArray[norbs];
+  //char detArray[norbs], diArray[norbs];
   vector<int> closed(nelec,0); 
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
+  //d.getRepArray(detArray);
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
@@ -1663,13 +1670,13 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, doub
 void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  char detArray[norbs], diArray[norbs];
+  //char detArray[norbs], diArray[norbs];
   vector<int> closed(nelec,0); 
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
+  //d.getRepArray(detArray);
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
   
@@ -1737,13 +1744,13 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, doub
 void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  char detArray[norbs], diArray[norbs];
+  //char detArray[norbs], diArray[norbs];
   vector<int> closed(nelec,0); 
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
-  d.getRepArray(detArray);
+  //d.getRepArray(detArray);
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
   
