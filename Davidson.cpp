@@ -36,6 +36,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int max
   int nroots = x0.size();
   MatrixXd b=MatrixXd::Zero(x0[0].rows(), maxCopies); 
 
+  int niter;
   //if some vector has zero norm then randomise it
   if (mpigetrank() == 0) {
     for (int i=0; i<nroots; i++)  {
@@ -100,6 +101,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int max
     r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
     double error = r.norm();
 
+    if (iter == 0)
+      pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
     if (false)
       pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
     iter++;
@@ -111,7 +114,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int max
 	return eroots;
       }
       convergedRoot++;
-      pout << str(boost::format("#converged root:%3d -> Energy : %18.10g  \n") % (convergedRoot-1) % ei );
+      //pout << str(boost::format("#converged root:%3d -> Energy : %18.10g  \n") % (convergedRoot-1) % ei );
+      pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
       if (convergedRoot == nroots) {
 	for (int i=0; i<convergedRoot; i++) {
 	  x0[i] = b.col(i);

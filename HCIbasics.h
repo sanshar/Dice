@@ -26,6 +26,25 @@ namespace HCIbasics {
   int sample_N(MatrixXd& ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts);
 
   
+  void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
+			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
+			   std::vector<Determinant>& Dets,
+			   int StartIndex);
+
+  void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+			std::map<HalfDet, std::vector<int> >& AlphaNm1,
+			std::vector<Determinant>& Dets,
+			int StartIndex,
+			std::vector<std::vector<int> >&connections,
+			std::vector<std::vector<double> >& Helements,
+			int Norbs,
+			oneInt& I1,
+			twoInt& I2,
+			double& coreE,
+			std::vector<std::vector<size_t> >& orbDifference,
+			bool DoRDM=false) ;
+
+
   void writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
 			      vector<double>& E0, bool converged, schedule& schd,   
@@ -67,7 +86,7 @@ namespace HCIbasics {
   void getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, tuple<double, double,double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec);
   void updateConnections(vector<Determinant>& Dets, map<Determinant,int>& SortedDets, int norbs, oneInt& int1, twoInt& int2, double coreE, char* detArray, vector<vector<int> >& connections, vector<vector<double> >& Helements) ;
 
-  void getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) ;
+  void getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec, bool mpispecific=true) ;
   void getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator1, std::vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) ;
 
   void getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) ;
