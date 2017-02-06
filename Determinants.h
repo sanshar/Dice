@@ -190,6 +190,22 @@ class Determinant {
     return order;
   }
 
+  bool connected1Alpha1Beta(const Determinant& d) const {
+    int ndiffAlpha = 0, ndiffBeta = 0; long u;
+    long even = 12297829382473034410, odd = 6148914691236517205;
+    for (int i=0; i<EffDetLen; i++) {
+      u = (repr[i] ^ d.repr[i])&even;
+      ndiffAlpha += BitCount(u);
+      u = (repr[i] ^ d.repr[i])&odd;
+      ndiffBeta += BitCount(u);
+      //if (ndiffAlpha > 2 || ndiffBeta > 2) return false;
+    }
+    if (ndiffAlpha == 2 && ndiffBeta == 2) return true;
+    
+    return false;
+
+  }
+
   //Is the excitation between *this and d less than equal to 2.
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
