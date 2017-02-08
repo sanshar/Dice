@@ -397,7 +397,6 @@ int HCIbasics::sample_round(MatrixXd& ci, double eps, std::vector<int>& Sample1,
 void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
 				      vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root) {
   boost::mpi::communicator world;
-
   size_t norbs = Dets[0].norbs;
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
@@ -461,6 +460,8 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
   sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
   std::ofstream ofs(file, std::ios::out);
   ofs << nSpatOrbs<<endl;
+
+#pragma omp parallel for schedule(static)
   for (int n1=0; n1<nSpatOrbs; n1++)
   for (int n2=0; n2<nSpatOrbs; n2++)
   for (int n3=0; n3<nSpatOrbs; n3++)
@@ -486,9 +487,17 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
     if(( (n1>=n2 && n3<n4) || (n1<n2 && n3>=n4))) sgn = -1.0; 
     s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
 
+  }
+
+  for (int n1=0; n1<nSpatOrbs; n1++)
+  for (int n2=0; n2<nSpatOrbs; n2++)
+  for (int n3=0; n3<nSpatOrbs; n3++)
+  for (int n4=0; n4<nSpatOrbs; n4++)
+  {
     if (fabs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
       ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
   }
+
 
   {
     char file [5000];
@@ -1232,10 +1241,13 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
   int iterstart = 0;
   if (schd.restart || schd.fullrestart) {
     bool converged;
-    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, Helements, E0, converged, schd, BetaN, AlphaNm1);
+    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
+    if (schd.fullrestart)
+      iterstart = 0;
     pout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f\n") 
       %(iterstart) % schd.epsilon1[iterstart] % Dets.size() % E0[0] % (getTime()-startofCalc);
-    iterstart++;
+    if (!schd.fullrestart)
+      iterstart++;
     if (schd.onlyperturbative)
       return E0;
 
@@ -1386,7 +1398,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
+      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++)
@@ -1396,7 +1408,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
       break;
     }
     else {
-      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, false, schd, BetaN, AlphaNm1);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, false, schd, BetaN, AlphaNm1);
     }
 
     pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
@@ -1407,11 +1419,12 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
 
 
 void HCIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-					 MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
-					 vector<double>& E0, bool converged, schedule& schd,   
-					 std::map<HalfDet, std::vector<int> >& BetaN, 
-					 std::map<HalfDet, std::vector<int> >& AlphaNm1) {
-
+				       MatrixXd& diag, vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference, 
+				       vector<vector<double> >& Helements, 
+				       vector<double>& E0, bool converged, schedule& schd,   
+				       std::map<HalfDet, std::vector<int> >& BetaN, 
+				       std::map<HalfDet, std::vector<int> >& AlphaNm1) {
+  
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
@@ -1431,7 +1444,7 @@ void HCIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<De
     save << ci;
     save << E0;
     save << converged;
-    save << connections<<Helements;
+    save << connections<<orbdifference<<Helements;
     save << BetaN<< AlphaNm1;
     ofs.close();
 
@@ -1441,7 +1454,8 @@ void HCIbasics::writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<De
 
 
 void HCIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-					MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
+				      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference, 
+				      vector<vector<double> >& Helements, 
 					vector<double>& E0, bool& converged, schedule& schd,
 					std::map<HalfDet, std::vector<int> >& BetaN, 
 					std::map<HalfDet, std::vector<int> >& AlphaNm1) {
@@ -1471,7 +1485,7 @@ void HCIbasics::readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<De
     if (schd.onlyperturbative) {ifs.close();return;}
     load >> converged;
 
-    load >> connections >> Helements;
+    load >> connections >> orbdifference >> Helements;
     load >> BetaN>> AlphaNm1;
     ifs.close();
 

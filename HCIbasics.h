@@ -46,12 +46,14 @@ namespace HCIbasics {
 
 
   void writeVariationalResult(int iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
+			      MatrixXd& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+			      vector<vector<double> >& Helements, 
 			      vector<double>& E0, bool converged, schedule& schd,   
 			      std::map<HalfDet, std::vector<int> >& BetaN, 
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
   void readVariationalResult(int& iter, vector<MatrixXd>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			     MatrixXd& diag, vector<vector<int> >& connections, vector<vector<double> >& Helements, 
+			     MatrixXd& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference, 
+			     vector<vector<double> >& Helements, 
 			     vector<double>& E0, bool& converged, schedule& schd,
 			     std::map<HalfDet, std::vector<int> >& BetaN, 
 			     std::map<HalfDet, std::vector<int> >& AlphaNm1);
