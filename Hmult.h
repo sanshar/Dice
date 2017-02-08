@@ -49,11 +49,14 @@ struct Hmult2 {
       
       for (int i=1; i<num_thrds; i++)
 	yarray[0] += yarray[i];
-      
+
+
+      int size = yarray[0].rows();
 #ifndef SERIAL
-      MPI_Allreduce(MPI_IN_PLACE, &yarray[0](0,0), yarray[0].rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Reduce(&yarray[0](0,0), &y(0,0), size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&(y(0,0)), size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-      y = 1.*yarray[0];
+      //y = 1.*yarray[0];
     }
     else {
       for (int i=0; i<x.rows(); i++) {

@@ -901,7 +901,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
 }
 
 double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
+					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
@@ -999,33 +999,49 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     }
     cout << "PT3 "<<PT3<<"  "<<norm<<"  "<<PT3+E0+finalE<<"  "<<(E0+2*finalE+PT3+diag1)/(1+norm)<<endl;
     PT3 = 0;
-
-    /*
-    std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1;
-    PopulateHelperLists(BetaN, AlphaNm1, uniqueDets, 0);
-    std::vector<std::vector<int> > connections; connections.resize(uniqueDets.size());
-    std::vector<std::vector<double> > Helements;Helements.resize(uniqueDets.size());
-    std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(uniqueDets.size());
-    MakeHfromHelpers(BetaN, AlphaNm1, uniqueDets, 0, connections, Helements,
-		     norbs, I1, I2, coreE, orbDifference, false);
-
-    Hmult2 H(connections, Helements);
-    MatrixXd psi1=MatrixXd::Zero(uniqueDets.size(), 1);
-    MatrixXd Hpsi1=MatrixXd::Zero(uniqueDets.size(), 1);
-
-    for (int i=0; i<uniqueDets.size(); i++) {
-      psi1(i,0) = uniqueNumerator[i]/(E0-uniqueEnergy[i]);
-      //The diagonal element of H has to be zero
-      Helements[i][0] = 0.0;
-    }
-    Eigen::Block<MatrixXd> psicol = psi1.block(0,0,psi1.rows(),1);
-    Eigen::Block<MatrixXd> Hpsicol = Hpsi1.block(0,0,psi1.rows(),1);
-    
-    H(psicol, Hpsicol);
-    PT3 = psi1.col(0).dot(Hpsi1.col(0));
-    cout << "PT3 "<<PT3<<"  "<< PT3+E0+finalE<<endl;
-    */
   }
+
+  //Calculate Psi1 and then add it to Psi10
+  if (appendPsi1ToPsi0) {
+#ifndef SERIAL
+    for (int level = 0; level <ceil(log2(mpigetsize())); level++) {
+      
+      if (mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) < mpigetsize()) {
+	StitchDEH recvDEH;	
+	int getproc = mpigetrank()+ipow(2,level);
+	world.recv(getproc, mpigetsize()*level+getproc, recvDEH);
+	uniqueDEH[0].merge(recvDEH);
+	uniqueDEH[0].RemoveDuplicates();
+      }
+      else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) >= mpigetsize()) {
+	continue ;
+      } 
+      else if ( mpigetrank()%ipow(2, level) == 0) {
+	int toproc = mpigetrank()-ipow(2,level);
+	world.send(toproc, mpigetsize()*level+mpigetrank(), uniqueDEH[0]);
+      }
+    }
+    
+    
+    mpi::broadcast(world, uniqueDEH[0], 0);
+#endif
+    vector<Determinant>& newDets = *uniqueDEH[0].Det;
+    ci.conservativeResize(ci.rows()+newDets.size(), 1);
+
+    vector<Determinant>::iterator vec_it = Dets.begin();
+    int ciindex = 0, initialSize = Dets.size();
+    double EPTguess = 0.0;
+    for (vector<Determinant>::iterator it=newDets.begin(); it!=newDets.end(); ) {
+      if (schd.excitation != 1000 ) {
+	if (it->ExcitationDistance(Dets[0]) > schd.excitation) continue;
+      }
+      Dets.push_back(*it);
+      ci(initialSize+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0 - uniqueDEH[0].Energy->at(ciindex));  
+      ciindex++; it++;
+    }
+
+  }
+
   uniqueDEH[0].clear();
   return finalE;
 }
@@ -1370,7 +1386,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
-      //writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
+      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++)

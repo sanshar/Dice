@@ -47,7 +47,10 @@ vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int max
       }
     }
   }
-  mpi::broadcast(world, b, 0);
+
+  int size = b.rows()*maxCopies;
+  MPI_Bcast(&(b(0,0)), size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  //mpi::broadcast(world, b, 0);
 
   //make vectors orthogonal to each other
   for (int i=0; i<x0.size(); i++) {  

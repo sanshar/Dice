@@ -127,6 +127,17 @@ int main(int argc, char* argv[]) {
     }
   }
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+  if (schd.quasiQ) {    
+    double bkpepsilon2 = schd.epsilon2;
+    schd.epsilon2 = schd.quasiQEpsilon;
+    for (int root=0; root<schd.nroots;root++) {
+      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, true);
+      cout << "norm of ci "<<ci[root].norm()<<"  "<<E0[root]<<endl;
+      ci[root] = ci[root]/ci[root].norm();
+      cout << "norm of ci "<<ci[root].norm()<<"  "<<E0[root]<<endl;
+    }
+    schd.epsilon2 = bkpepsilon2;
+  }
 
   I2.store.resize(0);
   //now do the perturbative bit
@@ -134,7 +145,6 @@ int main(int argc, char* argv[]) {
     //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     for (int root=0; root<schd.nroots;root++) 
       HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
-    
   }
   else if (!schd.stochastic) {
     HCIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);

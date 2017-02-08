@@ -31,7 +31,9 @@ private:
       & io                                      \
       & nroots                                  \
       & nPTiter                                 \
-      & DoRDM;
+      & DoRDM                                   \
+      & quasiQ                                  \
+      & quasiQEpsilon;
   }
   
 public:
@@ -55,6 +57,8 @@ public:
   int nroots;
   int nPTiter;
   bool DoRDM;
+  bool quasiQ;
+  double quasiQEpsilon;
 };
 
 #endif

@@ -34,6 +34,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.nroots = 1;
   schd.nPTiter = 1000000;
   schd.DoRDM = false;
+  schd.quasiQ = false;
 
   while (dump.good()) {
 
@@ -100,6 +101,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.onlyperturbative = true;
     else if (boost::iequals(ArgName, "dordm")) 
       schd.DoRDM = true;
+    else if (boost::iequals(ArgName, "quasiq")) {
+      schd.quasiQ = true;
+      schd.quasiQEpsilon = atof(tok[1].c_str());
+    }
     else if (boost::iequals(ArgName, "nblocks")) 
       schd.nblocks = atof(tok[1].c_str());
     else if (boost::iequals(ArgName , "davidsonTol")) 
