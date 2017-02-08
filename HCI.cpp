@@ -115,6 +115,15 @@ int main(int argc, char* argv[]) {
 
   vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
 
+  std::string efile;
+  efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
+  FILE* f = fopen(efile.c_str(), "wb");      
+  for(int j=0;j<E0.size();++j) {
+    fwrite( &E0[j], 1, sizeof(double), f);
+  }
+  fclose(f);
+
+
   //print the 5 most important determinants and their weights
   for (int root=0; root<schd.nroots; root++) {
     pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
