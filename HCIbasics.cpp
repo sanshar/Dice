@@ -1251,7 +1251,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     if (schd.onlyperturbative)
       return E0;
 
-    if (converged && !schd.fullrestart) {
+    if (converged && iterstart >= schd.epsilon1.size()) {
       pout << "# restarting from a converged calculation, moving to perturbative part.!!"<<endl;
       return E0;
     }
@@ -1395,7 +1395,6 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
 
     diagOld.resize(Dets.size(),1); diagOld = 1.0*diag;
 
-    
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
       writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
