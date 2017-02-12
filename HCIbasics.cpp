@@ -1327,6 +1327,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
     for (int i=0; i<ci.size(); i++) {
       X0[i].setZero(Dets.size()+newDets.size(),1); 
       X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i]; 
+      
     }
 
     vector<Determinant>::iterator vec_it = SortedDets.begin();
@@ -1337,15 +1338,17 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXd>& ci, vector<Determinant
 	if (it->ExcitationDistance(Dets[0]) > schd.excitation) continue;
       }
       Dets.push_back(*it);
-      for (int i=0; i<ci.size(); i++) {
-	//cout << ci.size()<<"  "<<ci[i].rows()<<"  "<<ciindex<<endl;
-	X0[i](ci[i].rows()+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
-	EPTguess += pow(uniqueDEH[0].Num->at(ciindex), 2)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+
+      if (iter != 0) {
+	for (int i=0; i<ci.size(); i++) {
+	  X0[i](ci[i].rows()+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+	  EPTguess += pow(uniqueDEH[0].Num->at(ciindex), 2)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+	}
       }
       ciindex++;vec_it++; it++;
     }
 
-    pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
+    if (iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
     uniqueDEH.resize(0);
     //now diagonalize the hamiltonian
 
