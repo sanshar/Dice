@@ -29,7 +29,7 @@ using namespace Eigen;
 using namespace boost;
 
 
-void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 				       twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
   int nblocks = schd.nblocks;
   std::vector<int> blockSizes(nblocks,0);
@@ -100,7 +100,7 @@ void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXd& ci, do
 
 
 
-void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   cout << "This function is most likely broken, dont use it. Use the single list method instead!!!"<<endl;
@@ -194,7 +194,7 @@ void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXd& c
 }
 
 
-void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -291,7 +291,7 @@ void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXd& ci
 }
 
 
-void HCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
+void HCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 						     twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;

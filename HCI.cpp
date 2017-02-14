@@ -49,7 +49,8 @@ int main(int argc, char* argv[]) {
 #endif
 
   startofCalc=getTime();
-  srand(startofCalc+world.rank());
+  //srand(startofCalc+world.rank());
+  srand(5);
   std::cout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]) {
   }
 
 
-  //initialize the heatback integral
+  //initialize the heatbath integral
   std::vector<int> allorbs;
   for (int i=0; i<norbs/2; i++)
     allorbs.push_back(i);
@@ -81,13 +82,17 @@ int main(int argc, char* argv[]) {
   schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd, nelec); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
+  //vector<oneInt> I1soc(3); //x,y,z integrals
+  //if (schd.doSOC)
+  //readSOCIntegral(I1soc)
+
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
 
   //have the dets, ci coefficient and diagnoal on all processors
-  vector<MatrixXd> ci(schd.nroots, MatrixXd::Zero(HFoccupied.size(),1)); 
+  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
 
   //make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
@@ -101,7 +106,7 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<schd.nroots; i++) {
       ci[i].setRandom();
       for (int j=0; j<i; j++) {
-	double overlap = (ci[i].transpose()*ci[j])(0,0);
+	CItype overlap = (ci[i].adjoint()*ci[j])(0,0);
 	ci[i] -= overlap*ci[j];
       }
       if (ci[i].norm() >1.e-8)
@@ -127,11 +132,11 @@ int main(int argc, char* argv[]) {
   //print the 5 most important determinants and their weights
   for (int root=0; root<schd.nroots; root++) {
     pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
-    MatrixXd prevci = 1.*ci[root];
+    MatrixXx prevci = 1.*ci[root];
     for (int i=0; i<5; i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
+      pout <<"#"<< i<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
@@ -141,9 +146,7 @@ int main(int argc, char* argv[]) {
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
       E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, true);
-      cout << "norm of ci "<<ci[root].norm()<<"  "<<E0[root]<<endl;
       ci[root] = ci[root]/ci[root].norm();
-      cout << "norm of ci "<<ci[root].norm()<<"  "<<E0[root]<<endl;
     }
     schd.epsilon2 = bkpepsilon2;
   }
@@ -155,6 +158,15 @@ int main(int argc, char* argv[]) {
     for (int root=0; root<schd.nroots;root++) 
       HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
+  else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
+    for (int root=0; root<schd.nroots;root++) 
+      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+  }
+  else if (schd.SampleN != -1 && schd.singleList){
+    for (int root=0; root<schd.nroots;root++) 
+      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+  }
+  /*
   else if (!schd.stochastic) {
     HCIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
@@ -164,17 +176,12 @@ int main(int argc, char* argv[]) {
   else if (schd.SampleN == -1 && !schd.singleList){
     HCIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
-  else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
-    for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
-  }
-  else if (schd.SampleN != -1 && schd.singleList){
-    for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
-  }
+  */
   else { 
+    cout << "Error here"<<endl;
+    exit(0);
     //Here I will implement the alias method
-    HCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    //HCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
   return 0;

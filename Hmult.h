@@ -8,8 +8,11 @@
 #include <boost/mpi.hpp>
 #endif
 #include "communicate.h"
+#include "global.h"
 
 using namespace Eigen;
+
+std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
 
 struct Hmult2 {
@@ -29,10 +32,10 @@ struct Hmult2 {
     
     int num_thrds = omp_get_max_threads();
     if (num_thrds >1) {
-      std::vector<MatrixXd> yarray(num_thrds);
+      std::vector<MatrixXx> yarray(num_thrds);
       
       for (int i=0; i<num_thrds; i++) {
-	yarray[i] = Eigen::MatrixXd::Zero(y.rows(),1);
+	yarray[i] = MatrixXx::Zero(y.rows(),1);
 	//yarray[i] = 0.*y;
       }
       
@@ -53,8 +56,14 @@ struct Hmult2 {
 
       int size = yarray[0].rows();
 #ifndef SERIAL
+#ifndef Complex
       MPI_Reduce(&yarray[0](0,0), &y(0,0), size, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       MPI_Bcast(&(y(0,0)), size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#else
+      boost::mpi::all_reduce(world, &yarray[0](0,0), size, &y(0,0), sumComplex); 
+      //MPI_Reduce(&yarray[0](0,0), &y(0,0), size*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      //MPI_Bcast(&(y(0,0)), size*2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
 #endif
       //y = 1.*yarray[0];
     }

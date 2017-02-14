@@ -17,6 +17,9 @@ class compAbs {
   bool operator()(const double& a, const double& b) const {
     return abs(a) < abs(b);
   }
+  bool operator()(const complex<double>& a, const complex<double>& b) const {
+    return std::abs(a) < std::abs(b);
+  }
 };
 class oneInt {
  private:
