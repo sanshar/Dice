@@ -493,7 +493,7 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
   for (int n3=0; n3<nSpatOrbs; n3++)
   for (int n4=0; n4<nSpatOrbs; n4++)
   {
-    if (fabs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
+    if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
       ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
   }
 
@@ -996,8 +996,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
       diag1 += uniqueEnergy[i]*pow(abs(uniqueNumerator[i])/(E0-uniqueEnergy[i]), 2);
       for (int j=i+1; j<uniqueDets.size(); j++)
 	if (uniqueDets[i].connected(uniqueDets[j])) {
-	  double hij = Hij(uniqueDets[i], uniqueDets[j], I1, I2, coreE, orbDiff);
-	  PT3 += 2.*hij*pow(abs(uniqueNumerator[i]),2)/(E0-uniqueEnergy[i])/(E0-uniqueEnergy[j]);
+	  CItype hij = Hij(uniqueDets[i], uniqueDets[j], I1, I2, coreE, orbDiff);
+	  PT3 += 2.*pow(abs(hij*uniqueNumerator[i]),2)/(E0-uniqueEnergy[i])/(E0-uniqueEnergy[j]);
 	}
     }
     cout << "PT3 "<<PT3<<"  "<<norm<<"  "<<PT3+E0+finalE<<"  "<<(E0+2*finalE+PT3+diag1)/(1+norm)<<endl;
@@ -1055,7 +1055,7 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 		      std::vector<Determinant>& Dets,
 		      int StartIndex,
 		      std::vector<std::vector<int> >&connections,
-		      std::vector<std::vector<double> >& Helements,
+		      std::vector<std::vector<CItype> >& Helements,
 		      int Norbs,
 		      oneInt& I1,
 		      twoInt& I2,
@@ -1075,8 +1075,7 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
     for (size_t k=StartIndex; k<Dets.size(); k++) {
       if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
       connections[k].push_back(k);
-      //double hij = Energy(&detChar[norbs*k], Norbs, I1, I2, coreE);
-      double hij = Dets[k].Energy(I1, I2, coreE);
+      CItype hij = Dets[k].Energy(I1, I2, coreE);
       Helements[k].push_back(hij);
       if (DoRDM) orbDifference[k].push_back(0);
     }
@@ -1099,15 +1098,13 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
       for (int k=localStart; k<detIndex.size(); k++) {
       
 	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-	//if (detIndex[j]%omp_get_num_threads() != omp_get_thread_num()) continue;
 	
 	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
 	  if (Dets[J].connected(Dets[K])) 	  {
 	    connections[K].push_back(J);
-	    //double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
 	    size_t orbDiff;
-	    double hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
 	    Helements[K].push_back(hij);
 	    if (DoRDM) 
 	      orbDifference[K].push_back(orbDiff);
@@ -1142,8 +1139,7 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 	    if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
 	      connections[K].push_back(J);
 	      size_t orbDiff;
-	      double hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
-	      //double hij = Hij(&detChar[norbs*J], &detChar[norbs*K], Norbs, I1, I2, coreE);
+	      CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
 	      Helements[K].push_back(hij);
 
 	      if (DoRDM) 
@@ -1161,13 +1157,13 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
       % (getTime()-startofCalc);
 
 
-    
 }
   
 void HCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 				    std::map<HalfDet, std::vector<int> >& AlphaNm1,
 				    std::vector<Determinant>& Dets,
-				    int StartIndex) {
+				    int StartIndex)
+{
   pout << format("#Making Helpers %43.2f\n")
       % (getTime()-startofCalc);
   for (int i=StartIndex; i<Dets.size(); i++) {
@@ -1193,14 +1189,15 @@ void HCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 //this takes in a ci vector for determinants placed in Dets
 //it then does a HCI varitional calculation and the resulting
 //ci and dets are returned here
-//at input usually the Dets will just have a HF or some such determinant
+//At input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
 vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
-					  twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
+					twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					  , int nelec, bool DoRDM) {
 
   int nroots = ci.size();
-  std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1;
+  std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
+  //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
   PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
 
 #ifndef SERIAL
@@ -1219,7 +1216,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 
   //this is essentially the hamiltonian, we have stored it in a sparse format
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
-  std::vector<std::vector<double> > Helements;Helements.resize(Dets.size());
+  std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
   MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
 		   norbs, I1, I2, coreE, orbDifference, DoRDM);
@@ -1262,13 +1259,10 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     MatrixXx cMax(ci[0].rows(),1); cMax = 1.*ci[0];
     for (int i=1; i<ci.size(); i++)
       for (int j=0; j<ci[0].rows(); j++)
-	cMax(j,0) = max(fabs(cMax(j,0)), fabs(ci[i](j,0)) );
+	cMax(j,0) = max(abs(cMax(j,0)), abs(ci[i](j,0)) );
 
-#ifndef Complex
+
   CItype zero = 0.0;
-#else
-  CItype zero = complex<double>(0,0);
-#endif
 
 #pragma omp parallel 
     {
@@ -1286,6 +1280,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
       uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
       uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
+      
 #pragma omp barrier 
       if (omp_get_thread_num() == 0) {
 	for (int thrd=1; thrd<num_thrds; thrd++) {
@@ -1397,7 +1392,8 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
+      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, 
+			     orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++)
@@ -1407,7 +1403,8 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
       break;
     }
     else {
-      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, false, schd, BetaN, AlphaNm1);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, 
+					  orbDifference, Helements, E0, false, schd, BetaN, AlphaNm1);
     }
 
     pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
@@ -1419,7 +1416,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 
 void HCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 				       MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference, 
-				       vector<vector<double> >& Helements, 
+				       vector<vector<CItype> >& Helements, 
 				       vector<double>& E0, bool converged, schedule& schd,   
 				       std::map<HalfDet, std::vector<int> >& BetaN, 
 				       std::map<HalfDet, std::vector<int> >& AlphaNm1) {
@@ -1454,7 +1451,7 @@ void HCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<De
 
 void HCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 				      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference, 
-				      vector<vector<double> >& Helements, 
+				      vector<vector<CItype> >& Helements, 
 					vector<double>& E0, bool& converged, schedule& schd,
 					std::map<HalfDet, std::vector<int> >& BetaN, 
 					std::map<HalfDet, std::vector<int> >& AlphaNm1) {
@@ -1507,7 +1504,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   int nopen = norbs-nclosed;
   //d.getRepArray(detArray);
 
-  double Energyd = Energy(closed, nclosed, int1, int2, coreE);
+  double Energyd = d.Energy(int1, int2, coreE);
   bool parallelRegion = (mpigetsize() != 1 && mpispecific) ? true : false;
 
   for (int ia=0; ia<nopen*nclosed; ia++){
@@ -1515,10 +1512,11 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    //CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     
 
-    if (fabs(integral) > epsilon ) {
+    if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -1537,7 +1535,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     }
   }
   
-  if (fabs(int2.maxEntry) <epsilon) return;
+  if (abs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -1550,7 +1548,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
     if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
 	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 	
@@ -1570,11 +1568,8 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 	  di.parity(a, b, closed[i], closed[j], sgn);
 	  numerator.push_back(it->first*sgn*ci1);
 	  
-	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
-	  //double E = 0;
+	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	  energy.push_back(E);
-	  
-	  
 	}
       }
     }
@@ -1601,15 +1596,15 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
 
-    if (fabs(integral) > epsilon ) {
+    if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
     }
   }
   
-  if (fabs(int2.maxEntry) <epsilon) return;
+  if (abs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -1622,7 +1617,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
     if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
 	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
@@ -1652,7 +1647,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   int nopen = norbs-nclosed;
   //d.getRepArray(detArray);
 
-  double Energyd = Energy(closed, nclosed, int1, int2, coreE);
+  double Energyd = d.Energy(int1, int2, coreE);
   
 
   for (int ia=0; ia<nopen*nclosed; ia++){
@@ -1660,10 +1655,10 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     
 
-    if (fabs(integral) > epsilon ) {
+    if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -1675,7 +1670,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     }
   }
   
-  if (fabs(int2.maxEntry) <epsilon) return;
+  if (abs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -1688,7 +1683,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
     if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
 	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
@@ -1724,7 +1719,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
   int nopen = norbs-nclosed;
   //d.getRepArray(detArray);
 
-  double Energyd = Energy(closed, nclosed, int1, int2, coreE);
+  double Energyd = d.Energy(int1, int2, coreE);
   
 
   for (int ia=0; ia<nopen*nclosed; ia++){
@@ -1732,10 +1727,10 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
     if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     
 
-    if (fabs(integral) > epsilon ) {
+    if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -1744,7 +1739,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
       numerator1A.push_back(integral*ci1);
       numerator2A.push_back( abs(integral*integral*ci1 *(ci1*Nmc/(Nmc-1)- ci2)));
 
-      if (fabs(integral) >epsilonLarge) 
+      if (abs(integral) >epsilonLarge) 
 	present.push_back(true);
       else 
 	present.push_back(false);
@@ -1753,7 +1748,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
     }
   }
   
-  if (fabs(int2.maxEntry) <epsilon) return;
+  if (abs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -1766,7 +1761,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 
     if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
       for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (fabs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
+	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
 	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
 	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
 
@@ -1782,7 +1777,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 	  numerator2A.push_back( abs(it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
 
 
-	  if (fabs(it->first) >epsilonLarge) 
+	  if (abs(it->first) >epsilonLarge) 
 	    present.push_back(true);
 	  else 
 	    present.push_back(false);

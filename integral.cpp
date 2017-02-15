@@ -13,6 +13,94 @@
 
 using namespace boost;
 bool myfn(double i, double j) { return fabs(i)<fabs(j); }
+
+#ifdef Complex
+void readSOCIntegrals(oneInt& I1, int norbs) {
+  if (mpigetrank() == 0) {
+    vector<string> tok;
+    string msg;
+
+    //Read SOC.X
+    {
+      ifstream dump("SOC.X");
+      int N;
+      dump >> N;
+      if (N != norbs) {
+	cout << "number of orbitals in SOC.X should be equal to norbs in the input file."<<endl;
+	exit(0);
+      }
+      
+      //I1soc[1].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1(2*(a-1), 2*(b-1)+1) += integral/2.;  //alpha beta
+	I1(2*(a-1)+1, 2*(b-1)) += integral/2.;  //beta alpha
+      }      
+    }
+
+    //Read SOC.Y
+    {
+      ifstream dump("SOC.Y");
+      int N;
+      dump >> N;
+      if (N != norbs) {
+	cout << "number of orbitals in SOC.Y should be equal to norbs in the input file."<<endl;
+	exit(0);
+      }
+      
+      //I1soc[2].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, integral/2.);  //alpha beta
+	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, -integral/2.);  //beta alpha
+      }      
+    }
+
+
+    //Read SOC.Z
+    {
+      ifstream dump("SOC.Z");
+      int N;
+      dump >> N;
+      if (N != norbs) {
+	cout << "number of orbitals in SOC.Z should be equal to norbs in the input file."<<endl;
+	exit(0);
+      }
+      
+      //I1soc[3].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1(2*(a-1), 2*(b-1)) += integral; //alpha, alpha
+	I1(2*(a-1)+1, 2*(b-1)+1) += -integral; //beta, beta
+      }      
+    }
+
+  }
+
+}
+#endif
+
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE,
 		   std::vector<int>& irrep) {
 
@@ -76,7 +164,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     I2.norbs = norbs;
     I2.store.resize( npair*(npair+1)/2, 0.0);
     //I2.store.resize( npair*npair, npair*npair);
-    I1.store.resize(npair,0.0);
+    I1.store.resize(2*norbs*(2*norbs+1)/2,0.0);
     coreE = 0.0;
 
     while(!dump.eof()) {
@@ -93,8 +181,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 	coreE = integral;
       else if (b==c&&c==d&&d==0)
 	continue;//orbital energy
-      else if (c==d&&d==0)
-	I1(2*(a-1),2*(b-1)) = integral;
+      else if (c==d&&d==0) {
+	I1(2*(a-1),2*(b-1)) += integral; //alpha,alpha
+	I1(2*(a-1)+1,2*(b-1)+1) += integral; //beta,beta
+      }
       else
 	I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
     }

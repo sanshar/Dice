@@ -8,6 +8,59 @@
 using namespace std;
 using namespace Eigen;
 
+//Assumes that the spin of i and a orbitals is the same
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, double Energyd) {
+
+  double E = Energyd;
+#ifdef Complex
+  E += - I1(closed[i], closed[i]).real() + I1(A, A).real();
+#else
+  E += - I1(closed[i], closed[i]) + I1(A, A);
+#endif
+
+  for (int I = 0; I<nclosed; I++) {
+    if (I == i) continue;
+    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
+    if ( (closed[I]%2) == (closed[i]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
+  }
+  return E;
+}
+
+//Assumes that the spin of i and a orbitals is the same
+//and the spins of j and b orbitals is the same
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
+			     int i, int A, int j, int B, double Energyd) {
+
+#ifdef Complex
+  double E = Energyd - (I1(closed[i], closed[i]) - I1(A, A)+ I1(closed[j], closed[j]) - I1(B, B)).real();
+#else
+  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j], closed[j]) + I1(B, B);
+#endif
+
+  for (int I = 0; I<nclosed; I++) {
+    if (I == i) continue;
+    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
+    if ( (closed[I]%2) == (closed[i]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
+  }
+
+  for (int I=0; I<nclosed; I++) {
+    if (I == i || I == j) continue;
+    E = E - I2.Direct(closed[I]/2, closed[j]/2) + I2.Direct(closed[I]/2, B/2);
+    if ( (closed[I]%2) == (closed[j]%2) )
+      E = E + I2.Exchange(closed[I]/2, closed[j]/2) - I2.Exchange(closed[I]/2, B/2);
+  }
+
+  E = E - I2.Direct(A/2, closed[j]/2) + I2.Direct(A/2, B/2);
+  if ( (closed[i]%2) == (closed[j]%2) )
+    E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
+  
+
+  return E;
+}
+
 double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
   double energy = 0.0;
   size_t one = 1;
@@ -23,7 +76,11 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 
   for (int i=0; i<closed.size(); i++) {
     int I = closed.at(i);
+#ifdef Complex
+    energy += I1(I,I).real();
+#else
     energy += I1(I,I);
+#endif
     for (int j=i+1; j<closed.size(); j++) {
       int  J = closed.at(j);
       energy += I2.Direct(I/2,J/2);
@@ -68,144 +125,6 @@ double parity(char* d, int& sizeA, int& i) {
   return sgn;
 }
 
-double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
-  double energy = 0.0;
-  for (int i=0; i<sizeA; i++) {
-    int I = occ.at(i);
-    energy += I1(I,I);
-
-    for (int j=i+1; j<sizeA; j++) {
-      int  J = occ.at(j);
-      energy += I2.Direct(I/2,J/2);
-      if ( (I%2) == (J%2) )
-	energy -= I2.Exchange(I/2,J/2);
-    }
-  }
-  return energy+coreE;
-}
-
-double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
-  double energy = 0.0;
-
-  for (int i=0; i<sizeA; i++) {
-    if (ket[i]) {
-      energy += I1( i,i);
-      for (int j=i; j<sizeA; j++) {
-	if (ket[j]){
-	  energy += I2.Direct(i/2,j/2);
-	  if ( i%2 == j%2)
-	    energy -= I2.Exchange(i/2,j/2);
-	}
-      }
-    }
-  }
-  return energy+(coreE);
-}
-
-//Assumes that the spin of i and a orbitals is the same
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, double Energyd) {
-
-  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A);
-  for (int I = 0; I<nclosed; I++) {
-    if (I == i) continue;
-    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
-    if ( (closed[I]%2) == (closed[i]%2) )
-      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
-  }
-  return E;
-}
-
-//Assumes that the spin of i and a orbitals is the same
-//and the spins of j and b orbitals is the same
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, int j, int B, double Energyd) {
-
-  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j], closed[j]) + I1(B, B);
-
-  for (int I = 0; I<nclosed; I++) {
-    if (I == i) continue;
-    E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
-    if ( (closed[I]%2) == (closed[i]%2) )
-      E = E + I2.Exchange(closed[I]/2, closed[i]/2) - I2.Exchange(closed[I]/2, A/2);
-  }
-
-  for (int I=0; I<nclosed; I++) {
-    if (I == i || I == j) continue;
-    E = E - I2.Direct(closed[I]/2, closed[j]/2) + I2.Direct(closed[I]/2, B/2);
-    if ( (closed[I]%2) == (closed[j]%2) )
-      E = E + I2.Exchange(closed[I]/2, closed[j]/2) - I2.Exchange(closed[I]/2, B/2);
-  }
-
-  E = E - I2.Direct(A/2, closed[j]/2) + I2.Direct(A/2, B/2);
-  if ( (closed[i]%2) == (closed[j]%2) )
-    E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
-  
-
-  return E;
-}
-
-double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA) {
-  //int a = cre[0], i = des[0];
-  double sgn = parity(ket,sizeA, a)*parity(ket,sizeA,i);
-  if (a > i)
-    sgn*=-1;
-  
-  double energy = I1(a,i);
-  for (int j=0; j<sizeA; j++)
-    if (ket[j] != 0)
-      energy += (I2(a,i,j,j) - I2(a,j,j,i));
-  return energy*sgn;
-}
-
-double Hij_2Excite(int i, int j, int a, int b, twoInt& I2, char* ket, int& sizeA) {
-    double sgn = parity(ket,sizeA,a)*parity(ket,sizeA,i)*parity(ket,sizeA,b)*parity(ket,sizeA,j);
-    if (b > j) sgn*=-1 ;
-    if (i > j) sgn*=-1 ;
-    if (i > b) sgn*=-1 ;
-    if (a > j) sgn*=-1 ;
-    if (a > b) sgn*=-1 ;
-    if (a > i) sgn*=-1 ;
-    return sgn*(I2(a,i,b,j) - I2(a,j,b,i));
-}
-
-
-double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE) {
-  int cre[2], des[2];cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
-  int ncre = 0, ndes = 0;
-
-  int ndiff = 0;
-  for (int i=0; i<sizeA; i++) 
-    if (bra[i] != ket[i]) ndiff++;
-  if (ndiff >4) return 0.0;
-
-  for (int i=0; i<sizeA; i++) {
-    if (bra[i] && !ket[i]) {
-      if (ncre == 2) return 0.0;
-      cre[ncre] = i;
-      ncre++;
-    }
-    else if (bra[i]==0 && ket[i] !=0){
-      if (ndes == 2) return 0.0;
-      des[ndes] = i;
-      ndes++;
-    }
-  }
-
-  double energy = 0.0;
-  if (ncre == 0 && ndes == 0) {
-    return Energy(ket, sizeA, I1, I2, coreE);
-  }
-  else if (ncre ==1 && ndes == 1) {
-    return Hij_1Excite(des[0], cre[0], I1, I2, ket, sizeA);
-  }
-  else if (ncre==2 && ndes == 2){
-    int a=cre[0], b=cre[1], i=des[0], j=des[1];
-    return Hij_2Excite(i,j,a,b,I2, ket, sizeA);
-  }
-  return energy;
-
-}
 
 //i->a and j->b
 void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
@@ -216,7 +135,7 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
   return;
 }
 
-double Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
+CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
 
   double sgn = 1.0;
   int I = min(i,j), J= max(i,j), A= min(a,b), B = max(a,b);
@@ -226,11 +145,12 @@ double Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoIn
   return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
 }
 
-double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
+
+CItype Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
   double sgn = 1.0;
   parity(min(a,i), max(a,i), sgn); 
   
-  double energy = I1(a,i);
+  CItype energy = I1(a,i);
   long one = 1;
   for (int I=0; I<EffDetLen; I++) {
 
@@ -246,7 +166,7 @@ double Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
   return energy*sgn;
 }
 
-double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {  
+CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {  
   int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
   cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
 
@@ -286,21 +206,6 @@ double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     return 0.;
   }
 }
-
-double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
-  //int a = cre[0], i = des[0];
-  double sgn=1.0;
-  
-  double energy = I1(a,i);
-  for (int j=0; j<nclosed; j++) {
-    if (closed[j]>min(i,a)&& closed[j] <max(i,a))
-      sgn*=-1.;
-    energy += (I2(a,i,closed[j],closed[j]) - I2(a,closed[j],closed[j], i));
-  }
-
-  return energy*sgn;
-}
-
 
 
 

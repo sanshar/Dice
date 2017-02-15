@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
 #endif
 
   startofCalc=getTime();
-  //srand(startofCalc+world.rank());
-  srand(5);
+  srand(startofCalc+world.rank());
+
   std::cout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
@@ -82,9 +82,15 @@ int main(int argc, char* argv[]) {
   schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd, nelec); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
 
-  //vector<oneInt> I1soc(3); //x,y,z integrals
-  //if (schd.doSOC)
-  //readSOCIntegral(I1soc)
+#ifndef Complex
+  if (schd.doSOC) {
+    cout << "doSOC option only works with the complex coefficients. Uncomment the -Dcomplex in the make file and recompile."<<endl;
+    exit(0);
+  }
+#else
+  if (schd.doSOC) 
+    readSOCIntegrals(I1, norbs);
+#endif
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
@@ -115,7 +121,7 @@ int main(int argc, char* argv[]) {
   }
 
   mpi::broadcast(world, ci, 0);
-    //b.col(i) = b.col(i)/b.col(i).norm();
+  //b.col(i) = b.col(i)/b.col(i).norm();
 
 
   vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);

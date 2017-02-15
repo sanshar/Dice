@@ -1,15 +1,16 @@
 CXX = mpiicpc
 CC = mpiicpc
-FLAGS = -ipo -xcore-avx2 -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/
-#FLAGS = -std=c++11 -qopenmp -g  -I/home/sash2458/apps/eigen -I./boost/
+FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
+#FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I./
 
 LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization -lboost_mpi
 #LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_janus/lib -lboost_serialization -lboost_mpi
 #LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_has/lib -lboost_serialization -lboost_mpi
+#LFLAGS = -L./boost/lib -lboost_serialization -lboost_mpi
 
 SRC_cisd = CISD.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
-SRC_hci = HCI.cpp HCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp HCInonessentials.cpp
-SRC_forcyrus = forCyrus.cpp HCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp HCInonessentials.cpp
+SRC_hci = HCI.cpp HCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp 
+SRC_forcyrus = forCyrus.cpp HCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
 SRC_hci2 = HCI.cpp HCIbasics2.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
 SRC_Excitations = Excitations.cpp HCIbasics.cpp Determinants.cpp integral.cpp input.cpp
 

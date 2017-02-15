@@ -29,14 +29,17 @@ namespace HCIbasics {
   void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
 			   std::vector<Determinant>& Dets,
-			   int StartIndex);
+			   int StartIndex,
+			   std::map<HalfDet, std::vector<int> >& AlphaN, bool populateAlphaN);
+
 
   void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 			std::map<HalfDet, std::vector<int> >& AlphaNm1,
+			std::map<HalfDet, std::vector<int> >& AlphaN,
 			std::vector<Determinant>& Dets,
 			int StartIndex,
 			std::vector<std::vector<int> >&connections,
-			std::vector<std::vector<double> >& Helements,
+			std::vector<std::vector<CItype> >& Helements,
 			int Norbs,
 			oneInt& I1,
 			twoInt& I2,
@@ -47,13 +50,13 @@ namespace HCIbasics {
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
-			      vector<vector<double> >& Helements, 
+			      vector<vector<CItype> >& Helements, 
 			      vector<double>& E0, bool converged, schedule& schd,   
 			      std::map<HalfDet, std::vector<int> >& BetaN, 
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 			     MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference, 
-			     vector<vector<double> >& Helements, 
+			     vector<vector<CItype> >& Helements, 
 			     vector<double>& E0, bool& converged, schedule& schd,
 			     std::map<HalfDet, std::vector<int> >& BetaN, 
 			     std::map<HalfDet, std::vector<int> >& AlphaNm1);

@@ -17,9 +17,9 @@ std::complex<double> sumComplex(const std::complex<double>& a, const std::comple
 
 struct Hmult2 {
   std::vector<std::vector<int> >& connections;
-  std::vector<std::vector<double> >& Helements;
+  std::vector<std::vector<CItype> >& Helements;
   
-  Hmult2(std::vector<std::vector<int> >& connections_, std::vector<std::vector<double> >& Helements_)
+  Hmult2(std::vector<std::vector<int> >& connections_, std::vector<std::vector<CItype> >& Helements_)
   : connections(connections_), Helements(Helements_) {}
 
   template <typename Derived>
@@ -43,10 +43,10 @@ struct Hmult2 {
       for (int i=0; i<x.rows(); i++) {
 	if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
 	for (int j=0; j<connections[i].size(); j++) {
-	  double hij = Helements[i][j];
+	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
 	  yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
-	  if (i!= J) yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
+	  if (i!= J) yarray[omp_get_thread_num()](J,0) += conj(hij)*x(i,0);
 	}
       }
       
@@ -61,20 +61,20 @@ struct Hmult2 {
       MPI_Bcast(&(y(0,0)), size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
       boost::mpi::all_reduce(world, &yarray[0](0,0), size, &y(0,0), sumComplex); 
-      //MPI_Reduce(&yarray[0](0,0), &y(0,0), size*2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-      //MPI_Bcast(&(y(0,0)), size*2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
+#else
+      y = 1.*yarray[0];
 #endif
-      //y = 1.*yarray[0];
+
     }
     else {
       for (int i=0; i<x.rows(); i++) {
 	if (i%world.size() != world.rank()) continue;
 	for (int j=0; j<connections[i].size(); j++) {
-	  double hij = Helements[i][j];
+	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
 	  y(i,0) += hij*x(J,0);
-	  if (i!= J) y(J,0) += hij*x(i,0);
+	  if (i!= J) y(J,0) += conj(hij)*x(i,0);
 	}
       }
       
