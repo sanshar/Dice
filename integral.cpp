@@ -25,8 +25,9 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
       ifstream dump("SOC.X");
       int N;
       dump >> N;
-      if (N != norbs) {
+      if (N != norbs/2) {
 	cout << "number of orbitals in SOC.X should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
       
@@ -50,8 +51,9 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
       ifstream dump("SOC.Y");
       int N;
       dump >> N;
-      if (N != norbs) {
+      if (N != norbs/2) {
 	cout << "number of orbitals in SOC.Y should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
       
@@ -65,8 +67,8 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, integral/2.);  //alpha beta
-	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, -integral/2.);  //beta alpha
+	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, -integral/2.);  //alpha beta
+	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, integral/2.);  //beta alpha
       }      
     }
 
@@ -76,8 +78,9 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
       ifstream dump("SOC.Z");
       int N;
       dump >> N;
-      if (N != norbs) {
+      if (N != norbs/2) {
 	cout << "number of orbitals in SOC.Z should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
       
@@ -91,8 +94,8 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	I1(2*(a-1), 2*(b-1)) += integral; //alpha, alpha
-	I1(2*(a-1)+1, 2*(b-1)+1) += -integral; //beta, beta
+	I1(2*(a-1), 2*(b-1)) += integral/2; //alpha, alpha
+	I1(2*(a-1)+1, 2*(b-1)+1) += -integral/2; //beta, beta
       }      
     }
 
@@ -164,7 +167,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     I2.norbs = norbs;
     I2.store.resize( npair*(npair+1)/2, 0.0);
     //I2.store.resize( npair*npair, npair*npair);
-    I1.store.resize(2*norbs*(2*norbs+1)/2,0.0);
+    I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
     coreE = 0.0;
 
     while(!dump.eof()) {
@@ -182,8 +185,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       else if (b==c&&c==d&&d==0)
 	continue;//orbital energy
       else if (c==d&&d==0) {
-	I1(2*(a-1),2*(b-1)) += integral; //alpha,alpha
-	I1(2*(a-1)+1,2*(b-1)+1) += integral; //beta,beta
+	I1(2*(a-1),2*(b-1)) = integral; //alpha,alpha
+	I1(2*(a-1)+1,2*(b-1)+1) = integral; //beta,beta
+	I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
+	I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
       }
       else
 	I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;

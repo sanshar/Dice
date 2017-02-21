@@ -1220,7 +1220,11 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
   MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
 		   norbs, I1, I2, coreE, orbDifference, DoRDM);
-  //if (mpigetrank() != 0) {connections.resize(0); Helements.resize(0);orbDifference.resize(0);}
+
+#ifdef Complex
+  updateSOCconnections(Dets, 0, connections, Helements, norbs, I1);
+#endif
+
 
   //keep the diagonal energies of determinants so we only have to generated
   //this for the new determinants in each iteration and not all determinants
@@ -1369,7 +1373,10 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
     MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), connections, Helements,
 		     norbs, I1, I2, coreE, orbDifference, DoRDM);
-     
+#ifdef Complex
+    updateSOCconnections(Dets, SortedDets.size(), connections, Helements, norbs, I1);
+#endif
+
     for (size_t i=SortedDets.size(); i<Dets.size(); i++)
       SortedDets.push_back(Dets[i]);
     std::sort(SortedDets.begin(), SortedDets.end());
@@ -1377,12 +1384,10 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 
     
     double prevE0 = E0[0];
-    //Hmult H(&detChar[0], norbs, I1, I2, coreE);
     Hmult2 H(connections, Helements);
 
     E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, false);
 
-    //E0[0] = davidson(H, X0[0], diag, schd.nroots+10, schd.davidsonTol, false);
     for (int i=0; i<E0.size(); i++) {
       ci[i].resize(Dets.size(),1); ci[i] = 1.0*X0[i];
       X0[i].resize(0,0);
@@ -1793,3 +1798,40 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 }
 
 
+void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1) {
+  size_t Norbs = norbs;
+  map<Determinant, int> SortedDets;
+  for (size_t i=0; i<Dets.size(); i++)
+    SortedDets[Dets[i]] = i;
+  
+#pragma omp parallel for schedule(dynamic)
+  for (size_t x=prevSize; x<Dets.size(); x++) {
+    Determinant d = Dets[x];
+    int open[norbs], closed[norbs]; 
+    int nclosed = d.getOpenClosed(open, closed);
+    int nopen = norbs-nclosed;
+
+    if (x%10000 == 0) cout <<"update connections "<<x<<" out of "<<Dets.size()-prevSize<<endl;
+    //loop over all single excitation and find if they are present in the list
+    //on or before the current determinant
+    for (int ia=0; ia<nopen*nclosed; ia++){
+      int i=ia/nopen, a=ia%nopen;
+      Determinant di = d;
+      if (open[a]%2 == closed[i]%2) continue;
+      
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+      
+      map<Determinant, int>::iterator it = SortedDets.find(di);
+      if (it != SortedDets.end() ) {
+	int y = it->second;
+	if (y < x) { 
+	  CItype integral = int1(open[a],closed[i]);
+	  if (abs(integral) > 1.e-8) {
+	    connections[x].push_back(y);
+	    Helements[x].push_back(integral);
+	  }
+	}
+      }
+    } 
+  }  
+}

@@ -63,10 +63,15 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       CItype overlap = (b.col(j).adjoint()*b.col(i))(0,0);
       b.col(i) -= overlap*b.col(j);
     }
+    if (b.col(i).norm() <1e-8) {
+      b.col(i).setRandom();
+    }
+    for (int j=0; j<i; j++) {
+      CItype overlap = (b.col(j).adjoint()*b.col(i))(0,0);
+      b.col(i) -= overlap*b.col(j);
+    }
     b.col(i) = b.col(i)/b.col(i).norm();
   }
-
-
 
   MatrixXx sigma = MatrixXx::Zero(x0[0].rows(), maxCopies); 
   int sigmaSize=0, bsize = x0.size();
@@ -85,10 +90,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     for (int i=0; i<bsize; i++)
       for (int j=i; j<bsize; j++) {
 	hsubspace(i,j) = b.col(i).dot(sigma.col(j)); 
+#ifdef Complex
 	hsubspace(j,i) = conj(hsubspace(i,j));
+#else
+	hsubspace(j,i) = hsubspace(i,j);
+#endif
       }
 
-    
     SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
     if (eigensolver.info() != Success) abort();
 
@@ -115,6 +123,15 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
     iter++;
 
+    if (hsubspace.rows() == b.rows()) {
+      //all root are available
+      for (int i=0; i<x0.size(); i++) {
+	x0[i] = b.col(i);
+	eroots.push_back(eigensolver.eigenvalues()[i]);
+      }
+      return eroots;
+    }
+
     if (error < tol || iter >200) {
       if (iter >200) {
 	cout << "Didnt converge"<<endl;
@@ -122,7 +139,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	return eroots;
       }
       convergedRoot++;
-      //pout << str(boost::format("#converged root:%3d -> Energy : %18.10g  \n") % (convergedRoot-1) % ei );
       pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
       if (convergedRoot == nroots) {
 	for (int i=0; i<convergedRoot; i++) {

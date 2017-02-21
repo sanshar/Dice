@@ -27,18 +27,18 @@ class oneInt {
   template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-      ar & store;
+      ar & store & norbs;
     }
  public:
   std::vector<CItype> store;
-
+  int norbs;
   //I explicitly store all elements of the matrix
   //so for normal operator if i and j dont have the same spin
   //then it will just return zero. If we have SOC and
   // i and j have different spin then it can be a complex number.
   inline CItype& operator()(int i, int j) {
-    int A = max(i,j), B = min(i,j);
-    return store.at(A*(A+1)/2 +B);
+    //int A = max(i,j), B = min(i,j);
+    return store.at(i*norbs+j);
   }
 };
 
