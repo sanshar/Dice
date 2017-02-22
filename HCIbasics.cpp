@@ -944,8 +944,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     }
     
 
-    //uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
-    //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
+    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+    uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
     if(mpigetsize() >1 || num_thrds >1) {
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
@@ -993,7 +993,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
     uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
-    uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
+    //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
 
