@@ -627,7 +627,7 @@ int HCIbasics::sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Samp
 
 
 void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-								    twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
+								    twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
   char file [5000];
@@ -775,7 +775,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 }
 
 void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-						      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
+						      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
   char file [5000];
@@ -897,7 +897,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
 }
 
 double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, bool appendPsi1ToPsi0) {
+					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
@@ -1192,7 +1192,7 @@ void HCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 //At input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
 vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
-					twoInt& I2, twoIntHeatBath& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
+					twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					  , int nelec, bool DoRDM) {
 
   int nroots = ci.size();
@@ -1336,10 +1336,13 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 	if (it->ExcitationDistance(Dets[0]) > schd.excitation) continue;
       }
       Dets.push_back(*it);
-      for (int i=0; i<ci.size(); i++) {
-	//cout <<ciindex<<"  "<<abs( uniqueDEH[0].Num->at(ciindex) )<<endl;
-	X0[i](ci[i].rows()+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
-	EPTguess += pow(abs(uniqueDEH[0].Num->at(ciindex)), 2)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+
+      if (iter != 0) {
+	for (int i=0; i<ci.size(); i++) {
+	  //cout <<ciindex<<"  "<<abs( uniqueDEH[0].Num->at(ciindex) )<<endl;
+	  X0[i](ci[i].rows()+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+	  EPTguess += pow(abs(uniqueDEH[0].Num->at(ciindex)), 2)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
+	}
       }
       ciindex++;vec_it++; it++;
     }
@@ -1498,7 +1501,7 @@ void HCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<De
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec, bool mpispecific) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec, bool mpispecific) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -1510,28 +1513,15 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   //d.getRepArray(detArray);
 
   double Energyd = d.Energy(int1, int2, coreE);
-  bool parallelRegion = (mpigetsize() != 1 && mpispecific) ? true : false;
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-
-    //CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
     CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     
 
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-
-      if (parallelRegion) {
-	if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
-	  dets.pop_back();
-	  continue;
-	}
-      }
-
 
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
 
@@ -1548,34 +1538,30 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
     int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+    int X = max(I, J), Y = min(I, J);
 
-    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+
+
+    for (size_t index=start; index<end; index++) {
+      if (abs(integrals[index]) <epsilon) break; 
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      
+      if (!(d.getocc(a) || d.getocc(b))) {
+	dets.push_back(d);
+	Determinant& di = *dets.rbegin();
+	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
 	
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  dets.push_back(d);
-	  Determinant& di = *dets.rbegin();
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-
-	  if (parallelRegion) {
-	    if (di.getLexicalOrder()%(mpigetsize()) != mpigetrank()) {
-	      dets.pop_back();
-	      continue;
-	    }
-	  }
-
-	  double sgn = 1.0;
-	  di.parity(a, b, closed[i], closed[j], sgn);
-	  numerator.push_back(it->first*sgn*ci1);
-	  
-	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
-	  energy.push_back(E);
-	}
+	double sgn = 1.0;
+	di.parity(a, b, closed[i], closed[j], sgn);
+	numerator.push_back(integrals[index]*sgn*ci1);
+	
+	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+	energy.push_back(E);
       }
     }
   }
@@ -1585,7 +1571,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -1617,20 +1603,23 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
     int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+    int X = max(I, J), Y = min(I, J);
 
-    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  dets.push_back(d);
-	  Determinant& di = *dets.rbegin();
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-	}
+
+    for (size_t index=start; index<end; index++) {
+      if (abs(integrals[index]) <epsilon) break; 
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+
+      if (!(d.getocc(a) || d.getocc(b))) {
+	dets.push_back(d);
+	Determinant& di = *dets.rbegin();
+	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
       }
     }
   }
@@ -1641,7 +1630,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   
 
 
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -1683,37 +1672,41 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
     int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+    int X = max(I, J), Y = min(I, J);
 
-    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  dets.push_back(d);
-	  Determinant& di = *dets.rbegin();
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
 
-	  double sgn = 1.0;
-	  di.parity(a, b, closed[i], closed[j], sgn);
+    for (size_t index=start; index<end; index++) {
+      if (abs(integrals[index]) <epsilon) break; 
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
-	  numerator1.push_back(it->first*sgn*ci1);
-	  numerator2.push_back( abs(it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
-	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
-	  energy.push_back(E);
-
-	}
+      if (!(d.getocc(a) || d.getocc(b))) {
+	dets.push_back(d);
+	Determinant& di = *dets.rbegin();
+	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	
+	double sgn = 1.0;
+	di.parity(a, b, closed[i], closed[j], sgn);
+	
+	numerator1.push_back(integrals[index]*sgn*ci1);
+	numerator2.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
+	energy.push_back(E);
+	
       }
     }
+    
   }
   return;
 }
 
 
-void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<bool>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -1761,37 +1754,41 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
     int I = closed[i]/2, J = closed[j]/2;
-    std::pair<int,int> IJpair(max(I,J), min(I,J));
-    std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator ints = closed[i]%2==closed[j]%2 ? I2hb.sameSpin.find(IJpair) : I2hb.oppositeSpin.find(IJpair);
+    int X = max(I, J), Y = min(I, J);
 
-    if (true && (ints != I2hb.sameSpin.end() && ints != I2hb.oppositeSpin.end())) { //we have this pair stored in heat bath integrals
-      for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=ints->second.rbegin(); it!=ints->second.rend(); it++) {
-	if (abs(it->first) <epsilon) break; //if this is small then all subsequent ones will be small
-	int a = 2* it->second.first + closed[i]%2, b= 2*it->second.second+closed[j]%2;
-	//if (a/2 > schd.nvirt+nclosed/2 || b/2 >schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  dets.push_back(d);
-	  Determinant& di = *dets.rbegin();
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
-
-	  double sgn = 1.0;
-	  di.parity(a, b, closed[i], closed[j], sgn);
-
-	  numerator1A.push_back(it->first*sgn*ci1);
-	  numerator2A.push_back( abs(it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
-	  if (abs(it->first) >epsilonLarge) 
-	    present.push_back(true);
-	  else 
-	    present.push_back(false);
+    for (size_t index=start; index<end; index++) {
+      if (abs(integrals[index]) <epsilon) break; 
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
-	  double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
-	  energy.push_back(E);
-
-	}
+      if (!(d.getocc(a) || d.getocc(b))) {
+	dets.push_back(d);
+	Determinant& di = *dets.rbegin();
+	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	
+	double sgn = 1.0;
+	di.parity(a, b, closed[i], closed[j], sgn);
+	
+	numerator1A.push_back(integrals[index]*sgn*ci1);
+	numerator2A.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+	
+	
+	if (abs(integrals[index]) >epsilonLarge) 
+	  present.push_back(true);
+	else 
+	  present.push_back(false);
+	
+	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
+	energy.push_back(E);
+	
       }
+      
     }
   }
   return;

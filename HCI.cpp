@@ -20,6 +20,7 @@
 #include <boost/mpi.hpp>
 #endif
 #include "communicate.h"
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 using namespace Eigen;
 using namespace boost;
@@ -35,6 +36,10 @@ double getTime() {
 }
 double startofCalc = getTime();
 
+boost::interprocess::shared_memory_object int2Segment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::mapped_region regionInt2;
+boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "HCIint2shm", boost::interprocess::read_write);
+boost::interprocess::mapped_region regionInt2SHM;
 
 
 
@@ -47,6 +52,7 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+
 
   startofCalc=getTime();
   srand(startofCalc+world.rank());
@@ -74,13 +80,15 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<norbs/2; i++)
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
-  I2HB.constructClass(allorbs, I2, norbs/2);
-
+  twoIntHeatBathSHM I2HBSHM(1.e-10);
+  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, norbs/2);
+  I2HBSHM.constructClass(norbs/2, I2HB);
 
   int num_thrds;
   std::vector<std::vector<int> > HFoccupied; //double epsilon1, epsilon2, tol, dE;
   schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd, nelec); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
+  mpi::broadcast(world, schd, 0);
 
 #ifndef Complex
   if (schd.doSOC) {
@@ -109,22 +117,18 @@ int main(int argc, char* argv[]) {
   }
 
   if (mpigetrank() == 0) {
-    for (int i=0; i<schd.nroots; i++) {
-      ci[i].setRandom();
-      for (int j=0; j<i; j++) {
-	CItype overlap = (ci[i].adjoint()*ci[j])(0,0);
-	ci[i] -= overlap*ci[j];
-      }
-      if (ci[i].norm() >1.e-8)
-	ci[i] = ci[i]/ci[i].norm();
-    }
+    for (int j=0; j<ci[0].rows(); j++) 
+      ci[0](j,0) = 1.0;
+    ci[0] = ci[0]/ci[0].norm();
   }
 
   mpi::broadcast(world, ci, 0);
   //b.col(i) = b.col(i)/b.col(i).norm();
 
 
-  vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HB, irrep, I1, coreE, nelec, schd.DoRDM);
+  vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+
+
 
   std::string efile;
   efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
@@ -147,30 +151,33 @@ int main(int argc, char* argv[]) {
     }
   }
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+
   if (schd.quasiQ) {    
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, true);
+      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
   }
 
-  I2.store.resize(0);
+  world.barrier();
+  boost::interprocess::shared_memory_object::remove("HCIint2");
+
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
     //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec);
+      HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
     for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else if (schd.SampleN != -1 && schd.singleList){
     for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   /*
   else if (!schd.stochastic) {
@@ -184,11 +191,16 @@ int main(int argc, char* argv[]) {
   }
   */
   else { 
+    world.barrier();
+    boost::interprocess::shared_memory_object::remove("HCIint2shm");
     cout << "Error here"<<endl;
     exit(0);
     //Here I will implement the alias method
     //HCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
+
+  world.barrier();
+  boost::interprocess::shared_memory_object::remove("HCIint2shm");
 
   return 0;
 }

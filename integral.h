@@ -7,6 +7,8 @@
 #include <map>
 #include <utility>
 #include "iowrapper.h"
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 
 using namespace std;
 using namespace Eigen;
@@ -49,8 +51,7 @@ class twoInt {
   template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-      ar & store \
-	& maxEntry \
+      ar & maxEntry \
 	& Direct \
 	& Exchange \
 	& zero     \
@@ -58,7 +59,7 @@ class twoInt {
 	& ksym;
     }
  public:
-  std::vector<double> store;
+  double* store;
   double maxEntry;
   MatrixXd Direct, Exchange;
   double zero ;
@@ -86,6 +87,7 @@ class twoInt {
   }
   
 };
+
 
 
 class twoIntHeatBath {
@@ -129,6 +131,22 @@ class twoIntHeatBath {
   
   
 };
+
+class twoIntHeatBathSHM {
+ public:
+  double* sameSpinIntegrals;
+  double* oppositeSpinIntegrals;
+  size_t* startingIndicesSameSpin;
+  size_t* startingIndicesOppositeSpin;
+  int* sameSpinPairs;
+  int* oppositeSpinPairs;
+
+  double epsilon;
+ twoIntHeatBathSHM(double epsilon_) : epsilon(abs(epsilon_)) {}
+
+  void constructClass(int norbs, twoIntHeatBath& I2) ;
+};
+
 
 #ifdef Complex
 void readSOCIntegrals(oneInt& I1soc, int norbs);  

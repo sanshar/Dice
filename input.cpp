@@ -36,6 +36,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoRDM = false;
   schd.quasiQ = false;
   schd.doSOC = false;
+  schd.doSOCQDPT = false;
 
   while (dump.good()) {
 
@@ -92,6 +93,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.io=false;
     else if (boost::iequals(ArgName, "dosoc")) 
       schd.doSOC=true;
+    else if (boost::iequals(ArgName, "dosocqdpt")) 
+      schd.doSOCQDPT=true;
     else if (boost::iequals(ArgName, "nptiter")) 
       schd.nPTiter=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon2")) 

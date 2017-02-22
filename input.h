@@ -34,7 +34,8 @@ private:
       & DoRDM                                   \
       & quasiQ                                  \
       & quasiQEpsilon                           \
-      & doSOC;
+      & doSOC                                   \
+      & doSOCQDPT;
   }
   
 public:
@@ -61,6 +62,7 @@ public:
   bool quasiQ;
   double quasiQEpsilon;
   bool doSOC;
+  bool doSOCQDPT;
 };
 
 #endif
