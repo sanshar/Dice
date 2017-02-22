@@ -359,5 +359,6 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 			     int i, int A, int j, int B, double Energyd) ;
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
 
+CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
 
 #endif

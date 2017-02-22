@@ -146,6 +146,21 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoIn
 }
 
 
+CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
+  //int a = cre[0], i = des[0];
+  double sgn=1.0;
+  
+  CItype energy = I1(a,i);
+  for (int j=0; j<nclosed; j++) {
+    if (closed[j]>min(i,a)&& closed[j] <max(i,a))
+      sgn*=-1.;
+    energy += (I2(a,i,closed[j],closed[j]) - I2(a,closed[j],closed[j], i));
+  }
+
+  return energy*sgn;
+}
+
+
 CItype Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
   double sgn = 1.0;
   parity(min(a,i), max(a,i), sgn); 

@@ -932,6 +932,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     
 
     uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+    //uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
     uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
     if(mpigetsize() >1 || num_thrds >1) {
@@ -976,10 +977,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	}
       }
+      uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
     }
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
-    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
     //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
@@ -1540,8 +1541,9 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
-    
+    //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);    
 
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
@@ -1609,9 +1611,10 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);    
 
-    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
 
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
@@ -1671,9 +1674,8 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-
-    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);    
     
 
     if (abs(integral) > epsilon ) {
@@ -1747,9 +1749,8 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-
-    CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);    
     
 
     if (abs(integral) > epsilon ) {
