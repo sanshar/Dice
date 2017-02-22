@@ -909,19 +909,19 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   
   
   std::vector<StitchDEH> uniqueDEH(num_thrds);
+  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds, std::vector<vector<Determinant> >(num_thrds)));
+  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds, std::vector<vector<Determinant> >(num_thrds)));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedNumBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds, std::vector<vector<double> >(num_thrds)));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds, std::vector<vector<double> >(num_thrds)));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds, std::vector<vector<double> >(num_thrds)));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds, std::vector<vector<double> >(num_thrds)));
   double totalPT = 0.0;
 
-#ifndef Complex
-  CItype zero = 0.0;
-#else
-  CItype zero = complex<double>(0,0);
-#endif
-
-#pragma omp parallel 
+#pragma omp parallel
   {
     for (int i=0; i<Dets.size(); i++) {
-      if (i%(omp_get_num_threads()) != omp_get_thread_num()) {continue;}
-      HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), zero, 
+      if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+      HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, 
 				   I1, I2, I2HB, irrep, coreE, E0, 
 				   *uniqueDEH[omp_get_thread_num()].Det, 
 				   *uniqueDEH[omp_get_thread_num()].Num, 
@@ -930,59 +930,82 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
       if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
     }
     
-    
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before sort "<<getTime()-startofCalc<<endl;
-    
-    //uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
-    uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
+
+    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
     uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
-    
-#pragma omp barrier 
-    if (omp_get_thread_num() == 0) {
-      for (int thrd=1; thrd<num_thrds; thrd++) {
-	uniqueDEH[0].merge(uniqueDEH[thrd]);
-	uniqueDEH[thrd].clear();
-	uniqueDEH[0].RemoveDuplicates();
+    if(mpigetsize() >1 || num_thrds >1) {
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
+      
+      for (int i=0; i<uniqueDEH[omp_get_thread_num()].Det->size(); i++) {
+	size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(i).getHash();
+	size_t procThrd = lOrder%(mpigetsize()*num_thrds);
+	int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
+	hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(i));
+	hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(i));
+	hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(i));
+      }
+
+      uniqueDEH[omp_get_thread_num()].clear();
+      
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
+
+
+#pragma omp barrier
+      if (omp_get_thread_num()==num_thrds-1) {
+	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
+	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
+	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+	  hashedDetBeforeMPI.clear();
+	  hashedNumBeforeMPI.clear();
+	  hashedEnergyBeforeMPI.clear();
+      }
+#pragma omp barrier
+
+      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
+      
+      for (int proc=0; proc<mpigetsize(); proc++) {
+	for (int thrd=0; thrd<num_thrds; thrd++) {
+	  for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
+	    uniqueDEH[omp_get_thread_num()].Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	    uniqueDEH[omp_get_thread_num()].Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	    uniqueDEH[omp_get_thread_num()].Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	  }
+	  hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	  hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	  hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	}
       }
     }
-  }
+    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
-  if (mpigetrank() == 0 ) cout << "#Before mpi split "<<getTime()-startofCalc<<"  "<<uniqueDEH[0].Det->size()<<endl;
-  uniqueDEH.resize(1);
-  
-  
-  vector<Determinant>& uniqueDets = *uniqueDEH[0].Det;
-  vector<CItype>& uniqueNumerator = *uniqueDEH[0].Num;
-  vector<double>& uniqueEnergy = *uniqueDEH[0].Energy;
-  totalPT=0.0;
+    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+    //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
+    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
-  size_t numDets=0, numLocalDets=uniqueDets.size();
-  mpi::all_reduce(world, numLocalDets, numDets, std::plus<size_t>());
-  if (mpigetrank() == 0) cout <<"#num dets "<<numDets<<endl;
-#pragma omp parallel
-  {
+
+    vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
+    vector<double>& hasHEDNumerator = *uniqueDEH[omp_get_thread_num()].Num;
+    vector<double>& hasHEDEnergy = *uniqueDEH[omp_get_thread_num()].Energy;
+
     double PTEnergy = 0.0;
-    for (size_t i=0; i<uniqueDets.size();i++) {
-      if (i%(omp_get_num_threads()) != omp_get_thread_num()) continue;
-      PTEnergy += pow(abs(uniqueNumerator[i]),2)/(E0-uniqueEnergy[i]);
+    for (size_t i=0; i<hasHEDDets.size();i++) {
+      PTEnergy += hasHEDNumerator[i]*hasHEDNumerator[i]/(E0-hasHEDEnergy[i]);
     }
 #pragma omp critical
     {
       totalPT += PTEnergy;
     }
-    
+
   }
 
-
-  double PT3 = 0.0;
-
+  
   double finalE = 0.;
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
   
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
 
+  /*
   if (0) {
     //Calculate the third order energy
     //this only works for one mpi process calculations
@@ -1046,6 +1069,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   }
 
   uniqueDEH[0].clear();
+  */
   return finalE;
 }
 
@@ -1326,6 +1350,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     for (int i=0; i<ci.size(); i++) {
       X0[i].setZero(Dets.size()+newDets.size(),1); 
       X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i]; 
+      
     }
 
     vector<Determinant>::iterator vec_it = SortedDets.begin();
@@ -1347,7 +1372,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
       ciindex++;vec_it++; it++;
     }
 
-    pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
+    if (iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
     uniqueDEH.resize(0);
     //now diagonalize the hamiltonian
 
@@ -1400,8 +1425,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, 
-			     orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++)

@@ -173,6 +173,7 @@ class Determinant {
 
   CItype Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
 
+
   size_t getLexicalOrder() {
     size_t order = 0;
     int pnelec = 0;
@@ -188,6 +189,10 @@ class Determinant {
       }
     }
     return order;
+  }
+
+  size_t getHash() {
+    return getLexicalOrder();
   }
 
   bool connected1Alpha1Beta(const Determinant& d) const {
