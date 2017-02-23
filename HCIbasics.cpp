@@ -1406,8 +1406,10 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     
     double prevE0 = E0[0];
     Hmult2 H(connections, Helements);
-
+    
     E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, false);
+    mpi::broadcast(world, E0, 0);
+    mpi::broadcast(world, X0, 0);
 
     for (int i=0; i<E0.size(); i++) {
       ci[i].resize(Dets.size(),1); ci[i] = 1.0*X0[i];

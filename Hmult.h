@@ -85,9 +85,14 @@ struct Hmult2 {
 #endif
 	}
       }
-      
+
+      double* startptr;
+      MatrixXx ycopy;
+      if (mpigetrank() == 0) {ycopy = MatrixXx(y.rows(), 1); ycopy=1.*y; startptr = &ycopy(0,0);}
+      else {startptr = &y(0,0);}
+
 #ifndef SERIAL
-      MPI_Allreduce(MPI_IN_PLACE, &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Reduce(startptr, &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 #endif
       
     }
