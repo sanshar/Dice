@@ -1300,11 +1300,10 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 	HCIbasics::getDeterminants(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero, 
 				   I1, I2, I2HB, irrep, coreE, E0[0], 
 				   *uniqueDEH[omp_get_thread_num()].Det, 
-				   *uniqueDEH[omp_get_thread_num()].Num, 
-				   *uniqueDEH[omp_get_thread_num()].Energy, 
-				   schd,0, nelec, false);
+				   schd,0, nelec);
       }
-
+      uniqueDEH[omp_get_thread_num()].Energy->resize(uniqueDEH[omp_get_thread_num()].Det->size(),0.0);
+      uniqueDEH[omp_get_thread_num()].Num->resize(uniqueDEH[omp_get_thread_num()].Det->size(),0.0);
       
       uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
       uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
@@ -1362,36 +1361,17 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 	if (it->ExcitationDistance(Dets[0]) > schd.excitation) continue;
       }
       Dets.push_back(*it);
-
-      if (iter != 0) {
-	for (int i=0; i<ci.size(); i++) {
-	  //cout <<ciindex<<"  "<<abs( uniqueDEH[0].Num->at(ciindex) )<<endl;
-	  X0[i](ci[i].rows()+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
-	  EPTguess += pow(abs(uniqueDEH[0].Num->at(ciindex)), 2)/(E0[i] - uniqueDEH[0].Energy->at(ciindex));  
-	}
-      }
-      ciindex++;vec_it++; it++;
+      it++;
     }
+    uniqueDEH.resize(0);
 
     if (iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
-    uniqueDEH.resize(0);
-    //now diagonalize the hamiltonian
 
     MatrixXx diag(Dets.size(), 1); diag.setZero(diag.size(),1);
     if (mpigetrank() == 0) diag.block(0,0,ci[0].rows(),1)= 1.*diagOld;
 
 
-    double estimatedCorrection = 0.0;
-#pragma omp parallel for schedule(dynamic) reduction(+:estimatedCorrection)
-    for (size_t k=SortedDets.size(); k<Dets.size() ; k++) {
-      if (k % mpigetsize() != mpigetrank() ) continue;
-      diag(k,0) = Dets[k].Energy(I1, I2, coreE);
-      if (k%1000000 == 0 && k!=0) cout <<"#"<< k<<"Hdiag out of "<<Dets.size()<<endl;     
-    }
 
-#ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
 
     connections.resize(Dets.size());
     Helements.resize(Dets.size());
@@ -1404,6 +1384,18 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 		     norbs, I1, I2, coreE, orbDifference, DoRDM);
 #ifdef Complex
     updateSOCconnections(Dets, SortedDets.size(), connections, Helements, norbs, I1);
+#endif
+
+#pragma omp parallel 
+  {
+    for (size_t k=SortedDets.size(); k<Dets.size() ; k++) {
+      if (k%(mpigetsize()*omp_get_num_threads()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) continue;
+      diag(k,0) = Helements[k].at(0);
+    }
+  }
+
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
     for (size_t i=SortedDets.size(); i<Dets.size(); i++)
