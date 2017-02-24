@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
     for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2Together(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else if (schd.SampleN != -1 && schd.singleList){
     for (int root=0; root<schd.nroots;root++) 
