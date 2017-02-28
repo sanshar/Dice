@@ -67,7 +67,12 @@ namespace HCIbasics {
 			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root);
   
   
-  void DoPerturbativeStochastic2SingleListDoubleEpsilon2Together(vector<Determinant>& Dets, MatrixXx& ci
+  void DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
+								 , double& E0, oneInt& I1, twoInt& I2, 
+								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
+								 schedule& schd, double coreE, 
+								 int nelec, int root) ;
+  void DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci
 								 , double& E0, oneInt& I1, twoInt& I2, 
 								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
 								 schedule& schd, double coreE, 

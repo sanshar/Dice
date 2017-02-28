@@ -14,6 +14,7 @@ using namespace Eigen;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
+int ipow(int base, int exp);
 
 struct Hmult2 {
   std::vector<std::vector<int> >& connections;
@@ -35,27 +36,38 @@ struct Hmult2 {
       std::vector<MatrixXx> yarray(num_thrds);
       
       for (int i=0; i<num_thrds; i++) {
-	yarray[i] = MatrixXx::Zero(y.rows(),1);
-	//yarray[i] = 0.*y;
       }
       
-#pragma omp parallel for schedule(dynamic)
-      for (int i=0; i<x.rows(); i++) {
-	if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
-	for (int j=0; j<connections[i].size(); j++) {
-	  CItype hij = Helements[i][j];
-	  int J = connections[i][j];
-	  yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
+#pragma omp parallel
+      {
+	yarray[omp_get_thread_num()] = MatrixXx::Zero(y.rows(),1);
+#pragma omp for schedule(dynamic)
+	for (int i=0; i<x.rows(); i++) {
+	  if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
+	  for (int j=0; j<connections[i].size(); j++) {
+	    CItype hij = Helements[i][j];
+	    int J = connections[i][j];
+	    yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
 #ifdef Complex
-	  if (i!= J) yarray[omp_get_thread_num()](J,0) += conj(hij)*x(i,0);
+	    if (i!= J) yarray[omp_get_thread_num()](J,0) += conj(hij)*x(i,0);
 #else
-	  if (i!= J) yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
+	    if (i!= J) yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
 #endif
+	  }
+	}
+	
+	for (int level=0; level<ceil(log2(omp_get_num_threads())); level++) {
+#pragma omp barrier
+	  if (omp_get_thread_num()%ipow(2,level+1) == 0 && omp_get_thread_num() + ipow(2,level) < omp_get_num_threads() ) {
+	    int other_thrd = omp_get_thread_num()+ipow(2,level);
+	    int this_thrd = omp_get_thread_num();
+	    yarray[this_thrd] += yarray[other_thrd];
+	  }  
 	}
       }
-      
-      for (int i=1; i<num_thrds; i++)
-	yarray[0] += yarray[i];
+
+      //for (int i=1; i<num_thrds; i++)
+      //yarray[0] += yarray[i];
 
 
       int size = yarray[0].rows();

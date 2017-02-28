@@ -36,9 +36,9 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "HCIint2shm", boost::interprocess::read_write);
+boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
 
 
@@ -47,15 +47,23 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 
 int main(int argc, char* argv[]) {
-
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
-
-
   startofCalc=getTime();
   srand(startofCalc+world.rank());
+
+
+  //make the shared memory stuff
+  //permission.set_unrestricted();
+  string hciint2 = "HCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  string hciint2shm = "HCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, hciint2.c_str(), boost::interprocess::read_write);
+  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, hciint2shm.c_str(), boost::interprocess::read_write);
+
+
+
 
   std::cout.precision(15);
 
@@ -129,7 +137,6 @@ int main(int argc, char* argv[]) {
   vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 
 
-
   std::string efile;
   efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
   FILE* f = fopen(efile.c_str(), "wb");      
@@ -146,7 +153,7 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<5; i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout <<"#"<< i<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
+      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
@@ -163,7 +170,7 @@ int main(int argc, char* argv[]) {
   }
 
   world.barrier();
-  boost::interprocess::shared_memory_object::remove("HCIint2");
+  boost::interprocess::shared_memory_object::remove(hciint2.c_str());
 
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
@@ -173,7 +180,8 @@ int main(int argc, char* argv[]) {
   }
   else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
     for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2Together(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      //HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else if (schd.SampleN != -1 && schd.singleList){
     for (int root=0; root<schd.nroots;root++) 
@@ -192,7 +200,7 @@ int main(int argc, char* argv[]) {
   */
   else { 
     world.barrier();
-    boost::interprocess::shared_memory_object::remove("HCIint2shm");
+    boost::interprocess::shared_memory_object::remove(hciint2shm.c_str());
     cout << "Error here"<<endl;
     exit(0);
     //Here I will implement the alias method
@@ -200,7 +208,7 @@ int main(int argc, char* argv[]) {
   }
 
   world.barrier();
-  boost::interprocess::shared_memory_object::remove("HCIint2shm");
+  boost::interprocess::shared_memory_object::remove(hciint2shm.c_str());
 
   return 0;
 }
