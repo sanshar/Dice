@@ -7,6 +7,8 @@
 #include <map>
 #include <utility>
 #include "iowrapper.h"
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 
 using namespace std;
 using namespace Eigen;
@@ -17,6 +19,9 @@ class compAbs {
   bool operator()(const double& a, const double& b) const {
     return abs(a) < abs(b);
   }
+  bool operator()(const complex<double>& a, const complex<double>& b) const {
+    return std::abs(a) < std::abs(b);
+  }
 };
 class oneInt {
  private:
@@ -24,23 +29,21 @@ class oneInt {
   template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-      ar & store \
-	& zero;
+      ar & store & norbs;
     }
  public:
-  std::vector<double> store;
-  double zero ;
- oneInt() :zero(0.0) {}
-  inline double& operator()(int i, int j) {
-    zero = 0.0;
-    if (!((i%2 == j%2))) {
-      return zero;
-    }
-    int I = i/2; int J=j/2;
-    int A = max(I,J), B = min(I,J);
-    return store.at(A*(A+1)/2 +B);
+  std::vector<CItype> store;
+  int norbs;
+  //I explicitly store all elements of the matrix
+  //so for normal operator if i and j dont have the same spin
+  //then it will just return zero. If we have SOC and
+  // i and j have different spin then it can be a complex number.
+  inline CItype& operator()(int i, int j) {
+    //int A = max(i,j), B = min(i,j);
+    return store.at(i*norbs+j);
   }
 };
+
   
 class twoInt {
  private:
@@ -48,8 +51,7 @@ class twoInt {
   template<class Archive>
     void serialize(Archive & ar, const unsigned int version)
     {
-      ar & store \
-	& maxEntry \
+      ar & maxEntry \
 	& Direct \
 	& Exchange \
 	& zero     \
@@ -57,7 +59,7 @@ class twoInt {
 	& ksym;
     }
  public:
-  std::vector<double> store;
+  double* store;
   double maxEntry;
   MatrixXd Direct, Exchange;
   double zero ;
@@ -85,6 +87,7 @@ class twoInt {
   }
   
 };
+
 
 
 class twoIntHeatBath {
@@ -128,7 +131,27 @@ class twoIntHeatBath {
   
   
 };
-  
+
+class twoIntHeatBathSHM {
+ public:
+  double* sameSpinIntegrals;
+  double* oppositeSpinIntegrals;
+  size_t* startingIndicesSameSpin;
+  size_t* startingIndicesOppositeSpin;
+  int* sameSpinPairs;
+  int* oppositeSpinPairs;
+
+  double epsilon;
+ twoIntHeatBathSHM(double epsilon_) : epsilon(abs(epsilon_)) {}
+
+  void constructClass(int norbs, twoIntHeatBath& I2) ;
+};
+
+
+#ifdef Complex
+void readSOCIntegrals(oneInt& I1soc, int norbs);  
+#endif
+
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE,
 		   std::vector<int>& irrep);
 

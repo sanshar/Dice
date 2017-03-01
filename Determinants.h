@@ -169,9 +169,10 @@ class Determinant {
   }
 
 
-  double Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2);
+  CItype Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2);
 
-  double Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
+  CItype Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
+
 
   size_t getLexicalOrder() {
     size_t order = 0;
@@ -188,6 +189,10 @@ class Determinant {
       }
     }
     return order;
+  }
+
+  size_t getHash() {
+    return getLexicalOrder();
   }
 
   bool connected1Alpha1Beta(const Determinant& d) const {
@@ -348,45 +353,12 @@ class Determinant {
 };
 
 
-//how many occupied orbitals before i
-double parity(char* d, int& sizeA, int& i);
-//energy of the determinant given as char array
-double Energy(char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
-//energy of the determinant given as a integer vector
-double Energy(vector<int>& occ, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
-
-//energy of the new determinant formed by making a double excitation
-//INPUT
-// 1. closed - the list of occupied orbitals in the input determinant
-// 2. nclosed - the number of occupied orbitals
-// 3. I1, I2, coreE - one electron, two electron integrals and core energy
-// 4. i, A, j, B - orbital indides indicating a double excitation
-// 5. Energyd - energy of the determinant represented by the closed array string 
 double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, int j, int B, double Energyd);
-
-
-//energy of the new determinant formed by making a single excitation
-//INPUT
-// 1. closed - the list of occupied orbitals in the input determinant
-// 2. nclosed - the number of occupied orbitals
-// 3. I1, I2, coreE - one electron, two electron integrals and core energy
-// 4. i, A, - orbital indides indicating a single excitation
-// 5. Energyd - energy of the determinant represented by the closed array string 
+			     int i, int A, double Energyd) ;
 double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, double Energyd);
+			     int i, int A, int j, int B, double Energyd) ;
+CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
 
-//All these functions calcualte the <bra|H|ket> elements
-//1. this takes both bra and ket as char arrays
-double Hij(char* bra, char* ket, int& sizeA, oneInt& I1, twoInt& I2, double& coreE);
-//2. This takes actual determinants
-double Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
-//3. this only takes the ket and the single excitation that gives a bra state
-double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, char* ket, int& sizeA);
-//4. this only takes the ket and the double excitation that gives a bra state
-double Hij_2Excite(int i, int j, int a, int b, twoInt& I2, char* ket, int& sizeA);
-
-double Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
-
+CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
 
 #endif

@@ -38,6 +38,11 @@ double getTime() {
 }
 double startofCalc = getTime();
 
+boost::interprocess::shared_memory_object int2Segment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::mapped_region regionInt2;
+boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::mapped_region regionInt2SHM;
+
 void main(int argc, char* argv[]) {
 
 #ifndef SERIAL

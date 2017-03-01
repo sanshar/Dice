@@ -4,14 +4,16 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <vector>
+#include "global.h"
 
 class Hmult2;
 using namespace Eigen;
 using namespace std;
 
 
-void precondition(MatrixXd& r, MatrixXd& diag, double& e);
-vector<double> davidson(Hmult2& H, vector<MatrixXd>& x0, MatrixXd& diag, int maxCopies, double tol, bool print);
-double LinearSolver(Hmult2& H, MatrixXd& x0, MatrixXd& b, double tol, bool print);
+
+void precondition(MatrixXx& r, MatrixXx& diag, double& e);
+vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, bool print);
+double LinearSolver(Hmult2& H, MatrixXx& x0, MatrixXx& b, double tol, bool print);
 
 #endif

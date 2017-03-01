@@ -33,7 +33,9 @@ private:
       & nPTiter                                 \
       & DoRDM                                   \
       & quasiQ                                  \
-      & quasiQEpsilon;
+      & quasiQEpsilon                           \
+      & doSOC                                   \
+      & doSOCQDPT;
   }
   
 public:
@@ -59,6 +61,8 @@ public:
   bool DoRDM;
   bool quasiQ;
   double quasiQEpsilon;
+  bool doSOC;
+  bool doSOCQDPT;
 };
 
 #endif
