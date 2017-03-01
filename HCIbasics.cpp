@@ -1906,10 +1906,10 @@ void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Ma
   
   
   std::vector<StitchDEH> uniqueDEH(num_thrds);
-  uniqueDEH[0].extra_info = true;
   double totalPT = 0.0;
 #pragma omp parallel 
   {
+    uniqueDEH[omp_get_thread_num()].extra_info = true;
 
     for (int i=0; i<Dets.size(); i++) {
 
@@ -1928,12 +1928,14 @@ void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Ma
     } // for i
     
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before sort "<<getTime()-startofCalc<<endl;
-    
+
     uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
     uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
     
+
+    // Merge all PT dets so RDM can be computed by thread 0
 #pragma omp barrier 
     if (omp_get_thread_num() == 0) {
       for (int thrd=1; thrd<num_thrds; thrd++) {
@@ -1959,15 +1961,16 @@ void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Ma
 // Finally, uniqueOrbDiff contains the orbitals that are excited between D_i and D_k
 // connected to each PT det
 
+
   size_t numDets=0, numLocalDets=uniqueDets.size();
   mpi::all_reduce(world, numLocalDets, numDets, std::plus<size_t>());
   if (mpigetrank() == 0) cout <<"#num dets "<<numDets<<endl;
-#pragma omp parallel
+//#pragma omp parallel
   {
     for (size_t k=0; k<uniqueDets.size();k++) {
-      if (k%(omp_get_num_threads()) != omp_get_thread_num()) continue;
+      //if (k%(omp_get_num_threads()) != omp_get_thread_num()) continue;
       for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
-       // Get closed for determinant D_i = Dets[uniqueVarIndices[k][i]]
+        // Get closed for determinant D_i = Dets[uniqueVarIndices[k][i]]
         // Determine whether single or double excitation 
         int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs; // These orbitals correspond to an excitation from D_k to D_i
         if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
@@ -2390,9 +2393,9 @@ void HCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<De
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
-cout << "Variational wavefunction" << endl;
 
 /*
+  cout << "Variational wavefunction" << endl;
   for (int root=0; root<schd.nroots; root++) {
     pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
     MatrixXd prevci = 1.*ci[root];
@@ -2621,18 +2624,15 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	energy.push_back(E);
 
-	std::vector<int> var_indices_vec;
-	var_indices_vec.push_back(det_ind);
-	var_indices.push_back(var_indices_vec);
-	
 	orbDiff = a*norbs*norbs*norbs+closed[i]*norbs*norbs+b*norbs+closed[j];  //i>j and a>b??
 	std::vector<int> orbDiff_vec;
 	orbDiff_vec.push_back(orbDiff);
 	orbDifference.push_back(orbDiff_vec);
-      } //for ???
+	
+      } // if a and b unoccupied
     } // iterate over heatbath integrals
   } // i and j
-  return;
+return;
 }
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
