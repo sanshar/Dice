@@ -2624,6 +2624,10 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	energy.push_back(E);
 
+	std::vector<int> var_indices_vec;
+	var_indices_vec.push_back(det_ind);
+	var_indices.push_back(var_indices_vec);
+
 	orbDiff = a*norbs*norbs*norbs+closed[i]*norbs*norbs+b*norbs+closed[j];  //i>j and a>b??
 	std::vector<int> orbDiff_vec;
 	orbDiff_vec.push_back(orbDiff);
