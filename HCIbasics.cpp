@@ -1034,12 +1034,10 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 	if ( i == Psi1.size()-1) {
 	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  cout << i<<"  "<<energyEN<<"  "<<energyENLargeEps<<"  "<<currentNum1A<<endl;
 	}
 	else if (!(Psi1[i] == Psi1[i+1])) {
 	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  cout << i<<"  "<<energyEN<<"  "<<energyENLargeEps<<"  "<<currentNum1A<<endl;
 	  currentNum1A = 0.;
 	  currentNum2A = 0.;
 	  currentNum1B = 0.;
@@ -1060,12 +1058,10 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 	if ( i == Psi1.size()-1) {
 	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  cout << i<<"  "<<energyEN<<"  "<<energyENLargeEps<<"  "<<currentNum1A<<endl;
 	}
 	else if (!(Psi1[i] == Psi1[i+1])) {
 	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  cout << i<<"  "<<energyEN<<"  "<<energyENLargeEps<<"  "<<currentNum1A<<endl;
 	  //energyEN += (currentNum1A*currentNum1A*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  //energyENLargeEps += (currentNum1B*currentNum1B*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
 	  currentNum1A = 0.;
@@ -1087,7 +1083,6 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
     sampleSize = distinctSample;
     
     
-      cout << energyEN<<"  "<<energyENLargeEps<<"  "<<EptLarge<<endl;
 #pragma omp critical 
     {
       if (mpigetrank() == 0) {
@@ -1110,255 +1105,6 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 }
 
 
-void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
-
-  boost::mpi::communicator world;
-
-  double epsilon2 = schd.epsilon2;
-  schd.epsilon2 = schd.epsilon2Large;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
-
-  schd.epsilon2 = epsilon2;
-
-  int norbs = Determinant::norbs;
-  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-  int niter = schd.nPTiter;
-  //double eps = 0.001;
-  int Nsample = schd.SampleN;
-  double AvgenergyEN = 0.0;
-  double AverageDen = 0.0;
-  int currentIter = 0;
-  int sampleSize = 0;
-  int num_thrds = omp_get_max_threads();
-  
-  double cumulative = 0.0;
-  for (int i=0; i<ci.rows(); i++)
-    cumulative += abs(ci(i,0));
-
-  std::vector<int> alias; std::vector<double> prob;
-  setUpAliasMethod(ci, cumulative, alias, prob);
-
-  double totalPT=0, totalPTLargeEps=0;
-
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNum1BeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNum1AfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNum2BeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNum2AfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<char> > > > hashedpresentBeforeMPI(mpigetsize(), std::vector<std::vector<vector<char> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<char> > > > hashedpresentAfterMPI(mpigetsize(), std::vector<std::vector<vector<char> > >(num_thrds));
-
-#pragma omp parallel
-  {
-    for (int iter=0; iter<niter; iter++) {
-      std::vector<CItype> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
-      int distinctSample = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
-      for (int i=0; i<Nsample; i++)
-	wts1[i] /= (num_thrds*mpigetsize());
-      int Nmc = Nsample;
-      double norm = 0.0;
-    
-      std::vector<Determinant> Psi1; std::vector<CItype>  numerator1A; vector<double> numerator2A;
-      vector<char> present;
-      std::vector<double>  det_energy;
-
-      for (int i=0; i<distinctSample; i++) {
-	int I = Sample1[i];
-	HCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), 
-					   schd.epsilon2Large/abs(ci(I,0)), wts1[i], 
-					   ci(I,0), I1, I2, I2HB, irrep, coreE, E0, 
-					   Psi1, 
-					   numerator1A, 
-					   numerator2A, 
-					   present, 
-					   det_energy, 
-					   schd, Nmc, nelec);
-      }      
-      
-
-      std::vector<Determinant> Psi1copy = Psi1;
-      vector<long> detIndex(Psi1.size(), 0);
-      vector<long> detIndexcopy(Psi1.size(), 0);
-      for (size_t i=0; i<Psi1.size(); i++)
-	detIndex[i] = i;      
-      mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
-      detIndexcopy.clear(); Psi1copy.clear();      
-      reorder(numerator1A, detIndex);
-      reorder(numerator2A, detIndex);
-      reorder(det_energy, detIndex);
-      reorder(present, detIndex);
-      detIndex.clear();
-
-      //quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1A[0], &numerator2A[0], &det_energy, &present);
-      RemoveDetsPresentIn(SortedDets, Psi1, numerator1A, numerator2A, det_energy, present);
-
-      if(mpigetsize() >1 || num_thrds >1) {
-	for (int proc=0; proc<mpigetsize(); proc++) {
-	  hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedNum1BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedNum2BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedpresentBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	}
-	for (int j=0; j<Psi1.size(); j++) {
-	  size_t lOrder = Psi1.at(j).getHash();
-	  size_t procThrd = lOrder%(mpigetsize()*num_thrds);
-	  int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
-	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(Psi1.at(j));
-	  hashedNum1BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(numerator1A.at(j));
-	  hashedNum2BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(numerator2A.at(j));
-	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(det_energy.at(j));
-	  hashedpresentBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(present.at(j));
-	}
-	Psi1.clear(); numerator1A.clear(); numerator2A.clear(); det_energy.clear(); present.clear();
-	
-	//if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
-
-
-#pragma omp barrier
-	if (omp_get_thread_num()==0) {
-	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
-	    hashedDetBeforeMPI[proc][omp_get_thread_num()].clear();
-	  mpi::all_to_all(world, hashedNum1BeforeMPI, hashedNum1AfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
-	    hashedNum1BeforeMPI[proc][omp_get_thread_num()].clear();
-	  mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
-	    hashedNum2BeforeMPI[proc][omp_get_thread_num()].clear();
-	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
-	    hashedEnergyBeforeMPI[proc][omp_get_thread_num()].clear();
-	  mpi::all_to_all(world, hashedpresentBeforeMPI, hashedpresentAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
-	    hashedpresentBeforeMPI[proc][omp_get_thread_num()].clear();
-	}
-#pragma omp barrier
-
-
-	for (int proc=0; proc<mpigetsize(); proc++) {
-	  for (int thrd=0; thrd<num_thrds; thrd++) {
-	    for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
-	      Psi1.push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      numerator1A.push_back(hashedNum1AfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      numerator2A.push_back(hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      det_energy.push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      present.push_back(hashedpresentAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	    }
-	    hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedNum1AfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedpresentAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	  }
-	}
-
-	std::vector<Determinant> Psi1copy = Psi1;
-	vector<long> detIndex(Psi1.size(), 0);
-	vector<long> detIndexcopy(Psi1.size(), 0);
-	for (size_t i=0; i<Psi1.size(); i++)
-	  detIndex[i] = i;      
-	mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
-	detIndexcopy.clear(); Psi1copy.clear();      
-	reorder(numerator1A, detIndex);
-	reorder(numerator2A, detIndex);
-	reorder(det_energy, detIndex);
-	reorder(present, detIndex);
-	detIndex.clear();
-      //quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1A[0], &numerator2A[0], &det_energy, &present);
-      }
-
-      CItype currentNum1A=0.; double currentNum2A=0.;
-      CItype currentNum1B=0.; double currentNum2B=0.;
-      vector<Determinant>::iterator vec_it = SortedDets.begin();
-      double energyEN = 0.0, energyENLargeEps = 0.0;      
-      size_t effNmc = mpigetsize()*num_thrds*Nmc;
-        
-    for (int i=0;i<Psi1.size();) {
-      if (Psi1[i] < *vec_it) {
-	currentNum1A += numerator1A[i];
-	currentNum2A += numerator2A[i];
-	if (present[i]) {
-	  currentNum1B += numerator1A[i];
-	  currentNum2B += numerator2A[i];
-	}
-	
-	if ( i == Psi1.size()-1) {
-	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	}
-	else if (!(Psi1[i] == Psi1[i+1])) {
-	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  currentNum1A = 0.;
-	  currentNum2A = 0.;
-	  currentNum1B = 0.;
-	  currentNum2B = 0.;
-	}
-	i++;
-      }
-      else if (*vec_it <Psi1[i] && vec_it != SortedDets.end())
-	vec_it++;
-      else if (*vec_it <Psi1[i] && vec_it == SortedDets.end()) {
-	currentNum1A += numerator1A[i];
-	currentNum2A += numerator2A[i];
-	if (present[i]) {
-	  currentNum1B += numerator1A[i];
-	  currentNum2B += numerator2A[i];
-	}
-	
-	if ( i == Psi1.size()-1) {
-	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	}
-	else if (!(Psi1[i] == Psi1[i+1])) {
-	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  //energyEN += (currentNum1A*currentNum1A*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  //energyENLargeEps += (currentNum1B*currentNum1B*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  currentNum1A = 0.;
-	  currentNum2A = 0.;
-	  currentNum1B = 0.;
-	  currentNum2B = 0.;
-	}
-	i++;
-      }
-      else {
-	if (Psi1[i] == Psi1[i+1])
-	  i++;
-	else {
-	  vec_it++; i++;
-	}
-      }
-    }
-      
-      totalPT=0; totalPTLargeEps=0;
-#pragma omp barrier
-#pragma omp critical
-      {
-	totalPT += energyEN;
-	totalPTLargeEps += energyENLargeEps;
-      }
-#pragma omp barrier
-      
-      double finalE = 0., finalELargeEps=0;
-      if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
-      if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
-      
-      if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
-	AvgenergyEN += -finalE+finalELargeEps+EptLarge; currentIter++;
-	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i") 
-	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize ;
-	cout << endl;
-      }
-    }
-  }
-  
-}
 
 
 void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
@@ -1405,14 +1151,36 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
   std::vector< std::vector<vector<double> > >      hashedEnergyBeforeMPI(num_thrds);// std::vector<vector<double> > >(num_thrds));
   std::vector< std::vector<vector<char> > >        hashedpresentBeforeMPI(num_thrds);// std::vector<vector<char> > >(num_thrds));
 
+  int AllDistinctSample = 0;
+  int Nmc = Nsample*num_thrds;
+  std::vector<CItype> allwts(Nmc, 0.0); std::vector<int> allSample(Nmc, -1);
+
 #pragma omp parallel
   {
     for (int iter=0; iter<niter; iter++) {
       std::vector<CItype> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
-      int distinctSample = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
-      for (int i=0; i<Nsample; i++)
-	wts1[i] /= (num_thrds);
-      int Nmc = Nsample;
+      int distinctSample = 0;
+
+      if (omp_get_thread_num() == 0) {
+	std::fill(allSample.begin(), allSample.end(), -1);
+	AllDistinctSample = sample_N2_alias(ci, cumulative, allSample, allwts, alias, prob);
+      }
+#pragma omp barrier
+      if (omp_get_thread_num() <  AllDistinctSample%num_thrds)
+	distinctSample = AllDistinctSample/num_thrds + 1;
+      else
+	distinctSample = AllDistinctSample/num_thrds;
+
+
+      size_t stride = omp_get_thread_num() < AllDistinctSample%num_thrds \
+					     ? omp_get_thread_num()*distinctSample \
+					     : omp_get_thread_num()*distinctSample + AllDistinctSample%num_thrds;
+
+      for (int i = 0; i < distinctSample; i++) {
+	wts1   [i] = allwts   [i + stride];
+	Sample1[i] = allSample[i + stride];
+      }
+
       double norm = 0.0;
       
       std::vector<Determinant> Psi1; std::vector<CItype>  numerator1A; vector<double> numerator2A;
@@ -1432,32 +1200,21 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 					   schd, Nmc, nelec);
       }      
 
-      std::vector<Determinant> Psi1copy = Psi1;
-      vector<long> detIndex(Psi1.size(), 0);
-      vector<long> detIndexcopy(Psi1.size(), 0);
-      for (size_t i=0; i<Psi1.size(); i++) {
-	detIndex[i] = i;      
-      }
-      mergesort(&Psi1[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1copy.operator[](0)), &detIndexcopy[0]);
-      detIndexcopy.clear(); Psi1copy.clear();      
-      reorder(numerator1A, detIndex);
-      reorder(numerator2A, detIndex);
-      reorder(det_energy, detIndex);
-      reorder(present, detIndex);
-      detIndex.clear();
-
-
-      //quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1A[0], &numerator2A[0], &det_energy, &present);
-
-      RemoveDetsPresentIn(SortedDets, Psi1, numerator1A, numerator2A, det_energy, present);
-      
       if(num_thrds >1) {
 	hashedDetBeforeMPI[omp_get_thread_num()].resize(num_thrds);
 	hashedNum1BeforeMPI[omp_get_thread_num()].resize(num_thrds);
 	hashedNum2BeforeMPI[omp_get_thread_num()].resize(num_thrds);
 	hashedEnergyBeforeMPI[omp_get_thread_num()].resize(num_thrds);
 	hashedpresentBeforeMPI[omp_get_thread_num()].resize(num_thrds);
-	
+
+	for (int thrd=0; thrd<num_thrds; thrd++) {
+	  hashedDetBeforeMPI[omp_get_thread_num()][thrd].reserve(Psi1.size()/num_thrds);
+	  hashedNum1BeforeMPI[omp_get_thread_num()][thrd].reserve(Psi1.size()/num_thrds);
+	  hashedNum2BeforeMPI[omp_get_thread_num()][thrd].reserve(Psi1.size()/num_thrds);
+	  hashedEnergyBeforeMPI[omp_get_thread_num()][thrd].reserve(Psi1.size()/num_thrds);
+	  hashedpresentBeforeMPI[omp_get_thread_num()][thrd].reserve(Psi1.size()/num_thrds);
+	}
+
 	for (int j=0; j<Psi1.size(); j++) {
 	  size_t lOrder = Psi1.at(j).getHash();
 	  size_t thrd = lOrder%(num_thrds);
@@ -1469,12 +1226,16 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 	}
 	Psi1.clear(); numerator1A.clear(); numerator2A.clear(); det_energy.clear(); present.clear();
 	
-	//if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
-	
-	
 #pragma omp barrier
-	
-	
+	size_t totalSize = 0;
+	for (int thrd=0; thrd<num_thrds; thrd++) 
+	  totalSize += hashedDetBeforeMPI[thrd][omp_get_thread_num()].size();
+
+	Psi1.reserve(totalSize); 
+	numerator1A.reserve(totalSize); 
+	numerator2A.reserve(totalSize); 
+	det_energy.reserve(totalSize); 
+	present.reserve(totalSize); 
 	for (int thrd=0; thrd<num_thrds; thrd++) {
 	  for (int j=0; j<hashedDetBeforeMPI[thrd][omp_get_thread_num()].size(); j++) {
 	    Psi1.push_back(hashedDetBeforeMPI[thrd][omp_get_thread_num()].at(j));
@@ -1489,48 +1250,83 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 	  hashedEnergyBeforeMPI[thrd][omp_get_thread_num()].clear();
 	  hashedpresentBeforeMPI[thrd][omp_get_thread_num()].clear();
 	}
-	
-
-	std::vector<Determinant> Psi1copy = Psi1;
-	vector<long> detIndex(Psi1.size(), 0);
-	vector<long> detIndexcopy(Psi1.size(), 0);
-	for (size_t i=0; i<Psi1.size(); i++)
-	  detIndex[i] = i;      
-	mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
-	detIndexcopy.clear(); Psi1copy.clear();      
-	reorder(numerator1A, detIndex);
-	reorder(numerator2A, detIndex);
-	reorder(det_energy, detIndex);
-	reorder(present, detIndex);
-	detIndex.clear();
-
-	//quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1A[0], &numerator2A[0], &det_energy, &present);
       }
+
+      std::vector<Determinant> Psi1copy = Psi1;
+      vector<long> detIndex(Psi1.size(), 0);
+      vector<long> detIndexcopy(Psi1.size(), 0);
+      for (size_t i=0; i<Psi1.size(); i++)
+	detIndex[i] = i;      
+      mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
+      detIndexcopy.clear(); Psi1copy.clear();      
+      reorder(numerator1A, detIndex);
+      reorder(numerator2A, detIndex);
+      reorder(det_energy, detIndex);
+      reorder(present, detIndex);
+      detIndex.clear();
+      
       
       CItype currentNum1A=0.; double currentNum2A=0.;
       CItype currentNum1B=0.; double currentNum2B=0.;
+      vector<Determinant>::iterator vec_it = SortedDets.begin();
       double energyEN = 0.0, energyENLargeEps = 0.0;      
-      size_t effNmc = num_thrds*Nmc;
+      //size_t effNmc = num_thrds*Nmc;
       
-      for (int i=0;i<Psi1.size(); i++) {
-	currentNum1A += numerator1A[i];
-	currentNum2A += numerator2A[i];
-	if (present[i]) {
-	  currentNum1B += numerator1A[i];
-	  currentNum2B += numerator2A[i];
+      for (int i=0;i<Psi1.size();) {
+	if (Psi1[i] < *vec_it) {
+	  currentNum1A += numerator1A[i];
+	  currentNum2A += numerator2A[i];
+	  if (present[i]) {
+	    currentNum1B += numerator1A[i];
+	    currentNum2B += numerator2A[i];
+	  }
+	  
+	  if ( i == Psi1.size()-1) {
+	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+	  }
+	  else if (!(Psi1[i] == Psi1[i+1])) {
+	    energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	    energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+	    currentNum1A = 0.;
+	    currentNum2A = 0.;
+	    currentNum1B = 0.;
+	    currentNum2B = 0.;
+	  }
+	  i++;
 	}
-	
-	if ( i == Psi1.size()-1) {
-	  energyEN += (pow(abs(currentNum1A),2)*effNmc/(effNmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*effNmc/(effNmc-1) - currentNum2B)/(det_energy[i] - E0);
+	else if (*vec_it <Psi1[i] && vec_it != SortedDets.end())
+	  vec_it++;
+	else if (*vec_it <Psi1[i] && vec_it == SortedDets.end()) {
+	  currentNum1A += numerator1A[i];
+	  currentNum2A += numerator2A[i];
+	  if (present[i]) {
+	    currentNum1B += numerator1A[i];
+	    currentNum2B += numerator2A[i];
+	  }
+	  
+	  if ( i == Psi1.size()-1) {
+	    energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	    energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+	  }
+	  else if (!(Psi1[i] == Psi1[i+1])) {
+	    energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	    energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+	    //energyEN += (currentNum1A*currentNum1A*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	    //energyENLargeEps += (currentNum1B*currentNum1B*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+	    currentNum1A = 0.;
+	    currentNum2A = 0.;
+	    currentNum1B = 0.;
+	    currentNum2B = 0.;
+	  }
+	  i++;
 	}
-	else if (!(Psi1[i] == Psi1[i+1])) {
-	  energyEN += ( pow(abs(currentNum1A),2)*effNmc/(effNmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += ( pow(abs(currentNum1B),2)*effNmc/(effNmc-1) - currentNum2B)/(det_energy[i] - E0);
-	  currentNum1A = 0.;
-	  currentNum2A = 0.;
-	  currentNum1B = 0.;
-	  currentNum2B = 0.;
+	else {
+	  if (Psi1[i] == Psi1[i+1])
+	    i++;
+	  else {
+	    vec_it++; i++;
+	  }
 	}
       }
       
@@ -1547,7 +1343,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
 	AvgenergyEN += -finalE+finalELargeEps+EptLarge; currentIter++;
 	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i") 
-	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize ;
+	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % distinctSample ;
 	cout << endl;
       }
       else if (mpigetrank() != 0 && omp_get_thread_num() == 0) {
