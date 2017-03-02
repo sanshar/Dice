@@ -43,7 +43,7 @@ boost::interprocess::mapped_region regionInt2SHM;
 
 
 
-void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd, int nelec);
+void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
 
 
 int main(int argc, char* argv[]) {
@@ -51,12 +51,25 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+
+  //Read the input file
+  std::vector<std::vector<int> > HFoccupied;
+  schedule schd;
+  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
+#ifndef SERIAL
+  mpi::broadcast(world, HFoccupied, 0);
+  mpi::broadcast(world, schd, 0);
+#endif
+
+
+  //set the random seed
   startofCalc=getTime();
-  srand(startofCalc+world.rank());
+  srand(schd.randomSeed+world.rank());
 
 
-  //make the shared memory stuff
-  //permission.set_unrestricted();
+
+
+  //set up shared memory files to store the integrals
   string hciint2 = "HCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
   string hciint2shm = "HCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, hciint2.c_str(), boost::interprocess::read_write);
@@ -71,7 +84,14 @@ int main(int argc, char* argv[]) {
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
+  
+  if (HFoccupied[0].size() != nelec) {
+    cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the hci input file."<<endl;
+    exit(0);
+  }
 
+
+  //setup the lexical table for the determinants
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
   HalfDet::norbs = norbs; //spin orbitals
@@ -93,11 +113,8 @@ int main(int argc, char* argv[]) {
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   int num_thrds;
-  std::vector<std::vector<int> > HFoccupied; //double epsilon1, epsilon2, tol, dE;
-  schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd, nelec); //epsilon1, epsilon2, tol, num_thrds, eps, dE);
-  mpi::broadcast(world, schd, 0);
 
+  //IF SOC is true then read the SOC integrals
 #ifndef Complex
   if (schd.doSOC) {
     cout << "doSOC option only works with the complex coefficients. Uncomment the -Dcomplex in the make file and recompile."<<endl;
@@ -108,10 +125,6 @@ int main(int argc, char* argv[]) {
     readSOCIntegrals(I1, norbs);
 #endif
 
-#ifndef SERIAL
-  mpi::broadcast(world, HFoccupied, 0);
-  mpi::broadcast(world, schd, 0);
-#endif
 
   //have the dets, ci coefficient and diagnoal on all processors
   vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
@@ -131,7 +144,7 @@ int main(int argc, char* argv[]) {
   }
 
   mpi::broadcast(world, ci, 0);
-  //b.col(i) = b.col(i)/b.col(i).norm();
+
 
 
   vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);

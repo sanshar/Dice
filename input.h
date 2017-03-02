@@ -35,7 +35,8 @@ private:
       & quasiQ                                  \
       & quasiQEpsilon                           \
       & doSOC                                   \
-      & doSOCQDPT;
+      & doSOCQDPT                               \
+      & randomSeed;
   }
   
 public:
@@ -63,6 +64,7 @@ public:
   double quasiQEpsilon;
   bool doSOC;
   bool doSOCQDPT;
+  unsigned int randomSeed;
 };
 
 #endif

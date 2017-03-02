@@ -10,7 +10,7 @@
 using namespace std;
 using namespace boost;
 
-void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd, int nelec) {
+void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd) {
   ifstream dump(input.c_str());
   int maxiter = -1;
   vector<int> sweep_iter;
@@ -37,6 +37,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.quasiQ = false;
   schd.doSOC = false;
   schd.doSOCQDPT = false;
+  schd.randomSeed = getTime();
 
   while (dump.good()) {
 
@@ -58,10 +59,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     if (boost::iequals(ArgName, "nocc")) {
       nocc = atoi(tok[1].c_str());
 
-      if (nocc != nelec) {
-	cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the hci input file."<<endl;
-	exit(0);
-      }
       std::string
 	Line;
       vector<string> tok;
@@ -99,6 +96,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.nPTiter=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon2")) 
       schd.epsilon2 = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "seed")) 
+      schd.randomSeed = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "nroots")) 
       schd.nroots = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon2Large")) 
