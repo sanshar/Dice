@@ -103,7 +103,7 @@ namespace HCIbasics {
   
   
   void UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXd& twoRDM);
+					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXd& twoRDM);
 
 
   void printRDM(int norbs, schedule& schd, int root, MatrixXd& twoRDM);
