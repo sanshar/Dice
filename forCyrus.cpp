@@ -43,7 +43,7 @@ boost::interprocess::mapped_region regionInt2;
 boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
 boost::interprocess::mapped_region regionInt2SHM;
 
-void main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
@@ -101,4 +101,5 @@ void main(int argc, char* argv[]) {
 
   for (int i=0; i<ExcitationBins.size(); i++) 
     cout << i<<"  "<<ExcitationBins[i]<<"  "<<weights[i]<<endl;
+  return 0;
 }

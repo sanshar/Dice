@@ -145,7 +145,7 @@ int partition(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<
   return i;
 }
 
-int partitionAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<int>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
+int partitionAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<size_t>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
 {
   Determinant x= A[p];
   int i=p;
@@ -200,7 +200,7 @@ void quickSort(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector
     }
 }
 
-void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<int>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
+void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<size_t>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
 {
   int r;
   if(p<q)
@@ -299,7 +299,7 @@ public:
   boost::shared_ptr<vector<CItype> > Num;
   boost::shared_ptr<vector<double> > Energy;
   boost::shared_ptr<vector<vector<int> > > var_indices;
-  boost::shared_ptr<vector<vector<int> > > orbDifference;
+  boost::shared_ptr<vector<vector<size_t> > > orbDifference;
   bool extra_info; // whether to use var_indices, orbDifference
 
   StitchDEH() {
@@ -308,14 +308,14 @@ public:
     Energy = boost::shared_ptr<vector<double> > (new vector<double>() );
     extra_info = false;
     var_indices = boost::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
-    orbDifference = boost::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
+    orbDifference = boost::shared_ptr<vector<vector<size_t> > > (new vector<vector<size_t> >() );
   }
 
   StitchDEH(boost::shared_ptr<vector<Determinant> >pD, 
 	    boost::shared_ptr<vector<CItype> >pNum, 
 	    boost::shared_ptr<vector<double> >pE, 
 	    boost::shared_ptr<vector<vector<int> > >pvar, 
-	    boost::shared_ptr<vector<vector<int> > >porb)
+	    boost::shared_ptr<vector<vector<size_t> > >porb)
   : Det(pD), Num(pNum), Energy(pE), var_indices(pvar), orbDifference(porb)
     {
       extra_info=true;
@@ -344,7 +344,7 @@ public:
     std::vector<double>& Ecopy = *Energy;
   //if (extra_info) {
       std::vector<std::vector<int> >& Vcopy = *var_indices;
-      std::vector<std::vector<int> >& Ocopy = *orbDifference;
+      std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
   //}
     size_t uniqueSize = 0;
     for (size_t i=1; i <Detcopy.size(); i++) {
@@ -393,7 +393,7 @@ public:
     std::vector<CItype> Numcopy = *Num;
     std::vector<double> Ecopy = *Energy;
     std::vector<std::vector<int> >& Vcopy = *var_indices;
-    std::vector<std::vector<int> >& Ocopy = *orbDifference;
+    std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
 
     size_t uniqueSize = 0;
     Det->operator[](uniqueSize) = Detcopy[0];
@@ -444,7 +444,7 @@ public:
       std::vector<double>& Ecopy = *Energy;
     //if (extra_info) {
         std::vector<std::vector<int> >& Vcopy = *var_indices;
-        std::vector<std::vector<int> >& Ocopy = *orbDifference;
+        std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
     //}
 
       size_t uniqueSize = 0;
@@ -487,7 +487,7 @@ public:
       std::vector<double>& Ecopy = *Energy;
     //if (extra_info) {
         std::vector<std::vector<int> >& Vcopy = *var_indices;
-        std::vector<std::vector<int> >& Ocopy = *orbDifference;
+        std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
     //}
 
       if (Det->size() <= 1) return;
@@ -566,7 +566,7 @@ public:
     std::vector<double> Ecopy = *Energy;
   //if (extra_info) {
       std::vector<std::vector<int> > Vcopy = *var_indices;
-      std::vector<std::vector<int> > Ocopy = *orbDifference;
+      std::vector<std::vector<size_t> > Ocopy = *orbDifference;
   //}
     
     Det->resize(Detcopy.size()+s.Det->size());
@@ -1754,7 +1754,7 @@ void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Ma
   vector<CItype>& uniqueNumerator = *uniqueDEH[0].Num;
   vector<double>& uniqueEnergy = *uniqueDEH[0].Energy;
   vector<vector<int>>& uniqueVarIndices = *uniqueDEH[0].var_indices;
-  vector<vector<int>>& uniqueOrbDiff = *uniqueDEH[0].orbDifference;
+  vector<vector<size_t>>& uniqueOrbDiff = *uniqueDEH[0].orbDifference;
 
 // At this point, uniqueDets contains all the dets in the PT space, uniqueNumerator contains all the sum_i^eps2 H_ki c_i values,
 // uniqueEnergy contains all their diagonal H elements, and uniqueVarIndices contains all the indices of variational dets
@@ -2344,7 +2344,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   return;
 }
 
-void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<std::vector<int> >& var_indices, std::vector<std::vector<int> >& orbDifference, schedule& schd, int nelec) {
+void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<std::vector<int> >& var_indices, std::vector<std::vector<size_t> >& orbDifference, schedule& schd, int nelec) {
   // Similar to above subroutine, but also keeps track of the reference dets each connected det came from
   // AAH, 30 Jan 2017
 
@@ -2355,12 +2355,12 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
   det.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
-  int orbDiff;
+  size_t orbDiff;
   //d.getRepArray(detArray);
 
   double Energyd = det.Energy(int1, int2, coreE);
   std::vector<int> var_indices_vec;
-  std::vector<int> orbDiff_vec;
+  std::vector<size_t> orbDiff_vec;
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
@@ -2384,7 +2384,7 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
       var_indices.push_back(var_indices_vec);
 
       orbDiff = open[a]*norbs+closed[i]; // a = creation, i = annihilation
-      std::vector<int> orbDiff_vec;
+      std::vector<size_t> orbDiff_vec;
       orbDiff_vec.push_back(orbDiff);
       orbDifference.push_back(orbDiff_vec);
 
@@ -2429,7 +2429,7 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
 	var_indices.push_back(var_indices_vec);
 
 	orbDiff = a*norbs*norbs*norbs+closed[i]*norbs*norbs+b*norbs+closed[j];  //i>j and a>b??
-	std::vector<int> orbDiff_vec;
+	std::vector<size_t> orbDiff_vec;
 	orbDiff_vec.push_back(orbDiff);
 	orbDifference.push_back(orbDiff_vec);
 	
