@@ -105,6 +105,31 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 }
 #endif
 
+int readNorbs(string fcidump) {
+  boost::mpi::communicator world;
+
+  int norbs;
+  if (mpigetrank() == 0) {
+    ifstream dump(fcidump.c_str());
+    vector<string> tok;
+    string msg;
+
+    std::getline(dump, msg);
+    trim(msg);
+    boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+    
+    if (boost::iequals(tok[0].substr(0,4),"&FCI")) {
+      if (boost::iequals(tok[1].substr(0,4), "NORB"))
+	norbs = atoi(tok[2].c_str());
+    }
+  }
+
+#ifndef SERIAL
+  mpi::broadcast(world, norbs, 0);
+#endif
+  return norbs;
+}
+
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE,
 		   std::vector<int>& irrep) {
 

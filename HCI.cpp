@@ -191,26 +191,11 @@ int main(int argc, char* argv[]) {
     for (int root=0; root<schd.nroots;root++) 
       HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
   }
-  else if (schd.SampleN != -1 && schd.singleList && abs(schd.epsilon2Large-1000.0) > 1e-5){
+  else if (schd.SampleN != -1 && schd.singleList){
     for (int root=0; root<schd.nroots;root++) 
       //HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
-  else if (schd.SampleN != -1 && schd.singleList){
-    for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
-  }
-  /*
-  else if (!schd.stochastic) {
-    HCIbasics::DoBatchDeterministic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
-  }
-  else if (schd.SampleN == -1 && schd.singleList){
-    HCIbasics::DoPerturbativeStochasticSingleList(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
-  }
-  else if (schd.SampleN == -1 && !schd.singleList){
-    HCIbasics::DoPerturbativeStochastic(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
-  }
-  */
   else { 
     world.barrier();
     boost::interprocess::shared_memory_object::remove(hciint2shm.c_str());

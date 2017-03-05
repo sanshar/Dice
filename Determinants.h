@@ -211,6 +211,26 @@ class Determinant {
 
   }
 
+  int Nalpha() const {
+    int nalpha = 0;
+    long alleven = 0x5555555555555555;  
+    for (int i=0; i<EffDetLen; i++) {
+      long even = repr[i] & alleven;
+      nalpha += BitCount(even);
+    }
+    return nalpha;
+  }
+
+  int Nbeta() const {
+    int nbeta = 0;
+    long allodd = 0xAAAAAAAAAAAAAAAA;  ;
+    for (int i=0; i<EffDetLen; i++) {
+      long odd = repr[i] & allodd;
+      nbeta += BitCount(odd);
+    }
+    return nbeta;
+  }
+
   //Is the excitation between *this and d less than equal to 2.
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;

@@ -98,7 +98,7 @@ struct Hmult2 {
 	}
       }
 
-      double* startptr;
+      CItype* startptr;
       MatrixXx ycopy;
       if (mpigetrank() == 0) {ycopy = MatrixXx(y.rows(), 1); ycopy=1.*y; startptr = &ycopy(0,0);}
       else {startptr = &y(0,0);}

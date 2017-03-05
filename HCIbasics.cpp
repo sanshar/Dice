@@ -200,7 +200,7 @@ void quickSort(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector
     }
 }
 
-void quickSortAll(Determinant* A, int p,int q, double* pNum, double* Energy, vector<int>* var_indices, vector<int>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
+void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<int>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL)
 {
   int r;
   if(p<q)
@@ -312,7 +312,7 @@ public:
   }
 
   StitchDEH(boost::shared_ptr<vector<Determinant> >pD, 
-	    boost::shared_ptr<vector<double> >pNum, 
+	    boost::shared_ptr<vector<CItype> >pNum, 
 	    boost::shared_ptr<vector<double> >pE, 
 	    boost::shared_ptr<vector<vector<int> > >pvar, 
 	    boost::shared_ptr<vector<vector<int> > >porb)
@@ -322,7 +322,7 @@ public:
     };
 
   StitchDEH(boost::shared_ptr<vector<Determinant> >pD, 
-	    boost::shared_ptr<vector<double> >pNum, 
+	    boost::shared_ptr<vector<CItype> >pNum, 
 	    boost::shared_ptr<vector<double> >pE)
   : Det(pD), Num(pNum), Energy(pE)
     {
@@ -654,8 +654,8 @@ int HCIbasics::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1,
 }
 
 
-void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
-				      vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, MatrixXd& twoRDM) {
+void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
+				      vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, MatrixXx& twoRDM) {
   boost::mpi::communicator world;
 
   size_t norbs = Dets[0].norbs;
@@ -715,16 +715,16 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
 
 
 
-void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXd& twoRDM) {
+void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
   //also i>=j and k>=l
   double energy = coreE;
-  double onebody = 0.0;
-  double twobody = 0.0;
+  CItype onebody = 0.0;
+  CItype twobody = 0.0;
   //if (mpigetrank() == 0)  cout << "Core energy= " << energy << endl; 
 
-  MatrixXd oneRDM = MatrixXd::Zero(norbs, norbs);
+  MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
   for (int p=0; p<norbs; p++)
   for (int q=0; q<norbs; q++)
     for (int r=0; r<norbs; r++) {
@@ -760,7 +760,11 @@ void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I
   //if (mpigetrank() == 0)  cout << "One-body from 2RDM: " << onebody << endl;
   //if (mpigetrank() == 0)  cout << "Two-body from 2RDM: " << twobody << endl;
 
+#ifdef Complex
+  energy += onebody.real() + twobody.real();
+#else
   energy += onebody + twobody;
+#endif
 
   if (mpigetrank() == 0)  cout << "E from 2RDM: " << energy << endl;
 
@@ -768,7 +772,7 @@ void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I
 
 
 
-void HCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXd& twoRDM) {
+void HCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM) {
 
   boost::mpi::communicator world;
 
@@ -1146,7 +1150,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
   double totalPT=0, totalPTLargeEps=0;
 
   std::vector< std::vector<vector<Determinant> > > hashedDetBeforeMPI   (num_thrds);// vector<Determinant> > >(num_thrds));
-  std::vector< std::vector<vector<double> > >      hashedNum1BeforeMPI  (num_thrds);// std::vector<vector<double> > >(num_thrds));
+  std::vector< std::vector<vector<CItype> > >      hashedNum1BeforeMPI  (num_thrds);// std::vector<vector<double> > >(num_thrds));
   std::vector< std::vector<vector<double> > >      hashedNum2BeforeMPI  (num_thrds);// std::vector<vector<double> > >(num_thrds));
   std::vector< std::vector<vector<double> > >      hashedEnergyBeforeMPI(num_thrds);// std::vector<vector<double> > >(num_thrds));
   std::vector< std::vector<vector<char> > >        hashedpresentBeforeMPI(num_thrds);// std::vector<vector<char> > >(num_thrds));
@@ -1494,8 +1498,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   std::vector<StitchDEH> uniqueDEH(num_thrds);
   std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNumBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumBeforeMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
   double totalPT = 0.0;
@@ -1600,12 +1604,12 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 
 
     vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
-    vector<double>& hasHEDNumerator = *uniqueDEH[omp_get_thread_num()].Num;
+    vector<CItype>& hasHEDNumerator = *uniqueDEH[omp_get_thread_num()].Num;
     vector<double>& hasHEDEnergy = *uniqueDEH[omp_get_thread_num()].Energy;
 
     double PTEnergy = 0.0;
     for (size_t i=0; i<hasHEDDets.size();i++) {
-      PTEnergy += hasHEDNumerator[i]*hasHEDNumerator[i]/(E0-hasHEDEnergy[i]);
+      PTEnergy += pow(abs(hasHEDNumerator[i]),2)/(E0-hasHEDEnergy[i]);
     }
 #pragma omp critical
     {
@@ -1688,8 +1692,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   return finalE;
 }
 
-void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXd& twoRDM) {
+void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXx& twoRDM) {
   // Similar to above, but instead of computing PT energy, update 2RDM
   // AAH, 30 Jan 2017
 
@@ -1747,7 +1751,7 @@ void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Ma
   
   
   vector<Determinant>& uniqueDets = *uniqueDEH[0].Det;
-  vector<double>& uniqueNumerator = *uniqueDEH[0].Num;
+  vector<CItype>& uniqueNumerator = *uniqueDEH[0].Num;
   vector<double>& uniqueEnergy = *uniqueDEH[0].Energy;
   vector<vector<int>>& uniqueVarIndices = *uniqueDEH[0].var_indices;
   vector<vector<int>>& uniqueOrbDiff = *uniqueDEH[0].orbDifference;
@@ -2154,7 +2158,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++) {
-          MatrixXd twoRDM(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+          MatrixXx twoRDM(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  EvaluateAndStoreRDM(connections, Dets, ci[i], orbDifference, nelec, schd, i, twoRDM);
           cout << "Variational RDM:" << endl;
           ComputeEnergyFromRDM(norbs, nelec, I1, I2, coreE, twoRDM);
@@ -2340,7 +2344,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   return;
 }
 
-void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, double ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<double>& numerator, std::vector<double>& energy, std::vector<std::vector<int> >& var_indices, std::vector<std::vector<int> >& orbDifference, schedule& schd, int nelec) {
+void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<std::vector<int> >& var_indices, std::vector<std::vector<int> >& orbDifference, schedule& schd, int nelec) {
   // Similar to above subroutine, but also keeps track of the reference dets each connected det came from
   // AAH, 30 Jan 2017
 
@@ -2363,7 +2367,7 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    double integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
     
 
     if (fabs(integral) > epsilon ) {
