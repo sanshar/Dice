@@ -191,10 +191,11 @@ int main(int argc, char* argv[]) {
     for (int root=0; root<schd.nroots;root++) 
       HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
   }
-  else if (schd.SampleN != -1 && schd.singleList){
-    for (int root=0; root<schd.nroots;root++) 
+  else if (schd.SampleN != -1 && schd.singleList ){
+    for (int root=0; root<schd.nroots && schd.nPTiter != 0;root++) 
       //HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      //HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else { 
     world.barrier();

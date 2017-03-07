@@ -32,6 +32,7 @@ private:
       & nroots                                  \
       & nPTiter                                 \
       & DoRDM                                   \
+      & DoSpinRDM                               \
       & quasiQ                                  \
       & quasiQEpsilon                           \
       & doSOC                                   \
@@ -60,6 +61,7 @@ public:
   int nroots;
   int nPTiter;
   bool DoRDM;
+  bool DoSpinRDM;
   bool quasiQ;
   double quasiQEpsilon;
   bool doSOC;

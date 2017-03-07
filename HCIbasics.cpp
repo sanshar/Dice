@@ -654,16 +654,60 @@ int HCIbasics::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1,
 }
 
 
+void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, CItype value, int& nSpatOrbs) {
+  //we assume i != j  and  k != l
+  int I = i/2, J=j/2, K=k/2, L=l/2;
+  if (i%2 == l%2 && j%2 == k%2) {
+    s2RDM(I*nSpatOrbs+J,K*nSpatOrbs+L) -= value;
+    s2RDM(J*nSpatOrbs+I,L*nSpatOrbs+K) -= value;
+  }
+
+  if (i%2 == k%2 && l%2 == j%2 ) {
+    s2RDM(I*nSpatOrbs+J,L*nSpatOrbs+K) += value;
+    s2RDM(J*nSpatOrbs+I,K*nSpatOrbs+L) += value;
+  }
+  
+}
+
 void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
-				      vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, MatrixXx& twoRDM) {
+				    vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, bool update) {
   boost::mpi::communicator world;
 
   size_t norbs = Dets[0].norbs;
+  int nSpatOrbs = norbs/2;
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
   //also i>=j and k>=l
-//MatrixXd twoRDM(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-  twoRDM *= 0.0;
+  MatrixXx twoRDM;
+  if (schd.DoSpinRDM ){
+    if (update) {
+      if (mpigetrank() == 0) {
+	char file [5000];
+	sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+	std::ifstream ifs(file, std::ios::binary);
+	boost::archive::binary_iarchive load(ifs);
+	load >> twoRDM;
+      }
+      mpi::broadcast(world, twoRDM, 0);
+    }
+    else 
+      twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+  }
+
+  MatrixXx s2RDM;
+  if (update) {
+    if (mpigetrank() == 0) {
+      char file [5000];
+      sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> s2RDM;
+    }
+    mpi::broadcast(world, s2RDM, 0);
+  }
+  else
+    s2RDM.setZero(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
+
   int num_thrds = omp_get_max_threads();
 
   //#pragma omp parallel for schedule(dynamic)
@@ -678,7 +722,9 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
     for (int n1=0; n1<nelec; n1++) {
       for (int n2=0; n2<n1; n2++) {
 	int orb1 = closed[n1], orb2 = closed[n2];
-	twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += ci(i,0)*ci(i,0);
+	if (schd.DoSpinRDM)
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += ci(i,0)*ci(i,0);
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, ci(i,0)*ci(i,0), nSpatOrbs);
       }
     }
 
@@ -693,8 +739,14 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
 	  if (closed[n1] == d0) continue;
 	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
 	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-	  twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*ci(connections[i][j],0)*ci(i,0);
-	  twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*ci(connections[i][j],0)*ci(i,0);
+	  if (schd.DoSpinRDM) {
+	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*ci(connections[i][j],0)*ci(i,0);
+	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*ci(connections[i][j],0)*ci(i,0);
+	  }
+
+	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*ci(connections[i][j],0)*ci(i,0), nSpatOrbs);
+	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*ci(connections[i][j],0)*ci(i,0), nSpatOrbs);
+
 	}
       }
       else {
@@ -703,13 +755,54 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
 
 	Dets[i].parity(d1,d0,c1,c0,sgn);
 
-	twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*ci(connections[i][j],0)*ci(i,0);
-	twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*ci(connections[i][j],0)*ci(i,0);
+	if (schd.DoSpinRDM) {
+	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*ci(connections[i][j],0)*ci(i,0);
+	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*ci(connections[i][j],0)*ci(i,0);
+	}
+
+	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*ci(connections[i][j],0)*ci(i,0), nSpatOrbs);
+	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*ci(connections[i][j],0)*ci(i,0), nSpatOrbs);
       }
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  if (schd.DoSpinRDM)
+    MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  if(mpigetrank() == 0) {
+    char file [5000];
+    sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
+    std::ofstream ofs(file, std::ios::out);
+    ofs << nSpatOrbs<<endl;
+
+    for (int n1=0; n1<nSpatOrbs; n1++)
+    for (int n2=0; n2<nSpatOrbs; n2++)
+    for (int n3=0; n3<nSpatOrbs; n3++)
+    for (int n4=0; n4<nSpatOrbs; n4++)
+    {
+      if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
+	ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
+    }
+
+
+
+    if (schd.DoSpinRDM) {
+      char file [5000];
+      sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << twoRDM;
+    }
+
+    {
+      char file [5000];
+      sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << s2RDM;
+    }
+  }
 
 }
 
@@ -781,70 +874,71 @@ void HCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM) 
   int num_thrds = omp_get_max_threads();
 
   int nSpatOrbs = norbs/2;
-  MatrixXx s2RDM(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
-  s2RDM *= 0.0;
 
 
   if(mpigetrank() == 0) {
-  char file [5000];
-  sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
-  std::ofstream ofs(file, std::ios::out);
-  ofs << nSpatOrbs<<endl;
-
+    MatrixXx s2RDM(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
+    s2RDM *= 0.0;
+    
+    char file [5000];
+    sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
+    std::ofstream ofs(file, std::ios::out);
+    ofs << nSpatOrbs<<endl;
+    
 #pragma omp parallel for schedule(static)
-  for (int n1=0; n1<nSpatOrbs; n1++)
-  for (int n2=0; n2<nSpatOrbs; n2++)
-  for (int n3=0; n3<nSpatOrbs; n3++)
-  for (int n4=0; n4<nSpatOrbs; n4++)
-  {
-    double sgn = 1.0;
-    int N1 = 2*max(n1,n2), N2=2*min(n1,n2), N3=2*max(n3,n4), N4=2*min(n3,n4);
-    if(( (n1>=n2 && n3<n4) || (n1<n2 && n3>=n4))) sgn = -1.0; 
-    s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
+    for (int n1=0; n1<nSpatOrbs; n1++)
+    for (int n2=0; n2<nSpatOrbs; n2++)
+    for (int n3=0; n3<nSpatOrbs; n3++)
+    for (int n4=0; n4<nSpatOrbs; n4++)
+    {
+      double sgn = 1.0;
+      int N1 = 2*max(n1,n2), N2=2*min(n1,n2), N3=2*max(n3,n4), N4=2*min(n3,n4);
+      if(( (n1>=n2 && n3<n4) || (n1<n2 && n3>=n4))) sgn = -1.0; 
+      s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
+      
+      sgn = 1.0;
+      N1 = max(2*n1+1,2*n2); N2=min(2*n1+1,2*n2); N3=max(2*n3+1,2*n4); N4=min(2*n3+1,2*n4);
+      if(!( (2*n1+1>2*n2 && 2*n3+1>2*n4) || (2*n1+1<2*n2 && 2*n3+1<2*n4))) sgn = -1.0; 
+      s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
+      
+      sgn = 1.0;
+      N1 = max(2*n1,2*n2+1); N2=min(2*n1,2*n2+1); N3=max(2*n3,2*n4+1); N4=min(2*n3,2*n4+1);
+      if(!( (2*n1>=2*n2+1 && 2*n3>=2*n4+1) || (2*n1<2*n2+1 && 2*n3<2*n4+1))) sgn = -1.0; 
+      s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
+      
+      sgn = 1.0;
+      N1 = 2*max(n1,n2)+1; N2=2*min(n1,n2)+1; N3=2*max(n3,n4)+1; N4=2*min(n3,n4)+1;
+      if(( (n1>=n2 && n3<n4) || (n1<n2 && n3>=n4))) sgn = -1.0; 
+      s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
+      
+    }
+    
+    for (int n1=0; n1<nSpatOrbs; n1++)
+    for (int n2=0; n2<nSpatOrbs; n2++)
+    for (int n3=0; n3<nSpatOrbs; n3++)
+    for (int n4=0; n4<nSpatOrbs; n4++)
+    {
+      if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
+	ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
+    }
 
-    sgn = 1.0;
-    N1 = max(2*n1+1,2*n2); N2=min(2*n1+1,2*n2); N3=max(2*n3+1,2*n4); N4=min(2*n3+1,2*n4);
-    if(!( (2*n1+1>2*n2 && 2*n3+1>2*n4) || (2*n1+1<2*n2 && 2*n3+1<2*n4))) sgn = -1.0; 
-    s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
-
-    sgn = 1.0;
-    N1 = max(2*n1,2*n2+1); N2=min(2*n1,2*n2+1); N3=max(2*n3,2*n4+1); N4=min(2*n3,2*n4+1);
-    if(!( (2*n1>=2*n2+1 && 2*n3>=2*n4+1) || (2*n1<2*n2+1 && 2*n3<2*n4+1))) sgn = -1.0; 
-    s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
-
-    sgn = 1.0;
-    N1 = 2*max(n1,n2)+1; N2=2*min(n1,n2)+1; N3=2*max(n3,n4)+1; N4=2*min(n3,n4)+1;
-    if(( (n1>=n2 && n3<n4) || (n1<n2 && n3>=n4))) sgn = -1.0; 
-    s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4) += sgn*twoRDM( N1*(N1+1)/2+N2, N3*(N3+1)/2+N4);
-
-  }
-
-  for (int n1=0; n1<nSpatOrbs; n1++)
-  for (int n2=0; n2<nSpatOrbs; n2++)
-  for (int n3=0; n3<nSpatOrbs; n3++)
-  for (int n4=0; n4<nSpatOrbs; n4++)
-  {
-    if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
-      ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
-  }
 
 
-  /*
-  {
-    char file [5000];
-    sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << twoRDM;
-  }
-  */
-  {
-    char file [5000];
-    sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << s2RDM;
-  }
+    {
+      char file [5000];
+      sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << twoRDM;
+    }
+
+    {
+      char file [5000];
+      sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << s2RDM;
+    }
   }
 }
 
@@ -1347,13 +1441,13 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
 	AvgenergyEN += -finalE+finalELargeEps+EptLarge; currentIter++;
 	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i") 
-	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % distinctSample ;
+	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % AllDistinctSample ;
 	cout << endl;
       }
       else if (mpigetrank() != 0 && omp_get_thread_num() == 0) {
 	AvgenergyEN += -finalE+finalELargeEps+EptLarge; currentIter++;
 	ofs << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i") 
-	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize ;
+	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % AllDistinctSample ;
 	ofs << endl;
       }
     }
@@ -1414,7 +1508,6 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
 	int I = Sample1[i];
 	HCIbasics::getDeterminants(Dets[I], schd.epsilon2/abs(ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1, numerator2, det_energy, schd, Nmc, nelec);
       }
-
 
       quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1[0], &numerator2[0], &det_energy);
 
@@ -1489,11 +1582,9 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-  char psiArray[norbs]; vector<int> psiClosed(nelec,0), psiOpen(norbs-nelec,0);
-  //char psiArray[norbs]; int psiOpen[nelec], psiClosed[norbs-nelec];
+
   double energyEN = 0.0;
   int num_thrds = omp_get_max_threads();
-  
   
   std::vector<StitchDEH> uniqueDEH(num_thrds);
   std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
@@ -1502,20 +1593,41 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<vector<int> > > > > hashedVarIndicesBeforeMPI(mpigetsize(), std::vector<std::vector<vector<vector<int> > > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<vector<int> > > > > hashedVarIndicesAfterMPI(mpigetsize(), std::vector<std::vector<vector<vector<int> > > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<vector<size_t> > > > > hashedOrbdiffBeforeMPI(mpigetsize(), std::vector<std::vector<vector<vector<size_t> > > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<vector<size_t> > > > > hashedOrbdiffAfterMPI(mpigetsize(), std::vector<std::vector<vector<vector<size_t> > > >(num_thrds));
   double totalPT = 0.0;
   int ntries = 0;
 
 #pragma omp parallel
   {
-    for (int i=0; i<Dets.size(); i++) {
-      if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
-      HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, 
+    if (schd.DoRDM) {
+      uniqueDEH[omp_get_thread_num()].extra_info = true;
+      for (int i=0; i<Dets.size(); i++) {
+	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+	HCIbasics::getPTDeterminantsKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
+						I1, I2, I2HB, irrep, coreE, E0,
+						*uniqueDEH[omp_get_thread_num()].Det,
+						*uniqueDEH[omp_get_thread_num()].Num,
+						*uniqueDEH[omp_get_thread_num()].Energy,
+						*uniqueDEH[omp_get_thread_num()].var_indices,
+						*uniqueDEH[omp_get_thread_num()].orbDifference,
+						schd, nelec);
+	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+      }
+    }
+    else {
+      for (int i=0; i<Dets.size(); i++) {
+	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+	HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0, 
 				   I1, I2, I2HB, irrep, coreE, E0, 
 				   *uniqueDEH[omp_get_thread_num()].Det, 
 				   *uniqueDEH[omp_get_thread_num()].Num, 
 				   *uniqueDEH[omp_get_thread_num()].Energy, 
 				   schd,0, nelec);
-      if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+      }
     }
     
 
@@ -1524,6 +1636,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
+      if (schd.DoRDM) uniqueDEH_afterMPI.extra_info = true;
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
       
@@ -1531,6 +1644,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	if (schd.DoRDM) {
+	  hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	  hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	}
       }
 
       if (omp_get_thread_num()==0 ) {
@@ -1553,6 +1670,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
 	  hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
 	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
+	  if (schd.DoRDM) {
+	    hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].var_indices->at(j));
+	    hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].orbDifference->at(j));
+	  }
 	}
 
 	uniqueDEH[omp_get_thread_num()].resize(start);
@@ -1564,6 +1685,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
 	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+	  if (schd.DoRDM) {
+	    mpi::all_to_all(world, hashedVarIndicesBeforeMPI, hashedVarIndicesAfterMPI);
+	    mpi::all_to_all(world, hashedOrbdiffBeforeMPI, hashedOrbdiffAfterMPI);
+	  }
 	}
 #pragma omp barrier
 	for (int proc=0; proc<mpigetsize(); proc++) {
@@ -1571,6 +1696,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	    hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedNumBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedEnergyBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	    if (schd.DoRDM) {
+	      hashedVarIndicesBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	      hashedOrbdiffBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	    }
 	  }
 	}
 
@@ -1583,10 +1712,18 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	      uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      uniqueDEH_afterMPI.Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	      if (schd.DoRDM) {
+		uniqueDEH_afterMPI.var_indices->push_back(hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+		uniqueDEH_afterMPI.orbDifference->push_back(hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	      }
 	    }
 	    hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	    if (schd.DoRDM) {
+	      hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	      hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	    }
 	  }
 	}
       }
@@ -1594,6 +1731,10 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
       *uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
       *uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
       *uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy; 
+      if (schd.DoRDM) {
+	*uniqueDEH[omp_get_thread_num()].var_indices = *uniqueDEH_afterMPI.var_indices;
+	*uniqueDEH[omp_get_thread_num()].orbDifference = *uniqueDEH_afterMPI.orbDifference;
+      }
       uniqueDEH_afterMPI.clear();
       uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
     }
@@ -1623,6 +1764,57 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
   
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
+
+  /*
+  if (schd.DoRDM) {
+
+      char file [5000];
+      sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << twoRDM;
+
+    for (int thrd = 0; thrd <num_thrds; thrd++)
+    {
+      vector<double>& uniqueDets = *uniqueDEH[thrd].Det;
+      vector<double>& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
+      vector<double>& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
+      for (size_t k=0; k<uniqueDets.size();k++) {
+	//if (k%(omp_get_num_threads()) != omp_get_thread_num()) continue;
+	for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
+	  // Get closed for determinant D_i = Dets[uniqueVarIndices[k][i]]
+	  // Determine whether single or double excitation 
+	  int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs; // These orbitals correspond to an excitation from D_k to D_i
+	  if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
+	    vector<int> closed(nelec, 0);
+	    vector<int> open(norbs-nelec,0);
+	    Dets[uniqueVarIndices[k][i]].getOpenClosed(open, closed);
+	    for (int n1=0;n1<nelec; n1++) {
+	      double sgn = 1.0;
+	      int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0); 
+	      if (closed[n1] == d0) continue;
+	      Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
+	      if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
+	      //if (a<b or I<J){cout << "Error!" <<endl;}
+	      twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	      twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	    } // for n1
+	  }  // single
+	  else { // double excitation
+	    int d1=(uniqueOrbDiff[k][i]/norbs/norbs)%norbs, c1=(uniqueOrbDiff[k][i]/norbs/norbs/norbs)%norbs ;
+	    double sgn = 1.0;
+	    Dets[uniqueVarIndices[k][i]].parity(d1,d0,c1,c0,sgn);
+	    int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
+	    if (P != c0)  sgn *= -1;
+	    if (Q != d0)  sgn *= -1;
+	    twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	    twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	  }// if
+	} // i in variational connections to PT det k
+      } // k in PT dets
+    } //thrd in num_thrds
+  }//schd.DoRDM
+  *
 
   /*
   if (0) {
@@ -1692,121 +1884,6 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   return finalE;
 }
 
-void HCIbasics::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXx& twoRDM) {
-  // Similar to above, but instead of computing PT energy, update 2RDM
-  // AAH, 30 Jan 2017
-
-  boost::mpi::communicator world;
-  int norbs = Determinant::norbs;
-  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
-  char psiArray[norbs]; vector<int> psiClosed(nelec,0), psiOpen(norbs-nelec,0);
-  double energyEN = 0.0;
-  int num_thrds = omp_get_max_threads();
-  
-  
-  std::vector<StitchDEH> uniqueDEH(num_thrds);
-  double totalPT = 0.0;
-#pragma omp parallel 
-  {
-    uniqueDEH[omp_get_thread_num()].extra_info = true;
-
-    for (int i=0; i<Dets.size(); i++) {
-
-      if (i%(omp_get_num_threads()) != omp_get_thread_num()) {continue;}
-      HCIbasics::getPTDeterminantsKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
-				   I1, I2, I2HB, irrep, coreE, E0,
-				   *uniqueDEH[omp_get_thread_num()].Det,
-				   *uniqueDEH[omp_get_thread_num()].Num,
-				   *uniqueDEH[omp_get_thread_num()].Energy,
-				   *uniqueDEH[omp_get_thread_num()].var_indices,
-				   *uniqueDEH[omp_get_thread_num()].orbDifference,
-				   schd, nelec);
-
-      if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
-
-    } // for i
-    
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before sort "<<getTime()-startofCalc<<endl;
-
-    uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
-    uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
-    
-
-    // Merge all PT dets so RDM can be computed by thread 0
-#pragma omp barrier 
-    if (omp_get_thread_num() == 0) {
-      for (int thrd=1; thrd<num_thrds; thrd++) {
-	uniqueDEH[0].merge(uniqueDEH[thrd]);
-	uniqueDEH[thrd].clear();
-	uniqueDEH[0].RemoveDuplicates();
-      }
-    }
-  }
-
-  if (mpigetrank() == 0 ) cout << "#Before mpi split "<<getTime()-startofCalc<<"  "<<uniqueDEH[0].Det->size()<<endl;
-  uniqueDEH.resize(1);
-  
-  
-  vector<Determinant>& uniqueDets = *uniqueDEH[0].Det;
-  vector<CItype>& uniqueNumerator = *uniqueDEH[0].Num;
-  vector<double>& uniqueEnergy = *uniqueDEH[0].Energy;
-  vector<vector<int>>& uniqueVarIndices = *uniqueDEH[0].var_indices;
-  vector<vector<size_t>>& uniqueOrbDiff = *uniqueDEH[0].orbDifference;
-
-// At this point, uniqueDets contains all the dets in the PT space, uniqueNumerator contains all the sum_i^eps2 H_ki c_i values,
-// uniqueEnergy contains all their diagonal H elements, and uniqueVarIndices contains all the indices of variational dets
-// Finally, uniqueOrbDiff contains the orbitals that are excited between D_i and D_k
-// connected to each PT det
-
-
-  size_t numDets=0, numLocalDets=uniqueDets.size();
-  mpi::all_reduce(world, numLocalDets, numDets, std::plus<size_t>());
-  if (mpigetrank() == 0) cout <<"#num dets "<<numDets<<endl;
-//#pragma omp parallel
-  {
-    for (size_t k=0; k<uniqueDets.size();k++) {
-      //if (k%(omp_get_num_threads()) != omp_get_thread_num()) continue;
-      for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
-        // Get closed for determinant D_i = Dets[uniqueVarIndices[k][i]]
-        // Determine whether single or double excitation 
-        int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs; // These orbitals correspond to an excitation from D_k to D_i
-        if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
-          vector<int> closed(nelec, 0);
-          vector<int> open(norbs-nelec,0);
-          Dets[uniqueVarIndices[k][i]].getOpenClosed(open, closed);
-	  for (int n1=0;n1<nelec; n1++) {
-	    double sgn = 1.0;
-	    int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0); 
-	    if (closed[n1] == d0) continue;
-	    Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
-	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-          //if (a<b or I<J){cout << "Error!" <<endl;}
-	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	  } // for n1
-        }  // single
-        else { // double excitation
-	  int d1=(uniqueOrbDiff[k][i]/norbs/norbs)%norbs, c1=(uniqueOrbDiff[k][i]/norbs/norbs/norbs)%norbs ;
-	  double sgn = 1.0;
-	  Dets[uniqueVarIndices[k][i]].parity(d1,d0,c1,c0,sgn);
-          int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
-          if (P != c0)  sgn *= -1;
-          if (Q != d0)  sgn *= -1;
-	  twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	  twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-        }// if
-      } // i in variational connections to PT det k
-    } // k in PT dets
-  }
-
-  //mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
-  
-  return;
-
-}
 
 
 void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
@@ -2158,14 +2235,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
       if (DoRDM) {	
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++) {
-          MatrixXx twoRDM(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-	  EvaluateAndStoreRDM(connections, Dets, ci[i], orbDifference, nelec, schd, i, twoRDM);
-          cout << "Variational RDM:" << endl;
-          ComputeEnergyFromRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-          UpdateRDMPerturbativeDeterministic(Dets, ci[i], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec, twoRDM);
-          cout << "Var+PT RDM:" << endl;
-          ComputeEnergyFromRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-          printRDM(Dets[0].norbs, schd, i, twoRDM);
+	  EvaluateAndStoreRDM(connections, Dets, ci[i], orbDifference, nelec, schd, i);
         } // for i
       }
 
@@ -2529,7 +2599,11 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
 
       numerator1.push_back(integral*ci1);
-      numerator2.push_back( abs(integral*integral*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+#ifndef Complex
+      numerator2.push_back( integral*integral*ci1*(ci1*Nmc/(Nmc-1)- ci2));
+#else
+      numerator2.push_back( (integral*integral*ci1*(ci1*Nmc/(Nmc-1)- ci2)).real());
+#endif
       energy.push_back(E);
     }
   }
@@ -2564,7 +2638,11 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 	di.parity(a, b, closed[i], closed[j], sgn);
 	
 	numerator1.push_back(integrals[index]*sgn*ci1);
-	numerator2.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+#ifndef Complex
+	numerator2.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2));
+#else
+	numerator2.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)).real());
+#endif
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
 	energy.push_back(E);
 	
@@ -2604,8 +2682,11 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
 
       numerator1A.push_back(integral*ci1);
-      numerator2A.push_back( abs(integral*integral*ci1 *(ci1*Nmc/(Nmc-1)- ci2)));
-
+#ifndef Complex
+      numerator2A.push_back( integral*integral*ci1 *(ci1*Nmc/(Nmc-1)- ci2));
+#else
+      numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmc/(Nmc-1)- ci2)).real() );
+#endif
       if (abs(integral) >epsilonLarge) 
 	present.push_back(true);
       else 
@@ -2645,7 +2726,12 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 	di.parity(a, b, closed[i], closed[j], sgn);
 	
 	numerator1A.push_back(integrals[index]*sgn*ci1);
-	numerator2A.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+#ifndef Complex
+	numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2));
+#else
+	numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)).real());
+#endif
+	//numerator2A.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
 	
 	
 	if (abs(integrals[index]) >epsilonLarge) 

@@ -62,8 +62,8 @@ namespace HCIbasics {
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
 			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
 			       bool DoRDM=false);
-  void EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXd& ci,
-			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, MatrixXd& twoRDM);
+  void EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
+			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, bool update=false);
   
   void DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
 								 , double& E0, oneInt& I1, twoInt& I2, 
