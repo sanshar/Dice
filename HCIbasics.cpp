@@ -298,8 +298,17 @@ public:
   boost::shared_ptr<vector<Determinant> > Det;
   boost::shared_ptr<vector<CItype> > Num;
   boost::shared_ptr<vector<double> > Energy;
+
+  //the next two store information about where a determinant in "C" arose from
+  boost::shared_ptr<vector<int > > var_indices_beforeMerge; 
+  boost::shared_ptr<vector<size_t > > orbDifference_beforeMerge;
+
+  //the next two store information about where a determinant in "C" arose from,
+  //and takes into account the fact that a given determinant might have arisen from
+  //multiple parent determinants in "V"
   boost::shared_ptr<vector<vector<int> > > var_indices;
   boost::shared_ptr<vector<vector<size_t> > > orbDifference;
+
   bool extra_info; // whether to use var_indices, orbDifference
 
   StitchDEH() {
@@ -309,14 +318,18 @@ public:
     extra_info = false;
     var_indices = boost::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
     orbDifference = boost::shared_ptr<vector<vector<size_t> > > (new vector<vector<size_t> >() );
+    var_indices_beforeMerge = boost::shared_ptr<vector<int > > (new vector<int >() );
+    orbDifference_beforeMerge = boost::shared_ptr<vector<size_t > > (new vector<size_t >() );
   }
 
   StitchDEH(boost::shared_ptr<vector<Determinant> >pD, 
 	    boost::shared_ptr<vector<CItype> >pNum, 
 	    boost::shared_ptr<vector<double> >pE, 
 	    boost::shared_ptr<vector<vector<int> > >pvar, 
-	    boost::shared_ptr<vector<vector<size_t> > >porb)
-  : Det(pD), Num(pNum), Energy(pE), var_indices(pvar), orbDifference(porb)
+	    boost::shared_ptr<vector<vector<size_t> > >porb,
+	    boost::shared_ptr<vector<int > >pvar_beforeMerge, 
+	    boost::shared_ptr<vector<size_t > >porb_beforeMerge)
+    : Det(pD), Num(pNum), Energy(pE), var_indices(pvar), orbDifference(porb), var_indices_beforeMerge(pvar_beforeMerge), orbDifference_beforeMerge(porb_beforeMerge)
     {
       extra_info=true;
     };
@@ -381,50 +394,110 @@ public:
   void MergeSortAndRemoveDuplicates() {
     std::vector<Determinant> Detcopy = *Det;
     
-    long* detIndex =  new long[Detcopy.size()];
-    long* detIndexcopy = new long[Detcopy.size()];
+    std::vector<long> detIndex(Detcopy.size(),0);
+    std::vector<long> detIndexcopy(Detcopy.size(),0);
+
     for (size_t i=0; i<Detcopy.size(); i++)
       detIndex[i] = i;      
-    mergesort(&Detcopy[0], 0, Detcopy.size()-1, detIndex, &( Det->operator[](0)), detIndexcopy);
-    delete [] detIndexcopy;
-    
+    mergesort(&Detcopy[0], 0, Detcopy.size()-1, &detIndex[0], &( Det->operator[](0)), &detIndexcopy[0]);
+    detIndexcopy.clear();
+
+    bool varIndicesEmtpy = var_indices->size() == 0 ? true : false;
     //if (Det->size() == 1) return;
     if (Det->size() <= 1) return;
-    std::vector<CItype> Numcopy = *Num;
-    std::vector<double> Ecopy = *Energy;
+    reorder(*Num, detIndex);
+    reorder(*Energy, detIndex);
+    if (extra_info) {
+      if (varIndicesEmtpy) {
+	reorder(*var_indices_beforeMerge, detIndex);
+	reorder(*orbDifference_beforeMerge, detIndex);
+      }
+      else {
+	vector<vector<int> > Vcopy = *var_indices;
+	for (int i=0; i<Vcopy.size(); i++) {
+	  var_indices->at(i).clear();
+	  var_indices->at(i).insert(var_indices->at(i).end(), Vcopy[detIndex[i]].begin(), Vcopy[detIndex[i]].end());
+	}
+	Vcopy.clear();
+	vector<vector<size_t> > Ocopy = *orbDifference;
+	for (int i=0; i<Ocopy.size(); i++) {
+	  orbDifference->at(i).clear();
+	  orbDifference->at(i).insert(orbDifference->at(i).end(), Ocopy[detIndex[i]].begin(), Ocopy[detIndex[i]].end());
+	}
+	Ocopy.clear();
+      }
+
+    }
+    detIndex.clear();
+
+
+
     std::vector<std::vector<int> >& Vcopy = *var_indices;
     std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
 
     size_t uniqueSize = 0;
-    Det->operator[](uniqueSize) = Detcopy[0];
-    Num->operator[](uniqueSize) = Numcopy[ detIndex[0]];
-    Energy->operator[](uniqueSize) = Ecopy[ detIndex[0]];
+
     if (extra_info) {
-      var_indices->operator[](uniqueSize) = Vcopy[0];
-      orbDifference->operator[](uniqueSize) = Ocopy[0];
+      
+      if (varIndicesEmtpy) {
+	var_indices->push_back(std::vector<int>(1,var_indices_beforeMerge->at(0)));
+	orbDifference->push_back(std::vector<size_t>(1,orbDifference_beforeMerge->at(0)));
+      }
     }
 
-    for (size_t i=1; i <Detcopy.size(); i++) {
-      if (!(Detcopy[i] == Detcopy[i-1])) {
-	uniqueSize++;
-	Det->operator[](uniqueSize) = Detcopy[i];
-	Num->operator[](uniqueSize) = Numcopy[detIndex[i]];
-	Energy->operator[](uniqueSize) = Ecopy[detIndex[i]];
-        if (extra_info) {
-	  var_indices->operator[](uniqueSize) = Vcopy[i];
-	  orbDifference->operator[](uniqueSize) = Ocopy[i];
-        }
-      }
-      else {
-	Num->operator[](uniqueSize) += Numcopy[detIndex[i]];
-        if (extra_info) {
-          for (size_t k=0; k<(*var_indices)[i].size(); k++) {
-    	    (*var_indices)[uniqueSize].push_back((*var_indices)[i][k]);
-    	    (*orbDifference)[uniqueSize].push_back((*orbDifference)[i][k]);
-          }
+    if (varIndicesEmtpy) {
+      for (size_t i=1; i <Detcopy.size(); i++) {
+	if (!(Detcopy[i] == Detcopy[i-1])) {
+	  uniqueSize++;
+	  Det->operator[](uniqueSize) = Det->at(i);
+	  Num->operator[](uniqueSize) = Num->at(i);
+	  Energy->operator[](uniqueSize) = Energy->at(i);
+	  if (extra_info) {
+	    var_indices->push_back(std::vector<int>(1,var_indices_beforeMerge->at(i)));
+	    orbDifference->push_back(std::vector<size_t>(1,orbDifference_beforeMerge->at(i)));
+	    //var_indices->operator[](uniqueSize) = Vcopy[detIndex[i]];
+	    //orbDifference->operator[](uniqueSize) = Ocopy[detIndex[i]];
+	  }
+	}
+	else {
+	  Num->operator[](uniqueSize) += Num->at(i);
+	  if (extra_info) {
+	    var_indices->at(uniqueSize).push_back(var_indices_beforeMerge->at(i));
+	    orbDifference->at(uniqueSize).push_back(orbDifference_beforeMerge->at(i));
+    	    //(*var_indices)[uniqueSize].push_back(Vcopy[detIndex[i]][k]);
+    	    //(*orbDifference)[uniqueSize].push_back(Ocopy[detIndex[i]][k]);
+	  }
 	}
       }
     }
+    else {
+      for (size_t i=1; i <Detcopy.size(); i++) {
+	if (!(Detcopy[i] == Detcopy[i-1])) {
+	  uniqueSize++;
+	  Det->operator[](uniqueSize) = Det->at(i);
+	  Num->operator[](uniqueSize) = Num->at(i);
+	  Energy->operator[](uniqueSize) = Energy->at(i);
+	  if (extra_info) {
+	    var_indices->operator[](uniqueSize) = Vcopy[i];
+	    orbDifference->operator[](uniqueSize) = Ocopy[i];
+	  }
+	}
+	else {
+	  Num->operator[](uniqueSize) += Num->at(i);
+	  if (extra_info) {
+	    for (size_t k=0; k<Vcopy[i].size(); k++) {
+	      (*var_indices)[uniqueSize].push_back(Vcopy[i][k]);
+	      (*orbDifference)[uniqueSize].push_back(Ocopy[i][k]);
+	    }
+	  }
+	}
+      }
+    }
+    
+    
+    var_indices_beforeMerge->clear();
+    orbDifference_beforeMerge->clear();
+    
     Det->resize(uniqueSize+1);
     Num->resize(uniqueSize+1);
     Energy->resize(uniqueSize+1);
@@ -432,10 +505,8 @@ public:
       var_indices->resize(uniqueSize+1);
       orbDifference->resize(uniqueSize+1);
     }
-
-    delete [] detIndex;
   }
-
+    
 
   void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets) {
       vector<Determinant>::iterator vec_it = SortedDets.begin();
@@ -784,6 +855,7 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
       if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
 	ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
     }
+    ofs.close();
 
 
 
@@ -808,16 +880,17 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
 
 
 
-void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
+void HCIbasics::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
   //also i>=j and k>=l
   double energy = coreE;
-  CItype onebody = 0.0;
-  CItype twobody = 0.0;
+  double onebody = 0.0;
+  double twobody = 0.0;
   //if (mpigetrank() == 0)  cout << "Core energy= " << energy << endl; 
 
   MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+#pragma omp parallel for schedule(dynamic)
   for (int p=0; p<norbs; p++)
   for (int q=0; q<norbs; q++)
     for (int r=0; r<norbs; r++) {
@@ -830,10 +903,16 @@ void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I
       oneRDM(p,q) += sgn*twoRDM(P*(P+1)/2+R1,Q*(Q+1)/2+R2)/(nelec-1);
     }
     
+#pragma omp parallel for reduction(+ : onebody)
   for (int p=0; p<norbs; p++)
   for (int q=0; q<norbs; q++)
+#ifdef Complex
+    onebody += (I1(p, q)*oneRDM(p,q)).real();
+#else
     onebody += I1(p, q)*oneRDM(p,q);
+#endif
 
+#pragma omp parallel for reduction(+ : twobody)
   for (int p=0; p<norbs; p++){
   for (int q=0; q<norbs; q++){
   for (int r=0; r<norbs; r++){
@@ -844,7 +923,11 @@ void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I
       int sgn = 1;
       if (P != p)  sgn *= -1;
       if (R != r)  sgn *= -1;
+#ifdef Complex
+      twobody += (sgn * 0.5 * twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) * I2(p,r,q,s)).real(); // 2-body term
+#else
       twobody += sgn * 0.5 * twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) * I2(p,r,q,s); // 2-body term
+#endif
   }
   }
   }
@@ -853,12 +936,47 @@ void HCIbasics::ComputeEnergyFromRDM(int norbs, int nelec, oneInt& I1, twoInt& I
   //if (mpigetrank() == 0)  cout << "One-body from 2RDM: " << onebody << endl;
   //if (mpigetrank() == 0)  cout << "Two-body from 2RDM: " << twobody << endl;
 
-#ifdef Complex
-  energy += onebody.real() + twobody.real();
-#else
   energy += onebody + twobody;
+  if (mpigetrank() == 0)  cout << "E from 2RDM: " << energy << endl;
+
+}
+
+
+void HCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
+  
+  double energy = coreE;
+  double onebody = 0.0;
+  double twobody = 0.0;
+  
+  MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+#pragma omp parallel for schedule(dynamic) 
+  for (int p=0; p<norbs; p++)
+    for (int q=0; q<norbs; q++)
+      for (int r=0; r<norbs; r++) 
+	oneRDM(p,q) += twoRDM(p*norbs+r, r*norbs+ q)/(1.*nelec-1.);
+
+
+#pragma omp parallel for reduction(+ : onebody)
+  for (int p=0; p<norbs; p++)
+    for (int q=0; q<norbs; q++)
+#ifdef Complex
+      onebody += (I1(2*p, 2*q)*oneRDM(p,q)).real();
+#else
+      onebody += I1(2*p, 2*q)*oneRDM(p,q);
 #endif
 
+#pragma omp parallel for reduction(+ : twobody)
+  for (int p=0; p<norbs; p++)
+    for (int q=0; q<norbs; q++)
+      for (int r=0; r<norbs; r++)
+	for (int s=0; s<norbs; s++)
+#ifdef Complex
+	  twobody +=  (0.5 * twoRDM(p*norbs+q,s*norbs+r) * I2(2*p,2*r,2*q,2*s)).real(); // 2-body term
+#else
+	  twobody +=  0.5*twoRDM(p*norbs+q,s*norbs+r) * I2(2*p,2*r,2*q,2*s); // 2-body term
+#endif
+
+  energy += onebody + twobody;
   if (mpigetrank() == 0)  cout << "E from 2RDM: " << energy << endl;
 
 }
@@ -1068,7 +1186,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root);
 
   schd.epsilon2 = epsilon2;
 
@@ -1219,7 +1337,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root);
 
   schd.epsilon2 = epsilon2;
 
@@ -1577,7 +1695,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
 }
 
 double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, bool appendPsi1ToPsi0) {
+					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root, bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
@@ -1611,8 +1729,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 						*uniqueDEH[omp_get_thread_num()].Det,
 						*uniqueDEH[omp_get_thread_num()].Num,
 						*uniqueDEH[omp_get_thread_num()].Energy,
-						*uniqueDEH[omp_get_thread_num()].var_indices,
-						*uniqueDEH[omp_get_thread_num()].orbDifference,
+						*uniqueDEH[omp_get_thread_num()].var_indices_beforeMerge,
+						*uniqueDEH[omp_get_thread_num()].orbDifference_beforeMerge,
 						schd, nelec);
 	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
       }
@@ -1649,7 +1767,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	}
       }
-
+      
       if (omp_get_thread_num()==0 ) {
 	ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1; 
 	mpi::broadcast(world, ntries, 0);
@@ -1691,6 +1809,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  }
 	}
 #pragma omp barrier
+
 	for (int proc=0; proc<mpigetsize(); proc++) {
 	  for (int thrd=0; thrd<num_thrds; thrd++) {
 	    hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
@@ -1702,7 +1821,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	    }
 	  }
 	}
-
+	
 	
 	if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
 	
@@ -1727,6 +1846,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	  }
 	}
       }
+
 	
       *uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
       *uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
@@ -1737,6 +1857,8 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
       }
       uniqueDEH_afterMPI.clear();
       uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+
+
     }
     if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
@@ -1765,26 +1887,50 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
   
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
 
-  /*
+
   if (schd.DoRDM) {
-
+    
+    int nSpatOrbs = norbs/2;
+    
+    //Read the variational RDM
+    MatrixXx s2RDM, twoRDM;
+    if (schd.DoSpinRDM ){
+      if (mpigetrank() == 0) {
+	char file [5000];
+	sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+	std::ifstream ifs(file, std::ios::binary);
+	boost::archive::binary_iarchive load(ifs);
+	load >> twoRDM;
+	ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+      }
+      else
+	twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+    }
+    if (mpigetrank() == 0) {
       char file [5000];
-      sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
-      std::ofstream ofs(file, std::ios::binary);
-      boost::archive::binary_oarchive save(ofs);
-      save << twoRDM;
-
+      sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> s2RDM;
+      ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
+    }
+    else
+      s2RDM.setZero(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
+      
+    
     for (int thrd = 0; thrd <num_thrds; thrd++)
     {
-      vector<double>& uniqueDets = *uniqueDEH[thrd].Det;
-      vector<double>& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
-      vector<double>& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
+
+      vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
+      vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
+      vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
+      vector<vector<int> >& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
+      vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
+      
       for (size_t k=0; k<uniqueDets.size();k++) {
-	//if (k%(omp_get_num_threads()) != omp_get_thread_num()) continue;
 	for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
-	  // Get closed for determinant D_i = Dets[uniqueVarIndices[k][i]]
-	  // Determine whether single or double excitation 
-	  int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs; // These orbitals correspond to an excitation from D_k to D_i
+	  int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs; 
+	  
 	  if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
 	    vector<int> closed(nelec, 0);
 	    vector<int> open(norbs-nelec,0);
@@ -1795,9 +1941,12 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	      if (closed[n1] == d0) continue;
 	      Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
 	      if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-	      //if (a<b or I<J){cout << "Error!" <<endl;}
-	      twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	      twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	      if (schd.DoSpinRDM) {
+		twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+		twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	      }
+	      populateSpatialRDM(a, b, I, J, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
+	      populateSpatialRDM(I, J, a, b, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
 	    } // for n1
 	  }  // single
 	  else { // double excitation
@@ -1807,14 +1956,61 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 	    int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
 	    if (P != c0)  sgn *= -1;
 	    if (Q != d0)  sgn *= -1;
-	    twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	    twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	  }// if
+	    
+	    if (schd.DoSpinRDM) {
+	      twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	      twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
+	    }
+	    
+	    populateSpatialRDM(P, Q, R, S, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
+	    populateSpatialRDM(R, S, P, Q, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
+	  }// If
 	} // i in variational connections to PT det k
       } // k in PT dets
     } //thrd in num_thrds
+    
+    if (schd.DoSpinRDM)
+      MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    
+    if(mpigetrank() == 0) {
+      char file [5000];
+      sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix.c_str(), root, root );
+      std::ofstream ofs(file, std::ios::out);
+      ofs << nSpatOrbs<<endl;
+      
+      for (int n1=0; n1<nSpatOrbs; n1++)
+	for (int n2=0; n2<nSpatOrbs; n2++)
+	  for (int n3=0; n3<nSpatOrbs; n3++)
+	    for (int n4=0; n4<nSpatOrbs; n4++)
+	      {
+		if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
+		  ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
+	      }
+      ofs.close();
+
+    
+      if (schd.DoSpinRDM) {
+	char file [5000];
+	sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix.c_str(), root );
+	std::ofstream ofs(file, std::ios::binary);
+	boost::archive::binary_oarchive save(ofs);
+	save << twoRDM;
+	ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+      }
+      
+      {
+	char file [5000];
+	sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix.c_str(), root );
+	std::ofstream ofs(file, std::ios::binary);
+	boost::archive::binary_oarchive save(ofs);
+	save << s2RDM;
+	ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
+      }
+    }
   }//schd.DoRDM
-  *
+
 
   /*
   if (0) {
@@ -2414,7 +2610,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   return;
 }
 
-void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<std::vector<int> >& var_indices, std::vector<std::vector<size_t> >& orbDifference, schedule& schd, int nelec) {
+void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<int>& var_indices, std::vector<size_t>& orbDifference, schedule& schd, int nelec) {
   // Similar to above subroutine, but also keeps track of the reference dets each connected det came from
   // AAH, 30 Jan 2017
 
@@ -2449,14 +2645,10 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
       numerator.push_back(integral*ci);
       energy.push_back(E);
 
-      std::vector<int> var_indices_vec;
-      var_indices_vec.push_back(det_ind);
-      var_indices.push_back(var_indices_vec);
+      var_indices.push_back(det_ind);
 
       orbDiff = open[a]*norbs+closed[i]; // a = creation, i = annihilation
-      std::vector<size_t> orbDiff_vec;
-      orbDiff_vec.push_back(orbDiff);
-      orbDifference.push_back(orbDiff_vec);
+      orbDifference.push_back(orbDiff);
 
     }
   }
@@ -2494,14 +2686,10 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	energy.push_back(E);
 
-	std::vector<int> var_indices_vec;
-	var_indices_vec.push_back(det_ind);
-	var_indices.push_back(var_indices_vec);
+	var_indices.push_back(det_ind);
 
 	orbDiff = a*norbs*norbs*norbs+closed[i]*norbs*norbs+b*norbs+closed[j];  //i>j and a>b??
-	std::vector<size_t> orbDiff_vec;
-	orbDiff_vec.push_back(orbDiff);
-	orbDifference.push_back(orbDiff_vec);
+	orbDifference.push_back(orbDiff);
 	
       } // if a and b unoccupied
     } // iterate over heatbath integrals

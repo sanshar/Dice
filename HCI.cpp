@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, true);
+      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
@@ -188,8 +188,17 @@ int main(int argc, char* argv[]) {
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
     //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
-    for (int root=0; root<schd.nroots;root++) 
-      HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
+    double ePT = 0.0;
+    std::string efile;
+    efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
+    FILE* f = fopen(efile.c_str(), "wb");      
+    for (int root=0; root<schd.nroots;root++) {
+      ePT = HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      ePT += E0[root];
+      fwrite( &ePT, 1, sizeof(double), f);
+    }
+    fclose(f);
+
   }
   else if (schd.SampleN != -1 && schd.singleList ){
     for (int root=0; root<schd.nroots && schd.nPTiter != 0;root++) 
