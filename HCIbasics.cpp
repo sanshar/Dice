@@ -729,13 +729,13 @@ void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, CItype 
   //we assume i != j  and  k != l
   int I = i/2, J=j/2, K=k/2, L=l/2;
   if (i%2 == l%2 && j%2 == k%2) {
-    s2RDM(I*nSpatOrbs+J,K*nSpatOrbs+L) -= value;
-    s2RDM(J*nSpatOrbs+I,L*nSpatOrbs+K) -= value;
+    s2RDM(I*nSpatOrbs+J,L*nSpatOrbs+K) -= value;
+    s2RDM(J*nSpatOrbs+I,K*nSpatOrbs+L) -= value;
   }
 
   if (i%2 == k%2 && l%2 == j%2 ) {
-    s2RDM(I*nSpatOrbs+J,L*nSpatOrbs+K) += value;
-    s2RDM(J*nSpatOrbs+I,K*nSpatOrbs+L) += value;
+    s2RDM(I*nSpatOrbs+J,K*nSpatOrbs+L) += value;
+    s2RDM(J*nSpatOrbs+I,L*nSpatOrbs+K) += value;
   }
   
 }
@@ -953,7 +953,7 @@ void HCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
   for (int p=0; p<norbs; p++)
     for (int q=0; q<norbs; q++)
       for (int r=0; r<norbs; r++) 
-	oneRDM(p,q) += twoRDM(p*norbs+r, r*norbs+ q)/(1.*nelec-1.);
+	oneRDM(p,q) += twoRDM(p*norbs+r, q*norbs+ r)/(1.*nelec-1.);
 
 
 #pragma omp parallel for reduction(+ : onebody)
@@ -971,9 +971,9 @@ void HCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
       for (int r=0; r<norbs; r++)
 	for (int s=0; s<norbs; s++)
 #ifdef Complex
-	  twobody +=  (0.5 * twoRDM(p*norbs+q,s*norbs+r) * I2(2*p,2*r,2*q,2*s)).real(); // 2-body term
+	  twobody +=  (0.5 * twoRDM(p*norbs+q,r*norbs+s) * I2(2*p,2*r,2*q,2*s)).real(); // 2-body term
 #else
-	  twobody +=  0.5*twoRDM(p*norbs+q,s*norbs+r) * I2(2*p,2*r,2*q,2*s); // 2-body term
+	  twobody +=  0.5*twoRDM(p*norbs+q,r*norbs+s) * I2(2*p,2*r,2*q,2*s); // 2-body term
 #endif
 
   energy += onebody + twobody;
