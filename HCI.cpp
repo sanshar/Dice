@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
   }
 #else
   if (schd.doSOC) 
-    readSOCIntegrals(I1, norbs);
+    readSOCIntegrals(I1, norbs, "SOC");
 #endif
 
 
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
 
 
   std::string efile;
-  efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
+  efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/hci.e" );
   FILE* f = fopen(efile.c_str(), "wb");      
   for(int j=0;j<E0.size();++j) {
     fwrite( &E0[j], 1, sizeof(double), f);
@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
     //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     double ePT = 0.0;
     std::string efile;
-    efile = str(boost::format("%s%s") % schd.prefix.c_str() % "/hci.e" );
+    efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/hci.e" );
     FILE* f = fopen(efile.c_str(), "wb");      
     for (int root=0; root<schd.nroots;root++) {
       ePT = HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);

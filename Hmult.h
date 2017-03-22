@@ -35,15 +35,13 @@ struct Hmult2 {
     if (num_thrds >1) {
       std::vector<MatrixXx> yarray(num_thrds);
       
-      for (int i=0; i<num_thrds; i++) {
-      }
-      
 #pragma omp parallel
       {
 	yarray[omp_get_thread_num()] = MatrixXx::Zero(y.rows(),1);
-#pragma omp for schedule(dynamic)
+	//#pragma omp for schedule(dynamic)
 	for (int i=0; i<x.rows(); i++) {
-	  if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
+	  if ((i%(omp_get_num_threads() * world.size()) 
+	       != world.rank()*omp_get_num_threads() + omp_get_thread_num())) continue;
 	  for (int j=0; j<connections[i].size(); j++) {
 	    CItype hij = Helements[i][j];
 	    int J = connections[i][j];
@@ -90,6 +88,7 @@ struct Hmult2 {
 	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
 	  y(i,0) += hij*x(J,0);
+
 #ifdef Complex
 	  if (i!= J) y(J,0) += conj(hij)*x(i,0);
 #else

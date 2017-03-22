@@ -51,7 +51,7 @@ public:
   bool fullrestart;
   double dE;
   double eps;
-  string prefix;
+  vector<string> prefix;
   bool stochastic;
   int nblocks;
   int excitation;

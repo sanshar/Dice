@@ -22,7 +22,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.epsilon2 = 1.e-8;
   schd.epsilon2Large = 1000.0;
   schd.dE = 1.e-8;
-  schd.prefix = ".";
   schd.stochastic = true;
   schd.SampleN = -1;
   schd.excitation = 1000;
@@ -73,6 +72,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	occupied.push_back(vector<int>(nocc));
 	if (nocc != tok.size()) {
 	  cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
+	  for (int t=0;t<tok.size(); t++)
+	    cout << tok[t]<<"  ";
 	  exit(0);
 	}
 	cout << "#";
@@ -82,8 +83,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	}
 	cout <<endl;
 	std::getline(dump, Line);      
-	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
 	trim(Line);
+	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
 	index++;
       }
     }
@@ -136,7 +137,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName , "eps") )
       schd.eps = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "prefix") )
-      schd.prefix = tok[1].c_str();
+      schd.prefix.push_back(tok[1]);
     else if (boost::iequals(ArgName, "schedule")) { 
 
       std::getline(dump, Line);
@@ -175,5 +176,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 
   for (int j=sweep_iter[sweep_iter.size()-1]; j<maxiter; j++)
     schd.epsilon1.push_back(sweep_epsilon[sweep_iter.size()-1]);
+
+  if (schd.prefix.size() == 0)
+    schd.prefix.push_back(".");
 }
 

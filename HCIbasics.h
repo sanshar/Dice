@@ -27,6 +27,13 @@ namespace HCIbasics {
   int sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts);
 
   
+  void regenerateH(std::vector<Determinant>& Dets, 
+		   std::vector<std::vector<int> >&connections,
+		   std::vector<std::vector<CItype> >& Helements,
+		   oneInt& I1,
+		   twoInt& I2,
+		   double& coreE);
+
   void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
 			   std::vector<Determinant>& Dets,
@@ -99,7 +106,7 @@ namespace HCIbasics {
   
   void getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<char>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec);
   
-  void updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1);
+  void updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec);
   
   
   

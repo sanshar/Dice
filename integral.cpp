@@ -4,6 +4,7 @@
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include "math.h"
+#include "boost/format.hpp"
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -16,14 +17,14 @@ using namespace boost;
 bool myfn(double i, double j) { return fabs(i)<fabs(j); }
 
 #ifdef Complex
-void readSOCIntegrals(oneInt& I1, int norbs) {
+void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
   if (mpigetrank() == 0) {
     vector<string> tok;
     string msg;
 
     //Read SOC.X
     {
-      ifstream dump("SOC.X");
+      ifstream dump(str(boost::format("%s.X") % fileprefix));
       int N;
       dump >> N;
       if (N != norbs/2) {
@@ -42,14 +43,17 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	I1(2*(a-1), 2*(b-1)+1) += integral/2.;  //alpha beta
-	I1(2*(a-1)+1, 2*(b-1)) += integral/2.;  //beta alpha
+	//I1(2*(a-1), 2*(b-1)+1) += integral/2.;  //alpha beta
+	//I1(2*(a-1)+1, 2*(b-1)) += integral/2.;  //beta alpha
+	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,-integral/2.);  //alpha beta
+	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,-integral/2.);  //beta alpha
       }      
     }
 
     //Read SOC.Y
     {
-      ifstream dump("SOC.Y");
+      ifstream dump(str(boost::format("%s.Y") % fileprefix));
+      //ifstream dump("SOC.Y");
       int N;
       dump >> N;
       if (N != norbs/2) {
@@ -68,15 +72,18 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, -integral/2.);  //alpha beta
-	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, integral/2.);  //beta alpha
+	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, -integral/2.);  //alpha beta
+	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, integral/2.);  //beta alpha
+	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);  //alpha beta
+	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(integral/2.,0);  //beta alpha
       }      
     }
 
 
     //Read SOC.Z
     {
-      ifstream dump("SOC.Z");
+      ifstream dump(str(boost::format("%s.Z") % fileprefix));
+      //ifstream dump("SOC.Z");
       int N;
       dump >> N;
       if (N != norbs/2) {
@@ -95,8 +102,10 @@ void readSOCIntegrals(oneInt& I1, int norbs) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	I1(2*(a-1), 2*(b-1)) += integral/2; //alpha, alpha
-	I1(2*(a-1)+1, 2*(b-1)+1) += -integral/2; //beta, beta
+	//I1(2*(a-1), 2*(b-1)) += integral/2; //alpha, alpha
+	//I1(2*(a-1)+1, 2*(b-1)+1) += -integral/2; //beta, beta
+	I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha, alpha
+	I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2); //beta, beta
       }      
     }
 
