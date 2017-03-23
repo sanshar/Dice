@@ -1,12 +1,13 @@
-CXX = mpiicpc
-CC = mpiicpc
-FLAGS = -std=c++11 -qopenmp -g -O2  -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
-DFLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
-#FLAGS = -std=c++11 -fopenmp -w -g -O2 -I/home/james/Documents/Apps/eigen -I/home/james/Documents/Apps/boost_1_57_0/ #-DComplex
+CXX = mpicxx #mpiicpc
+CC = mpicxx #mpiicpc
+#FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
+#DFLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
+DFLAGS = -std=c++11 -fopenmp -w -g -O2 -I/home/james/Documents/Apps/eigen -I/home/james/Documents/Apps/boost_1_57_0/ -DComplex
+FLAGS = -std=c++11 -fopenmp -w -g -O2 -I/home/james/Documents/Apps/eigen -I/home/james/Documents/Apps/boost_1_57_0/ #-DComplex
 #FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I./
 
-LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
-#LFLAGS = -L/home/james/Documents/Apps/boost_1_57_0/ -lboost_serialization -lboost_mpi -lrt
+#LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+LFLAGS = -L/home/james/Documents/Apps/boost_1_57_0/ -lboost_serialization -lboost_mpi -lrt
 #LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_janus/lib -lboost_serialization -lboost_mpi
 #LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_has/lib -lboost_serialization -lboost_mpi
 #LFLAGS = -L./boost/lib -lboost_serialization -lboost_mpi
