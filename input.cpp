@@ -38,6 +38,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.doSOC = false;
   schd.doSOCQDPT = false;
   schd.randomSeed = getTime();
+  schd.doGtensor = false;
 
   while (dump.good()) {
 
@@ -48,11 +49,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "#"<<Line<<endl;
 
     vector<string> tok;
-    boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
+    boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
     string ArgName = *tok.begin();
 
-    if (dump.eof())
-      break;
+    //if (dump.eof())
+    //break;
     if (!ArgName.empty() && (boost::iequals(tok[0].substr(0,1), "#"))) continue;
     if (ArgName.empty()) continue;
 
@@ -92,6 +93,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.io=false;
     else if (boost::iequals(ArgName, "dosoc")) 
       schd.doSOC=true;
+    else if (boost::iequals(ArgName, "dogtensor")) 
+      schd.doGtensor=true;
     else if (boost::iequals(ArgName, "dosocqdpt")) 
       schd.doSOCQDPT=true;
     else if (boost::iequals(ArgName, "nptiter")) 

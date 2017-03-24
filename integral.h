@@ -150,6 +150,7 @@ class twoIntHeatBathSHM {
 
 #ifdef Complex
 void readSOCIntegrals(oneInt& I1soc, int norbs, string fileprefix);  
+void readGTensorIntegrals(vector<oneInt>& I1soc, int norbs, string fileprefix);  
 #endif
 
 int readNorbs(string fcidump);

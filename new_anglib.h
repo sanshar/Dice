@@ -6,6 +6,9 @@ This program is integrated in Molpro with the permission of
 Sandeep Sharma, Garnet K.-L. Chan and Roberto Olivares-Amaya
 */
 
+#ifndef NEW_ANGLIB_H
+#define NEW_ANGLIB_H
+
 double nine_j(int na, int nb, int nc, int nd, int ne, int nf, int ng, int nh, int ni);
 
 double six_j(int j1, int j2, int j3, int l1, int l2, int l3);
@@ -25,3 +28,5 @@ int mone(double x);
 int get_cast(double x);
 
 double fbinom(double n, double r);
+
+#endif

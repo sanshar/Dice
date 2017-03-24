@@ -43,8 +43,8 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	//I1(2*(a-1), 2*(b-1)+1) += integral/2.;  //alpha beta
-	//I1(2*(a-1)+1, 2*(b-1)) += integral/2.;  //beta alpha
+	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,integral/2.);  //alpha beta
+	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,integral/2.);  //beta alpha
 	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,-integral/2.);  //alpha beta
 	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,-integral/2.);  //beta alpha
       }      
@@ -72,8 +72,8 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0, -integral/2.);  //alpha beta
-	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0, integral/2.);  //beta alpha
+	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(integral/2.,0);  //alpha beta
+	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(-integral/2.,0);  //beta alpha
 	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);  //alpha beta
 	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(integral/2.,0);  //beta alpha
       }      
@@ -102,8 +102,8 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-	//I1(2*(a-1), 2*(b-1)) += integral/2; //alpha, alpha
-	//I1(2*(a-1)+1, 2*(b-1)+1) += -integral/2; //beta, beta
+	//I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,integral/2); //alpha, alpha
+	//I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,-integral/2); //beta, beta
 	I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha, alpha
 	I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2); //beta, beta
       }      
@@ -112,6 +112,97 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
   }
 
 }
+
+void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
+  if (mpigetrank() == 0) {
+    vector<string> tok;
+    string msg;
+
+    //Read GTensor.X
+    {
+      ifstream dump(str(boost::format("%s.X") % fileprefix));
+      int N;
+      dump >> N;
+      if (N != norbs/2) {
+	cout << "number of orbitals in SOC.X should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
+	exit(0);
+      }
+      
+      //I1soc[1].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1[0](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
+	I1[0](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+      }      
+    }
+
+    //Read SOC.Y
+    {
+      ifstream dump(str(boost::format("%s.Y") % fileprefix));
+      //ifstream dump("SOC.Y");
+      int N;
+      dump >> N;
+      if (N != norbs/2) {
+	cout << "number of orbitals in SOC.Y should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
+	exit(0);
+      }
+      
+      //I1soc[2].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1[1](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
+	I1[1](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+      }
+    }
+
+
+    //Read SOC.Z
+    {
+      ifstream dump(str(boost::format("%s.Z") % fileprefix));
+      //ifstream dump("SOC.Z");
+      int N;
+      dump >> N;
+      if (N != norbs/2) {
+	cout << "number of orbitals in SOC.Z should be equal to norbs in the input file."<<endl;
+	cout << N <<" != "<<norbs<<endl;
+	exit(0);
+      }
+      
+      //I1soc[3].store.resize(N*(N+1)/2, 0.0);
+      while(!dump.eof()) {
+	std::getline(dump, msg);
+	trim(msg);
+	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
+	if (tok.size() != 3)
+	  continue;
+	
+	double integral = atof(tok[0].c_str());
+	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
+	I1[2](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
+	I1[2](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+      }      
+    }
+
+  }
+
+}
+
 #endif
 
 int readNorbs(string fcidump) {

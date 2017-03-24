@@ -37,7 +37,8 @@ private:
       & quasiQEpsilon                           \
       & doSOC                                   \
       & doSOCQDPT                               \
-      & randomSeed;
+      & randomSeed                              \
+      & doGtensor;
   }
   
 public:
@@ -67,6 +68,7 @@ public:
   bool doSOC;
   bool doSOCQDPT;
   unsigned int randomSeed;
+  bool doGtensor;
 };
 
 #endif

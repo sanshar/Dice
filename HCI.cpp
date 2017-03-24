@@ -21,6 +21,7 @@
 #endif
 #include "communicate.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include "SOChelper.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -132,6 +133,7 @@ int main(int argc, char* argv[]) {
   //make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
   for (int d=0;d<HFoccupied.size(); d++) {
+
     for (int i=0; i<HFoccupied[d].size(); i++) {
       Dets[d].setocc(HFoccupied[d][i], true);
     }
@@ -172,6 +174,8 @@ int main(int argc, char* argv[]) {
   }
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
+
+
   if (schd.quasiQ) {    
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
@@ -184,6 +188,16 @@ int main(int argc, char* argv[]) {
 
   world.barrier();
   boost::interprocess::shared_memory_object::remove(hciint2.c_str());
+
+#ifdef Complex
+  if (schd.doSOC) {
+    for (int j=0; j<E0.size(); j++)
+      cout << str(boost::format("State: %3d,  E: %3d, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
+    if (schd.doGtensor) {
+      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec);
+    }
+  }
+#endif
 
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
