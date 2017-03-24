@@ -2278,7 +2278,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 		   norbs, I1, I2, coreE, orbDifference, DoRDM);
 
 #ifdef Complex
-  updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec);
+  updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec, false);
 #endif
 
 
@@ -2416,7 +2416,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), connections, Helements,
 		     norbs, I1, I2, coreE, orbDifference, DoRDM);
 #ifdef Complex
-    updateSOCconnections(Dets, SortedDets.size(), connections, Helements, norbs, I1, nelec);
+    updateSOCconnections(Dets, SortedDets.size(), connections, Helements, norbs, I1, nelec, false);
 #endif
 
 #pragma omp parallel 
@@ -2964,7 +2964,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 }
 
 
-void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec) {
+void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
  
   size_t Norbs = norbs;
 
@@ -2992,7 +2992,7 @@ void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, ve
       if (abs(integral) < 1.e-8) continue;
 
       Determinant di = d;
-      //if (open[a]%2 == closed[i]%2) continue;
+      if (open[a]%2 == closed[i]%2 && !includeSz) continue;
 
       di.setocc(open[a], true); di.setocc(closed[i],false);
       double sgn = 1.0;
@@ -3011,3 +3011,4 @@ void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, ve
     } 
   }  
 }
+
