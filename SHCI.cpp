@@ -6,7 +6,7 @@
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
-#include "HCIbasics.h"
+#include "SHCIbasics.h"
 #include "Davidson.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -71,10 +71,10 @@ int main(int argc, char* argv[]) {
 
 
   //set up shared memory files to store the integrals
-  string hciint2 = "HCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string hciint2shm = "HCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, hciint2.c_str(), boost::interprocess::read_write);
-  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, hciint2shm.c_str(), boost::interprocess::read_write);
+  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
+  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
 
 
 
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
   
   if (HFoccupied[0].size() != nelec) {
-    cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the hci input file."<<endl;
+    cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
   }
 
@@ -149,11 +149,11 @@ int main(int argc, char* argv[]) {
 
 
 
-  vector<double> E0 = HCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 
 
   std::string efile;
-  efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/hci.e" );
+  efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
   FILE* f = fopen(efile.c_str(), "wb");      
   for(int j=0;j<E0.size();++j) {
     fwrite( &E0[j], 1, sizeof(double), f);
@@ -180,14 +180,14 @@ int main(int argc, char* argv[]) {
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, true);
+      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
   }
 
   world.barrier();
-  boost::interprocess::shared_memory_object::remove(hciint2.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2.c_str());
 
 #ifdef Complex
   if (schd.doSOC) {
@@ -201,13 +201,13 @@ int main(int argc, char* argv[]) {
 
   //now do the perturbative bit
   if (!schd.stochastic && schd.nblocks == 1) {
-    //HCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
+    //SHCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     double ePT = 0.0;
     std::string efile;
-    efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/hci.e" );
+    efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");      
     for (int root=0; root<schd.nroots;root++) {
-      ePT = HCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       ePT += E0[root];
       fwrite( &ePT, 1, sizeof(double), f);
     }
@@ -216,21 +216,21 @@ int main(int argc, char* argv[]) {
   }
   else if (schd.SampleN != -1 && schd.singleList ){
     for (int root=0; root<schd.nroots && schd.nPTiter != 0;root++) 
-      //HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
-      HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
-      //HCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      //SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      //SHCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else { 
     world.barrier();
-    boost::interprocess::shared_memory_object::remove(hciint2shm.c_str());
+    boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
     cout << "Error here"<<endl;
     exit(0);
     //Here I will implement the alias method
-    //HCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+    //SHCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
   world.barrier();
-  boost::interprocess::shared_memory_object::remove(hciint2shm.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
   return 0;
 }

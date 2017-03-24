@@ -6,7 +6,7 @@
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
-#include "HCIbasics.h"
+#include "SHCIbasics.h"
 #include "Davidson.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
@@ -77,7 +77,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
       Helements[i].push_back(energy); 
     }
 
-    HCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, S[a], nelec); 
+    SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, S[a], nelec); 
 
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);
@@ -105,7 +105,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
       Helements[i].push_back(energy); 
     }
     
-    HCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, L[a], nelec); 
+    SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, L[a], nelec); 
     
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);

@@ -1,5 +1,5 @@
 #include "Determinants.h"
-#include "HCIbasics.h"
+#include "SHCIbasics.h"
 #include "input.h"
 #include "integral.h"
 #include <vector>
@@ -29,7 +29,7 @@ using namespace Eigen;
 using namespace boost;
 
 
-void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 				       twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
   int nblocks = schd.nblocks;
   std::vector<int> blockSizes(nblocks,0);
@@ -59,7 +59,7 @@ void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, do
     map<Determinant, pair<double,double> > Psi1ab; 
     for (int i=0; i<Sample1.size(); i++) {
       int I = Sample1[i];
-      HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+      SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
     }
 
     double energyEN = 0.0;
@@ -70,7 +70,7 @@ void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, do
     
 
     for (int i=Sample1[Sample1.size()-1]+1; i<Dets.size(); i++) {
-      HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), 0.0, ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+      SHCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), 0.0, ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       if (i%1000 == 0 && omp_get_thread_num() == 0) cout <<i <<" out of "<<Dets.size()-Sample1.size()<<endl; 
     }
 
@@ -100,7 +100,7 @@ void HCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, do
 
 
 
-void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   cout << "This function is most likely broken, dont use it. Use the single list method instead!!!"<<endl;
@@ -152,16 +152,16 @@ void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& c
 	int I = Sample1[i];
 	std::vector<int>::iterator it = find(Sample2.begin(), Sample2.end(), I);
 	if (it != Sample2.end())
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
 	else
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
       for (int i=0; i<Sample2.size(); i++) {
 	int I = Sample2[i];
 	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), I);
 	if (it == Sample1.end())
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -194,7 +194,7 @@ void HCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& c
 }
 
 
-void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -238,12 +238,12 @@ void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci
       map<Determinant, pair<double,double> > Psi1ab; 
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
-	//HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	//SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
 	std::vector<int>::iterator it = find(Sample2.begin(), Sample2.end(), I);
 	if (it != Sample2.end())
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], wts2[ distance(Sample2.begin(), it) ], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
 	else
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -251,7 +251,7 @@ void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci
 	int I = Sample2[i];
 	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), I);
 	if (it == Sample1.end())
-	  HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	  SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), 0.0, wts2[i], I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -291,7 +291,7 @@ void HCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci
 }
 
 
-void HCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 						     twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -325,7 +325,7 @@ void HCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, Ma
       map<Determinant, pair<double,double> > Psi1ab; 
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
-	HCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
+	SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
       }
 
 
@@ -377,7 +377,7 @@ public:
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, pair<double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc) {
+void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, pair<double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc) {
 
   int norbs = d.norbs;
   int open[norbs], closed[norbs]; char detArray[norbs], diArray[norbs];
@@ -473,7 +473,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, doub
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
+void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   vector<int> closed(nelec,0); 
@@ -560,7 +560,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, doub
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double, double,double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
+void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double, double,double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   vector<int> closed(nelec,0); 
@@ -666,7 +666,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 
 
 
-void HCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,int>& SortedDets, int norbs, oneInt& int1, twoInt& int2, double coreE, char* detArray, vector<vector<int> >& connections, vector<vector<double> >& Helements) {
+void SHCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,int>& SortedDets, int norbs, oneInt& int1, twoInt& int2, double coreE, char* detArray, vector<vector<int> >& connections, vector<vector<double> >& Helements) {
   size_t prevSize = SortedDets.size();
   size_t Norbs = norbs;
   for (size_t i=prevSize; i<Dets.size(); i++) {
@@ -734,7 +734,7 @@ void HCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,int
 
   
 }
-void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -792,7 +792,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vec
 
       for (int i=0; i<distinctSample; i++) {
 	int I = Sample1[i];
-	HCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), 
+	SHCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), 
 					   schd.epsilon2Large/abs(ci(I,0)), wts1[i], 
 					   ci(I,0), I1, I2, I2HB, irrep, coreE, E0, 
 					   Psi1, 

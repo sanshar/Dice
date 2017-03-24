@@ -1,5 +1,5 @@
 #include "Determinants.h"
-#include "HCIbasics.h"
+#include "SHCIbasics.h"
 #include "input.h"
 #include "integral.h"
 #include <vector>
@@ -711,7 +711,7 @@ public:
 
 //for each element in ci stochastic round to eps and put all the nonzero elements in newWts and their corresponding
 //indices in Sample1
-int HCIbasics::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts){
+int SHCIbasics::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts){
   for (int i=0; i<ci.rows(); i++) {
     if (abs(ci(i,0)) > eps) {
       Sample1.push_back(i);
@@ -740,7 +740,7 @@ void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, CItype 
 
 }
 
-void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
+void SHCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
 				    vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, bool update) {
   boost::mpi::communicator world;
 
@@ -880,7 +880,7 @@ void HCIbasics::EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<De
 
 
 
-void HCIbasics::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
+void SHCIbasics::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
   //also i>=j and k>=l
@@ -942,7 +942,7 @@ void HCIbasics::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoIn
 }
 
 
-void HCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
+void SHCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM) {
 
   double energy = coreE;
   double onebody = 0.0;
@@ -983,7 +983,7 @@ void HCIbasics::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
 
 
 
-void HCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM) {
+void SHCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM) {
 
   boost::mpi::communicator world;
 
@@ -1060,7 +1060,7 @@ void HCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM) 
   }
 }
 
-void HCIbasics::setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
+void SHCIbasics::setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
   alias.resize(ci.rows());
   prob.resize(ci.rows());
 
@@ -1086,7 +1086,7 @@ void HCIbasics::setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<i
   }
 }
 
-int HCIbasics::sample_N2_alias(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
+int SHCIbasics::sample_N2_alias(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
 
   int niter = Sample1.size(); //Sample1.resize(0); newWts.resize(0);
 
@@ -1116,7 +1116,7 @@ int HCIbasics::sample_N2_alias(MatrixXx& ci, double& cumulative, std::vector<int
   return sampleIndex;
 }
 
-int HCIbasics::sample_N2(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
+int SHCIbasics::sample_N2(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
   double prob = 1.0;
   int niter = Sample1.size();
   int totalSample = 0;
@@ -1148,7 +1148,7 @@ int HCIbasics::sample_N2(MatrixXx& ci, double& cumulative, std::vector<int>& Sam
   return totalSample;
 }
 
-int HCIbasics::sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
+int SHCIbasics::sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
   double prob = 1.0;
   int niter = Sample1.size();
 
@@ -1172,7 +1172,7 @@ int HCIbasics::sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Samp
 
 
 
-void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
+void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 								  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -1227,7 +1227,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
     std::vector<double>  det_energy;
     for (int i=0; i<distinctSample; i++) {
       int I = Sample1[i];
-      HCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), schd.epsilon2Large/abs(ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, present, det_energy, schd, Nmc, nelec);
+      SHCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), schd.epsilon2Large/abs(ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1A, numerator2A, present, det_energy, schd, Nmc, nelec);
     }
 
 
@@ -1323,7 +1323,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determi
 
 
 
-void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
+void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -1405,7 +1405,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 
       for (int i=0; i<distinctSample; i++) {
 	int I = Sample1[i];
-	HCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)),
+	SHCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)),
 					   schd.epsilon2Large/abs(ci(I,0)), wts1[i],
 					   ci(I,0), I1, I2, I2HB, irrep, coreE, E0,
 					   Psi1,
@@ -1573,7 +1573,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vec
 
 }
 
-void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
+void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 						    twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -1624,7 +1624,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
     Psi1.reserve(initSize); numerator1.reserve(initSize); numerator2.reserve(initSize); det_energy.reserve(initSize);
     for (int i=0; i<distinctSample; i++) {
       int I = Sample1[i];
-      HCIbasics::getDeterminants(Dets[I], schd.epsilon2/abs(ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1, numerator2, det_energy, schd, Nmc, nelec);
+      SHCIbasics::getDeterminants(Dets[I], schd.epsilon2/abs(ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1, numerator1, numerator2, det_energy, schd, Nmc, nelec);
     }
 
     quickSort( &(Psi1[0]), 0, Psi1.size(), &numerator1[0], &numerator2[0], &det_energy);
@@ -1694,7 +1694,7 @@ void HCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, M
 
 }
 
-double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
+double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root, bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
@@ -1724,7 +1724,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
       uniqueDEH[omp_get_thread_num()].extra_info = true;
       for (int i=0; i<Dets.size(); i++) {
 	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
-	HCIbasics::getPTDeterminantsKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
+	SHCIbasics::getPTDeterminantsKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
 						I1, I2, I2HB, irrep, coreE, E0,
 						*uniqueDEH[omp_get_thread_num()].Det,
 						*uniqueDEH[omp_get_thread_num()].Num,
@@ -1738,7 +1738,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
     else {
       for (int i=0; i<Dets.size(); i++) {
 	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
-	HCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0,
+	SHCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0,
 				   I1, I2, I2HB, irrep, coreE, E0,
 				   *uniqueDEH[omp_get_thread_num()].Det,
 				   *uniqueDEH[omp_get_thread_num()].Num,
@@ -2081,7 +2081,7 @@ double HCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixX
 }
 
 
-void HCIbasics::regenerateH(std::vector<Determinant>& Dets,
+void SHCIbasics::regenerateH(std::vector<Determinant>& Dets,
 				 std::vector<std::vector<int> >&connections,
 				 std::vector<std::vector<CItype> >& Helements,
 				 oneInt& I1,
@@ -2106,7 +2106,7 @@ void HCIbasics::regenerateH(std::vector<Determinant>& Dets,
   }
 }
 
-void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+void SHCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 				 std::map<HalfDet, std::vector<int> >& AlphaNm1,
 				 std::vector<Determinant>& Dets,
 				 int StartIndex,
@@ -2215,7 +2215,7 @@ void HCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 
 }
 
-void HCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
+void SHCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 				    std::map<HalfDet, std::vector<int> >& AlphaNm1,
 				    std::vector<Determinant>& Dets,
 				    int StartIndex)
@@ -2243,11 +2243,11 @@ void HCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 }
 
 //this takes in a ci vector for determinants placed in Dets
-//it then does a HCI varitional calculation and the resulting
+//it then does a SHCI varitional calculation and the resulting
 //ci and dets are returned here
 //At input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
-vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
+vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
 					twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					, int nelec, bool DoRDM) {
 
@@ -2330,7 +2330,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
     {
       for (int i=0; i<SortedDets.size(); i++) {
 	if (i%(mpigetsize()*omp_get_num_threads()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) continue;
-	HCIbasics::getDeterminants(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
+	SHCIbasics::getDeterminants(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
 				   I1, I2, I2HB, irrep, coreE, E0[0],
 				   *uniqueDEH[omp_get_thread_num()].Det,
 				   schd,0, nelec);
@@ -2475,7 +2475,7 @@ vector<double> HCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant
 }
 
 
-void HCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 				       MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference,
 				       vector<vector<CItype> >& Helements,
 				       vector<double>& E0, bool converged, schedule& schd,
@@ -2524,7 +2524,7 @@ void HCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<De
 }
 
 
-void HCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
 				      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference,
 				      vector<vector<CItype> >& Helements,
 				      vector<double>& E0, bool& converged, schedule& schd,
@@ -2568,7 +2568,7 @@ void HCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<De
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec, bool mpispecific) {
+void SHCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, schedule& schd, int Nmc, int nelec, bool mpispecific) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -2636,7 +2636,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
   return;
 }
 
-void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<int>& var_indices, std::vector<size_t>& orbDifference, schedule& schd, int nelec) {
+void SHCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<int>& var_indices, std::vector<size_t>& orbDifference, schedule& schd, int nelec) {
   // Similar to above subroutine, but also keeps track of the reference dets each connected det came from
   // AAH, 30 Jan 2017
 
@@ -2725,7 +2725,7 @@ void HCIbasics::getPTDeterminantsKeepRefDets(Determinant det, int det_ind, doubl
 
 //this function is complicated because I wanted to make it general enough that deterministicperturbative and stochasticperturbative could use the same function
 //in stochastic perturbative each determinant in Psi1 can come from the first replica of Psi0 or the second replica of Psi0. that is why you have a pair of doubles associated with each det in Psi1 and we pass ci1 and ci2 which are the coefficients of d in replica 1 and replica2 of Psi0.
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
+void SHCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
   //char detArray[norbs], diArray[norbs];
@@ -2785,7 +2785,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 
 
 
-void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void SHCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, vector<double>& numerator2, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   double Nmcd = 1. * Nmc;
   int norbs = d.norbs;
@@ -2869,7 +2869,7 @@ void HCIbasics::getDeterminants(Determinant& d, double epsilon, CItype ci1, CIty
 }
 
 
-void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<char>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<char>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   double Nmcd = 1.*Nmc;
   int norbs = d.norbs;
@@ -2966,7 +2966,7 @@ void HCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double e
 }
 
 
-void HCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
+void SHCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
 
   size_t Norbs = norbs;
 

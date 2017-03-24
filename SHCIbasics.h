@@ -1,5 +1,5 @@
-#ifndef HCI_HEADER_H
-#define HCI_HEADER_H
+#ifndef SHCI_HEADER_H
+#define SHCI_HEADER_H
 #include <vector>
 #include <Eigen/Dense>
 #include <set>
@@ -18,7 +18,7 @@ class twoIntHeatBath;
 class twoIntHeatBathSHM;
 class schedule;
 
-namespace HCIbasics {
+namespace SHCIbasics {
 
   int sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts);
   void setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) ;

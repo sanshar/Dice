@@ -1,5 +1,5 @@
 #include "Determinants.h"
-#include "HCIbasics.h"
+#include "SHCIbasics.h"
 #include "integral.h"
 #include <vector>
 #include "math.h"
@@ -38,9 +38,9 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::shared_memory_object int2Segment(boost::interprocess::open_or_create, "SHCIint2", boost::interprocess::read_write);
 boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "HCIint2", boost::interprocess::read_write);
+boost::interprocess::shared_memory_object int2SHMSegment(boost::interprocess::open_or_create, "SHCIint2", boost::interprocess::read_write);
 boost::interprocess::mapped_region regionInt2SHM;
 
 int main(int argc, char* argv[]) {
