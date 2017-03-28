@@ -63,8 +63,6 @@ namespace SHCIbasics {
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
 			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
 			       bool DoRDM=false);
-  void EvaluateAndStoreRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& ci,
-			   vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root, bool update=false);
   
   void DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
 								 , double& E0, oneInt& I1, twoInt& I2, 
@@ -102,15 +100,6 @@ namespace SHCIbasics {
   
   
   
-  void UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-					  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, MatrixXx& twoRDM);
-
-
-  void printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM);
-
-  void ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM);
-  void ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, double coreE, MatrixXx& twoRDM);
-
   void DoBatchDeterministic(vector<Determinant>& Dets, MatrixXd& ci, double& E0, oneInt& I1, twoInt& I2, 
 			twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec);
   void DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 

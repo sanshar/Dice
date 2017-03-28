@@ -14,7 +14,9 @@ using namespace Eigen;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
-int ipow(int base, int exp);
+namespace SHCISortMpiUtils{
+  int ipow(int base, int exp);
+};
 
 struct Hmult2 {
   std::vector<std::vector<int> >& connections;
@@ -56,8 +58,8 @@ struct Hmult2 {
 	
 	for (int level=0; level<ceil(log2(omp_get_num_threads())); level++) {
 #pragma omp barrier
-	  if (omp_get_thread_num()%ipow(2,level+1) == 0 && omp_get_thread_num() + ipow(2,level) < omp_get_num_threads() ) {
-	    int other_thrd = omp_get_thread_num()+ipow(2,level);
+	  if (omp_get_thread_num()%SHCISortMpiUtils::ipow(2,level+1) == 0 && omp_get_thread_num() + SHCISortMpiUtils::ipow(2,level) < omp_get_num_threads() ) {
+	    int other_thrd = omp_get_thread_num()+SHCISortMpiUtils::ipow(2,level);
 	    int this_thrd = omp_get_thread_num();
 	    yarray[this_thrd] += yarray[other_thrd];
 	  }  
