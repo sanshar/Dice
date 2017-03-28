@@ -1,6 +1,7 @@
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
+#include "SHCIsampledeterminants.h"
 #include "input.h"
 #include "integral.h"
 #include <vector>
@@ -766,20 +767,6 @@ public:
 
 
 
-//for each element in ci stochastic round to eps and put all the nonzero elements in newWts and their corresponding
-//indices in Sample1
-int SHCIbasics::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts){
-  for (int i=0; i<ci.rows(); i++) {
-    if (abs(ci(i,0)) > eps) {
-      Sample1.push_back(i);
-      newWts.push_back(ci(i,0));
-    }
-    else if (((double) rand() / (RAND_MAX))*eps < abs(ci(i,0))) {
-      Sample1.push_back(i);
-      newWts.push_back( eps*ci(i,0)/abs(ci(i,0)));
-    }
-  }
-}
 
 
 void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, CItype value, int& nSpatOrbs) {
@@ -1117,117 +1104,6 @@ void SHCIbasics::printRDM(int norbs, schedule& schd, int root, MatrixXx& twoRDM)
   }
 }
 
-void SHCIbasics::setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
-  alias.resize(ci.rows());
-  prob.resize(ci.rows());
-
-  std::vector<double> larger, smaller;
-  for (int i=0; i<ci.rows(); i++) {
-    prob[i] = abs(ci(i,0))*ci.rows()/cumulative;
-    if (prob[i] < 1.0)
-      smaller.push_back(i);
-    else
-      larger.push_back(i);
-  }
-
-  while (larger.size() >0 && smaller.size() >0) {
-    int l = larger[larger.size()-1]; larger.pop_back();
-    int s = smaller[smaller.size()-1]; smaller.pop_back();
-
-    alias[s] = l;
-    prob[l] = prob[l] - (1.0 - prob[s]);
-    if (prob[l] < 1.0)
-      smaller.push_back(l);
-    else
-      larger.push_back(l);
-  }
-}
-
-int SHCIbasics::sample_N2_alias(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
-
-  int niter = Sample1.size(); //Sample1.resize(0); newWts.resize(0);
-
-  int sampleIndex = 0;
-  for (int index = 0; index<niter; index++) {
-    int detIndex = floor(1.* ((double) rand() / (RAND_MAX))*ci.rows() );
-
-    double rand_no = ((double) rand()/ (RAND_MAX));
-    if (rand_no >= prob[detIndex])
-      detIndex = alias[detIndex];
-
-    std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), detIndex);
-    if (it == Sample1.end()) {
-      Sample1[sampleIndex] = detIndex;
-      newWts[sampleIndex] = cumulative*ci(detIndex,0)/ abs(ci(detIndex,0));
-      //newWts[sampleIndex] = ci(detIndex,0) < 0. ? -cumulative : cumulative;
-      sampleIndex++;
-    }
-    else {
-      newWts[distance(Sample1.begin(), it) ] += cumulative*ci(detIndex,0)/ abs(ci(detIndex,0));
-      //newWts[distance(Sample1.begin(), it) ] += ci(detIndex,0) < 0. ? -cumulative : cumulative;
-    }
-  }
-
-  for (int i=0; i<niter; i++)
-    newWts[i] /= niter;
-  return sampleIndex;
-}
-
-int SHCIbasics::sample_N2(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
-  double prob = 1.0;
-  int niter = Sample1.size();
-  int totalSample = 0;
-  for (int index = 0; index<niter; ) {
-
-    double rand_no = ((double) rand() / (RAND_MAX))*cumulative;
-    for (int i=0; i<ci.rows(); i++) {
-      if (rand_no < abs(ci(i,0))) {
-	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), i);
-	if (it == Sample1.end()) {
-	  Sample1[index] = i;
-	  newWts[index] = cumulative*ci(i,0)/ abs(ci(i,0));
-	  //newWts[index] = ci(i,0) < 0. ? -cumulative : cumulative;
-	  index++; totalSample++;
-	}
-	else {
-	  newWts[ distance(Sample1.begin(), it) ] += cumulative*ci(i,0)/ abs(ci(i,0));
-	  //newWts[ distance(Sample1.begin(), it) ] += ci(i,0) < 0. ? -cumulative : cumulative;
-	  totalSample++;
-	}
-	break;
-      }
-      rand_no -= abs(ci(i,0));
-    }
-  }
-
-  for (int i=0; i<niter; i++)
-    newWts[i] /= totalSample;
-  return totalSample;
-}
-
-int SHCIbasics::sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts){
-  double prob = 1.0;
-  int niter = Sample1.size();
-
-  for (int index = 0; index<niter; ) {
-
-    double rand_no = ((double) rand() / (RAND_MAX))*cumulative;
-    for (int i=0; i<ci.rows(); i++) {
-      if (rand_no < abs(ci(i,0))) {
-
-	Sample1[index] = i;
-	newWts[index] = cumulative*ci(i,0)/ abs(ci(i,0))/(1. * Sample1.size());
-	//newWts[index] = ci(i,0) < 0. ? -cumulative/Sample1.size() : cumulative/Sample1.size();
-	index++;
-	break;
-      }
-      rand_no -= abs(ci(i,0));
-    }
-  }
-
-}
-
-
 
 void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 								  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
@@ -1263,7 +1139,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determ
     cumulative += abs(ci(i,0));
 
   std::vector<int> alias; std::vector<double> prob;
-  setUpAliasMethod(ci, cumulative, alias, prob);
+  SHCIsampledeterminants::setUpAliasMethod(ci, cumulative, alias, prob);
 #pragma omp parallel for schedule(dynamic)
   for (int iter=0; iter<niter; iter++) {
     //cout << norbs<<"  "<<nelec<<endl;
@@ -1274,7 +1150,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determ
     std::vector<CItype> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
 
     //int Nmc = sample_N2(ci, cumulative, Sample1, wts1);
-    int distinctSample = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
+    int distinctSample = SHCIsampledeterminants::sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
     int Nmc = Nsample;
     double norm = 0.0;
 
@@ -1414,7 +1290,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(ve
     cumulative += abs(ci(i,0));
 
   std::vector<int> alias; std::vector<double> prob;
-  setUpAliasMethod(ci, cumulative, alias, prob);
+  SHCIsampledeterminants::setUpAliasMethod(ci, cumulative, alias, prob);
 
   double totalPT=0, totalPTLargeEps=0;
 
@@ -1436,7 +1312,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(ve
 
       if (omp_get_thread_num() == 0) {
 	std::fill(allSample.begin(), allSample.end(), -1);
-	AllDistinctSample = sample_N2_alias(ci, cumulative, allSample, allwts, alias, prob);
+	AllDistinctSample = SHCIsampledeterminants::sample_N2_alias(ci, cumulative, allSample, allwts, alias, prob);
       }
 #pragma omp barrier
       if (omp_get_thread_num() <  AllDistinctSample%num_thrds)
@@ -1660,7 +1536,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, 
     cumulative += abs(ci(i,0));
 
   std::vector<int> alias; std::vector<double> prob;
-  setUpAliasMethod(ci, cumulative, alias, prob);
+  SHCIsampledeterminants::setUpAliasMethod(ci, cumulative, alias, prob);
 #pragma omp parallel for schedule(dynamic)
   for (int iter=0; iter<niter; iter++) {
     //cout << norbs<<"  "<<nelec<<endl;
@@ -1671,7 +1547,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, 
     std::vector<CItype> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
 
     //int Nmc = sample_N2(ci, cumulative, Sample1, wts1);
-    int distinctSample = sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
+    int distinctSample = SHCIsampledeterminants::sample_N2_alias(ci, cumulative, Sample1, wts1, alias, prob);
     int Nmc = Nsample;
     double norm = 0.0;
 
