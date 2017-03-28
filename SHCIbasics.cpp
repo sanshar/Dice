@@ -4,6 +4,7 @@
 #include "SHCIsampledeterminants.h"
 #include "SHCIrdm.h"
 #include "SHCISortMpiUtils.h"
+#include "SHCImakeHamiltonian.h"
 #include "input.h"
 #include "integral.h"
 #include <vector>
@@ -763,127 +764,6 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     
     SHCIrdm::UpdateRDMPerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE, 
 						nelec, norbs, uniqueDEH, root); 
-    /*
-    int nSpatOrbs = norbs/2;
-
-    //Read the variational RDM
-    MatrixXx s2RDM, twoRDM;
-    if (schd.DoSpinRDM ){
-      if (mpigetrank() == 0) {
-	char file [5000];
-	sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
-	std::ifstream ifs(file, std::ios::binary);
-	boost::archive::binary_iarchive load(ifs);
-	load >> twoRDM;
-	ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-      }
-      else
-	twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-    }
-    if (mpigetrank() == 0) {
-      char file [5000];
-      sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix[0].c_str(), root );
-      std::ifstream ifs(file, std::ios::binary);
-      boost::archive::binary_iarchive load(ifs);
-      load >> s2RDM;
-      ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
-    }
-    else
-      s2RDM.setZero(nSpatOrbs*nSpatOrbs, nSpatOrbs*nSpatOrbs);
-
-
-    for (int thrd = 0; thrd <num_thrds; thrd++)
-      {
-
-	vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
-	vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
-	vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
-	vector<vector<int> >& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
-	vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
-
-	for (size_t k=0; k<uniqueDets.size();k++) {
-	  for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
-	    int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;
-
-	    if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
-	      vector<int> closed(nelec, 0);
-	      vector<int> open(norbs-nelec,0);
-	      Dets[uniqueVarIndices[k][i]].getOpenClosed(open, closed);
-	      for (int n1=0;n1<nelec; n1++) {
-		double sgn = 1.0;
-		int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
-		if (closed[n1] == d0) continue;
-		Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
-		if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-		if (schd.DoSpinRDM) {
-		  twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-		  twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-		}
-		populateSpatialRDM(a, b, I, J, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-		populateSpatialRDM(I, J, a, b, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	      } // for n1
-	    }  // single
-	    else { // double excitation
-	      int d1=(uniqueOrbDiff[k][i]/norbs/norbs)%norbs, c1=(uniqueOrbDiff[k][i]/norbs/norbs/norbs)%norbs ;
-	      double sgn = 1.0;
-	      Dets[uniqueVarIndices[k][i]].parity(d1,d0,c1,c0,sgn);
-	      int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
-	      if (P != c0)  sgn *= -1;
-	      if (Q != d0)  sgn *= -1;
-
-	      if (schd.DoSpinRDM) {
-		twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-		twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	      }
-
-	      populateSpatialRDM(P, Q, R, S, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	      populateSpatialRDM(R, S, P, Q, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	    }// If
-	  } // i in variational connections to PT det k
-	} // k in PT dets
-      } //thrd in num_thrds
-
-    if (schd.DoSpinRDM)
-      MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-
-    if(mpigetrank() == 0) {
-      char file [5000];
-      sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix[0].c_str(), root, root );
-      std::ofstream ofs(file, std::ios::out);
-      ofs << nSpatOrbs<<endl;
-
-      for (int n1=0; n1<nSpatOrbs; n1++)
-	for (int n2=0; n2<nSpatOrbs; n2++)
-	  for (int n3=0; n3<nSpatOrbs; n3++)
-	    for (int n4=0; n4<nSpatOrbs; n4++)
-	      {
-		if (abs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
-		  ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
-	      }
-      ofs.close();
-
-
-      if (schd.DoSpinRDM) {
-	char file [5000];
-	sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
-	std::ofstream ofs(file, std::ios::binary);
-	boost::archive::binary_oarchive save(ofs);
-	save << twoRDM;
-	ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-      }
-
-      {
-	char file [5000];
-	sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix[0].c_str(), root );
-	std::ofstream ofs(file, std::ios::binary);
-	boost::archive::binary_oarchive save(ofs);
-	save << s2RDM;
-	ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
-      }
-    }
-    "*/
   }//schd.DoRDM
 
 
@@ -1117,166 +997,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 }
 
-void SHCIbasics::regenerateH(std::vector<Determinant>& Dets,
-				 std::vector<std::vector<int> >&connections,
-				 std::vector<std::vector<CItype> >& Helements,
-				 oneInt& I1,
-				 twoInt& I2,
-				 double& coreE
-			    ) {
-
-#ifndef SERIAL
-  boost::mpi::communicator world;
-#endif
-
-#pragma omp parallel
-  {
-    for (int i=0; i<connections.size(); i++) {
-      if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
-      Helements[i][0] = Dets[i].Energy(I1, I2, coreE);
-      for (int j=1; j<connections[i].size(); j++) {
-	size_t orbDiff;
-	Helements[i][j] = Hij(Dets[i], Dets[connections[i][j]], I1, I2, coreE, orbDiff);
-      }
-    }
-  }
-}
-
-void SHCIbasics::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
-				 std::map<HalfDet, std::vector<int> >& AlphaNm1,
-				 std::vector<Determinant>& Dets,
-				 int StartIndex,
-				 std::vector<std::vector<int> >&connections,
-				 std::vector<std::vector<CItype> >& Helements,
-				 int Norbs,
-				 oneInt& I1,
-				 twoInt& I2,
-				 double& coreE,
-				 std::vector<std::vector<size_t> >& orbDifference,
-				 bool DoRDM) {
-
-#ifndef SERIAL
-  boost::mpi::communicator world;
-#endif
-  int nprocs= mpigetsize(), proc = mpigetrank();
-
-  size_t norbs = Norbs;
-
-#pragma omp parallel
-  {
-    for (size_t k=StartIndex; k<Dets.size(); k++) {
-      if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-      connections[k].push_back(k);
-      CItype hij = Dets[k].Energy(I1, I2, coreE);
-      Helements[k].push_back(hij);
-      if (DoRDM) orbDifference[k].push_back(0);
-    }
-  }
-
-  std::map<HalfDet, std::vector<int> >::iterator ita = BetaN.begin();
-  int index = 0;
-  pout <<"# "<< Dets.size()<<"  "<<BetaN.size()<<"  "<<AlphaNm1.size()<<endl;
-  pout << "#";
-  for (; ita!=BetaN.end(); ita++) {
-    std::vector<int>& detIndex = ita->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel
-    {
-      for (int k=localStart; k<detIndex.size(); k++) {
-
-	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-
-	for(int j=0; j<k; j++) {
-	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (Dets[J].connected(Dets[K])) 	  {
-	    connections[K].push_back(J);
-	    size_t orbDiff;
-	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
-	    Helements[K].push_back(hij);
-	    if (DoRDM)
-	      orbDifference[K].push_back(orbDiff);
-	  }
-	}
-      }
-    }
-    index++;
-    if (index%1000000 == 0 && index!= 0) {pout <<". ";}
-  }
-  pout << format("BetaN    %49.2f\n#")
-    % (getTime()-startofCalc);
-
-  ita = AlphaNm1.begin();
-  index = 0;
-  for (; ita!=AlphaNm1.end(); ita++) {
-    std::vector<int>& detIndex = ita->second;
-    int localStart = detIndex.size();
-    for (int j=0; j<detIndex.size(); j++)
-      if (detIndex[j] >= StartIndex) {
-	localStart = j; break;
-      }
-
-#pragma omp parallel
-    {
-      for (int k=localStart; k<detIndex.size(); k++) {
-	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
-
-	for(int j=0; j<k; j++) {
-	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (Dets[J].connected(Dets[K]) ) {
-	    if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
-	      connections[K].push_back(J);
-	      size_t orbDiff;
-	      CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
-	      Helements[K].push_back(hij);
-
-	      if (DoRDM)
-		orbDifference[K].push_back(orbDiff);
-	    }
-	  }
-	}
-      }
-    }
-    index++;
-    if (index%1000000 == 0 && index!= 0) {pout <<". ";}
-  }
-
-  pout << format("AlphaN-1 %49.2f\n")
-    % (getTime()-startofCalc);
-
-
-}
-
-void SHCIbasics::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
-				    std::map<HalfDet, std::vector<int> >& AlphaNm1,
-				    std::vector<Determinant>& Dets,
-				    int StartIndex)
-{
-  pout << format("#Making Helpers %43.2f\n")
-    % (getTime()-startofCalc);
-  for (int i=StartIndex; i<Dets.size(); i++) {
-    HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
-
-    BetaN[db].push_back(i);
-
-    int norbs = 64*DetLen;
-    std::vector<int> closeda(norbs/2);//, closedb(norbs);
-    int ncloseda = da.getClosed(closeda);
-    //int nclosedb = db.getClosed(closedb);
-
-
-    for (int j=0; j<ncloseda; j++) {
-      da.setocc(closeda[j], false);
-      AlphaNm1[da].push_back(i);
-      da.setocc(closeda[j], true);
-    }
-  }
-
-}
 
 //this takes in a ci vector for determinants placed in Dets
 //it then does a SHCI varitional calculation and the resulting
@@ -1290,7 +1010,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   int nroots = ci.size();
   std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
-  PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+  SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
 
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -1309,11 +1029,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
-  MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
-		   norbs, I1, I2, coreE, orbDifference, DoRDM);
+  SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
+					norbs, I1, I2, coreE, orbDifference, DoRDM);
 
 #ifdef Complex
-  updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec, false);
+  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, 
+					    norbs, I1, nelec, false);
 #endif
 
 
@@ -1336,7 +1057,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (!schd.fullrestart)
       iterstart++;
     else
-      regenerateH(Dets, connections, Helements, I1, I2, coreE);
+      SHCImakeHamiltonian::regenerateH(Dets, connections, Helements, I1, I2, coreE);
     if (schd.onlyperturbative)
       return E0;
 
@@ -1454,11 +1175,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 
-    PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
-    MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), connections, Helements,
-		     norbs, I1, I2, coreE, orbDifference, DoRDM);
+    SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
+    SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), 
+					  connections, Helements,
+					  norbs, I1, I2, coreE, orbDifference, DoRDM);
 #ifdef Complex
-    updateSOCconnections(Dets, SortedDets.size(), connections, Helements, norbs, I1, nelec, false);
+    SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, 
+					      Helements, norbs, I1, nelec, false);
 #endif
 
 #pragma omp parallel
@@ -1608,52 +1331,4 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 }
 
 
-
-void SHCIbasics::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
-
-  size_t Norbs = norbs;
-
-  map<Determinant, int> SortedDets;
-  for (int i=0; i<Dets.size(); i++)
-    SortedDets[Dets[i]] = i;
-
-
-  //#pragma omp parallel for schedule(dynamic)
-  for (int x=prevSize; x<Dets.size(); x++) {
-    Determinant& d = Dets[x];
-
-    vector<int> closed(nelec,0);
-    vector<int> open(norbs-nelec,0);
-    d.getOpenClosed(open, closed);
-    int nclosed = nelec;
-    int nopen = norbs-nclosed;
-
-    //loop over all single excitation and find if they are present in the list
-    //on or before the current determinant
-    for (int ia=0; ia<nopen*nclosed; ia++){
-      int i=ia/nopen, a=ia%nopen;
-
-      CItype integral = int1(open[a],closed[i]);
-      if (abs(integral) < 1.e-8) continue;
-
-      Determinant di = d;
-      if (open[a]%2 == closed[i]%2 && !includeSz) continue;
-
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      double sgn = 1.0;
-      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-
-
-      map<Determinant, int>::iterator it = SortedDets.find(di);
-      if (it != SortedDets.end() ) {
-	int y = it->second;
-	if (y < x) {
-	  connections[x].push_back(y);
-	  Helements[x].push_back(integral*sgn);
-
-	}
-      }
-    }
-  }
-}
 

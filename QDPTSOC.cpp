@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
+#include "SHCImakeHamiltonian.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -264,7 +265,7 @@ int main(int argc, char* argv[]) {
   //this will just update the connections and Helements with the SOC integrals
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-  SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec);
+  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec);
 
   // calculate the matrix elements <S1|SOC|S2>
   for (int i=0; i<ci.size(); i++) {
@@ -337,7 +338,7 @@ int main(int argc, char* argv[]) {
 	    energy += S[a](j,j);
 	Helements[i].push_back(energy); 
       }
-      SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, S[a], nelec); 
+      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, S[a], nelec); 
       for (int i=0; i<ci.size(); i++) {
 	for (int j=i; j<ci.size(); j++) {      
 	  int s1 = Spin[i], s2=Spin[j];
@@ -360,7 +361,7 @@ int main(int argc, char* argv[]) {
 	Helements[i].push_back(energy); 
       }
 
-      SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, L[a], nelec); 
+      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, L[a], nelec); 
 
       for (int i=0; i<ci.size(); i++) {
 	for (int j=i; j<ci.size(); j++) {

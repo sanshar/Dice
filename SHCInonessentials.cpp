@@ -1,5 +1,6 @@
 #include "Determinants.h"
 #include "SHCIbasics.h"
+#include "SHCInonessentials."
 #include "input.h"
 #include "integral.h"
 #include <vector>
