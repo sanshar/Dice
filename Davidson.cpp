@@ -151,6 +151,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	for (int i=0; i<x0.size(); i++) {
 	  x0[i] = b.col(i);
 	  eroots.push_back(eigensolver.eigenvalues()[i]);
+	  pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (i) % eroots[i] );
 	}
 	continueOrReturn = 2;
 	goto label1;

@@ -1,6 +1,6 @@
 CXX = mpiicpc
 CC = mpiicpc
-FLAGS = -std=c++11 -qopenmp -g  -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
+FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
 DFLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
 #FLAGS = -std=c++11 -fopenmp -w -g -O2 -I/home/james/Documents/Apps/eigen -I/home/james/Documents/Apps/boost_1_57_0/ #-DComplex
 #FLAGS = -std=c++11 -qopenmp -g -O2 -I/home/sash2458/apps/eigen -I./
@@ -11,17 +11,17 @@ LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization 
 #LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_has/lib -lboost_serialization -lboost_mpi
 #LFLAGS = -L./boost/lib -lboost_serialization -lboost_mpi
 
-SRC_qdptsoc = QDPTSOC.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp new_anglib.cpp SOChelper.cpp 
-SRC_shci = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp 
-SRC_zshci = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp SOChelper.cpp new_anglib.cpp
+SRC_qdptsoc = QDPTSOC.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp new_anglib.cpp SOChelper.cpp SHCIgetdeterminants.cpp
+SRC_shci = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp SHCIgetdeterminants.cpp
+SRC_zshci = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp SOChelper.cpp new_anglib.cpp SHCIgetdeterminants.cpp
 SRC_forcyrus = forCyrus.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
 SRC_Excitations = Excitations.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp
 
 
-OBJ_qdptsoc+=obj_z/QDPTSOC.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o 
-OBJ_shci+=obj/SHCI.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o 
-OBJ_zshci+=obj_z/SHCI.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/SOChelper.o obj_z/new_anglib.o
-OBJ_forcyrus+=obj/forCyrus.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o
+OBJ_qdptsoc+=obj_z/QDPTSOC.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o
+OBJ_shci+=obj/SHCI.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o obj/SHCIgetdeterminants.o
+OBJ_zshci+=obj_z/SHCI.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/SOChelper.o obj_z/new_anglib.o obj_z/SHCIgetdeterminants.o
+OBJ_forcyrus+=obj/forCyrus.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o obj/SHCIgetdeterminants.o
 OBJ_Excitations+=obj/Excitations.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o
 
 obj/%.o: %.cpp  

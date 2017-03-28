@@ -165,10 +165,10 @@ int main(int argc, char* argv[]) {
   for (int root=0; root<schd.nroots; root++) {
     pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
-    for (int i=0; i<5; i++) {
+    for (int i=0; i<6; i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
+      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
@@ -192,15 +192,41 @@ int main(int argc, char* argv[]) {
 #ifdef Complex
   if (schd.doSOC) {
     for (int j=0; j<E0.size(); j++)
-      cout << str(boost::format("State: %3d,  E: %3d, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
-    if (schd.doGtensor) {
+      cout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
+
+    //dont do this here, if perturbation theory is switched on
+    if (schd.doGtensor && !( 
+			    (!schd.stochastic)                            //deterministic or
+			    || (schd.stochastic && schd.nPTiter != 0) )) { //stochastic and nptiter!=0 
       SOChelper::doGTensor(ci, Dets, E0, norbs, nelec);
     }
   }
 #endif
 
+
+  if (schd.doSOC && !schd.stochastic) { //deterministic 
+    cout << "About to perform Perturbation theory"<<endl;
+    MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
+    for (int root1 =0 ;root1<schd.nroots; root1++) {
+      for (int root2=root1+1 ;root2<schd.nroots; root2++) {
+	Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
+	SHCIbasics::DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
+							   E0[root2], I1, 
+							   I2, I2HBSHM, irrep, schd, 
+							   coreE, nelec, root1, Heff(root1,root1),
+							   Heff(root2, root2), Heff(root1, root2));
+	Heff(root2, root1) = conj(Heff(root1, root2));
+      }
+    }
+    for (int root1 =0 ;root1<schd.nroots; root1++)
+      Heff(root1, root1) += E0[root1];
+
+    SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
+    for (int j=0; j<eigensolver.eigenvalues().rows(); j++)
+      cout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(eigensolver.eigenvalues()(j,0)) %( (eigensolver.eigenvalues()(j,0)-eigensolver.eigenvalues()(0,0))*219470));
+  }
   //now do the perturbative bit
-  if (!schd.stochastic && schd.nblocks == 1) {
+  else if (!schd.stochastic && schd.nblocks == 1) {
     //SHCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     double ePT = 0.0;
     std::string efile;
