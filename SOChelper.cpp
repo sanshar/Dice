@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
+#include "SHCImakeHamiltonian.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -65,7 +66,12 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   for (int a=0; a<3; a++) {
     std::vector<std::vector<int> > connections; connections.resize(Dets.size());
     std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-      
+
+    oneInt LplusS;
+    LplusS.store.resize(norbs*norbs, 0.0); 
+    LplusS.norbs = norbs;
+    for (int i=0; i<L[a].store.size(); i++)
+      LplusS.store[i] = L[a].store[i]+S[a].store[i];
     //updateSOCconnections does not update the diagonal elements
     //these have to be done separately
     for (int i=0; i<Dets.size(); i++) {
@@ -73,11 +79,11 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
       CItype energy = 0.0;
       for (int j=0; j<norbs; j++)
 	if (Dets[i].getocc(j))
-	  energy += S[a](j,j);
+	  energy += S[a](j,j)+L[a](j,j);
       Helements[i].push_back(energy); 
     }
 
-    SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, S[a], nelec); 
+    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, LplusS, nelec); 
 
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);
@@ -85,47 +91,20 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     Intermediate[a](0,0) = (ci[0].adjoint()*Hc)(0,0);
     Intermediate[a](1,0) = (ci[1].adjoint()*Hc)(0,0);
     Intermediate[a](0,1) = conj(Intermediate[a](1,0));
-
+    
     Hc *= 0.0;
     H(ci[1], Hc);
     Intermediate[a](1,1) = (ci[1].adjoint()*Hc)(0,0);
   }
 
-  //Second calcualte L
-  for (int a=0; a<3; a++) {
-    std::vector<std::vector<int> > connections; connections.resize(Dets.size());
-    std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-    
-    for (int i=0; i<Dets.size(); i++) {
-      connections[i].push_back(i);
-      CItype energy = 0.0;
-      for (int j=0; j<norbs; j++)
-	if (Dets[i].getocc(j))
-	  energy += L[a](j,j);
-      Helements[i].push_back(energy); 
-    }
-    
-    SHCIbasics::updateSOCconnections(Dets, 0, connections, Helements, norbs, L[a], nelec); 
-    
-    MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
-    Hmult2 H(connections, Helements);
-    H(ci[0], Hc);
-    Intermediate[a](0,0) += (ci[0].adjoint()*Hc)(0,0);
-    Intermediate[a](1,0) += (ci[1].adjoint()*Hc)(0,0);
-    Intermediate[a](0,1) += conj((ci[1].adjoint()*Hc)(0,0));
-
-    Hc *= 0.0;
-    H(ci[1], Hc);
-    Intermediate[a](1,1) += (ci[1].adjoint()*Hc)(0,0);
-  }
-
-  
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
+
   
   for (int i=0; i<3; i++)
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
 
+  cout << Gtensor<<endl;
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
   cout <<endl<< "Gtensor eigenvalues"<<endl;
