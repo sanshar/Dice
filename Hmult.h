@@ -47,11 +47,11 @@ struct Hmult2 {
 	  for (int j=0; j<connections[i].size(); j++) {
 	    CItype hij = Helements[i][j];
 	    int J = connections[i][j];
-	    yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
+	    yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
 #ifdef Complex
-	    if (i!= J) yarray[omp_get_thread_num()](J,0) += conj(hij)*x(i,0);
+	    if (i!= J) yarray[omp_get_thread_num()](i,0) += conj(hij)*x(J,0);
 #else
-	    if (i!= J) yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
+	    if (i!= J) yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
 #endif
 	  }
 	}
@@ -89,12 +89,12 @@ struct Hmult2 {
 	for (int j=0; j<connections[i].size(); j++) {
 	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
-	  y(i,0) += hij*x(J,0);
+	  y(J,0) += hij*x(i,0);
 
 #ifdef Complex
-	  if (i!= J) y(J,0) += conj(hij)*x(i,0);
+	  if (i!= J) y(i,0) += conj(hij)*x(J,0);
 #else
-	  if (i!= J) y(J,0) += hij*x(i,0);
+	  if (i!= J) y(i,0) += hij*x(J,0);
 #endif
 	}
       }
