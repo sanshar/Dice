@@ -146,7 +146,7 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoIn
 }
 
 
-CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
+CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
   //int a = cre[0], i = des[0];
   double sgn=1.0;
   
@@ -161,7 +161,7 @@ CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclos
 }
 
 
-CItype Determinant::Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2) {
+CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
   double sgn = 1.0;
   parity(min(a,i), max(a,i), sgn); 
   
