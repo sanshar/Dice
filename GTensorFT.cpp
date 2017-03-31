@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
   readGTensorIntegrals(L, norbs, "GTensor");  
   
   //generate S integrals
-  double ge = -2.002319304;
+  double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
     S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
@@ -236,9 +236,9 @@ int main(int argc, char* argv[]) {
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
   cout <<endl<< "Gtensor eigenvalues"<<endl;
-  cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge-pow(eigensolver.eigenvalues()[0],0.5))*-1.e6) );
-  cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge-pow(eigensolver.eigenvalues()[1],0.5))*-1.e6) );
-  cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge-pow(eigensolver.eigenvalues()[2],0.5))*-1.e6) );
+  cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
+  cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
+  cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
 
   return 0;
 }
