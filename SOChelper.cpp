@@ -47,7 +47,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   readGTensorIntegrals(L, norbs, "GTensor");  
 
   //generate S integrals
-  double ge = -2.002319304;
+  double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
     S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
@@ -78,8 +78,9 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
       connections[i].push_back(i);
       CItype energy = 0.0;
       for (int j=0; j<norbs; j++)
-	if (Dets[i].getocc(j))
+	if (Dets[i].getocc(j)) {
 	  energy += S[a](j,j)+L[a](j,j);
+	}
       Helements[i].push_back(energy); 
     }
 
@@ -88,6 +89,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);
     H(ci[0], Hc);
+
     Intermediate[a](0,0) = (ci[0].adjoint()*Hc)(0,0);
     Intermediate[a](1,0) = (ci[1].adjoint()*Hc)(0,0);
     Intermediate[a](0,1) = conj(Intermediate[a](1,0));
@@ -104,13 +106,19 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
 
-  cout << Gtensor<<endl;
+  //cout << Intermediate[0](0,0)<<"  "<<Intermediate[0](0,1)<<"  "<<Intermediate[0](1,1)<<endl;
+  //cout << pow(abs(Intermediate[0](0,0)),2)<<"  "<<pow(abs(Intermediate[0](0,1)),2)<<"  "<<pow(abs(Intermediate[0](1,1)),2)<<"  "<<Gtensor(0,0)<<endl;
+  //cout << Intermediate[1](0,0)<<"  "<<Intermediate[1](0,1)<<"  "<<Intermediate[1](1,1)<<endl;
+  //cout << pow(abs(Intermediate[1](0,0)),2)<<"  "<<pow(abs(Intermediate[1](0,1)),2)<<"  "<<pow(abs(Intermediate[1](1,1)),2)<<"  "<<Gtensor(1,1)<<endl;
+  //cout << Intermediate[2](0,0)<<"  "<<Intermediate[2](0,1)<<"  "<<Intermediate[2](1,1)<<endl;
+  //cout << pow(abs(Intermediate[2](0,0)),2)<<"  "<<pow(abs(Intermediate[2](0,1)),2)<<"  "<<pow(abs(Intermediate[2](1,1)),2)<<"  "<<Gtensor(2,2)<<endl;
+  //cout << Gtensor<<endl;
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
   cout <<endl<< "Gtensor eigenvalues"<<endl;
-  cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge-pow(eigensolver.eigenvalues()[0],0.5))*-1.e6) );
-  cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge-pow(eigensolver.eigenvalues()[1],0.5))*-1.e6) );
-  cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge-pow(eigensolver.eigenvalues()[2],0.5))*-1.e6) );
+  cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
+  cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
+  cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
   
 }
 
@@ -184,7 +192,7 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
       MatrixXx c1extended = MatrixXx::Zero(Dets.size(), 1);
       MatrixXx Hc2 = MatrixXx::Zero(Dets.size(), 1);
       if (i == 0) {
-	c2extended.block(0,0,c1.rows(),1) = 1.*c2;
+	c2extended.block(0,0,c2.rows(),1) = 1.*c2;
       }
       else if (i==1) {
 	getSplus(c2, c2extended, Dets, beginS0, beginSp, beginSm, norbs);
@@ -215,9 +223,9 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
     for (int Sz2 = -spin2; Sz2 <=spin2; Sz2+=2) {
       for (int Mop = -2; Mop<=2; Mop+=2) {
 	double cg = clebsch(spin2, Sz2, Jop, Mop, spin1, Sz1);
-	Hsubspace(rowIndex1 + (Sz1+spin1)/2, rowIndex2 + (Sz2+spin2)/2) += RME[ (Mop+2)/2]*cg;
+	Hsubspace(rowIndex1 + (-Sz1+spin1)/2, rowIndex2 + (-Sz2+spin2)/2) += RME[ (Mop+2)/2]*cg;
 	if (rowIndex1 != rowIndex2 )
-	  Hsubspace(rowIndex2 + (Sz2+spin2)/2, rowIndex1 + (Sz1+spin1)/2) += conj(RME[(Mop+2)/2]*cg);
+	  Hsubspace(rowIndex2 + (-Sz2+spin2)/2, rowIndex1 + (-Sz1+spin1)/2) += conj(RME[(Mop+2)/2]*cg);
       }
     }
   return;

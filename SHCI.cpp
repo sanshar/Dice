@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   //set the random seed
   startofCalc=getTime();
   srand(schd.randomSeed+world.rank());
-
+  if (mpigetrank()==0) cout<<"#using seed: "<<schd.randomSeed<<endl;
 
 
 
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
   std::cout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
-  twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
+  twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
   
@@ -160,6 +160,30 @@ int main(int argc, char* argv[]) {
   }
   fclose(f);
 
+
+  //This can unentagle the vectors and make them real
+  /*
+#ifdef Complex
+  if (schd.doSOC) {
+    int m1,m2;
+    for (int root=0; root<schd.nroots; root++) {
+      MatrixXx prevci = 1.*ci[root];
+      compAbs comp;
+      m1 = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+      prevci(m1,0) = 0.0;
+      m2 = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+    }
+    ci[0] = ci[0]/ci[0](m1,0); ci[1] = ci[1]/ci[1](m2,0);
+    std::complex<double> z1 = ci[0](m1,0), z2 = ci[0](m2,0);
+    std::complex<double> za = ci[1](m2,0), zb = ci[1](m1,0);
+    MatrixXx cibkp = 0.*ci[0];
+    cibkp = ci[0]/z1 - z2*ci[1]/z1;
+    ci[1] = conj(z2/z1)*ci[0] + ci[1]/conj(z1);
+    ci[0] = 1.*cibkp; ci[0] = ci[0]/ci[0].norm();
+    ci[1] = ci[1]/ci[1].norm();
+  }
+#endif
+  */
 
   //print the 5 most important determinants and their weights
   for (int root=0; root<schd.nroots; root++) {
