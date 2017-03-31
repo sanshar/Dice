@@ -187,7 +187,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     if (mpigetrank() == 0) {
       precondition(r,diag,ei);
       for (int i=0; i<bsize; i++) 
-	r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i);
+	r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
 
       if (bsize < maxCopies) {
 	b.col(bsize) = r/r.norm();
