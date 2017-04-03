@@ -840,7 +840,8 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 							MatrixXx&ci2, double& E02, oneInt& I1, twoInt& I2,
 							twoIntHeatBathSHM& I2HB, vector<int>& irrep, 
 							schedule& schd, double coreE, int nelec, int root, 
-							CItype& EPT1, CItype& EPT2, CItype& EPT12) {
+							CItype& EPT1, CItype& EPT2, CItype& EPT12,
+							std::vector<MatrixXx>& spinRDM) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
@@ -993,8 +994,57 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
 
-  //if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
+  if (schd.doGtensor && false) {//DON'T PERFORM doGtensor
+    for (int thrd=0; thrd<num_thrds; thrd++) {
+      vector<Determinant>& hasHEDDets = *uniqueDEH[thrd].Det;
+      vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
+      vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
+      vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
+    
+      map<Determinant, int> SortedDets;
+      for (int i=0; i<hasHEDDets.size(); i++)
+	SortedDets[hasHEDDets[i]] = i;
 
+      for (int x=0; x<Dets.size(); x++) {
+	Determinant& d = Dets[x];
+      
+	vector<int> closed(nelec,0);
+	vector<int> open(norbs-nelec,0);
+	d.getOpenClosed(open, closed);
+	int nclosed = nelec;
+	int nopen = norbs-nclosed;
+      
+
+	for (int ia=0; ia<nopen*nclosed; ia++){
+	  int i=ia/nopen, a=ia%nopen;
+	  
+	  Determinant di = d;
+	  di.setocc(open[a], true); di.setocc(closed[i],false);
+
+
+	  map<Determinant, int>::iterator it = SortedDets.find(di);
+	  if (it != SortedDets.end() ) {
+	    double sgn = 1.0;
+	    d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+	    int y = it->second;
+
+	    spinRDM[0](open[a], closed[i]) += 0.5*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn);
+	    spinRDM[1](open[a], closed[i]) += 0.5*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn);
+	    spinRDM[2](open[a], closed[i]) += 0.25*( conj(hasHEDNumerator2[y])*ci1(x,0)/(E02-hasHEDEnergy[y])*sgn
+						     + conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn );
+
+	    spinRDM[0](closed[i], open[a]) += conj(0.5*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn));
+	    spinRDM[1](closed[i], open[a]) += conj(0.5*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn));
+	    spinRDM[2](closed[i], open[a]) += conj(0.25*( conj(hasHEDNumerator2[y])*ci1(x,0)/(E02-hasHEDEnergy[y])*sgn
+							  + conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn ));
+	  }
+	}
+      }
+      
+      
+    }
+
+  }
 }
 
 

@@ -141,71 +141,73 @@ int main(int argc, char* argv[]) {
   vector<Determinant> Dets;  
 
   //the perturbation is S[i]+L[i]
-  double epsilon = 1.e-4;
-  
+  double epsilon = 5.e-4;
+
+  vector<double> fpm(6,0.0); //these are f+ and f- function evaluations
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
-  for (int a=0; a<3; a++)
-  for (int b=0; b<a+1; b++)
-  {
-    double plusplus, plusminus, minusplus, minusminus;
+  for (int a=0; a<3; a++) {
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
 						  irrep, I1, coreE, nelec, schd.DoRDM);
     
     if (!schd.stochastic) {
-      plusplus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
+      fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
     }
     else 
-      plusplus = E0[1]-E0[0];
+      fpm[2*a] = pow(E0[1]-E0[0],2);
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
 
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
-						  irrep, I1, coreE, nelec, schd.DoRDM);
+				   irrep, I1, coreE, nelec, schd.DoRDM);
     
-    int index = a*(a+1)/2+b;
     if (!schd.stochastic) {
-      plusminus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
+      fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
     }
     else 
-      plusminus = E0[1]-E0[0];
+      fpm[2*a+1] = pow(E0[1]-E0[0],2);
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
 
+    Gtensor(a,a) = (fpm[2*a] + fpm[2*a+1])/(epsilon*epsilon)/2.;
+  }
 
+  for (int a=0; a<3; a++)
+  for (int b=0; b<a; b++)
+  {
+    double plusplus, minusminus;
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
-    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
 						  irrep, I1, coreE, nelec, schd.DoRDM);
     
     if (!schd.stochastic) {
-      minusplus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
+      plusplus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
     }
     else 
-      minusplus = E0[1]-E0[0];
+      plusplus = pow(E0[1]-E0[0],2);
+
+
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
+
     
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
@@ -216,17 +218,17 @@ int main(int argc, char* argv[]) {
 				   irrep, I1, coreE, nelec, schd.DoRDM);
     
     if (!schd.stochastic) {
-      minusminus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
+      minusminus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
     }
     else 
-      minusminus = E0[1]-E0[0];
+      minusminus = pow(E0[1]-E0[0],2);
 
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
       I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
 
-    Gtensor(a,b) = (plusplus*plusplus-plusminus*plusminus-minusplus*minusplus+minusminus*minusminus)/4./epsilon/epsilon/2.;
+    Gtensor(a,b) = (plusplus  - fpm[2*a] - fpm[2*b] - fpm[2*a+1] - fpm[2*b+1]+minusminus)/2/(epsilon*epsilon)/2;
     Gtensor(b,a) = Gtensor(a,b);
   }
 
@@ -271,7 +273,11 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
 			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep, 
 			       schedule& schd, double coreE, int nelec) {
 
-  cout << schd.nroots<<endl;
+  
+
+  schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
+  vector<MatrixXx> spinRDM(3);
+
   MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
   for (int root1 =0 ;root1<schd.nroots; root1++) {
     for (int root2=root1+1 ;root2<schd.nroots; root2++) {
@@ -280,14 +286,19 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
 							 E0[root2], I1, 
 							 I2, I2HBSHM, irrep, schd, 
 							 coreE, nelec, root1, Heff(root1,root1),
-							 Heff(root2, root2), Heff(root1, root2));
+							 Heff(root2, root2), Heff(root1, root2),
+							 spinRDM);
       Heff(root2, root1) = conj(Heff(root1, root2));
     }
   }
   for (int root1 =0 ;root1<schd.nroots; root1++)
     Heff(root1, root1) += E0[root1];
+
+  schd.doGtensor = true;
   
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
+  //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
+  //exit(0);
   return eigensolver.eigenvalues()(1,0)-eigensolver.eigenvalues()(0,0);
 
 

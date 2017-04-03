@@ -9,6 +9,9 @@ using namespace Eigen;
 class Determinant;
 
 namespace SOChelper {
+  void calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2, 
+			vector<Determinant>& Dets1, int norbs, int nelec);
+
   void getSplus(const MatrixXx& c2, MatrixXx& c2splus, 
 		vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0, 
 		vector<Determinant>::iterator& beginSp, 
@@ -30,6 +33,8 @@ namespace SOChelper {
 
     void doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, 
 		   vector<double>& E0, int norbs, int nelec);
+    void doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, 
+		   vector<double>& E0, int norbs, int nelec, vector<MatrixXx>& spinRDM);
 };
 
 #endif

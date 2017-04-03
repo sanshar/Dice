@@ -161,29 +161,6 @@ int main(int argc, char* argv[]) {
   fclose(f);
 
 
-  //This can unentagle the vectors and make them real
-  /*
-#ifdef Complex
-  if (schd.doSOC) {
-    int m1,m2;
-    for (int root=0; root<schd.nroots; root++) {
-      MatrixXx prevci = 1.*ci[root];
-      compAbs comp;
-      m1 = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      prevci(m1,0) = 0.0;
-      m2 = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-    }
-    ci[0] = ci[0]/ci[0](m1,0); ci[1] = ci[1]/ci[1](m2,0);
-    std::complex<double> z1 = ci[0](m1,0), z2 = ci[0](m2,0);
-    std::complex<double> za = ci[1](m2,0), zb = ci[1](m1,0);
-    MatrixXx cibkp = 0.*ci[0];
-    cibkp = ci[0]/z1 - z2*ci[1]/z1;
-    ci[1] = conj(z2/z1)*ci[0] + ci[1]/conj(z1);
-    ci[0] = 1.*cibkp; ci[0] = ci[0]/ci[0].norm();
-    ci[1] = ci[1]/ci[1].norm();
-  }
-#endif
-  */
 
   //print the 5 most important determinants and their weights
   for (int root=0; root<schd.nroots; root++) {
@@ -213,19 +190,18 @@ int main(int argc, char* argv[]) {
   world.barrier();
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
 
+  vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
 #ifdef Complex
   if (schd.doSOC) {
     for (int j=0; j<E0.size(); j++)
       cout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
 
     //dont do this here, if perturbation theory is switched on
-    if (schd.doGtensor && !( 
-			    (!schd.stochastic)                            //deterministic or
-			    || (schd.stochastic && schd.nPTiter != 0) )) { //stochastic and nptiter!=0 
-      vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
-      //SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
-      //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec);
+    if (schd.doGtensor)  {
+      SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
+      cout << "VARIATIONAL G-TENSOR"<<endl;
+      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+      //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec);
     }
   }
 #endif
@@ -234,11 +210,12 @@ int main(int argc, char* argv[]) {
   if (schd.doSOC && !schd.stochastic) { //deterministic SOC calculation
     cout << "About to perform Perturbation theory"<<endl;
     if (schd.doGtensor) {
-      cout << "Gtensor calculation not supported with deterministic PT"<<endl;
+      cout << "Gtensor calculation not supported with deterministic PT for more than 2 roots."<<endl;
       cout << "Just performing the ZFS calculations."<<endl;
-      exit(0);
     }
     MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
+    //vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
+
     for (int root1 =0 ;root1<schd.nroots; root1++) {
       for (int root2=root1+1 ;root2<schd.nroots; root2++) {
 	Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
@@ -246,7 +223,8 @@ int main(int argc, char* argv[]) {
 							   E0[root2], I1, 
 							   I2, I2HBSHM, irrep, schd, 
 							   coreE, nelec, root1, Heff(root1,root1),
-							   Heff(root2, root2), Heff(root1, root2));
+							   Heff(root2, root2), Heff(root1, root2),
+							   spinRDM);
 	Heff(root2, root1) = conj(Heff(root1, root2));
       }
     }
@@ -266,11 +244,15 @@ int main(int argc, char* argv[]) {
       fwrite( &E0[j], 1, sizeof(double), f);
     }
     fclose(f);
+
+#ifdef Complex
+    //cout << "PT CORRECTED G-TENSOR"<<endl;
+    //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+#endif
     
   }
   
   else if (!schd.stochastic && schd.nblocks == 1) {
-    //SHCIbasics::DoPerturbativeDeterministicLCC(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec);
     double ePT = 0.0;
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );

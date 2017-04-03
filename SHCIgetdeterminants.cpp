@@ -33,7 +33,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
     int i=ia/nopen, a=ia%nopen;
     //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
@@ -107,7 +107,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Determinant 
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
     if (fabs(integral) > epsilon ) {
@@ -189,9 +189,13 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Determinant det,
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
-    if (closed[i]%2 != open[a]%2)
-      integral = int1(closed[i], open[a]);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      det.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
+    //integral = int1(closed[i], open[a]);
 
     if (fabs(integral) > epsilon1 || fabs(integral) > epsilon2 ) {
       dets.push_back(det); Determinant& di = *dets.rbegin();
@@ -285,9 +289,14 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
 
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
-    if (closed[i]%2 != open[a]%2)
-      integral = int1(closed[i], open[a]);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
+    //integral = int1(closed[i], open[a]);
 
 
     if (abs(integral) > epsilon ) {
@@ -352,7 +361,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
 #ifndef Complex 
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
     if (abs(integral) > epsilon ) {
@@ -436,7 +445,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
     int i=ia/nopen, a=ia%nopen;
     if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    CItype integral = Hij_1Excite(closed[i],open[a],int1,int2, &closed[0], nclosed);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
     if (abs(integral) > epsilon ) {
