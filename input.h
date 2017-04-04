@@ -38,7 +38,10 @@ private:
       & doSOC                                   \
       & doSOCQDPT                               \
       & randomSeed                              \
-      & doGtensor;
+      & doGtensor                               \
+      & integralFile                            \
+      & doResponse                              \
+      & responseFile;
   }
   
 public:
@@ -69,6 +72,9 @@ public:
   bool doSOCQDPT;
   unsigned int randomSeed;
   bool doGtensor;
+  string integralFile;
+  bool doResponse;
+  string responseFile;
 };
 
 #endif

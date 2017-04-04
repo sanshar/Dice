@@ -39,7 +39,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.doSOCQDPT = false;
   schd.randomSeed = getTime();
   schd.doGtensor = false;
-
+  schd.integralFile = "FCIDUMP";
+  schd.doResponse = false;
+  schd.responseFile = "RESPONSE";
   while (dump.good()) {
 
     std::string
@@ -93,8 +95,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.io=false;
     else if (boost::iequals(ArgName, "dosoc")) 
       schd.doSOC=true;
+    else if (boost::iequals(ArgName, "doresponse"))  {
+      schd.doResponse=true;
+      schd.responseFile = tok[1];
+    }
     else if (boost::iequals(ArgName, "dogtensor")) 
       schd.doGtensor=true;
+    else if (boost::iequals(ArgName, "orbitals")) 
+      schd.integralFile = tok[1];
     else if (boost::iequals(ArgName, "dosocqdpt")) 
       schd.doSOCQDPT=true;
     else if (boost::iequals(ArgName, "nptiter")) 

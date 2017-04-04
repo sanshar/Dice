@@ -52,7 +52,8 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determ
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+  vector<MatrixXx> vdVector;
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector);
 
   schd.epsilon2 = epsilon2;
 
@@ -203,7 +204,8 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(ve
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root);
+  vector<MatrixXx> vdVector;
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector);
 
   schd.epsilon2 = epsilon2;
 
@@ -561,7 +563,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, 
 }
 
 double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
-					      twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root, bool appendPsi1ToPsi0) {
+					       twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root,  vector<MatrixXx>& vdVector, bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
@@ -586,7 +588,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 #pragma omp parallel
   {
-    if (schd.DoRDM) {
+    if (schd.DoRDM || schd.doResponse) {
       uniqueDEH[omp_get_thread_num()].extra_info = true;
       for (int i=0; i<Dets.size(); i++) {
 	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
@@ -766,72 +768,28 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 						nelec, norbs, uniqueDEH, root); 
   }//schd.DoRDM
 
+  if (schd.doResponse) { //build RHS for the lambda equation
+    //construct the vector Via x da
+    //where Via is the perturbation matrix element
+    //da are the elements of the PT wavefunctions
+    for (int thrd=0; thrd <omp_get_num_threads(); thrd++) {
+      vdVector[root]= MatrixXx::Zero(Dets.size(),1);
+      vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
+      vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
+      vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
+      vector<vector<int> >& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
+      vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
+      for (int a=0; a<uniqueDets.size(); a++) {
+	CItype da = uniqueNumerator[a]/(E0-uniqueEnergy[a]); //coefficient for det a
+	for (int i=0; i<uniqueVarIndices[a].size(); i++) {
+	  int I = uniqueVarIndices[a][i]; //index of the Var determinant
+	  size_t orbDiff;
+	  vdVector[root](I,0) += conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
+	}
+      }
+    }
+  }
 
-  /*
-    if (0) {
-    //Calculate the third order energy
-    //this only works for one mpi process calculations
-    size_t orbDiff;
-    double norm = 0.0;
-    double diag1 = 0.0; //<psi1|H0|psi1>
-    #pragma omp parallel for reduction(+:norm, PT3,diag1)
-    for (int i=0; i<uniqueDets.size(); i++) {
-    //cout << uniqueNumerator[i]/(E0-uniqueEnergy[i])<<"  "<<(*uniqueDEH[0].Det)[i]<<endl;
-    norm += pow(abs(uniqueNumerator[i]),2)/(E0-uniqueEnergy[i])/(E0-uniqueEnergy[i]);
-    diag1 += uniqueEnergy[i]*pow(abs(uniqueNumerator[i])/(E0-uniqueEnergy[i]), 2);
-    for (int j=i+1; j<uniqueDets.size(); j++)
-    if (uniqueDets[i].connected(uniqueDets[j])) {
-    CItype hij = Hij(uniqueDets[i], uniqueDets[j], I1, I2, coreE, orbDiff);
-    PT3 += 2.*pow(abs(hij*uniqueNumerator[i]),2)/(E0-uniqueEnergy[i])/(E0-uniqueEnergy[j]);
-    }
-    }
-    cout << "PT3 "<<PT3<<"  "<<norm<<"  "<<PT3+E0+finalE<<"  "<<(E0+2*finalE+PT3+diag1)/(1+norm)<<endl;
-    PT3 = 0;
-    }
-
-    //Calculate Psi1 and then add it to Psi10
-    if (appendPsi1ToPsi0) {
-    #ifndef SERIAL
-    for (int level = 0; level <ceil(log2(mpigetsize())); level++) {
-
-    if (mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) < mpigetsize()) {
-    StitchDEH recvDEH;
-    int getproc = mpigetrank()+ipow(2,level);
-    world.recv(getproc, mpigetsize()*level+getproc, recvDEH);
-    uniqueDEH[0].merge(recvDEH);
-    uniqueDEH[0].RemoveDuplicates();
-    }
-    else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) >= mpigetsize()) {
-    continue ;
-    }
-    else if ( mpigetrank()%ipow(2, level) == 0) {
-    int toproc = mpigetrank()-ipow(2,level);
-    world.send(toproc, mpigetsize()*level+mpigetrank(), uniqueDEH[0]);
-    }
-    }
-
-
-    mpi::broadcast(world, uniqueDEH[0], 0);
-    #endif
-    vector<Determinant>& newDets = *uniqueDEH[0].Det;
-    ci.conservativeResize(ci.rows()+newDets.size(), 1);
-
-    vector<Determinant>::iterator vec_it = Dets.begin();
-    int ciindex = 0, initialSize = Dets.size();
-    double EPTguess = 0.0;
-    for (vector<Determinant>::iterator it=newDets.begin(); it!=newDets.end(); ) {
-    if (schd.excitation != 1000 ) {
-    if (it->ExcitationDistance(Dets[0]) > schd.excitation) continue;
-    }
-    Dets.push_back(*it);
-    ci(initialSize+ciindex,0) = uniqueDEH[0].Num->at(ciindex)/(E0 - uniqueDEH[0].Energy->at(ciindex));
-    ciindex++; it++;
-    }
-
-    }
-
-    uniqueDEH[0].clear();
-  */
   return finalE;
 }
 

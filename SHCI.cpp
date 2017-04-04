@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
+#include "SHCImakeHamiltonian.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -53,6 +54,9 @@ int main(int argc, char* argv[]) {
   boost::mpi::communicator world;
 #endif
 
+  string inputFile = "input.dat";
+  if (argc > 1)
+    inputFile = string(argv[1]);
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
@@ -84,7 +88,7 @@ int main(int argc, char* argv[]) {
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
-  readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
+  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
   
   if (HFoccupied[0].size() != nelec) {
     cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
@@ -129,6 +133,7 @@ int main(int argc, char* argv[]) {
 
   //have the dets, ci coefficient and diagnoal on all processors
   vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
+  vector<MatrixXx> vdVector(schd.nroots); //these vectors are used to calculate the response equations 
 
   //make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
@@ -181,7 +186,7 @@ int main(int argc, char* argv[]) {
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, true);
+      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
@@ -201,7 +206,6 @@ int main(int argc, char* argv[]) {
       SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
       cout << "VARIATIONAL G-TENSOR"<<endl;
       SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-      //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec);
     }
   }
 #endif
@@ -214,7 +218,6 @@ int main(int argc, char* argv[]) {
       cout << "Just performing the ZFS calculations."<<endl;
     }
     MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
-    //vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
 
     for (int root1 =0 ;root1<schd.nroots; root1++) {
       for (int root2=root1+1 ;root2<schd.nroots; root2++) {
@@ -245,11 +248,6 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
 
-#ifdef Complex
-    //cout << "PT CORRECTED G-TENSOR"<<endl;
-    //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-#endif
-    
   }
   
   else if (!schd.stochastic && schd.nblocks == 1) {
@@ -258,7 +256,7 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");      
     for (int root=0; root<schd.nroots;root++) {
-      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector);
       ePT += E0[root];
       fwrite( &ePT, 1, sizeof(double), f);
     }
@@ -278,6 +276,19 @@ int main(int argc, char* argv[]) {
     exit(0);
     //Here I will implement the alias method
     //SHCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
+  }
+
+  //read the integrals
+  if (schd.doResponse) {
+    std::vector<MatrixXx> lambda(schd.nroots);
+    readIntegrals(schd.responseFile, I2, I1, nelec, norbs, coreE, irrep);    
+    std::vector<std::vector<int> > connections; connections.resize(Dets.size());
+    std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
+    std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
+    SHCImakeHamiltonian::regenerateH(Dets, connections, Helements, I1, I2, coreE);
+    Hmult2 H(connections, Helements);
+    LinearSolver(H, lambda[0], vdVector[0], 1.e-5, true);
+    exit(0);
   }
 
   world.barrier();
