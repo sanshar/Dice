@@ -204,11 +204,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 
-
-double LinearSolver(Hmult2& H, MatrixXx& x0, MatrixXx& b, double tol, bool print) {
+//(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
+double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, MatrixXx& proj, double tol, bool print) {
 #ifndef SERIAL
-    boost::mpi::communicator world;
+  boost::mpi::communicator world;
 #endif
+
+  b = b- ((proj.adjoint()*b)(0,0))*proj/((proj.adjoint()*proj)(0,0));
 
   x0.setZero(x0.rows(),1);
   MatrixXx r = 1.*b, p = 1.*b;
@@ -217,16 +219,19 @@ double LinearSolver(Hmult2& H, MatrixXx& x0, MatrixXx& b, double tol, bool print
   int iter = 0;
   while (true) {
     MatrixXx Ap = 0.*p; H(p,Ap);
+    Ap = Ap - E0*p; //H0-E0
     CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
     x0 += alpha*p;
     r -= alpha*Ap;
 
+    r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
+
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (true)
+    if (false)
       pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) { 
-      p.setZero(p.rows(),1); H(x0,p); p -=b; cout << (p.adjoint()*p)(0,0)<<endl; 
+      p.setZero(p.rows(),1); H(x0,p); p -=b; 
       return abs(ept);
     }      
 

@@ -4,6 +4,7 @@
 #include <fstream>
 #include "Determinants.h"
 #include "SHCImakeHamiltonian.h"
+#include "SHCIrdm.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -134,6 +135,7 @@ int main(int argc, char* argv[]) {
   //have the dets, ci coefficient and diagnoal on all processors
   vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
   vector<MatrixXx> vdVector(schd.nroots); //these vectors are used to calculate the response equations 
+  double Psi1Norm = 0.0;
 
   //make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
@@ -181,12 +183,11 @@ int main(int argc, char* argv[]) {
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
 
-
   if (schd.quasiQ) {    
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, true);
+      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, Psi1Norm, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
@@ -256,7 +257,9 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");      
     for (int root=0; root<schd.nroots;root++) {
-      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector);
+      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2,
+						    I2HBSHM, irrep, schd, coreE, nelec,
+						    root, vdVector, Psi1Norm);
       ePT += E0[root];
       fwrite( &ePT, 1, sizeof(double), f);
     }
@@ -279,16 +282,39 @@ int main(int argc, char* argv[]) {
   }
 
   //read the integrals
-  if (schd.doResponse) {
-    std::vector<MatrixXx> lambda(schd.nroots);
-    readIntegrals(schd.responseFile, I2, I1, nelec, norbs, coreE, irrep);    
-    std::vector<std::vector<int> > connections; connections.resize(Dets.size());
-    std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-    std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
-    SHCImakeHamiltonian::regenerateH(Dets, connections, Helements, I1, I2, coreE);
+  if ((schd.doResponse || schd.DoRDM) && (!schd.stochastic && schd.nblocks==1)) {
+    std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
+    std::vector<std::vector<int> > connections;
+    std::vector<std::vector<CItype> > Helements;
+    std::vector<std::vector<size_t> > orbDifference;
+    {
+      char file [5000];
+      sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> connections >> Helements >> orbDifference;
+    }
+
     Hmult2 H(connections, Helements);
-    LinearSolver(H, lambda[0], vdVector[0], 1.e-5, true);
-    exit(0);
+    LinearSolver(H, E0[0], lambda[0], vdVector[0], ci[0], 1.e-5, false);
+
+    MatrixXx cL = 0.*lambda[0];
+    H(lambda[0], cL);
+
+    //now read the response integrals
+    //readIntegrals(schd.responseFile, I2, I1, nelec, norbs, coreE, irrep);    
+
+    MatrixXx s2RDM, twoRDM;
+    SHCIrdm::loadRDM(schd, s2RDM, twoRDM, 0);
+    MatrixXx s2RDMcopy = 0.0*s2RDM, twoRDMcopy;
+    if (schd.DoSpinRDM) twoRDMcopy = 0.*twoRDM;
+
+    SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDMcopy, s2RDMcopy);
+
+    s2RDM = s2RDM + s2RDMcopy.adjoint() + s2RDMcopy;
+    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, 0);
+    //cout <<" response "; 
+    //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
 
   world.barrier();

@@ -312,6 +312,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   I2.store = static_cast<double*>(regionInt2.get_address());
 
   if (mpigetrank() == 0) {
+    I1.store.clear();
     I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
     coreE = 0.0;
 

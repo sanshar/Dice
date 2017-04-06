@@ -55,7 +55,8 @@ namespace SHCIbasics {
 					   twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) ;
   
   double DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
-				     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root, vector<MatrixXx>& vdVector,
+				     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, 
+				     int nelec, int root, vector<MatrixXx>& vdVector, double& Psi1Norm,
 				     bool appendPsi1ToPsi0=false) ;
   
   void DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01, 

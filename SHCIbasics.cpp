@@ -53,7 +53,8 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determ
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
   vector<MatrixXx> vdVector;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector);
+  double Psi1Norm;
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
 
   schd.epsilon2 = epsilon2;
 
@@ -205,7 +206,8 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(ve
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
   vector<MatrixXx> vdVector;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector);
+  double Psi1Norm;
+  double EptLarge = DoPerturbativeDeterministic(Dets, ci, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
 
   schd.epsilon2 = epsilon2;
 
@@ -563,13 +565,16 @@ void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, 
 }
 
 double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
-					       twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root,  vector<MatrixXx>& vdVector, bool appendPsi1ToPsi0) {
+					       twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, 
+					       int nelec, int root,  vector<MatrixXx>& vdVector, double& Psi1Norm,
+					       bool appendPsi1ToPsi0) {
 
   boost::mpi::communicator world;
   int norbs = Determinant::norbs;
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
 
   double energyEN = 0.0;
+  double Psi1NormProc = 0.0;
   int num_thrds = omp_get_max_threads();
 
   std::vector<StitchDEH> uniqueDEH(num_thrds);
@@ -622,7 +627,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
-      if (schd.DoRDM) uniqueDEH_afterMPI.extra_info = true;
+      if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
@@ -630,7 +635,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	if (schd.DoRDM) {
+	if (schd.DoRDM || schd.doResponse) {
 	  hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	  hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
 	}
@@ -660,7 +665,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
 	  hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
 	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
-	  if (schd.DoRDM) {
+	  if (schd.DoRDM || schd.doResponse) {
 	    hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].var_indices->at(j));
 	    hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].orbDifference->at(j));
 	  }
@@ -675,7 +680,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
 	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
-	  if (schd.DoRDM) {
+	  if (schd.DoRDM || schd.doResponse) {
 	    mpi::all_to_all(world, hashedVarIndicesBeforeMPI, hashedVarIndicesAfterMPI);
 	    mpi::all_to_all(world, hashedOrbdiffBeforeMPI, hashedOrbdiffAfterMPI);
 	  }
@@ -687,7 +692,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	    hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedNumBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedEnergyBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    if (schd.DoRDM) {
+	    if (schd.DoRDM || schd.doResponse) {
 	      hashedVarIndicesBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	      hashedOrbdiffBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
 	    }
@@ -703,7 +708,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	      uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      uniqueDEH_afterMPI.Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      if (schd.DoRDM) {
+	      if (schd.DoRDM || schd.doResponse) {
 		uniqueDEH_afterMPI.var_indices->push_back(hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 		uniqueDEH_afterMPI.orbDifference->push_back(hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      }
@@ -711,7 +716,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	    hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	    hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    if (schd.DoRDM) {
+	    if (schd.DoRDM || schd.doResponse) {
 	      hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	      hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].clear();
 	    }
@@ -723,7 +728,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
       *uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
       *uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
       *uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy;
-      if (schd.DoRDM) {
+      if (schd.DoRDM || schd.doResponse) {
 	*uniqueDEH[omp_get_thread_num()].var_indices = *uniqueDEH_afterMPI.var_indices;
 	*uniqueDEH[omp_get_thread_num()].orbDifference = *uniqueDEH_afterMPI.orbDifference;
       }
@@ -745,11 +750,14 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     vector<double>& hasHEDEnergy = *uniqueDEH[omp_get_thread_num()].Energy;
 
     double PTEnergy = 0.0;
+    double psi1normthrd=0.0;
     for (size_t i=0; i<hasHEDDets.size();i++) {
+      psi1normthrd += pow(abs(hasHEDNumerator[i]/(E0-hasHEDEnergy[i])),2);
       PTEnergy += pow(abs(hasHEDNumerator[i]),2)/(E0-hasHEDEnergy[i]);
     }
 #pragma omp critical
     {
+      Psi1NormProc += psi1normthrd;
       totalPT += PTEnergy;
     }
 
@@ -758,17 +766,20 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
   double finalE = 0.;
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
+  mpi::all_reduce(world, Psi1NormProc, Psi1Norm, std::plus<double>());
 
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
 
 
-  if (schd.DoRDM) {
-    
-    SHCIrdm::UpdateRDMPerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE, 
-						nelec, norbs, uniqueDEH, root); 
-  }//schd.DoRDM
+  if (schd.doResponse || schd.DoRDM) { //build RHS for the lambda equation
 
-  if (schd.doResponse) { //build RHS for the lambda equation
+    MatrixXx s2RDM, twoRDM;
+    SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
+    SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE, 
+							nelec, norbs, uniqueDEH, root, Psi1Norm,
+							s2RDM, twoRDM); 
+    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
+
     //construct the vector Via x da
     //where Via is the perturbation matrix element
     //da are the elements of the PT wavefunctions
@@ -784,10 +795,11 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	for (int i=0; i<uniqueVarIndices[a].size(); i++) {
 	  int I = uniqueVarIndices[a][i]; //index of the Var determinant
 	  size_t orbDiff;
-	  vdVector[root](I,0) += conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
+	  vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
 	}
       }
     }
+
   }
 
   return finalE;
@@ -840,7 +852,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
-      if (schd.DoRDM) uniqueDEH_afterMPI.extra_info = true;
+      if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
       //if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
@@ -1038,7 +1050,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
   SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
-					norbs, I1, I2, coreE, orbDifference, DoRDM);
+					norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
 
 #ifdef Complex
   SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, 
@@ -1186,7 +1198,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
     SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), 
 					  connections, Helements,
-					  norbs, I1, I2, coreE, orbDifference, DoRDM);
+					  norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
 #ifdef Complex
     SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, 
 					      Helements, norbs, I1, nelec, false);
@@ -1228,10 +1240,15 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
 
       writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
-      if (DoRDM) {
+      if (DoRDM || schd.doResponse) {
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++) {
-	  SHCIrdm::EvaluateAndStoreRDM(connections, Dets, ci[i], orbDifference, nelec, schd, i);
+	  MatrixXx twoRDM;
+	  if (schd.DoSpinRDM )
+	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
+	  SHCIrdm::EvaluateRDM(connections, Dets, ci[i], ci[i], orbDifference, nelec, schd, i, twoRDM, s2RDM);
+	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
         } // for i
       }
 
@@ -1260,38 +1277,40 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
   boost::mpi::communicator world;
 #endif
 
-  /*
-    cout << "Variational wavefunction" << endl;
-    for (int root=0; root<schd.nroots; root++) {
-    pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
-    MatrixXd prevci = 1.*ci[root];
-    for (int i=0; i<5; i++) {
-    compAbs comp;
-    int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-    pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<Dets[m]<<endl;
-    prevci(m,0) = 0.0;
-    }
-    }
-  */
-
   pout << format("#Begin writing variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
-  char file [5000];
-  sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
-  std::ofstream ofs(file, std::ios::binary);
-  boost::archive::binary_oarchive save(ofs);
-  save << iter <<Dets<<SortedDets;
-  int diagrows = diag.rows();
-  save << diagrows;
-  for (int i=0; i<diag.rows(); i++)
-    save << diag(i,0);
-  save << ci;
-  save << E0;
-  save << converged;
-  save << connections<<orbdifference<<Helements;
-  save << BetaN<< AlphaNm1;
-  ofs.close();
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << iter <<Dets<<SortedDets;
+    int diagrows = diag.rows();
+    save << diagrows;
+    for (int i=0; i<diag.rows(); i++)
+      save << diag(i,0);
+    save << ci;
+    save << E0;
+    save << converged;
+    ofs.close();
+  }
+
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << connections<<Helements<<orbdifference;
+  }
+
+  {    
+    char file [5000];
+    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << BetaN<< AlphaNm1;
+  }
 
   pout << format("#End   writing variational wf %29.2f\n")
     % (getTime()-startofCalc);
@@ -1313,27 +1332,42 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
   pout << format("#Begin reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
-  char file [5000];
-  sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
-  std::ifstream ifs(file, std::ios::binary);
-  boost::archive::binary_iarchive load(ifs);
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    
+    load >> iter >> Dets >> SortedDets ;
+    int diaglen;
+    load >> diaglen;
+    ci.resize(1, MatrixXx(diaglen,1)); diag.resize(diaglen,1);
+    for (int i=0; i<diag.rows(); i++)
+      load >> diag(i,0);
+    
+    load >> ci;
+    load >> E0;
+    if (schd.onlyperturbative) {ifs.close();return;}
+    load >> converged;
+  }
 
-  load >> iter >> Dets >> SortedDets ;
-  int diaglen;
-  load >> diaglen;
-  ci.resize(1, MatrixXx(diaglen,1)); diag.resize(diaglen,1);
-  for (int i=0; i<diag.rows(); i++)
-    load >> diag(i,0);
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    load >> connections >> Helements >>orbdifference;
+  }
 
-  load >> ci;
-  load >> E0;
-  if (schd.onlyperturbative) {ifs.close();return;}
-  load >> converged;
-
-  load >> connections >> orbdifference >> Helements;
-  load >> BetaN>> AlphaNm1;
-  ifs.close();
-
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), world.rank() );
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    load >> BetaN>> AlphaNm1;
+    ifs.close();
+  }
+    
   pout << format("#End   reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 }
