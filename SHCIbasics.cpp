@@ -1248,6 +1248,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
 	  SHCIrdm::EvaluateRDM(connections, Dets, ci[i], ci[i], orbDifference, nelec, schd, i, twoRDM, s2RDM);
+	  SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
 	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
         } // for i
       }

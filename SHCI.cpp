@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
+  if (mpigetrank() == 0) readInput(inputFile, HFoccupied, schd);
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
