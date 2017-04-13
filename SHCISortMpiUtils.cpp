@@ -454,7 +454,7 @@ namespace SHCISortMpiUtils {
 	  Num->operator[](uniqueSize) += Num->at(i);
 	  if (Num2->size() != 0)
 	    Num2->operator[](uniqueSize) += Num2->at(i);
-	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-12) {
+	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10) {
 	    cout << uniqueSize<<"  "<<i<<"  "<<endl;
 	    cout << Detcopy[i]<<endl;
 	    cout << Energy->at(uniqueSize)<<"  "<<Energy->at(i)<<"  "<<Detcopy[i-1]<<endl;
