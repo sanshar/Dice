@@ -249,6 +249,10 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
 
+#ifdef Complex
+    SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+    return;
+#endif
   }
   
   else if (!schd.stochastic && schd.nblocks == 1) {
@@ -296,7 +300,7 @@ int main(int argc, char* argv[]) {
     }
 
     Hmult2 H(connections, Helements);
-    LinearSolver(H, E0[0], lambda[0], vdVector[0], ci[0], 1.e-5, false);
+    LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
 
     MatrixXx cL = 0.*lambda[0];
     H(lambda[0], cL);
