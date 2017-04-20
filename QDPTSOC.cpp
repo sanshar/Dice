@@ -268,7 +268,8 @@ int main(int argc, char* argv[]) {
   //this will just update the connections and Helements with the SOC integrals
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, I1, nelec);
+  std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
+  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, I1, nelec);
 
   // calculate the matrix elements <S1|SOC|S2>
   for (int i=0; i<ci.size(); i++) {
@@ -332,6 +333,7 @@ int main(int argc, char* argv[]) {
     for (int a=0; a<3; a++) {
       std::vector<std::vector<int> > connections; connections.resize(Dets.size());
       std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
+      std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
       
       oneInt LplusSInt;
       LplusSInt.store.resize(norbs*norbs, 0.0); 
@@ -350,7 +352,7 @@ int main(int argc, char* argv[]) {
 	  }
 	Helements[i].push_back(energy); 
       }
-      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, LplusSInt, nelec); 
+      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusSInt, nelec); 
       Hmult2 H(connections, Helements);
       for (int j=0; j<ci.size(); j++) {//bra      
 	for (int i=j; i<ci.size(); i++) {//ket

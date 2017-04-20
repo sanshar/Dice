@@ -199,7 +199,7 @@ void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int>
 
 
 
-void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
+void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
 
   size_t Norbs = norbs;
 
@@ -240,7 +240,7 @@ void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int pr
 	if (y < x) {
 	  connections[x].push_back(y);
 	  Helements[x].push_back(integral*sgn);
-
+	  orbDifference[x].push_back(open[a]*norbs+closed[i]);
 	}
       }
     }

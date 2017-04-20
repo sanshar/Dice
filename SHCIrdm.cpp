@@ -258,6 +258,7 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& De
    
 }
 
+
 void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, 
 				 CItype value, int& nSpatOrbs) {
   //we assume i != j  and  k != l
@@ -304,10 +305,8 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
       }
     }
 
-
     for (int j=1; j<connections[i].size(); j++) {
       int d0=orbDifference[i][j]%norbs, c0=(orbDifference[i][j]/norbs)%norbs ;
-
       if (orbDifference[i][j]/norbs/norbs == 0) { //only single excitation
 	for (int n1=0;n1<nelec; n1++) {
 	  double sgn = 1.0;
@@ -340,11 +339,53 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*conj(ciket(connections[i][j],0))*cibra(i,0), nSpatOrbs);
       }
     }
+
   }
 
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+}
+
+
+void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, 
+			     MatrixXx& cibra, MatrixXx& ciket,
+			     vector<vector<size_t> >& orbDifference, int nelec, 
+			     schedule& schd, int root, MatrixXx& s1RDM) {
+  boost::mpi::communicator world;
+
+  size_t norbs = Dets[0].norbs;
+  int nSpatOrbs = norbs/2;
+
+
+  int num_thrds = omp_get_max_threads();
+
+  //#pragma omp parallel for schedule(dynamic)
+  for (int i=0; i<Dets.size(); i++) {
+    if ((i/num_thrds)%world.size() != world.rank()) continue;
+
+    vector<int> closed(nelec, 0);
+    vector<int> open(norbs-nelec,0);
+    Dets[i].getOpenClosed(open, closed);
+
+    //<Di| Gamma |Di>
+    for (int n1=0; n1<nelec; n1++) {
+      int orb1 = closed[n1];
+      s1RDM(orb1, orb1) += conj(cibra(i,0))*ciket(i,0);
+    }
+
+    for (int j=1; j<connections[i].size(); j++) {
+      int d0=orbDifference[i][j]%norbs, c0=(orbDifference[i][j]/norbs)%norbs ;
+      if (orbDifference[i][j]/norbs/norbs == 0) { //only single excitation
+	double sgn = 1.0;
+	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
+	s1RDM(c0, d0)+= sgn*conj(cibra(connections[i][j],0))*ciket(i,0);
+      }
+    }
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0,0), s1RDM.rows()*s1RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 }
 

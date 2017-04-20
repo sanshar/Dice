@@ -262,9 +262,50 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Determinant det,
 	else
 	  numerator2.push_back(0.0);
 
+
       } // if a and b unoccupied
     } // iterate over heatbath integrals
   } // i and j
+  return;
+}
+
+
+void SHCIgetdeterminants::getDeterminantsDeterministicPTInt1(Determinant det, int det_ind, double epsilon1, CItype ci1, double epsilon2, CItype ci2, oneInt& int1a, oneInt& int1, twoInt& int2, vector<int>& irreps, double coreE, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, std::vector<CItype>& numerator2, std::vector<double>& energy, schedule& schd, int nelec) {
+
+  int norbs = det.norbs;
+  vector<int> closed(nelec,0);
+  vector<int> open(norbs-nelec,0);
+  det.getOpenClosed(open, closed);
+  int nclosed = nelec;
+  int nopen = norbs-nclosed;
+  size_t orbDiff;
+
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+
+    double sgn = 1.0;
+    det.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+    CItype integral = int1a(open[a], closed[i])*sgn;
+
+    if (fabs(integral) > epsilon1 || fabs(integral) > epsilon2 ) {
+      dets.push_back(det); Determinant& di = *dets.rbegin();
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+
+      double E = di.Energy(int1, int2, coreE);
+      energy.push_back(E);
+
+
+      //if(fabs(integral) >epsilon1)
+	numerator1.push_back(integral*ci1);
+	//else
+	//numerator1.push_back(0.0);
+
+	//if(fabs(integral) > epsilon2)
+	numerator2.push_back(integral*ci2);
+	//else
+	//numerator2.push_back(0.0);
+    }
+  }
   return;
 }
 
@@ -294,9 +335,11 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     if (closed[i]%2 != open[a]%2) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-      integral = int1(open[a], closed[i])*sgn;
+      integral = int1(open[a], closed[i])*sgn; 
     }
-    //integral = int1(closed[i], open[a]);
+
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2])
+      integral *= 100; //make it 100 times so SOC gets preference
 
 
     if (abs(integral) > epsilon ) {

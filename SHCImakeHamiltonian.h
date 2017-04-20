@@ -49,6 +49,7 @@ namespace SHCImakeHamiltonian {
   
   void updateSOCconnections(vector<Determinant>& Dets, int prevSize, 
 			    vector<vector<int> >& connections, 
+			    vector<vector<size_t> >& orbDifference,
 			    vector<vector<CItype> >& Helements, int norbs, 
 			    oneInt& int1, int nelec, bool includeSz=true);
   

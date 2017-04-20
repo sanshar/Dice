@@ -947,7 +947,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
     for (size_t i=0; i<hasHEDDets.size();i++) {
       PTEnergy1 += pow(abs(hasHEDNumerator[i]),2)/(E01-hasHEDEnergy[i]);
-      PTEnergy12 += 0.5*(conj(hasHEDNumerator2[i])*hasHEDNumerator[i]/(E01-hasHEDEnergy[i]) + conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E02-hasHEDEnergy[i]));
+      PTEnergy12 += conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E01-hasHEDEnergy[i]);
       PTEnergy2 += pow(abs(hasHEDNumerator2[i]),2)/(E02-hasHEDEnergy[i]);
     }
 #pragma omp critical
@@ -959,18 +959,20 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
   }
 
+
   EPT1=0.0;EPT2=0.0;EPT12=0.0;
   mpi::all_reduce(world, totalPT1, EPT1, std::plus<CItype>());
   mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
 
-  if (schd.doGtensor && false) {//DON'T PERFORM doGtensor
+  if (schd.doGtensor && true) {//DON'T PERFORM doGtensor
     for (int thrd=0; thrd<num_thrds; thrd++) {
       vector<Determinant>& hasHEDDets = *uniqueDEH[thrd].Det;
       vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
       vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
       vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
-    
+
+
       map<Determinant, int> SortedDets;
       for (int i=0; i<hasHEDDets.size(); i++)
 	SortedDets[hasHEDDets[i]] = i;
@@ -997,16 +999,21 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	    double sgn = 1.0;
 	    d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
 	    int y = it->second;
+	    //states "a" and "b"
+	    //"0" order and "1" order corrections
+	    //in all 4 states "0a" "1a"  "0b"  "1b"
+	    CItype complex1 = 1.0*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0a>
+	    CItype complex2 = 1.0*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn); //<1b|v|0b>
+	    CItype complex12= 1.0*( conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0b>
+	    CItype complex12b= 1.0*( conj(ci1(x,0))*hasHEDNumerator2[y]/(E02-hasHEDEnergy[y])*sgn);//<0a|v|1b>
+	    spinRDM[0](open[a], closed[i]) += complex1;
+	    spinRDM[1](open[a], closed[i]) += complex2;
+	    spinRDM[2](open[a], closed[i]) += complex12; 
 
-	    spinRDM[0](open[a], closed[i]) += 0.5*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn);
-	    spinRDM[1](open[a], closed[i]) += 0.5*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn);
-	    spinRDM[2](open[a], closed[i]) += 0.25*( conj(hasHEDNumerator2[y])*ci1(x,0)/(E02-hasHEDEnergy[y])*sgn
-						     + conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn );
+	    spinRDM[0](closed[i], open[a]) += conj(complex1);
+	    spinRDM[1](closed[i], open[a]) += conj(complex2);
+	    spinRDM[2](closed[i], open[a]) += complex12b;
 
-	    spinRDM[0](closed[i], open[a]) += conj(0.5*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn));
-	    spinRDM[1](closed[i], open[a]) += conj(0.5*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn));
-	    spinRDM[2](closed[i], open[a]) += conj(0.25*( conj(hasHEDNumerator2[y])*ci1(x,0)/(E02-hasHEDEnergy[y])*sgn
-							  + conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn ));
 	  }
 	}
       }
@@ -1053,7 +1060,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
 
 #ifdef Complex
-  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, 
+  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, 
 					    norbs, I1, nelec, false);
 #endif
 
@@ -1096,10 +1103,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     //for multiple states, use the sum of squares of states to do the seclection process
     pout << format("#-------------Iter=%4i---------------") % iter<<endl;
-    MatrixXx cMax(ci[0].rows(),1); cMax = 1.*ci[0];
+    MatrixXx cMax(ci[0].rows(),1); cMax = 0.*ci[0];
     for (int j=0; j<ci[0].rows(); j++) {
-      cMax(j,0) = pow( abs(cMax(j,0)), 2);
-      for (int i=1; i<ci.size(); i++) 
+      for (int i=0; i<ci.size(); i++) 
 	cMax(j,0) += pow( abs(ci[i](j,0)), 2);
 	
       cMax(j,0) = pow( cMax(j,0), 0.5);
@@ -1200,7 +1206,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					  connections, Helements,
 					  norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
 #ifdef Complex
-    SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, 
+    SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, orbDifference,
 					      Helements, norbs, I1, nelec, false);
 #endif
 

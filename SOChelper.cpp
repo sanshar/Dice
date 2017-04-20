@@ -29,13 +29,18 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
 				 vector<Determinant>& Dets1, int norbs, int nelec)
 {
   size_t Norbs = norbs;
+  int num_thrds = omp_get_max_threads();
 
   map<Determinant, int> SortedDets;
   for (int i=0; i<Dets1.size(); i++)
     SortedDets[Dets1[i]] = i;
 
 
+  vector< vector<MatrixXx> > spinRDM_thrd(num_thrds, spinRDM);
+
+#pragma omp parallel for
   for (int x=0; x<Dets1.size(); x++) {
+    int thrd = omp_get_thread_num();
     Determinant& d = Dets1[x];
 
     vector<int> closed(nelec,0);
@@ -45,9 +50,9 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
     int nopen = norbs-nclosed;
 
     for (int i=0; i<nclosed; i++){
-      spinRDM[0](closed[i], closed[i]) += conj(ci1(x,0))*ci1(x,0);
-      spinRDM[1](closed[i], closed[i]) += conj(ci2(x,0))*ci2(x,0);
-      spinRDM[2](closed[i], closed[i]) += conj(ci1(x,0))*ci2(x,0);
+      spinRDM_thrd[thrd][0](closed[i], closed[i]) += conj(ci1(x,0))*ci1(x,0);
+      spinRDM_thrd[thrd][1](closed[i], closed[i]) += conj(ci2(x,0))*ci2(x,0);
+      spinRDM_thrd[thrd][2](closed[i], closed[i]) += conj(ci1(x,0))*ci2(x,0);
     }
 
     //loop over all single excitation and find if they are present in the list
@@ -65,12 +70,18 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
       if (it != SortedDets.end() ) {
 	int y = it->second;
 	if (y != x) {
-	  spinRDM[0](open[a], closed[i]) += conj(ci1(y,0))*ci1(x,0)*sgn;
-	  spinRDM[1](open[a], closed[i]) += conj(ci2(y,0))*ci2(x,0)*sgn;
-	  spinRDM[2](open[a], closed[i]) += conj(ci1(y,0))*ci2(x,0)*sgn;
+	  spinRDM_thrd[thrd][0](open[a], closed[i]) += conj(ci1(y,0))*ci1(x,0)*sgn;
+	  spinRDM_thrd[thrd][1](open[a], closed[i]) += conj(ci2(y,0))*ci2(x,0)*sgn;
+	  spinRDM_thrd[thrd][2](open[a], closed[i]) += conj(ci1(y,0))*ci2(x,0)*sgn;
 	}
       }
     }
+  }
+
+  for (int thrd=0; thrd<num_thrds; thrd++) {
+    spinRDM[0] += spinRDM_thrd[thrd][0];
+    spinRDM[1] += spinRDM_thrd[thrd][1];
+    spinRDM[2] += spinRDM_thrd[thrd][2];
   }
 }
 
@@ -83,13 +94,13 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   }
 
   //initialize L and S integrals
-  vector<oneInt> L(3), S(3);
+  vector<oneInt> L(3), LplusS(3);
   for (int i=0; i<3; i++) {
     L[i].store.resize(norbs*norbs, 0.0); 
     L[i].norbs = norbs;
     
-    S[i].store.resize(norbs*norbs, 0.0); 
-    S[i].norbs = norbs;
+    LplusS[i].store.resize(norbs*norbs, 0.0); 
+    LplusS[i].norbs = norbs;
   }
 
   //read L integrals
@@ -98,15 +109,20 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
-    S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
-    S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+    LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+    LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
     
-    S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
-    S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+    LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+    LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
     
-    S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
-    S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+    LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+    LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
+
+  for (int a=0; a<3; a++) 
+    for (int i=0; i<norbs; i++)
+      for (int j=0; j<norbs; j++) 
+	LplusS[a](i,j) += L[a](i,j);
 
   //The  La+ge Sa matrices where a is x,y,z
   vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2)); 
@@ -115,12 +131,15 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   for (int a=0; a<3; a++) {
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
-	Intermediate[a](0,0) += (L[a](i,j)+S[a](i,j))*spinRDM[0](i,j);
-	Intermediate[a](1,1) += (L[a](i,j)+S[a](i,j))*spinRDM[1](i,j);
-	Intermediate[a](0,1) += (L[a](i,j)+S[a](i,j))*spinRDM[2](i,j);
+	Intermediate[a](0,0) += (LplusS[a](i,j))*spinRDM[0](i,j);
+	Intermediate[a](1,1) += (LplusS[a](i,j))*spinRDM[1](i,j);
+	Intermediate[a](0,1) += (LplusS[a](i,j))*spinRDM[2](i,j);
       }
     Intermediate[a](1,0) = conj(Intermediate[a](0,1));
     cout <<a<<endl<< Intermediate[a]<<endl<<endl;
+    SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[a]);
+    if (eigensolver.info() != Success) abort();
+    cout << a<<"  "<<eigensolver.eigenvalues()[0]-eigensolver.eigenvalues()[1]<<endl;
   }
   
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
@@ -181,6 +200,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   for (int a=0; a<3; a++) {
     std::vector<std::vector<int> > connections; connections.resize(Dets.size());
     std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
+    std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
 
     oneInt LplusS;
     LplusS.store.resize(norbs*norbs, 0.0); 
@@ -199,7 +219,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
       Helements[i].push_back(energy); 
     }
 
-    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, Helements, norbs, LplusS, nelec); 
+    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusS, nelec); 
 
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);

@@ -29,6 +29,10 @@ namespace SHCIrdm {
 		   MatrixXx& ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, 
 		   int root, MatrixXx& s2RDM, MatrixXx& twoRDM);
 
+  void EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,
+		      MatrixXx& ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, 
+		      int root, MatrixXx& s1RDM);
+
   void UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, 
 						  oneInt& I1, twoInt& I2, schedule& schd, 
 						  double coreE, int nelec, int norbs,
