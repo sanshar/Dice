@@ -120,8 +120,12 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	}
       
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
-      if (eigensolver.info() != Success) abort();
-      
+      if (eigensolver.info() != Success) {
+	cout << "Eigenvalue solver unsuccessful."<<endl;
+	cout << hsubspace<<endl;
+	abort();
+      }
+
       b.block(0,0,b.rows(), bsize) = b.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
       sigma.block(0,0,b.rows(), bsize) = sigma.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
 
@@ -205,12 +209,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
-double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, MatrixXx& proj, double tol, bool print) {
+double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<MatrixXx>& proj, double tol, bool print) {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
 
-  b = b- ((proj.adjoint()*b)(0,0))*proj/((proj.adjoint()*proj)(0,0));
+  for (int i=0; i<proj.size(); i++)
+    b = b- ((proj[i].adjoint()*b)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
 
   x0.setZero(x0.rows(),1);
   MatrixXx r = 1.*b, p = 1.*b;
@@ -224,7 +229,9 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, MatrixXx& p
     x0 += alpha*p;
     r -= alpha*Ap;
 
-    r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
+    for (int i=0; i<proj.size(); i++)
+      r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
+      //r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
 
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
