@@ -112,28 +112,25 @@ int main(int argc, char* argv[]) {
 
 
   //initialize L and S integrals
-  vector<oneInt> L(3), S(3);
+  vector<oneInt> LplusS(3), L(3), S(3);
   for (int i=0; i<3; i++) {
-    L[i].store.resize(norbs*norbs, 0.0); 
-    L[i].norbs = norbs;
-    
-    S[i].store.resize(norbs*norbs, 0.0); 
-    S[i].norbs = norbs;
+    LplusS[i].store.resize(norbs*norbs, 0.0); 
+    LplusS[i].norbs = norbs;
   }
   //read L integrals
-  readGTensorIntegrals(L, norbs, "GTensor");  
+  readGTensorIntegrals(LplusS, norbs, "GTensor");  
   
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
-    S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
-    S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+    LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+    LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
     
-    S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
-    S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+    LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+    LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
     
-    S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
-    S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+    LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+    LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
   std::cout.precision(15);
@@ -144,6 +141,8 @@ int main(int argc, char* argv[]) {
   initDets(ci, Dets, schd, HFoccupied);
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
 						irrep, I1, coreE, nelec, schd.DoRDM);
+
+
   
   if (!schd.stochastic) {
     Ezero = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
@@ -329,7 +328,6 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
 
   schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
   vector<MatrixXx> spinRDM(3);
-
   MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
   for (int root1 =0 ;root1<schd.nroots; root1++) {
     for (int root2=root1+1 ;root2<schd.nroots; root2++) {

@@ -48,7 +48,6 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 
 int main(int argc, char* argv[]) {
-
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
@@ -58,12 +57,12 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
   if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
-  int nelec = HFoccupied[0].size();
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
+  int nelec = HFoccupied[0].size();
 
 
   //set the random seed
@@ -270,6 +269,7 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
   SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, I1, nelec);
+  pout <<"Updated connections."<<endl;
 
   // calculate the matrix elements <S1|SOC|S2>
   for (int i=0; i<ci.size(); i++) {
@@ -291,6 +291,7 @@ int main(int argc, char* argv[]) {
   if (eigensolver.info() != Success) abort();
   for (int i=0; i<Hsubspace.rows(); i++)
     cout << "Root: "<<i<<" -> Energy: "<<eigensolver.eigenvalues()[i]<<endl;
+
 
 
   //NOW DO THE GTENSOR CALCULATION

@@ -42,6 +42,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.integralFile = "FCIDUMP";
   schd.doResponse = false;
   schd.responseFile = "RESPONSE";
+  schd.socmultiplier = 1.0;
   while (dump.good()) {
 
     std::string
@@ -109,6 +110,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.nPTiter=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon2")) 
       schd.epsilon2 = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "socmultiplier")) 
+      schd.socmultiplier = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "seed")) 
       schd.randomSeed = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "nroots")) 

@@ -31,6 +31,15 @@ namespace SOChelper {
 				 vector<Determinant>::iterator& beginSp, 
 				 vector<Determinant>::iterator& beginSm) ;
 
+    void calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, int rowIndex1, int rowIndex2,
+				 const MatrixXx& c1, const MatrixXx& c2, 
+				 vector<vector<int> >& connections,
+				 vector<vector<CItype> >& Helements, vector<MatrixXx>& Hsubspace, 
+				 vector<Determinant>& Dets, int norbs, 
+				 vector<Determinant>::iterator& beginS0, 
+				 vector<Determinant>::iterator& beginSp, 
+				 vector<Determinant>::iterator& beginSm) ;
+
     void doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, 
 		   vector<double>& E0, int norbs, int nelec);
     void doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, 

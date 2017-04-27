@@ -56,11 +56,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
     }
 
-    //int size = b.rows()*maxCopies;
-    //MPI_Bcast(&(b(0,0)), size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  //mpi::broadcast(world, b, 0);
-
-  //make vectors orthogonal to each other
+    //make vectors orthogonal to each other
     for (int i=0; i<x0.size(); i++) {  
       for (int j=0; j<i; j++) {
 	CItype overlap = (b.col(j).adjoint()*b.col(i))(0,0);
@@ -101,7 +97,11 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
       //by default the MatrixXx is column major, 
       //so all elements of bcol are contiguous
+#ifndef Complex
       MPI_Bcast(&(bcol(0,0)), b.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#else
+      mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
+#endif
       H(bcol, sigmacol);
       sigmaSize++;
     }
@@ -118,7 +118,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	  hsubspace(j,i) = hsubspace(i,j);
 #endif
 	}
-      
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
 	cout << "Eigenvalue solver unsuccessful."<<endl;
@@ -142,7 +141,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     
       r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
       double error = r.norm();
-      
       if (iter == 0)
 	pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
       if (false)

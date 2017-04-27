@@ -652,7 +652,7 @@ namespace SHCISortMpiUtils {
   void StitchDEH::resize(size_t s) {
     Det->resize(s);
     Num->resize(s);
-    Num2->resize(2);
+    Num2->resize(s);
     Energy->resize(s);
   }
 

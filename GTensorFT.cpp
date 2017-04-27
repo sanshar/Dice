@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
-
+  mpi::broadcast(world, I1, 0);
 
   //initialize L and S integrals
   vector<oneInt> L(3), S(3);
@@ -122,6 +122,7 @@ int main(int argc, char* argv[]) {
   }
   //read L integrals
   readGTensorIntegrals(L, norbs, "GTensor");  
+  mpi::broadcast(world, L, 0);
   
   //generate S integrals
   double ge = 2.002319304;
@@ -141,7 +142,7 @@ int main(int argc, char* argv[]) {
   vector<Determinant> Dets;  
 
   //the perturbation is S[i]+L[i]
-  double epsilon = 5.e-4;
+  double epsilon = 1.e-4;
 
   vector<double> fpm(6,0.0); //these are f+ and f- function evaluations
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
@@ -152,13 +153,15 @@ int main(int argc, char* argv[]) {
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
 						  irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
+    pout << ((E0[1]-E0[0])/epsilon -ge)*1e6<<"  "<<endl;
     if (!schd.stochastic) {
       fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
     }
     else 
       fpm[2*a] = pow(E0[1]-E0[0],2);
 
+    pout << (sqrt(fpm[2*a])/epsilon - ge)*1e6<<endl; exit(0);
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }

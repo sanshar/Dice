@@ -41,7 +41,8 @@ private:
       & doGtensor                               \
       & integralFile                            \
       & doResponse                              \
-      & responseFile;
+      & responseFile                            \
+      & socmultiplier;
   }
   
 public:
@@ -75,6 +76,7 @@ public:
   string integralFile;
   bool doResponse;
   string responseFile;
+  double socmultiplier;
 };
 
 #endif

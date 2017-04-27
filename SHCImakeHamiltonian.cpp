@@ -207,40 +207,46 @@ void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int pr
   for (int i=0; i<Dets.size(); i++)
     SortedDets[Dets[i]] = i;
 
+  int nprocs= mpigetsize(), proc = mpigetrank();
 
   //#pragma omp parallel for schedule(dynamic)
-  for (int x=prevSize; x<Dets.size(); x++) {
-    Determinant& d = Dets[x];
+#pragma omp parallel
+  {
 
-    vector<int> closed(nelec,0);
-    vector<int> open(norbs-nelec,0);
-    d.getOpenClosed(open, closed);
-    int nclosed = nelec;
-    int nopen = norbs-nclosed;
-
-    //loop over all single excitation and find if they are present in the list
-    //on or before the current determinant
-    for (int ia=0; ia<nopen*nclosed; ia++){
-      int i=ia/nopen, a=ia%nopen;
-
-      CItype integral = int1(open[a],closed[i]);
-      if (abs(integral) < 1.e-8) continue;
-
-      Determinant di = d;
-      if (open[a]%2 == closed[i]%2 && !includeSz) continue;
-
-      di.setocc(open[a], true); di.setocc(closed[i],false);
-      double sgn = 1.0;
-      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-
-
-      map<Determinant, int>::iterator it = SortedDets.find(di);
-      if (it != SortedDets.end() ) {
-	int y = it->second;
-	if (y < x) {
-	  connections[x].push_back(y);
-	  Helements[x].push_back(integral*sgn);
-	  orbDifference[x].push_back(open[a]*norbs+closed[i]);
+    for (int x=prevSize; x<Dets.size(); x++) {
+      if (x%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+      Determinant& d = Dets[x];
+      
+      vector<int> closed(nelec,0);
+      vector<int> open(norbs-nelec,0);
+      d.getOpenClosed(open, closed);
+      int nclosed = nelec;
+      int nopen = norbs-nclosed;
+      
+      //loop over all single excitation and find if they are present in the list
+      //on or before the current determinant
+      for (int ia=0; ia<nopen*nclosed; ia++){
+	int i=ia/nopen, a=ia%nopen;
+	
+	CItype integral = int1(open[a],closed[i]);
+	if (abs(integral) < 1.e-8) continue;
+	
+	Determinant di = d;
+	if (open[a]%2 == closed[i]%2 && !includeSz) continue;
+	
+	di.setocc(open[a], true); di.setocc(closed[i],false);
+	double sgn = 1.0;
+	d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+	
+	
+	map<Determinant, int>::iterator it = SortedDets.find(di);
+	if (it != SortedDets.end() ) {
+	  int y = it->second;
+	  if (y < x) {
+	    connections[x].push_back(y);
+	    Helements[x].push_back(integral*sgn);
+	    orbDifference[x].push_back(open[a]*norbs+closed[i]);
+	  }
 	}
       }
     }

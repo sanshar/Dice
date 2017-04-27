@@ -54,7 +54,6 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
-
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
@@ -127,8 +126,10 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 #else
-  if (schd.doSOC) 
+  if (schd.doSOC) {
     readSOCIntegrals(I1, norbs, "SOC");
+    mpi::broadcast(world, I1, 0);
+  }
 #endif
 
 
@@ -213,10 +214,10 @@ int main(int argc, char* argv[]) {
 
 
   if (schd.doSOC && !schd.stochastic) { //deterministic SOC calculation
-    cout << "About to perform Perturbation theory"<<endl;
+    pout << "About to perform Perturbation theory"<<endl;
     if (schd.doGtensor) {
-      cout << "Gtensor calculation not supported with deterministic PT for more than 2 roots."<<endl;
-      cout << "Just performing the ZFS calculations."<<endl;
+      pout << "Gtensor calculation not supported with deterministic PT for more than 2 roots."<<endl;
+      pout << "Just performing the ZFS calculations."<<endl;
     }
     MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
 
@@ -238,7 +239,7 @@ int main(int argc, char* argv[]) {
     SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
     for (int j=0; j<eigensolver.eigenvalues().rows(); j++) {
       E0[j] = eigensolver.eigenvalues()(j,0);
-      cout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(eigensolver.eigenvalues()(j,0)) %( (eigensolver.eigenvalues()(j,0)-eigensolver.eigenvalues()(0,0))*219470));
+      pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(eigensolver.eigenvalues()(j,0)) %( (eigensolver.eigenvalues()(j,0)-eigensolver.eigenvalues()(0,0))*219470));
     }
 
     std::string efile;
@@ -251,7 +252,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef Complex
     SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-    return;
+    return 0;
 #endif
   }
   
@@ -310,6 +311,9 @@ int main(int argc, char* argv[]) {
 
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, 0);
+    mpi::broadcast(world, s2RDM,0);
+    if (schd.DoSpinRDM) mpi::broadcast(world, twoRDM, 0);
+    if (mpigetrank() != 0) s2RDM = 0.0*s2RDM;
     MatrixXx s2RDMcopy = 0.0*s2RDM, twoRDMcopy;
     if (schd.DoSpinRDM) twoRDMcopy = 0.*twoRDM;
 

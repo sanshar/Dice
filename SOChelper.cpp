@@ -105,6 +105,10 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 
   //read L integrals
   readGTensorIntegrals(L, norbs, "GTensor");  
+#ifndef SERIAL
+  boost::mpi::communicator world;
+  boost::mpi::broadcast(world, L, 0);
+#endif
 
   //generate S integrals
   double ge = 2.002319304;
@@ -136,10 +140,10 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 	Intermediate[a](0,1) += (LplusS[a](i,j))*spinRDM[2](i,j);
       }
     Intermediate[a](1,0) = conj(Intermediate[a](0,1));
-    cout <<a<<endl<< Intermediate[a]<<endl<<endl;
+    pout <<a<<endl<< Intermediate[a]<<endl<<endl;
     SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[a]);
     if (eigensolver.info() != Success) abort();
-    cout << a<<"  "<<eigensolver.eigenvalues()[0]-eigensolver.eigenvalues()[1]<<endl;
+    pout << a<<"  "<<((eigensolver.eigenvalues()[1]-eigensolver.eigenvalues()[0])-ge)*1e6<<endl;
   }
   
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
@@ -148,13 +152,13 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
 
-  cout << Gtensor<<endl;
+  pout << Gtensor<<endl;
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
-  cout <<endl<< "Gtensor eigenvalues"<<endl;
-  cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
-  cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
-  cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
+  pout <<endl<< "Gtensor eigenvalues"<<endl;
+  pout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
+  pout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
+  pout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
   
 }
 
@@ -354,6 +358,80 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
 	Hsubspace(rowIndex1 + (-Sz1+spin1)/2, rowIndex2 + (-Sz2+spin2)/2) += RME[ (Mop+2)/2]*cg;
 	if (rowIndex1 != rowIndex2 )
 	  Hsubspace(rowIndex2 + (-Sz2+spin2)/2, rowIndex1 + (-Sz1+spin1)/2) += conj(RME[(Mop+2)/2]*cg);
+      }
+    }
+  return;
+}
+
+
+void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, int rowIndex1, int rowIndex2,
+						  const MatrixXx& c1, const MatrixXx& c2, vector<vector<int> >& connections,
+						  vector<vector<CItype> >& Helements, vector<MatrixXx>& Hsubspace, 
+						  vector<Determinant>& Dets, int norbs, 
+						  vector<Determinant>::iterator& beginS0, 
+						  vector<Determinant>::iterator& beginSp, 
+						  vector<Determinant>::iterator& beginSm) {
+  
+  Hmult2 H(connections, Helements);
+
+  int orbM = 0;
+  vector<CItype> RME (3,0.0);
+  int Sz2list [3] = {Sz, Sz+2, Sz-2};
+  int Sz1list [3] = {Sz, Sz+2, Sz-2};
+  int Jop = 2;
+  for (int Mop = -2; Mop<=2; Mop+=2) {
+
+    for (int ij=0; ij<9; ij++) { //Sz2 Sz1
+      int i=ij/3, j = ij%3;
+
+      int Sz2 = Sz2list[i];
+      int Sz1 = Sz1list[j];
+      if (Sz2 > spin2 || Sz2 <-spin2) continue;
+      if (Sz1 > spin1 || Sz1 <-spin1) continue;
+      double cg = clebsch(spin2, Sz2, Jop, Mop, spin1, Sz1) ;
+
+      if (abs(cg) < 1.e-8) continue;
+
+      MatrixXx c2extended = MatrixXx::Zero(Dets.size(), 1);
+      MatrixXx c1extended = MatrixXx::Zero(Dets.size(), 1);
+      MatrixXx Hc2 = MatrixXx::Zero(Dets.size(), 1);
+      if (i == 0) {
+	c2extended.block(0,0,c2.rows(),1) = 1.*c2;
+      }
+      else if (i==1) {
+	getSplus(c2, c2extended, Dets, beginS0, beginSp, beginSm, norbs);
+      }
+      else if (i == 2) {
+	getSminus(c2, c2extended, Dets, beginS0, beginSp, beginSm, norbs);
+      }
+
+      if (j == 0) {
+	c1extended.block(0,0,c1.rows(),1) = 1.*c1;
+      }
+      else if (j==1) {
+	getSplus(c1, c1extended, Dets, beginS0, beginSp, beginSm, norbs);
+      }
+      else if (j == 2) {
+	getSminus(c1, c1extended, Dets, beginS0, beginSp, beginSm, norbs);
+      }
+
+      H(c2extended, Hc2);
+      CItype element = (c1extended.adjoint()*Hc2)(0,0)/c2extended.norm()/c1extended.norm();
+      RME[ (Mop+2)/2] = element/cg;
+      break;
+    }//for ij Sz1 Sz2
+  }//Mop
+
+  //now populate all elements of hsubspace
+  for (int Sz1 = -spin1; Sz1 <=spin1; Sz1+=2)
+    for (int Sz2 = -spin2; Sz2 <=spin2; Sz2+=2) {
+      for (int Mop = -2; Mop<=2; Mop+=2) {
+	double cg = clebsch(spin2, Sz2, Jop, Mop, spin1, Sz1);
+	Hsubspace[(Mop+2)/2](rowIndex1 + (-Sz1+spin1)/2, 
+			     rowIndex2 + (-Sz2+spin2)/2) += RME[ (Mop+2)/2]*cg;
+	if (rowIndex1 != rowIndex2 )
+	  Hsubspace[(Mop+2)/2](rowIndex2 + (-Sz2+spin2)/2, 
+			       rowIndex1 + (-Sz1+spin1)/2) += conj(RME[(Mop+2)/2]*cg);
       }
     }
   return;

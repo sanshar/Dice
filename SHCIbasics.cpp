@@ -775,6 +775,13 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
+    mpi::broadcast(world, s2RDM, 0);
+    if (schd.DoSpinRDM) 
+      mpi::broadcast(world, twoRDM, 0);
+    if (mpigetrank() != 0) {
+      s2RDM = 0.*s2RDM;
+      twoRDM = 0.*twoRDM;
+    }
     SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE, 
 							nelec, norbs, uniqueDEH, root, Psi1Norm,
 							s2RDM, twoRDM); 
@@ -830,7 +837,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
   std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
   CItype totalPT1 = 0.0, totalPT2=0., totalPT12=0.;
-  int ntries = 0;
+  int ntries = 1;
 
 #pragma omp parallel
   {
@@ -853,7 +860,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
       if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
-      //if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
       for (int proc=0; proc<mpigetsize(); proc++) {
@@ -863,8 +869,10 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
       }
 
-      if (omp_get_thread_num()==0 ) {
+      if (omp_get_thread_num()==0) {
 	ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1;
+	if (mpigetsize() == 1)
+	  ntries = 1;
 	mpi::broadcast(world, ntries, 0);
       }
 #pragma omp barrier
@@ -875,7 +883,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
         size_t start = (ntries-1-tries)*batchsize;
         size_t end   = tries==0 ? uniqueDEH[omp_get_thread_num()].Det->size() : (ntries-tries)*batchsize;
-
 	for (size_t j=start; j<end; j++) {
 	  size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
 	  size_t procThrd = lOrder%(mpigetsize()*num_thrds);
@@ -888,7 +895,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 	uniqueDEH[omp_get_thread_num()].resize(start);
 
-	//if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
@@ -909,10 +915,10 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	}
 
 
-	//if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
 
 	for (int proc=0; proc<mpigetsize(); proc++) {
 	  for (int thrd=0; thrd<num_thrds; thrd++) {
+
 	    for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
 	      uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
 	      uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
@@ -947,7 +953,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
     for (size_t i=0; i<hasHEDDets.size();i++) {
       PTEnergy1 += pow(abs(hasHEDNumerator[i]),2)/(E01-hasHEDEnergy[i]);
-      PTEnergy12 += conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E01-hasHEDEnergy[i]);
+      PTEnergy12 += 0.5*(conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E01-hasHEDEnergy[i])+conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E02-hasHEDEnergy[i]));
       PTEnergy2 += pow(abs(hasHEDNumerator2[i]),2)/(E02-hasHEDEnergy[i]);
     }
 #pragma omp critical
@@ -966,61 +972,102 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
 
   if (schd.doGtensor && true) {//DON'T PERFORM doGtensor
-    for (int thrd=0; thrd<num_thrds; thrd++) {
-      vector<Determinant>& hasHEDDets = *uniqueDEH[thrd].Det;
-      vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
-      vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
-      vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
 
-
-      map<Determinant, int> SortedDets;
-      for (int i=0; i<hasHEDDets.size(); i++)
-	SortedDets[hasHEDDets[i]] = i;
-
-      for (int x=0; x<Dets.size(); x++) {
-	Determinant& d = Dets[x];
-      
-	vector<int> closed(nelec,0);
-	vector<int> open(norbs-nelec,0);
-	d.getOpenClosed(open, closed);
-	int nclosed = nelec;
-	int nopen = norbs-nclosed;
-      
-
-	for (int ia=0; ia<nopen*nclosed; ia++){
-	  int i=ia/nopen, a=ia%nopen;
-	  
-	  Determinant di = d;
-	  di.setocc(open[a], true); di.setocc(closed[i],false);
-
-
-	  map<Determinant, int>::iterator it = SortedDets.find(di);
-	  if (it != SortedDets.end() ) {
-	    double sgn = 1.0;
-	    d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-	    int y = it->second;
-	    //states "a" and "b"
-	    //"0" order and "1" order corrections
-	    //in all 4 states "0a" "1a"  "0b"  "1b"
-	    CItype complex1 = 1.0*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0a>
-	    CItype complex2 = 1.0*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn); //<1b|v|0b>
-	    CItype complex12= 1.0*( conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0b>
-	    CItype complex12b= 1.0*( conj(ci1(x,0))*hasHEDNumerator2[y]/(E02-hasHEDEnergy[y])*sgn);//<0a|v|1b>
-	    spinRDM[0](open[a], closed[i]) += complex1;
-	    spinRDM[1](open[a], closed[i]) += complex2;
-	    spinRDM[2](open[a], closed[i]) += complex12; 
-
-	    spinRDM[0](closed[i], open[a]) += conj(complex1);
-	    spinRDM[1](closed[i], open[a]) += conj(complex2);
-	    spinRDM[2](closed[i], open[a]) += complex12b;
-
-	  }
-	}
-      }
-      
-      
+    if (mpigetrank() != 0) {
+      spinRDM[0].setZero(spinRDM[0].rows(), spinRDM[0].cols());
+      spinRDM[1].setZero(spinRDM[1].rows(), spinRDM[1].cols());
+      spinRDM[2].setZero(spinRDM[2].rows(), spinRDM[2].cols());
     }
 
+    vector< vector<MatrixXx> > spinRDM_thrd(num_thrds, vector<MatrixXx>(3));
+#pragma omp parallel
+    {
+      for (int thrd=0; thrd<num_thrds; thrd++) {
+	if (thrd != omp_get_thread_num()) continue;
+
+	spinRDM_thrd[thrd][0].setZero(spinRDM[0].rows(), spinRDM[0].cols());
+	spinRDM_thrd[thrd][1].setZero(spinRDM[1].rows(), spinRDM[1].cols());
+	spinRDM_thrd[thrd][2].setZero(spinRDM[2].rows(), spinRDM[2].cols());
+
+	vector<Determinant>& hasHEDDets = *uniqueDEH[thrd].Det;
+	vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
+	vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
+	vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
+	
+	
+	for (int x=0; x<Dets.size(); x++) {
+	  Determinant& d = Dets[x];
+	  
+	  vector<int> closed(nelec,0);
+	  vector<int> open(norbs-nelec,0);
+	  d.getOpenClosed(open, closed);
+	  int nclosed = nelec;
+	  int nopen = norbs-nclosed;
+	  
+	  
+	  for (int ia=0; ia<nopen*nclosed; ia++){
+	    int i=ia/nopen, a=ia%nopen;
+	    
+	    Determinant di = d;
+	    di.setocc(open[a], true); di.setocc(closed[i],false);
+	    
+	    
+	    auto lower = std::lower_bound(hasHEDDets.begin(), hasHEDDets.end(), di);
+	    //map<Determinant, int>::iterator it = SortedDets.find(di);
+	    if (di == *lower ) {
+	      double sgn = 1.0;
+	      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+	      int y = distance(hasHEDDets.begin(), lower);
+	      //states "a" and "b"
+	      //"0" order and "1" order corrections
+	      //in all 4 states "0a" "1a"  "0b"  "1b"
+	      CItype complex1 = 1.0*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0a>
+	      CItype complex2 = 1.0*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn); //<1b|v|0b>
+	      CItype complex12= 1.0*( conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0b>
+	      CItype complex12b= 1.0*( conj(ci1(x,0))*hasHEDNumerator2[y]/(E02-hasHEDEnergy[y])*sgn);//<0a|v|1b>
+
+	      spinRDM_thrd[thrd][0](open[a], closed[i]) += complex1;
+	      spinRDM_thrd[thrd][1](open[a], closed[i]) += complex2;
+	      spinRDM_thrd[thrd][2](open[a], closed[i]) += complex12; 
+	      
+	      spinRDM_thrd[thrd][0](closed[i], open[a]) += conj(complex1);
+	      spinRDM_thrd[thrd][1](closed[i], open[a]) += conj(complex2);
+	      spinRDM_thrd[thrd][2](closed[i], open[a]) += complex12b;
+
+	      /*
+	      spinRDM[0](open[a], closed[i]) += complex1;
+	      spinRDM[1](open[a], closed[i]) += complex2;
+	      spinRDM[2](open[a], closed[i]) += complex12; 
+	      
+	      spinRDM[0](closed[i], open[a]) += conj(complex1);
+	      spinRDM[1](closed[i], open[a]) += conj(complex2);
+	      spinRDM[2](closed[i], open[a]) += complex12b;
+	      */
+	    }
+	  }
+	}
+	
+	
+      }
+    }
+
+    for (int thrd=0; thrd<num_thrds; thrd++) {
+    spinRDM[0] += spinRDM_thrd[thrd][0];
+    spinRDM[1] += spinRDM_thrd[thrd][1];
+    spinRDM[2] += spinRDM_thrd[thrd][2];
+    }
+
+#ifndef SERIAL
+#ifndef Complex
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>()); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>()); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>()); 
+#else
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex); 
+#endif
+#endif
   }
 }
 
@@ -1219,7 +1266,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
 
 #ifndef SERIAL
+#ifndef Complex
     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex); 
+#endif
 #endif
 
     for (size_t i=SortedDets.size(); i<Dets.size(); i++)
