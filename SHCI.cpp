@@ -300,27 +300,22 @@ int main(int argc, char* argv[]) {
       load >> connections >> Helements >> orbDifference;
     }
 
+
     Hmult2 H(connections, Helements);
     LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
-
-    MatrixXx cL = 0.*lambda[0];
-    H(lambda[0], cL);
-
-    //now read the response integrals
-    //readIntegrals(schd.responseFile, I2, I1, nelec, norbs, coreE, irrep);    
+    mpi::broadcast(world, lambda[0], 0);
 
     MatrixXx s2RDM, twoRDM;
-    SHCIrdm::loadRDM(schd, s2RDM, twoRDM, 0);
-    mpi::broadcast(world, s2RDM,0);
-    if (schd.DoSpinRDM) mpi::broadcast(world, twoRDM, 0);
-    if (mpigetrank() != 0) s2RDM = 0.0*s2RDM;
-    MatrixXx s2RDMcopy = 0.0*s2RDM, twoRDMcopy;
-    if (schd.DoSpinRDM) twoRDMcopy = 0.*twoRDM;
+    s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
+    if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+    SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
 
-    SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDMcopy, s2RDMcopy);
-
-    s2RDM = s2RDM + s2RDMcopy.adjoint() + s2RDMcopy;
-    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, 0);
+    if (mpigetrank() == 0) {
+      MatrixXx s2RDMdisk, twoRDMdisk;
+      SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+      s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
+      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+    }
     //cout <<" response "; 
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }

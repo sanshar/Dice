@@ -363,7 +363,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
-    if ((i/num_thrds)%world.size() != world.rank()) continue;
+    if (i%world.size() != world.rank()) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);

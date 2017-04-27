@@ -222,6 +222,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
   int iter = 0;
   while (true) {
     MatrixXx Ap = 0.*p; H(p,Ap);
+    mpi::broadcast(world, Ap, 0);
     Ap = Ap - E0*p; //H0-E0
     CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
     x0 += alpha*p;
@@ -234,7 +235,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
     if (false)
-      pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
+      cout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) { 
       p.setZero(p.rows(),1); H(x0,p); p -=b; 
       return abs(ept);

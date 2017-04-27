@@ -772,7 +772,6 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 
   if (schd.doResponse || schd.DoRDM) { //build RHS for the lambda equation
-
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
     mpi::broadcast(world, s2RDM, 0);
@@ -786,12 +785,11 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 							nelec, norbs, uniqueDEH, root, Psi1Norm,
 							s2RDM, twoRDM); 
     SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
-
     //construct the vector Via x da
     //where Via is the perturbation matrix element
     //da are the elements of the PT wavefunctions
-    for (int thrd=0; thrd <omp_get_num_threads(); thrd++) {
-      vdVector[root]= MatrixXx::Zero(Dets.size(),1);
+    vdVector[root]= MatrixXx::Zero(Dets.size(),1);
+    for (int thrd=0; thrd <num_thrds; thrd++) {
       vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
       vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
       vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
@@ -805,8 +803,11 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
 	}
       }
-    }
-
+    } 
+   
+    MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(), 
+		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+ 
   }
 
   return finalE;
