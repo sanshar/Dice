@@ -70,6 +70,7 @@ int main(int argc, char* argv[]) {
   //set the random seed
   startofCalc=getTime();
   srand(schd.randomSeed+world.rank());
+  //srand(schd.randomSeed+world.rank());
   if (mpigetrank()==0) cout<<"#using seed: "<<schd.randomSeed<<endl;
 
 
@@ -273,8 +274,8 @@ int main(int argc, char* argv[]) {
   }
   else if (schd.SampleN != -1 && schd.singleList ){
     for (int root=0; root<schd.nroots && schd.nPTiter != 0;root++) 
-      //SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
-      SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      //SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       //SHCIbasics::DoPerturbativeStochastic2SingleList(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
   }
   else { 
@@ -282,11 +283,10 @@ int main(int argc, char* argv[]) {
     boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
     cout << "Error here"<<endl;
     exit(0);
-    //Here I will implement the alias method
-    //SHCIbasics::DoPerturbativeStochastic2(Dets, ci[0], E0[0], I1, I2, I2HB, irrep, schd, coreE, nelec);
   }
 
-  //read the integrals
+
+  //THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
   if ((schd.doResponse || schd.DoRDM) && (!schd.stochastic && schd.nblocks==1)) {
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
     std::vector<std::vector<int> > connections;

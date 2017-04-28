@@ -430,7 +430,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
 }
 
 
-void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<double>& numerator2A, vector<char>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
+void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<CItype>& numerator2A, vector<char>& present, std::vector<double>& energy, schedule& schd, int Nmc, int nelec) {
 
   double Nmcd = 1.*Nmc;
   int norbs = d.norbs;

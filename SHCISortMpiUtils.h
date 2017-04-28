@@ -56,13 +56,14 @@ namespace SHCISortMpiUtils {
    friend class boost::serialization::access;
    template<class Archive>
      void serialize(Archive & ar, const unsigned int version) {
-     ar & Det & Num & Num2 & Energy & var_indices & orbDifference;
+     ar & Det & Num & Num2 & present & Energy & var_indices & orbDifference;
    }
    
  public:
    boost::shared_ptr<vector<Determinant> > Det;
    boost::shared_ptr<vector<CItype> > Num;       //the numerator for the first Var state
    boost::shared_ptr<vector<CItype> > Num2;      //the numberator for the second Var state (if present)
+   boost::shared_ptr<vector<char> > present;      //the numberator for the second Var state (if present)
    boost::shared_ptr<vector<double> > Energy;
    
    //the next two store information about where a determinant in "C" arose from
@@ -82,6 +83,7 @@ namespace SHCISortMpiUtils {
    StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 	     boost::shared_ptr<vector<CItype> >pNum,
 	     boost::shared_ptr<vector<CItype> >pNum2,
+	     boost::shared_ptr<vector<char> >present,
 	     boost::shared_ptr<vector<double> >pE,
 	     boost::shared_ptr<vector<vector<int> > >pvar,
 	     boost::shared_ptr<vector<vector<size_t> > >porb,
@@ -91,9 +93,11 @@ namespace SHCISortMpiUtils {
    StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 	     boost::shared_ptr<vector<CItype> >pNum,
 	     boost::shared_ptr<vector<CItype> >pNum2,
+	     boost::shared_ptr<vector<char> >present,
 	     boost::shared_ptr<vector<double> >pE);
    
    void QuickSortAndRemoveDuplicates() ;
+   void MergeSort() ;
    void MergeSortAndRemoveDuplicates() ;
    void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets);
    void RemoveDuplicates();

@@ -43,6 +43,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.doResponse = false;
   schd.responseFile = "RESPONSE";
   schd.socmultiplier = 1.0;
+  schd.targetError = 1.e-4;
   while (dump.good()) {
 
     std::string
@@ -102,6 +103,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
     else if (boost::iequals(ArgName, "dogtensor")) 
       schd.doGtensor=true;
+    else if (boost::iequals(ArgName, "targetError")) 
+      schd.targetError=atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "orbitals")) 
       schd.integralFile = tok[1];
     else if (boost::iequals(ArgName, "dosocqdpt")) 
@@ -193,5 +196,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 
   if (schd.prefix.size() == 0)
     schd.prefix.push_back(".");
+  if (schd.stochastic == false && schd.DoRDM) {
+    schd.DoRDM = false;
+    cout << "We cannot perform PT RDM with stochastic PT. Disabling RDM."<<endl;
+  }
 }
 

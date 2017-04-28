@@ -42,7 +42,8 @@ private:
       & integralFile                            \
       & doResponse                              \
       & responseFile                            \
-      & socmultiplier;
+      & socmultiplier                           \
+      & targetError;
   }
   
 public:
@@ -77,6 +78,7 @@ public:
   bool doResponse;
   string responseFile;
   double socmultiplier;
+  double targetError;
 };
 
 #endif

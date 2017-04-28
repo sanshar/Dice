@@ -296,6 +296,7 @@ namespace SHCISortMpiUtils {
     Det = boost::shared_ptr<vector<Determinant> > (new vector<Determinant>() );
     Num = boost::shared_ptr<vector<CItype> > (new vector<CItype>() );
     Num2 = boost::shared_ptr<vector<CItype> > (new vector<CItype>() );
+    present = boost::shared_ptr<vector<char> > (new vector<char>() );
     Energy = boost::shared_ptr<vector<double> > (new vector<double>() );
     extra_info = false;
     var_indices = boost::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
@@ -307,13 +308,13 @@ namespace SHCISortMpiUtils {
   StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 		       boost::shared_ptr<vector<CItype> >pNum,
 		       boost::shared_ptr<vector<CItype> >pNum2,
+		       boost::shared_ptr<vector<char> >ppresent,
 		       boost::shared_ptr<vector<double> >pE,
 		       boost::shared_ptr<vector<vector<int> > >pvar,
 		       boost::shared_ptr<vector<vector<size_t> > >porb,
 		       boost::shared_ptr<vector<int > >pvar_beforeMerge,
 		       boost::shared_ptr<vector<size_t > >porb_beforeMerge)
-    : Det(pD), Num(pNum), Num2(pNum2), Energy(pE), var_indices(pvar), orbDifference(porb),\
-    var_indices_beforeMerge(pvar_beforeMerge), orbDifference_beforeMerge(porb_beforeMerge)
+    : Det(pD), Num(pNum), Num2(pNum2), present(ppresent), Energy(pE), var_indices(pvar), orbDifference(porb), var_indices_beforeMerge(pvar_beforeMerge), orbDifference_beforeMerge(porb_beforeMerge)
   {
     extra_info=true;
   };
@@ -321,8 +322,9 @@ namespace SHCISortMpiUtils {
   StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 		       boost::shared_ptr<vector<CItype> >pNum,
 		       boost::shared_ptr<vector<CItype> >pNum2,
+		       boost::shared_ptr<vector<char> >ppresent,
 		       boost::shared_ptr<vector<double> >pE)
-    : Det(pD), Num(pNum), Num2(pNum2), Energy(pE)
+    : Det(pD), Num(pNum), Num2(pNum2), present(ppresent), Energy(pE)
   {
     extra_info=false;
   };
@@ -380,6 +382,64 @@ namespace SHCISortMpiUtils {
     }
   }
 
+  void StitchDEH::MergeSort() {
+    std::vector<Determinant> Detcopy = *Det;
+
+    std::vector<long> detIndex(Detcopy.size(),0);
+    std::vector<long> detIndexcopy(Detcopy.size(),0);
+
+    for (size_t i=0; i<Detcopy.size(); i++)
+      detIndex[i] = i;
+    mergesort(&Detcopy[0], 0, Detcopy.size()-1, &detIndex[0], &( Det->operator[](0)), &detIndexcopy[0]);
+    detIndexcopy.clear();
+
+    bool varIndicesEmtpy = var_indices->size() == 0 ? true : false;
+
+    if (Det->size() <= 1) return;
+    reorder(*Num, detIndex);
+    if (Num2->size() != 0)
+      reorder(*Num2, detIndex);
+    if (present->size() != 0)
+      reorder(*present, detIndex);
+    reorder(*Energy, detIndex);
+    if (extra_info) {
+      if (varIndicesEmtpy) {
+	reorder(*var_indices_beforeMerge, detIndex);
+	reorder(*orbDifference_beforeMerge, detIndex);
+      }
+      else {
+	vector<vector<int> > Vcopy = *var_indices;
+	for (int i=0; i<Vcopy.size(); i++) {
+	  var_indices->at(i).clear();
+	  var_indices->at(i).insert(var_indices->at(i).end(), Vcopy[detIndex[i]].begin(), Vcopy[detIndex[i]].end());
+	}
+	Vcopy.clear();
+	vector<vector<size_t> > Ocopy = *orbDifference;
+	for (int i=0; i<Ocopy.size(); i++) {
+	  orbDifference->at(i).clear();
+	  orbDifference->at(i).insert(orbDifference->at(i).end(), Ocopy[detIndex[i]].begin(), Ocopy[detIndex[i]].end());
+	}
+	Ocopy.clear();
+      }
+
+    }
+    detIndex.clear();
+
+    std::vector<std::vector<int> >& Vcopy = *var_indices;
+    std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
+
+    size_t uniqueSize = 0;
+
+    if (extra_info) {
+
+      if (varIndicesEmtpy) {
+	var_indices->push_back(std::vector<int>(1,var_indices_beforeMerge->at(0)));
+	orbDifference->push_back(std::vector<size_t>(1,orbDifference_beforeMerge->at(0)));
+      }
+    }
+
+  }
+
   void StitchDEH::MergeSortAndRemoveDuplicates() {
     std::vector<Determinant> Detcopy = *Det;
 
@@ -397,6 +457,8 @@ namespace SHCISortMpiUtils {
     reorder(*Num, detIndex);
     if (Num2->size() != 0)
       reorder(*Num2, detIndex);
+    if (present->size() != 0)
+      reorder(*present, detIndex);
     reorder(*Energy, detIndex);
     if (extra_info) {
       if (varIndicesEmtpy) {
@@ -442,6 +504,8 @@ namespace SHCISortMpiUtils {
 	  Num->operator[](uniqueSize) = Num->at(i);
 	  if (Num2->size() != 0)
 	    Num2->operator[](uniqueSize) = Num2->at(i);
+	  if (present->size() != 0)
+	    present->operator[](uniqueSize) = present->at(i);
 	  Energy->operator[](uniqueSize) = Energy->at(i);
 	  if (extra_info) {
 	    var_indices->push_back(std::vector<int>(1,var_indices_beforeMerge->at(i)));
@@ -454,6 +518,8 @@ namespace SHCISortMpiUtils {
 	  Num->operator[](uniqueSize) += Num->at(i);
 	  if (Num2->size() != 0)
 	    Num2->operator[](uniqueSize) += Num2->at(i);
+	  if (present->size() != 0)
+	    present->operator[](uniqueSize) = present->at(i);
 	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10) {
 	    cout << uniqueSize<<"  "<<i<<"  "<<endl;
 	    cout << Detcopy[i]<<endl;
@@ -478,6 +544,8 @@ namespace SHCISortMpiUtils {
 	  Num->operator[](uniqueSize) = Num->at(i);
 	  if (Num2->size() != 0)
 	    Num2->operator[](uniqueSize) = Num2->at(i);
+	  if (present->size() != 0)
+	    present->operator[](uniqueSize) = present->at(i);
 	  Energy->operator[](uniqueSize) = Energy->at(i);
 	  if (extra_info) {
 	    var_indices->operator[](uniqueSize) = Vcopy[i];
@@ -488,6 +556,8 @@ namespace SHCISortMpiUtils {
 	  Num->operator[](uniqueSize) += Num->at(i);
 	  if (Num2->size() != 0)
 	    Num2->operator[](uniqueSize) += Num2->at(i);
+	  if (present->size() != 0)
+	    present->operator[](uniqueSize) = present->at(i);
 	  if (extra_info) {
 	    for (size_t k=0; k<Vcopy[i].size(); k++) {
 	      (*var_indices)[uniqueSize].push_back(Vcopy[i][k]);
@@ -506,6 +576,8 @@ namespace SHCISortMpiUtils {
     Num->resize(uniqueSize+1);
     if (Num2->size() != 0)
       Num2->resize(uniqueSize+1);
+    if (present->size() != 0)
+      present->resize(uniqueSize+1);
     Energy->resize(uniqueSize+1);
     if (extra_info) {
       var_indices->resize(uniqueSize+1);
@@ -519,6 +591,7 @@ namespace SHCISortMpiUtils {
     std::vector<Determinant>& Detcopy = *Det;
     std::vector<CItype>& Numcopy = *Num;
     std::vector<CItype>& Num2copy = *Num2;
+    std::vector<char>& presentcopy = *present;
     std::vector<double>& Ecopy = *Energy;
     //if (extra_info) {
     std::vector<std::vector<int> >& Vcopy = *var_indices;
@@ -532,6 +605,8 @@ namespace SHCISortMpiUtils {
 	Num->operator[](uniqueSize) = Numcopy[i];
 	if (Num2->size() != 0)
 	  Num2->operator[](uniqueSize) = Num2copy[i];
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = presentcopy[i];
 	Energy->operator[](uniqueSize) = Ecopy[i];
 	if (extra_info) {
 	  var_indices->operator[](uniqueSize) = Vcopy[i];
@@ -546,6 +621,8 @@ namespace SHCISortMpiUtils {
 	Num->operator[](uniqueSize) = Numcopy[i];
 	if (Num2->size() != 0)
 	  Num2->operator[](uniqueSize) = Num2copy[i];
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = presentcopy[i];
 	Energy->operator[](uniqueSize) = Ecopy[i];
 	if (extra_info) {
 	  var_indices->operator[](uniqueSize) = Vcopy[i];
@@ -560,6 +637,8 @@ namespace SHCISortMpiUtils {
     Det->resize(uniqueSize); Num->resize(uniqueSize); 
     if (Num2->size() != 0)
       Num2->resize(uniqueSize); 
+    if (present->size() != 0)
+      present->resize(uniqueSize);//operator[](uniqueSize) = presentcopy->at(i);
     Energy->resize(uniqueSize);
     if (extra_info) {
       var_indices->resize(uniqueSize); orbDifference->resize(uniqueSize);
@@ -585,6 +664,8 @@ namespace SHCISortMpiUtils {
 	Num->operator[](uniqueSize) = Numcopy[i];
 	if (Num2->size() != 0)
 	  Num2->operator[](uniqueSize) = Num2->operator[](i);
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = present->at(i);
 	Energy->operator[](uniqueSize) = Ecopy[i];
 	if (extra_info) {
 	  var_indices->operator[](uniqueSize) = Vcopy[i];
@@ -596,6 +677,8 @@ namespace SHCISortMpiUtils {
 	if (Num2->size() != 0)
 	  Num2->operator[](uniqueSize) += Num2->operator[](i);
 	//Num2->operator[](uniqueSize) += Num2copy[i];
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = present->at(i);
 	if (extra_info) {
 	  for (size_t k=0; k<(*var_indices)[i].size(); k++) {
 	    (*var_indices)[uniqueSize].push_back((*var_indices)[i][k]);
@@ -608,6 +691,8 @@ namespace SHCISortMpiUtils {
     Num->resize(uniqueSize+1);
     if (Num2->size() != 0)
       Num2->resize(uniqueSize+1);
+    if (present->size() != 0)
+      present->resize(uniqueSize+1);//operator[](uniqueSize) = present->at(i);
     Energy->resize(uniqueSize+1);
     if (extra_info) {
       var_indices->resize(uniqueSize+1);
@@ -620,6 +705,8 @@ namespace SHCISortMpiUtils {
     *Num = *(s.Num);
     if (s.Num2->size() != 0)
       *Num2 = *(s.Num2);
+    if (s.present->size() != 0)
+      *present = *(s.present);
     *Energy = *(s.Energy);
     if (extra_info) {
       *var_indices = *(s.var_indices);
@@ -631,6 +718,7 @@ namespace SHCISortMpiUtils {
     Det = s.Det;
     Num = s.Num;
     Num2 = s.Num2;
+    present = s.present;
     Energy = s.Energy;
     if (extra_info) {
       var_indices = s.var_indices;
@@ -642,6 +730,7 @@ namespace SHCISortMpiUtils {
     Det->clear();
     Num->clear();
     Num2->clear();
+    present->clear();
     Energy->clear();
     if (extra_info) {
       var_indices->clear();
@@ -653,6 +742,7 @@ namespace SHCISortMpiUtils {
     Det->resize(s);
     Num->resize(s);
     Num2->resize(s);
+    present->resize(s);
     Energy->resize(s);
   }
 
@@ -661,6 +751,7 @@ namespace SHCISortMpiUtils {
     std::vector<Determinant> Detcopy = *Det;
     std::vector<CItype> Numcopy = *Num;
     std::vector<CItype> Num2copy = *Num2;
+    std::vector<char> presentcopy = *present;    
     std::vector<double> Ecopy = *Energy;
     //if (extra_info) {
     std::vector<std::vector<int> > Vcopy = *var_indices;
@@ -670,6 +761,7 @@ namespace SHCISortMpiUtils {
     Det->resize(Detcopy.size()+s.Det->size());
     Num->resize(Numcopy.size()+s.Det->size());
     Num2->resize(Num2copy.size()+s.Num2->size());
+    present->resize(presentcopy.size()+s.present->size());
     Energy->resize(Ecopy.size()+s.Energy->size());
     if (extra_info) {
       var_indices->resize(Vcopy.size()+s.var_indices->size());
@@ -684,6 +776,8 @@ namespace SHCISortMpiUtils {
 	Num->operator[](l) = Numcopy.operator[](j);
 	if (Num2->size() != 0)
 	  Num2->operator[](l) = Num2copy.operator[](j);
+	if (present->size() != 0)
+	  present->operator[](l) = presentcopy.operator[](j);
 	Energy->operator[](l) = Ecopy.operator[](j);
         if (extra_info) {
 	  var_indices->operator[](l) = Vcopy.operator[](j);
@@ -696,6 +790,8 @@ namespace SHCISortMpiUtils {
 	Num->operator[](l) = s.Num->operator[](k);
 	if (Num2->size() != 0)
 	  Num2->operator[](l) = Num2copy.operator[](j);
+	if (present->size() != 0)
+	  present->operator[](l) = presentcopy.operator[](j);
 	Energy->operator[](l) = s.Energy->operator[](k);
         if (extra_info) {
 	  var_indices->operator[](l) = s.var_indices->operator[](k);
@@ -709,6 +805,8 @@ namespace SHCISortMpiUtils {
       Num->operator[](l) = Numcopy.operator[](j);
       if (Num2->size() != 0)
 	Num2->operator[](l) = Num2copy.operator[](j);
+      if (present->size() != 0)
+	present->operator[](l) = presentcopy.operator[](j);
       Energy->operator[](l) = Ecopy.operator[](j);
       if (extra_info) {
         var_indices->operator[](l) = Vcopy.operator[](j);
@@ -721,6 +819,8 @@ namespace SHCISortMpiUtils {
       Num->operator[](l) = s.Num->operator[](k);
       if (Num2->size() != 0)
 	Num2->operator[](l) = Num2copy.operator[](j);
+      if (present->size() != 0)
+	present->operator[](l) = presentcopy.operator[](j);
       Energy->operator[](l) = s.Energy->operator[](k);
       if (extra_info) {
         var_indices->operator[](l) = s.var_indices->operator[](k);
