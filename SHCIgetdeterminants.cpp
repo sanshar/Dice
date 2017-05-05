@@ -121,7 +121,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Determinant 
 
       var_indices.push_back(det_ind);
 
-      orbDiff = open[a]*norbs+closed[i]; // a = creation, i = annihilation
+      size_t A = open[a], N= norbs, I = closed[i];
+      orbDiff = A*N+I; // a = creation, i = annihilation
       orbDifference.push_back(orbDiff);
 
     }
@@ -162,7 +163,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Determinant 
 
 	var_indices.push_back(det_ind);
 
-	orbDiff = a*norbs*norbs*norbs+closed[i]*norbs*norbs+b*norbs+closed[j];  //i>j and a>b??
+	size_t A = a, B = b, N= norbs, I = closed[i], J = closed[j];
+	orbDiff = A*N*N*N+I*N*N+B*N+J;  //i>j and a>b??
 	orbDifference.push_back(orbDiff);
 
       } // if a and b unoccupied

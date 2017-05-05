@@ -105,7 +105,11 @@ struct Hmult2 {
       else {startptr = &y(0,0);}
 
 #ifndef SERIAL
+#ifndef Complex
       MPI_Reduce(startptr, &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+      boost::mpi::all_reduce(world, &y(0,0), y.rows(), &y(0,0), sumComplex); 
+#endif
 #endif
       
     }

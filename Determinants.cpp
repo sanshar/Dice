@@ -209,11 +209,15 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     exit(0);
   }
   else if (ncre ==1 ) {
-    orbDiff = cre[0]*bra.norbs+des[0];
+    size_t c0=cre[0], N=bra.norbs, d0 = des[0];
+    orbDiff = c0*N+d0;
+    //orbDiff = cre[0]*bra.norbs+des[0];
     return ket.Hij_1Excite(cre[0], des[0], I1, I2);
   }
   else if (ncre == 2) {
-    orbDiff = cre[1]*bra.norbs*bra.norbs*bra.norbs+des[1]*bra.norbs*bra.norbs+cre[0]*bra.norbs+des[0];
+    size_t c0=cre[0], c1=cre[1], d1=des[1],N=bra.norbs, d0 = des[0];
+    orbDiff = c1*N*N*N+d1*N*N+c0*N+d0;
+    //orbDiff = cre[1]*bra.norbs*bra.norbs*bra.norbs+des[1]*bra.norbs*bra.norbs+cre[0]*bra.norbs+des[0];
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
   }
   else {

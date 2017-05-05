@@ -35,7 +35,7 @@ namespace SHCIbasics {
 			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
 			       bool DoRDM=false);
   
-  void DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
+  double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
 								 , double& E0, oneInt& I1, twoInt& I2, 
 								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
 								 schedule& schd, double coreE, 

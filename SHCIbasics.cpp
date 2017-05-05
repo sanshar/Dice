@@ -38,7 +38,7 @@ using namespace SHCISortMpiUtils;
 
 
 
-void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -83,7 +83,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
   std::vector<std::vector< std::vector<vector<char> > > > hashedpresentAfterMPI(mpigetsize(), std::vector<std::vector<vector<char> > >(num_thrds));
   double totalPT = 0.0;
   double totalPTLargeEps=0;
-  int ntries = 0;
+  size_t ntries = 0;
   int AllDistinctSample = 0;
   size_t Nmc = mpigetsize()*num_thrds*Nsample;
   std::vector<int> allSample(Nmc, -1);
@@ -144,7 +144,8 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	  if (mpigetsize() == 1)
 	    ntries = 1;
 	  else {
-	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1;
+	    size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
+	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
 	    mpi::broadcast(world, ntries, 0);
 	  }
 	}
@@ -332,17 +333,21 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %("Root") %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
 	cout << endl;
       }
-      if (omp_get_thread_num() == 0)
+      if (omp_get_thread_num() == 0) {
+	mpi::broadcast(world, currentIter, 0);
 	mpi::broadcast(world, stddev, 0);
+	mpi::broadcast(world, AvgenergyEN, 0);
+      }
 #pragma omp barrier
       uniqueDEH[omp_get_thread_num()].clear();
       if (stddev < schd.targetError) {
+	if (omp_get_thread_num() == 0) AvgenergyEN /= currentIter;
 	if (omp_get_thread_num() == 0) pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
 	break;
       }
     }
   }
-  
+  return AvgenergyEN;
 }
 
 
@@ -427,7 +432,8 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	if (mpigetsize() == 1)
 	  ntries = 1;
 	else {
-	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1;
+	  size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
+	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
 	  mpi::broadcast(world, ntries, 0);
 	}
       }
@@ -754,7 +760,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
 
-  if (schd.doGtensor && true) {//DON'T PERFORM doGtensor
+  if (schd.doGtensor) {//DON'T PERFORM doGtensor
 
     if (mpigetrank() != 0) {
       spinRDM[0].setZero(spinRDM[0].rows(), spinRDM[0].cols());

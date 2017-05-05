@@ -194,11 +194,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   for (int j=sweep_iter[sweep_iter.size()-1]; j<maxiter; j++)
     schd.epsilon1.push_back(sweep_epsilon[sweep_iter.size()-1]);
 
+ 
   if (schd.prefix.size() == 0)
     schd.prefix.push_back(".");
-  if (schd.stochastic == false && schd.DoRDM) {
-    schd.DoRDM = false;
-    cout << "We cannot perform PT RDM with stochastic PT. Disabling RDM."<<endl;
-  }
 }
 
