@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifndef Determinants_HEADER_H
 #define Determinants_HEADER_H
 
@@ -16,16 +27,16 @@ inline int BitCount (long& u)
 {
   if (u==0) return 0;
   unsigned int u2=u>>32, u1=u;
-  
+
   u1 = u1
     - ((u1 >> 1) & 033333333333)
     - ((u1 >> 2) & 011111111111);
-  
-  
+
+
   u2 = u2
     - ((u2 >> 1) & 033333333333)
     - ((u2 >> 2) & 011111111111);
-  
+
   return (((u1 + (u1 >> 3))
 	   & 030707070707) % 63) +
     (((u2 + (u2 >> 3))
@@ -37,7 +48,7 @@ inline int BitCount (long& u)
 class HalfDet {
  private:
   friend class boost::serialization::access;
-  template<class Archive> 
+  template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     for (int i=0; i<DetLen/2; i++)
       ar & repr[i];
@@ -60,9 +71,9 @@ class HalfDet {
   }
 
   bool operator==(const HalfDet& d) const {
-    for (int i=DetLen/2-1; i>=0 ; i--) 
+    for (int i=DetLen/2-1; i>=0 ; i--)
       if (repr[i] != d.repr[i]) return false;
-    return true;    
+    return true;
   }
 
   //set the occupation of the ith orbital
@@ -84,7 +95,7 @@ class HalfDet {
     else
       return true;
   }
-  
+
   int getClosed(vector<int>& closed){
     int cindex = 0;
     for (int i=0; i<32*DetLen; i++) {
@@ -114,7 +125,7 @@ class Determinant {
 
  private:
   friend class boost::serialization::access;
-  template<class Archive> 
+  template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     for (int i=0; i<DetLen; i++)
       ar & repr[i];
@@ -206,14 +217,14 @@ class Determinant {
       //if (ndiffAlpha > 2 || ndiffBeta > 2) return false;
     }
     if (ndiffAlpha == 2 && ndiffBeta == 2) return true;
-    
+
     return false;
 
   }
 
   int Nalpha() const {
     int nalpha = 0;
-    long alleven = 0x5555555555555555;  
+    long alleven = 0x5555555555555555;
     for (int i=0; i<EffDetLen; i++) {
       long even = repr[i] & alleven;
       nalpha += BitCount(even);
@@ -286,9 +297,9 @@ class Determinant {
 
   //check if the determinants are equal
   bool operator==(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--) 
+    for (int i=EffDetLen-1; i>=0 ; i--)
       if (repr[i] != d.repr[i]) return false;
-    return true;    
+    return true;
   }
 
   //set the occupation of the ith orbital

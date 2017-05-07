@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "global.h"
 #include "input.h"
 #include <string>
@@ -68,7 +79,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	Line;
       vector<string> tok;
 
-      std::getline(dump, Line);      
+      std::getline(dump, Line);
       trim(Line);
       boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
       int index =0;
@@ -87,45 +98,45 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	  cout << occupied[index][i]<<" ";
 	}
 	cout <<endl;
-	std::getline(dump, Line);      
+	std::getline(dump, Line);
 	trim(Line);
 	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
 	index++;
       }
     }
-    else if (boost::iequals(ArgName, "noio")) 
+    else if (boost::iequals(ArgName, "noio"))
       schd.io=false;
-    else if (boost::iequals(ArgName, "dosoc")) 
+    else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
     else if (boost::iequals(ArgName, "doresponse"))  {
       schd.doResponse=true;
       schd.responseFile = tok[1];
     }
-    else if (boost::iequals(ArgName, "dogtensor")) 
+    else if (boost::iequals(ArgName, "dogtensor"))
       schd.doGtensor=true;
-    else if (boost::iequals(ArgName, "targetError")) 
+    else if (boost::iequals(ArgName, "targetError"))
       schd.targetError=atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "orbitals")) 
+    else if (boost::iequals(ArgName, "orbitals"))
       schd.integralFile = tok[1];
-    else if (boost::iequals(ArgName, "dosocqdpt")) 
+    else if (boost::iequals(ArgName, "dosocqdpt"))
       schd.doSOCQDPT=true;
-    else if (boost::iequals(ArgName, "nptiter")) 
+    else if (boost::iequals(ArgName, "nptiter"))
       schd.nPTiter=atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "epsilon2")) 
+    else if (boost::iequals(ArgName, "epsilon2"))
       schd.epsilon2 = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "socmultiplier")) 
+    else if (boost::iequals(ArgName, "socmultiplier"))
       schd.socmultiplier = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "seed")) 
+    else if (boost::iequals(ArgName, "seed"))
       schd.randomSeed = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "nroots")) 
+    else if (boost::iequals(ArgName, "nroots"))
       schd.nroots = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "epsilon2Large")) 
+    else if (boost::iequals(ArgName, "epsilon2Large"))
       schd.epsilon2Large = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "onlyperturbative")) 
+    else if (boost::iequals(ArgName, "onlyperturbative"))
       schd.onlyperturbative = true;
-    else if (boost::iequals(ArgName, "dordm")) 
+    else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
-    else if (boost::iequals(ArgName, "dospinrdm")) { 
+    else if (boost::iequals(ArgName, "dospinrdm")) {
       schd.DoRDM = true;
       schd.DoSpinRDM = true;
     }
@@ -133,21 +144,21 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.quasiQ = true;
       schd.quasiQEpsilon = atof(tok[1].c_str());
     }
-    else if (boost::iequals(ArgName, "nblocks")) 
+    else if (boost::iequals(ArgName, "nblocks"))
       schd.nblocks = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName , "davidsonTol")) 
+    else if (boost::iequals(ArgName , "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName , "excitation")) 
+    else if (boost::iequals(ArgName , "excitation"))
       schd.excitation = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName , "sampleN")) 
+    else if (boost::iequals(ArgName , "sampleN"))
       schd.SampleN = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "restart")) 
+    else if (boost::iequals(ArgName, "restart"))
       schd.restart = true;
-    else if (boost::iequals(ArgName, "nvirt")) 
+    else if (boost::iequals(ArgName, "nvirt"))
       schd.nvirt = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "deterministic")) 
+    else if (boost::iequals(ArgName, "deterministic"))
       schd.stochastic = false;
-    else if (boost::iequals(ArgName, "fullrestart")) 
+    else if (boost::iequals(ArgName, "fullrestart"))
       schd.fullrestart = true;
     else if (boost::iequals(ArgName, "dE") )
       schd.dE = atof(tok[1].c_str());
@@ -155,7 +166,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.eps = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "prefix") )
       schd.prefix.push_back(tok[1]);
-    else if (boost::iequals(ArgName, "schedule")) { 
+    else if (boost::iequals(ArgName, "schedule")) {
 
       std::getline(dump, Line);
       cout << "#"<<Line<<endl;
@@ -171,7 +182,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
     }
-    else if (boost::iequals(ArgName, "maxiter")) 
+    else if (boost::iequals(ArgName, "maxiter"))
       maxiter = atoi(tok[1].c_str());
     else {
       cout << "cannot read option "<<ArgName<<endl;
@@ -187,15 +198,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "nocc keyword has to be included."<<endl;
     exit(0);
   }
-  for (int i=1; i<sweep_iter.size(); i++) 
+  for (int i=1; i<sweep_iter.size(); i++)
     for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)
       schd.epsilon1.push_back(sweep_epsilon[i-1]);
 
   for (int j=sweep_iter[sweep_iter.size()-1]; j<maxiter; j++)
     schd.epsilon1.push_back(sweep_epsilon[sweep_iter.size()-1]);
 
- 
+
   if (schd.prefix.size() == 0)
     schd.prefix.push_back(".");
 }
-

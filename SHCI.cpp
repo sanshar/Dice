@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -90,7 +101,7 @@ int main(int argc, char* argv[]) {
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
-  
+
   if (HFoccupied[0].size() != nelec) {
     cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
@@ -135,8 +146,8 @@ int main(int argc, char* argv[]) {
 
 
   //have the dets, ci coefficient and diagnoal on all processors
-  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
-  vector<MatrixXx> vdVector(schd.nroots); //these vectors are used to calculate the response equations 
+  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1));
+  vector<MatrixXx> vdVector(schd.nroots); //these vectors are used to calculate the response equations
   double Psi1Norm = 0.0;
 
   //make HF determinant
@@ -149,7 +160,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (mpigetrank() == 0) {
-    for (int j=0; j<ci[0].rows(); j++) 
+    for (int j=0; j<ci[0].rows(); j++)
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
   }
@@ -164,7 +175,7 @@ int main(int argc, char* argv[]) {
   if (mpigetrank() == 0) {
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
-    FILE* f = fopen(efile.c_str(), "wb");      
+    FILE* f = fopen(efile.c_str(), "wb");
     for(int j=0;j<E0.size();++j) {
       pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
       fwrite( &E0[j], 1, sizeof(CItype), f);
@@ -191,7 +202,7 @@ int main(int argc, char* argv[]) {
   }
 
 
-  if (schd.quasiQ) {    
+  if (schd.quasiQ) {
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
@@ -232,8 +243,8 @@ int main(int argc, char* argv[]) {
       for (int root2=root1+1 ;root2<schd.nroots; root2++) {
 	Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
 	SHCIbasics::DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
-							   E0[root2], I1, 
-							   I2, I2HBSHM, irrep, schd, 
+							   E0[root2], I1,
+							   I2, I2HBSHM, irrep, schd,
 							   coreE, nelec, root1, Heff(root1,root1),
 							   Heff(root2, root2), Heff(root1, root2),
 							   spinRDM);
@@ -242,7 +253,7 @@ int main(int argc, char* argv[]) {
     }
     for (int root1 =0 ;root1<schd.nroots; root1++)
       Heff(root1, root1) += E0[root1];
-    
+
     SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
     for (int j=0; j<eigensolver.eigenvalues().rows(); j++) {
       E0[j] = eigensolver.eigenvalues()(j,0);
@@ -251,7 +262,7 @@ int main(int argc, char* argv[]) {
 
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
-    FILE* f = fopen(efile.c_str(), "wb");      
+    FILE* f = fopen(efile.c_str(), "wb");
     for(int j=0;j<E0.size();++j) {
       fwrite( &E0[j], 1, sizeof(double), f);
     }
@@ -262,12 +273,12 @@ int main(int argc, char* argv[]) {
     return 0;
 #endif
   }
-  
+
   else if (!schd.stochastic && schd.nblocks == 1) {
     double ePT = 0.0;
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
-    FILE* f = fopen(efile.c_str(), "wb");      
+    FILE* f = fopen(efile.c_str(), "wb");
     for (int root=0; root<schd.nroots;root++) {
       ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2,
 						    I2HBSHM, irrep, schd, coreE, nelec,
@@ -283,7 +294,7 @@ int main(int argc, char* argv[]) {
     double ePT = 0.0;
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
-    FILE* f = fopen(efile.c_str(), "wb");      
+    FILE* f = fopen(efile.c_str(), "wb");
     for (int root=0; root<schd.nroots;root++) {
       ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       E0[root] += ePT;
@@ -297,7 +308,7 @@ int main(int argc, char* argv[]) {
 	pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
     }
   }
-  else { 
+  else {
     world.barrier();
     boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
     cout << "Error here"<<endl;
@@ -335,7 +346,7 @@ int main(int argc, char* argv[]) {
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
       SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
     }
-    //cout <<" response "; 
+    //cout <<" response ";
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
 

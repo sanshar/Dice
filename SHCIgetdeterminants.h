@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifndef SHCI_GETDETERMINANTS_H
 #define SHCI_GETDETERMINANTS_H
 #include <vector>
@@ -30,8 +41,8 @@ namespace SHCIgetdeterminants {
 
   void getDeterminantsDeterministicPTKeepRefDets(Determinant det, int det_ind, double epsilon, CItype ci, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, std::vector<int>& var_indices, std::vector<size_t>& orbDifference, schedule& schd, int nelec);
 
-  
-  
+
+
 };
 
 #endif

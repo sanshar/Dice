@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <iostream>
 #include <algorithm>
 #include "integral.h"
@@ -56,7 +67,7 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
   E = E - I2.Direct(A/2, closed[j]/2) + I2.Direct(A/2, B/2);
   if ( (closed[i]%2) == (closed[j]%2) )
     E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
-  
+
 
   return E;
 }
@@ -128,7 +139,7 @@ double parity(char* d, int& sizeA, int& i) {
 
 //i->a and j->b
 void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
-  parity(min(i, a), max(i,a), sgn); 
+  parity(min(i, a), max(i,a), sgn);
   setocc(i, false); setocc(a,true);
   parity(min(j, b), max(j,b), sgn);
   setocc(i, true); setocc(a, false);
@@ -139,7 +150,7 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoIn
 
   double sgn = 1.0;
   int I = min(i,j), J= max(i,j), A= min(a,b), B = max(a,b);
-  parity(min(I, A), max(I,A), sgn); 
+  parity(min(I, A), max(I,A), sgn);
   parity(min(J, B), max(J,B), sgn);
   if(A>J || B<I) sgn *= -1.;
   return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
@@ -149,7 +160,7 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoIn
 CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
   //int a = cre[0], i = des[0];
   double sgn=1.0;
-  
+
   CItype energy = I1(a,i);
   for (int j=0; j<nclosed; j++) {
     if (closed[j]>min(i,a)&& closed[j] <max(i,a))
@@ -163,8 +174,8 @@ CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed, int& nclos
 
 CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
   double sgn = 1.0;
-  parity(min(a,i), max(a,i), sgn); 
-  
+  parity(min(a,i), max(a,i), sgn);
+
   CItype energy = I1(a,i);
   long one = 1;
   for (int I=0; I<EffDetLen; I++) {
@@ -181,7 +192,7 @@ CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
   return energy*sgn;
 }
 
-CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {  
+CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
   int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
   cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
 
@@ -225,7 +236,3 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     return 0.;
   }
 }
-
-
-
-

@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifndef SHCI_SORTMPIUTILS_H
 #define SHCI_SORTMPIUTILS_H
 #include <vector>
@@ -36,11 +47,11 @@ namespace SHCISortMpiUtils {
 			 std::vector<double>& Energy, std::vector<char>& present) ;
  void RemoveDuplicates(vector<Determinant>& Det) ;
 
- 
+
 
  int partition(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<double>* det_energy=NULL, vector<char>* present=NULL);
  void quickSort(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<double>* det_energy=NULL, vector<char>* present=NULL);
-  
+
  int partitionAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<size_t>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL);
  void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, vector<int>* var_indices, vector<size_t>* orbDifference, vector<double>* det_energy=NULL, vector<bool>* present=NULL);
 
@@ -49,7 +60,7 @@ namespace SHCISortMpiUtils {
  void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx);
 
  int ipow(int base, int exp);
-  
+
 
  class StitchDEH {
  private:
@@ -58,28 +69,28 @@ namespace SHCISortMpiUtils {
      void serialize(Archive & ar, const unsigned int version) {
      ar & Det & Num & Num2 & present & Energy & var_indices & orbDifference;
    }
-   
+
  public:
    boost::shared_ptr<vector<Determinant> > Det;
    boost::shared_ptr<vector<CItype> > Num;       //the numerator for the first Var state
    boost::shared_ptr<vector<CItype> > Num2;      //the numberator for the second Var state (if present)
    boost::shared_ptr<vector<char> > present;      //the numberator for the second Var state (if present)
    boost::shared_ptr<vector<double> > Energy;
-   
+
    //the next two store information about where a determinant in "C" arose from
    boost::shared_ptr<vector<int > > var_indices_beforeMerge;
    boost::shared_ptr<vector<size_t > > orbDifference_beforeMerge;
-   
+
    //the next two store information about where a determinant in "C" arose from,
    //and takes into account the fact that a given determinant might have arisen from
    //multiple parent determinants in "V"
    boost::shared_ptr<vector<vector<int> > > var_indices;
    boost::shared_ptr<vector<vector<size_t> > > orbDifference;
-   
+
    bool extra_info; // whether to use var_indices, orbDifference
-   
+
    StitchDEH();
-   
+
    StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 	     boost::shared_ptr<vector<CItype> >pNum,
 	     boost::shared_ptr<vector<CItype> >pNum2,
@@ -89,13 +100,13 @@ namespace SHCISortMpiUtils {
 	     boost::shared_ptr<vector<vector<size_t> > >porb,
 	     boost::shared_ptr<vector<int > >pvar_beforeMerge,
 	     boost::shared_ptr<vector<size_t > >porb_beforeMerge);
-   
+
    StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 	     boost::shared_ptr<vector<CItype> >pNum,
 	     boost::shared_ptr<vector<CItype> >pNum2,
 	     boost::shared_ptr<vector<char> >present,
 	     boost::shared_ptr<vector<double> >pE);
-   
+
    void QuickSortAndRemoveDuplicates() ;
    void MergeSort() ;
    void MergeSortAndRemoveDuplicates() ;
@@ -108,7 +119,7 @@ namespace SHCISortMpiUtils {
    void merge(const StitchDEH& s);
  };
 
- /* 
+ /*
  class ElementWiseAddStitchDEH {
  public:
    StitchDEH operator()(const StitchDEH& s1, const StitchDEH& s2) {
@@ -119,7 +130,7 @@ namespace SHCISortMpiUtils {
    }
  };
  */
- 
+
 };
 
 #endif

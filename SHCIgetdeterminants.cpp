@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Determinants.h"
 #include "SHCIgetdeterminants.h"
 #include "input.h"
@@ -258,7 +269,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Determinant det,
 	  numerator1.push_back(integrals[index]*sgn*ci1);
 	else
 	  numerator1.push_back(0.0);
-	
+
 	if(fabs(integrals[index]) > epsilon2)
 	  numerator2.push_back(integrals[index]*sgn*ci2);
 	else
@@ -289,7 +300,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     int i=ia/nopen, a=ia%nopen;
 
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
-#ifndef Complex 
+#ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
 
@@ -298,7 +309,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     if (closed[i]%2 != open[a]%2) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-      integral = int1(open[a], closed[i])*sgn; 
+      integral = int1(open[a], closed[i])*sgn;
     }
 
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2])
@@ -364,7 +375,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-#ifndef Complex 
+#ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
@@ -527,4 +538,3 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
   }
   return;
 }
-

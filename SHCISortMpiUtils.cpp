@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -38,7 +49,7 @@ namespace SHCISortMpiUtils {
   void RemoveDuplicates(std::vector<Determinant>& Det,
 			std::vector<double>& Num1, std::vector<double>& Num2,
 			std::vector<double>& Energy, std::vector<char>& present) {
-    
+
     size_t uniqueSize = 0;
     for (size_t i=1; i <Det.size(); i++) {
       if (!(Det[i] == Det[i-1])) {
@@ -60,14 +71,14 @@ namespace SHCISortMpiUtils {
     Energy.resize(uniqueSize+1);
     present.resize(uniqueSize+1);
   }
-  
+
   void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets, std::vector<Determinant>& Det,
 			   std::vector<double>& Num1, std::vector<double>& Num2,
 			   std::vector<double>& Energy, std::vector<char>& present) {
-    
+
     vector<Determinant>::iterator vec_it = SortedDets.begin();
     vector<Determinant>::iterator vec_end = SortedDets.end();
-    
+
     size_t uniqueSize = 0;
     for (size_t i=0; i<Det.size();) {
       if (Det[i] < *vec_it) {
@@ -96,7 +107,7 @@ namespace SHCISortMpiUtils {
     Num2.resize(uniqueSize); Energy.resize(uniqueSize);
     present.resize(uniqueSize);
   }
-  
+
   void RemoveDuplicates(vector<Determinant>& Det) {
     if (Det.size() <= 1) return;
     std::vector<Determinant>& Detcopy = Det;
@@ -109,14 +120,14 @@ namespace SHCISortMpiUtils {
     }
     Det.resize(uniqueSize+1);
   }
-  
-  int partition(Determinant* A, int p,int q, CItype* pNum, double* Energy, 
+
+  int partition(Determinant* A, int p,int q, CItype* pNum, double* Energy,
 		vector<double>* det_energy, vector<char>* present)
   {
     Determinant x= A[p];
     int i=p;
     int j;
-    
+
     for(j=p+1; j<q; j++)
       {
 	if(A[j]<x || A[j] == x)
@@ -125,34 +136,34 @@ namespace SHCISortMpiUtils {
 	    swap(A[i],A[j]);
 	    swap(pNum[i], pNum[j]);
 	    swap(Energy[i], Energy[j]);
-	    
+
 	    if (present != NULL)
 	      swap(present->at(i), present->at(j));
 	    if (det_energy != NULL)
 	      swap(det_energy->at(i), det_energy->at(j));
 	  }
-	
+
       }
-    
+
     swap(A[i],A[p]);
     swap(pNum[i], pNum[p]);
     swap(Energy[i], Energy[p]);
-    
+
     if (present != NULL)
       swap(present->at(i), present->at(p));
     if (det_energy != NULL)
       swap(det_energy->at(i), det_energy->at(p));
     return i;
   }
-  
-  int partitionAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, 
-		   vector<int>* var_indices, vector<size_t>* orbDifference, 
+
+  int partitionAll(Determinant* A, int p,int q, CItype* pNum, double* Energy,
+		   vector<int>* var_indices, vector<size_t>* orbDifference,
 		   vector<double>* det_energy, vector<bool>* present)
   {
     Determinant x= A[p];
     int i=p;
     int j;
-    
+
     for(j=p+1; j<q; j++)
       {
 	if(A[j]<x || A[j] == x)
@@ -163,7 +174,7 @@ namespace SHCISortMpiUtils {
 	    swap(Energy[i], Energy[j]);
 	    swap(var_indices[i], var_indices[j]);
 	    swap(orbDifference[i], orbDifference[j]);
-	    
+
 	    if (present != NULL) {
 	      bool bkp = present->operator[](j);
 	      present->operator[](j) = present->operator[](i);
@@ -172,9 +183,9 @@ namespace SHCISortMpiUtils {
 	    if (det_energy != NULL)
 	      swap(det_energy->operator[](i), det_energy->operator[](j));
 	  }
-	
+
       }
-    
+
     swap(A[i],A[p]);
     swap(pNum[i], pNum[p]);
     swap(Energy[i], Energy[p]);
@@ -185,13 +196,13 @@ namespace SHCISortMpiUtils {
       present->operator[](p) = present->operator[](i);
       present->operator[](i) = bkp;
     }
-    
+
     if (det_energy != NULL)
       swap(det_energy->operator[](i), det_energy->operator[](p));
     return i;
   }
-  
-  void quickSort(Determinant* A, int p,int q, CItype* pNum, double* Energy, 
+
+  void quickSort(Determinant* A, int p,int q, CItype* pNum, double* Energy,
 		 vector<double>* det_energy, vector<char>* present)
   {
     int r;
@@ -202,9 +213,9 @@ namespace SHCISortMpiUtils {
 	quickSort(A,r+1,q, pNum, Energy, det_energy, present);
       }
   }
-  
-  void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy, 
-		    vector<int>* var_indices, vector<size_t>* orbDifference, 
+
+  void quickSortAll(Determinant* A, int p,int q, CItype* pNum, double* Energy,
+		    vector<int>* var_indices, vector<size_t>* orbDifference,
 		    vector<double>* det_energy, vector<bool>* present)
   {
     int r;
@@ -215,9 +226,9 @@ namespace SHCISortMpiUtils {
 	quickSortAll(A,r+1,q, pNum, Energy, var_indices, orbDifference, det_energy, present);
       }
   }
-  
-  
-  
+
+
+
   void merge(Determinant *a, long low, long high, long mid, long* x, Determinant* c, long* cx)
   {
     long i, j, k;
@@ -261,7 +272,7 @@ namespace SHCISortMpiUtils {
 	x[i] = cx[i];
       }
   }
-  
+
   void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx)
   {
     long mid;
@@ -274,8 +285,8 @@ namespace SHCISortMpiUtils {
       }
     return;
   }
-  
-  
+
+
   int ipow(int base, int exp)
   {
     int result = 1;
@@ -286,12 +297,12 @@ namespace SHCISortMpiUtils {
 	exp >>= 1;
 	base *= base;
       }
-    
+
     return result;
   }
-  
-  
-  
+
+
+
   StitchDEH::StitchDEH() {
     Det = boost::shared_ptr<vector<Determinant> > (new vector<Determinant>() );
     Num = boost::shared_ptr<vector<CItype> > (new vector<CItype>() );
@@ -304,7 +315,7 @@ namespace SHCISortMpiUtils {
     var_indices_beforeMerge = boost::shared_ptr<vector<int > > (new vector<int >() );
     orbDifference_beforeMerge = boost::shared_ptr<vector<size_t > > (new vector<size_t >() );
   }
-  
+
   StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 		       boost::shared_ptr<vector<CItype> >pNum,
 		       boost::shared_ptr<vector<CItype> >pNum2,
@@ -318,7 +329,7 @@ namespace SHCISortMpiUtils {
   {
     extra_info=true;
   };
-  
+
   StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
 		       boost::shared_ptr<vector<CItype> >pNum,
 		       boost::shared_ptr<vector<CItype> >pNum2,
@@ -328,7 +339,7 @@ namespace SHCISortMpiUtils {
   {
     extra_info=false;
   };
-  
+
   void StitchDEH::QuickSortAndRemoveDuplicates() {
     if (Num2->size() > 0) {
       cout << "Use mergesort instead"<<endl;
@@ -634,9 +645,9 @@ namespace SHCISortMpiUtils {
 	vec_it++; i++;
       }
     }
-    Det->resize(uniqueSize); Num->resize(uniqueSize); 
+    Det->resize(uniqueSize); Num->resize(uniqueSize);
     if (Num2->size() != 0)
-      Num2->resize(uniqueSize); 
+      Num2->resize(uniqueSize);
     if (present->size() != 0)
       present->resize(uniqueSize);//operator[](uniqueSize) = presentcopy->at(i);
     Energy->resize(uniqueSize);
@@ -751,7 +762,7 @@ namespace SHCISortMpiUtils {
     std::vector<Determinant> Detcopy = *Det;
     std::vector<CItype> Numcopy = *Num;
     std::vector<CItype> Num2copy = *Num2;
-    std::vector<char> presentcopy = *present;    
+    std::vector<char> presentcopy = *present;
     std::vector<double> Ecopy = *Energy;
     //if (extra_info) {
     std::vector<std::vector<int> > Vcopy = *var_indices;
@@ -835,4 +846,3 @@ namespace SHCISortMpiUtils {
 
 
 };
-

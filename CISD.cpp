@@ -1,3 +1,14 @@
+/*                                                                           
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <iostream>
 #include "global.h"
 #include "input.h"
@@ -89,7 +100,7 @@ int main(int argc, char* argv[]) {
 
   MatrixXd X0(dets.size(), 1); X0 *= 0.0; X0(0,0) = 1.0;
   MatrixXd diag(dets.size(), 1); diag *= 0.0;
-  char detChar[norbs*dets.size()]; 
+  char detChar[norbs*dets.size()];
   cout << dets.size()<<endl;
   std::vector<std::vector<int> > connections(dets.size(), std::vector<int>(1,0));
   std::vector<std::vector<double> > Helements(dets.size(), std::vector<double>(1,0.0));
@@ -113,11 +124,11 @@ int main(int argc, char* argv[]) {
 #pragma omp parallel for schedule(dynamic)
   for (size_t i=0; i<dets.size() ; i++) {
     if (i%world.size() != world.rank()) continue;
-    
+
     for (size_t j=i; j<dets.size(); j++) {
       if (dets[i].connected(dets[j])) {
 	double hij = Hij(&detChar[norbs*i], &detChar[norbs*j], Norbs, I1, I2, coreE);
-	
+
 	if (abs(hij) > 1.e-10) {
 	  connections[i].push_back(j);
 	  Helements[i].push_back(hij);
@@ -128,7 +139,7 @@ int main(int argc, char* argv[]) {
   Hmult2 H(connections, Helements);
   double E0 = davidson(H, X0, diag, 10, schd.davidsonTol, false);
   pout << "energy " << E0<<endl;
-  
+
   for (int i=0; i<5; i++) {
     compAbs comp;
     int m = distance(&X0(0,0), max_element(&X0(0,0), &X0(0,0)+X0.rows(), comp));
@@ -136,7 +147,5 @@ int main(int argc, char* argv[]) {
     X0(m,0) = 0.0;
   }
 
-  return 0;  
+  return 0;
 }
-
-

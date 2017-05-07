@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "integral.h"
 #include <fstream>
 #include "string.h"
@@ -32,7 +43,7 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[1].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -40,14 +51,14 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,integral/2.);  //alpha beta
 	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,integral/2.);  //beta alpha
 	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,-integral/2.);  //alpha beta
         I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,-integral/2.);  //beta alpha
-      }      
+      }
     }
 
     //Read SOC.Y
@@ -61,7 +72,7 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[2].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -69,14 +80,14 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(integral/2.,0);  //alpha beta
 	I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(-integral/2.,0);  //beta alpha
 	//I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);  //alpha beta
 	//I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(integral/2.,0);  //beta alpha
-      }      
+      }
     }
 
 
@@ -91,7 +102,7 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[3].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -99,14 +110,14 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,integral/2); //alpha, alpha
 	I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,-integral/2); //beta, beta
 	//I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha, alpha
 	//I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2); //beta, beta
-      }      
+      }
     }
 
   }
@@ -128,7 +139,7 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[1].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -136,12 +147,12 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	I1[0](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
 	I1[0](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
-      }      
+      }
     }
 
     //Read SOC.Y
@@ -155,7 +166,7 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[2].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -163,7 +174,7 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	I1[1](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
@@ -183,7 +194,7 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	cout << N <<" != "<<norbs<<endl;
 	exit(0);
       }
-      
+
       //I1soc[3].store.resize(N*(N+1)/2, 0.0);
       while(!dump.eof()) {
 	std::getline(dump, msg);
@@ -191,12 +202,12 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 	boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 	if (tok.size() != 3)
 	  continue;
-	
+
 	double integral = atof(tok[0].c_str());
 	int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
 	I1[2](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
 	I1[2](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
-      }      
+      }
     }
 
   }
@@ -217,7 +228,7 @@ int readNorbs(string fcidump) {
     std::getline(dump, msg);
     trim(msg);
     boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-    
+
     if (boost::iequals(tok[0].substr(0,4),"&FCI")) {
       if (boost::iequals(tok[1].substr(0,4), "NORB"))
 	norbs = atoi(tok[2].c_str());
@@ -242,7 +253,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     bool startScaling = false;
     norbs = -1;
     nelec = -1;
-    
+
     int index = 0;
     vector<string> tok;
     string msg;
@@ -250,7 +261,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       std::getline(dump, msg);
       trim(msg);
       boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-      
+
       if (startScaling == false && tok.size() == 1 && (boost::iequals(tok[0],"&END") || boost::iequals(tok[0], "/"))) {
 	startScaling = true;
 	index += 1;
@@ -260,7 +271,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 	if (boost::iequals(tok[0].substr(0,4),"&FCI")) {
 	  if (boost::iequals(tok[1].substr(0,4), "NORB"))
 	    norbs = atoi(tok[2].c_str());
-	  
+
 	  if (boost::iequals(tok[3].substr(0,5), "NELEC"))
 	    nelec = atoi(tok[4].c_str());
 	}
@@ -276,11 +287,11 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 	  for (int i=0;i<tok.size(); i++)
 	    irrep.push_back(atoi(tok[i].c_str()));
 	}
-	
+
 	index += 1;
       }
     }
-    
+
     if (norbs == -1 || nelec == -1) {
       std::cout << "could not read the norbs or nelec"<<std::endl;
       exit(0);
@@ -294,18 +305,18 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   mpi::broadcast(world, irrep, 0);
   mpi::broadcast(world, I2.ksym, 0);
 #endif
-  
+
   long npair = norbs*(norbs+1)/2;
-  
+
   if (I2.ksym) {
     npair = norbs*norbs;
   }
   I2.norbs = norbs;
-  
+
   size_t I2memory = npair*(npair+1)/2; //memory in bytes
 
   world.barrier();
-  int2Segment.truncate((I2memory)*sizeof(double)); 
+  int2Segment.truncate((I2memory)*sizeof(double));
   regionInt2 = boost::interprocess::mapped_region{int2Segment, boost::interprocess::read_write};
   memset(regionInt2.get_address(), 0., (I2memory)*sizeof(double));
   world.barrier();
@@ -324,10 +335,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       boost::split(tok, msg, is_any_of(", \t"), token_compress_on);
       if (tok.size() != 5)
 	continue;
-      
-      double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), 
+
+      double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()),
 					       c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
-      
+
       if(a==b&&b==c&&c==d&&d==0)
 	coreE = integral;
       else if (b==c&&c==d&&d==0)
@@ -346,7 +357,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory,myfn);
     I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
-    
+
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
 	I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
@@ -359,7 +370,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   long intdim = I2memory;
   long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint; 
+  long maxIter = intdim/maxint;
   world.barrier();
   for (int i=0; i<maxIter; i++) {
     MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
@@ -378,7 +389,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
 
   return;
-    
+
 
 }
 
@@ -392,18 +403,18 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 
   if (mpigetrank() == 0) {
     std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator it1 = I2.sameSpin.begin();
-    
+
     for (;it1!= I2.sameSpin.end(); it1++) {
       nonZeroSameSpinIntegrals += it1->second.size();
     }
-    
+
     std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
-    
+
     for (;it2!= I2.oppositeSpin.end(); it2++) {
       nonZeroOppositeSpinIntegrals += it2->second.size();
     }
-    
-    
+
+
     //total Memory required
     memRequired += nonZeroSameSpinIntegrals*(sizeof(double)+2*sizeof(int))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
     memRequired += nonZeroOppositeSpinIntegrals*(sizeof(double)+2*sizeof(int))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
@@ -414,7 +425,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   mpi::broadcast(world, nonZeroOppositeSpinIntegrals, 0);
 
   world.barrier();
-  int2SHMSegment.truncate(memRequired); 
+  int2SHMSegment.truncate(memRequired);
   regionInt2SHM = boost::interprocess::mapped_region{int2SHMSegment, boost::interprocess::read_write};
   memset(regionInt2SHM.get_address(), 0., memRequired);
   world.barrier();
@@ -422,20 +433,20 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   sameSpinIntegrals = static_cast<double*>(regionInt2SHM.get_address());
   startingIndicesSameSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*sizeof(double));
   sameSpinPairs = static_cast<int*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*sizeof(double) + (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  
+
   oppositeSpinIntegrals = static_cast<double*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*(sizeof(double)+2*sizeof(int)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
   startingIndicesOppositeSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(double) + nonZeroSameSpinIntegrals*(sizeof(double)+2*sizeof(int)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
   oppositeSpinPairs = static_cast<int*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(double) + (norbs*(norbs+1)/2+1)*sizeof(size_t) + nonZeroSameSpinIntegrals*(sizeof(double)+2*sizeof(int)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  
+
   if (mpigetrank() == 0) {
-    
+
     startingIndicesSameSpin[0] = 0;
     size_t index = 0, pairIter = 1;
     for (int i=0; i<norbs; i++) {
       for (int j=0; j<=i; j++) {
 	std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator it1 = I2.sameSpin.find( std::pair<int,int>(i,j));
 
-	if (it1 != I2.sameSpin.end()) {	  
+	if (it1 != I2.sameSpin.end()) {
 	  for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
 	    sameSpinIntegrals[index] = it->first;
 	    sameSpinPairs[2*index] = it->second.first;
@@ -456,7 +467,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
       for (int j=0; j<=i; j++) {
 	std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<int,int>(i,j));
 
-	if (it1 != I2.oppositeSpin.end()) {	  
+	if (it1 != I2.oppositeSpin.end()) {
 	  for (std::multimap<double, std::pair<int,int>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
 	    oppositeSpinIntegrals[index] = it->first;
 	    oppositeSpinPairs[2*index] = it->second.first;
@@ -470,11 +481,11 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     }
     I2.oppositeSpin.clear();
   }
-  
+
 
   long intdim = memRequired;
   long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint; 
+  long maxIter = intdim/maxint;
   world.barrier();
   char* shrdMem = static_cast<char*>(regionInt2SHM.get_address());
   for (int i=0; i<maxIter; i++) {

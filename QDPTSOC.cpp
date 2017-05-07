@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -253,7 +264,7 @@ int main(int argc, char* argv[]) {
   }
 
   cout << str(boost::format("PERFORMING QDPTSOC with %s roots\n")%ci.size());
-  for (int j=0; j<ci.size(); j++)     
+  for (int j=0; j<ci.size(); j++)
     cout << str(boost::format("State: %3d,  2S: %3d,  S^2: %8.2g,  dE: %10.2f\n")%j %Spin[j] %SpinSquare[j] %( (Energy[j]-Energy[0])*219470));
 
   MatrixXx Hsubspace = MatrixXx::Zero(hsubspaceSize, hsubspaceSize);
@@ -275,8 +286,8 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<ci.size(); i++) {
     for (int j=i+1; j<ci.size(); j++) {
       int s1 = Spin[i], s2=Spin[j];
-      SOChelper::calculateMatrixElements(s1, s2, Sz, rowIndex[i], rowIndex[j], ci[i], ci[j], 
-					 connections, Helements, Hsubspace, Dets, norbs, 
+      SOChelper::calculateMatrixElements(s1, s2, Sz, rowIndex[i], rowIndex[j], ci[i], ci[j],
+					 connections, Helements, Hsubspace, Dets, norbs,
 					 beginS0, beginSp, beginSm);
     }
   }
@@ -305,24 +316,24 @@ int main(int argc, char* argv[]) {
     //initialize L and S integrals
     vector<oneInt> L(3), S(3);
     for (int i=0; i<3; i++) {
-      L[i].store.resize(norbs*norbs, 0.0); 
+      L[i].store.resize(norbs*norbs, 0.0);
       L[i].norbs = norbs;
 
-      S[i].store.resize(norbs*norbs, 0.0); 
+      S[i].store.resize(norbs*norbs, 0.0);
       S[i].norbs = norbs;
     }
     //read L integrals
-    readGTensorIntegrals(L, norbs, "GTensor");  
+    readGTensorIntegrals(L, norbs, "GTensor");
 
     //generate S integrals
     double ge = 2.002319304;
     for (int a=1; a<norbs/2+1; a++) {
       S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
       S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
-      
+
       S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0,  -ge/2.);  //alpha beta
       S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,   ge/2.);  //beta alpha
-      
+
       S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
       S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
     }
@@ -335,9 +346,9 @@ int main(int argc, char* argv[]) {
       std::vector<std::vector<int> > connections; connections.resize(Dets.size());
       std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
       std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
-      
+
       oneInt LplusSInt;
-      LplusSInt.store.resize(norbs*norbs, 0.0); 
+      LplusSInt.store.resize(norbs*norbs, 0.0);
       LplusSInt.norbs = norbs;
       for (int i=0; i<L[a].store.size(); i++)
 	LplusSInt.store[i] = 1.*L[a].store[i]+1.*S[a].store[i];
@@ -351,17 +362,17 @@ int main(int argc, char* argv[]) {
 	  if (Dets[i].getocc(j)) {
 	    energy += LplusSInt(j,j);
 	  }
-	Helements[i].push_back(energy); 
+	Helements[i].push_back(energy);
       }
-      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusSInt, nelec); 
+      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusSInt, nelec);
       Hmult2 H(connections, Helements);
-      for (int j=0; j<ci.size(); j++) {//bra      
+      for (int j=0; j<ci.size(); j++) {//bra
 	for (int i=j; i<ci.size(); i++) {//ket
 	  for (int sz2=-Spin[j]; sz2<=Spin[j]; sz2+=2) {//bra Sz
-	    for (int sz1=-Spin[i]; sz1<=Spin[i]; sz1+=2) {//ket	Sz      
+	    for (int sz1=-Spin[i]; sz1<=Spin[i]; sz1+=2) {//ket	Sz
 	      MatrixXx c2extended = MatrixXx::Zero(Dets.size(), 1);  //bra
 	      MatrixXx c1extended = MatrixXx::Zero(Dets.size(), 1);  //ket
-	      MatrixXx Hc1 = MatrixXx::Zero(Dets.size(), 1); 
+	      MatrixXx Hc1 = MatrixXx::Zero(Dets.size(), 1);
 
 	      //bra
 	      if (sz2==-Spin[j])
@@ -378,15 +389,15 @@ int main(int argc, char* argv[]) {
 	      H(c1extended, Hc1);
 	      LplusS[a](rowIndex[j]+ (-sz2+Spin[j])/2, rowIndex[i] + (-sz1+Spin[i])/2) = (c2extended.adjoint()*Hc1)(0,0);
 	      LplusS[a](rowIndex[i]+ (-sz1+Spin[i])/2, rowIndex[j] + (-sz2+Spin[j])/2) = (Hc1.adjoint()*c2extended)(0,0);
-	      
+
 	    }
 	  }
 	}
       }
-    }      
+    }
     //cout << LplusS[0]<<endl;
-    vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2)); 
-    for (int a=0; a<3; a++) 
+    vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
+    for (int a=0; a<3; a++)
       Intermediate[a] = eigensolver.eigenvectors().block(0,0,hsubspaceSize, 2).adjoint() *(LplusS[a]*eigensolver.eigenvectors().block(0,0,hsubspaceSize, 2));
 
     MatrixXx Gtensor = MatrixXx::Zero(3,3);

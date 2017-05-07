@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "math.h"
 
 int sample(std::vector<double>& wts, double& cumulative){
@@ -13,7 +24,7 @@ int sample(std::vector<double>& wts, double& cumulative){
 //given "i" (an electron) we want to pick another electron "j" (hole "a")
 //it is picked by weighted probability (ii|jj) or (ii|aa)
 //the spin of "j"/"a" has to be predetermined
-void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, twoInt& I2, int spin, 
+void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, twoInt& I2, int spin,
 			 std::vector<double>& wts_for_J, std::vector<int>& jindices, double& cumulative) {
   int index = 1;
   cumulative = 0.0;
@@ -30,7 +41,7 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, twoInt& I2, int spin,
 //given "i" (an electron) we want to pick another electron "j" (hole "a")
 //it is picked by weighted probability (ii|jj) or (ii|aa)
 //the spin of "j"/"a" has to be predetermined
-void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, oneInt& I1, int spin, 
+void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, oneInt& I1, int spin,
 			 std::vector<double>& wts_for_J, std::vector<int>& jindices, double& cumulative) {
   int index = 1;
   cumulative = 0.0;
@@ -48,7 +59,7 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, oneInt& I1, int spin,
 
 //given "i" and "j" (electrons) we want to pick the first hole "a"
 //it is picked by weighted probability (ii|aa)+(jj|aa). Here it is assumed that "i" and "j" have the same spin
-void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, twoInt& I2, int spin, 
+void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, twoInt& I2, int spin,
 			 std::vector<double>& wts_for_J, std::vector<int>& jindices, double& cumulative) {
   int index = 1;
   cumulative = 0.0;
@@ -65,7 +76,7 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, twoInt& I2,
 //given electron i, j and hole "a", we want to pick the final hole "b"
 //if "i" and "j" have the same spin then b is picked with probability (ia|jb)-(ib|ja)
 //if "i" and "j" have different spins them b is picked with probability (ia|jb)
-void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, int OrbA, twoInt& I2, 
+void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, int OrbA, twoInt& I2,
 			 std::vector<double>& wts_for_J, std::vector<int>& jindices, double& cumulative) {
   bool SameSpin = OrbI%2 == OrbJ%2;
   int index = 1;

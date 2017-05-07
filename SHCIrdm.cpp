@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -70,7 +81,7 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
     sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix[0].c_str(), root, root );
     std::ofstream ofs(file, std::ios::out);
     ofs << nSpatOrbs<<endl;
-    
+
     for (int n1=0; n1<nSpatOrbs; n1++)
       for (int n2=0; n2<nSpatOrbs; n2++)
 	for (int n3=0; n3<nSpatOrbs; n3++)
@@ -80,8 +91,8 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 		ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
 	    }
     ofs.close();
-    
-    
+
+
     if (schd.DoSpinRDM) {
       char file [5000];
       sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
@@ -90,7 +101,7 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
       save << twoRDM;
       //ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
     }
-    
+
     {
       char file [5000];
       sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix[0].c_str(), root );
@@ -103,17 +114,17 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 }
 
-void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, 
-						 oneInt& I1, twoInt& I2, schedule& schd, 
+void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0,
+						 oneInt& I1, twoInt& I2, schedule& schd,
 						 double coreE, int nelec, int norbs,
 						 std::vector<StitchDEH>& uniqueDEH, int root,
 						 MatrixXx& s2RDM, MatrixXx& twoRDM) {
 
   int nSpatOrbs = norbs/2;
-  
+
   int num_thrds = omp_get_max_threads();
   for (int thrd = 0; thrd <num_thrds; thrd++) {
-    
+
     vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
     vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
     vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
@@ -123,7 +134,7 @@ void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Matr
     for (size_t k=0; k<uniqueDets.size();k++) {
       for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
 	int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;
-	
+
 	if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
 	  vector<int> closed(nelec, 0);
 	  vector<int> open(norbs-nelec,0);
@@ -149,48 +160,48 @@ void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Matr
 	  int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
 	  if (P != c0)  sgn *= -1;
 	  if (Q != d0)  sgn *= -1;
-	  
+
 	  if (schd.DoSpinRDM) {
 	    twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
 	    twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
 	  }
-	  
+
 	  populateSpatialRDM(P, Q, R, S, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
 	  populateSpatialRDM(R, S, P, Q, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
 	}// If
       } // i in variational connections to PT det k
     } // k in PT dets
   } //thrd in num_thrds
-  
+
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  
-  
-  
+
+
+
 }
 
 
-void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, 
-							 oneInt& I1, twoInt& I2, schedule& schd, 
+void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0,
+							 oneInt& I1, twoInt& I2, schedule& schd,
 							 double coreE, int nelec, int norbs,
 							 std::vector<StitchDEH>& uniqueDEH, int root,
 							 double& Psi1Norm, MatrixXx& s2RDM, MatrixXx& twoRDM) {
 
   int nSpatOrbs = norbs/2;
-  
+
   s2RDM *=(1.-Psi1Norm);
 
   int num_thrds = omp_get_max_threads();
   for (int thrd = 0; thrd <num_thrds; thrd++) {
-    
+
     vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
     vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
     vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
     vector<vector<int> >& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
     vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
 
-    for (size_t i=0; i<uniqueDets.size();i++) 
+    for (size_t i=0; i<uniqueDets.size();i++)
     {
       vector<int> closed(nelec, 0);
       vector<int> open(norbs-nelec,0);
@@ -206,13 +217,13 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& De
 	  populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff)*coeff, nSpatOrbs);
 	}
       }
-      
+
     }
-    
+
     for (size_t k=0; k<uniqueDets.size();k++) {
       for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
 	int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;
-	
+
 	if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
 	  vector<int> closed(nelec, 0);
 	  vector<int> open(norbs-nelec,0);
@@ -238,28 +249,28 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& De
 	  int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
 	  if (P != c0)  sgn *= -1;
 	  if (Q != d0)  sgn *= -1;
-	  
+
 	  if (schd.DoSpinRDM) {
 	    twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 1.0*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
 	    twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 1.0*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
 	  }
-	  
+
 	  populateSpatialRDM(P, Q, R, S, s2RDM, 1.0*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
 	  populateSpatialRDM(R, S, P, Q, s2RDM, 1.0*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
 	}// If
       } // i in variational connections to PT det k
     } // k in PT dets
   } //thrd in num_thrds
-  
+
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  
-   
+
+
 }
 
 
-void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM, 
+void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM,
 				 CItype value, int& nSpatOrbs) {
   //we assume i != j  and  k != l
   int I = i/2, J=j/2, K=k/2, L=l/2;
@@ -275,9 +286,9 @@ void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM
 
 }
 
-void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, 
+void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets,
 			  MatrixXx& cibra, MatrixXx& ciket,
-			  vector<vector<size_t> >& orbDifference, int nelec, 
+			  vector<vector<size_t> >& orbDifference, int nelec,
 			  schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
   boost::mpi::communicator world;
 
@@ -349,9 +360,9 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 }
 
 
-void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, 
+void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets,
 			     MatrixXx& cibra, MatrixXx& ciket,
-			     vector<vector<size_t> >& orbDifference, int nelec, 
+			     vector<vector<size_t> >& orbDifference, int nelec,
 			     schedule& schd, int root, MatrixXx& s1RDM) {
   boost::mpi::communicator world;
 
@@ -391,7 +402,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 
 
 
-double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, 
+double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
 				       double coreE, MatrixXx& twoRDM) {
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
@@ -454,7 +465,7 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoIn
 }
 
 
-double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2, 
+double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
 					  double coreE, MatrixXx& twoRDM) {
 
   double energy = coreE;
@@ -493,5 +504,3 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
   if (mpigetrank() == 0)  cout << "E from 2RDM: " << energy << endl;
   return energy;
 }
-
-

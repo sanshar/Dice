@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -45,12 +56,12 @@ boost::interprocess::mapped_region regionInt2SHM;
 
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci, 
+double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
 				 vector<double>& E0, oneInt& I1, twoInt& I2,
-				 twoIntHeatBathSHM& I2HB, vector<int>& irrep, 
+				 twoIntHeatBathSHM& I2HB, vector<int>& irrep,
 				 schedule& schd, double coreE, int nelec) ;
 
-void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets, 
+void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 	      schedule& schd, vector<vector<int> >& HFoccupied);
 
 int main(int argc, char* argv[]) {
@@ -114,40 +125,40 @@ int main(int argc, char* argv[]) {
   //initialize L and S integrals
   vector<oneInt> LplusS(3), L(3), S(3);
   for (int i=0; i<3; i++) {
-    LplusS[i].store.resize(norbs*norbs, 0.0); 
+    LplusS[i].store.resize(norbs*norbs, 0.0);
     LplusS[i].norbs = norbs;
   }
   //read L integrals
-  readGTensorIntegrals(LplusS, norbs, "GTensor");  
-  
+  readGTensorIntegrals(LplusS, norbs, "GTensor");
+
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
     LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
-    
+
     LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
     LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
-    
+
     LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
     LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
   std::cout.precision(15);
   vector<MatrixXx> ci;
-  vector<Determinant> Dets;  
+  vector<Determinant> Dets;
 
   double Ezero = 0.0;
   initDets(ci, Dets, schd, HFoccupied);
-  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						irrep, I1, coreE, nelec, schd.DoRDM);
 
 
-  
+
   if (!schd.stochastic) {
     Ezero = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
   }
-  else 
+  else
     Ezero = E0[0];
 
 
@@ -161,13 +172,13 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
-    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       Bfpm[2*a] = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       Bfpm[2*a] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -178,13 +189,13 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
-    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       Bfpm[2*a+1] = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       Bfpm[2*a+1] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -199,13 +210,13 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) += (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
-    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       Sfpm[2*a] = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       Sfpm[2*a] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -216,13 +227,13 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) -= (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
-    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       Sfpm[2*a+1] = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       Sfpm[2*a+1] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -240,13 +251,13 @@ int main(int argc, char* argv[]) {
       I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
       I1.store.at(i) += (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
-    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       plusplus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       plusplus = E0[0];
 
 
@@ -256,19 +267,19 @@ int main(int argc, char* argv[]) {
       I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
 
-    
+
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
       I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
-    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, 
+    E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
-    
+
     if (!schd.stochastic) {
       minusminus = getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec);
     }
-    else 
+    else
       minusminus = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -297,13 +308,13 @@ int main(int argc, char* argv[]) {
 }
 
 
-void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,  
+void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 	      schedule& schd, vector<vector<int> >& HFoccupied) {
 
   boost::mpi::communicator world;
 
   ci.clear(); Dets.clear();
-  ci.resize(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1)); 
+  ci.resize(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1));
   Dets.resize(HFoccupied.size());
   for (int d=0;d<HFoccupied.size(); d++) {
     for (int i=0; i<HFoccupied[d].size(); i++) {
@@ -311,7 +322,7 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
     }
   }
   if (mpigetrank() == 0) {
-    for (int j=0; j<ci[0].rows(); j++) 
+    for (int j=0; j<ci[0].rows(); j++)
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
   }
@@ -319,12 +330,12 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 
 }
 
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci, 
+double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
 			       vector<double>& E0, oneInt& I1, twoInt& I2,
-			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep, 
+			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep,
 			       schedule& schd, double coreE, int nelec) {
 
-  
+
 
   schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
   vector<MatrixXx> spinRDM(3);
@@ -333,8 +344,8 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
     for (int root2=root1+1 ;root2<schd.nroots; root2++) {
       Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
       SHCIbasics::DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
-							 E0[root2], I1, 
-							 I2, I2HBSHM, irrep, schd, 
+							 E0[root2], I1,
+							 I2, I2HBSHM, irrep, schd,
 							 coreE, nelec, root1, Heff(root1,root1),
 							 Heff(root2, root2), Heff(root1, root2),
 							 spinRDM);
@@ -345,7 +356,7 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
     Heff(root1, root1) += E0[root1];
 
   schd.doGtensor = true;
-  
+
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
   //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
   //exit(0);

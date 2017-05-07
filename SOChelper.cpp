@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +36,7 @@
 #include "SOChelper.h"
 
 
-void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2, 
+void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2,
 				 vector<Determinant>& Dets1, int norbs, int nelec)
 {
   size_t Norbs = norbs;
@@ -96,15 +107,15 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   //initialize L and S integrals
   vector<oneInt> L(3), LplusS(3);
   for (int i=0; i<3; i++) {
-    L[i].store.resize(norbs*norbs, 0.0); 
+    L[i].store.resize(norbs*norbs, 0.0);
     L[i].norbs = norbs;
-    
-    LplusS[i].store.resize(norbs*norbs, 0.0); 
+
+    LplusS[i].store.resize(norbs*norbs, 0.0);
     LplusS[i].norbs = norbs;
   }
 
   //read L integrals
-  readGTensorIntegrals(L, norbs, "GTensor");  
+  readGTensorIntegrals(L, norbs, "GTensor");
 #ifndef SERIAL
   boost::mpi::communicator world;
   boost::mpi::broadcast(world, L, 0);
@@ -115,22 +126,22 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   for (int a=1; a<norbs/2+1; a++) {
     LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
-    
+
     LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
     LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
-    
+
     LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
     LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
-  for (int a=0; a<3; a++) 
+  for (int a=0; a<3; a++)
     for (int i=0; i<norbs; i++)
-      for (int j=0; j<norbs; j++) 
+      for (int j=0; j<norbs; j++)
 	LplusS[a](i,j) += L[a](i,j);
 
   //The  La+ge Sa matrices where a is x,y,z
-  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2)); 
-    
+  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
+
   //calcualte S+L
   for (int a=0; a<3; a++) {
     for (int i=0; i<norbs; i++)
@@ -145,9 +156,9 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     if (eigensolver.info() != Success) abort();
     pout << a<<"  "<<((eigensolver.eigenvalues()[1]-eigensolver.eigenvalues()[0])-ge)*1e6<<endl;
   }
-  
+
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
-  
+
   for (int i=0; i<3; i++)
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
@@ -159,7 +170,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   pout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
   pout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
   pout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
-  
+
 }
 
 
@@ -174,32 +185,32 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   //initialize L and S integrals
   vector<oneInt> L(3), S(3);
   for (int i=0; i<3; i++) {
-    L[i].store.resize(norbs*norbs, 0.0); 
+    L[i].store.resize(norbs*norbs, 0.0);
     L[i].norbs = norbs;
-    
-    S[i].store.resize(norbs*norbs, 0.0); 
+
+    S[i].store.resize(norbs*norbs, 0.0);
     S[i].norbs = norbs;
   }
 
   //read L integrals
-  readGTensorIntegrals(L, norbs, "GTensor");  
+  readGTensorIntegrals(L, norbs, "GTensor");
 
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
     S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
-    
+
     S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
     S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
-    
+
     S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
     S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
   //The  La+ge Sa matrices where a is x,y,z
-  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2)); 
-    
+  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
+
   //First calcualte S
   for (int a=0; a<3; a++) {
     std::vector<std::vector<int> > connections; connections.resize(Dets.size());
@@ -207,7 +218,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
 
     oneInt LplusS;
-    LplusS.store.resize(norbs*norbs, 0.0); 
+    LplusS.store.resize(norbs*norbs, 0.0);
     LplusS.norbs = norbs;
     for (int i=0; i<L[a].store.size(); i++)
       LplusS.store[i] = L[a].store[i]+S[a].store[i];
@@ -220,10 +231,10 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 	if (Dets[i].getocc(j)) {
 	  energy += S[a](j,j)+L[a](j,j);
 	}
-      Helements[i].push_back(energy); 
+      Helements[i].push_back(energy);
     }
 
-    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusS, nelec); 
+    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusS, nelec);
 
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
     Hmult2 H(connections, Helements);
@@ -232,7 +243,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
     Intermediate[a](0,0) = (ci[0].adjoint()*Hc)(0,0);
     Intermediate[a](1,0) = (ci[1].adjoint()*Hc)(0,0);
     Intermediate[a](0,1) = conj(Intermediate[a](1,0));
-    
+
     Hc *= 0.0;
     H(ci[1], Hc);
     Intermediate[a](1,1) = (ci[1].adjoint()*Hc)(0,0);
@@ -240,7 +251,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
 
-  
+
   for (int i=0; i<3; i++)
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
@@ -251,21 +262,21 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
   cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
   cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
   cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
-  
+
 }
 
 
-void SOChelper::getSplus(const MatrixXx& c2, MatrixXx& c2splus, vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0, vector<Determinant>::iterator& beginSp, vector<Determinant>::iterator& beginSm, int norbs) 
+void SOChelper::getSplus(const MatrixXx& c2, MatrixXx& c2splus, vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0, vector<Determinant>::iterator& beginSp, vector<Determinant>::iterator& beginSm, int norbs)
 {
   for (int i=0; i<c2.rows(); i++) { //loop over all determinants
     for (int j=0; j<norbs/2 ; j++) {  //loop over spatial orbitals
-      if (Dets[i].getocc(2*j+1) && 
+      if (Dets[i].getocc(2*j+1) &&
 	  !Dets[i].getocc(2*j  )   ) {//if beta-filled and alpha-empty
-	
+
 	Determinant d = Dets[i];
 	d.setocc(2*j+1, false); //empty the beta
 	d.setocc(2*j  , true);  //fill up the alpha
-	
+
 	auto location = lower_bound(beginSp, beginSm, d);
 	c2splus(location-Dets.begin(), 0) += c2(i,0);
       }//if
@@ -273,17 +284,17 @@ void SOChelper::getSplus(const MatrixXx& c2, MatrixXx& c2splus, vector<Determina
   }//i dets
 }
 
-void SOChelper::getSminus(const MatrixXx& c2, MatrixXx& c2sminus, vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0, vector<Determinant>::iterator& beginSp, vector<Determinant>::iterator& beginSm, int norbs) 
+void SOChelper::getSminus(const MatrixXx& c2, MatrixXx& c2sminus, vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0, vector<Determinant>::iterator& beginSp, vector<Determinant>::iterator& beginSm, int norbs)
 {
   for (int i=0; i<c2.rows(); i++) { //loop over all determinants
     for (int j=0; j<norbs/2 ; j++) {  //loop over spatial orbitals
-      if (Dets[i].getocc(2*j) && 
+      if (Dets[i].getocc(2*j) &&
 	  !Dets[i].getocc(2*j +1 )   ) {//if beta-filled and alpha-empty
-	
+
 	Determinant d = Dets[i];
 	d.setocc(2*j+1, true); //fill up the beta
 	d.setocc(2*j  , false);  //empty the alpha
-	
+
 	auto location = lower_bound(beginSm, Dets.end(), d);
 	c2sminus(location-Dets.begin(), 0) += c2(i,0);
       }//if
@@ -294,12 +305,12 @@ void SOChelper::getSminus(const MatrixXx& c2, MatrixXx& c2sminus, vector<Determi
 
 void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowIndex1, int rowIndex2,
 			     const MatrixXx& c1, const MatrixXx& c2, vector<vector<int> >& connections,
-			     vector<vector<CItype> >& Helements, MatrixXx& Hsubspace, 
-			     vector<Determinant>& Dets, int norbs, 
-			     vector<Determinant>::iterator& beginS0, 
-			     vector<Determinant>::iterator& beginSp, 
+			     vector<vector<CItype> >& Helements, MatrixXx& Hsubspace,
+			     vector<Determinant>& Dets, int norbs,
+			     vector<Determinant>::iterator& beginS0,
+			     vector<Determinant>::iterator& beginSp,
 			     vector<Determinant>::iterator& beginSm) {
-  
+
   Hmult2 H(connections, Helements);
 
   int orbM = 0;
@@ -366,12 +377,12 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
 
 void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, int rowIndex1, int rowIndex2,
 						  const MatrixXx& c1, const MatrixXx& c2, vector<vector<int> >& connections,
-						  vector<vector<CItype> >& Helements, vector<MatrixXx>& Hsubspace, 
-						  vector<Determinant>& Dets, int norbs, 
-						  vector<Determinant>::iterator& beginS0, 
-						  vector<Determinant>::iterator& beginSp, 
+						  vector<vector<CItype> >& Helements, vector<MatrixXx>& Hsubspace,
+						  vector<Determinant>& Dets, int norbs,
+						  vector<Determinant>::iterator& beginS0,
+						  vector<Determinant>::iterator& beginSp,
 						  vector<Determinant>::iterator& beginSm) {
-  
+
   Hmult2 H(connections, Helements);
 
   int orbM = 0;
@@ -427,13 +438,12 @@ void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, 
     for (int Sz2 = -spin2; Sz2 <=spin2; Sz2+=2) {
       for (int Mop = -2; Mop<=2; Mop+=2) {
 	double cg = clebsch(spin2, Sz2, Jop, Mop, spin1, Sz1);
-	Hsubspace[(Mop+2)/2](rowIndex1 + (-Sz1+spin1)/2, 
+	Hsubspace[(Mop+2)/2](rowIndex1 + (-Sz1+spin1)/2,
 			     rowIndex2 + (-Sz2+spin2)/2) += RME[ (Mop+2)/2]*cg;
 	if (rowIndex1 != rowIndex2 )
-	  Hsubspace[(Mop+2)/2](rowIndex2 + (-Sz2+spin2)/2, 
+	  Hsubspace[(Mop+2)/2](rowIndex2 + (-Sz2+spin2)/2,
 			       rowIndex1 + (-Sz1+spin1)/2) += conj(RME[(Mop+2)/2]*cg);
       }
     }
   return;
 }
-

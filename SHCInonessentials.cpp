@@ -1,4 +1,14 @@
-#include "Determinants.h"
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "SHCIbasics.h"
 #include "SHCInonessentials."
 #include "input.h"
@@ -428,7 +438,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, 
 
 }
 
-void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 				       twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
   int nblocks = schd.nblocks;
   std::vector<int> blockSizes(nblocks,0);
@@ -442,10 +452,10 @@ void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, d
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
   double AvgenergyEN = 0.0;
 
-#pragma omp parallel for schedule(dynamic) 
+#pragma omp parallel for schedule(dynamic)
   for (int inter1 = 0; inter1 < nblocks; inter1++) {
 
-    vector<int> psiClosed(nelec,0); 
+    vector<int> psiClosed(nelec,0);
     vector<int> psiOpen(norbs-nelec,0);
 
     std::vector<double> wts1(blockSizes[inter1]);
@@ -455,7 +465,7 @@ void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, d
       Sample1[i] = i+(inter1)*Dets.size()/nblocks ;
     }
 
-    map<Determinant, pair<double,double> > Psi1ab; 
+    map<Determinant, pair<double,double> > Psi1ab;
     for (int i=0; i<Sample1.size(); i++) {
       int I = Sample1[i];
       SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
@@ -464,33 +474,33 @@ void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, d
     double energyEN = 0.0;
     for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
       it->first.getOpenClosed(psiOpen, psiClosed);
-      energyEN += it->second.first*it->second.first/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      energyEN += it->second.first*it->second.first/(Energy(psiClosed, nelec, I1, I2, coreE)-E0);
     }
-    
+
 
     for (int i=Sample1[Sample1.size()-1]+1; i<Dets.size(); i++) {
       SHCIbasics::getDeterminants(Dets[i], abs(schd.epsilon2/ci(i,0)), 0.0, ci(i,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
-      if (i%1000 == 0 && omp_get_thread_num() == 0) cout <<i <<" out of "<<Dets.size()-Sample1.size()<<endl; 
+      if (i%1000 == 0 && omp_get_thread_num() == 0) cout <<i <<" out of "<<Dets.size()-Sample1.size()<<endl;
     }
 
     for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
       it->first.getOpenClosed(psiOpen, psiClosed);
-      energyEN += 2.*it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+      energyEN += 2.*it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0);
     }
 
-#pragma omp critical 
+#pragma omp critical
     {
       AvgenergyEN += energyEN;
-      
-      std::cout << format("%6i  %14.8f   %10.2f  %10i %4i") 
+
+      std::cout << format("%6i  %14.8f   %10.2f  %10i %4i")
 	%(inter1) % (E0-AvgenergyEN) % (getTime()-startofCalc) % inter1 % (omp_get_thread_num());
       cout << endl;
     }
   }
-  
+
   {
     std::cout <<"FINAL ANSWER "<<endl;
-    std::cout << format("%4i  %14.8f   %10.2f  %10i %4i") 
+    std::cout << format("%4i  %14.8f   %10.2f  %10i %4i")
       %(nblocks) % (E0-AvgenergyEN) % (getTime()-startofCalc) % nblocks % (0);
     cout << endl;
   }
@@ -499,7 +509,7 @@ void SHCIbasics::DoBatchDeterministic(vector<Determinant>& Dets, MatrixXx& ci, d
 
 
 
-void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   cout << "This function is most likely broken, dont use it. Use the single list method instead!!!"<<endl;
@@ -524,16 +534,16 @@ void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& 
     for (int i=0; i<ci.rows(); i++)
       cumulative += abs(ci(i,0));
 
-#pragma omp parallel for schedule(dynamic) 
+#pragma omp parallel for schedule(dynamic)
     for (int iter=0; iter<niter; iter++) {
       //cout << norbs<<"  "<<nelec<<endl;
-      char psiArray[norbs]; 
-      vector<int> psiClosed(nelec,0); 
+      char psiArray[norbs];
+      vector<int> psiClosed(nelec,0);
       vector<int> psiOpen(norbs-nelec,0);
       //char psiArray[norbs];
       std::vector<double> wts1(Nsample,0.0), wts2(Nsample,0.0); std::vector<int> Sample1(Nsample,-1), Sample2(Nsample,-1);
       //wts1.reserve(Nsample); wts2.reserve(Nsample); Sample1.reserve(Nsample); Sample2.reserve(Nsample);
-      
+
 
       sample_N2(ci, cumulative, Sample1, wts1);
       sample_N2(ci, cumulative, Sample2, wts2);
@@ -545,8 +555,8 @@ void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& 
 	  if (Sample2[j] == Sample1[i]) normi += wts1[i]*wts2[j];
 	norm += normi;
       }
-      
-      map<Determinant, pair<double,double> > Psi1ab; 
+
+      map<Determinant, pair<double,double> > Psi1ab;
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
 	std::vector<int>::iterator it = find(Sample2.begin(), Sample2.end(), I);
@@ -567,21 +577,21 @@ void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& 
       double energyEN = 0.0;
       for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
 	it->first.getOpenClosed(psiOpen, psiClosed);
-	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0);
       }
       sampleSize = Sample1.size();
       AverageDen += norm;
-#pragma omp critical 
+#pragma omp critical
       {
 	if (mpigetrank() == 0) {
 	  AvgenergyEN += energyEN; currentIter++;
-	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  cout << endl;
 	}
 	else {
 	  AvgenergyEN += energyEN; currentIter++;
-	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  ofs << endl;
 
@@ -593,7 +603,7 @@ void SHCIbasics::DoPerturbativeStochastic2(vector<Determinant>& Dets, MatrixXx& 
 }
 
 
-void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 					   twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -611,16 +621,16 @@ void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& c
     int sampleSize = 0;
     int num_thrds = omp_get_max_threads();
 
-#pragma omp parallel for schedule(dynamic) 
+#pragma omp parallel for schedule(dynamic)
     for (int iter=0; iter<niter; iter++) {
       //cout << norbs<<"  "<<nelec<<endl;
-      char psiArray[norbs]; 
-      vector<int> psiClosed(nelec,0); 
+      char psiArray[norbs];
+      vector<int> psiClosed(nelec,0);
       vector<int> psiOpen(norbs-nelec,0);
       //char psiArray[norbs];
       std::vector<double> wts1, wts2; std::vector<int> Sample1, Sample2;
       wts1.reserve(1000); wts2.reserve(1000); Sample1.reserve(1000); Sample2.reserve(1000);
-      
+
       Sample1.resize(0); wts1.resize(0); Sample2.resize(0); wts2.resize(0);
       sample_round(ci, schd.eps, Sample1, wts1);
       sample_round(ci, schd.eps, Sample2, wts2);
@@ -633,8 +643,8 @@ void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& c
 	    break;
 	  }
       }
-      
-      map<Determinant, pair<double,double> > Psi1ab; 
+
+      map<Determinant, pair<double,double> > Psi1ab;
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
 	//SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], 0.0, I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
@@ -657,21 +667,21 @@ void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& c
       double energyEN = 0.0;
       for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
 	it->first.getOpenClosed(psiOpen, psiClosed);
-	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	energyEN += it->second.first*it->second.second/(Energy(psiClosed, nelec, I1, I2, coreE)-E0);
       }
       sampleSize = Sample1.size();
 
-#pragma omp critical 
+#pragma omp critical
       {
 	if (mpigetrank() == 0) {
 	  AvgenergyEN += energyEN; currentIter++;
-	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  cout << endl;
 	}
 	else {
 	  AvgenergyEN += energyEN; currentIter++;
-	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  ofs << endl;
 
@@ -679,7 +689,7 @@ void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& c
 
 	//AverageDen += norm;
 	//AvgenergyEN += energyEN; currentIter++;
-	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i")
 	//%(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	//cout << endl;
 	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
@@ -690,7 +700,7 @@ void SHCIbasics::DoPerturbativeStochastic(vector<Determinant>& Dets, MatrixXx& c
 }
 
 
-void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 						     twoIntHeatBath& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec) {
 
   boost::mpi::communicator world;
@@ -708,20 +718,20 @@ void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, M
     int sampleSize = 0;
     int num_thrds = omp_get_max_threads();
 
-#pragma omp parallel for schedule(dynamic) 
+#pragma omp parallel for schedule(dynamic)
     for (int iter=0; iter<niter; iter++) {
       //cout << norbs<<"  "<<nelec<<endl;
-      char psiArray[norbs]; 
-      vector<int> psiClosed(nelec,0); 
+      char psiArray[norbs];
+      vector<int> psiClosed(nelec,0);
       vector<int> psiOpen(norbs-nelec,0);
       //char psiArray[norbs];
       std::vector<double> wts1; std::vector<int> Sample1;
       wts1.reserve(1000);  Sample1.reserve(1000);
-      
+
       Sample1.resize(0); wts1.resize(0);
       sample_round(ci, schd.eps, Sample1, wts1);
-      
-      map<Determinant, pair<double,double> > Psi1ab; 
+
+      map<Determinant, pair<double,double> > Psi1ab;
       for (int i=0; i<Sample1.size(); i++) {
 	int I = Sample1[i];
 	SHCIbasics::getDeterminants(Dets[I], abs(schd.epsilon2/ci(I,0)), wts1[i], ci(I,0), I1, I2, I2HB, irrep, coreE, E0, Psi1ab, SortedDets, schd);
@@ -732,21 +742,21 @@ void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, M
       double energyEN = 0.0;
       for (map<Determinant, pair<double, double> >::iterator it = Psi1ab.begin(); it != Psi1ab.end(); it++) {
 	it->first.getOpenClosed(psiOpen, psiClosed);
-	energyEN += (it->second.first*it->second.first - it->second.second)/(Energy(psiClosed, nelec, I1, I2, coreE)-E0); 
+	energyEN += (it->second.first*it->second.first - it->second.second)/(Energy(psiClosed, nelec, I1, I2, coreE)-E0);
       }
       sampleSize = Sample1.size();
 
-#pragma omp critical 
+#pragma omp critical
       {
 	if (mpigetrank() == 0) {
 	  AvgenergyEN += energyEN; currentIter++;
-	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  std::cout << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (1.0) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  cout << endl;
 	}
 	else {
 	  AvgenergyEN += energyEN; currentIter++;
-	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i") 
+	  ofs << format("%6i  %14.8f  %14.8f %14.8f   %10.2f  %10i %4i")
 	    %(currentIter) % (E0-energyEN) % (1.0) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	  ofs << endl;
 
@@ -754,7 +764,7 @@ void SHCIbasics::DoPerturbativeStochasticSingleList(vector<Determinant>& Dets, M
 
 	//AverageDen += norm;
 	//AvgenergyEN += energyEN; currentIter++;
-	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i") 
+	//std::cout << format("%6i  %14.8f  %14.8f  %14.8f   %10.2f  %10i %4i")
 	//%(currentIter) % (E0-energyEN) % (norm) % (E0-AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
 	//cout << endl;
 	//%(currentIter) % (E0-AvgenergyEN/currentIter) % (norm) % (E0-AvgenergyEN/AverageDen) % (getTime()-startofCalc) % sampleSize % (omp_get_thread_num());
@@ -783,7 +793,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
   int nclosed = d.getOpenClosed(open, closed);
   int nopen = norbs-nclosed;
   d.getRepArray(detArray);
-  
+
   std::map<Determinant, pair<double,double> >::iterator det_it;
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
@@ -811,7 +821,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
       }
     }
   }
-  
+
   if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
@@ -832,11 +842,11 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 	//cout << a/2<<"  "<<schd.nvirt<<"  "<<nclosed/2<<endl;
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
 	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
 	    double sgn = 1.0;
 	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
+	      int A = (closed[i]), B = closed[j], I= a, J = b;
 	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
 	      if (B > J) sgn*=-1 ;
 	      if (I > J) sgn*=-1 ;
@@ -875,7 +885,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  vector<int> closed(nelec,0); 
+  vector<int> closed(nelec,0);
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
@@ -885,7 +895,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
-  
+
   std::map<Determinant, std::tuple<double,double, double> >::iterator det_it;
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
@@ -911,7 +921,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
       }
     }
   }
-  
+
   if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
@@ -933,7 +943,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 	//cout << a/2<<"  "<<schd.nvirt<<"  "<<nclosed/2<<endl;
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
 	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
 
 	    double sgn = 1.0;
@@ -944,7 +954,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 
 	    if (schd.singleList && schd.SampleN != -1) {
 	      if (det_it == Psi1.end()) {
-		double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
+		double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 		Psi1[di] = std::tuple<double,double,double>(it->first*sgn*ci1, it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2),E);
 	      }
 	      else {std::get<0>(det_it->second) +=it->first*sgn*ci1;std::get<1>(det_it->second) += it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2);}
@@ -962,7 +972,7 @@ void SHCIbasics::getDeterminants(Determinant& d, double epsilon, double ci1, dou
 void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double epsilonLarge, double ci1, double ci2, oneInt& int1, twoInt& int2, twoIntHeatBath& I2hb, vector<int>& irreps, double coreE, double E0, std::map<Determinant, std::tuple<double, double,double,double,double> >& Psi1, std::vector<Determinant>& Psi0, schedule& schd, int Nmc, int nelec) {
 
   int norbs = d.norbs;
-  vector<int> closed(nelec,0); 
+  vector<int> closed(nelec,0);
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
@@ -972,7 +982,7 @@ void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double 
 
 
   double Energyd = Energy(closed, nclosed, int1, int2, coreE);
-  
+
   std::map<Determinant, std::tuple<double, double, double,double, double> >::iterator det_it;
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
@@ -1001,7 +1011,7 @@ void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double 
       }
     }
   }
-  
+
   if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
@@ -1024,12 +1034,12 @@ void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double 
 	//cout << a/2<<"  "<<schd.nvirt<<"  "<<nclosed/2<<endl;
 	if (!(d.getocc(a) || d.getocc(b))) {
 	  Determinant di = d;
-	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);	    
+	  di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
 	  if (!(binary_search(Psi0.begin(), Psi0.end(), di))) {
 
 	    double sgn = 1.0;
 	    {
-	      int A = (closed[i]), B = closed[j], I= a, J = b; 
+	      int A = (closed[i]), B = closed[j], I= a, J = b;
 	      sgn = parity(detArray,norbs,A)*parity(detArray,norbs,I)*parity(detArray,norbs,B)*parity(detArray,norbs,J);
 	      if (B > J) sgn*=-1 ;
 	      if (I > J) sgn*=-1 ;
@@ -1044,7 +1054,7 @@ void SHCIbasics::getDeterminants2Epsilon(Determinant& d, double epsilon, double 
 
 	    if (schd.singleList && schd.SampleN != -1) {
 	      if (det_it == Psi1.end()) {
-		double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);	    
+		double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 		Psi1[di] = std::tuple<double,double,double,double,double>(it->first*sgn*ci1, it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2),E,0.0,0.0);
 	      }
 	      else {std::get<0>(det_it->second) +=it->first*sgn*ci1;std::get<1>(det_it->second) += it->first*it->first*ci1*(ci1*Nmc/(Nmc-1)-ci2);}
@@ -1077,10 +1087,10 @@ void SHCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,in
 #pragma omp parallel for schedule(dynamic)
   for (size_t x=prevSize; x<Dets.size(); x++) {
     Determinant d = Dets[x];
-    int open[norbs], closed[norbs]; 
+    int open[norbs], closed[norbs];
     int nclosed = d.getOpenClosed(open, closed);
     int nopen = norbs-nclosed;
-    
+
     if (x%10000 == 0) cout <<"update connections "<<x<<" out of "<<Dets.size()-prevSize<<endl;
     //loop over all single excitation and find if they are present in the list
     //on or before the current determinant
@@ -1088,7 +1098,7 @@ void SHCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,in
       int i=ia/nopen, a=ia%nopen;
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      
+
       map<Determinant, int>::iterator it = SortedDets.find(di);
       if (it != SortedDets.end()) {
 	int y = it->second;
@@ -1131,9 +1141,9 @@ void SHCIbasics::updateConnections(vector<Determinant>& Dets, map<Determinant,in
       }
   }
 
-  
+
 }
-void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -1154,7 +1164,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
   int currentIter = 0;
   int sampleSize = 0;
   int num_thrds = omp_get_max_threads();
-  
+
   double cumulative = 0.0;
   for (int i=0; i<ci.rows(); i++)
     cumulative += abs(ci(i,0));
@@ -1184,32 +1194,32 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	wts1[i] /= (num_thrds*mpigetsize());
       int Nmc = Nsample;
       double norm = 0.0;
-    
+
       std::vector<Determinant> Psi1; std::vector<CItype>  numerator1A; vector<double> numerator2A;
       vector<char> present;
       std::vector<double>  det_energy;
 
       for (int i=0; i<distinctSample; i++) {
 	int I = Sample1[i];
-	SHCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), 
-					   schd.epsilon2Large/abs(ci(I,0)), wts1[i], 
-					   ci(I,0), I1, I2, I2HB, irrep, coreE, E0, 
-					   Psi1, 
-					   numerator1A, 
-					   numerator2A, 
-					   present, 
-					   det_energy, 
+	SHCIbasics::getDeterminants2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)),
+					   schd.epsilon2Large/abs(ci(I,0)), wts1[i],
+					   ci(I,0), I1, I2, I2HB, irrep, coreE, E0,
+					   Psi1,
+					   numerator1A,
+					   numerator2A,
+					   present,
+					   det_energy,
 					   schd, Nmc, nelec);
-      }      
-      
+      }
+
 
       std::vector<Determinant> Psi1copy = Psi1;
       vector<long> detIndex(Psi1.size(), 0);
       vector<long> detIndexcopy(Psi1.size(), 0);
       for (size_t i=0; i<Psi1.size(); i++)
-	detIndex[i] = i;      
+	detIndex[i] = i;
       mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
-      detIndexcopy.clear(); Psi1copy.clear();      
+      detIndexcopy.clear(); Psi1copy.clear();
       reorder(numerator1A, detIndex);
       reorder(numerator2A, detIndex);
       reorder(det_energy, detIndex);
@@ -1238,26 +1248,26 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	  hashedpresentBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(present.at(j));
 	}
 	Psi1.clear(); numerator1A.clear(); numerator2A.clear(); det_energy.clear(); present.clear();
-	
+
 	//if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
 
 
 #pragma omp barrier
 	if (omp_get_thread_num()==0) {
 	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
+	  for (int proc=0; proc<mpigetsize(); proc++)
 	    hashedDetBeforeMPI[proc][omp_get_thread_num()].clear();
 	  mpi::all_to_all(world, hashedNum1BeforeMPI, hashedNum1AfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
+	  for (int proc=0; proc<mpigetsize(); proc++)
 	    hashedNum1BeforeMPI[proc][omp_get_thread_num()].clear();
 	  mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
+	  for (int proc=0; proc<mpigetsize(); proc++)
 	    hashedNum2BeforeMPI[proc][omp_get_thread_num()].clear();
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
+	  for (int proc=0; proc<mpigetsize(); proc++)
 	    hashedEnergyBeforeMPI[proc][omp_get_thread_num()].clear();
 	  mpi::all_to_all(world, hashedpresentBeforeMPI, hashedpresentAfterMPI);
-	  for (int proc=0; proc<mpigetsize(); proc++) 
+	  for (int proc=0; proc<mpigetsize(); proc++)
 	    hashedpresentBeforeMPI[proc][omp_get_thread_num()].clear();
 	}
 #pragma omp barrier
@@ -1284,9 +1294,9 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	vector<long> detIndex(Psi1.size(), 0);
 	vector<long> detIndexcopy(Psi1.size(), 0);
 	for (size_t i=0; i<Psi1.size(); i++)
-	  detIndex[i] = i;      
+	  detIndex[i] = i;
 	mergesort(&Psi1copy[0], 0, Psi1.size()-1, &detIndex[0], &( Psi1.operator[](0)), &detIndexcopy[0]);
-	detIndexcopy.clear(); Psi1copy.clear();      
+	detIndexcopy.clear(); Psi1copy.clear();
 	reorder(numerator1A, detIndex);
 	reorder(numerator2A, detIndex);
 	reorder(det_energy, detIndex);
@@ -1298,9 +1308,9 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
       CItype currentNum1A=0.; double currentNum2A=0.;
       CItype currentNum1B=0.; double currentNum2B=0.;
       vector<Determinant>::iterator vec_it = SortedDets.begin();
-      double energyEN = 0.0, energyENLargeEps = 0.0;      
+      double energyEN = 0.0, energyENLargeEps = 0.0;
       size_t effNmc = mpigetsize()*num_thrds*Nmc;
-        
+
     for (int i=0;i<Psi1.size();) {
       if (Psi1[i] < *vec_it) {
 	currentNum1A += numerator1A[i];
@@ -1309,7 +1319,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	  currentNum1B += numerator1A[i];
 	  currentNum2B += numerator2A[i];
 	}
-	
+
 	if ( i == Psi1.size()-1) {
 	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
@@ -1333,7 +1343,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	  currentNum1B += numerator1A[i];
 	  currentNum2B += numerator2A[i];
 	}
-	
+
 	if ( i == Psi1.size()-1) {
 	  energyEN += ( pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
 	  energyENLargeEps += ( pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
@@ -1358,7 +1368,7 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	}
       }
     }
-      
+
       totalPT=0; totalPTLargeEps=0;
 #pragma omp barrier
 #pragma omp critical
@@ -1367,20 +1377,20 @@ void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(ve
 	totalPTLargeEps += energyENLargeEps;
       }
 #pragma omp barrier
-      
+
       double finalE = 0., finalELargeEps=0;
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
-      
+
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
 	AvgenergyEN += -finalE+finalELargeEps+EptLarge; currentIter++;
-	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i") 
+	std::cout << format("%6i  %14.8f  %s%i %14.8f   %10.2f  %10i")
 	  %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) % ("Root") % root % (E0+AvgenergyEN/currentIter) % (getTime()-startofCalc) % sampleSize ;
 	cout << endl;
       }
     }
   }
-  
+
 }
 
 void getDeterminantsDeterministicPTInt1(Determinant det, int det_ind, double epsilon1, CItype ci1, double epsilon2, CItype ci2, oneInt& int1a, oneInt& int1, twoInt& int2, vector<int>& irreps, double coreE, std::vector<Determinant>& dets, std::vector<CItype>& numerator1, std::vector<CItype>& numerator2, std::vector<double>& energy, schedule& schd, int nelec) {
@@ -1421,4 +1431,3 @@ void getDeterminantsDeterministicPTInt1(Determinant det, int det_ind, double eps
   }
   return;
 }
-

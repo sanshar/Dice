@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -38,7 +49,7 @@ using namespace SHCISortMpiUtils;
 
 
 
-double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2, 
+double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   boost::mpi::communicator world;
@@ -61,7 +72,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   int currentIter = 0;
   int sampleSize = 0;
   int num_thrds = omp_get_max_threads();
-  
+
   double cumulative = 0.0;
   for (int i=0; i<ci.rows(); i++)
     cumulative += abs(ci(i,0));
@@ -98,16 +109,16 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	std::fill(allSample.begin(), allSample.end(), -1);
 	AllDistinctSample = SHCIsampledeterminants::sample_N2_alias(ci, cumulative, allSample, allwts, alias, prob);
       }
-      if (omp_get_thread_num() == 0) { 	
+      if (omp_get_thread_num() == 0) {
 	mpi::broadcast(world, allSample, 0);
 	mpi::broadcast(world, allwts, 0);
 	mpi::broadcast(world, AllDistinctSample, 0);
       }
-	
+
 #pragma omp barrier
       int distinctSample = 0;
       for (int i = 0; i < AllDistinctSample; i++) {
-	if ((i%(omp_get_num_threads() * world.size()) 
+	if ((i%(omp_get_num_threads() * world.size())
 	  != world.rank()*omp_get_num_threads() + omp_get_thread_num())) continue;
 	wts1   [distinctSample] = allwts   [i];
 	Sample1[distinctSample] = allSample[i];
@@ -117,16 +128,16 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 
       for (int i=0; i<distinctSample; i++) {
 	int I = Sample1[i];
-	SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)), 
-						     schd.epsilon2Large/abs(ci(I,0)), wts1[i], 
-						     ci(I,0), I1, I2, I2HB, irrep, coreE, E0, 
+	SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Dets[I], schd.epsilon2/abs(ci(I,0)),
+						     schd.epsilon2Large/abs(ci(I,0)), wts1[i],
+						     ci(I,0), I1, I2, I2HB, irrep, coreE, E0,
 						     *uniqueDEH[omp_get_thread_num()].Det,
 						     *uniqueDEH[omp_get_thread_num()].Num,
 						     *uniqueDEH[omp_get_thread_num()].Num2,
 						     *uniqueDEH[omp_get_thread_num()].present,
 						     *uniqueDEH[omp_get_thread_num()].Energy,
 						     schd, Nmc, nelec);
-      }      
+      }
 
       uniqueDEH[omp_get_thread_num()].MergeSort();
 
@@ -167,10 +178,10 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    hashedpresentBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].present->at(j));
 	    hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
 	  }
-	  
+
 	  uniqueDEH[omp_get_thread_num()].resize(start);
-	  
-	  
+
+
 #pragma omp barrier
 	  if (omp_get_thread_num()==num_thrds-1) {
 	    mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
@@ -180,7 +191,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
 	  }
 #pragma omp barrier
-	  
+
 	  for (int proc=0; proc<mpigetsize(); proc++) {
 	    for (int thrd=0; thrd<num_thrds; thrd++) {
 	      hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
@@ -215,11 +226,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	*uniqueDEH[omp_get_thread_num()].present = *uniqueDEH_afterMPI.present;
 	*uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy;
 	uniqueDEH_afterMPI.clear();
-	uniqueDEH[omp_get_thread_num()].MergeSort();	
+	uniqueDEH[omp_get_thread_num()].MergeSort();
       }
 
 
-      double energyEN = 0.0, energyENLargeEps = 0.0;      
+      double energyEN = 0.0, energyENLargeEps = 0.0;
 
       vector<Determinant>& Psi1 = *uniqueDEH[omp_get_thread_num()].Det;
       vector<CItype>& numerator1A = *uniqueDEH[omp_get_thread_num()].Num;
@@ -230,7 +241,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       CItype currentNum1A=0.; CItype currentNum2A=0.;
       CItype currentNum1B=0.; CItype currentNum2B=0.;
       vector<Determinant>::iterator vec_it = SortedDets.begin();
-        
+
       for (int i=0;i<Psi1.size();) {
 	if (Psi1[i] < *vec_it) {
 	  currentNum1A += numerator1A[i];
@@ -239,7 +250,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    currentNum1B += numerator1A[i];
 	    currentNum2B += numerator2A[i];
 	  }
-	  
+
 	  if ( i == Psi1.size()-1) {
 #ifndef Complex
 	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
@@ -273,7 +284,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    currentNum1B += numerator1A[i];
 	    currentNum2B += numerator2A[i];
 	  }
-	  
+
 	  if ( i == Psi1.size()-1) {
 #ifndef Complex
 	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
@@ -306,7 +317,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	  }
 	}
       }
-      
+
       totalPT=0; totalPTLargeEps=0;
 #pragma omp barrier
 #pragma omp critical
@@ -315,21 +326,21 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	totalPTLargeEps += energyENLargeEps;
       }
 #pragma omp barrier
-      
+
       double finalE = 0., finalELargeEps=0;
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
-      
+
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
 	currentIter++;
 	AvgenergyEN += -finalE+finalELargeEps+EptLarge;
 	AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
 	stddev = currentIter < 5 ? 1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
 	if (currentIter < 5)
-	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10s  %10.2f") 
+	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10s  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %("Root") %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
 	else
-	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10.2e  %10.2f") 
+	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10.2e  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %("Root") %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
 	cout << endl;
       }
@@ -352,7 +363,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 
 
 double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
-					       twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, 
+					       twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE,
 					       int nelec, int root,  vector<MatrixXx>& vdVector, double& Psi1Norm,
 					       bool appendPsi1ToPsi0) {
 
@@ -563,15 +574,15 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
     mpi::broadcast(world, s2RDM, 0);
-    if (schd.DoSpinRDM) 
+    if (schd.DoSpinRDM)
       mpi::broadcast(world, twoRDM, 0);
     if (mpigetrank() != 0) {
       s2RDM = 0.*s2RDM;
       twoRDM = 0.*twoRDM;
     }
-    SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE, 
+    SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Dets, ci, E0, I1, I2, schd, coreE,
 							nelec, norbs, uniqueDEH, root, Psi1Norm,
-							s2RDM, twoRDM); 
+							s2RDM, twoRDM);
     SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
     //construct the vector Via x da
     //where Via is the perturbation matrix element
@@ -591,21 +602,21 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
 	}
       }
-    } 
-   
-    MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(), 
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
 		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
- 
+
   }
 
   return finalE;
 }
 
 
-void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01, 
+void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01,
 							MatrixXx&ci2, double& E02, oneInt& I1, twoInt& I2,
-							twoIntHeatBathSHM& I2HB, vector<int>& irrep, 
-							schedule& schd, double coreE, int nelec, int root, 
+							twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+							schedule& schd, double coreE, int nelec, int root,
 							CItype& EPT1, CItype& EPT2, CItype& EPT12,
 							std::vector<MatrixXx>& spinRDM) {
 
@@ -642,7 +653,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 						      *uniqueDEH[omp_get_thread_num()].Energy,
 						      schd, nelec);
     }
-    
+
     uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
     uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
 
@@ -782,25 +793,25 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
 	vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
 	vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
-	
-	
+
+
 	for (int x=0; x<Dets.size(); x++) {
 	  Determinant& d = Dets[x];
-	  
+
 	  vector<int> closed(nelec,0);
 	  vector<int> open(norbs-nelec,0);
 	  d.getOpenClosed(open, closed);
 	  int nclosed = nelec;
 	  int nopen = norbs-nclosed;
-	  
-	  
+
+
 	  for (int ia=0; ia<nopen*nclosed; ia++){
 	    int i=ia/nopen, a=ia%nopen;
-	    
+
 	    Determinant di = d;
 	    di.setocc(open[a], true); di.setocc(closed[i],false);
-	    
-	    
+
+
 	    auto lower = std::lower_bound(hasHEDDets.begin(), hasHEDDets.end(), di);
 	    //map<Determinant, int>::iterator it = SortedDets.find(di);
 	    if (di == *lower ) {
@@ -817,8 +828,8 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 	      spinRDM_thrd[thrd][0](open[a], closed[i]) += complex1;
 	      spinRDM_thrd[thrd][1](open[a], closed[i]) += complex2;
-	      spinRDM_thrd[thrd][2](open[a], closed[i]) += complex12; 
-	      
+	      spinRDM_thrd[thrd][2](open[a], closed[i]) += complex12;
+
 	      spinRDM_thrd[thrd][0](closed[i], open[a]) += conj(complex1);
 	      spinRDM_thrd[thrd][1](closed[i], open[a]) += conj(complex2);
 	      spinRDM_thrd[thrd][2](closed[i], open[a]) += complex12b;
@@ -826,8 +837,8 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	      /*
 	      spinRDM[0](open[a], closed[i]) += complex1;
 	      spinRDM[1](open[a], closed[i]) += complex2;
-	      spinRDM[2](open[a], closed[i]) += complex12; 
-	      
+	      spinRDM[2](open[a], closed[i]) += complex12;
+
 	      spinRDM[0](closed[i], open[a]) += conj(complex1);
 	      spinRDM[1](closed[i], open[a]) += conj(complex2);
 	      spinRDM[2](closed[i], open[a]) += complex12b;
@@ -835,8 +846,8 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	    }
 	  }
 	}
-	
-	
+
+
       }
     }
 
@@ -848,13 +859,13 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 #ifndef SERIAL
 #ifndef Complex
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>()); 
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>()); 
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>()); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>());
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>());
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>());
 #else
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex); 
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex); 
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex);
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex);
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex);
 #endif
 #endif
   }
@@ -896,7 +907,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
 
 #ifdef Complex
-  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, 
+  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements,
 					    norbs, I1, nelec, false);
 #endif
 
@@ -941,9 +952,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     pout << format("#-------------Iter=%4i---------------") % iter<<endl;
     MatrixXx cMax(ci[0].rows(),1); cMax = 0.*ci[0];
     for (int j=0; j<ci[0].rows(); j++) {
-      for (int i=0; i<ci.size(); i++) 
+      for (int i=0; i<ci.size(); i++)
 	cMax(j,0) += pow( abs(ci[i](j,0)), 2);
-	
+
       cMax(j,0) = pow( cMax(j,0), 0.5);
     }
 
@@ -1038,7 +1049,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
     SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
-    SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(), 
+    SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(),
 					  connections, Helements,
 					  norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
 #ifdef Complex
@@ -1058,7 +1069,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef Complex
     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #else
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex); 
+    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex);
 #endif
 #endif
 
@@ -1151,7 +1162,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     save << connections<<Helements<<orbdifference;
   }
 
-  {    
+  {
     char file [5000];
     sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), world.rank() );
     std::ofstream ofs(file, std::ios::binary);
@@ -1184,14 +1195,14 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
-    
+
     load >> iter >> Dets >> SortedDets ;
     int diaglen;
     load >> diaglen;
     ci.resize(1, MatrixXx(diaglen,1)); diag.resize(diaglen,1);
     for (int i=0; i<diag.rows(); i++)
       load >> diag(i,0);
-    
+
     load >> ci;
     load >> E0;
     if (schd.onlyperturbative) {ifs.close();return;}
@@ -1214,10 +1225,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     load >> BetaN>> AlphaNm1;
     ifs.close();
   }
-    
+
   pout << format("#End   reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 }
-
-
-

@@ -1,8 +1,8 @@
 /*                                                                           
-Developed by Roberto Olivares-Amaya and Garnet K.-L. Chan, 2012                      
-Copyright (c) 2012, Garnet K.-L. Chan                                        
-                                                                             
-This program is integrated in Molpro with the permission of 
+Developed by Roberto Olivares-Amaya and Garnet K.-L. Chan, 2012
+Copyright (c) 2012, Garnet K.-L. Chan
+
+This program is integrated in Molpro with the permission of
 Sandeep Sharma, Garnet K.-L. Chan and Roberto Olivares-Amaya
 */
 
@@ -33,7 +33,7 @@ double nine_j(int na, int nb, int nc, int nd, int ne, int nf, int ng, int nh, in
 	double ninej=0.0;
 
    //Checking triangle rules
-   if(na+nb < nc || abs(na-nb) > nc) 
+   if(na+nb < nc || abs(na-nb) > nc)
       return ninej;
    if(nd + ne < nf || abs(nd-ne) > nf)
       return ninej;
@@ -74,21 +74,21 @@ double six_j(int na, int nb, int nc, int nd, int ne, int nf){
 
    //Initializing
 	double sixj=0.0;
-   if((na+nb)%2 != nc%2) 
+   if((na+nb)%2 != nc%2)
       return sixj;
-   if((nc+nd)%2 != ne%2) 
+   if((nc+nd)%2 != ne%2)
       return sixj;
-   if((na+ne)%2 != nf%2) 
+   if((na+ne)%2 != nf%2)
       return sixj;
-   if((nb+nd)%2 != nf%2) 
+   if((nb+nd)%2 != nf%2)
       return sixj;
-   if(na + nb < nc || abs(na-nb)>nc) 
+   if(na + nb < nc || abs(na-nb)>nc)
       return sixj;
-   if(nc+nd<ne || abs(nc-nd)>ne) 
+   if(nc+nd<ne || abs(nc-nd)>ne)
       return sixj;
-   if(na+ne<nf || abs(na-ne)>nf) 
+   if(na+ne<nf || abs(na-ne)>nf)
       return sixj;
-   if(nb+nd<nf || abs(nb-nd)>nf) 
+   if(nb+nd<nf || abs(nb-nd)>nf)
       return sixj;
 
    //Converting to half its value
@@ -165,9 +165,9 @@ double clebsch(int nj1, int nm1, int nj2, int nm2, int nj3, int nm3) {
       double den = den1*den2*den3*den4*den5*den6;
       factor = sqrt(num/den);
 
-      double mint = max(max(0., j1-m1-(j3-m3)), j2 + m2 - (j3 + m3)); 
+      double mint = max(max(0., j1-m1-(j3-m3)), j2 + m2 - (j3 + m3));
       double maxt = min(min(j1-m1, j2+m2),j1+j2-j3);
-      
+
       //pout << "mint " << mint << endl;
       //pout << "maxt " << maxt << endl;
       double bin1;
@@ -210,9 +210,9 @@ double j6_delta(double a, double b, double c) {
 	return prefac;
 }
 
-double square_six(double a, double b, double c, double d, double e, double f){ 
+double square_six(double a, double b, double c, double d, double e, double f){
 /*
-[a b c] 
+[a b c]
 [d e f]
 */
 
@@ -229,7 +229,7 @@ double square_six(double a, double b, double c, double d, double e, double f){
       num1=fbinom(n+1, n-a-e-f);
       num2=fbinom(a+e-f, n-b-d-f);
       num3=fbinom(a-e+f, n-c-d-e);
-      num4=fbinom(-a+e+f, n-a-b-c); 
+      num4=fbinom(-a+e+f, n-a-b-c);
 
       num=mone(n)*num1*num2*num3*num4;
 
@@ -262,7 +262,7 @@ double facto(double n) {
 	int i;
 	if (n==0 || n==1)
 		return fac;
-	for (i=2; i<=nint; i++) 
+	for (i=2; i<=nint; i++)
 		fac *= i;
 	return fac;
 }
@@ -277,8 +277,8 @@ int mone(double n) {
 	else
 		value = -1;
 	return (value);
-}	
-		
+}
+
 int get_cast(double x) {
    int i;
    //i = (x / (int) x >= 1) ? (int) x : (int) x + 1 ;
@@ -294,7 +294,7 @@ double fbinom(double dn, double dr)
   int r = get_cast(dr);
 
 
-  if(n==r || r==0) 
+  if(n==r || r==0)
   {
     res = 1.0;
   }
@@ -305,20 +305,3 @@ double fbinom(double dn, double dr)
 //    pout << n << " " << r<< " -> " << res << endl;
   return res;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

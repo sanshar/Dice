@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifndef INTEGRAL_HEADER_H
 #define INTEGRAL_HEADER_H
 #include <vector>
@@ -44,7 +55,7 @@ class oneInt {
   }
 };
 
-  
+
 class twoInt {
  private:
   friend class boost::serialization::access;
@@ -85,7 +96,7 @@ class twoInt {
       return store[A*(A+1)/2+B];
     }
   }
-  
+
 };
 
 
@@ -98,8 +109,8 @@ class twoIntHeatBath {
   //if the integrals are for the same spin you have to separately store (ia|jb) and (ib|ja)
   //for opposite spin you just have to store for a>b because the integral is (ia|jb) - (ib|ja)
   //now this class is made by just considering integrals that are smaller than threshhold
-  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > sameSpin;  
-  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > oppositeSpin;  
+  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > sameSpin;
+  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > oppositeSpin;
 
   double epsilon;
   double zero ;
@@ -128,8 +139,8 @@ class twoIntHeatBath {
 	}
       }
   }
-  
-  
+
+
 };
 
 class twoIntHeatBathSHM {
@@ -149,8 +160,8 @@ class twoIntHeatBathSHM {
 
 
 #ifdef Complex
-void readSOCIntegrals(oneInt& I1soc, int norbs, string fileprefix);  
-void readGTensorIntegrals(vector<oneInt>& I1soc, int norbs, string fileprefix);  
+void readSOCIntegrals(oneInt& I1soc, int norbs, string fileprefix);
+void readGTensorIntegrals(vector<oneInt>& I1soc, int norbs, string fileprefix);
 #endif
 
 int readNorbs(string fcidump);

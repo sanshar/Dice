@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -216,29 +227,29 @@ void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int pr
     for (int x=prevSize; x<Dets.size(); x++) {
       if (x%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
       Determinant& d = Dets[x];
-      
+
       vector<int> closed(nelec,0);
       vector<int> open(norbs-nelec,0);
       d.getOpenClosed(open, closed);
       int nclosed = nelec;
       int nopen = norbs-nclosed;
-      
+
       //loop over all single excitation and find if they are present in the list
       //on or before the current determinant
       for (int ia=0; ia<nopen*nclosed; ia++){
 	int i=ia/nopen, a=ia%nopen;
-	
+
 	CItype integral = int1(open[a],closed[i]);
 	if (abs(integral) < 1.e-8) continue;
-	
+
 	Determinant di = d;
 	if (open[a]%2 == closed[i]%2 && !includeSz) continue;
-	
+
 	di.setocc(open[a], true); di.setocc(closed[i],false);
 	double sgn = 1.0;
 	d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-	
-	
+
+
 	map<Determinant, int>::iterator it = SortedDets.find(di);
 	if (it != SortedDets.end() ) {
 	  int y = it->second;

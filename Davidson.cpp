@@ -1,3 +1,14 @@
+/*
+Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+Copyright (c) 2017, Sandeep Sharma
+
+This file is part of DICE.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "Davidson.h"
 #include "Hmult.h"
 #include <Eigen/Dense>
@@ -41,9 +52,9 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   int nroots = x0.size();
   MatrixXx b;
   if (mpigetrank() == 0)
-    b=MatrixXx::Zero(x0[0].rows(), maxCopies); 
+    b=MatrixXx::Zero(x0[0].rows(), maxCopies);
   else
-    b=MatrixXx::Zero(x0[0].rows(), 1); 
+    b=MatrixXx::Zero(x0[0].rows(), 1);
 
   int niter;
   //if some vector has zero norm then randomise it
@@ -57,7 +68,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     }
 
     //make vectors orthogonal to each other
-    for (int i=0; i<x0.size(); i++) {  
+    for (int i=0; i<x0.size(); i++) {
       for (int j=0; j<i; j++) {
 	CItype overlap = (b.col(j).adjoint()*b.col(i))(0,0);
 	b.col(i) -= overlap*b.col(j);
@@ -74,8 +85,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   }
 
   MatrixXx sigma;
-  if (mpigetrank() == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies); 
-  else  sigma = MatrixXx::Zero(x0[0].rows(), 1); 
+  if (mpigetrank() == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
+  else  sigma = MatrixXx::Zero(x0[0].rows(), 1);
 
   int sigmaSize=0, bsize = x0.size();
   MatrixXx r;
@@ -86,7 +97,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   double ei = 0.0;
   while(true) {
     //0->continue with the loop, 1 -> continue clause, 2 -> return
-    int continueOrReturn = 0; 
+    int continueOrReturn = 0;
     mpi::broadcast(world, bsize, 0);
     mpi::broadcast(world, sigmaSize, 0);
 
@@ -95,7 +106,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       if (mpigetrank()==0) { colindex = i;}
       Eigen::Block<MatrixXx> bcol = b.block(0,colindex,b.rows(),1), sigmacol = sigma.block(0,colindex,sigma.rows(),1);
 
-      //by default the MatrixXx is column major, 
+      //by default the MatrixXx is column major,
       //so all elements of bcol are contiguous
 #ifndef Complex
       MPI_Bcast(&(bcol(0,0)), b.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -111,7 +122,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       MatrixXx hsubspace(bsize, bsize);hsubspace.setZero(bsize, bsize);
       for (int i=0; i<bsize; i++)
 	for (int j=i; j<bsize; j++) {
-	  hsubspace(i,j) = b.col(i).dot(sigma.col(j)); 
+	  hsubspace(i,j) = b.col(i).dot(sigma.col(j));
 #ifdef Complex
 	  hsubspace(j,i) = conj(hsubspace(i,j));
 #else
@@ -138,7 +149,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	  continue;
 	}
       }
-    
+
       r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
       double error = r.norm();
       if (iter == 0)
@@ -146,8 +157,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       if (false)
 	pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
       iter++;
-      
-      
+
+
       if (hsubspace.rows() == b.rows()) {
 	//all root are available
 	for (int i=0; i<x0.size(); i++) {
@@ -181,14 +192,14 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
     }
 
-  label1:    
+  label1:
     mpi::broadcast(world, continueOrReturn, 0);
     mpi::broadcast(world, iter, 0);
     if (continueOrReturn == 2) return eroots;
 
     if (mpigetrank() == 0) {
       precondition(r,diag,ei);
-      for (int i=0; i<bsize; i++) 
+      for (int i=0; i<bsize; i++)
 	r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
 
       if (bsize < maxCopies) {
@@ -236,21 +247,15 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
     if (false)
       cout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
-    if (r.norm() < tol || iter > 100) { 
-      p.setZero(p.rows(),1); H(x0,p); p -=b; 
+    if (r.norm() < tol || iter > 100) {
+      p.setZero(p.rows(),1); H(x0,p); p -=b;
       return abs(ept);
-    }      
+    }
 
     p = r +(rsnew/rsold)*p;
     rsold = rsnew;
     iter++;
   }
 
-  
+
 }
-
-
-
-
-
-
