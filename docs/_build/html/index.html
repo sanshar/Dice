@@ -1,0 +1,154 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Welcome to Dice’s documentation! &mdash; Dice 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dice 0.9 documentation" href="#" />
+    <link rel="next" title="Overview" href="overview.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="overview.html" title="Overview"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Dice 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to Dice&#8217;s documentation!</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="overview.html"
+                        title="next chapter">Overview</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-dice-s-documentation">
+<h1>Welcome to Dice&#8217;s documentation!<a class="headerlink" href="#welcome-to-dice-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="figure align-left">
+<a class="reference internal image-reference" href="_images/dice.jpg"><img alt="_images/dice.jpg" src="_images/dice.jpg" style="width: 80px;" /></a>
+</div>
+<p><em>Dice</em> implements the semistochastic heat bath configuration interaction (SHCI) algorithm for <em>ab initio</em> Hamiltonian of a quantum chemical system. Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30-100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients. Compared to other methods in its class SHCI is often not only orders of magnitude faster, it also does not suffer from a serious memory bottleneck that plauges such methods. The resulting algorithm as implemented in Dice allows us to treat difficult benchmark systems such as the Chromium dimer and Mn-Salen (a challenging bioinorganic cluster) at a cost that is often an order of magnitude faster than either density matrix renormalization group (DMRG) or full configuration interaction quantum Monte Carlo (FCIQMC). Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, SHCI might be an ideal choice for you.</p>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#algorithm">Algorithm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#features">Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#license-and-how-to-cite">License and how to cite</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#source-code">Source Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#compile">Compile</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gettingstarted.html#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf">Interfacing with PySCF</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="keywords.html">Keywords</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="keywords.html#basic-keywords">Basic Keywords</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="benchmarking.html#platform">Platform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="benchmarking.html#problems">Problems</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span>Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span>Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span>Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="overview.html" title="Overview"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">Dice 0.9 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2017, Sandeep Sharma.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
+    </div>
+  </body>
+</html>
