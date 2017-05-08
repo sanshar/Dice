@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="c++">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Overview &#8212; Dice 0.9 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.9',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Dice 0.9 documentation" href="index.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Welcome to Dice’s documentation!" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Dice’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Overview</a><ul>
+<li><a class="reference internal" href="#algorithm">Algorithm</a></li>
+<li><a class="reference internal" href="#features">Features</a></li>
+<li><a class="reference internal" href="#license-and-how-to-cite">License and how to cite</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to Dice&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="next chapter">Installation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/overview.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="algorithm">
+<h2>Algorithm<a class="headerlink" href="#algorithm" title="Permalink to this headline">¶</a></h2>
+<p>There are two key ideas that differentiate SHCI and accounts for its vastly higher efficiency. SHCI partitions the entire set of determinants in the Hilbert space into two sets, the first that are treated variationally are included in the set <em>V</em> and a second set <em>C</em> that are connected to the determinants in <em>V</em> by a non-zero Hamiltonian matrix element. We use indices <em>i, j</em> for determinants in the variational space <em>V</em>, and index <em>a</em> for determinants in the connected space <em>C</em>.</p>
+<ol class="arabic simple">
+<li>SHCI takes advantage of the fact that the 2-body excitation matrix elements depend only on the indices of the 4 orbitals whose occupations are changing and not on the other occupied orbitals. This allows SHCI to use a procedure in which only the important determinants are ever looked at! In addition, the usual SCI-PT algorithm promotes a determinant a to the V space if the criterion <span class="math">\(\frac{\sum_i H_{ai} c_i}{E_0 - H_{aa}} &gt; \epsilon_1\)</span>, is satisfied for a user defined parameter <span class="math">\(\epsilon_1\)</span>. Instead SHCI uses a much simpler criterion in which a determinant <em>a</em> is promoted to <em>V</em> if <span class="math">\(|H_{ai}c_i| &gt; \epsilon_1\)</span> for any <em>i</em> in <em>V</em>. Although using the SHCI criterion is much cheaper, the difference in calculated energies is negligibly small.</li>
+<li>The above ideas speed up both the variational and the perturbative steps of the algorithm by several orders of magnitude. However, the perturbative step has a large memory requirement because all determinants that are connected to those in <em>V</em> must be stored. We have developed a semistochastic perturbative approach that both overcomes this memory bottleneck and is faster than the deterministic approach at the cost of having a small statistical error.</li>
+</ol>
+</div>
+<div class="section" id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
+<p>The resulting SHCI algorithm has several attractive features:</p>
+<ul class="simple">
+<li>There is no sign problem that plagues several quantum Monte Carlo methods. Instead of using Metropolis-Hastings sampling, we use the Alias method to directly sample determinants from the reference wavefunction, thus avoiding correlations between consecutive samples.</li>
+<li>In addition to removing the memory bottleneck, semistochastic HCI (SHCI) is faster than the deterministic variant for many systems if a stochastic error of 0.1 mHa is acceptable.</li>
+<li>The SHCI algorithm extends the range of applicability of the original algorithm, allowing us to calculate the correlation energy of very large active spaces.</li>
+</ul>
+</div>
+<div class="section" id="license-and-how-to-cite">
+<h2>License and how to cite<a class="headerlink" href="#license-and-how-to-cite" title="Permalink to this headline">¶</a></h2>
+<p><em>Dice</em> is distributed under the GNU GPL license which is reproduced on the top of every source file. We would appreciate if you cite the following paper in publications resulting from the use of <em>Dice</em>.</p>
+<ul class="simple">
+<li><ol class="first upperalpha" start="19">
+<li>Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce">&#8220;Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory.&#8221;</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, 13, 1595.</li>
+</ol>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Dice’s documentation!"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2017, Sandeep Sharma.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.6.
+    </div>
+  </body>
+</html>
