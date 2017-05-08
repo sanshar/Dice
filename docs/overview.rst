@@ -17,10 +17,19 @@ There are two key ideas that differentiate SHCI and accounts for its vastly high
 
 Features
 --------
+* Wavefunction optimization and calculation of one and two reduced density matrices (RDMs) for multireference systems with large active spaces, between 30-100 orbitals. Dice can also calculated the one and two-body relaxed density matrices during the perturbative calculation.
+
+* Calculation of excited states.
+
+* Exploitation of Abelian, :math:`D_{\infty h}`, and :math:`C_{\infty v}` symmetries.
+
+* Active space orbital optimization with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. When combined with `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ *Dice* can also calculate excited states using state averaging.
+
+
 
 
 License and how to cite
 -----------------------
 *Dice* is distributed under the GNU GPL license which is reproduced on the top of every source file. We would appreciate if you cite the following paper in publications resulting from the use of *Dice*.
 
-* S. Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, `"Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory." <http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce>`_ *Journal* *of* *Chemical* *Theory* *and* *Computations*, **2017**, 13, 1595. 
+* S. Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, `"Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory." <http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce>`_ *Journal* *of* *Chemical* *Theory* *and* *Computations*, **2017**, 13, 1595.
