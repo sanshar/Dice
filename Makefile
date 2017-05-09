@@ -1,8 +1,8 @@
-USE_MPI = no
-USE_INTEL = no
+USE_MPI = yes
+USE_INTEL = yes
 
-FLAGS = -std=c++11 -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
-DFLAGS = -std=c++11 -g -O2 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
+FLAGS = -std=c++11 -g -O3 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
+DFLAGS = -std=c++11 -g -O3 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
