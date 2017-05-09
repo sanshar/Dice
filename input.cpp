@@ -40,7 +40,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.onlyperturbative = false;
   schd.singleList = true;
   int nocc = -1;;
-  schd.io = true;
+  schd.io = false;
   schd.nroots = 1;
   schd.nPTiter = 1000000;
   schd.DoRDM = false;
@@ -55,6 +55,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.responseFile = "RESPONSE";
   schd.socmultiplier = 1.0;
   schd.targetError = 1.e-4;
+  schd.num_thrds = 1;
   while (dump.good()) {
 
     std::string
@@ -106,6 +107,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
     else if (boost::iequals(ArgName, "noio"))
       schd.io=false;
+    else if (boost::iequals(ArgName, "num_thrds"))
+      schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
     else if (boost::iequals(ArgName, "doresponse"))  {

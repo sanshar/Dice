@@ -54,7 +54,8 @@ private:
       & doResponse                              \
       & responseFile                            \
       & socmultiplier                           \
-      & targetError;
+      & targetError                             \
+      & num_thrds;
   }
 
 public:
@@ -90,6 +91,7 @@ public:
   string responseFile;
   double socmultiplier;
   double targetError;
+  int num_thrds;
 };
 
 #endif

@@ -78,6 +78,7 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
+  omp_set_num_threads(schd.num_thrds);
 
 
   //set the random seed
