@@ -49,7 +49,13 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Keywords</a><ul>
-<li><a class="reference internal" href="#basic-keywords">Basic Keywords</a></li>
+<li><a class="reference internal" href="#basic-keywords">Basic Keywords</a><ul>
+<li><a class="reference internal" href="#reference-determinant">Reference Determinant</a></li>
+<li><a class="reference internal" href="#variational">Variational</a></li>
+<li><a class="reference internal" href="#perturbative">Perturbative</a></li>
+<li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -93,34 +99,23 @@
 <p>The keywords are listed below can be added to the input script after the occupation of the orbitals is specified. To use a keyword, write the keyword followed by the type of value specified in parentheses e.g. to use davidsonTol write &#8220;davidsonTol 5e-5&#8221; in your input script. If no type of value is given in parentheses simply use th keyword itself to toggle the desired behavior, e.g. &#8220;DoRDM&#8221; in your input file will turn on the DoRDM behavior described below.</p>
 <div class="section" id="basic-keywords">
 <h2>Basic Keywords<a class="headerlink" href="#basic-keywords" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="reference-determinant">
+<h3>Reference Determinant<a class="headerlink" href="#reference-determinant" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><dl class="first docutils">
+<dt>nroots</dt>
+<dd><p class="first last">(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="variational">
+<h3>Variational<a class="headerlink" href="#variational" title="Permalink to this headline">¶</a></h3>
 <ul>
 <li><dl class="first docutils">
 <dt>davidsonTol</dt>
 <dd><p class="first last">(Double) Tolerance for the Davidson step. The default is 5e−5.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>epsilon2</dt>
-<dd><p class="first last">(Double) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>epsilon2Large</dt>
-<dd><p class="first last">(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifices the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>SampleN</dt>
-<dd><p class="first last">(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>epsilon1</dt>
-<dd><p class="first last">(Array of doubles) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</p>
 </dd>
 </dl>
 </li>
@@ -131,8 +126,37 @@
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>prefix</dt>
-<dd><p class="first last">(String) Path to scratch directory. Default is &#8221;.&#8221;. To set your own path, simply write the absolute path in the input file without quotations.</p>
+<dt>DoRDM</dt>
+<dd><p class="first last">If true, the program will save the spatial reduced density matrix as a text file. Default is False.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>epsilon1</dt>
+<dd><p class="first last">(Array of doubles) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="perturbative">
+<h3>Perturbative<a class="headerlink" href="#perturbative" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><dl class="first docutils">
+<dt>epsilon2</dt>
+<dd><p class="first last">(Double) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>epsilon2Large</dt>
+<dd><p class="first last">(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifies the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>SampleN</dt>
+<dd><p class="first last">(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</p>
 </dd>
 </dl>
 </li>
@@ -143,30 +167,30 @@
 </dl>
 </li>
 <li><dl class="first docutils">
+<dt>targetError</dt>
+<dd><p class="first last">(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math">\(10^4\)</span>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="miscellaneous">
+<h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><dl class="first docutils">
+<dt>prefix</dt>
+<dd><p class="first last">(String) Path to scratch directory. Default is &#8221;.&#8221;. To set your own path, simply write the absolute path in the input file without quotations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
 <dt>io</dt>
 <dd><p class="first last">Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write &#8220;noio&#8221; in input script.</p>
 </dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>nroots</dt>
-<dd><p class="first last">(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>nPTiter</dt>
-<dd><p class="first last">(Integer) Number of iterations for stochastic or semi-stochastic perturbative calculations.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>DoRDM</dt>
-<dd><p class="first last">If true, the program will save the spatial reduced density matrix as a text file. Default is False.</p>
-</dd>
-</dl>
-</li>
 </ul>
+</div>
 </div>
 </div>
 

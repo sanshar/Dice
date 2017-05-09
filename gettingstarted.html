@@ -49,6 +49,12 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Getting Started</a><ul>
+<li><a class="reference internal" href="#structure-of-the-input">Structure of the Input</a><ul>
+<li><a class="reference internal" href="#header">Header</a></li>
+<li><a class="reference internal" href="#variational-section">Variational Section</a></li>
+<li><a class="reference internal" href="#perturbative-section">Perturbative Section</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
 </ul>
 </li>
@@ -90,6 +96,66 @@
             
   <div class="section" id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="structure-of-the-input">
+<h2>Structure of the Input<a class="headerlink" href="#structure-of-the-input" title="Permalink to this headline">¶</a></h2>
+<p>The input is broken up into three main sections: first, the header specifies how many electrons should be included in the active space and which orbitals they occupy in the Hatree Fock (HF) determinant; second, the schedule and settings for the variational part of the calculation; finally, the settings for the perturbative calculation.</p>
+<div class="section" id="header">
+<h3>Header<a class="headerlink" href="#header" title="Permalink to this headline">¶</a></h3>
+<p>In the first part of the input file, between lines 1 and 4, we establish the number of electrons in the active space (8 in this case) and then we specify which orbitals each of those eight electrons is in. The header can include more than one reference determinant as shown below in a minimal input file.</p>
+</div>
+<div class="section" id="variational-section">
+<h3>Variational Section<a class="headerlink" href="#variational-section" title="Permalink to this headline">¶</a></h3>
+<p>The schedule specifies which <span class="math">\(\epsilon_1\)</span> values will be used at each iteration. In the example shown directly below, an <span class="math">\(\epsilon_1\)</span> value of <span class="math">\(9*10^{-4}\)</span> will be used from the <span class="math">\(0^{th}\)</span> up to the <span class="math">\(3^{rd}\)</span> iteration, i.e. in iterations 0, 1, and 2.</p>
+</div>
+<div class="section" id="perturbative-section">
+<h3>Perturbative Section<a class="headerlink" href="#perturbative-section" title="Permalink to this headline">¶</a></h3>
+<p><em>Dice</em> can calculate the second order perturbative contribution to the energy in three ways all of which involve the use of the <span class="math">\(epsilon_2\)</span> keyword. This parameter controls how much of the determinant space will be included in the perturbative calculation</p>
+<ol class="arabic">
+<li><p class="first">Deterministic: All determinants connected to the variational space with <span class="math">\(|H_{ai}c_i| &gt; \epsilon_2\)</span> are included in the following summation where <span class="math">\(\Delta E^{(2)}\)</span> is the second order perturbative correction to the energy, <span class="math">\(H_{ai}\)</span> is the Hamiltonian matrix element connecting determinants i and a, <span class="math">\(c_i\)</span> is the coefficient of the i <span class="math">\(^{th}\)</span> determinant, and <span class="math">\(E^{(0)}\)</span> is the eigenvalue of the zeroth-order Hamiltonian.</p>
+<blockquote>
+<div><div class="math" id="equation-e_det_pt">
+<span class="eqno">(1)</span>\[\Delta E^{(2)} \approx \sum_a \frac{\big(\sum_i^{\epsilon_2} H_{ai} c_i \big)^2}{E^{(0)}-H_{aa}}\]</div>
+</div></blockquote>
+</li>
+<li><p class="first">Stochastic: A small number of determinants in the variational space (determined by the SampleN parameter, see <a class="reference internal" href="keywords.html#dice-keywords"><span>Keywords</span></a> for more details) are stochastically selected and used evaluate equation <a href="#equation-e_stoc_pt">(2)</a> where <span class="math">\(N_d\)</span> is the total number of determinants sampled, <span class="math">\(N_d^{diff}\)</span> is the number of unique determinants sampled, <span class="math">\(\omega_i\)</span> is the number of times determinant i was selected in this sample, and <span class="math">\(p_i = \frac{|c_i|}{\sum_i |c_i|}\)</span> or the probability of selecting determinant i. Stochastic evaluation of the energy correction enables the use of much smaller <span class="math">\(\epsilon_2\)</span> values for large systems, while retaining the sub mHa accuracy of the deterministic variant.</p>
+<blockquote>
+<div><div class="math" id="equation-e_stoc_pt">
+<span class="eqno">(2)</span>\[\Delta E^{(2)} \approx \frac{1}{N_d(N_d-1)} \Bigg \langle \sum_a \frac{1}{E^{(0)}-H_{aa}} \Bigg[ \bigg(\sum_i^{N_d^{diff}} \frac{\omega_i H_{ai} c_i}{p_i}\bigg)^2 + \sum_i^{N_d^{diff}} \bigg(\frac{\omega_i (N_d-1)}{p_i} - \frac{\omega_i^2}{p_i^2}\bigg) c_i^2 H_{ai}^2 \Bigg] \Bigg \rangle\]</div>
+</div></blockquote>
+</li>
+<li><p class="first">Semistochastic: In this variant of the peturbative calculation, <em>Dice</em> both eq. <a href="#equation-e_det_pt">(1)</a> and <a href="#equation-e_stoc_pt">(2)</a>. A new keyword called <span class="math">\(\epsilon_{2Large}\)</span> is needed to distinguish which determinants will be treated stochastically and which will not. <em>Dice</em> calculates the energy correction using <a href="#equation-e_stoc_pt">(2)</a> for both <span class="math">\(\epsilon_2\)</span> and <span class="math">\(\epsilon_{2Large}\)</span> and using <a href="#equation-e_det_pt">(1)</a> for <span class="math">\(\epsilon_{2Large}\)</span>. We then subtract the less strict stochastic correction (<span class="math">\(E_2^S[\epsilon_2^d]\)</span>) from the strict stochastic correction (<span class="math">\(\Delta E_2^S[\epsilon_2]\)</span>) to reduce the stochastic noise before adding the deterministic contribution (<span class="math">\(\Delta E_2^D[\epsilon_2^d]\)</span>).</p>
+<blockquote>
+<div><div class="math" id="equation-e_semi_pt">
+<span class="eqno">(3)</span>\[\Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]\]</div>
+</div></blockquote>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span>Keywords</span></a> page.</p>
+</div>
+<div class="highlight-none"><div class="highlight"><pre><span></span>#reference determinant
+nocc 8
+0 1  4 5  8 9  14 15
+0 1  4 5  8 9  14 17
+end
+nroots 2  #eg nroots don&#39;t have to be the same as number of reference determinants
+
+#var keywords
+schedule
+0 9e-4
+3 5e-4
+end
+maxiter 12
+
+#PT keywords
+deterministic
+epsilon2 1.e-8
+sampleN 200
+</pre></div>
+</div>
+</div>
+</div>
 <div class="section" id="using-shci-as-a-stand-alone-program">
 <h2>Using SHCI as a stand-alone program<a class="headerlink" href="#using-shci-as-a-stand-alone-program" title="Permalink to this headline">¶</a></h2>
 <p>You can choose to use SHCI as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you&#8217;d like to use it as an active space solver in a CASSCF calculation see the <a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf"><span>Interfacing with PySCF</span></a> page.</p>
@@ -114,9 +180,12 @@ noio
 maxiter 12
 </pre></div>
 </div>
-<p>In the first part of the input file, between lines 1 and 3, we establish the number of electrons in the active space (8 in this case) and then we specify which orbitals each of those eight electrons is in. You can then add keywords either before or after the schedule the order does not matter. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span>Keywords</span></a> page. The schedule specifies which <span class="math">\(\epsilon_1\)</span> values will be used at each iteration. In the example shown, an <span class="math">\(\epsilon_1\)</span> value of <span class="math">\(9*10^{-4}\)</span> will be used from the <span class="math">\(0^{th}\)</span> up to the <span class="math">\(3^{rd}\)</span> iteration, i.e. in iterations 0, 1, and 2.</p>
 <p>Once you have your input.dat and FCIDUMP file you can open a terminal and navigate to the directory with both files and use the following command:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>mpirun -np <span class="m">2</span> /path_to_shci/SHCI input.dat &gt; output.dat
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You can run <em>Dice</em> in parallel using OMP, MPI, or a hybrid of both, but we recommend that you use MPI. If you would like to run a hybrid scheme, please contact us to help you set it up.</p>
+</div>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mpirun -np <span class="m">2</span> /path_to_dice/Dice input.dat &gt; output.dat
 </pre></div>
 </div>
 <p>This will execute your input.dat file and write all output to the output.dat file in your current working directory. An example of the output is shown below:</p>
@@ -126,7 +195,7 @@ maxiter 12
 #sampleN 200
 #davidsontol 5.e-5
 #dE 1.e-7
-#DoRDM
+#DoRDM true
 #
 #schedule
 #0 9e-4
