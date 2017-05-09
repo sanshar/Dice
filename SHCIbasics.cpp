@@ -1292,7 +1292,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
   boost::mpi::communicator world;
 #endif
 
-  pout << format("#Begin reading variational wf %29.2f\n")
+  if (schd.outputlevel>0) pout << format("#Begin reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
   {
@@ -1331,6 +1331,6 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     ifs.close();
   }
 
-  pout << format("#End   reading variational wf %29.2f\n")
+  if (schd.outputlevel >0) pout << format("#End   reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 }

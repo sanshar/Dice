@@ -214,7 +214,7 @@ int main(int argc, char* argv[]) {
   pout << "Printing most important determinants"<<endl;
   pout << format("%4s %10s  ") %("Det") %("weight"); pout << "Determinant string"<<endl;
   for (int root=0; root<schd.nroots; root++) {
-    cout << "State :"<<root<<endl;
+    pout << "State :"<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
     for (int i=0; i<6; i++) {
       compAbs comp;
