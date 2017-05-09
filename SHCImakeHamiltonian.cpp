@@ -9,6 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "omp.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -62,7 +63,7 @@ void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 #pragma omp parallel
   {
     for (int i=0; i<connections.size(); i++) {
-      if ((i/omp_get_num_threads())%world.size() != world.rank()) continue;
+      if ((i/omp_get_num_threads())%mpigetsize() != mpigetrank()) continue;
       Helements[i][0] = Dets[i].Energy(I1, I2, coreE);
       for (int j=1; j<connections[i].size(); j++) {
 	size_t orbDiff;

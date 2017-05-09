@@ -32,6 +32,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include "SOChelper.h"
 
@@ -78,7 +79,7 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+world.rank());
+  srand(schd.randomSeed+mpigetrank());
 
 
   int num_thrds;
@@ -101,7 +102,7 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<schd.prefix.size(); i++)
   {
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[i].c_str(), world.rank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[i].c_str(), mpigetrank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
 
@@ -140,11 +141,12 @@ int main(int argc, char* argv[]) {
     Dets.insert(Dets.end(), LocalDets.begin(), LocalDets.end());
     Energy.insert(Energy.end(), LocalEnergy.begin(), LocalEnergy.end());
   }
+#ifndef SERIAL
   mpi::broadcast(world, ci, 0);
   mpi::broadcast(world, Dets, 0);
   mpi::broadcast(world, diag, 0);
   mpi::broadcast(world, Energy, 0);
-
+#endif
 
   //Locate all determinants that are S+ |dets>  and S- |dets>
   //and add them to determinants. Rougly increases the space 3 times.

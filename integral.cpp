@@ -217,8 +217,9 @@ void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
 #endif
 
 int readNorbs(string fcidump) {
+#ifndef SERIAL
   boost::mpi::communicator world;
-
+#endif
   int norbs;
   if (mpigetrank() == 0) {
     ifstream dump(fcidump.c_str());
@@ -244,7 +245,9 @@ int readNorbs(string fcidump) {
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE,
 		   std::vector<int>& irrep) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
   ifstream dump(fcidump.c_str());
 
 
@@ -315,11 +318,15 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   size_t I2memory = npair*(npair+1)/2; //memory in bytes
 
+#ifndef SERIAL
   world.barrier();
+#endif
   int2Segment.truncate((I2memory)*sizeof(double));
   regionInt2 = boost::interprocess::mapped_region{int2Segment, boost::interprocess::read_write};
   memset(regionInt2.get_address(), 0., (I2memory)*sizeof(double));
+#ifndef SERIAL
   world.barrier();
+#endif
   I2.store = static_cast<double*>(regionInt2.get_address());
 
   if (mpigetrank() == 0) {
@@ -396,7 +403,9 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
 void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
   size_t memRequired = 0;
   size_t nonZeroSameSpinIntegrals = 0;
   size_t nonZeroOppositeSpinIntegrals = 0;
@@ -420,15 +429,19 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     memRequired += nonZeroOppositeSpinIntegrals*(sizeof(double)+2*sizeof(int))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
   }
 
+#ifndef SERIAL
   mpi::broadcast(world, memRequired, 0);
   mpi::broadcast(world, nonZeroSameSpinIntegrals, 0);
   mpi::broadcast(world, nonZeroOppositeSpinIntegrals, 0);
-
   world.barrier();
+#endif
+
   int2SHMSegment.truncate(memRequired);
   regionInt2SHM = boost::interprocess::mapped_region{int2SHMSegment, boost::interprocess::read_write};
   memset(regionInt2SHM.get_address(), 0., memRequired);
+#ifndef SERIAL
   world.barrier();
+#endif
 
   sameSpinIntegrals = static_cast<double*>(regionInt2SHM.get_address());
   startingIndicesSameSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*sizeof(double));
@@ -486,6 +499,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   long intdim = memRequired;
   long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
   long maxIter = intdim/maxint;
+#ifndef SERIAL
   world.barrier();
   char* shrdMem = static_cast<char*>(regionInt2SHM.get_address());
   for (int i=0; i<maxIter; i++) {
@@ -494,5 +508,6 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   }
   MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
   world.barrier();
+#endif
 
 }

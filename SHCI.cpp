@@ -9,6 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "omp.h"
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,6 +33,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
@@ -80,8 +82,7 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+world.rank());
-  //srand(schd.randomSeed+world.rank());
+  srand(schd.randomSeed+mpigetrank());
   if (mpigetrank()==0) cout<<"#using seed: "<<schd.randomSeed<<endl;
 
 
@@ -140,7 +141,9 @@ int main(int argc, char* argv[]) {
 #else
   if (schd.doSOC) {
     readSOCIntegrals(I1, norbs, "SOC");
+#ifndef SERIAL
     mpi::broadcast(world, I1, 0);
+#endif
   }
 #endif
 
@@ -165,8 +168,9 @@ int main(int argc, char* argv[]) {
     ci[0] = ci[0]/ci[0].norm();
   }
 
+#ifndef SERIAL
   mpi::broadcast(world, ci, 0);
-
+#endif
 
 
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
@@ -212,7 +216,9 @@ int main(int argc, char* argv[]) {
     schd.epsilon2 = bkpepsilon2;
   }
 
+#ifndef SERIAL
   world.barrier();
+#endif
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
 
   vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
@@ -309,7 +315,9 @@ int main(int argc, char* argv[]) {
     }
   }
   else {
+#ifndef SERIAL
     world.barrier();
+#endif
     boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
     cout << "Error here"<<endl;
     exit(0);
@@ -324,7 +332,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<size_t> > orbDifference;
     {
       char file [5000];
-      sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+      sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), mpigetrank() );
       std::ifstream ifs(file, std::ios::binary);
       boost::archive::binary_iarchive load(ifs);
       load >> connections >> Helements >> orbDifference;
@@ -333,7 +341,9 @@ int main(int argc, char* argv[]) {
 
     Hmult2 H(connections, Helements);
     LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
+#ifndef SERIAL
     mpi::broadcast(world, lambda[0], 0);
+#endif
 
     MatrixXx s2RDM, twoRDM;
     s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
@@ -350,7 +360,9 @@ int main(int argc, char* argv[]) {
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
 
+#ifndef SERIAL
   world.barrier();
+#endif
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
   return 0;

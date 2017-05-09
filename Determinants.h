@@ -208,7 +208,8 @@ class Determinant {
 
   bool connected1Alpha1Beta(const Determinant& d) const {
     int ndiffAlpha = 0, ndiffBeta = 0; long u;
-    long even = 12297829382473034410, odd = 6148914691236517205;
+    //ulong even = 12297829382473034410, odd = 6148914691236517205;
+    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=0; i<EffDetLen; i++) {
       u = (repr[i] ^ d.repr[i])&even;
       ndiffAlpha += BitCount(u);

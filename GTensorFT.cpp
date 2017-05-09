@@ -32,6 +32,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include "SOChelper.h"
 
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+world.rank());
+  srand(schd.randomSeed+mpigetrank());
 
 
   //set up shared memory files to store the integrals
@@ -120,7 +121,9 @@ int main(int argc, char* argv[]) {
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
+#ifndef SERIAL
   mpi::broadcast(world, I1, 0);
+#endif
 
   //initialize L and S integrals
   vector<oneInt> L(3), S(3);
@@ -133,7 +136,9 @@ int main(int argc, char* argv[]) {
   }
   //read L integrals
   readGTensorIntegrals(L, norbs, "GTensor");
+#ifndef SERIAL
   mpi::broadcast(world, L, 0);
+#endif
 
   //generate S integrals
   double ge = 2.002319304;
@@ -263,8 +268,9 @@ int main(int argc, char* argv[]) {
 void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 	      schedule& schd, vector<vector<int> >& HFoccupied) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
-
+#endif
   ci.clear(); Dets.clear();
   ci.resize(schd.nroots, MatrixXx::Zero(HFoccupied.size(),1));
   Dets.resize(HFoccupied.size());
@@ -278,8 +284,9 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
   }
+#ifndef SERIAL
   mpi::broadcast(world, ci, 0);
-
+#endif
 }
 
 double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,

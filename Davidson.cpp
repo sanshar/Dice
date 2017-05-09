@@ -98,9 +98,10 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   while(true) {
     //0->continue with the loop, 1 -> continue clause, 2 -> return
     int continueOrReturn = 0;
+#ifndef SERIAL
     mpi::broadcast(world, bsize, 0);
     mpi::broadcast(world, sigmaSize, 0);
-
+#endif
     for (int i=sigmaSize; i<bsize; i++) {
       int colindex = 0;
       if (mpigetrank()==0) { colindex = i;}
@@ -108,10 +109,12 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
       //by default the MatrixXx is column major,
       //so all elements of bcol are contiguous
+#ifndef SERIAL
 #ifndef Complex
       MPI_Bcast(&(bcol(0,0)), b.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
       mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
+#endif
 #endif
       H(bcol, sigmacol);
       sigmaSize++;
@@ -193,8 +196,10 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     }
 
   label1:
+#ifndef SERIAL
     mpi::broadcast(world, continueOrReturn, 0);
     mpi::broadcast(world, iter, 0);
+#endif
     if (continueOrReturn == 2) return eroots;
 
     if (mpigetrank() == 0) {
@@ -233,7 +238,9 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
   int iter = 0;
   while (true) {
     MatrixXx Ap = 0.*p; H(p,Ap);
+#ifndef SERIAL
     mpi::broadcast(world, Ap, 0);
+#endif
     Ap = Ap - E0*p; //H0-E0
     CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
     x0 += alpha*p;

@@ -9,6 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "omp.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -40,6 +41,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/mpi.hpp>
 #endif
 #include "communicate.h"
+#include "omp.h"
 
 using namespace std;
 using namespace Eigen;
@@ -52,7 +54,9 @@ using namespace SHCISortMpiUtils;
 double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
@@ -110,16 +114,18 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	AllDistinctSample = SHCIsampledeterminants::sample_N2_alias(ci, cumulative, allSample, allwts, alias, prob);
       }
       if (omp_get_thread_num() == 0) {
+#ifndef SERIAL
 	mpi::broadcast(world, allSample, 0);
 	mpi::broadcast(world, allwts, 0);
 	mpi::broadcast(world, AllDistinctSample, 0);
+#endif
       }
 
 #pragma omp barrier
       int distinctSample = 0;
       for (int i = 0; i < AllDistinctSample; i++) {
-	if ((i%(omp_get_num_threads() * world.size())
-	  != world.rank()*omp_get_num_threads() + omp_get_thread_num())) continue;
+	if ((i%(omp_get_num_threads() * mpigetsize())
+	  != mpigetrank()*omp_get_num_threads() + omp_get_thread_num())) continue;
 	wts1   [distinctSample] = allwts   [i];
 	Sample1[distinctSample] = allSample[i];
 	distinctSample++;
@@ -157,7 +163,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	  else {
 	    size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
 	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
+#ifndef SERIAL
 	    mpi::broadcast(world, ntries, 0);
+#endif
 	  }
 	}
 #pragma omp barrier
@@ -184,11 +192,13 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 
 #pragma omp barrier
 	  if (omp_get_thread_num()==num_thrds-1) {
+#ifndef SERIAL
 	    mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
 	    mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	    mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
 	    mpi::all_to_all(world, hashedpresentBeforeMPI, hashedpresentAfterMPI);
 	    mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+#endif
 	  }
 #pragma omp barrier
 
@@ -328,8 +338,10 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 #pragma omp barrier
 
       double finalE = 0., finalELargeEps=0;
+#ifndef SERIAL
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
+#endif
 
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
 	currentIter++;
@@ -345,9 +357,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	cout << endl;
       }
       if (omp_get_thread_num() == 0) {
+#ifndef SERIAL
 	mpi::broadcast(world, currentIter, 0);
 	mpi::broadcast(world, stddev, 0);
 	mpi::broadcast(world, AvgenergyEN, 0);
+#endif
       }
 #pragma omp barrier
       uniqueDEH[omp_get_thread_num()].clear();
@@ -367,7 +381,9 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 					       int nelec, int root,  vector<MatrixXx>& vdVector, double& Psi1Norm,
 					       bool appendPsi1ToPsi0) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
   int norbs = Determinant::norbs;
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
 
@@ -445,7 +461,9 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	else {
 	  size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
 	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
+#ifndef SERIAL
 	  mpi::broadcast(world, ntries, 0);
+#endif
 	}
       }
 #pragma omp barrier
@@ -476,6 +494,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
+#ifndef SERIAL
 	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
 	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
@@ -483,6 +502,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	    mpi::all_to_all(world, hashedVarIndicesBeforeMPI, hashedVarIndicesAfterMPI);
 	    mpi::all_to_all(world, hashedOrbdiffBeforeMPI, hashedOrbdiffAfterMPI);
 	  }
+#endif
 	}
 #pragma omp barrier
 
@@ -564,8 +584,10 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 
   double finalE = 0.;
+#ifndef SERIAL
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
   mpi::all_reduce(world, Psi1NormProc, Psi1Norm, std::plus<double>());
+#endif
 
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
 
@@ -573,9 +595,11 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
   if (schd.doResponse || schd.DoRDM) { //build RHS for the lambda equation
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
+#ifndef SERIAL
     mpi::broadcast(world, s2RDM, 0);
     if (schd.DoSpinRDM)
       mpi::broadcast(world, twoRDM, 0);
+#endif
     if (mpigetrank() != 0) {
       s2RDM = 0.*s2RDM;
       twoRDM = 0.*twoRDM;
@@ -604,9 +628,10 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
       }
     }
 
+#ifndef SERIAL
     MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
 		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
   }
 
   return finalE;
@@ -620,7 +645,9 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 							CItype& EPT1, CItype& EPT2, CItype& EPT12,
 							std::vector<MatrixXx>& spinRDM) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
   int norbs = Determinant::norbs;
   std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
 
@@ -673,7 +700,9 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1;
 	if (mpigetsize() == 1)
 	  ntries = 1;
+#ifndef SERIAL
 	mpi::broadcast(world, ntries, 0);
+#endif
       }
 #pragma omp barrier
 
@@ -698,10 +727,12 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
+#ifndef SERIAL
 	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
 	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	  mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+#endif
 	}
 #pragma omp barrier
 
@@ -767,9 +798,11 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 
   EPT1=0.0;EPT2=0.0;EPT12=0.0;
+#ifndef SERIAL
   mpi::all_reduce(world, totalPT1, EPT1, std::plus<CItype>());
   mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
+#endif
 
   if (schd.doGtensor) {//DON'T PERFORM doGtensor
 
@@ -1084,8 +1117,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     Hmult2 H(connections, Helements);
 
     E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, false);
+#ifndef SERIAL
     mpi::broadcast(world, E0, 0);
     mpi::broadcast(world, X0, 0);
+#endif
 
     for (int i=0; i<E0.size(); i++) {
       ci[i].resize(Dets.size(),1); ci[i] = 1.0*X0[i];
@@ -1140,7 +1175,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
     save << iter <<Dets<<SortedDets;
@@ -1156,7 +1191,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
     save << connections<<Helements<<orbdifference;
@@ -1164,7 +1199,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
     save << BetaN<< AlphaNm1;
@@ -1192,7 +1227,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
 
@@ -1211,7 +1246,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     load >> connections >> Helements >>orbdifference;
@@ -1219,7 +1254,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 
   {
     char file [5000];
-    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), world.rank() );
+    sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     load >> BetaN>> AlphaNm1;

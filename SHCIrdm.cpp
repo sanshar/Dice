@@ -9,6 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "omp.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -173,10 +174,11 @@ void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Matr
     } // k in PT dets
   } //thrd in num_thrds
 
+#ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
 
 
 }
@@ -262,10 +264,11 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(vector<Determinant>& De
     } // k in PT dets
   } //thrd in num_thrds
 
+#ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
 
 }
 
@@ -290,7 +293,9 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 			  MatrixXx& cibra, MatrixXx& ciket,
 			  vector<vector<size_t> >& orbDifference, int nelec,
 			  schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
 
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
@@ -300,7 +305,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
-    if ((i/num_thrds)%world.size() != world.rank()) continue;
+    if ((i/num_thrds)%mpigetsize() != mpigetrank()) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
@@ -353,10 +358,11 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 
   }
 
+#ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
 }
 
 
@@ -364,8 +370,9 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 			     MatrixXx& cibra, MatrixXx& ciket,
 			     vector<vector<size_t> >& orbDifference, int nelec,
 			     schedule& schd, int root, MatrixXx& s1RDM) {
+#ifndef SERIAL
   boost::mpi::communicator world;
-
+#endif
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
@@ -374,7 +381,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
-    if (i%world.size() != world.rank()) continue;
+    if (i%mpigetsize() != mpigetrank()) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
@@ -396,8 +403,9 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
     }
   }
 
+#ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0,0), s1RDM.rows()*s1RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
 }
 
 
