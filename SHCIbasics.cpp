@@ -165,7 +165,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    ntries = 1;
 	  else {
 	    size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
-	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
+	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode/mpigetsize()+1;
 #ifndef SERIAL
 	    mpi::broadcast(world, ntries, 0);
 #endif
@@ -483,7 +483,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  ntries = 1;
 	else {
 	  size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
-	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode+1;
+	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode/mpigetsize()+1;
 #ifndef SERIAL
 	  mpi::broadcast(world, ntries, 0);
 #endif
