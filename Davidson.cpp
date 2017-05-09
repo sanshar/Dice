@@ -113,7 +113,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 #ifndef Complex
       MPI_Bcast(&(bcol(0,0)), b.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
-      mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
+      MPI_Bcast(&(bcol(0,0)), 2*b.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      //mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
 #endif
 #endif
       H(bcol, sigmacol);

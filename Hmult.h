@@ -77,8 +77,8 @@ struct Hmult2 {
 	int end = ithrd == nthrd-1 ? x.rows() : (x.rows()/nthrd)*(ithrd+1);
 #pragma omp barrier
         for(int i=start; i<end; i++) {
-	  for (int thrd = 0; thrd<nthrd; thrd++) {
-	    y(i,0) += yarray[thrd](i,0);
+	  for (int thrd = 1; thrd<nthrd; thrd++) {
+	    yarray[0](i,0) += yarray[thrd](i,0);
 	  }
 	}
 
@@ -86,15 +86,18 @@ struct Hmult2 {
 
 #ifndef SERIAL
 #ifndef Complex
-      MPI_Reduce(&y(0,0), &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&yarray[0](0,0), &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      //MPI_Bcast(&(y(0,0)), y.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      //boost::mpi::all_reduce(world, &yarray[0](0,0), y.rows(), &y(0,0), plus<double>());
 #else
-      boost::mpi::all_reduce(world, &y(0,0), y.rows(), &y(0,0), sumComplex);
+      MPI_Reduce(&yarray[0](0,0), &y(0,0), 2*y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      //boost::mpi::all_reduce(world, &yarray[0](0,0), y.rows(), &y(0,0), sumComplex);
 #endif
 #endif
     }
     else {
-      for (int i=0; i<x.rows(); i++) {
-	if (i%size != rank) continue;
+      for (int i=rank; i<x.rows(); i+=size) {
+	//if (i%size != rank) continue;
 	for (int j=0; j<connections[i].size(); j++) {
 	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
@@ -117,7 +120,8 @@ struct Hmult2 {
 #ifndef Complex
       MPI_Reduce(startptr, &y(0,0), y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 #else
-      boost::mpi::all_reduce(world, &y(0,0), y.rows(), &y(0,0), sumComplex);
+      MPI_Reduce(startptr, &y(0,0), 2*y.rows(), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      //boost::mpi::all_reduce(world, &y(0,0), y.rows(), &y(0,0), sumComplex);
 #endif
 #endif
 
