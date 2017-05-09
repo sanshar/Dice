@@ -1,0 +1,63 @@
+Using in CASSCF
+***************
+.. _interfacing-with-pyscf:
+
+Interfacing with PySCF
+----------------------
+SHCI can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ is successfully installed (see `Installing PySCF <https://github.com/sunqm/pyscf/blob/master/README.md#installation>`_), you can call Dice from within a python input script. After you compile Dice, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.
+
+.. code-block:: bash
+
+	SHCIEXE = '/path_to/SHCI/SHCI'
+	SHCIQDPTEXE = '/path_to/SHCI/QDPTSOC'
+
+
+Once this is completed you can run call SHCI from within `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. An example input is shown below:
+
+.. code-block:: python
+
+	from pyscf import gto, scf
+	from pyscf.future.shciscf import shci
+
+
+	# Initialize O2 molecule
+	b =  1.243
+	mol = gto.Mole()
+	mol.build(
+	verbose = 5,
+	output = None,
+	atom = [
+	    ['C',(  0.000000,  0.000000, -b/2)],
+	    ['C',(  0.000000,  0.000000,  b/2)], ],
+	basis = {'C': 'ccpvdz', },
+	symmetry = True,
+	symmetry_subgroup = 'D2h',
+	spin = 0
+	)
+
+	# Create HF molecule
+	mf = scf.RHF( mol )
+	mf.conv_tol = 1e-9
+	mf.scf()
+
+	# Number of orbital and electrons
+	norb = 26
+	nelec = 8
+
+	# Create SHCI molecule for just variational opt.
+	# Active spaces chosen to reflect valence active space.
+	mch = shci.SHCISCF( mf, norb, nelec )
+	mch.fcisolver.mpiprefix = 'mpirun -np 2'
+	mch.fcisolver.stochastic = True
+	mch.fcisolver.nPTiter = 0
+	mch.fcisolver.sweep_iter = [ 0, 3 ]
+	mch.fcisolver.DoRDM = True
+	mch.fcisolver.sweep_epsilon = [ 5e-3, 1e-3 ]
+	e_shci = mch.mc1step()[0]
+
+
+This script can be executed in the command line as follows:
+
+.. code-block:: bash
+
+	python test_c2.py

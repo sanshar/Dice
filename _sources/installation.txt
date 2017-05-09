@@ -2,8 +2,9 @@ Installation
 ************
 Source Code
 -----------
-Available with the <a href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> package.
-Download the latest version of SHCI: ???LINK???
+* Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
+
+* Download the latest version of SHCI: ???LINK???
 
 Compile
 -------
@@ -13,7 +14,7 @@ SHCI requires `Boost <http://www.boost.org/>`_ and `Eigen <http://eigen.tuxfamil
 * Intel icpc 14.0.1 or newer required.
 
 Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS, DFLAGS, and LFLAGS variables to point to for your Eigen and Boost libraries.
-                        
+
 Finally, the user must edit the lines shown below before compiling:
 
 ::
