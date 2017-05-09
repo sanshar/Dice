@@ -5,7 +5,7 @@ printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
-HCIPATH="../../SHCI"
+HCIPATH="../../Dice"
 
 # O2 SHCI tests.
 cd o2_omp1_stoc
