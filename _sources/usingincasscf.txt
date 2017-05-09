@@ -55,9 +55,55 @@ Once this is completed you can run call SHCI from within `PySCF <https://github.
 	mch.fcisolver.sweep_epsilon = [ 5e-3, 1e-3 ]
 	e_shci = mch.mc1step()[0]
 
+After creating our SHCISCF object called mch, we can change the settings used in *Dice* by modifying the attributes of mch.fcisolver *not* mch. The mch object is a general CASSCF object with the fcisolver set to SHCI. The attributes of the fcisolver are nearly identical to those in *Dice* with several additional properties discussed in more detail below.
 
 This script can be executed in the command line as follows:
 
 .. code-block:: bash
 
 	python test_c2.py
+
+Attributes of SHCISCF Objects
+-----------------------------
+
+The keywords that are identical to those in *Dice* are described in detail on the :ref:`dice-keywords` page. Shown below are their default values in when using SHISCF objects.
+
+PySCF CASSCF Keywords
++++++++++++++++++++++
+
+* irrep_nelec: dict
+	Default is none. This dictionary specifies the number of electrons in the active space orbitals by symmetry type. As a result, users can modify this irrep_nelec to control the symmetry of the wavefunction they wish to optimize. For example, setting irrep_nelec = {'Ag': (25,24), 'B3u': (19,19), 'B2u': (19,19), 'B1g': (15,14), 'B1u': (7,7), 'B2g': (4,3), 'B3g': (4,3),'Au': (2,2)} will give an overall symmetry of :math:`^5A_{1g}`. This property can also be set for the HF object mf and for a more detailed description see `this example <https://github.com/sunqm/pyscf/blob/master/examples/scf/13-symmetry.py>`_.
+
+* orbsym: [int]
+	Default is none. This list of integers allows you to specify the symmetry of the orbitals in the active space.
+* groupname : str
+	Default is none. groupname, orbsym together can control whether to employ symmetry in the calculation.  "groupname = None and orbsym = [ ]" requires the SHCI program using C1 symmetry.
+* useExtraSymm : boolean
+	Default is False. if the symmetry of the molecule is Dooh or Cooh, then this keyword uses complex orbitals to make full use of this symmetry
+
+
+*Dice* keywords
++++++++++++++++
+
+* davidsonTol = 5.e-5
+* epsilon2 = 1.e-7
+* epsilon2Large = 1000
+* sampleN = 200
+* onlyperturbative = False
+* fullrestart = False
+* dE = 1.e-8
+* eps = None
+* prefix = "."
+* stochastic = True
+* nblocks = 1
+* excitation = 1000
+* nvirt = 1e6
+* singleList = True
+* io = True
+* nroots = 1
+* nPTiter = 0
+* DoRDM = True
+* sweep_iter =[ ]
+* sweep_epsilon = [ ]
+* maxIter = 6
+* restart = False
