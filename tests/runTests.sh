@@ -4,7 +4,7 @@
 printf "\n\nRunning Tests for SHCI/SHCISCF\n" 
 printf "======================================================\n"
 
-MPICOMMAND="mpirun -np 4"
+MPICOMMAND="mpirun -np 28"
 HCIPATH="../../Dice"
 
 # O2 SHCI tests.
@@ -41,6 +41,7 @@ python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 # Mn(salen) tests.
 cd ../mn_salen_stoc
+export OMP_NUM_THREADS=1
 printf "...running mn_salen_stoc\n" 
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  8.0e-5 
@@ -49,7 +50,7 @@ cd ../mn_salen_seed
 printf "...running mn_salen_seed\n" 
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  8.0e-5 
-
+cd ../
 # Butadiene tests.
 #cd ../bd_stoc
 #printf "...running bd_stoc\n" 

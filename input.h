@@ -55,7 +55,8 @@ private:
       & responseFile                            \
       & socmultiplier                           \
       & targetError                             \
-      & num_thrds;
+      & num_thrds                               \
+      & outputlevel;
   }
 
 public:
@@ -92,6 +93,7 @@ public:
   double socmultiplier;
   double targetError;
   int num_thrds;
+  int outputlevel;
 };
 
 #endif

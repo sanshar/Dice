@@ -109,8 +109,8 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
   std::map<HalfDet, std::vector<int> >::iterator ita = BetaN.begin();
   int index = 0;
-  pout <<"# "<< Dets.size()<<"  "<<BetaN.size()<<"  "<<AlphaNm1.size()<<endl;
-  pout << "#";
+  //if (schd.outputlevel >0) pout <<"# "<< Dets.size()<<"  "<<BetaN.size()<<"  "<<AlphaNm1.size()<<endl;
+  //if (schd.outputlevel >0) pout << "#";
   for (; ita!=BetaN.end(); ita++) {
     std::vector<int>& detIndex = ita->second;
     int localStart = detIndex.size();
@@ -143,8 +143,8 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
     index++;
     if (index%1000000 == 0 && index!= 0) {pout <<". ";}
   }
-  pout << format("BetaN    %49.2f\n#")
-    % (getTime()-startofCalc);
+  //if (schd.outputlevel >0) pout << format("BetaN    %49.2f\n#")
+  //% (getTime()-startofCalc);
 
   ita = AlphaNm1.begin();
   index = 0;
@@ -184,8 +184,8 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
     if (index%1000000 == 0 && index!= 0) {pout <<". ";}
   }
 
-  pout << format("AlphaN-1 %49.2f\n")
-    % (getTime()-startofCalc);
+  //if (schd.outputlevel >0) pout << format("AlphaN-1 %49.2f\n")
+  //% (getTime()-startofCalc);
 
 
 }
@@ -195,8 +195,8 @@ void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int>
 				    std::vector<Determinant>& Dets,
 				    int StartIndex)
 {
-  pout << format("#Making Helpers %43.2f\n")
-    % (getTime()-startofCalc);
+  //if (schd.outputlevel >0) pout << format("#Making Helpers %43.2f\n")
+  //% (getTime()-startofCalc);
   for (int i=StartIndex; i<Dets.size(); i++) {
     HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
 

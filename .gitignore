@@ -11,11 +11,11 @@
 ############
 *.7z
 *.dmg
-*.gz
+#*.gz the .gz file is used to distribute Dice
 *.iso
 *.jar
 *.rar
-*.tar
+#*.tar
 *.zip
 
 # HTML Build #
