@@ -57,6 +57,26 @@ boost::interprocess::mapped_region regionInt2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
 
+void license() {
+  pout << endl;
+  pout << endl;
+  pout << "**************************************************************"<<endl;
+  pout << "Dice  Copyright (C) 2017  Sandeep Sharma"<<endl;
+  pout <<"This program is distributed in the hope that it will be useful,"<<endl;
+  pout <<"but WITHOUT ANY WARRANTY; without even the implied warranty of"<<endl;
+  pout <<"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<<endl;  
+  pout <<"See the GNU General Public License for more details."<<endl;
+  pout << endl<<endl;
+  pout << "Author:       Sandeep Sharma"<<endl;
+  pout << "Contributors: James E Smith, Adam A Holmes, Bastien Mussard"<<endl;
+  pout << "For detailed documentation on Dice please visit"<<endl;
+  pout << "https://sanshar.github.io/Dice/"<<endl;
+  pout << "Please visit our group page for up to date information on other projects"<<endl;
+  pout << "http://www.colorado.edu/lab/sharmagroup/"<<endl;
+  pout << "**************************************************************"<<endl;
+  pout << endl;
+  pout << endl;
+}
 
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
@@ -67,6 +87,7 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+  license();
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
@@ -84,7 +105,7 @@ int main(int argc, char* argv[]) {
   //set the random seed
   startofCalc=getTime();
   srand(schd.randomSeed+mpigetrank());
-  if (mpigetrank()==0) cout<<"#using seed: "<<schd.randomSeed<<endl;
+  if (schd.outputlevel>1) pout<<"#using seed: "<<schd.randomSeed<<endl;
 
 
 
@@ -182,7 +203,7 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for(int j=0;j<E0.size();++j) {
-      pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
+      //pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
       fwrite( &E0[j], 1, sizeof(CItype), f);
     }
     fclose(f);
@@ -190,17 +211,20 @@ int main(int argc, char* argv[]) {
 
 
   //print the 5 most important determinants and their weights
+  pout << "Printing most important determinants"<<endl;
+  pout << format("%4s %10s  ") %("Det") %("weight"); pout << "Determinant string"<<endl;
   for (int root=0; root<schd.nroots; root++) {
-    pout << "### IMPORTANT DETERMINANTS FOR STATE: "<<root<<endl;
+    cout << "State :"<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
     for (int i=0; i<6; i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
+      pout << format("%4i %10.2e  ") %(i) %(abs(prevci(m,0))); pout << Dets[m]<<endl;
+      //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
-  pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+    //pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
   if (schd.stochastic == true && schd.DoRDM) {
     schd.DoRDM = false;
     pout << "We cannot perform PT RDM with stochastic PT. Disabling RDM."<<endl;
@@ -236,6 +260,11 @@ int main(int argc, char* argv[]) {
     }
   }
 #endif
+
+  pout << endl;
+  pout << "**************************************************************"<<endl;
+  pout << "PERTURBATION THEORY STEP  "<<endl;
+  pout << "**************************************************************"<<endl;
 
 
   if (schd.doSOC && !schd.stochastic) { //deterministic SOC calculation
@@ -291,7 +320,7 @@ int main(int argc, char* argv[]) {
 						    I2HBSHM, irrep, schd, coreE, nelec,
 						    root, vdVector, Psi1Norm);
       ePT += E0[root];
-      pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
+      //pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
       if (mpigetrank() == 0) fwrite( &ePT, 1, sizeof(double), f);
     }
     fclose(f);
@@ -305,7 +334,7 @@ int main(int argc, char* argv[]) {
     for (int root=0; root<schd.nroots;root++) {
       ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       E0[root] += ePT;
-      pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
+      //pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
       if (mpigetrank() == 0) fwrite( &E0[root], 1, sizeof(double), f);
     }
     fclose(f);

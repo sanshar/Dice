@@ -57,6 +57,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+  pout << "Peforming semistochastiPT for state: "<<root<<endl;
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
@@ -103,6 +104,8 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   size_t Nmc = mpigetsize()*num_thrds*Nsample;
   std::vector<int> allSample(Nmc, -1);
   std::vector<CItype> allwts(Nmc, 0.);
+  pout <<endl<<format("%6s  %14s  %5s %14s %10s  %10s")
+    %("Iter") % ("EPTcurrent") %("State") %("EPTavg") %("Error")%("Time(s)")<<endl;
 
 #pragma omp parallel
   {
@@ -358,11 +361,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
 	stddev = currentIter < 5 ? 1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
 	if (currentIter < 5)
-	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10s  %10.2f")
-	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %("Root") %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
+	  std::cout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
+	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
 	else
-	  std::cout << format("%6i  %14.8f  %s%i %14.8f %10.2e  %10.2f")
-	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %("Root") %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
+	  std::cout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
+	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
 	cout << endl;
       }
       if (omp_get_thread_num() == 0) {
@@ -376,7 +379,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       uniqueDEH[omp_get_thread_num()].clear();
       if (stddev < schd.targetError) {
 	if (omp_get_thread_num() == 0) AvgenergyEN /= currentIter;
-	if (omp_get_thread_num() == 0) pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
+	if (omp_get_thread_num() == 0) {
+	  //pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
+	  cout << "Semistochastic PT calculation converged"<<endl; 
+	  pout << "epsilon2: "<<schd.epsilon2<<endl<<"PTEnergy: "<<E0+AvgenergyEN<<" +/- "<<format("%8.2e") %(stddev)<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
+	}
 	break;
       }
     }
@@ -458,7 +465,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
       if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
-      if (rank == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
+      if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
       for (int proc=0; proc<mpigetsize(); proc++) {
@@ -506,7 +513,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 	uniqueDEH[omp_get_thread_num()].resize(start);
 
-	if (rank == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
+	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
@@ -543,7 +550,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	}
 
 
-	if (rank == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
+	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
 
 	for (int proc=0; proc<mpigetsize(); proc++) {
 	  for (int thrd=0; thrd<num_thrds; thrd++) {
@@ -582,10 +589,10 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 
     }
-    if (rank == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
+    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
     //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-    if (rank == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
+    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
 
     vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
@@ -615,10 +622,13 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
   finalE = totalPT;
 #endif
 
-  if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
-
+  if (mpigetrank() == 0) {
+    cout << "Deterministic PT calculation converged"<<endl; 
+    pout << "epsilon2: "<<schd.epsilon2<<endl<<"PTEnergy: "<<E0+finalE<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
+  }
 
   if (schd.doResponse || schd.DoRDM) { //build RHS for the lambda equation
+    pout << "Now calculating PT RDM"<<endl;
     MatrixXx s2RDM, twoRDM;
     SHCIrdm::loadRDM(schd, s2RDM, twoRDM, root);
 #ifndef SERIAL
@@ -950,6 +960,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					, int nelec, bool DoRDM) {
 
+  pout << "**************************************************************"<<endl;
+  pout << "VARIATIONAL STEP  "<<endl;
+  pout << "**************************************************************"<<endl;
+
   int nroots = ci.size();
   std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
@@ -966,7 +980,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   int Norbs = norbs;
   vector<double> E0(nroots,Dets[0].Energy(I1, I2, coreE));
 
-  pout << "#HF = "<<E0[0]<<std::endl;
+  if (schd.outputlevel >0) pout << "#HF = "<<E0[0]<<std::endl;
 
   //this is essentially the hamiltonian, we have stored it in a sparse format
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
@@ -979,6 +993,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements,
 					    norbs, I1, nelec, false);
 #endif
+
+
+  pout << format("%4s %4s  %10s  %10.2e   %18s  %10s\n") %("Iter") %("Root") %("Eps1 ") %("#Var. Det.") %("Energy") %("Time(s)");
 
 
   //keep the diagonal energies of determinants so we only have to generated
@@ -995,8 +1012,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
     if (schd.fullrestart)
       iterstart = 0;
-    pout << format("# %4i  %10.2e  %10.2e   %14.8f  %10.2f\n")
-      %(iterstart) % schd.epsilon1[iterstart] % Dets.size() % E0[0] % (getTime()-startofCalc);
+    pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n")
+      %(iterstart) %(0) % schd.epsilon1[iterstart] % Dets.size() % E0[0] % (getTime()-startofCalc);
     if (!schd.fullrestart)
       iterstart++;
     else
@@ -1018,7 +1035,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     std::vector<StitchDEH> uniqueDEH(num_thrds);
 
     //for multiple states, use the sum of squares of states to do the seclection process
-    pout << format("#-------------Iter=%4i---------------") % iter<<endl;
+    if(schd.outputlevel>0) pout << format("#-------------Iter=%4i---------------") % iter<<endl;
     MatrixXx cMax(ci[0].rows(),1); cMax = 0.*ci[0];
     for (int j=0; j<ci[0].rows(); j++) {
       for (int i=0; i<ci.size(); i++)
@@ -1107,7 +1124,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
     uniqueDEH.resize(0);
 
-    if (iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
+    if(schd.outputlevel>0 && iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
 
     MatrixXx diag(Dets.size(), 1); diag.setZero(diag.size(),1);
     if (mpigetrank() == 0) diag.block(0,0,ci[0].rows(),1)= 1.*diagOld;
@@ -1161,7 +1178,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     mpi::broadcast(world, E0, 0);
     mpi::broadcast(world, X0, 0);
 #endif
-
+    for (int i=0; i<E0.size(); i++)
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n") 
+	%(iter) %(i) % schd.epsilon1[iter] % Dets.size() % E0[i] % (getTime()-startofCalc);
+    if (E0.size() >1) pout <<endl;
     for (int i=0; i<E0.size(); i++) {
       ci[i].resize(Dets.size(),1); ci[i] = 1.0*X0[i];
       X0[i].resize(0,0);
@@ -1170,9 +1190,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     diagOld.resize(Dets.size(),1); diagOld = 1.0*diag;
 
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
-
+      pout <<endl<<"Exiting variational iterations"<<endl;
       writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
       if (DoRDM || schd.doResponse) {
+	pout <<"Calculating RDM"<<endl;
 	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++) {
 	  MatrixXx twoRDM;
@@ -1180,7 +1201,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
 	  SHCIrdm::EvaluateRDM(connections, Dets, ci[i], ci[i], orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	  SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
+	  if (schd.outputlevel>0) SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
 	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
         } // for i
       }
@@ -1192,8 +1213,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					  orbDifference, Helements, E0, false, schd, BetaN, AlphaNm1);
     }
 
-    pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
+    if (schd.outputlevel>0) pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
   }
+
+  pout << "VARIATIONAL CALCULATION RESULT"<<endl;
+  pout << "------------------------------"<<endl;
+  pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %("Time(s)");
+  for (int i=0; i<E0.size(); i++)
+    pout << format("%4i  %18.10f  %10.2f\n") 
+      %(i) % E0[i] % (getTime()-startofCalc);
+  pout <<endl<<endl;
+  
   return E0;
 
 }
@@ -1210,7 +1240,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
   boost::mpi::communicator world;
 #endif
 
-  pout << format("#Begin writing variational wf %29.2f\n")
+  if (schd.outputlevel>0) pout << format("#Begin writing variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
   {
@@ -1245,7 +1275,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     save << BetaN<< AlphaNm1;
   }
 
-  pout << format("#End   writing variational wf %29.2f\n")
+  if (schd.outputlevel>0) pout << format("#End   writing variational wf %29.2f\n")
     % (getTime()-startofCalc);
 }
 

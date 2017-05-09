@@ -22,6 +22,10 @@ using namespace std;
 using namespace boost;
 
 void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd) {
+  cout << "**************************************************************"<<endl;
+  cout << "Input file  :"<<endl;
+  cout << "**************************************************************"<<endl;
+
   ifstream dump(input.c_str());
   int maxiter = -1;
   vector<int> sweep_iter;
@@ -56,13 +60,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.socmultiplier = 1.0;
   schd.targetError = 1.e-4;
   schd.num_thrds = 1;
+  schd.outputlevel = 0;
   while (dump.good()) {
 
     std::string
       Line;
     std::getline(dump, Line);
     trim(Line);
-    cout << "#"<<Line<<endl;
+    cout <<Line<<endl;
 
     vector<string> tok;
     boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
@@ -109,6 +114,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.io=false;
     else if (boost::iequals(ArgName, "num_thrds"))
       schd.num_thrds = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "outputlevel"))
+      schd.outputlevel = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
     else if (boost::iequals(ArgName, "doresponse"))  {
@@ -181,7 +188,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	  sweep_epsilon.push_back( atof(schd_tok[1].c_str()));
 	}
 	std::getline(dump, Line);
-	cout << "#"<<Line<<endl;
+	cout <<Line<<endl;
 	boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
     }
@@ -211,4 +218,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 
   if (schd.prefix.size() == 0)
     schd.prefix.push_back(".");
+  //cout << "**************************************************************"<<endl;
+  cout << endl;
+  cout <<endl;
 }

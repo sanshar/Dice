@@ -149,7 +149,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	double error = r.norm();
 	if (error > tol) {
 	  convergedRoot = i;
-	  pout << "going back to converged root "<<i<<endl;
+	  if (print) pout << "going back to converged root "<<i<<endl;
 	  continue;
 	}
       }
@@ -157,7 +157,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
       double error = r.norm();
       if (iter == 0)
-	pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
+	if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
       if (false)
 	pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
       iter++;
@@ -168,7 +168,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	for (int i=0; i<x0.size(); i++) {
 	  x0[i] = b.col(i);
 	  eroots.push_back(eigensolver.eigenvalues()[i]);
-	  pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (i) % eroots[i] );
+	  if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (i) % eroots[i] );
 	}
 	continueOrReturn = 2;
 	goto label1;
@@ -176,14 +176,14 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
 
       if (error < tol || iter >400) {
-	if (iter >400) {
-	  cout << "Didnt converge"<<endl;
+	if (iter >400*x0.size()) {
+	  cout << "Davidson calculation Didnt converge"<<endl;
 	  exit(0);
 	  continueOrReturn = 2;
 	  //return eroots;
 	}
 	convergedRoot++;
-	pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
+	if(print) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
 	if (convergedRoot == nroots) {
 	  for (int i=0; i<convergedRoot; i++) {
 	    x0[i] = b.col(i);
