@@ -198,6 +198,12 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	    mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
 	    mpi::all_to_all(world, hashedpresentBeforeMPI, hashedpresentAfterMPI);
 	    mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+#else
+	    hashedDetAfterMPI = hashedDetBeforeMPI;
+	    hashedNumAfterMPI = hashedNumBeforeMPI;
+	    hashedNum2AfterMPI = hashedNum2BeforeMPI;
+	    hashedpresentAfterMPI = hashedpresentBeforeMPI;
+	    hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
 #endif
 	  }
 #pragma omp barrier
@@ -341,6 +347,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 #ifndef SERIAL
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
       if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
+#else
+      finalE = totalPT;
+      finalELargeEps = totalPTLargeEps;
 #endif
 
       if (mpigetrank() == 0 && omp_get_thread_num() == 0) {
@@ -405,12 +414,17 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
   double totalPT = 0.0;
   int ntries = 0;
 
+  int size = mpigetsize(), rank = mpigetrank();
 #pragma omp parallel
   {
+    int ithrd = omp_get_thread_num();
+    int nthrd = omp_get_num_threads();
     if (schd.DoRDM || schd.doResponse) {
       uniqueDEH[omp_get_thread_num()].extra_info = true;
       for (int i=0; i<Dets.size(); i++) {
-	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+	if ((i%(nthrd * size)
+	     != rank*nthrd + ithrd)) continue;
+	//if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
 	SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
 						I1, I2, I2HB, irrep, coreE, E0,
 						*uniqueDEH[omp_get_thread_num()].Det,
@@ -419,30 +433,32 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 						*uniqueDEH[omp_get_thread_num()].var_indices_beforeMerge,
 						*uniqueDEH[omp_get_thread_num()].orbDifference_beforeMerge,
 						schd, nelec);
-	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
       }
     }
     else {
       for (int i=0; i<Dets.size(); i++) {
-	if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+	if ((i%(nthrd * size)
+	     != rank*nthrd + ithrd)) continue;
+	//if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
 	SHCIgetdeterminants::getDeterminantsDeterministicPT(Dets[i], abs(schd.epsilon2/ci(i,0)), ci(i,0), 0.0,
 				   I1, I2, I2HB, irrep, coreE, E0,
 				   *uniqueDEH[omp_get_thread_num()].Det,
 				   *uniqueDEH[omp_get_thread_num()].Num,
 				   *uniqueDEH[omp_get_thread_num()].Energy,
 				   schd,0, nelec);
-	if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
       }
     }
 
 
-    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
-    uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
+    uniqueDEH[ithrd].MergeSortAndRemoveDuplicates();
+    uniqueDEH[ithrd].RemoveDetsPresentIn(SortedDets);
 
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
       if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
-      if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
+      if (rank == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
       for (int proc=0; proc<mpigetsize(); proc++) {
@@ -490,7 +506,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 	uniqueDEH[omp_get_thread_num()].resize(start);
 
-	if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
+	if (rank == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
@@ -501,6 +517,14 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	  if (schd.DoRDM || schd.doResponse) {
 	    mpi::all_to_all(world, hashedVarIndicesBeforeMPI, hashedVarIndicesAfterMPI);
 	    mpi::all_to_all(world, hashedOrbdiffBeforeMPI, hashedOrbdiffAfterMPI);
+	  }
+#else
+	  hashedDetAfterMPI = hashedDetBeforeMPI;
+	  hashedNumAfterMPI = hashedNumBeforeMPI;
+	  hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
+	  if (schd.DoRDM || schd.doResponse) {
+	    hashedVarIndicesAfterMPI = hashedVarIndicesBeforeMPI;
+	    hashedOrbdiffAfterMPI = hashedOrbdiffBeforeMPI;
 	  }
 #endif
 	}
@@ -519,7 +543,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	}
 
 
-	if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
+	if (rank == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
 
 	for (int proc=0; proc<mpigetsize(); proc++) {
 	  for (int thrd=0; thrd<num_thrds; thrd++) {
@@ -558,10 +582,10 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 
     }
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
+    if (rank == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
 
     //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-    if (mpigetrank() == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
+    if (rank == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
 
     vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
@@ -587,6 +611,8 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 #ifndef SERIAL
   mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
   mpi::all_reduce(world, Psi1NormProc, Psi1Norm, std::plus<double>());
+#else
+  finalE = totalPT;
 #endif
 
   if (mpigetrank() == 0) cout << "#Done energy "<<E0+finalE<<"  "<<getTime()-startofCalc<<endl;
@@ -732,6 +758,12 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
 	  mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
 	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+#else
+	  hashedDetAfterMPI = hashedDetBeforeMPI;
+	  hashedNumAfterMPI = hashedNumBeforeMPI;
+	  hashedNum2AfterMPI = hashedNum2BeforeMPI;
+	  //hashedpresentAfterMPI = hashedpresentBeforeMPI;
+	  hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
 #endif
 	}
 #pragma omp barrier
@@ -802,6 +834,10 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   mpi::all_reduce(world, totalPT1, EPT1, std::plus<CItype>());
   mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
   mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
+#else
+  EPT1 = totalPT1;
+  EPT2 = totalPT2;
+  EPT12 = totalPT12;
 #endif
 
   if (schd.doGtensor) {//DON'T PERFORM doGtensor
@@ -994,10 +1030,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     CItype zero = 0.0;
 
+    int size = mpigetsize(), rank = mpigetrank();
 #pragma omp parallel
     {
+      int ithrd = omp_get_thread_num();
+      int nthrd = omp_get_num_threads();
       for (int i=0; i<SortedDets.size(); i++) {
-	if (i%(mpigetsize()*omp_get_num_threads()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) continue;
+	if ((i%(nthrd * size)
+	     != rank*nthrd + ithrd)) continue;
 	SHCIgetdeterminants::getDeterminantsVariational(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
 					       I1, I2, I2HB, irrep, coreE, E0[0],
 					       *uniqueDEH[omp_get_thread_num()].Det,

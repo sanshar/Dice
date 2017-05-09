@@ -45,6 +45,7 @@ struct Hmult2 {
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
+    int size = mpigetsize(), rank = mpigetrank();
 
     int num_thrds = omp_get_max_threads();
     if (num_thrds >1) {
@@ -55,19 +56,19 @@ struct Hmult2 {
 	int ithrd = omp_get_thread_num();
 	int nthrd = omp_get_num_threads();
 
-	yarray[omp_get_thread_num()] = MatrixXx::Zero(y.rows(),1);
-	//#pragma omp for schedule(dynamic)
+	yarray[ithrd] = MatrixXx::Zero(y.rows(),1);
+
 	for (int i=0; i<x.rows(); i++) {
-	  if ((i%(omp_get_num_threads() * mpigetsize())
-	       != mpigetrank()*omp_get_num_threads() + omp_get_thread_num())) continue;
+	  if ((i%(nthrd * size)
+	       != rank*nthrd + ithrd)) continue;
 	  for (int j=0; j<connections[i].size(); j++) {
 	    CItype hij = Helements[i][j];
 	    int J = connections[i][j];
-	    yarray[omp_get_thread_num()](J,0) += hij*x(i,0);
+	    yarray[ithrd](J,0) += hij*x(i,0);
 #ifdef Complex
-	    if (i!= J) yarray[omp_get_thread_num()](i,0) += conj(hij)*x(J,0);
+	    if (i!= J) yarray[ithrd](i,0) += conj(hij)*x(J,0);
 #else
-	    if (i!= J) yarray[omp_get_thread_num()](i,0) += hij*x(J,0);
+	    if (i!= J) yarray[ithrd](i,0) += hij*x(J,0);
 #endif
 	  }
 	}
@@ -93,7 +94,7 @@ struct Hmult2 {
     }
     else {
       for (int i=0; i<x.rows(); i++) {
-	if (i%mpigetsize() != mpigetrank()) continue;
+	if (i%size != rank) continue;
 	for (int j=0; j<connections[i].size(); j++) {
 	  CItype hij = Helements[i][j];
 	  int J = connections[i][j];
@@ -109,7 +110,7 @@ struct Hmult2 {
 
       CItype* startptr;
       MatrixXx ycopy;
-      if (mpigetrank() == 0) {ycopy = MatrixXx(y.rows(), 1); ycopy=1.*y; startptr = &ycopy(0,0);}
+      if (rank == 0) {ycopy = MatrixXx(y.rows(), 1); ycopy=1.*y; startptr = &ycopy(0,0);}
       else {startptr = &y(0,0);}
 
 #ifndef SERIAL

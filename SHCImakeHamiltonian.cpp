@@ -59,11 +59,12 @@ void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+  int size = mpigetsize(), rank = mpigetrank();
 
 #pragma omp parallel
   {
     for (int i=0; i<connections.size(); i++) {
-      if ((i/omp_get_num_threads())%mpigetsize() != mpigetrank()) continue;
+      if ((i/omp_get_num_threads())%size != rank) continue;
       Helements[i][0] = Dets[i].Energy(I1, I2, coreE);
       for (int j=1; j<connections[i].size(); j++) {
 	size_t orbDiff;
@@ -95,8 +96,10 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 #pragma omp parallel
   {
+    int ithrd = omp_get_thread_num();
+    int nthrd = omp_get_num_threads();
     for (size_t k=StartIndex; k<Dets.size(); k++) {
-      if (k%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+      if (k%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
       connections[k].push_back(k);
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       Helements[k].push_back(hij);
@@ -118,9 +121,11 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 #pragma omp parallel
     {
+      int ithrd = omp_get_thread_num();
+      int nthrd = omp_get_num_threads();
       for (int k=localStart; k<detIndex.size(); k++) {
 
-	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+	if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
 
 	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
@@ -153,8 +158,11 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 #pragma omp parallel
     {
+      int ithrd = omp_get_thread_num();
+      int nthrd = omp_get_num_threads();
+
       for (int k=localStart; k<detIndex.size(); k++) {
-	if (detIndex[k]%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
+	if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
 
 	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
