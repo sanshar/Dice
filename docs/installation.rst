@@ -4,7 +4,7 @@ Source Code
 -----------
 * Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
 
-* Download the latest version of SHCI: ???LINK???
+* Download the latest version of Dice: :download:`Dice.tar.gz <images/Dice.tar.gz>`
 
 Compile
 -------
