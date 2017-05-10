@@ -102,98 +102,104 @@ This will execute your input.dat file and write all output to the output.dat fil
 
 .. code-block:: none
 
-	#nocc 8
-	#0 1 4 5 8 9 14 15
-	#
-	#sampleN 200
-	#davidsontol 5.e-5
-	#dE 1.e-7
-	#DoRDM true
-	#
-	#schedule
-	#0 9e-4
-	#3 5e-4
-	#end
-	#
-	#epsilon2 1.e-8
-	#deterministic
-	#noio
-	#maxiter 12
-	##nPTiter 0
-	#
-	#using seed: 1493622999
-	#Making Helpers                                        0.00
-	#HF = -75.3869032802436
-	# 1  1  4
-	#BetaN                                                 0.00
-	#AlphaN-1                                              0.00
-	#-------------Iter=   0---------------
-	#Making Helpers                                        0.00
-	# 177  57  100
-	#BetaN                                                 0.00
-	#AlphaN-1                                              0.00
-	#niter:  0 root: -1 -> Energy :       -75.38690328
-	#niter:  6 root:  0 -> Energy :        -75.4797232
-	###########################################            0.01
-	#-------------Iter=   1---------------
-	#Initial guess(PT) :        -75.4797232
-	#Making Helpers                                        0.01
-	# 929  168  170
-	#BetaN                                                 0.01
-	#AlphaN-1                                              0.01
-	#niter:  0 root: -1 -> Energy :        -75.4797232
-	#niter:  7 root:  0 -> Energy :       -75.48399527
-	###########################################            0.01
-	#-------------Iter=   2---------------
-	#Initial guess(PT) :       -75.48399527
-	#Making Helpers                                        0.01
-	# 959  168  170
-	#BetaN                                                 0.01
-	#AlphaN-1                                              0.01
-	#niter:  0 root: -1 -> Energy :       -75.48399527
-	#niter:  4 root:  0 -> Energy :       -75.48401296
-	###########################################            0.02
-	#-------------Iter=   3---------------
-	#Initial guess(PT) :       -75.48401296
-	#Making Helpers                                        0.02
-	# 1691  234  198
-	#BetaN                                                 0.02
-	#AlphaN-1                                              0.02
-	#niter:  0 root: -1 -> Energy :       -75.48401296
-	#niter:  6 root:  0 -> Energy :       -75.48421962
-	###########################################            0.03
-	#-------------Iter=   4---------------
-	#Initial guess(PT) :       -75.48421962
-	#Making Helpers                                        0.03
-	# 1705  234  198
-	#BetaN                                                 0.03
-	#AlphaN-1                                              0.03
-	#niter:  0 root: -1 -> Energy :       -75.48421962
-	#niter:  3 root:  0 -> Energy :       -75.48422229
-	###########################################            0.03
-	#-------------Iter=   5---------------
-	#Initial guess(PT) :       -75.48422229
-	#Making Helpers                                        0.03
-	# 1705  234  198
-	#BetaN                                                 0.03
-	#AlphaN-1                                              0.03
-	#niter:  0 root: -1 -> Energy :       -75.48422229
-	#niter:  1 root:  0 -> Energy :       -75.48422229
-	#Begin writing variational wf                          0.03
-	#End   writing variational wf                          0.05
-	E from 2RDM: -75.4842222865948
-	### IMPORTANT DETERMINANTS FOR STATE: 0
-	#0  -0.962972405251402  0.962972405251402  2 0 2 0 2   0 0 2 0 0   0 0
-	#1  0.113332103493894  0.113332103493894  2 0 2 0 0   0 0 2 0 0   2 0
-	#2  0.113332103493883  0.113332103493883  2 0 0 0 2   0 0 2 0 2   0 0
-	#3  0.0778346380808918  0.0778346380808918  2 0 b 0 a   0 0 2 0 a   b 0
-	#4  0.0778346380808912  0.0778346380808912  2 0 a 0 b   0 0 2 0 b   a 0
-	#5  0.0620766498642539  0.0620766498642539  2 0 2 0 2   0 0 0 0 0   2 0
-	### PERFORMING PERTURBATIVE CALCULATION
-	# 0
-	#Before hash 0.104489803314209
-	#After hash 0.110838890075684
-	#After all_to_all 0.163533926010132
-	#After collecting 0.178984880447388
-	#Unique determinants 0.178997993469238
-	#Done energy -75.4844111804806  0.180866956710815
+	**************************************************************
+	Dice  Copyright (C) 2017  Sandeep Sharma
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+	See the GNU General Public License for more details.
+
+
+	Author:       Sandeep Sharma
+	Contributors: James E Smith, Adam A Holmes, Bastien Mussard
+	For detailed documentation on Dice please visit
+	https://sanshar.github.io/Dice/
+	Please visit our group page for up to date information on other projects
+	http://www.colorado.edu/lab/sharmagroup/
+	**************************************************************
+
+
+	**************************************************************
+	Input file  :
+	**************************************************************
+	nocc 12
+	#0 2 4 6 8 10 1 3 5 7 9 11
+	epsilon2 1e-07
+	sampleN 200
+	davidsonTol 5e-05
+	dE 1e-08
+	DoRDM True
+	schedule
+	#0      0.01
+	3       0.001
+	end
+	deterministic
+	noio
+	maxiter 9
+
+
+
+
+	**************************************************************
+	VARIATIONAL STEP
+	**************************************************************
+	Iter Root       Eps1   #Var. Det.               Energy     Time(s)
+	 0    0    1.00e-02          27      -149.6693332442        0.01
+	 1    0    1.00e-02          40      -149.6755619487        0.01
+	 2    0    1.00e-02          47      -149.6762309265        0.01
+	 3    0    1.00e-03         106      -149.6776013798        0.01
+	 4    0    1.00e-03         106      -149.6776013798        0.01
+
+	Exiting variational iterations
+	Calculating RDM
+	State :State :0
+	State :State :0State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	0
+
+	State :State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	State :0
+	0
+	0
+
+	VARIATIONAL CALCULATION RESULT
+	------------------------------
+	Root             Energy     Time(s)
+	   0     -149.6776013798        0.07
+
+
+	Printing most important determinants
+	 Det     weight  Determinant string
+	State :0
+	   0   9.27e-01  2 2 2 2 2   2 0 0
+	   1   2.48e-01  2 2 2 2 2   0 2 0
+	   2   2.12e-01  2 2 2 2 0   2 2 0
+	   3   6.66e-02  2 2 2 a b   2 a b
+	   4   6.66e-02  2 2 2 b a   2 b a
+	   5   6.55e-02  2 2 2 0 2   2 0 2
+
+	**************************************************************
+	PERTURBATION THEORY STEP
+	**************************************************************
+	Deterministic PT calculation converged
+	epsilon2: 1e-07
+	PTEnergy: -149.677601562499
+	Time(s):  0.107640981674194
+	Now calculating PT RDM

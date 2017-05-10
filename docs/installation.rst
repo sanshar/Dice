@@ -19,7 +19,17 @@ Finally, the user must edit the lines shown below before compiling:
 
 ::
 
-  CXX = mpiicpc
-  CC = mpiicpc
-  FLAGS = -std=c++11 -qopenmp -O2 -I/PATH_TO/eigen -I/PATH_TO/boost_1_57_0/
-  LFLAGS = -L/PATH_TO/boost_1_57_0_lib -lboost_serialization -lboost_mpi
+  USE_MPI = yes
+  USE_INTEL = yes
+
+  FLAGS = -std=c++11 -g -O3 -I/path_to/eigen -I/home/path_to/boost_1_57_0/
+  DFLAGS = -std=c++11 -g -O3 -I/path_to/apps/eigen -I/path_to/boost_1_57_0/ -DComplex
+
+
+Testing
+-------
+Once compiling is complete you should test the code using the "/path_to/Dice/tests/runTests.sh" script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.
+
+.. note::
+
+  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.
