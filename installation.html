@@ -2,7 +2,7 @@
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="c++">
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
@@ -51,6 +51,7 @@
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#source-code">Source Code</a></li>
 <li><a class="reference internal" href="#compile">Compile</a></li>
+<li><a class="reference internal" href="#testing">Testing</a></li>
 </ul>
 </li>
 </ul>
@@ -71,11 +72,14 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -104,11 +108,20 @@
 </ul>
 <p>Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS, DFLAGS, and LFLAGS variables to point to for your Eigen and Boost libraries.</p>
 <p>Finally, the user must edit the lines shown below before compiling:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">CXX</span> <span class="o">=</span> <span class="n">mpiicpc</span>
-<span class="n">CC</span> <span class="o">=</span> <span class="n">mpiicpc</span>
-<span class="n">FLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">qopenmp</span> <span class="o">-</span><span class="n">O2</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">PATH_TO</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">PATH_TO</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span>
-<span class="n">LFLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">L</span><span class="o">/</span><span class="n">PATH_TO</span><span class="o">/</span><span class="n">boost_1_57_0_lib</span> <span class="o">-</span><span class="n">lboost_serialization</span> <span class="o">-</span><span class="n">lboost_mpi</span>
+<div class="highlight-python"><div class="highlight"><pre><span></span>USE_MPI = yes
+USE_INTEL = yes
+
+FLAGS = -std=c++11 -g -O3 -I/path_to/eigen -I/home/path_to/boost_1_57_0/
+DFLAGS = -std=c++11 -g -O3 -I/path_to/apps/eigen -I/path_to/boost_1_57_0/ -DComplex
 </pre></div>
+</div>
+</div>
+<div class="section" id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
+<p>Once compiling is complete you should test the code using the &#8220;/path_to/Dice/tests/runTests.sh&#8221; script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.</p>
 </div>
 </div>
 </div>
@@ -136,7 +149,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &copy; Copyright 2017, Sandeep Sharma.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
     </div>
   </body>
 </html>
