@@ -1,5 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -82,7 +82,7 @@
   <div class="section" id="welcome-to-dice-s-documentation">
 <h1>Welcome to Dice&#8217;s documentation!<a class="headerlink" href="#welcome-to-dice-s-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="figure align-left">
-<a class="reference internal image-reference" href="_images/dice.jpg"><img alt="_images/dice.jpg" src="_images/dice.jpg" style="width: 80px;" /></a>
+<a class="reference internal image-reference" href="_images/dice_orange.png"><img alt="_images/dice_orange.png" src="_images/dice_orange.png" style="width: 80px;" /></a>
 </div>
 <p><em>Dice</em> implements the semistochastic heat bath configuration interaction (SHCI) algorithm for <em>ab initio</em> Hamiltonian of a quantum chemical system. Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30-100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients. Compared to other methods in its class SHCI is often not only orders of magnitude faster, it also does not suffer from a serious memory bottleneck that plauges such methods. The resulting algorithm as implemented in Dice allows us to treat difficult benchmark systems such as the Chromium dimer and Mn-Salen (a challenging bioinorganic cluster) at a cost that is often an order of magnitude faster than either density matrix renormalization group (DMRG) or full configuration interaction quantum Monte Carlo (FCIQMC). Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, SHCI might be an ideal choice for you.</p>
 <p>Contents:</p>
@@ -97,15 +97,16 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#source-code">Source Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#compile">Compile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#testing">Testing</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="gettingstarted.html#structure-of-the-input">Structure of the Input</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gettingstarted.html#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf">Interfacing with PySCF</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usingincasscf.html#attributes-of-shciscf-objects">Attributes of SHCISCF Objects</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="keywords.html">Keywords</a><ul>

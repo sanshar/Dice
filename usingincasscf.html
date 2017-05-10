@@ -50,11 +50,6 @@
   <ul>
 <li><a class="reference internal" href="#">Using in CASSCF</a><ul>
 <li><a class="reference internal" href="#interfacing-with-pyscf">Interfacing with PySCF</a></li>
-<li><a class="reference internal" href="#attributes-of-shciscf-objects">Attributes of SHCISCF Objects</a><ul>
-<li><a class="reference internal" href="#pyscf-casscf-keywords">PySCF CASSCF Keywords</a></li>
-<li><a class="reference internal" href="#dice-keywords"><em>Dice</em> keywords</a></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
@@ -143,70 +138,9 @@
 <span class="n">e_shci</span> <span class="o">=</span> <span class="n">mch</span><span class="o">.</span><span class="n">mc1step</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>After creating our SHCISCF object called mch, we can change the settings used in <em>Dice</em> by modifying the attributes of mch.fcisolver <em>not</em> mch. The mch object is a general CASSCF object with the fcisolver set to SHCI. The attributes of the fcisolver are nearly identical to those in <em>Dice</em> with several additional properties discussed in more detail below.</p>
 <p>This script can be executed in the command line as follows:</p>
 <div class="highlight-bash"><div class="highlight"><pre><span></span>python test_c2.py
 </pre></div>
-</div>
-</div>
-<div class="section" id="attributes-of-shciscf-objects">
-<h2>Attributes of SHCISCF Objects<a class="headerlink" href="#attributes-of-shciscf-objects" title="Permalink to this headline">¶</a></h2>
-<p>The keywords that are identical to those in <em>Dice</em> are described in detail on the <a class="reference internal" href="keywords.html#dice-keywords"><span>Keywords</span></a> page. Shown below are their default values in when using SHISCF objects.</p>
-<div class="section" id="pyscf-casscf-keywords">
-<h3>PySCF CASSCF Keywords<a class="headerlink" href="#pyscf-casscf-keywords" title="Permalink to this headline">¶</a></h3>
-<ul>
-<li><dl class="first docutils">
-<dt>irrep_nelec: dict</dt>
-<dd><p class="first last">Default is none. This dictionary specifies the number of electrons in the active space orbitals by symmetry type. As a result, users can modify this irrep_nelec to control the symmetry of the wavefunction they wish to optimize. For example, setting irrep_nelec = {&#8216;Ag&#8217;: (25,24), &#8216;B3u&#8217;: (19,19), &#8216;B2u&#8217;: (19,19), &#8216;B1g&#8217;: (15,14), &#8216;B1u&#8217;: (7,7), &#8216;B2g&#8217;: (4,3), &#8216;B3g&#8217;: (4,3),&#8217;Au&#8217;: (2,2)} will give an overall symmetry of <span class="math">\(^5A_{1g}\)</span>. This property can also be set for the HF object mf and for a more detailed description see <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/examples/scf/13-symmetry.py">this example</a>.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>orbsym: [int]</dt>
-<dd><p class="first last">Default is none. This list of integers allows you to specify the symmetry of the orbitals in the active space.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>groupname <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Default is none. groupname, orbsym together can control whether to employ symmetry in the calculation.  &#8220;groupname = None and orbsym = [ ]&#8221; requires the SHCI program using C1 symmetry.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>useExtraSymm <span class="classifier-delimiter">:</span> <span class="classifier">boolean</span></dt>
-<dd><p class="first last">Default is False. if the symmetry of the molecule is Dooh or Cooh, then this keyword uses complex orbitals to make full use of this symmetry</p>
-</dd>
-</dl>
-</li>
-</ul>
-</div>
-<div class="section" id="dice-keywords">
-<h3><em>Dice</em> keywords<a class="headerlink" href="#dice-keywords" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
-<li>davidsonTol = 5.e-5</li>
-<li>epsilon2 = 1.e-7</li>
-<li>epsilon2Large = 1000</li>
-<li>sampleN = 200</li>
-<li>onlyperturbative = False</li>
-<li>fullrestart = False</li>
-<li>dE = 1.e-8</li>
-<li>eps = None</li>
-<li>prefix = &#8221;.&#8221;</li>
-<li>stochastic = True</li>
-<li>nblocks = 1</li>
-<li>excitation = 1000</li>
-<li>nvirt = 1e6</li>
-<li>singleList = True</li>
-<li>io = True</li>
-<li>nroots = 1</li>
-<li>nPTiter = 0</li>
-<li>DoRDM = True</li>
-<li>sweep_iter =[ ]</li>
-<li>sweep_epsilon = [ ]</li>
-<li>maxIter = 6</li>
-<li>restart = False</li>
-</ul>
 </div>
 </div>
 </div>

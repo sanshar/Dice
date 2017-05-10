@@ -106,8 +106,7 @@
 <li>GNU g++ 4.8 or newer required.</li>
 <li>Intel icpc 14.0.1 or newer required.</li>
 </ul>
-<p>Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS, DFLAGS, and LFLAGS variables to point to for your Eigen and Boost libraries.</p>
-<p>Finally, the user must edit the lines shown below before compiling:</p>
+<p>Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span>USE_MPI = yes
 USE_INTEL = yes
 
