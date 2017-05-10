@@ -13,9 +13,7 @@ SHCI requires `Boost <http://www.boost.org/>`_ and `Eigen <http://eigen.tuxfamil
 * GNU g++ 4.8 or newer required.
 * Intel icpc 14.0.1 or newer required.
 
-Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS, DFLAGS, and LFLAGS variables to point to for your Eigen and Boost libraries.
-
-Finally, the user must edit the lines shown below before compiling:
+Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:
 
 ::
 

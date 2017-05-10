@@ -95,7 +95,7 @@ Once you have your input.dat and FCIDUMP file you can open a terminal and naviga
 
 .. code-block:: bash
 
-	mpirun -np 2 /path_to_dice/Dice input.dat > output.dat
+	mpirun -np 2 /path_to/Dice/Dice input.dat > output.dat
 
 
 This will execute your input.dat file and write all output to the output.dat file in your current working directory. An example of the output is shown below:
