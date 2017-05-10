@@ -360,10 +360,10 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
 	stddev = currentIter < 5 ? 1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
 	if (currentIter < 5)
-	  std::pout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
+	  std::cout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
 	else
-	  std::pout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
+	  std::cout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
 	pout << endl;
       }
