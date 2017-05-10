@@ -1,5 +1,4 @@
-/*
-Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+/* Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
 Copyright (c) 2017, Sandeep Sharma
 
 This file is part of DICE.
@@ -361,12 +360,12 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
 	stddev = currentIter < 5 ? 1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
 	if (currentIter < 5)
-	  std::cout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
+	  std::pout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
 	else
-	  std::cout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
+	  std::pout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
 	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
-	cout << endl;
+	pout << endl;
       }
       if (omp_get_thread_num() == 0) {
 #ifndef SERIAL
@@ -381,7 +380,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	if (omp_get_thread_num() == 0) AvgenergyEN /= currentIter;
 	if (omp_get_thread_num() == 0) {
 	  //pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
-	  cout << "Semistochastic PT calculation converged"<<endl; 
+	  pout << "Semistochastic PT calculation converged"<<endl; 
 	  pout << "epsilon2: "<<schd.epsilon2<<endl<<"PTEnergy: "<<E0+AvgenergyEN<<" +/- "<<format("%8.2e") %(stddev)<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
 	}
 	break;
@@ -440,7 +439,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 						*uniqueDEH[omp_get_thread_num()].var_indices_beforeMerge,
 						*uniqueDEH[omp_get_thread_num()].orbDifference_beforeMerge,
 						schd, nelec);
-	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) pout <<"# "<<i<<endl;
       }
     }
     else {
@@ -454,7 +453,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 				   *uniqueDEH[omp_get_thread_num()].Num,
 				   *uniqueDEH[omp_get_thread_num()].Energy,
 				   schd,0, nelec);
-	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) cout <<"# "<<i<<endl;
+	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) pout <<"# "<<i<<endl;
       }
     }
 
@@ -465,7 +464,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     if(mpigetsize() >1 || num_thrds >1) {
       StitchDEH uniqueDEH_afterMPI;
       if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
-      if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#Before hash "<<getTime()-startofCalc<<endl;
+      if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#Before hash "<<getTime()-startofCalc<<endl;
 
 
       for (int proc=0; proc<mpigetsize(); proc++) {
@@ -513,7 +512,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 	uniqueDEH[omp_get_thread_num()].resize(start);
 
-	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After hash "<<getTime()-startofCalc<<endl;
+	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After hash "<<getTime()-startofCalc<<endl;
 
 #pragma omp barrier
 	if (omp_get_thread_num()==num_thrds-1) {
@@ -550,7 +549,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 	}
 
 
-	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After all_to_all "<<getTime()-startofCalc<<endl;
+	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After all_to_all "<<getTime()-startofCalc<<endl;
 
 	for (int proc=0; proc<mpigetsize(); proc++) {
 	  for (int thrd=0; thrd<num_thrds; thrd++) {
@@ -589,10 +588,10 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 
 
     }
-    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#After collecting "<<getTime()-startofCalc<<endl;
+    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After collecting "<<getTime()-startofCalc<<endl;
 
     //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) cout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
+    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
 
 
     vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
@@ -623,7 +622,7 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 #endif
 
   if (mpigetrank() == 0) {
-    cout << "Deterministic PT calculation converged"<<endl; 
+    pout << "Deterministic PT calculation converged"<<endl; 
     pout << "epsilon2: "<<schd.epsilon2<<endl<<"PTEnergy: "<<E0+finalE<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
   }
 
@@ -1104,7 +1103,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
 
     vector<Determinant>& newDets = *uniqueDEH[0].Det;
-    //cout << newDets.size()<<"  "<<Dets.size()<<endl;
+    //pout << newDets.size()<<"  "<<Dets.size()<<endl;
     vector<MatrixXx> X0(ci.size(), MatrixXx(Dets.size()+newDets.size(), 1));
     for (int i=0; i<ci.size(); i++) {
       X0[i].setZero(Dets.size()+newDets.size(),1);
