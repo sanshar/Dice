@@ -102,6 +102,7 @@ This will execute your input.dat file and write all output to the output.dat fil
 
 .. code-block:: none
 
+
 	**************************************************************
 	Dice  Copyright (C) 2017  Sandeep Sharma
 	This program is distributed in the hope that it will be useful,
@@ -152,33 +153,6 @@ This will execute your input.dat file and write all output to the output.dat fil
 
 	Exiting variational iterations
 	Calculating RDM
-	State :State :0
-	State :State :0State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	0
-
-	State :State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	State :0
-	0
-	0
-
 	VARIATIONAL CALCULATION RESULT
 	------------------------------
 	Root             Energy     Time(s)
