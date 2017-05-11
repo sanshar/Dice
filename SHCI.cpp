@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
 
 
-  std::pout.precision(15);
+  std::cout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
