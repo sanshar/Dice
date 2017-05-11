@@ -1,22 +1,22 @@
-<div><img src="https://github.com/sanshar/Dice/docs/images/dice_orange.png" height="80px"/></div>
+<div><img src="https://github.com/sanshar/Dice/blob/master/docs/images/dice_orange.png" height="80px"/></div>
 
 DICE software
 =============
 
 *Dice* implements the semistochastic heat bath configuration interaction (SHCI) algorithm for *ab initio* Hamiltonian of a quantum chemical system. Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30-100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients. Compared to other methods in its class SHCI is often not only orders of magnitude faster, it also does not suffer from a serious memory bottleneck that plauges such methods. The resulting algorithm as implemented in Dice allows us to treat difficult benchmark systems such as the Chromium dimer and Mn-Salen (a challenging bioinorganic cluster) at a cost that is often an order of magnitude faster than either density matrix renormalization group (DMRG) or full configuration interaction quantum Monte Carlo (FCIQMC). Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, SHCI might be an ideal choice for you.
 
-* Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
+* Available with the [PySCF](https://github.com/sunqm/pyscf/blob/master/README.md) package.
 
-* Download the latest version of Dice: :download:`Dice.tar.gz <images/Dice.tar.gz>`
+* Download the latest version of Dice: [Dice.tar.gz](images/Dice.tar.gz)
 
 Prerequisites
 ------------
 
 SHCI requires:
 
-* `Boost <http://www.boost.org/>`_ (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
+* [Boost](http://www.boost.org/) (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
 
-* `Eigen <http://eigen.tuxfamily.org/dox/>`_ (Eigen consists of header files and does not have to be compiled)
+* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled)
 
 * About compilers:
  GNU: g++ 4.8 or newer
@@ -53,8 +53,3 @@ Note:
 
   If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.
 
-#Citing DICE
-#-----------
-#
-#This paper should be cited for calculations performed using the DICE software: #paper
-#
