@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
 
 
-  std::cout.precision(15);
+  std::pout.precision(15);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
 
   if (HFoccupied[0].size() != nelec) {
-    cout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
+    pout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
   }
 
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
   Determinant::EffDetLen = norbs/64+1;
   Determinant::initLexicalOrder(nelec);
   if (Determinant::EffDetLen >DetLen) {
-    cout << "change DetLen in global.h to "<<Determinant::EffDetLen<<" and recompile "<<endl;
+    pout << "change DetLen in global.h to "<<Determinant::EffDetLen<<" and recompile "<<endl;
     exit(0);
   }
 
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
   //IF SOC is true then read the SOC integrals
 #ifndef Complex
   if (schd.doSOC) {
-    cout << "doSOC option only works with the complex coefficients. Uncomment the -Dcomplex in the make file and recompile."<<endl;
+    pout << "doSOC option only works with the complex coefficients. Uncomment the -Dcomplex in the make file and recompile."<<endl;
     exit(0);
   }
 #else
@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
     world.barrier();
 #endif
     boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
-    cout << "Error here"<<endl;
+    pout << "Error here"<<endl;
     exit(0);
   }
 
@@ -386,7 +386,7 @@ int main(int argc, char* argv[]) {
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
       SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
     }
-    //cout <<" response ";
+    //pout <<" response ";
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
 
