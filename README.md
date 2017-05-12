@@ -3,7 +3,16 @@
 DICE software
 =============
 
-*Dice* implements the semistochastic heat bath configuration interaction (SHCI) algorithm for *ab initio* Hamiltonian of a quantum chemical system. Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30-100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients. Compared to other methods in its class SHCI is often not only orders of magnitude faster, it also does not suffer from a serious memory bottleneck that plauges such methods. The resulting algorithm as implemented in Dice allows us to treat difficult benchmark systems such as the Chromium dimer and Mn-Salen (a challenging bioinorganic cluster) at a cost that is often an order of magnitude faster than either density matrix renormalization group (DMRG) or full configuration interaction quantum Monte Carlo (FCIQMC). Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, SHCI might be an ideal choice for you.
+
+
+
+*Dice* implements the semistochastic heat bath configuration interaction (SHCI) algorithm for *ab initio* Hamiltonians of quantum chemical systems.
+
+Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30 to 100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients.
+
+Compared to other methods in its class, SHCI is often not only orders of magnitude faster, it also does not suffer from serious memory bottlenecks that plagues these methods. The resulting algorithm as implemented in *Dice* allows us to treat difficult benchmark systems such as the Chromium dimer and Mn-Salen (a challenging bioinorganic cluster) at a cost that is often an order of magnitude faster than density matrix renormalization group (DMRG) or full configuration interaction quantum Monte Carlo (FCIQMC).
+
+Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, *Dice* might be an ideal choice for you.
 
 * Available with the [PySCF](https://github.com/sunqm/pyscf/blob/master/README.md) package.
 
@@ -16,14 +25,32 @@ SHCI requires:
 
 * [Boost](http://www.boost.org/) (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
 
+```
+  wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_NN_0.tar.gz
+  tar -xf boost_1_NN_0.tar.gz
+  cd boost_1_NN_0
+  ./bootstrap.sh
+  echo "using mpi ;" >> project-config.jam
+  ./b2 -j6 --target=shared,static
+```
+
+
 * [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled)
 
+```
+  hg clone https://bitbucket.org/eigen/eigen/
+  cd eigen
+  mkdir build_dir
+  cd build_dir
+  cmake ..
+  sudo make install
+```
+
 * About compilers:
- GNU: g++ 4.8 or newer
+    - GNU: g++ 4.8 or newer
+    - Intel: icpc 14.0.1 or newer
+    - In any case: the C++0x/C++11 standards must be supported.
 
- Intel: icpc 14.0.1 or newer
-
- In any case: the C++0x/C++11 standards must be supported.
 
 Compilation
 -------
