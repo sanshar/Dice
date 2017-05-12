@@ -27,7 +27,6 @@ Contents:
    overview
    installation
    gettingstarted
-   usingincasscf
    keywords
    benchmarking
 

@@ -25,6 +25,8 @@ SHCI requires:
 
 * [Boost](http://www.boost.org/) (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
 
+An example of download and compilation commands for the `NN` version of Boost can be:
+
 ```
   wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_NN_0.tar.gz
   tar -xf boost_1_NN_0.tar.gz
@@ -35,7 +37,9 @@ SHCI requires:
 ```
 
 
-* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled)
+* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled but can be `installed`)
+
+One way of getting and installing the Eigen package is:
 
 ```
   hg clone https://bitbucket.org/eigen/eigen/
@@ -46,7 +50,7 @@ SHCI requires:
   sudo make install
 ```
 
-* About compilers:
+* About compiler requirements:
     - GNU: g++ 4.8 or newer
     - Intel: icpc 14.0.1 or newer
     - In any case: the C++0x/C++11 standards must be supported.
@@ -55,7 +59,7 @@ SHCI requires:
 Compilation
 -------
 
-Edit the `Makefile` in the main directory and change the paths to your Eigen and Boost libraries. The user can choose whether to use gcc or intel by setting the `USE_INTEL` variable accordingly, and whether or not to compile with MPI by setting the `USE_MPI` variable. All the lines in the `Makefile` that need to be edited are shown below:
+Edit the `Makefile` in the main directory and change the paths to your Eigen and Boost libraries. The user can choose whether to use gcc or intel by setting the `USE_INTEL` variable accordingly, and whether or not to compile with MPI by setting the `USE_MPI` variable. All the lines in the `Makefile` that normally need to be edited are shown below:
 
 ```
   USE_MPI = yes
@@ -67,14 +71,14 @@ Edit the `Makefile` in the main directory and change the paths to your Eigen and
 
 Testing
 -------
-One can test the code using the `runTests.sh` script in `/path_to/Dice/tests/`:
+
+Upon successful compilation, one can test the code using the `runTests.sh` script in `/path_to/Dice/tests/` (before running this script, edit the `MPICOMMAND` variable to the appropriate number of processors you wish to run the tests onto):
 
 ```
   cd /path_to/Dice/tests/
   ./runTests.sh
 ```
 
-Before running this script, edit the `MPICOMMAND` variable to the appropriate number of processors you wish to run the tests onto.
 
 Note:
 
