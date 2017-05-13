@@ -2,16 +2,16 @@ Installation
 ************
 Source Code
 -----------
-* Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
+* *Dice* is available with the [PySCF](https://github.com/sunqm/pyscf/blob/master/README.md) package.
 
-* Download the latest version of *Dice*: :download:`Dice.tar.gz <images/Dice.tar.gz>`
+* The latest version of *Dice* is also downloadable as a tar archive: [Dice.tar.gz](images/Dice.tar.gz)
 
 Prerequisites
 -------
 
-SHCI requires:
+*Dice* requires:
 
-* `Boost <http://www.boost.org/>`_ (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
+* `Boost <http://www.boost.org/>`_ (when compiling the Boost library make sure that you use the same compiler as you do for *Dice*)
 
 An example of download and compilation commands for the `NN` version of Boost can be:
 
@@ -25,7 +25,7 @@ An example of download and compilation commands for the `NN` version of Boost ca
   ./b2 -j6 --target=shared,static
 
 
-* `Eigen <http://eigen.tuxfamily.org/dox/>`_ (Eigen consists of header files and does not have to be compiled but can be `installed`)
+* `Eigen <http://eigen.tuxfamily.org/dox/>`_ (Eigen consists of header files and does not have to be compiled but can be installed)
 
 One way of getting and installing the Eigen package is:
 
@@ -70,5 +70,5 @@ Upon successful compilation, one can test the code using the `runTests.sh` scrip
 
 .. note::
 
-  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.
+  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the `runTests.sh` script because they require a large amount of processing power and memory.
 

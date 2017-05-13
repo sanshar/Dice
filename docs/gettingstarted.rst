@@ -4,11 +4,11 @@ Structure of the Input
 ----------------------
 A typical input (this below) is broken up into three main sections:
 
-* the header specifies how many electrons should be included in the active space and which orbitals they occupy in the Hatree Fock (HF) determinant
+* header (where the number of electrons that should be included in the active space is specified, and which orbitals they occupy in the reference determinants)
 
-* schedule and settings for the variational part of the calculation
+* variational part (schedule and settings)
   
-* settings for the perturbative calculation
+* perturbative part (settings)
 
 .. code-block:: none
 
@@ -82,13 +82,13 @@ Perturbative Section
 
 
 
-Using SHCI as a stand-alone program
+Using Dice as a stand-alone program
 -----------------------------------
-The SHCI program can be used as a wavefunction solver without interfacing it with other programs (see also the :ref:`interfacing-with-pyscf` section for the use of SHCI as an active space solver in a CASSCF calculation).
+The *Dice* program can be used as a wavefunction solver without interfacing it with other programs (see also the :ref:`interfacing-with-pyscf` section for the use of *Dice* as an active space solver in a CASSCF calculation).
 
 The program requires a `FCIDUMP` two-body integral file, which can be generated using whatever electronic structure package you prefer. 
 
-An example `input.dat` file is shown below, for more input files see the test directory inside your main SHCI directory.
+An example `input.dat` file is shown below, for more input files see the test directory inside your main *Dice* directory.
 
 .. code-block:: none
 
@@ -210,7 +210,7 @@ This will execute your `input.dat` file and write all output to the `output.dat`
 
 Interfacing with PySCF in a CASSCF calculation
 ----------------------
-SHCI can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ is successfully installed (see `Installing PySCF <https://github.com/sunqm/pyscf/blob/master/README.md#installation>`_), you can call Dice from within a python input script. After you compile Dice, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.
+*Dice* can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ is successfully installed (see `Installing PySCF <https://github.com/sunqm/pyscf/blob/master/README.md#installation>`_), you can call *Dice* from within a python input script. After you compile *Dice*, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.
 
 .. code-block:: bash
 
@@ -218,7 +218,7 @@ SHCI can also be used as an FCI solver in CASSCF calculation with a large number
 	SHCIQDPTEXE = '/path_to/SHCI/QDPTSOC'
 
 
-Once this is completed you can run call SHCI from within `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. An example input is shown below:
+Once this is completed you can run call *Dice* from within `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. An example input is shown below:
 
 .. code-block:: python
 

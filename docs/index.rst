@@ -18,7 +18,8 @@ Compared to other methods in its class, SHCI is often not only orders of magnitu
 Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, *Dice* might be an ideal choice for you.
 
 
-Contents:
+Contents
+==================
 
 
 .. toctree::

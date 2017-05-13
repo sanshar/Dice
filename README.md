@@ -1,11 +1,5 @@
 <div><img src="https://github.com/sanshar/Dice/blob/master/docs/images/dice_lateral.png" height="360px"/></div>
 
-DICE software
-=============
-
-
-
-
 *Dice* implements the semistochastic heat bath configuration interaction (SHCI) algorithm for *ab initio* Hamiltonians of quantum chemical systems.
 
 Unlike full configuration interaction (FCI), SHCI can be used to treat active spaces containing 30 to 100 orbitals. SHCI is able to accomplish this by taking advantage of the fact that although the full Hilbert space may be enormous, only a small fraction of the determinants in the space have appreciable coefficients.
@@ -14,16 +8,17 @@ Compared to other methods in its class, SHCI is often not only orders of magnitu
 
 Thus if you are interested in performing multireference calculations with active space containing several tens to hundreds of orbitals, *Dice* might be an ideal choice for you.
 
-* Available with the [PySCF](https://github.com/sunqm/pyscf/blob/master/README.md) package.
 
-* Download the latest version of Dice: [Dice.tar.gz](images/Dice.tar.gz)
+* *Dice* is available with the [PySCF](https://github.com/sunqm/pyscf/blob/master/README.md) package.
+
+* The latest version of *Dice* is also downloadable as a tar archive: [Dice.tar.gz](images/Dice.tar.gz)
 
 Prerequisites
 ------------
 
-SHCI requires:
+*Dice* requires:
 
-* [Boost](http://www.boost.org/) (when compiling the Boost library make sure that you use the same compiler as you do for SHCI)
+* [Boost](http://www.boost.org/) (when compiling the Boost library make sure that you use the same compiler as you do for *Dice*)
 
 An example of download and compilation commands for the `NN` version of Boost can be:
 
@@ -37,7 +32,7 @@ An example of download and compilation commands for the `NN` version of Boost ca
 ```
 
 
-* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled but can be `installed`)
+* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled but can be installed)
 
 One way of getting and installing the Eigen package is:
 
@@ -80,7 +75,5 @@ Upon successful compilation, one can test the code using the `runTests.sh` scrip
 ```
 
 
-Note:
-
-  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.
+  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the `runTests.sh` script because they require a large amount of processing power and memory.
 
