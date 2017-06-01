@@ -937,13 +937,19 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 #ifndef SERIAL
 #ifndef Complex
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>());
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>());
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>());
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[0](0,0), spinRDM[0].rows()*spinRDM[0].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[1](0,0), spinRDM[1].rows()*spinRDM[1].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[2](0,0), spinRDM[2].rows()*spinRDM[2].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>());
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>());
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>());
 #else
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex);
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex);
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[0](0,0), 2*spinRDM[0].rows()*spinRDM[0].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[1](0,0), 2*spinRDM[1].rows()*spinRDM[1].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[2](0,0), 2*spinRDM[2].rows()*spinRDM[2].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex);
 #endif
 #endif
   }
@@ -958,6 +964,9 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
 					twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					, int nelec, bool DoRDM) {
+
+  double coreEbkp = coreE;
+  coreE = 0.0;
 
   pout << "**************************************************************"<<endl;
   pout << "VARIATIONAL STEP  "<<endl;
@@ -1011,16 +1020,24 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
     if (schd.fullrestart)
       iterstart = 0;
-    pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n")
-      %(iterstart) %(0) % schd.epsilon1[iterstart] % Dets.size() % E0[0] % (getTime()-startofCalc);
+    for (int i=0; i<E0.size(); i++)
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n")
+	%(iterstart) %(i) % schd.epsilon1[iterstart] % Dets.size() % (E0[i]+coreEbkp) % (getTime()-startofCalc);
     if (!schd.fullrestart)
       iterstart++;
     else
       SHCImakeHamiltonian::regenerateH(Dets, connections, Helements, I1, I2, coreE);
-    if (schd.onlyperturbative)
+    if (schd.onlyperturbative) {
+      for (int i=0; i<E0.size(); i++) 
+	E0[i] += coreEbkp;
+      coreE = coreEbkp;
       return E0;
+    }
 
     if (converged && iterstart >= schd.epsilon1.size()) {
+      for (int i=0; i<E0.size(); i++) 
+	E0[i] += coreEbkp;
+      coreE = coreEbkp;
       pout << "# restarting from a converged calculation, moving to perturbative part.!!"<<endl;
       return E0;
     }
@@ -1157,8 +1174,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
 #ifndef Complex
     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#else
-    boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex);
+ #else
+     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), 2*diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+     //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex);
 #endif
 #endif
 
@@ -1172,14 +1190,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (iter == 0) prevE0 = -10.0;
     Hmult2 H(connections, Helements);
 
-    E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, false);
+    E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, schd.outputlevel >0);
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
     mpi::broadcast(world, X0, 0);
 #endif
     for (int i=0; i<E0.size(); i++)
       pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n") 
-	%(iter) %(i) % schd.epsilon1[iter] % Dets.size() % E0[i] % (getTime()-startofCalc);
+	%(iter) %(i) % schd.epsilon1[iter] % Dets.size() % (E0[i]+coreEbkp) % (getTime()-startofCalc);
     if (E0.size() >1) pout <<endl;
     for (int i=0; i<E0.size(); i++) {
       ci[i].resize(Dets.size(),1); ci[i] = 1.0*X0[i];
@@ -1218,11 +1236,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   pout << "VARIATIONAL CALCULATION RESULT"<<endl;
   pout << "------------------------------"<<endl;
   pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %("Time(s)");
-  for (int i=0; i<E0.size(); i++)
+  for (int i=0; i<E0.size(); i++) {
+    E0[i] += coreEbkp;
     pout << format("%4i  %18.10f  %10.2f\n") 
-      %(i) % E0[i] % (getTime()-startofCalc);
+      %(i) % (E0[i]) % (getTime()-startofCalc);
+  }
   pout <<endl<<endl;
-  
+  coreE = coreEbkp;
   return E0;
 
 }

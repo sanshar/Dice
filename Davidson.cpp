@@ -158,7 +158,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       double error = r.norm();
       if (iter == 0)
 	if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
-      if (false)
+      if (print)
 	pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
       iter++;
 
@@ -175,7 +175,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	//return eroots;
       }
 
-      if (error < tol || iter >400) {
+      if (error < tol || iter >400*x0.size()) {
 	if (iter >400*x0.size()) {
 	  cout << "Davidson calculation Didnt converge"<<endl;
 	  exit(0);
