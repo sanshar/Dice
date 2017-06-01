@@ -1,8 +1,10 @@
 USE_MPI = yes
-USE_INTEL = yes
+USE_INTEL = no
+EIGEN=/home/mussard/softwares/eigen
+BOOST=/home/mussard/softwares/boost_1_64_0
 
-FLAGS = -std=c++11 -g -O3 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ #-DComplex
-DFLAGS = -std=c++11 -g -O3 -I/home/sash2458/apps/eigen -I/home/sash2458/apps/boost_1_57_0/ -DComplex
+FLAGS = -std=c++11 -g -O3  -I${EIGEN} -I${BOOST} #-DComplex
+DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
@@ -10,11 +12,11 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = icpc
 		CC = icpc
-		LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
@@ -24,11 +26,11 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla_gcc/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = g++
 		CC = g++
-		LFLAGS = -L/home/sash2458/apps/boost_1_57_0/stage_bla_gcc/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
