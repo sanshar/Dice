@@ -1,7 +1,7 @@
 USE_MPI = yes
 USE_INTEL = no
-EIGEN=/home/mussard/softwares/eigen
-BOOST=/home/mussard/softwares/boost_1_64_0
+EIGEN=/home/james/Documents/Apps/eigen
+BOOST=/home/james/Documentes/Apps/boost_1_57_0
 
 FLAGS = -std=c++11 -g -O3  -I${EIGEN} -I${BOOST} #-DComplex
 DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
