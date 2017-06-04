@@ -34,11 +34,6 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
-#ifndef SERIAL
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi.hpp>
-#endif
 #include "communicate.h"
 #include "omp.h"
 
@@ -52,9 +47,6 @@ using namespace SHCISortMpiUtils;
 double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
-#ifndef SERIAL
-  boost::mpi::communicator world;
-#endif
   if (schd.nPTiter == 0) return 0;
   pout << "Peforming semistochastiPT for state: "<<root<<endl;
 
@@ -111,9 +103,13 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       }
       if (omp_get_thread_num() == 0) {
 #ifndef SERIAL
-	mpi::broadcast(world, allSample, 0);
-	mpi::broadcast(world, allwts, 0);
-	mpi::broadcast(world, AllDistinctSample, 0);
+	MPI_Bcast(&allSample[0], allSample.size(), MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&AllDistinctSample, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#ifndef Complex
+	MPI_Bcast(&allwts[0], allwts.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#else
+	MPI_Bcast(&allwts[0], 2*allwts.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
 #endif
       }
 
@@ -322,8 +318,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 
       double finalE = 0., finalELargeEps=0;
 #ifndef SERIAL
-      if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
-      if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
+//if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPT, finalE, std::plus<double>());
+//if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
+      if(omp_get_thread_num() == 0) MPI_Allreduce(&totalPT, &finalE, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      if(omp_get_thread_num() == 0) MPI_Allreduce(&totalPTLargeEps, &finalELargeEps, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      //if(omp_get_thread_num() == 0) mpi::all_reduce(world, totalPTLargeEps, finalELargeEps, std::plus<double>());
 #else
       finalE = totalPT;
       finalELargeEps = totalPTLargeEps;
@@ -344,9 +343,12 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       }
       if (omp_get_thread_num() == 0) {
 #ifndef SERIAL
-	mpi::broadcast(world, currentIter, 0);
-	mpi::broadcast(world, stddev, 0);
-	mpi::broadcast(world, AvgenergyEN, 0);
+	MPI_Bcast(&currentIter, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&AvgenergyEN, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	//mpi::broadcast(world, currentIter, 0);
+	//mpi::broadcast(world, stddev, 0);
+	//mpi::broadcast(world, AvgenergyEN, 0);
 #endif
       }
 #pragma omp barrier
