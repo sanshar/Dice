@@ -86,16 +86,6 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 
 
   std::vector<StitchDEH> uniqueDEH(num_thrds);
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumBeforeMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNum2BeforeMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNum2AfterMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<char> > > > hashedpresentBeforeMPI(mpigetsize(), std::vector<std::vector<vector<char> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<char> > > > hashedpresentAfterMPI(mpigetsize(), std::vector<std::vector<vector<char> > >(num_thrds));
   double totalPT = 0.0;
   double totalPTLargeEps=0;
   size_t ntries = 0;
@@ -106,10 +96,14 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   pout <<endl<<format("%6s  %14s  %5s %14s %10s  %10s")
     %("Iter") % ("EPTcurrent") %("State") %("EPTavg") %("Error")%("Time(s)")<<endl;
 
+  int size = mpigetsize(), rank = mpigetrank();
+
 #pragma omp parallel
   {
     for (int iter=0; iter<niter; iter++) {
       std::vector<CItype> wts1(Nsample,0.0); std::vector<int> Sample1(Nsample,-1);
+      int ithrd = omp_get_thread_num();
+      vector<size_t> all_to_all(size*size,0);
 
       if (omp_get_thread_num() == 0 && mpigetrank() == 0) {
 	std::fill(allSample.begin(), allSample.end(), -1);
@@ -147,105 +141,86 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 						     schd, Nmc, nelec);
       }
 
-      uniqueDEH[omp_get_thread_num()].MergeSort();
-
       if(mpigetsize() >1 || num_thrds >1) {
-	StitchDEH uniqueDEH_afterMPI;
-	for (int proc=0; proc<mpigetsize(); proc++) {
-	  hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedNum2BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedpresentBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+
+	boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH[ithrd].Det;
+	boost::shared_ptr<vector<CItype> >& Num = uniqueDEH[ithrd].Num;
+	boost::shared_ptr<vector<CItype> >& Num2 = uniqueDEH[ithrd].Num2;
+	boost::shared_ptr<vector<double> >& Energy = uniqueDEH[ithrd].Energy;
+	boost::shared_ptr<vector<char> >& present = uniqueDEH[ithrd].present;
+
+	std::vector<size_t> hashValues(Det->size());
+
+	std::vector<size_t> all_to_all_cumulative(size,0);
+	for (int i=0; i<Det->size(); i++) {
+	  hashValues[i] = Det->at(i).getHash();
+	  all_to_all[rank*size+hashValues[i]%size]++; 
+	}
+	for (int i=0; i<size; i++)
+	  all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
+
+	vector<Determinant> atoaDets(Det->size());
+	vector<CItype> atoaNum(Det->size());
+	vector<CItype> atoaNum2(Det->size());
+	vector<double> atoaE(Det->size());
+	vector<char> atoaPresent(Det->size());
+
+
+	vector<size_t> all_to_allCopy = all_to_all;
+	MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+	vector<size_t> counter(size, 0);
+	for (int i=0; i<Det->size(); i++) {
+	  int toProc = hashValues[i]%size;
+	  size_t index = toProc==0 ? counter[0] : counter[toProc] + all_to_all_cumulative[toProc-1];
+	  
+	  atoaDets[index ] = Det->at(i);
+	  atoaNum[index] = Num->at(i);
+	  atoaNum2[index] = Num2->at(i);
+	  atoaE[index] = Energy->at(i);
+	  atoaPresent[index] = present->at(i);
+
+	  counter[toProc]++;
 	}
 
-	if (omp_get_thread_num()==0 ) {
-	  if (mpigetsize() == 1)
-	    ntries = 1;
-	  else {
-	    size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
-	    ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode/mpigetsize()+1;
-#ifndef SERIAL
-	    mpi::broadcast(world, ntries, 0);
-#endif
-	  }
+
+
+
+	vector<int> sendcts(size,0), senddisp(size,0), recvcts(size,0), recvdisp(size,0);
+	vector<int> sendctsDets(size,0), senddispDets(size,0), recvctsDets(size,0), recvdispDets(size,0);
+	vector<int> sendctsPresent(size,0), senddispPresent(size,0), recvctsPresent(size,0), recvdispPresent(size,0);
+	
+	size_t recvSize = 0;
+	for (int i=0; i<size; i++) {
+	  sendcts[i] = all_to_all[rank*size+i]* sizeof(CItype)/sizeof(double);
+	  senddisp[i] = i==0? 0 : senddisp[i-1]+sendcts[i-1];
+	  recvcts[i] = all_to_all[i*size+rank]*sizeof(CItype)/sizeof(double);
+	  recvdisp[i] = i==0? 0 : recvdisp[i-1]+recvcts[i-1];
+	  
+	  sendctsDets[i] = all_to_all[rank*size+i]* sizeof(Determinant)/sizeof(double);
+	  senddispDets[i] = i==0? 0 : senddispDets[i-1]+sendctsDets[i-1];
+	  recvctsDets[i] = all_to_all[i*size+rank]*sizeof(Determinant)/sizeof(double);
+	  recvdispDets[i] = i==0? 0 : recvdispDets[i-1]+recvctsDets[i-1];
+	  
+	  sendctsPresent[i] = all_to_all[rank*size+i];
+	  senddispPresent[i] = i==0? 0 : senddispPresent[i-1]+sendctsPresent[i-1];
+	  recvctsPresent[i] = all_to_all[i*size+rank];
+	  recvdispPresent[i] = i==0? 0 : recvdispPresent[i-1]+recvctsPresent[i-1];
+	  
+	  recvSize += all_to_all[i*size+rank];
 	}
-#pragma omp barrier
-
-	size_t batchsize = uniqueDEH[omp_get_thread_num()].Det->size()/ntries;
-
-	for (int tries = 0; tries<ntries; tries++) {
-
-	  size_t start = (ntries-1-tries)*batchsize;
-	  size_t end   = tries==0 ? uniqueDEH[omp_get_thread_num()].Det->size() : (ntries-tries)*batchsize;
-	  for (int j=start; j<end; j++) {
-	    size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
-	    size_t procThrd = lOrder%(mpigetsize()*num_thrds);
-	    int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
-	    hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
-	    hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
-	    hashedNum2BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num2->at(j));
-	    hashedpresentBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].present->at(j));
-	    hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
-	  }
-
-	  uniqueDEH[omp_get_thread_num()].resize(start);
-
-
-#pragma omp barrier
-	  if (omp_get_thread_num()==num_thrds-1) {
-#ifndef SERIAL
-	    mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
-	    mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
-	    mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
-	    mpi::all_to_all(world, hashedpresentBeforeMPI, hashedpresentAfterMPI);
-	    mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
-#else
-	    hashedDetAfterMPI = hashedDetBeforeMPI;
-	    hashedNumAfterMPI = hashedNumBeforeMPI;
-	    hashedNum2AfterMPI = hashedNum2BeforeMPI;
-	    hashedpresentAfterMPI = hashedpresentBeforeMPI;
-	    hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
-#endif
-	  }
-#pragma omp barrier
-
-	  for (int proc=0; proc<mpigetsize(); proc++) {
-	    for (int thrd=0; thrd<num_thrds; thrd++) {
-	      hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedNumBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedNum2BeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedpresentBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedEnergyBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    }
-	  }
-
-
-	  for (int proc=0; proc<mpigetsize(); proc++) {
-	    for (int thrd=0; thrd<num_thrds; thrd++) {
-	      for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
-		uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-		uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-		uniqueDEH_afterMPI.Num2->push_back(hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-		uniqueDEH_afterMPI.present->push_back(hashedpresentAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-		uniqueDEH_afterMPI.Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      }
-	      hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedpresentAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    }
-	  }
-	}
-	*uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
-	*uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
-	*uniqueDEH[omp_get_thread_num()].Num2 = *uniqueDEH_afterMPI.Num2;
-	*uniqueDEH[omp_get_thread_num()].present = *uniqueDEH_afterMPI.present;
-	*uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy;
-	uniqueDEH_afterMPI.clear();
-	uniqueDEH[omp_get_thread_num()].MergeSort();
+	
+	Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
+	Num2->resize(recvSize), present->resize(recvSize);
+	
+	MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+	MPI_Alltoallv(&atoaNum2.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num2->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+	MPI_Alltoallv(&atoaE.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_DOUBLE, &Energy->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_DOUBLE, MPI_COMM_WORLD);
+	MPI_Alltoallv(&atoaPresent.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_CHAR, &present->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_CHAR, MPI_COMM_WORLD);
+	MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
+	
       }
+      uniqueDEH[omp_get_thread_num()].MergeSort();
 
 
       double energyEN = 0.0, energyENLargeEps = 0.0;
