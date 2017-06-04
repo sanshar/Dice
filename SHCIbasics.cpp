@@ -49,13 +49,13 @@ using namespace SHCISortMpiUtils;
 
 
 
-
 double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+  if (schd.nPTiter == 0) return 0;
   pout << "Peforming semistochastiPT for state: "<<root<<endl;
 
   double epsilon2 = schd.epsilon2;
@@ -407,20 +407,11 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
   int num_thrds = omp_get_max_threads();
 
   std::vector<StitchDEH> uniqueDEH(num_thrds);
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(mpigetsize(), std::vector<std::vector<vector<Determinant> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumBeforeMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumAfterMPI(mpigetsize(), std::vector<std::vector<vector<CItype> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(mpigetsize(), std::vector<std::vector<vector<double> > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<vector<int> > > > > hashedVarIndicesBeforeMPI(mpigetsize(), std::vector<std::vector<vector<vector<int> > > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<vector<int> > > > > hashedVarIndicesAfterMPI(mpigetsize(), std::vector<std::vector<vector<vector<int> > > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<vector<size_t> > > > > hashedOrbdiffBeforeMPI(mpigetsize(), std::vector<std::vector<vector<vector<size_t> > > >(num_thrds));
-  std::vector<std::vector< std::vector<vector<vector<size_t> > > > > hashedOrbdiffAfterMPI(mpigetsize(), std::vector<std::vector<vector<vector<size_t> > > >(num_thrds));
   double totalPT = 0.0;
   int ntries = 0;
 
   int size = mpigetsize(), rank = mpigetrank();
+  vector<size_t> all_to_all(size*size,0);
 #pragma omp parallel
   {
     int ithrd = omp_get_thread_num();
@@ -430,7 +421,6 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
       for (int i=0; i<Dets.size(); i++) {
 	if ((i%(nthrd * size)
 	     != rank*nthrd + ithrd)) continue;
-	//if (i%(omp_get_num_threads()*mpigetsize()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) {continue;}
 	SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Dets[i], i, abs(schd.epsilon2/ci(i,0)), ci(i,0),
 						I1, I2, I2HB, irrep, coreE, E0,
 						*uniqueDEH[omp_get_thread_num()].Det,
@@ -439,7 +429,6 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
 						*uniqueDEH[omp_get_thread_num()].var_indices_beforeMerge,
 						*uniqueDEH[omp_get_thread_num()].orbDifference_beforeMerge,
 						schd, nelec);
-	//if (i%100000 == 0 && omp_get_thread_num()==0 && mpigetrank() == 0) pout <<"# "<<i<<endl;
       }
     }
     else {
@@ -458,142 +447,99 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     }
 
 
+    if(mpigetsize() >1 || num_thrds >1 ) {
+      boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH[ithrd].Det;
+      boost::shared_ptr<vector<CItype> >& Num = uniqueDEH[ithrd].Num;
+      boost::shared_ptr<vector<CItype> >& Energy = uniqueDEH[ithrd].Energy;
+      boost::shared_ptr<vector<int > >& var_indices = uniqueDEH[ithrd].var_indices_beforeMerge;
+      boost::shared_ptr<vector<size_t > >& orbDifference = uniqueDEH[ithrd].orbDifference_beforeMerge;
+
+      std::vector<size_t> hashValues(Det->size());
+
+      std::vector<size_t> all_to_all_cumulative(size,0);
+      for (int i=0; i<Det->size(); i++) {
+	hashValues[i] = Det->at(i).getHash();
+	all_to_all[rank*size+hashValues[i]%size]++; 
+      }
+      for (int i=0; i<size; i++)
+	all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
+
+      vector<Determinant> atoaDets(Det->size());
+      vector<CItype> atoaNum(Det->size());
+      vector<CItype> atoaE(Det->size());
+      vector<int > atoaVarIndices;
+      vector<size_t > atoaOrbDiff;
+      if (schd.DoRDM || schd.doResponse) {
+	atoaVarIndices.resize(Det->size()); atoaOrbDiff.resize(Det->size());
+      }
+
+
+      vector<size_t> all_to_allCopy = all_to_all;
+      MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+      vector<size_t> counter(size, 0);
+      for (int i=0; i<Det->size(); i++) {
+	int toProc = hashValues[i]%size;
+	size_t index = toProc==0 ? counter[0] : counter[toProc] + all_to_all_cumulative[toProc-1];
+
+	atoaDets[index ] = Det->at(i);
+	atoaNum[index] = Num->at(i);
+	atoaE[index] = Energy->at(i);
+	if (schd.DoRDM||schd.doResponse) {
+	  atoaVarIndices[index] = var_indices->at(i);
+	  atoaOrbDiff[index] = orbDifference->at(i);
+	}
+	counter[toProc]++;
+      }
+
+
+
+
+      vector<int> sendcts(size,0), senddisp(size,0), recvcts(size,0), recvdisp(size,0);
+      vector<int> sendctsDets(size,0), senddispDets(size,0), recvctsDets(size,0), recvdispDets(size,0);
+      vector<int> sendctsVarDiff(size,0), senddispVarDiff(size,0), recvctsVarDiff(size,0), recvdispVarDiff(size,0);
+
+      size_t recvSize = 0;
+      for (int i=0; i<size; i++) {
+	sendcts[i] = all_to_all[rank*size+i]* sizeof(CItype)/sizeof(double);
+	senddisp[i] = i==0? 0 : senddisp[i-1]+sendcts[i-1];
+	recvcts[i] = all_to_all[i*size+rank]*sizeof(CItype)/sizeof(double);
+	recvdisp[i] = i==0? 0 : recvdisp[i-1]+recvcts[i-1];
+
+	sendctsDets[i] = all_to_all[rank*size+i]* sizeof(Determinant)/sizeof(double);
+	senddispDets[i] = i==0? 0 : senddispDets[i-1]+sendctsDets[i-1];
+	recvctsDets[i] = all_to_all[i*size+rank]*sizeof(Determinant)/sizeof(double);
+	recvdispDets[i] = i==0? 0 : recvdispDets[i-1]+recvctsDets[i-1];
+
+	sendctsVarDiff[i] = all_to_all[rank*size+i];
+	senddispVarDiff[i] = i==0? 0 : senddispVarDiff[i-1]+sendctsVarDiff[i-1];
+	recvctsVarDiff[i] = all_to_all[i*size+rank];
+	recvdispVarDiff[i] = i==0? 0 : recvdispVarDiff[i-1]+recvctsVarDiff[i-1];
+
+	recvSize += all_to_all[i*size+rank];
+      }
+
+      Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
+      if (schd.DoRDM||schd.doResponse) {
+	var_indices->resize(recvSize);
+	orbDifference->resize(recvSize);
+      }
+
+      MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      MPI_Alltoallv(&atoaE.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Energy->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
+
+      if (schd.DoRDM || schd.doResponse) {
+	MPI_Alltoallv(&atoaVarIndices.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_INT, &(var_indices->at(0)), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_INT, MPI_COMM_WORLD);
+	MPI_Alltoallv(&atoaOrbDiff.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_DOUBLE, &(orbDifference->at(0)), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      }
+      uniqueDEH[omp_get_thread_num()].Num2->clear();
+    
+    }
     uniqueDEH[ithrd].MergeSortAndRemoveDuplicates();
     uniqueDEH[ithrd].RemoveDetsPresentIn(SortedDets);
 
-    if(mpigetsize() >1 || num_thrds >1) {
-      StitchDEH uniqueDEH_afterMPI;
-      if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
-      if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#Before hash "<<getTime()-startofCalc<<endl;
-
-
-      for (int proc=0; proc<mpigetsize(); proc++) {
-	hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	if (schd.DoRDM || schd.doResponse) {
-	  hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	  hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	}
-      }
-
-      if (omp_get_thread_num()==0 ) {
-	if (mpigetsize() == 1)
-	  ntries = 1;
-	else {
-	  size_t D=DetLen*2*omp_get_num_threads(), perNode = 268435400;
-	  ntries = uniqueDEH[omp_get_thread_num()].Det->size()*D/perNode/mpigetsize()+1;
-#ifndef SERIAL
-	  mpi::broadcast(world, ntries, 0);
-#endif
-	}
-      }
-#pragma omp barrier
-
-      size_t batchsize = uniqueDEH[omp_get_thread_num()].Det->size()/ntries;
-      //ntries = 1;
-      for (int tries = 0; tries<ntries; tries++) {
-
-        size_t start = (ntries-1-tries)*batchsize;
-        size_t end   = tries==0 ? uniqueDEH[omp_get_thread_num()].Det->size() : (ntries-tries)*batchsize;
-
-	for (size_t j=start; j<end; j++) {
-	  size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
-	  size_t procThrd = lOrder%(mpigetsize()*num_thrds);
-	  int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
-	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
-	  hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
-	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
-	  if (schd.DoRDM || schd.doResponse) {
-	    hashedVarIndicesBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].var_indices->at(j));
-	    hashedOrbdiffBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].orbDifference->at(j));
-	  }
-	}
-
-	uniqueDEH[omp_get_thread_num()].resize(start);
-
-	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After hash "<<getTime()-startofCalc<<endl;
-
-#pragma omp barrier
-	if (omp_get_thread_num()==num_thrds-1) {
-#ifndef SERIAL
-	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
-	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
-	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
-	  if (schd.DoRDM || schd.doResponse) {
-	    mpi::all_to_all(world, hashedVarIndicesBeforeMPI, hashedVarIndicesAfterMPI);
-	    mpi::all_to_all(world, hashedOrbdiffBeforeMPI, hashedOrbdiffAfterMPI);
-	  }
-#else
-	  hashedDetAfterMPI = hashedDetBeforeMPI;
-	  hashedNumAfterMPI = hashedNumBeforeMPI;
-	  hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
-	  if (schd.DoRDM || schd.doResponse) {
-	    hashedVarIndicesAfterMPI = hashedVarIndicesBeforeMPI;
-	    hashedOrbdiffAfterMPI = hashedOrbdiffBeforeMPI;
-	  }
-#endif
-	}
-#pragma omp barrier
-
-	for (int proc=0; proc<mpigetsize(); proc++) {
-	  for (int thrd=0; thrd<num_thrds; thrd++) {
-	    hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedNumBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedEnergyBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    if (schd.DoRDM || schd.doResponse) {
-	      hashedVarIndicesBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedOrbdiffBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
-	    }
-	  }
-	}
-
-
-	if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After all_to_all "<<getTime()-startofCalc<<endl;
-
-	for (int proc=0; proc<mpigetsize(); proc++) {
-	  for (int thrd=0; thrd<num_thrds; thrd++) {
-	    for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
-	      uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      uniqueDEH_afterMPI.Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      if (schd.DoRDM || schd.doResponse) {
-		uniqueDEH_afterMPI.var_indices->push_back(hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-		uniqueDEH_afterMPI.orbDifference->push_back(hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
-	      }
-	    }
-	    hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    if (schd.DoRDM || schd.doResponse) {
-	      hashedVarIndicesAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	      hashedOrbdiffAfterMPI[proc][thrd][omp_get_thread_num()].clear();
-	    }
-	  }
-	}
-      }
-
-
-      *uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
-      *uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
-      *uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy;
-      if (schd.DoRDM || schd.doResponse) {
-	*uniqueDEH[omp_get_thread_num()].var_indices = *uniqueDEH_afterMPI.var_indices;
-	*uniqueDEH[omp_get_thread_num()].orbDifference = *uniqueDEH_afterMPI.orbDifference;
-      }
-      uniqueDEH_afterMPI.clear();
-
-      uniqueDEH[omp_get_thread_num()].Num2->clear();
-      uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
-
-
-    }
-    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#After collecting "<<getTime()-startofCalc<<endl;
-
-    //uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-    if (schd.outputlevel > 0 && rank == 0 && omp_get_thread_num() == 0) pout << "#Unique determinants "<<getTime()-startofCalc<<"  "<<endl;
-
-
+    
     vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
     vector<CItype>& hasHEDNumerator = *uniqueDEH[omp_get_thread_num()].Num;
     vector<double>& hasHEDEnergy = *uniqueDEH[omp_get_thread_num()].Energy;
@@ -611,7 +557,6 @@ double SHCIbasics::DoPerturbativeDeterministic(vector<Determinant>& Dets, Matrix
     }
 
   }
-
 
   double finalE = 0.;
 #ifndef SERIAL
