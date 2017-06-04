@@ -60,6 +60,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.socmultiplier = 1.0;
   schd.targetError = 1.e-4;
   schd.num_thrds = 1;
+  schd.Trev = 0;
   schd.outputlevel = 0;
   while (dump.good()) {
 
@@ -98,7 +99,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	    cout << tok[t]<<"  ";
 	  exit(0);
 	}
-	cout << "#";
+
 	for (int i=0; i<tok.size(); i++) {
 	  occupied[index][i] = atoi(tok[i].c_str());
 	  cout << occupied[index][i]<<" ";
@@ -146,6 +147,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.onlyperturbative = true;
     else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
+    else if (boost::iequals(ArgName, "Treversal")) {
+      schd.Trev = atoi(tok[1].c_str());
+      if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {
+	cout << "Treversal should be either 0, 1, or -1."<<endl;
+	exit(0);
+      }
+    }
     else if (boost::iequals(ArgName, "dospinrdm")) {
       schd.DoRDM = true;
       schd.DoSpinRDM = true;
@@ -179,7 +187,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "schedule")) {
 
       std::getline(dump, Line);
-      cout << "#"<<Line<<endl;
+      cout <<Line<<endl;
       vector<string> schd_tok;
       boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       while(!boost::iequals(schd_tok[0], "END")) {

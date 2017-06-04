@@ -1009,8 +1009,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   //keep the diagonal energies of determinants so we only have to generated
   //this for the new determinants in each iteration and not all determinants
   MatrixXx diagOld(Dets.size(),1);
-  for (int i=0; i<Dets.size(); i++)
+  for (int i=0; i<Dets.size(); i++) {
     diagOld(i,0) = Dets[i].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0)
+      updateHijForTReversal(diagOld(i,0), Dets[i], Dets[i], I1, I2, coreE);
+  }
   int prevSize = 0;
 
   //If this is a restart calculation then read from disk
@@ -1125,7 +1128,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     for (int i=0; i<ci.size(); i++) {
       X0[i].setZero(Dets.size()+newDets.size(),1);
       X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i];
-
     }
 
     vector<Determinant>::iterator vec_it = SortedDets.begin();
@@ -1209,9 +1211,42 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
       pout <<endl<<"Exiting variational iterations"<<endl;
       writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
+
+      Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
+
+      if (Determinant::Trev != 0) {
+	int numDets = 0;
+	for (int i=0; i<Dets.size(); i++) {
+	  if (Dets[i].hasUnpairedElectrons()) 
+	    numDets += 2;
+	  else
+	    numDets += 1;
+	}
+	Dets.resize(numDets);
+	vector<MatrixXx> cibkp = ci;
+	for (int i=0; i<E0.size(); i++) {
+	  ci[i].resize(Dets.size(), 1); 
+	  ci[i].block(0, 0, cibkp[i].rows(), 1) = 1.*cibkp[i];
+	}
+
+	int newIndex=0, oldLen = cibkp[0].rows();
+	for (int i=0; i<oldLen; i++) {
+	  if (Dets[i].hasUnpairedElectrons()) {
+	    Dets[newIndex+oldLen] = Dets[i];
+	    Dets[newIndex+oldLen].flipAlphaBeta();
+	    for (int j=0; j<E0.size(); j++) {
+	      ci[j](i,0) = cibkp[j](i,0)/sqrt(2.0);
+	      double parity = Dets[i].parityOfFlipAlphaBeta();
+	      ci[j](newIndex+oldLen,0) = Determinant::Trev*parity*cibkp[j](i,0)/sqrt(2.0);
+	    }
+	    newIndex++;
+	  }
+	    
+	}
+      }
+
       if (DoRDM || schd.doResponse) {
 	pout <<"Calculating RDM"<<endl;
-	Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 	for (int i=0; i<schd.nroots; i++) {
 	  MatrixXx twoRDM;
 	  if (schd.DoSpinRDM )

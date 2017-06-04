@@ -305,7 +305,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 #endif
 
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-
+    
     if (closed[i]%2 != open[a]%2) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
@@ -319,6 +319,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
+      if (Determinant::Trev != 0) di.makeStandard();
     }
   }
 
@@ -347,6 +348,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 	dets.push_back(d);
 	Determinant& di = *dets.rbegin();
 	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+	if (Determinant::Trev != 0) di.makeStandard();
       }
     }
   }

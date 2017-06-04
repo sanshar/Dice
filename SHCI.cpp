@@ -43,6 +43,7 @@ using namespace boost;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
+char Determinant::Trev = 0; //Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 //get the current time
 double getTime() {
@@ -99,6 +100,11 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
+  if (HFoccupied[0].size()%2 != 0 && schd.Trev !=0) {
+    pout << "Cannot use time reversal symmetry for odd electron system."<<endl;
+    schd.Trev = 0;
+  }
+  Determinant::Trev = schd.Trev;
   omp_set_num_threads(schd.num_thrds);
 
 
@@ -180,7 +186,19 @@ int main(int argc, char* argv[]) {
   for (int d=0;d<HFoccupied.size(); d++) {
 
     for (int i=0; i<HFoccupied[d].size(); i++) {
+      if (Dets[d].getocc(HFoccupied[d][i])) {
+	pout << "orbital "<<HFoccupied[d][i]<<" appears twice in input determinant number "<<d<<endl;
+	exit(0);
+      }
       Dets[d].setocc(HFoccupied[d][i], true);
+    }
+    if (Determinant::Trev != 0)
+      Dets[d].makeStandard();
+    for (int i=0; i<d; i++) {
+      if (Dets[d] == Dets[i]) {
+	pout << "Determinant "<<Dets[d]<<" appears twice in the input determinant list."<<endl;
+	exit(0);
+      }
     }
   }
 
@@ -216,10 +234,10 @@ int main(int argc, char* argv[]) {
   for (int root=0; root<schd.nroots; root++) {
     pout << "State :"<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
-    for (int i=0; i<6; i++) {
+    for (int i=0; i<min(6, static_cast<int>(Dets.size())); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout << format("%4i %10.2e  ") %(i) %(abs(prevci(m,0))); pout << Dets[m]<<endl;
+      pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << Dets[m]<<endl;
       //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }

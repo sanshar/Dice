@@ -19,6 +19,43 @@ You should have received a copy of the GNU General Public License along with thi
 using namespace std;
 using namespace Eigen;
 
+
+void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
+			   oneInt& I1,
+			   twoInt& I2, 
+			   double& coreE) {
+  if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
+      dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dk;
+    size_t orbDiff;
+    detcpy.flipAlphaBeta();
+    double parity = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
+    hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
+	   !dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dj;
+    size_t orbDiff;
+    detcpy.flipAlphaBeta();
+    double parity = dj.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
+    hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
+	   && dk.hasUnpairedElectrons()) {
+    Determinant detcpyk = dk;
+    size_t orbDiff;
+    detcpyk.flipAlphaBeta();
+    double parityk = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
+    CItype hijCopy2, hijCopy3;
+    hij = hij + Determinant::Trev*parityk*hijCopy1;
+
+  }
+}
+
+
 //Assumes that the spin of i and a orbitals is the same
 double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
 			     int i, int A, double Energyd) {
@@ -189,7 +226,8 @@ CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
     }
 
   }
-  return energy*sgn;
+  energy *= sgn;
+  return energy;
 }
 
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
@@ -216,6 +254,8 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
   }
 
   if (ncre == 0) {
+    cout << bra<<endl;
+    cout << ket<<endl;
     cout <<"Use the function for energy"<<endl;
     exit(0);
   }
@@ -232,7 +272,7 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
   }
   else {
-    cout << "Should not be here"<<endl;
+    //cout << "Should not be here"<<endl;
     return 0.;
   }
 }

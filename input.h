@@ -56,6 +56,7 @@ private:
       & socmultiplier                           \
       & targetError                             \
       & num_thrds                               \
+      & Trev                                    \
       & outputlevel;
   }
 
@@ -93,6 +94,7 @@ public:
   double socmultiplier;
   double targetError;
   int num_thrds;
+  char Trev;
   int outputlevel;
 };
 
