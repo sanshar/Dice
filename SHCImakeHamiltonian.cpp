@@ -130,7 +130,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  //if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
 
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
@@ -142,7 +142,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 	    
 	    if (DoRDM)
 	      orbDifference[K].push_back(orbDiff);
-	  }
+	    //}
 	}
       }
     }

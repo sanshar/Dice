@@ -319,7 +319,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     if (abs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      if (Determinant::Trev != 0) di.makeStandard();
+      //if (Determinant::Trev != 0) di.makeStandard();
     }
   }
 
@@ -348,7 +348,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 	dets.push_back(d);
 	Determinant& di = *dets.rbegin();
 	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-	if (Determinant::Trev != 0) di.makeStandard();
+	//if (Determinant::Trev != 0) di.makeStandard();
       }
     }
   }

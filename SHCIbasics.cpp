@@ -1001,6 +1001,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					       *uniqueDEH[omp_get_thread_num()].Det,
 					       schd,0, nelec);
       }
+      if (Determinant::Trev != 0) {
+	for (int i=0; i<uniqueDEH[omp_get_thread_num()].Det->size(); i++) 
+	  uniqueDEH[omp_get_thread_num()].Det->at(i).makeStandard();
+      }
+
       uniqueDEH[omp_get_thread_num()].Energy->resize(uniqueDEH[omp_get_thread_num()].Det->size(),0.0);
       uniqueDEH[omp_get_thread_num()].Num->resize(uniqueDEH[omp_get_thread_num()].Det->size(),0.0);
 
