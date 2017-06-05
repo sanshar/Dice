@@ -41,6 +41,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/mpi.hpp>
 #endif
 #include "communicate.h"
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 using namespace std;
 using namespace Eigen;
@@ -193,6 +194,114 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 }
 
+void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaVec,
+					   int* &AlphaVecLen, vector<int*> &AlphaVec,
+					   std::vector<Determinant>& Dets,
+					   int StartIndex,
+					   std::vector<std::vector<int> >&connections,
+					   std::vector<std::vector<CItype> >& Helements,
+					   int Norbs,
+					   oneInt& I1,
+					   twoInt& I2,
+					   double& coreE,
+					   std::vector<std::vector<size_t> >& orbDifference,
+					   bool DoRDM) {
+  
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  size_t norbs = Norbs;
+
+#pragma omp parallel
+  {
+    int ithrd = omp_get_thread_num();
+    int nthrd = omp_get_num_threads();
+    for (size_t k=StartIndex; k<Dets.size(); k++) {
+      if (k%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
+      connections[k].push_back(k);
+      CItype hij = Dets[k].Energy(I1, I2, coreE);
+      if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+      Helements[k].push_back(hij);
+      if (DoRDM) orbDifference[k].push_back(0);
+    }
+  }
+
+  int index = 0;
+  for (int i=0;i<BetaVec.size(); i++) {
+    int* detIndex = BetaVec[i];
+    int localStart = BetaVecLen[i];
+    for (int j=0; j<BetaVecLen[i]; j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+
+    int ithrd = omp_get_thread_num();
+    int nthrd = omp_get_num_threads();
+    for (int k=localStart; k<BetaVecLen[i]; k++) {
+      
+      if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
+      
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	size_t orbDiff;
+	CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	
+	if (abs(hij) <1.e-10) continue;
+	Helements[K].push_back(hij);
+	connections[K].push_back(J);
+	
+	if (DoRDM)
+	  orbDifference[K].push_back(orbDiff);
+      }
+    }
+    
+    index++;
+  }
+
+
+  index = 0;
+  for (int i=0;i<AlphaVec.size(); i++) {
+    int* detIndex = AlphaVec[i];
+    int localStart = AlphaVecLen[i];
+    for (int j=0; j<AlphaVecLen[i]; j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+    
+    int ithrd = omp_get_thread_num();
+    int nthrd = omp_get_num_threads();
+    
+    for (int k=localStart; k<AlphaVecLen[i]; k++) {
+      if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
+
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	    
+	    if (abs(hij) <1.e-10) continue;
+	    connections[K].push_back(J);
+	    Helements[K].push_back(hij);
+	    
+	    if (DoRDM)
+	      orbDifference[K].push_back(orbDiff);
+	  }
+	}
+      }
+    }
+    index++;
+  }
+  
+}
+
+
 void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 				    std::map<HalfDet, std::vector<int> >& AlphaNm1,
 				    std::vector<Determinant>& Dets,
@@ -227,6 +336,112 @@ void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int>
       }
     }
   }
+}
+
+void SHCImakeHamiltonian::MakeSHMHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+		    std::map<HalfDet, std::vector<int> >& AlphaN,
+		    int* &betaVecLenSHM, vector<int*>& betaVecSHM,
+		    int* &alphaVecLenSHM, vector<int*>& alphaVecSHM) {
+  int comm_rank=0, comm_size=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#endif
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+
+  size_t totalMemory = 0, nBeta=0, nAlpha=0;
+  vector<int> betaveclen(BetaN.size(),0), alphaveclen(AlphaN.size(),0);
+  if (comm_rank == 0) {
+    //Now put it on shared memory
+    auto ita = BetaN.begin();
+    for (; ita != BetaN.end(); ita++) {
+      betaveclen[nBeta] = ita->second.size();
+      nBeta++;
+      totalMemory += sizeof(int); //write how many elements in the vector
+      totalMemory += sizeof(int)*ita->second.size(); //memory to store the vector      
+    }
+    
+    
+    ita = AlphaN.begin();
+    for (; ita != AlphaN.end(); ita++) {
+      alphaveclen[nAlpha] = ita->second.size();
+      nAlpha++;
+      totalMemory += sizeof(int); //write how many elements in the vector
+      totalMemory += sizeof(int)*ita->second.size(); //memory to store the vector
+    }
+  }
+#ifndef SERIAL
+  MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nBeta, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nAlpha, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  if (comm_rank != 0) {betaveclen.resize(nBeta); alphaveclen.resize(nAlpha);}
+  MPI_Bcast(&betaveclen[0], nBeta, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&alphaveclen[0], nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  hHelpersSegment.truncate(totalMemory);
+  regionHelpers = boost::interprocess::mapped_region{hHelpersSegment, boost::interprocess::read_write};
+  memset(regionHelpers.get_address(), 0., totalMemory);
+
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  betaVecLenSHM = static_cast<int*>(regionHelpers.get_address());
+  betaVecSHM.resize(nBeta);
+  size_t counter = 0;
+  for (int i=0; i<nBeta; i++) {
+    betaVecSHM[i] = static_cast<int*>(betaVecLenSHM+nBeta+counter);
+    betaVecLenSHM[i] = betaveclen[i];
+    counter += betaveclen[i];
+  }
+
+  int* beginAlpha = betaVecSHM[0]+counter;
+  alphaVecLenSHM = static_cast<int*>(beginAlpha);
+  alphaVecSHM.resize(nAlpha);
+  counter = 0;
+  for (int i=0; i<nAlpha; i++) {
+    alphaVecSHM[i] = static_cast<int*>(beginAlpha+nAlpha+counter);
+    alphaVecLenSHM[i] = alphaveclen[i];
+    counter += alphaveclen[i];
+  }
+
+ 
+  //now fill the memory
+  if (comm_rank == 0) {
+    size_t nBeta=0, nAlpha=0;
+    auto ita = BetaN.begin();
+    for (; ita != BetaN.end(); ita++) {
+      for (int j=0; j<ita->second.size(); j++) {
+	betaVecSHM[nBeta][j] = ita->second[j];
+      }
+      nBeta++;
+    }
+    
+    
+    ita = AlphaN.begin();
+    for (; ita != AlphaN.end(); ita++) {
+      for (int j=0; j<ita->second.size(); j++) 
+	alphaVecSHM[nAlpha][j] = ita->second[j];
+      nAlpha++;
+    }
+    
+  }
+
+  long intdim = totalMemory;
+  long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
+  long maxIter = intdim/maxint;
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+  char* shrdMem = static_cast<char*>(regionHelpers.get_address());
+  for (int i=0; i<maxIter; i++) {
+    MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
 }
 
 

@@ -14,9 +14,10 @@ You should have received a copy of the GNU General Public License along with thi
 #include <ctime>
 #include <sys/time.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <string>
 
 typedef unsigned short ushort;
-const int DetLen = 6;
+const int DetLen = 4;
 extern double startofCalc;
 double getTime();
 
@@ -32,5 +33,7 @@ extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
 extern boost::interprocess::shared_memory_object int2SHMSegment;
 extern boost::interprocess::mapped_region regionInt2SHM;
-
+extern boost::interprocess::shared_memory_object hHelpersSegment;
+extern boost::interprocess::mapped_region regionHelpers;
+extern std::string shciHelper;
 #endif

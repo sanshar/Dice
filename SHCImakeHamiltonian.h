@@ -31,6 +31,7 @@ class schedule;
 
 namespace SHCImakeHamiltonian {
 
+  
 
   void regenerateH(std::vector<Determinant>& Dets,
 		   std::vector<std::vector<int> >&connections,
@@ -47,6 +48,24 @@ namespace SHCImakeHamiltonian {
 
   void MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 			std::map<HalfDet, std::vector<int> >& AlphaNm1,
+			std::vector<Determinant>& Dets,
+			int StartIndex,
+			std::vector<std::vector<int> >&connections,
+			std::vector<std::vector<CItype> >& Helements,
+			int Norbs,
+			oneInt& I1,
+			twoInt& I2,
+			double& coreE,
+			std::vector<std::vector<size_t> >& orbDifference,
+			bool DoRDM=false) ;
+
+  void MakeSHMHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+		      std::map<HalfDet, std::vector<int> >& AlphaNm1,
+		      int* &BetaVecLen, vector<int*>& BetaVec,
+		      int* &AlphaVecLen, vector<int*>& AlphaVec);
+
+  void MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaVec,
+			int* &AlphaVecLen, vector<int*> &AlphaVec,
 			std::vector<Determinant>& Dets,
 			int StartIndex,
 			std::vector<std::vector<int> >&connections,

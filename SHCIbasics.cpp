@@ -896,8 +896,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   int nroots = ci.size();
   std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
+  HalfDet* Beta ; int* BetaVecLen ; vector<int*> BetaVec ;
+  HalfDet* Alpha; int* AlphaVecLen; vector<int*> AlphaVec;
+  
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
-  SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+  if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+  if (mpigetsize() > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
 
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -916,8 +920,16 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   std::vector<std::vector<int> > connections; connections.resize(Dets.size());
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
-  SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
-					norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+  if (mpigetsize() >1) { 
+    SHCImakeHamiltonian::MakeHfromHelpers(BetaVecLen, BetaVec, 
+					  AlphaVecLen, AlphaVec, 
+					  Dets, 0, connections, Helements,
+					  norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+  }
+  else {
+    SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, 0, connections, Helements,
+					  norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+  }
 
 #ifdef Complex
   SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements,
@@ -1050,7 +1062,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
 
     vector<Determinant>& newDets = *uniqueDEH[0].Det;
-    //pout << newDets.size()<<"  "<<Dets.size()<<endl;
+
+    pout << format("%4i %4i  %10.2e  %10.2e") 
+      %(iter) %(0) % schd.epsilon1[iter] % (newDets.size()+Dets.size()) ;
+
     vector<MatrixXx> X0(ci.size(), MatrixXx(Dets.size()+newDets.size(), 1));
     for (int i=0; i<ci.size(); i++) {
       X0[i].setZero(Dets.size()+newDets.size(),1);
@@ -1083,10 +1098,21 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 
-    SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
-    SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(),
-					  connections, Helements,
-					  norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
+    if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
+    if (mpigetsize() > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
+
+    if (mpigetsize() >1) { 
+      SHCImakeHamiltonian::MakeHfromHelpers(BetaVecLen, BetaVec, 
+					    AlphaVecLen, AlphaVec, 
+					    Dets, SortedDets.size(), connections, Helements,
+					    norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+    }
+    else {
+      
+      SHCImakeHamiltonian::MakeHfromHelpers(BetaN, AlphaNm1, Dets, SortedDets.size(),
+					    connections, Helements,
+					    norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
+    }
 #ifdef Complex
     SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, orbDifference,
 					      Helements, norbs, I1, nelec, false);
@@ -1124,7 +1150,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     mpi::broadcast(world, E0, 0);
     mpi::broadcast(world, X0, 0);
 #endif
-    for (int i=0; i<E0.size(); i++)
+
+    pout << format("   %18.10f  %10.2f\n") 
+      % (E0[0]+coreEbkp) % (getTime()-startofCalc);
+
+    for (int i=1; i<E0.size(); i++)
       pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n") 
 	%(iter) %(i) % schd.epsilon1[iter] % Dets.size() % (E0[i]+coreEbkp) % (getTime()-startofCalc);
     if (E0.size() >1) pout <<endl;

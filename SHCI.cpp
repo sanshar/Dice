@@ -57,6 +57,9 @@ boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
+boost::interprocess::shared_memory_object hHelpersSegment;
+boost::interprocess::mapped_region regionHelpers;
+string shciHelper;
 
 void license() {
   pout << endl;
@@ -118,8 +121,10 @@ int main(int argc, char* argv[]) {
   //set up shared memory files to store the integrals
   string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
   string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
   int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
+  hHelpersSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciHelper.c_str(), boost::interprocess::read_write);
 
 
 
