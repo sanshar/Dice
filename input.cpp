@@ -61,6 +61,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.targetError = 1.e-4;
   schd.num_thrds = 1;
   schd.Trev = 0;
+  schd.algorithm = 0;
   schd.outputlevel = 0;
   while (dump.good()) {
 
@@ -119,6 +120,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.outputlevel = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
+    else if (boost::iequals(ArgName, "algorithm"))
+      schd.algorithm=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "doresponse"))  {
       schd.doResponse=true;
       schd.responseFile = tok[1];

@@ -57,6 +57,7 @@ private:
       & targetError                             \
       & num_thrds                               \
       & Trev                                    \
+      & algorithm                               \
       & outputlevel;
   }
 
@@ -95,6 +96,7 @@ public:
   double targetError;
   int num_thrds;
   char Trev;
+  int algorithm;
   int outputlevel;
 };
 

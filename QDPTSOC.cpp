@@ -41,6 +41,7 @@ using namespace boost;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
+char Determinant::Trev = 0; //Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 //get the current time
 double getTime() {
@@ -54,6 +55,9 @@ boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
+boost::interprocess::shared_memory_object hHelpersSegment;
+boost::interprocess::mapped_region regionHelpers;
+string shciHelper;
 
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
@@ -74,6 +78,13 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
+  if (HFoccupied[0].size()%2 != 0 && schd.Trev !=0) {
+    pout << "Cannot use time reversal symmetry for odd electron system."<<endl;
+    schd.Trev = 0;
+  }
+  Determinant::Trev = schd.Trev;
+  omp_set_num_threads(schd.num_thrds);
+
   int nelec = HFoccupied[0].size();
 
 

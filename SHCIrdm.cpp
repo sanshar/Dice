@@ -302,26 +302,29 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 
 
   int num_thrds = omp_get_max_threads();
+  int nprocs = mpigetsize(), proc = mpigetrank();
 
-  //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
-    if ((i/num_thrds)%mpigetsize() != mpigetrank()) continue;
+    //if ((i/num_thrds)%nprocs != proc) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
 
     //<Di| Gamma |Di>
-    for (int n1=0; n1<nelec; n1++) {
-      for (int n2=0; n2<n1; n2++) {
-	int orb1 = closed[n1], orb2 = closed[n2];
-	if (schd.DoSpinRDM)
-	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(cibra(i,0))*ciket(i,0);
-	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
+    if ((i/num_thrds)%nprocs == proc){
+      for (int n1=0; n1<nelec; n1++) {
+	for (int n2=0; n2<n1; n2++) {
+	  int orb1 = closed[n1], orb2 = closed[n2];
+	  if (schd.DoSpinRDM)
+	    twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(cibra(i,0))*ciket(i,0);
+	  populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
+	}
       }
     }
 
-    for (int j=1; j<connections[i].size(); j++) {
+    for (int j=0; j<connections[i].size(); j++) {
+      if (i == connections[i][j]) continue;
       int d0=orbDifference[i][j]%norbs, c0=(orbDifference[i][j]/norbs)%norbs ;
       if (orbDifference[i][j]/norbs/norbs == 0) { //only single excitation
 	for (int n1=0;n1<nelec; n1++) {

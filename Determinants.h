@@ -84,6 +84,14 @@ class HalfDet {
     return true;
   }
 
+  int ExcitationDistance(const HalfDet& d) const {
+    int ndiff = 0; 
+    for (int i=0; i<DetLen/2; i++) {
+      ndiff += BitCount(repr[i] ^ d.repr[i]);
+    }
+    return ndiff/2;
+  }
+
   //set the occupation of the ith orbital
   void setocc(int i, bool occ) {
     //assert(i< norbs);
@@ -336,10 +344,9 @@ class Determinant {
   //Get the number of electrons that need to be excited to get determinant d from *this determinant
   //e.g. single excitation will return 1
   int ExcitationDistance(const Determinant& d) const {
-    int ndiff = 0; long u;
+    int ndiff = 0; 
     for (int i=0; i<EffDetLen; i++) {
-      u = repr[i] ^ d.repr[i];
-      ndiff += BitCount(u);
+      ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
     return ndiff/2;
   }

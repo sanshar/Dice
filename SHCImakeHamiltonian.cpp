@@ -131,7 +131,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
 	for(int j=0; j<k; j++) {
 	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  //if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
 
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
@@ -143,7 +143,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 	    
 	    if (DoRDM)
 	      orbDifference[K].push_back(orbDiff);
-	    //}
+	  }
 	}
       }
     }
@@ -301,6 +301,160 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
   
 }
 
+
+void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
+					       std::map<HalfDet, int >& AlphaN,
+					       vector< vector<int> >& AlphaMajor,
+					       vector< vector<int> >& BetaMajor,
+					       vector< vector<int> >& SinglesFromAlpha,
+					       std::vector<Determinant>& Dets,
+					       int StartIndex)
+{
+  //ith vector of AlphaMajor contains all Determinants that have
+  //ith Alpha string, and the 2j and 2j+1 elements of this ith vector
+  //are the indices of the beta string and the determinant respectively
+
+  for (int i=StartIndex; i<Dets.size(); i++) {
+    HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
+
+    auto itb = BetaN.find(db);
+    if (itb == BetaN.end()) {
+      auto ret = BetaN.insert( std::pair<HalfDet, int>(db, BetaMajor.size()));
+      itb = ret.first;
+      BetaMajor.resize(itb->second+1);
+    }
+
+    auto ita = AlphaN.find(da);
+    if (ita == AlphaN.end()) {
+      auto ret = AlphaN.insert( std::pair<HalfDet, int>(da, AlphaMajor.size()));
+      ita = ret.first;
+      AlphaMajor.resize(ita->second+1);
+
+
+      SinglesFromAlpha.resize(ita->second+1);
+      auto it = AlphaN.begin();
+      for (; it != AlphaN.end(); it++) {
+	if (da.ExcitationDistance(it->first) == 1) {
+	  SinglesFromAlpha[ita->second].push_back(it->second);
+	  SinglesFromAlpha[it->second].push_back(ita->second);
+	}
+      }
+
+    }
+
+    AlphaMajor[ita->second].push_back(itb->second);
+    AlphaMajor[ita->second].push_back(i); //beta index and Det index
+
+    BetaMajor[itb->second].push_back(ita->second);
+    BetaMajor[itb->second].push_back(i); //alpha index and Det index
+  }
+}
+
+
+void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajor,
+					    vector<vector<int> >& BetaMajor,
+					    vector<vector<int> >& SinglesFromAlpha,
+					    std::vector<Determinant>& Dets,
+					    int StartIndex,
+					    std::vector<std::vector<int> >&connections,
+					    std::vector<std::vector<CItype> >& Helements,
+					    int Norbs,
+					    oneInt& I1,
+					    twoInt& I2,
+					    double& coreE,
+					    std::vector<std::vector<size_t> >& orbDifference,
+					    bool DoRDM) {
+
+
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  size_t norbs = Norbs;
+
+  //diagonal element
+  for (size_t k=StartIndex; k<Dets.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
+  }
+
+  //alpha-beta excitation
+  for (size_t i=0; i<AlphaMajor.size(); i++) {
+    for (int j=0; j<AlphaMajor[i].size(); j+=2) {
+      if (AlphaMajor[i][j+1] >= StartIndex) {
+	int J = AlphaMajor[i][j+1];
+	if (J%nprocs != proc) continue;
+	
+	for (int k=0; k<SinglesFromAlpha[i].size(); k++) {
+	  int alphaI = SinglesFromAlpha[i][k];
+	  for (int l=0; l<AlphaMajor[alphaI].size(); l+=2) {
+	    int L = AlphaMajor[alphaI][l+1];
+	    if (L <J && Dets[J].connected(Dets[L])) {
+	      connections[J].push_back(L);
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[L], Dets[J], I1, I2, coreE, orbDiff);
+	      Helements[J].push_back(hij);
+	      if (DoRDM) orbDifference[J].push_back(orbDiff);
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  //single-double alpha excitation
+  for (size_t i=0; i<BetaMajor.size(); i++) {
+    for (int j=0; j<BetaMajor[i].size(); j+=2) {
+      if (BetaMajor[i][j+1] >= StartIndex) {
+	int J = BetaMajor[i][j+1];
+	if (J%nprocs != proc) continue;
+	for (int k=0; k<BetaMajor[i].size(); k+=2) {
+	  int K = BetaMajor[i][k+1];
+
+	  int Excite = Dets[J].ExcitationDistance(Dets[K]);
+	  if (Excite == 1 || Excite == 2) {
+	    if (K < J) {
+	      connections[J].push_back(K);
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[K], Dets[J], I1, I2, coreE, orbDiff);
+	      Helements[J].push_back(hij);
+	      if (DoRDM) orbDifference[J].push_back(orbDiff);
+	    }
+
+	  }//excite ==1 or excite == 2
+	} //for k
+      } //if J >=startindex
+    }//for j
+  }//for i
+
+  //single-double beta excitation
+  for (size_t i=0; i<AlphaMajor.size(); i++) {
+    for (int j=0; j<AlphaMajor[i].size(); j+=2) {
+      if (AlphaMajor[i][j+1] >= StartIndex) {
+	int J = AlphaMajor[i][j+1];
+	if (J%nprocs != proc) continue;
+	for (int k=0; k<j; k+=2) {
+	  int K = AlphaMajor[i][k+1];
+
+	  int Excite = Dets[J].ExcitationDistance(Dets[K]);
+	  if (Excite == 1 || Excite == 2) {
+	    connections[J].push_back(K);
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[K], Dets[J], I1, I2, coreE, orbDiff);
+	    Helements[J].push_back(hij);
+	    if (DoRDM) orbDifference[J].push_back(orbDiff);
+	  }
+	}
+      }
+    }
+  }
+}
 
 void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 				    std::map<HalfDet, std::vector<int> >& AlphaNm1,

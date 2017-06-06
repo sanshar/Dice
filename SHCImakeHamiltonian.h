@@ -40,6 +40,28 @@ namespace SHCImakeHamiltonian {
 		   twoInt& I2,
 		   double& coreE);
 
+  void PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
+			    std::map<HalfDet, int >& AlphaN,
+			    vector< vector<int> >& AlphaMajor,
+			    vector< vector<int> >& BetaMajor,
+			    vector<vector<int> >& SinglesFromAlpha,
+			    std::vector<Determinant>& Dets,
+			    int StartIndex);
+
+  void MakeHfromHelpers2(vector<vector<int> >& AlphaMajor,
+			 vector<vector<int> >& BetaMajor,
+			 vector<vector<int> >& SinglesFromAlpha,
+			std::vector<Determinant>& Dets,
+			int StartIndex,
+			std::vector<std::vector<int> >&connections,
+			std::vector<std::vector<CItype> >& Helements,
+			int Norbs,
+			oneInt& I1,
+			twoInt& I2,
+			double& coreE,
+			std::vector<std::vector<size_t> >& orbDifference,
+			bool DoRDM=false) ;
+
   void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
 			   std::vector<Determinant>& Dets,
