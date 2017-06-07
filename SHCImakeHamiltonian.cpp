@@ -389,8 +389,8 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   {
     vector<int> betacopy = AlphaMajorToBeta[i];
     vector<int> detIndex(betacopy.size(), 0), detIndexCopy(betacopy.size(), 0);
-    for (int i=0; i<detIndex.size(); i++)
-      detIndex[i] = i;
+    for (int j=0; j<detIndex.size(); j++)
+      detIndex[j] = j;
     mergesort(&betacopy[0], 0, betacopy.size()-1, &detIndex[0], &AlphaMajorToBeta[i][0], &detIndexCopy[0]);
     detIndexCopy.clear();
     reorder(AlphaMajorToDet[i], detIndex);
@@ -404,8 +404,8 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   {
     vector<int> betacopy = BetaMajorToAlpha[i];
     vector<int> detIndex(betacopy.size(), 0), detIndexCopy(betacopy.size(), 0);
-    for (int i=0; i<detIndex.size(); i++)
-      detIndex[i] = i;
+    for (int j=0; j<detIndex.size(); j++)
+      detIndex[j] = j;
     mergesort(&betacopy[0], 0, betacopy.size()-1, &detIndex[0], &BetaMajorToAlpha[i][0], &detIndexCopy[0]);
     detIndexCopy.clear();
     reorder(BetaMajorToDet[i], detIndex);
@@ -488,13 +488,17 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	  int& Bsingle = SinglesFromBeta[Bstring][k];
 
 	  if (SearchStartIndex >= AlphaMajorToBeta[Asingle].size()) break;
-	  int index = binarySearch(&AlphaMajorToBeta[Asingle][0], SearchStartIndex, AlphaMajorToBeta[Asingle].size()-1, Bsingle);
-	  if (index != -1 ) {
-	    SearchStartIndex = index;
+	  int index=SearchStartIndex;
+	  for (; index <AlphaMajorToBeta[Asingle].size(); index++)
+	    if (AlphaMajorToBeta[Asingle][index] >= Bsingle) break;
+	  SearchStartIndex = index;
+	  if (index <AlphaMajorToBeta[Asingle].size() && AlphaMajorToBeta[Asingle][index] == Bsingle) {
 	    int DetJ = AlphaMajorToDet[Asingle][index];
-	    //auto itb = lower_bound(AlphaMajorToBeta[Asingle].begin()+SearchStartIndex, AlphaMajorToBeta[Asingle].end(), Bsingle);
-	    //if (itb != AlphaMajorToBeta[Asingle].end() && *itb == Bsingle) {
-	    //int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+
+	    //int index = binarySearch(&AlphaMajorToBeta[Asingle][0], SearchStartIndex, AlphaMajorToBeta[Asingle].size()-1, Bsingle);
+	    //if (index != -1 ) {
+	    //SearchStartIndex = index;
+	    //int DetJ = AlphaMajorToDet[Asingle][index];
 
 	    if (DetJ < DetI) { //single beta, single alpha
 	      size_t orbDiff;
