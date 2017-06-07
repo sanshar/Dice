@@ -37,7 +37,16 @@ template <class T> void reorder(vector<T>& A, std::vector<long>& reorder)
   }
 }
 
+template <class T> void reorder(vector<T>& A, std::vector<int>& reorder)
+{
+  vector<T> Acopy = A;
+  for (int i=0; i<Acopy.size(); i++) {
+    A[i] = Acopy[reorder[i]];
+  }
+}
+
 namespace SHCISortMpiUtils {
+  int binarySearch(int* arr, int l, int r, int x);
 
   void RemoveDuplicates(std::vector<Determinant>& Det,
 		      std::vector<double>& Num1, std::vector<double>& Num2,
@@ -58,6 +67,9 @@ namespace SHCISortMpiUtils {
 
  void merge(Determinant *a, long low, long high, long mid, long* x, Determinant* c, long* cx);
  void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx);
+
+ void merge(int *a, long low, long high, long mid, int* x, int* c, int* cx);
+ void mergesort(int *a, long low, long high, int* x, int* c, int* cx);
 
  int ipow(int base, int exp);
 

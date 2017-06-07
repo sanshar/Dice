@@ -896,7 +896,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   int nroots = ci.size();
   std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
-  vector<map<int,int> > AlphaMajor, BetaMajor;
+  vector<vector<int> > AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet;
   vector<vector<int> > SinglesFromAlpha, DoublesFromAlpha, SinglesFromBeta, DoublesFromBeta;
   map<HalfDet, int> BetaNi, AlphaNi;
   HalfDet* Beta ; int* BetaVecLen ; vector<int*> BetaVec ;
@@ -904,7 +904,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
   if (schd.algorithm != 0) {
-    SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajor, BetaMajor, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, 0);
+    SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, 0);
   }
   else {
     if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
@@ -930,7 +930,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
 
   if (schd.algorithm != 0) {
-    SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajor, BetaMajor, SinglesFromAlpha,
+    SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha,
 					   SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta,
 					   Dets, 0, connections, Helements,
 					   norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
@@ -1116,10 +1116,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
     if (schd.algorithm != 0) {
-      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajor, BetaMajor, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, SortedDets.size());
+      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, SortedDets.size());
       cout << ".";
       //SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajor, BetaMajor, SinglesFromAlpha, Dets, SortedDets.size());
-      SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajor, BetaMajor, SinglesFromAlpha, 
+      SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, 
 					     SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta,
 					     Dets, SortedDets.size(), connections, Helements,
 					     norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
@@ -1153,11 +1153,34 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     //find missed connections
     for (int i=0; i<Dets.size(); i++) {
       for (int j=i+1; j<Dets.size(); j++) {
-	if (Dets[i].connected(Dets[j]) && (find(connections[j].begin(), connections[j].end(), i)==connections[j].end())) {
-	  cout << endl<<" "<<i<<"  "<<j<<endl;
-	  cout << Dets[i]<<"  connected to "<<endl;
-	  cout << Dets[j]<<endl;
-	  exit(0);
+	if (Dets[i].connected(Dets[j])) {
+
+	  size_t orbDiff=0;
+	  double hij = Hij(Dets[i], Dets[j], I1, I2, coreE, orbDiff);
+
+	  if (abs(hij) > 1.e-10 && find(connections[j].begin(), connections[j].end(), i)==connections[j].end()) {
+	    HalfDet da1 = Dets[i].getAlpha(), db1 = Dets[i].getBeta();
+	    HalfDet da2 = Dets[j].getAlpha(), db2 = Dets[j].getBeta();
+
+	    cout << (find(connections[i].begin(), connections[i].end(), j) == connections[i].end())<<endl;
+	    int da1ind = AlphaNi[da1], db1ind = BetaNi[db1];
+	    int da2ind = AlphaNi[da2], db2ind = BetaNi[db2];
+	    cout << da1ind<<" a "<<db1ind<<endl;
+	    cout << da2ind<<" b "<<db2ind<<endl;
+	    cout << endl<<" "<<i<<"  "<<j<<endl;
+	    cout << Dets[i]<<"  connected to "<<endl;
+	    cout << Dets[j]<<endl;
+	    cout << hij<<endl;
+	    
+	    for (int j=0; j<DoublesFromAlpha[11].size(); j++) 
+	      cout << DoublesFromAlpha[11][j]<<endl;
+
+	      cout << "***"<<endl;
+	    for (int j=0; j<DoublesFromAlpha[20].size(); j++) 
+	      cout << DoublesFromAlpha[20][j]<<endl;
+	      
+	    exit(0);
+	  }
 	}
       }
     }
@@ -1177,7 +1200,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       }
     }
 
-    cout << endl;
+    /*    cout << endl;
     //no repeats
     for (int i=0; i<Dets.size(); i++) {
       for (int j=0; j<connections[i].size(); j++)

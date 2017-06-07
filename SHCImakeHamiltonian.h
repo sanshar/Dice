@@ -42,17 +42,21 @@ namespace SHCImakeHamiltonian {
 
   void PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 			    std::map<HalfDet, int >& AlphaN,
-			    vector< map<int,int> >& AlphaMajor,
-			    vector< map<int,int> >& BetaMajor,
-			    vector<vector<int> >& SinglesFromAlpha,
-			    vector<vector<int> >& SinglesFromBeta,
-			    vector<vector<int> >& DoublesFromAlpha,
-			    vector<vector<int> >& DoublesFromBeta,
+			    vector<vector<int> >& AlphaMajorToBeta,
+			    vector<vector<int> >& AlphaMajorToDet,
+			    vector<vector<int> >& BetaMajorToAlpha,
+			    vector<vector<int> >& BetaMajorToDet,
+			    vector< vector<int> >& SinglesFromAlpha,
+			    vector< vector<int> >& SinglesFromBeta,
+			    vector< vector<int> >& DoublesFromAlpha,
+			    vector< vector<int> >& DoublesFromBeta,
 			    std::vector<Determinant>& Dets,
 			    int StartIndex);
 
-  void MakeHfromHelpers2(vector<map<int,int> >& AlphaMajor,
-			 vector<map<int,int> >& BetaMajor,
+  void MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBeta,
+			 vector<vector<int> >& AlphaMajorToDet,
+			 vector<vector<int> >& BetaMajorToAlpha,
+			 vector<vector<int> >& BetaMajorToDet,
 			 vector<vector<int> >& SinglesFromAlpha,
 			 vector<vector<int> >& SinglesFromBeta,
 			 vector<vector<int> >& DoublesFromAlpha,
@@ -66,8 +70,8 @@ namespace SHCImakeHamiltonian {
 			 twoInt& I2,
 			 double& coreE,
 			 std::vector<std::vector<size_t> >& orbDifference,
-			 bool DoRDM=false) ;
-
+			 bool DoRDM) ;
+  
   void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
 			   std::vector<Determinant>& Dets,

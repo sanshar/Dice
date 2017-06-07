@@ -46,6 +46,28 @@ using namespace boost;
 
 namespace SHCISortMpiUtils {
 
+
+  int binarySearch(int* arr, int l, int r, int x)
+  {
+    if (r >= l)
+      {
+        int mid = l + (r - l)/2;
+ 
+        // If the element is present at the middle itself
+        if (arr[mid] == x)  return mid;
+ 
+        // If element is smaller than mid, then it can only be present
+        // in left subarray
+        if (arr[mid] > x) return binarySearch(arr, l, mid-1, x);
+ 
+        // Else the element can only be present in right subarray
+        return binarySearch(arr, mid+1, r, x);
+      }
+ 
+    // We reach here when element is not present in array
+    return -1;
+  }
+
   void RemoveDuplicates(std::vector<Determinant>& Det,
 			std::vector<double>& Num1, std::vector<double>& Num2,
 			std::vector<double>& Energy, std::vector<char>& present) {
@@ -274,6 +296,63 @@ namespace SHCISortMpiUtils {
   }
 
   void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx)
+  {
+    long mid;
+    if (low < high)
+      {
+	mid=(low+high)/2;
+	mergesort(a,low,mid, x, c, cx);
+	mergesort(a,mid+1,high, x, c, cx);
+	merge(a,low,high,mid, x, c, cx);
+      }
+    return;
+  }
+
+  void merge(int *a, long low, long high, long mid, int* x, int* c, int* cx)
+  {
+    long i, j, k;
+    i = low;
+    k = low;
+    j = mid + 1;
+    while (i <= mid && j <= high)
+      {
+	if (a[i] < a[j])
+	  {
+	    c[k] = a[i];
+	    cx[k] = x[i];
+	    k++;
+	    i++;
+	  }
+	else
+	  {
+	    c[k] = a[j];
+	    cx[k] = x[j];
+	    k++;
+	    j++;
+	  }
+      }
+    while (i <= mid)
+      {
+	c[k] = a[i];
+	cx[k] = x[i];
+	k++;
+	i++;
+      }
+    while (j <= high)
+      {
+	c[k] = a[j];
+	cx[k] = x[j];
+	k++;
+	j++;
+      }
+    for (i = low; i < k; i++)
+      {
+	a[i] =  c[i];
+	x[i] = cx[i];
+      }
+  }
+
+  void mergesort(int *a, long low, long high, int* x, int* c, int* cx)
   {
     long mid;
     if (low < high)
