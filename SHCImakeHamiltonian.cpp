@@ -304,9 +304,12 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 
 void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 					       std::map<HalfDet, int >& AlphaN,
-					       vector< vector<int> >& AlphaMajor,
-					       vector< vector<int> >& BetaMajor,
+					       vector< map<int,int> >& AlphaMajor,
+					       vector< map<int,int> >& BetaMajor,
 					       vector< vector<int> >& SinglesFromAlpha,
+					       vector< vector<int> >& SinglesFromBeta,
+					       vector< vector<int> >& DoublesFromAlpha,
+					       vector< vector<int> >& DoublesFromBeta,
 					       std::vector<Determinant>& Dets,
 					       int StartIndex)
 {
@@ -322,6 +325,21 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       auto ret = BetaN.insert( std::pair<HalfDet, int>(db, BetaMajor.size()));
       itb = ret.first;
       BetaMajor.resize(itb->second+1);
+
+      SinglesFromBeta.resize(itb->second+1);
+      DoublesFromBeta.resize(itb->second+1);
+      auto it = BetaN.begin();
+      for (; it != BetaN.end(); it++) {
+	if (db.ExcitationDistance(it->first) == 1) {
+	  SinglesFromBeta[itb->second].push_back(it->second);
+	  SinglesFromBeta[it->second].push_back(itb->second);
+	}
+	if (db.ExcitationDistance(it->first) == 2) {
+	  DoublesFromBeta[itb->second].push_back(it->second);
+	  DoublesFromBeta[it->second].push_back(itb->second);
+	}
+      }
+
     }
 
     auto ita = AlphaN.find(da);
@@ -332,28 +350,35 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 
 
       SinglesFromAlpha.resize(ita->second+1);
+      DoublesFromAlpha.resize(ita->second+1);
       auto it = AlphaN.begin();
       for (; it != AlphaN.end(); it++) {
 	if (da.ExcitationDistance(it->first) == 1) {
 	  SinglesFromAlpha[ita->second].push_back(it->second);
 	  SinglesFromAlpha[it->second].push_back(ita->second);
 	}
+
+	if (da.ExcitationDistance(it->first) == 2) {
+	  DoublesFromAlpha[ita->second].push_back(it->second);
+	  DoublesFromAlpha[it->second].push_back(ita->second);
+	}
       }
 
     }
 
-    AlphaMajor[ita->second].push_back(itb->second);
-    AlphaMajor[ita->second].push_back(i); //beta index and Det index
+    AlphaMajor[ita->second][itb->second] = i;
 
-    BetaMajor[itb->second].push_back(ita->second);
-    BetaMajor[itb->second].push_back(i); //alpha index and Det index
+    BetaMajor[itb->second][ita->second] = i;
   }
 }
 
 
-void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajor,
-					    vector<vector<int> >& BetaMajor,
+void SHCImakeHamiltonian::MakeHfromHelpers2(vector<map<int,int> >& AlphaMajor,
+					    vector<map<int,int> >& BetaMajor,
 					    vector<vector<int> >& SinglesFromAlpha,
+					    vector<vector<int> >& SinglesFromBeta,
+					    vector<vector<int> >& DoublesFromAlpha,
+					    vector<vector<int> >& DoublesFromBeta,
 					    std::vector<Determinant>& Dets,
 					    int StartIndex,
 					    std::vector<std::vector<int> >&connections,
@@ -385,73 +410,96 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajor,
   }
 
   //alpha-beta excitation
-  for (size_t i=0; i<AlphaMajor.size(); i++) {
-    for (int j=0; j<AlphaMajor[i].size(); j+=2) {
-      if (AlphaMajor[i][j+1] >= StartIndex) {
-	int J = AlphaMajor[i][j+1];
-	if (J%nprocs != proc) continue;
-	
-	for (int k=0; k<SinglesFromAlpha[i].size(); k++) {
-	  int alphaI = SinglesFromAlpha[i][k];
-	  for (int l=0; l<AlphaMajor[alphaI].size(); l+=2) {
-	    int L = AlphaMajor[alphaI][l+1];
-	    if (L <J && Dets[J].connected(Dets[L])) {
-	      connections[J].push_back(L);
-	      size_t orbDiff;
-	      CItype hij = Hij(Dets[L], Dets[J], I1, I2, coreE, orbDiff);
-	      Helements[J].push_back(hij);
-	      if (DoRDM) orbDifference[J].push_back(orbDiff);
-	    }
-	  }
-	}
-      }
-    }
-  }
+  for (int i=0; i<AlphaMajor.size(); i++) {
+    map<int,int> &mapA = AlphaMajor[i];
+    auto it = mapA.begin();
+    for (; it != mapA.end(); it++) {
+      if (it->second < StartIndex) continue;
+      int Astring = i, Bstring = it->first;
 
-  //single-double alpha excitation
-  for (size_t i=0; i<BetaMajor.size(); i++) {
-    for (int j=0; j<BetaMajor[i].size(); j+=2) {
-      if (BetaMajor[i][j+1] >= StartIndex) {
-	int J = BetaMajor[i][j+1];
-	if (J%nprocs != proc) continue;
-	for (int k=0; k<BetaMajor[i].size(); k+=2) {
-	  int K = BetaMajor[i][k+1];
+      //singles from Astring
+      for (int j=0; j<SinglesFromAlpha[Astring].size(); j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
 
-	  int Excite = Dets[J].ExcitationDistance(Dets[K]);
-	  if (Excite == 1 || Excite == 2) {
-	    if (K < J) {
-	      connections[J].push_back(K);
-	      size_t orbDiff;
-	      CItype hij = Hij(Dets[K], Dets[J], I1, I2, coreE, orbDiff);
-	      Helements[J].push_back(hij);
-	      if (DoRDM) orbDifference[J].push_back(orbDiff);
-	    }
-
-	  }//excite ==1 or excite == 2
-	} //for k
-      } //if J >=startindex
-    }//for j
-  }//for i
-
-  //single-double beta excitation
-  for (size_t i=0; i<AlphaMajor.size(); i++) {
-    for (int j=0; j<AlphaMajor[i].size(); j+=2) {
-      if (AlphaMajor[i][j+1] >= StartIndex) {
-	int J = AlphaMajor[i][j+1];
-	if (J%nprocs != proc) continue;
-	for (int k=0; k<j; k+=2) {
-	  int K = AlphaMajor[i][k+1];
-
-	  int Excite = Dets[J].ExcitationDistance(Dets[K]);
-	  if (Excite == 1 || Excite == 2) {
-	    connections[J].push_back(K);
+	auto itb = BetaMajor[Bstring].find(Asingle); //same beta, but single alpha
+	if (itb != BetaMajor[Bstring].end()) {
+	  if (itb->second < it->second) {
 	    size_t orbDiff;
-	    CItype hij = Hij(Dets[K], Dets[J], I1, I2, coreE, orbDiff);
-	    Helements[J].push_back(hij);
-	    if (DoRDM) orbDifference[J].push_back(orbDiff);
+	    CItype hij = Hij(Dets[itb->second], Dets[it->second], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[it->second].push_back(itb->second);
+	    Helements[it->second].push_back(hij);
+	    if (DoRDM) orbDifference[it->second].push_back(orbDiff);
+	  }
+	}
+
+	for (int k=0; k<SinglesFromBeta[Bstring].size(); k++) {
+	  int& Bsingle = SinglesFromBeta[Bstring][k];
+	  auto itb = BetaMajor[Bsingle].find(Asingle); //single beta, single alpha
+	  if (itb != BetaMajor[Bsingle].end()) {
+	    if (itb->second < it->second) {
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[itb->second], Dets[it->second], I1, I2, coreE, orbDiff);
+	      if (abs(hij) <1.e-10) continue;
+	      connections[it->second].push_back(itb->second);
+	      Helements[it->second].push_back(hij);
+	      if (DoRDM) orbDifference[it->second].push_back(orbDiff);
+	    }
 	  }
 	}
       }
+
+      //doubles from Astring
+      for (int j=0; j<DoublesFromAlpha[Astring].size(); j++) {
+	int& Adouble = DoublesFromAlpha[Astring][j];
+
+	auto itb = BetaMajor[Bstring].find(Adouble); //same beta, but double alpha
+	if (itb != BetaMajor[Bstring].end()) {
+	  if (itb->second < it->second) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[itb->second], Dets[it->second], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[it->second].push_back(itb->second);
+	    Helements[it->second].push_back(hij);
+	    if (DoRDM) orbDifference[it->second].push_back(orbDiff);
+	  }
+	}
+      }
+
+      //doubles from Bstring
+      for (int j=0; j<DoublesFromBeta[Bstring].size(); j++) {
+	int& Bdouble = DoublesFromBeta[Bstring][j];
+
+	auto itb = AlphaMajor[Astring].find(Bdouble); //same alpha, but double beta
+	if (itb != AlphaMajor[Astring].end()) {
+	  if (itb->second < it->second) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[itb->second], Dets[it->second], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[it->second].push_back(itb->second);
+	    Helements[it->second].push_back(hij);
+	    if (DoRDM) orbDifference[it->second].push_back(orbDiff);
+	  }
+	}
+      }
+
+      //singles from Bstring
+      for (int j=0; j<SinglesFromBeta[Bstring].size(); j++) {
+	int& Bsingle = SinglesFromBeta[Bstring][j];
+
+	auto itb = AlphaMajor[Astring].find(Bsingle); //same alpha, but single beta
+	if (itb != AlphaMajor[Astring].end()) {
+	  if (itb->second < it->second) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[itb->second], Dets[it->second], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[it->second].push_back(itb->second);
+	    Helements[it->second].push_back(hij);
+	    if (DoRDM) orbDifference[it->second].push_back(orbDiff);
+	  }
+	}
+      }
+
     }
   }
 }
