@@ -371,10 +371,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
-    //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
-#ifndef Complex
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-#endif
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     

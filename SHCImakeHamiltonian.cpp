@@ -97,19 +97,15 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
   size_t norbs = Norbs;
 
-#pragma omp parallel
-  {
-    int ithrd = omp_get_thread_num();
-    int nthrd = omp_get_num_threads();
-    for (size_t k=StartIndex; k<Dets.size(); k++) {
-      if (k%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
-      connections[k].push_back(k);
-      CItype hij = Dets[k].Energy(I1, I2, coreE);
-      if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
-      Helements[k].push_back(hij);
-      if (DoRDM) orbDifference[k].push_back(0);
-    }
+  for (size_t k=StartIndex; k<Dets.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
   }
+  
 
   std::map<HalfDet, std::vector<int> >::iterator ita = BetaN.begin();
   int index = 0;
@@ -121,33 +117,26 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 	localStart = j; break;
       }
 
-#pragma omp parallel
-    {
-      int ithrd = omp_get_thread_num();
-      int nthrd = omp_get_num_threads();
-      for (int k=localStart; k<detIndex.size(); k++) {
+    for (int k=localStart; k<detIndex.size(); k++) {
+      if (detIndex[k]%(nprocs) != proc) continue;
 
-	if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
-
-	for(int j=0; j<k; j++) {
-	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
-
-	    size_t orbDiff;
-	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
-	    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
-	    
-	    if (abs(hij) <1.e-10) continue;
-	    Helements[K].push_back(hij);
-	    connections[K].push_back(J);
-	    
-	    if (DoRDM)
-	      orbDifference[K].push_back(orbDiff);
-	  }
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	  if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	  
+	  if (abs(hij) <1.e-10) continue;
+	  Helements[K].push_back(hij);
+	  connections[K].push_back(J);
+	  
+	  if (DoRDM)
+	    orbDifference[K].push_back(orbDiff);
 	}
       }
     }
-    index++;
   }
 
   ita = AlphaNm1.begin();
@@ -160,38 +149,30 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 	localStart = j; break;
       }
 
-#pragma omp parallel
-    {
-      int ithrd = omp_get_thread_num();
-      int nthrd = omp_get_num_threads();
+    for (int k=localStart; k<detIndex.size(); k++) {
+      if (detIndex[k]%(nprocs) != proc) continue;
 
-      for (int k=localStart; k<detIndex.size(); k++) {
-	if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
-
-	for(int j=0; j<k; j++) {
-	  size_t J = detIndex[j];size_t K = detIndex[k];
-	  if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
-	    if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
-	      size_t orbDiff;
-	      CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
-	      if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
-
-	      if (abs(hij) <1.e-10) continue;
-	      connections[K].push_back(J);
-	      Helements[K].push_back(hij);
-
-	      if (DoRDM)
-		orbDifference[K].push_back(orbDiff);
-	    }
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	    
+	    if (abs(hij) <1.e-10) continue;
+	    connections[K].push_back(J);
+	    Helements[K].push_back(hij);
+	    
+	    if (DoRDM)
+	      orbDifference[K].push_back(orbDiff);
 	  }
 	}
       }
-
-
     }
-    index++;
+    
   }
-
+  
 }
 
 
@@ -252,19 +233,15 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 
   size_t norbs = Norbs;
 
-#pragma omp parallel
-  {
-    int ithrd = omp_get_thread_num();
-    int nthrd = omp_get_num_threads();
-    for (size_t k=StartIndex; k<Dets.size(); k++) {
-      if (k%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
-      connections[k].push_back(k);
-      CItype hij = Dets[k].Energy(I1, I2, coreE);
-      if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
-      Helements[k].push_back(hij);
-      if (DoRDM) orbDifference[k].push_back(0);
-    }
+  for (size_t k=StartIndex; k<Dets.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
   }
+
 
   int index = 0;
   for (int i=0;i<BetaVec.size(); i++) {
@@ -275,11 +252,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 	localStart = j; break;
       }
 
-    int ithrd = omp_get_thread_num();
-    int nthrd = omp_get_num_threads();
     for (int k=localStart; k<BetaVecLen[i]; k++) {
       
-      if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
+      if (detIndex[k]%(nprocs) != proc) continue;
       
       for(int j=0; j<k; j++) {
 	size_t J = detIndex[j];size_t K = detIndex[k];
@@ -309,11 +284,8 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 	localStart = j; break;
       }
     
-    int ithrd = omp_get_thread_num();
-    int nthrd = omp_get_num_threads();
-    
     for (int k=localStart; k<AlphaVecLen[i]; k++) {
-      if (detIndex[k]%(nprocs*nthrd) != proc*nthrd+ithrd) continue;
+      if (detIndex[k]%(nprocs) != proc) continue;
 
       for(int j=0; j<k; j++) {
 	size_t J = detIndex[j];size_t K = detIndex[k];
@@ -666,10 +638,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	  Bstring = AlphaMajorToBeta[i][ii], 
 	  DetI    = AlphaMajorToDet [i][ii];
 
+      int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
       //singles from Astring
       for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
 	int Asingle = SinglesFromAlpha[Astring][j];
 
+	//if (Asingle > maxBToA) break;
 	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
 				   0                             , 
 				   BetaMajorToAlphaLen[Bstring]-1, 
@@ -687,25 +661,27 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	    }
 	  }
 	}
+      }
 
-	//single Alpha and single Beta
-	int SearchStartIndex = 0;
-	for (int k=0; k<SinglesFromBetaLen[Bstring]; k++) {
+      //single Alpha and single Beta
+      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
 
+	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
+	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
+	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
+	for (int k=0; k<SinglesFromBLen; k++) {
 	  int& Bsingle = SinglesFromBeta[Bstring][k];
 
-	  if (SearchStartIndex >= AlphaMajorToBetaLen[Asingle]) 
-	    break;
+	  if (SearchStartIndex >= AlphaToBetaLen) break;
 
 	  int index=SearchStartIndex;
-	  for (; index < AlphaMajorToBetaLen[Asingle]; index++)
-	    if (AlphaMajorToBeta[Asingle][index] >= Bsingle) 
-	      break;
+	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
 
 	  SearchStartIndex = index;
-	  if (index   <  AlphaMajorToBetaLen[Asingle] && 
-	      Bsingle == AlphaMajorToBeta   [Asingle][index] ) {
-	    int DetJ = AlphaMajorToDet[Asingle][index];
+	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
+
+	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
 
 	    if (DetJ < DetI) {
 	      size_t orbDiff;
@@ -721,10 +697,13 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
       } //j singles fromAlpha
 
 
+      
       //singles from Bstring
+      int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
       for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
 	int Bsingle =  SinglesFromBeta   [Bstring][j];
 
+	//if (Bsingle > maxAtoB) break;
 	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
 				  0                             , 
 				  AlphaMajorToBetaLen[Astring]-1, 
