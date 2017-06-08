@@ -1121,12 +1121,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					     SinglesFromBeta,
 					     Dets, SortedDets.size(), connections, Helements,
 					     norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
-      pout << ".";
+      pout << " -";
     }
     else {
       if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
       if (mpigetsize() > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
-      cout << ".";
       if (mpigetsize() >1) { 
 	SHCImakeHamiltonian::MakeHfromHelpers(BetaVecLen, BetaVec, 
 					      AlphaVecLen, AlphaVec, 
@@ -1139,7 +1138,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					      connections, Helements,
 					      norbs, I1, I2, coreE, orbDifference, DoRDM || schd.doResponse);
       }
-      cout << ".";
     }
 
 

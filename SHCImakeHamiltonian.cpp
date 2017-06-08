@@ -356,8 +356,11 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   //ith vector of AlphaMajor contains all Determinants that have
   //ith Alpha string, and the 2j and 2j+1 elements of this ith vector
   //are the indices of the beta string and the determinant respectively
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
 
-  //if (mpigetrank() == 0) {
+  if (mpigetrank() == 0) {
     for (int i=StartIndex; i<Dets.size(); i++) {
       HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
       
@@ -421,7 +424,6 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       
       
     }
-    pout << "-";
     for (int i=0; i<AlphaMajorToBeta.size(); i++)
       {
 	vector<int> betacopy = AlphaMajorToBeta[i];
@@ -436,7 +438,6 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	//std::sort(DoublesFromAlpha[i].begin(), DoublesFromAlpha[i].end());
 	
       }
-    pout << "-";
     
     for (int i=0; i<BetaMajorToAlpha.size(); i++)
       {
@@ -452,6 +453,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	//std::sort(DoublesFromBeta[i].begin(), DoublesFromBeta[i].end());
 	
       }
+    /*
     pout << "-";
     
     double totalMemoryBm = 0, totalMemoryB=0, totalMemoryAm=0, totalMemoryA=0;
@@ -475,7 +477,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       totalMemoryA += SinglesFromAlpha[i].size();
     }
     pout << "   "<<((totalMemoryAm+totalMemoryBm+totalMemoryA+totalMemoryB)*sizeof(int))/1.e9;
-    /*
+    */
   }
 
   mpi::broadcast(world, AlphaMajorToBeta, 0);
@@ -484,7 +486,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   mpi::broadcast(world, BetaMajorToAlpha, 0);
   mpi::broadcast(world, BetaMajorToDet, 0);
   mpi::broadcast(world, SinglesFromBeta, 0);
-    */
+
 }
 
 
