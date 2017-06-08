@@ -435,7 +435,6 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	reorder(AlphaMajorToDet[i], detIndex);
 	
 	std::sort(SinglesFromAlpha[i].begin(), SinglesFromAlpha[i].end());
-	//std::sort(DoublesFromAlpha[i].begin(), DoublesFromAlpha[i].end());
 	
       }
     
@@ -450,43 +449,10 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	reorder(BetaMajorToDet[i], detIndex);
 	
 	std::sort(SinglesFromBeta[i].begin(), SinglesFromBeta[i].end());
-	//std::sort(DoublesFromBeta[i].begin(), DoublesFromBeta[i].end());
 	
       }
-    /*
-    pout << "-";
-    
-    double totalMemoryBm = 0, totalMemoryB=0, totalMemoryAm=0, totalMemoryA=0;
-    auto it = BetaNm1.begin();
-    for (;it != BetaNm1.end(); it++) {
-      totalMemoryBm += it->second.size();
-      totalMemoryBm += sizeof(HalfDet)/sizeof(int);
-    }
-    for (int i=0; i<BetaMajorToAlpha.size(); i++) {
-      totalMemoryB += 2.*BetaMajorToAlpha[i].size();
-      totalMemoryB += SinglesFromBeta[i].size();
-    }
-    
-    it = AlphaNm1.begin();
-    for (;it != AlphaNm1.end(); it++) {
-      totalMemoryAm += it->second.size();
-    totalMemoryAm += sizeof(HalfDet)/sizeof(int);
-    }
-    for (int i=0; i<AlphaMajorToBeta.size(); i++) {
-      totalMemoryA += 2.*AlphaMajorToBeta[i].size();
-      totalMemoryA += SinglesFromAlpha[i].size();
-    }
-    pout << "   "<<((totalMemoryAm+totalMemoryBm+totalMemoryA+totalMemoryB)*sizeof(int))/1.e9;
-    */
+
   }
-
-  mpi::broadcast(world, AlphaMajorToBeta, 0);
-  mpi::broadcast(world, AlphaMajorToDet, 0);
-  mpi::broadcast(world, SinglesFromAlpha, 0);
-  mpi::broadcast(world, BetaMajorToAlpha, 0);
-  mpi::broadcast(world, BetaMajorToDet, 0);
-  mpi::broadcast(world, SinglesFromBeta, 0);
-
 }
 
 
@@ -647,6 +613,319 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 }
 
 
+void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen, 
+					      vector<int* > &AlphaMajorToBeta   ,
+					      vector<int* > &AlphaMajorToDet    ,
+					      int*          &BetaMajorToAlphaLen, 
+					      vector<int* > &BetaMajorToAlpha   ,
+					      vector<int* > &BetaMajorToDet     ,
+					      int*          &SinglesFromAlphaLen, 
+					      vector<int* > &SinglesFromAlpha   ,
+					      int*          &SinglesFromBetaLen , 
+					      vector<int* > &SinglesFromBeta    ,
+					      std::vector<Determinant>& Dets,
+					      int StartIndex,
+					      std::vector<std::vector<int> >&connections,
+					      std::vector<std::vector<CItype> >& Helements,
+					      int Norbs,
+					      oneInt& I1,
+					      twoInt& I2,
+					      double& coreE,
+					      std::vector<std::vector<size_t> >& orbDifference,
+					      bool DoRDM) {
+
+
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  size_t norbs = Norbs;
+
+  //diagonal element
+  for (size_t k=StartIndex; k<Dets.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
+  }
+
+  //alpha-beta excitation
+  for (int i=0; i<AlphaMajorToBeta.size(); i++) {
+
+    for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
+
+      if (AlphaMajorToDet[i][ii]         < StartIndex || 
+	  AlphaMajorToDet[i][ii]%nprocs != proc         ) 
+	continue;
+
+      int Astring = i, 
+	  Bstring = AlphaMajorToBeta[i][ii], 
+	  DetI    = AlphaMajorToDet [i][ii];
+
+      //singles from Astring
+      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
+
+	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
+				   0                             , 
+				   BetaMajorToAlphaLen[Bstring]-1, 
+				   Asingle                       );
+	if (index != -1 ) {
+	  int DetJ = BetaMajorToDet[Bstring][index];
+
+	  if (DetJ < DetI) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	    if (abs(hij) >1.e-10) {
+	      connections[DetI].push_back(DetJ);
+	      Helements  [DetI].push_back(hij);
+	      if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    }
+	  }
+	}
+
+	//single Alpha and single Beta
+	int SearchStartIndex = 0;
+	for (int k=0; k<SinglesFromBetaLen[Bstring]; k++) {
+
+	  int& Bsingle = SinglesFromBeta[Bstring][k];
+
+	  if (SearchStartIndex >= AlphaMajorToBetaLen[Asingle]) 
+	    break;
+
+	  int index=SearchStartIndex;
+	  for (; index < AlphaMajorToBetaLen[Asingle]; index++)
+	    if (AlphaMajorToBeta[Asingle][index] >= Bsingle) 
+	      break;
+
+	  SearchStartIndex = index;
+	  if (index   <  AlphaMajorToBetaLen[Asingle] && 
+	      Bsingle == AlphaMajorToBeta   [Asingle][index] ) {
+	    int DetJ = AlphaMajorToDet[Asingle][index];
+
+	    if (DetJ < DetI) {
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	      if (abs(hij) >1.e-10) {
+		connections[DetI].push_back(DetJ);
+		Helements[DetI].push_back(hij);
+		if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	      }
+	    } //DetJ <Det I
+	  } //*itb == Bsingle
+	} //k 0->SinglesFromBeta
+      } //j singles fromAlpha
+
+
+      //singles from Bstring
+      for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
+	int Bsingle =  SinglesFromBeta   [Bstring][j];
+
+	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
+				  0                             , 
+				  AlphaMajorToBetaLen[Astring]-1, 
+				  Bsingle                        );
+
+	if (index != -1 ) {
+	  int DetJ = AlphaMajorToDet[Astring][index];
+
+	  if (DetJ < DetI) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[DetI].push_back(DetJ);
+	    Helements[DetI].push_back(hij);
+	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	  }
+	}
+      }
+
+
+      //double beta excitation
+      for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
+	int DetJ     = AlphaMajorToDet    [i][j];
+
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  if (abs(hij) >1.e-10) {
+	    connections[DetI].push_back(DetJ);
+	    Helements[DetI].push_back(hij);
+	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	  }
+	}
+      }
+
+      //double Alpha excitation
+      for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
+	int DetJ      = BetaMajorToDet     [Bstring][j];
+
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  if (abs(hij) >1.e-10) {
+	    connections[DetI].push_back(DetJ);
+	    Helements[DetI].push_back(hij);
+	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	  }
+	}
+      }
+
+    }
+  }
+}
+
+void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
+					vector<vector<int> >& AlphaMajorToDet,
+					vector<vector<int> >& BetaMajorToAlpha,
+					vector<vector<int> >& BetaMajorToDet,
+					vector<vector<int> >& SinglesFromAlpha,
+					vector<vector<int> >& SinglesFromBeta,
+					int* &AlphaMajorToBetaLen, vector<int* >& AlphaMajorToBetaSM,
+					vector<int* >& AlphaMajorToDetSM,
+					int* &BetaMajorToAlphaLen, vector<int* >& BetaMajorToAlphaSM,
+					vector<int* >& BetaMajorToDetSM,
+					int* &SinglesFromAlphaLen, vector<int* >& SinglesFromAlphaSM,
+					int* &SinglesFromBetaLen, vector<int* >& SinglesFromBetaSM) {
+
+  int comm_rank=0, comm_size=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#endif
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+
+  size_t totalMemory = 0, nBeta=BetaMajorToAlpha.size(), nAlpha =AlphaMajorToBeta.size();
+  vector<int> AlphaToBetaTemp(nAlpha,0), BetaToAlphaTemp(nBeta,0), 
+    AlphaSinglesTemp(nAlpha,0), BetaSinglesTemp(nBeta,0);
+
+  if (comm_rank == 0) {
+    for (int i=0; i<nAlpha; i++) {
+      totalMemory        += 2*sizeof(int);
+      totalMemory        += 2*sizeof(int) * AlphaMajorToBeta[i].size();
+      totalMemory        +=   sizeof(int) * SinglesFromAlpha[i].size();
+      AlphaToBetaTemp[i]  = AlphaMajorToBeta[i].size();
+      AlphaSinglesTemp[i] = SinglesFromAlpha[i].size();
+    }
+    for (int i=0; i<nBeta; i++) {
+      totalMemory       += 2*sizeof(int);
+      totalMemory       += 2*sizeof(int) * BetaMajorToAlpha[i].size();
+      totalMemory       +=   sizeof(int) * SinglesFromBeta[i].size();
+      BetaToAlphaTemp[i] = BetaMajorToAlpha[i].size();
+      BetaSinglesTemp[i] = SinglesFromBeta[i].size();
+    }
+  }
+
+#ifndef SERIAL
+  MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nBeta, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nAlpha, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  if (comm_rank != 0) {
+    BetaToAlphaTemp.resize(nBeta); 
+    AlphaToBetaTemp.resize(nAlpha);
+    BetaSinglesTemp.resize(nBeta);
+    AlphaSinglesTemp.resize(nAlpha);
+  }
+  MPI_Bcast(&BetaToAlphaTemp[0] , nBeta , MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&BetaSinglesTemp[0] , nBeta , MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&AlphaToBetaTemp[0] , nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&AlphaSinglesTemp[0], nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  hHelpersSegment.truncate(totalMemory);
+  regionHelpers = boost::interprocess::mapped_region{hHelpersSegment, boost::interprocess::read_write};
+  memset(regionHelpers.get_address(), 0., totalMemory);
+
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  AlphaMajorToBetaLen = static_cast<int*>(regionHelpers.get_address());
+  SinglesFromAlphaLen = AlphaMajorToBetaLen + nAlpha;
+  BetaMajorToAlphaLen = SinglesFromAlphaLen + nAlpha;
+  SinglesFromBetaLen  = BetaMajorToAlphaLen + nBeta;
+
+  for (int i=0; i<nAlpha; i++) {
+    AlphaMajorToBetaLen[i] = AlphaToBetaTemp [i];
+    SinglesFromAlphaLen[i] = AlphaSinglesTemp[i];
+  }
+  for (int i=0; i<nBeta; i++) {
+    BetaMajorToAlphaLen[i] = BetaToAlphaTemp[i];
+    SinglesFromBetaLen [i] = BetaSinglesTemp[i];
+  }
+
+  AlphaMajorToBetaSM.resize(nAlpha); 
+  AlphaMajorToDetSM .resize(nAlpha); 
+  SinglesFromAlphaSM.resize(nAlpha);
+
+  BetaMajorToAlphaSM.resize(nBeta); 
+  BetaMajorToDetSM  .resize(nBeta); 
+  SinglesFromBetaSM .resize(nBeta);
+
+  int* begin = SinglesFromBetaLen + nBeta;
+  size_t counter = 0;
+  for (int i=0; i<nAlpha; i++) {
+    AlphaMajorToBetaSM[i] = begin + counter;  counter += AlphaMajorToBetaLen[i];
+    AlphaMajorToDetSM [i] = begin + counter;  counter += AlphaMajorToBetaLen[i];
+    SinglesFromAlphaSM[i] = begin + counter;  counter += SinglesFromAlphaLen[i];
+  }
+
+  for (int i=0; i<nBeta; i++) {
+    BetaMajorToAlphaSM[i] = begin + counter;  counter += BetaMajorToAlphaLen[i];
+    BetaMajorToDetSM  [i] = begin + counter;  counter += BetaMajorToAlphaLen[i];
+    SinglesFromBetaSM [i] = begin + counter;  counter += SinglesFromBetaLen [i];
+  }
+
+
+  //now fill the memory
+  if (comm_rank == 0) {
+
+    for (int i=0; i<nAlpha; i++) {
+
+      for (int j=0; j<AlphaMajorToBeta[i].size(); j++) {
+	AlphaMajorToBetaSM[i][j]  =  AlphaMajorToBeta[i][j];
+	AlphaMajorToDetSM [i][j]  =  AlphaMajorToDet [i][j];
+      }
+      for (int j=0; j<SinglesFromAlpha[i].size(); j++) 
+	SinglesFromAlphaSM[i][j]  =  SinglesFromAlpha[i][j];
+    }
+
+
+    for (int i=0; i<nBeta; i++) {
+
+      for (int j=0; j<BetaMajorToAlpha[i].size(); j++) {
+	BetaMajorToAlphaSM[i][j]  =  BetaMajorToAlpha[i][j];
+	BetaMajorToDetSM  [i][j]  =  BetaMajorToDet  [i][j];
+      }
+      for (int j=0; j<SinglesFromBeta[i].size(); j++) 
+	SinglesFromBetaSM[i][j]  =  SinglesFromBeta[i][j];
+    }
+
+  }
+
+
+  long intdim  = totalMemory;
+  long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
+  long maxIter = intdim/maxint;
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  char* shrdMem = static_cast<char*>(regionHelpers.get_address());
+  for (int i=0; i<maxIter; i++) {
+    MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+
+  MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+}
 
 void SHCImakeHamiltonian::MakeSHMHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
 		    std::map<HalfDet, std::vector<int> >& AlphaN,

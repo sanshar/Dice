@@ -901,14 +901,41 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   map<HalfDet, int> BetaNi, AlphaNi;
   HalfDet* Beta ; int* BetaVecLen ; vector<int*> BetaVec ;
   HalfDet* Alpha; int* AlphaVecLen; vector<int*> AlphaVec;
+
+  int*  AlphaMajorToBetaLen,  *SinglesFromAlphaLen;
+  int*  BetaMajorToAlphaLen,  *SinglesFromBetaLen ;
+
+  vector<int*> AlphaMajorToBetaSM, AlphaMajorToDetSM, SinglesFromAlphaSM;
+  vector<int*> BetaMajorToAlphaSM, BetaMajorToDetSM , SinglesFromBetaSM ;
   
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
-  if (schd.algorithm != 0) {
-    SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, 0);
+  if (schd.algorithm == 0) {
+    if (proc == 0) 
+      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, 
+						AlphaMajorToBeta, AlphaMajorToDet, 
+						BetaMajorToAlpha, BetaMajorToDet, 
+						SinglesFromAlpha, SinglesFromBeta, Dets, 0);
+
+    if (nprocs > 1) 
+      SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
+					  BetaMajorToAlpha, BetaMajorToDet ,
+					  SinglesFromAlpha, SinglesFromBeta,
+					  AlphaMajorToBetaLen, AlphaMajorToBetaSM, AlphaMajorToDetSM,
+					  BetaMajorToAlphaLen, BetaMajorToAlphaSM, BetaMajorToDetSM ,
+					  SinglesFromAlphaLen, SinglesFromAlphaSM,
+					  SinglesFromBetaLen , SinglesFromBetaSM);
+
   }
   else {
-    if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
-    if (mpigetsize() > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
+    if (proc == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
+    if (nprocs > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, 
+							BetaVec, AlphaVecLen, AlphaVec);
   }
   
 #ifndef SERIAL
@@ -929,14 +956,30 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
   std::vector<std::vector<size_t> > orbDifference;orbDifference.resize(Dets.size());
 
-  if (schd.algorithm != 0) {
-    SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha,
-					   SinglesFromBeta,
-					   Dets, 0, connections, Helements,
-					   norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+  if (schd.algorithm == 0) {
+    if (nprocs == 1) 
+	SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, 
+					       BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, 
+					       SinglesFromBeta,
+					       Dets, 0, connections, Helements,
+					       norbs, I1, I2, coreE, orbDifference, 
+					       DoRDM||schd.doResponse);
+      else
+	SHCImakeHamiltonian::MakeHfromSMHelpers2(AlphaMajorToBetaLen, 
+						 AlphaMajorToBetaSM ,
+						 AlphaMajorToDetSM  ,
+						 BetaMajorToAlphaLen, 
+						 BetaMajorToAlphaSM ,
+						 BetaMajorToDetSM   ,
+						 SinglesFromAlphaLen, 
+						 SinglesFromAlphaSM ,
+						 SinglesFromBetaLen , 
+						 SinglesFromBetaSM  ,
+						 Dets, 0, connections, Helements, Norbs, I1,
+						 I2, coreE, orbDifference, DoRDM);
   }
   else {
-    if (mpigetsize() >1) { 
+    if (nprocs >1) { 
       SHCImakeHamiltonian::MakeHfromHelpers(BetaVecLen, BetaVec, 
 					    AlphaVecLen, AlphaVec, 
 					    Dets, 0, connections, Helements,
@@ -958,21 +1001,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   pout << format("%4s %4s  %10s  %10.2e   %18s  %10s\n") %("Iter") %("Root") %("Eps1 ") %("#Var. Det.") %("Energy") %("Time(s)");
 
 
-  //keep the diagonal energies of determinants so we only have to generated
-  //this for the new determinants in each iteration and not all determinants
-  MatrixXx diagOld(Dets.size(),1);
-  for (int i=0; i<Dets.size(); i++) {
-    diagOld(i,0) = Dets[i].Energy(I1, I2, coreE);
-    if (Determinant::Trev != 0)
-      updateHijForTReversal(diagOld(i,0), Dets[i], Dets[i], I1, I2, coreE);
-  }
   int prevSize = 0;
 
   //If this is a restart calculation then read from disk
   int iterstart = 0;
   if (schd.restart || schd.fullrestart) {
     bool converged;
-    readVariationalResult(iterstart, ci, Dets, SortedDets, diagOld, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
+    readVariationalResult(iterstart, ci, Dets, SortedDets, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
     if (schd.fullrestart)
       iterstart = 0;
     for (int i=0; i<E0.size(); i++)
@@ -1018,14 +1053,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     CItype zero = 0.0;
 
-    int size = mpigetsize(), rank = mpigetrank();
+    //int size = mpigetsize(), rank = mpigetrank();
 #pragma omp parallel
     {
       int ithrd = omp_get_thread_num();
       int nthrd = omp_get_num_threads();
       for (int i=0; i<SortedDets.size(); i++) {
-	if ((i%(nthrd * size)
-	     != rank*nthrd + ithrd)) continue;
+	if ((i%(nthrd * nprocs)
+	     != proc*nthrd + ithrd)) continue;
 	SHCIgetdeterminants::getDeterminantsVariationalApprox(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
 					       I1, I2, I2HB, irrep, coreE, E0[0],
 					       *uniqueDEH[omp_get_thread_num()].Det,
@@ -1042,36 +1077,26 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
       uniqueDEH[omp_get_thread_num()].QuickSortAndRemoveDuplicates();
       uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
-
-
-#pragma omp barrier
-      if (omp_get_thread_num() == 0) {
-	for (int thrd=1; thrd<num_thrds; thrd++) {
-	  uniqueDEH[0].merge(uniqueDEH[thrd]);
-	  uniqueDEH[thrd].clear();
-	  uniqueDEH[0].RemoveDuplicates();
-	}
-      }
     }
 
     uniqueDEH.resize(1);
 
 #ifndef SERIAL
-    for (int level = 0; level <ceil(log2(mpigetsize())); level++) {
+    for (int level = 0; level <ceil(log2(nprocs)); level++) {
 
-      if (mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) < mpigetsize()) {
+      if (proc%ipow(2, level+1) == 0 && proc + ipow(2, level) < nprocs) {
 	StitchDEH recvDEH;
-	int getproc = mpigetrank()+ipow(2,level);
-	world.recv(getproc, mpigetsize()*level+getproc, recvDEH);
+	int getproc = proc+ipow(2,level);
+	world.recv(getproc, nprocs*level+getproc, recvDEH);
 	uniqueDEH[0].merge(recvDEH);
 	uniqueDEH[0].RemoveDuplicates();
       }
-      else if ( mpigetrank()%ipow(2, level+1) == 0 && mpigetrank() + ipow(2, level) >= mpigetsize()) {
+      else if ( proc%ipow(2, level+1) == 0 && proc + ipow(2, level) >= nprocs) {
 	continue ;
       }
-      else if ( mpigetrank()%ipow(2, level) == 0) {
-	int toproc = mpigetrank()-ipow(2,level);
-	world.send(toproc, mpigetsize()*level+mpigetrank(), uniqueDEH[0]);
+      else if ( proc%ipow(2, level) == 0) {
+	int toproc = proc-ipow(2,level);
+	world.send(toproc, nprocs*level+proc, uniqueDEH[0]);
       }
     }
 
@@ -1104,10 +1129,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     if(schd.outputlevel>0 && iter != 0) pout << str(boost::format("#Initial guess(PT) : %18.10g  \n") %(E0[0]+EPTguess) );
 
-    MatrixXx diag(Dets.size(), 1); diag.setZero(diag.size(),1);
-    if (mpigetrank() == 0) diag.block(0,0,ci[0].rows(),1)= 1.*diagOld;
-
-
 
 
     connections.resize(Dets.size());
@@ -1115,18 +1136,45 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     orbDifference.resize(Dets.size());
 
 
-    if (schd.algorithm != 0) {
-      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, SortedDets.size());
-      SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, 
-					     SinglesFromBeta,
-					     Dets, SortedDets.size(), connections, Helements,
-					     norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
+    if (schd.algorithm == 0) {
+      if (proc == 0) SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, SortedDets.size());
+
+      if (nprocs > 1) 
+	SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
+					    BetaMajorToAlpha, BetaMajorToDet ,
+					    SinglesFromAlpha, SinglesFromBeta,
+					    AlphaMajorToBetaLen, AlphaMajorToBetaSM, AlphaMajorToDetSM,
+					    BetaMajorToAlphaLen, BetaMajorToAlphaSM, BetaMajorToDetSM ,
+					    SinglesFromAlphaLen, SinglesFromAlphaSM,
+					    SinglesFromBetaLen , SinglesFromBetaSM);
+
+      if (nprocs == 1) 
+	SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, 
+					       BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, 
+					       SinglesFromBeta,
+					       Dets, SortedDets.size(), connections, Helements,
+					       norbs, I1, I2, coreE, orbDifference, 
+					       DoRDM||schd.doResponse);
+      else
+	SHCImakeHamiltonian::MakeHfromSMHelpers2(AlphaMajorToBetaLen, 
+						 AlphaMajorToBetaSM ,
+						 AlphaMajorToDetSM  ,
+						 BetaMajorToAlphaLen, 
+						 BetaMajorToAlphaSM ,
+						 BetaMajorToDetSM   ,
+						 SinglesFromAlphaLen, 
+						 SinglesFromAlphaSM ,
+						 SinglesFromBetaLen , 
+						 SinglesFromBetaSM  ,
+						 Dets, SortedDets.size(), connections, 
+						 Helements, Norbs, I1,
+						 I2, coreE, orbDifference, DoRDM);
       pout << " -";
     }
     else {
-      if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
-      if (mpigetsize() > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
-      if (mpigetsize() >1) { 
+      if (proc == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());
+      if (nprocs > 1) SHCImakeHamiltonian::MakeSHMHelpers(BetaN, AlphaNm1, BetaVecLen, BetaVec, AlphaVecLen, AlphaVec);
+      if (nprocs >1) { 
 	SHCImakeHamiltonian::MakeHfromHelpers(BetaVecLen, BetaVec, 
 					      AlphaVecLen, AlphaVec, 
 					      Dets, SortedDets.size(), connections, Helements,
@@ -1145,100 +1193,34 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     SHCImakeHamiltonian::updateSOCconnections(Dets, SortedDets.size(), connections, orbDifference,
 					      Helements, norbs, I1, nelec, false);
 #endif
-    /*
-    //find missed connections
-    for (int i=0; i<Dets.size(); i++) {
-      for (int j=i+1; j<Dets.size(); j++) {
-	if (Dets[i].connected(Dets[j])) {
-
-	  size_t orbDiff=0;
-	  double hij = Hij(Dets[i], Dets[j], I1, I2, coreE, orbDiff);
-
-	  if (abs(hij) > 1.e-10 && find(connections[j].begin(), connections[j].end(), i)==connections[j].end()) {
-	    HalfDet da1 = Dets[i].getAlpha(), db1 = Dets[i].getBeta();
-	    HalfDet da2 = Dets[j].getAlpha(), db2 = Dets[j].getBeta();
-
-	    cout << (find(connections[i].begin(), connections[i].end(), j) == connections[i].end())<<endl;
-	    int da1ind = AlphaNi[da1], db1ind = BetaNi[db1];
-	    int da2ind = AlphaNi[da2], db2ind = BetaNi[db2];
-	    cout << da1ind<<" a "<<db1ind<<endl;
-	    cout << da2ind<<" b "<<db2ind<<endl;
-	    cout << endl<<" "<<i<<"  "<<j<<endl;
-	    cout << Dets[i]<<"  connected to "<<endl;
-	    cout << Dets[j]<<endl;
-	    cout << hij<<endl;
-	    
-	    for (int j=0; j<DoublesFromAlpha[11].size(); j++) 
-	      cout << DoublesFromAlpha[11][j]<<endl;
-
-	      cout << "***"<<endl;
-	    for (int j=0; j<DoublesFromAlpha[20].size(); j++) 
-	      cout << DoublesFromAlpha[20][j]<<endl;
-	      
-	    exit(0);
-	  }
-	}
-      }
-    }
-
-    //found false positives
-    for (int i=0; i<Dets.size(); i++) {
-      for (int j=1; j<connections[i].size(); j++) {
-	size_t orbDiff=0;
-	double hij = Hij(Dets[i], Dets[connections[i][j]], I1, I2, coreE, orbDiff);
-	if (!Dets[i].connected(Dets[connections[i][j]]) || abs(Helements[i][j] -hij) > 1.e-10) {
-	  cout << "connection found betweren dets where none exists" <<endl;
-	  cout << hij<<"  "<<Helements[i][j]<<endl;
-	  cout << Dets[i]<<endl;
-	  cout << Dets[j]<<endl;
-	  exit(0);
-	}
-      }
-    }
-
-    /*    cout << endl;
-    //no repeats
-    for (int i=0; i<Dets.size(); i++) {
-      for (int j=0; j<connections[i].size(); j++)
-	cout << connections[i][j]<<endl;
-      cout<<endl; 
-      auto it = std::unique(connections[i].begin(), connections[i].end());
-      if (it != connections[i].end()) {
-	cout << i<<"  "<<*it<<endl;
-	cout << Dets[*it]<<endl<<"  repeated twice in connections of "<<endl;
-	cout << Dets[i]<<endl;
-	exit(0);
-      }
-    }
-    */
-#pragma omp parallel
-    {
-      for (size_t k=SortedDets.size(); k<Dets.size() ; k++) {
-	if (k%(mpigetsize()*omp_get_num_threads()) != mpigetrank()*omp_get_num_threads()+omp_get_thread_num()) continue;
-	diag(k,0) = Helements[k].at(0);
-      }
-    }
-
-#ifndef SERIAL
-#ifndef Complex
-    MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
- #else
-     MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), 2*diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-     //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&diag(0,0)), diag.rows(), sumComplex);
-#endif
-#endif
 
     for (size_t i=SortedDets.size(); i<Dets.size(); i++)
       SortedDets.push_back(Dets[i]);
     std::sort(SortedDets.begin(), SortedDets.end());
 
 
-
+    MatrixXx diag=MatrixXx::Zero(Dets.size(),1);
+    for (size_t k=0; k<Dets.size() ; k++) {
+      if (k%(nprocs) != proc) continue;
+      diag(k,0) = Helements[k].at(0);
+    }
+  
+    
+#ifndef SERIAL
+#ifndef Complex
+    MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+    MPI_Allreduce(MPI_IN_PLACE, &diag(0,0), 2*diag.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+#endif
+    if (proc != 0) diag.resize(0,0);
+    
     double prevE0 = E0[0];
     if (iter == 0) prevE0 = -10.0;
     Hmult2 H(connections, Helements);
-
-    E0 = davidson(H, X0, diag, schd.nroots+10, schd.davidsonTol, schd.outputlevel >0);
+    
+    E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTol, schd.outputlevel >0);
+    diag.resize(0,0);
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
     mpi::broadcast(world, X0, 0);
@@ -1256,12 +1238,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       X0[i].resize(0,0);
     }
 
-    diagOld.resize(Dets.size(),1); diagOld = 1.0*diag;
 
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
       pout <<endl<<"Exiting variational iterations"<<endl;
       boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
-      writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
+      writeVariationalResult(iter, ci, Dets, SortedDets, connections, orbDifference, Helements, E0, true, schd, BetaN, AlphaNm1);
 
       Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 
@@ -1409,7 +1390,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       break;
     }
     else {
-      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, diag, connections,
+      if (schd.io) writeVariationalResult(iter, ci, Dets, SortedDets, connections,
 					  orbDifference, Helements, E0, false, schd, BetaN, AlphaNm1);
     }
 
@@ -1432,7 +1413,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-				       MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference,
+				        vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference,
 				       vector<vector<CItype> >& Helements,
 				       vector<double>& E0, bool converged, schedule& schd,
 				       std::map<HalfDet, std::vector<int> >& BetaN,
@@ -1451,10 +1432,6 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
     save << iter <<Dets<<SortedDets;
-    int diagrows = diag.rows();
-    save << diagrows;
-    for (int i=0; i<diag.rows(); i++)
-      save << diag(i,0);
     save << ci;
     save << E0;
     save << converged;
@@ -1483,7 +1460,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 
 
 void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-				      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference,
+				       vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference,
 				      vector<vector<CItype> >& Helements,
 				      vector<double>& E0, bool& converged, schedule& schd,
 				      std::map<HalfDet, std::vector<int> >& BetaN,
@@ -1504,11 +1481,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     boost::archive::binary_iarchive load(ifs);
 
     load >> iter >> Dets >> SortedDets ;
-    int diaglen;
-    load >> diaglen;
-    ci.resize(1, MatrixXx(diaglen,1)); diag.resize(diaglen,1);
-    for (int i=0; i<diag.rows(); i++)
-      load >> diag(i,0);
+    ci.resize(1, MatrixXx(Dets.size(),1));
 
     load >> ci;
     load >> E0;

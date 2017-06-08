@@ -31,13 +31,13 @@ class schedule;
 
 namespace SHCIbasics {
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+			      vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			      vector<vector<CItype> >& Helements,
 			      vector<double>& E0, bool converged, schedule& schd,
 			      std::map<HalfDet, std::vector<int> >& BetaN,
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			     MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+			     vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			     vector<vector<CItype> >& Helements,
 			     vector<double>& E0, bool& converged, schedule& schd,
 			     std::map<HalfDet, std::vector<int> >& BetaN,
