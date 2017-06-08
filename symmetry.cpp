@@ -1,13 +1,21 @@
 /*
-   Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+   Developed by Sandeep Sharma with contributions from James E. Smith
+   and Adam A. Homes, 2017
    Copyright (c) 2017, Sandeep Sharma
 
    This file is part of DICE.
-   This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+   This program is free software: you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free Software
+   Foundation, either version 3 of the License, or (at your option) any later
+   version.
 
-   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful, but WITHOUT
+   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+   FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+   details.
 
-   You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU General Public License along with
+   this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "global.h"
 #include <Eigen/Dense>
@@ -32,8 +40,9 @@ public:
 	int getProduct(int,int);
 	int getSymmetry(char*, vector<int>&);
 	void getIrrepPairByProduct(vector<string>&, int);
-	void genIrrepCombo( vector<string>&, int );
-	void removeDuplicateIrreps( vector<string>& );
+	void genIrrepCombo( vector<string>&, int, int );
+	void removeDuplicateIrreps( vector<string>&, vector<string>& );
+	vector<string> getPermutations( int, string& );
 };
 
 symmetry::symmetry( string pg )
@@ -42,7 +51,7 @@ symmetry::symmetry( string pg )
 	// Assign correct product table for point group. Note that even though the
 	// indices of the columns are one less than the MolPro notation the irrep
 	// returned is again in the MolPro notation.
-	// TODO Should I delete the other tables since there are all just subtables of this?
+	// TODO Should I delete the other tables since they're all just subtables?
 
 	if ( pg == (string)"d2h" )
 	{
@@ -164,16 +173,17 @@ int symmetry::getSymmetry( char* repArray, vector<int>& irrep)
 }
 
 
-void symmetry::getIrrepPairByProduct( vector<string>& irrepCombos, int targetIrrep )
+void symmetry::getIrrepPairByProduct( vector<string>& irrepCombos,
+  int targetIrrep )
 {
 	int ncol = product_table.rows();
-	for( int i=0; i < product_table.size(); i++ ) // TODO Crude, try to improve efficieny.
+	for( int i=0; i < product_table.size(); i++ ) // TODO improve efficieny.
 	{
 		int r=i/ncol, c=i%ncol;
 		if ( product_table(r,c) == targetIrrep )
 		{
 			string permutedCombo = to_string(c+1) + to_string(r+1);
-			vector<string>::iterator it = find (irrepCombos.begin(), irrepCombos.end(),
+			vector<string>::iterator it = find (irrepCombos.begin(),irrepCombos.end(),
 			  permutedCombo);
 			if ( it == irrepCombos.end() )
 			{
@@ -185,71 +195,136 @@ void symmetry::getIrrepPairByProduct( vector<string>& irrepCombos, int targetIrr
 	}
 }
 
-void symmetry::genIrrepCombo( vector<string>& irrepCombos, int targetIrrep )
+void symmetry::genIrrepCombo( vector<string>& irrepCombos, int targetIrrep,
+  int spin )
 {
-	// Populates vectors where each set of three indices (ABC) generates the
-	// target irrep. First the target irrep (ABC) is split into two lists of
-	// irreps (AB and C) by getIrrepPairByProduct. Then the list of AB is split by
-	// the same method. TODO redo these methods using vector<string>.
-	vector<string> tempCombos (0);
-	getIrrepPairByProduct( tempCombos, targetIrrep );
-
-	for ( int i=0; i<tempCombos.size(); i++ )
+	if ( spin == 3 )
 	{
-		vector<string> tempCombos2 (0);
-		getIrrepPairByProduct( tempCombos2, (int)(tempCombos[i][0] - '0') );
+		// Populates vectors where each set of three indices (ABC) generates the
+		// target irrep. First the target irrep (ABC) is split into two lists of
+		// irreps (AB and C) by getIrrepPairByProduct. Then the list of AB is split
+		// by the same method.
+		vector<string> ab (0), tempCombos (0);
+		getIrrepPairByProduct( ab, targetIrrep );
 
-		for ( int j=0; j< tempCombos2.size(); j++ )
+		for ( int i=0; i<ab.size(); i++ )
 		{
-			irrepCombos.push_back( tempCombos2[j] + tempCombos[i][1] );
+			vector<string> abCombos (0);
+			getIrrepPairByProduct( abCombos, (int)(ab[i][0] - '0') );
+
+			for ( int j=0; j< abCombos.size(); j++ )
+			{
+				tempCombos.push_back( abCombos[j] + ab[i][1] );
+			}
 		}
+		// TODO Remove print statements
+		for ( int i=0; i < tempCombos.size(); i++ )
+		{
+			cout << tempCombos[i] << endl;
+		}
+		cout << '\n' << endl;
+		removeDuplicateIrreps( tempCombos, irrepCombos );
 	}
 
-	for ( int i=0; i < irrepCombos.size(); i++ )
+	else if ( spin == 4 )
 	{
-		cout << irrepCombos[i] << endl;
+		// Similar methodology excepty the original set of irrep is split into ab
+		// and cd.
+		vector<string> abcd (0), tempCombos (0);
+		getIrrepPairByProduct( abcd, targetIrrep );
+
+		for ( int i=0; i < abcd.size(); i++ )
+		{
+			vector<string> ab (0), cd (0);
+			getIrrepPairByProduct( ab, (int)(abcd[i][0] - '0') );
+			getIrrepPairByProduct( cd, (int)(abcd[i][1] - '0') );
+			for ( int j=0; j < ab.size(); j++ )
+				for ( int k=0; k < cd.size(); k++ )
+				{
+					tempCombos.push_back( ab[j] + cd[k] );
+				}
+		}
+		removeDuplicateIrreps( tempCombos, irrepCombos );
 	}
-	cout << '\n' << endl;
-	removeDuplicateIrreps( irrepCombos );
+
+	else
+	{
+		printf ("Spin currently not supported by Dice. Please contact authors");
+		exit (EXIT_FAILURE);
+	}
 };
 
-void symmetry::removeDuplicateIrreps( vector<string>& irrepCombos )
+void symmetry::removeDuplicateIrreps( vector<string>& tempCombos,
+  vector<string>& combos )
 {
 	// Removes duplicates from lists of irreps.
-	if ( irrepCombos[0].length() )
+	for ( int i=0; i < tempCombos.size(); i++ )
 	{
-		int nCombos = irrepCombos.size(); int counter = 0;
-		while ( counter < nCombos )
-		{
-			// abc: cab bca acb bac cba
-			vector<string> permutations (5);
-			permutations[0] = string() + irrepCombos[counter][2] + irrepCombos[counter][0] + irrepCombos[counter][1]; // cab
-			permutations[1] = string() + irrepCombos[counter][1] + irrepCombos[counter][2] + irrepCombos[counter][0]; // bca
-			permutations[2] = string() + irrepCombos[counter][0] + irrepCombos[counter][2] + irrepCombos[counter][1]; // acb
-			permutations[3] = string() + irrepCombos[counter][1] + irrepCombos[counter][0] + irrepCombos[counter][2]; // bac
-			permutations[4] = string() + irrepCombos[counter][2] + irrepCombos[counter][1] + irrepCombos[counter][0]; // cba
+		vector<string> permutations = getPermutations( tempCombos[0].length(),
+		  tempCombos[i] );
+		bool duplicates = false;
 
-			int nDuplicates = 0;
-			for ( int i=counter; i < nCombos; i++ )
-			{
-				for ( int j=0; j < permutations.size(); j++ )
-				{
-					if ( irrepCombos[i] == permutations[j] )
-					{
-						cout << permutations[j] << " " << irrepCombos[i] << endl;
-						cout << counter << " " << i << endl;
-						// irrepCombos.erase (irrepCombos.begin()+i);
-						irrepCombos[i] = irrepCombos.back();
-						nDuplicates++;
-					}
-				}
-			}
-			irrepCombos.erase( irrepCombos.end() - nDuplicates, irrepCombos.end());
-			nCombos -= nDuplicates;
-			counter++;
+		for ( int j=0; j < combos.size(); j++ )
+		{
+			for ( int k=0; k < permutations.size(); k++ )
+				if ( combos[j] == permutations[k] ) { duplicates = true; break; }
+			if ( duplicates == true ) { break; }
+		}
+
+		if ( duplicates == false )
+		{
+			combos.push_back( tempCombos[i] );
 		}
 	}
-};
+}
+
+vector<string> symmetry::getPermutations( int spin, string& combo )
+{
+	if ( spin == 3 )
+	{
+		// abc: cab bca acb bac cba
+		vector<string> permutations (5);
+		permutations[0] = string() + combo[2] + combo[0] + combo[1]; // cab
+		permutations[1] = string() + combo[1] + combo[2] + combo[0]; // bca
+		permutations[2] = string() + combo[0] + combo[2] + combo[1]; // acb
+		permutations[3] = string() + combo[1] + combo[0] + combo[2]; // bac
+		permutations[4] = string() + combo[2] + combo[1] + combo[0]; // cba
+		return permutations;
+	}
+
+	// TODO Add case for spin = 4
+	else if ( spin == 4 )
+	{
+		vector<string> permutations (23);
+		// 0 1 2 3 First case
+		permutations[0] = string() + combo[0] + combo[1] + combo[3] + combo[2];
+		permutations[1] = string() + combo[0] + combo[2] + combo[1] + combo[3];
+		permutations[2] = string() + combo[0] + combo[2] + combo[3] + combo[1];
+		permutations[3] = string() + combo[0] + combo[3] + combo[1] + combo[2];
+		permutations[4] = string() + combo[0] + combo[3] + combo[2] + combo[1];
+		permutations[5] = string() + combo[1] + combo[0] + combo[2] + combo[3];
+		permutations[6] = string() + combo[1] + combo[0] + combo[3] + combo[2];
+		permutations[7] = string() + combo[1] + combo[2] + combo[0] + combo[3];
+		permutations[8] = string() + combo[1] + combo[2] + combo[3] + combo[0];
+		permutations[9] = string() + combo[1] + combo[3] + combo[0] + combo[2];
+		permutations[10] = string() + combo[1] + combo[3] + combo[2] + combo[0];
+		permutations[11] = string() + combo[2] + combo[0] + combo[1] + combo[3];
+		permutations[12] = string() + combo[2] + combo[0] + combo[3] + combo[1];
+		permutations[13] = string() + combo[2] + combo[1] + combo[0] + combo[3];
+		permutations[14] = string() + combo[2] + combo[1] + combo[3] + combo[0];
+		permutations[15] = string() + combo[2] + combo[3] + combo[0] + combo[1];
+		permutations[16] = string() + combo[2] + combo[3] + combo[1] + combo[0];
+		permutations[17] = string() + combo[3] + combo[0] + combo[1] + combo[2];
+		permutations[18] = string() + combo[3] + combo[0] + combo[2] + combo[1];
+		permutations[19] = string() + combo[3] + combo[1] + combo[0] + combo[2];
+		permutations[20] = string() + combo[3] + combo[1] + combo[2] + combo[0];
+		permutations[21] = string() + combo[3] + combo[2] + combo[0] + combo[1];
+		permutations[22] = string() + combo[3] + combo[2] + combo[1] + combo[0];
+		return permutations;
+	}
+}
+
+// Determinant symmetry::findLowestEnergyDet( vector<string>& irrepCombos, )
 
 /* MAIN */
 int main()
@@ -265,13 +340,17 @@ int main()
 
 	vector<string> irrepCombos (0);
 	int targetIrrep = 8;
+	int spin = 4;
 
 	// mol_sym.getIrrepPairByProduct( irrepCombos, targetIrrep );
-	mol_sym.genIrrepCombo( irrepCombos, targetIrrep );
+	mol_sym.genIrrepCombo( irrepCombos, targetIrrep, spin );
 
 	for (int i=0; i < irrepCombos.size(); i++)
 	{
-		cout << irrepCombos[i][0] << "x" <<  irrepCombos[i][1] << "x" <<  irrepCombos[i][2] << "=" << targetIrrep << endl;
+		cout << irrepCombos[i][0] << "x" <<  irrepCombos[i][1] << "x" <<  irrepCombos[i][2] << "x" << irrepCombos[i][3] << "=" << targetIrrep;
+		cout << "   " << mol_sym.getProduct(mol_sym.getProduct(mol_sym.getProduct((int)(irrepCombos[i][0]-'0'),(int)(irrepCombos[i][1]-'0')), (int)(irrepCombos[i][2]-'0')), (int)(irrepCombos[i][3] - '0')) << endl;
+		// cout << irrepCombos[i][0] << "x" <<  irrepCombos[i][1] << "x" <<  irrepCombos[i][2] << "=" << targetIrrep;
+		// cout << "   " << mol_sym.getProduct(mol_sym.getProduct((int)(irrepCombos[i][0]-'0'),(int)(irrepCombos[i][1]-'0')), (int)(irrepCombos[i][2]-'0')) << endl;
 		// cout << irrepCombos[i][0] << "x" << irrepCombos[i][1] << "=" << targetIrrep << endl;
 	}
 
