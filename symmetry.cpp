@@ -19,13 +19,21 @@
  */
 #include "global.h"
 #include <Eigen/Dense>
-#include "Determinants.h"
 #include <iostream>
 #include <string>
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
+
+#include "integral.h"
+#include "Determinants.h"
+
+// TODO For debugging/testing
+#include <cstdio>
+#include <ctime>
+#include <chrono>
+typedef std::chrono::high_resolution_clock Clock;
 
 using namespace Eigen;
 using namespace std;
@@ -43,6 +51,9 @@ public:
 	void genIrrepCombo( vector<string>&, int, int );
 	void removeDuplicateIrreps( vector<string>&, vector<string>& );
 	vector<string> getPermutations( int, string& );
+	vector<int> findLowestEnergyCombo( int, int, int, oneInt, vector<int>& );
+	void symmetry::estimateLowestEnergyDet( int, int, oneInt, vector<int>&,
+	  vector<vector<int> >&, vector<Determinant>& )
 };
 
 symmetry::symmetry( string pg )
@@ -324,7 +335,73 @@ vector<string> symmetry::getPermutations( int spin, string& combo )
 	}
 }
 
-// Determinant symmetry::findLowestEnergyDet( vector<string>& irrepCombos, )
+vector<int> symmetry::findLowestEnergyCombo( int spin, int targetIrrep,
+  int nDoubleOcc, oneInt I1, vector<int>& irrep )
+{
+	// irrepCombos contains an array of the orbital indices that should be
+	// be included in the lowest energy determinant.
+	vector<string> irrepCombos (0); vector<int> orbsToPop (spin);
+	double lowestE = 10^5;
+
+	// Cases
+	if ( spin == 0 )
+	{
+		//Make HF determinant. TODO Should I just delete this?
+	}
+
+	else if ( spin == 1 )
+	{
+		// Find lowest orbital with given targetIrrep symmetry, already ordered.
+		for ( int i=nDoubleOcc/2; i < irrep.size(); i++ )
+		{
+			if ( irrep[i] == targetIrrep ) { orbsToPop.push_back(i); }
+		}
+	}
+
+	else if ( spin == 2 )
+	{
+		// Use getIrrepPairByProduct to generate list and find lowest energy pair
+		genIrrepCombo(irrepCombos, targetIrrep, spin);
+		for ( int i=0; i < irrepCombos.size(); i++ )
+		{
+			int thisEnergy = 0;
+			for ( int j=0; j < irrepCombos[i].size(); j++ )
+			{
+				int thisIrrep = irrepCombos[i][j] - '0';
+
+				for ( int k=nDoubleOcc/2; k < irrep.size(); k++ )
+				{
+					if ( irrep[k] == thisIrrep ) { // Make sure it's the right irrep
+						vector<int>::iterator it = find (orbsToPop.begin(),
+						  orbsToPop.end(), thisIrrep );
+						if ( it != orbsToPop.end() ) { thisEnergy += I1( k, k ); break; }
+					}
+				}
+			}
+			if ( thisEnergy < lowestE )
+			{
+				lowestE = thisEnergy;
+				orbsToPop[0] = irrepCombos[i][0] - '0';
+				orbsToPop[1] = irrepCombos[i][1] - '0';
+			}
+		}
+		return orbsToPop;
+	}
+
+	else
+	{
+		// Use genIrrepCombo to generate list and find lowest energy combo.
+	}
+};
+
+void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
+  vector<int>& irrep, vector<vector<int> >& occupied, vector<Determinant>& Dets )
+{
+	if ( spin == 0 )
+	{
+
+	}
+};
 
 /* MAIN */
 int main()
@@ -336,6 +413,9 @@ int main()
 	vector<int> irrep(size);
 	irrep[0] = 1; irrep[1] = 4; irrep[2]=2; irrep[3]=2; irrep[4]=3;
 
+	clock_t start; // TODO Debugging
+	start = clock();
+
 	symmetry mol_sym((string)"d2h");
 
 	vector<string> irrepCombos (0);
@@ -343,7 +423,10 @@ int main()
 	int spin = 4;
 
 	// mol_sym.getIrrepPairByProduct( irrepCombos, targetIrrep );
+	auto t1 = Clock::now();
 	mol_sym.genIrrepCombo( irrepCombos, targetIrrep, spin );
+	auto t2 = Clock::now();
+	cout << "Delta t2-t1: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << " milliseconds" << endl;
 
 	for (int i=0; i < irrepCombos.size(); i++)
 	{
