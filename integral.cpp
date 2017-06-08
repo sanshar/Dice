@@ -406,6 +406,12 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+  Singles = I2.Singles;
+  if (mpigetrank() != 0)
+    Singles.resize(2*norbs, 2*norbs);
+
+  MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+  I2.Singles.resize(0,0);
   size_t memRequired = 0;
   size_t nonZeroSameSpinIntegrals = 0;
   size_t nonZeroOppositeSpinIntegrals = 0;

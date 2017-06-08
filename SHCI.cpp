@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, norbs/2);
+  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   int num_thrds;
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   world.barrier();
 #endif
-  boost::interprocess::shared_memory_object::remove(shciint2.c_str());
+  //boost::interprocess::shared_memory_object::remove(shciint2.c_str());
 
   vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
 #ifdef Complex

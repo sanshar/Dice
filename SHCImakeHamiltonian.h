@@ -42,14 +42,14 @@ namespace SHCImakeHamiltonian {
 
   void PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 			    std::map<HalfDet, int >& AlphaN,
+			    std::map<HalfDet, vector<int> >& BetaNm1,
+			    std::map<HalfDet, vector<int> >& AlphaNm1,
 			    vector<vector<int> >& AlphaMajorToBeta,
 			    vector<vector<int> >& AlphaMajorToDet,
 			    vector<vector<int> >& BetaMajorToAlpha,
 			    vector<vector<int> >& BetaMajorToDet,
 			    vector< vector<int> >& SinglesFromAlpha,
 			    vector< vector<int> >& SinglesFromBeta,
-			    vector< vector<int> >& DoublesFromAlpha,
-			    vector< vector<int> >& DoublesFromBeta,
 			    std::vector<Determinant>& Dets,
 			    int StartIndex);
 
@@ -59,8 +59,6 @@ namespace SHCImakeHamiltonian {
 			 vector<vector<int> >& BetaMajorToDet,
 			 vector<vector<int> >& SinglesFromAlpha,
 			 vector<vector<int> >& SinglesFromBeta,
-			 vector<vector<int> >& DoublesFromAlpha,
-			 vector<vector<int> >& DoublesFromBeta,
 			 std::vector<Determinant>& Dets,
 			 int StartIndex,
 			 std::vector<std::vector<int> >&connections,

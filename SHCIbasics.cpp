@@ -895,16 +895,16 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   pout << "**************************************************************"<<endl;
 
   int nroots = ci.size();
-  std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN;
+  std::map<HalfDet, std::vector<int> > BetaN, AlphaNm1, AlphaN, BetaNm1;
   vector<vector<int> > AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet;
-  vector<vector<int> > SinglesFromAlpha, DoublesFromAlpha, SinglesFromBeta, DoublesFromBeta;
+  vector<vector<int> > SinglesFromAlpha, SinglesFromBeta;
   map<HalfDet, int> BetaNi, AlphaNi;
   HalfDet* Beta ; int* BetaVecLen ; vector<int*> BetaVec ;
   HalfDet* Alpha; int* AlphaVecLen; vector<int*> AlphaVec;
   
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
   if (schd.algorithm != 0) {
-    SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, 0);
+    SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, 0);
   }
   else {
     if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, 0);
@@ -931,7 +931,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   if (schd.algorithm != 0) {
     SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha,
-					   SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta,
+					   SinglesFromBeta,
 					   Dets, 0, connections, Helements,
 					   norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
   }
@@ -1026,7 +1026,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       for (int i=0; i<SortedDets.size(); i++) {
 	if ((i%(nthrd * size)
 	     != rank*nthrd + ithrd)) continue;
-	SHCIgetdeterminants::getDeterminantsVariational(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
+	SHCIgetdeterminants::getDeterminantsVariationalApprox(Dets[i], epsilon1/abs(cMax(i,0)), cMax(i,0), zero,
 					       I1, I2, I2HB, irrep, coreE, E0[0],
 					       *uniqueDEH[omp_get_thread_num()].Det,
 					       schd,0, nelec);
@@ -1116,14 +1116,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
     if (schd.algorithm != 0) {
-      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, SortedDets.size());
-      cout << ".";
-      //SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, AlphaMajor, BetaMajor, SinglesFromAlpha, Dets, SortedDets.size());
+      SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, SortedDets.size());
       SHCImakeHamiltonian::MakeHfromHelpers2(AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, 
-					     SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta,
+					     SinglesFromBeta,
 					     Dets, SortedDets.size(), connections, Helements,
 					     norbs, I1, I2, coreE, orbDifference, DoRDM||schd.doResponse);
-      cout << ".";
+      pout << ".";
     }
     else {
       if (mpigetrank() == 0) SHCImakeHamiltonian::PopulateHelperLists(BetaN, AlphaNm1, Dets, ci[0].size());

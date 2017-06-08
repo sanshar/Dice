@@ -111,6 +111,7 @@ class twoIntHeatBath {
   //now this class is made by just considering integrals that are smaller than threshhold
   std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > sameSpin;
   std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > oppositeSpin;
+  MatrixXd Singles;
 
   double epsilon;
   double zero ;
@@ -119,7 +120,7 @@ class twoIntHeatBath {
   //the orbs contain all orbitals used to make the ij pair above
   //typically these can be all orbitals of the problem or just the active space ones
   //ab will typically contain all orbitals(norbs)
-  void constructClass(std::vector<int>& orbs, twoInt& I2, int norbs) {
+  void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int norbs) {
     for (int i=0; i<orbs.size(); i++)
       for (int j=0;j<=i;j++) {
 	std::pair<int,int> IJ=make_pair(i,j);
@@ -138,6 +139,18 @@ class twoIntHeatBath {
 	  }
 	}
       }
+
+    Singles = MatrixXd::Zero(2*norbs, 2*norbs);
+    for (int i=0; i<2*norbs; i++) {
+      for (int a=0; a<2*norbs; a++) {
+	Singles(i,a) = I1(i,a);
+	for (int j=0; j<2*norbs; j++) {
+	  if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i, j, j, a)))
+	    Singles(i,a) = I2(i,a,j,j) - I2(i, j, j, a);
+	}
+      }
+    }
+
   }
 
 
@@ -151,6 +164,8 @@ class twoIntHeatBathSHM {
   size_t* startingIndicesOppositeSpin;
   int* sameSpinPairs;
   int* oppositeSpinPairs;
+  double* singleExcitation;
+  MatrixXd Singles;
 
   double epsilon;
  twoIntHeatBathSHM(double epsilon_) : epsilon(abs(epsilon_)) {}

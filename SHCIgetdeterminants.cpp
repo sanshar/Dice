@@ -356,6 +356,74 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 }
 
 
+void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
+
+  //Make the int represenation of open and closed orbitals of determinant
+  //this helps to speed up the energy calculation
+  int norbs = d.norbs;
+  vector<int> closed(nelec,0);
+  vector<int> open(norbs-nelec,0);
+  d.getOpenClosed(open, closed);
+  int nclosed = nelec;
+  int nopen = norbs-nclosed;
+
+
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+
+    //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
+#ifndef Complex
+    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+#endif
+
+    CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    
+    if (abs(integral) >epsilon)
+      integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    else
+      continue;
+
+    if (abs(integral) > epsilon ) {
+      dets.push_back(d); Determinant& di = *dets.rbegin();
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+      //if (Determinant::Trev != 0) di.makeStandard();
+    }
+  }
+
+  if (abs(int2.maxEntry) <epsilon) return;
+
+
+  for (int ij=0; ij<nclosed*nclosed; ij++) {
+
+    int i=ij/nclosed, j = ij%nclosed;
+    if (i<=j) continue;
+    int I = closed[i]/2, J = closed[j]/2;
+    int X = max(I, J), Y = min(I, J);
+
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+
+
+    for (size_t index=start; index<end; index++) {
+      if (abs(integrals[index]) <epsilon) break;
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+
+      if (!(d.getocc(a) || d.getocc(b))) {
+	dets.push_back(d);
+	Determinant& di = *dets.rbegin();
+	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+	//if (Determinant::Trev != 0) di.makeStandard();
+      }
+
+    }
+  }
+  return;
+}
+
+
 
 
 
