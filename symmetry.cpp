@@ -18,13 +18,14 @@
    this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "global.h"
-#include <Eigen/Dense>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
+#include <boost/bind.hpp>
+#include <Eigen/Dense>
 
 #include "integral.h"
 #include "Determinants.h"
@@ -38,8 +39,11 @@ typedef std::chrono::high_resolution_clock Clock;
 using namespace Eigen;
 using namespace std;
 
-class symmetry
-{
+bool compare(const pair<double,int>& a,const pair<double,int>& b) {
+       return a.second<b.second;
+}
+
+class symmetry {
 // Product tables for Abelian point groups
 public:
 	MatrixXd product_table;       //product table for a given symmetry
@@ -56,16 +60,14 @@ public:
 	  vector<vector<int> >&, vector<Determinant>& )
 };
 
-symmetry::symmetry( string pg )
-{
+symmetry::symmetry( string pg ) {
 
 	// Assign correct product table for point group. Note that even though the
 	// indices of the columns are one less than the MolPro notation the irrep
 	// returned is again in the MolPro notation.
 	// TODO Should I delete the other tables since they're all just subtables?
 
-	if ( pg == (string)"d2h" )
-	{
+	if ( pg == (string)"d2h" ) {
 		// D2h Ag:1, B1g:4, B2g:6, B3g:7, Au:8, B1u:5, B2u:3, B3u: 2 in MolPro not.
 		// Row & col indices: Ag:0, B1g:3, B2g:5, B3g:6, Au:7, B1u:4, B2u:2, B3u:1
 		pointGroup = pg;
@@ -89,8 +91,7 @@ symmetry::symmetry( string pg )
 		product_table(4,7) = 4; product_table(5,7) = 3; product_table(6,7) = 2; product_table(7,7) = 1;
 	}
 
-	else if ( pg == (string)"c2v" )
-	{
+	else if ( pg == (string)"c2v" ) {
 		//C2v A1: 1, B1:2, B2:3, A2:4 in MolPro. Indices here: A1: 0, B1:1, B2:2, A2:3
 		pointGroup = pg;
 		product_table.resize(4,4);
@@ -100,8 +101,7 @@ symmetry::symmetry( string pg )
 		product_table(0,3)= 4;  product_table(1,3)= 3;  product_table(2,3)= 2;  product_table(3,3)= 1;
 	}
 
-	else if ( pg == (string)"c2h" )
-	{
+	else if ( pg == (string)"c2h" ) {
 		// C2h Ag: 1, Au: 2, Bu: 3, Bg: 4 in Molrpro. Indices here: Ag: 0, Au: 1, Bu: 2, Bg: 3
 		pointGroup = pg;
 		product_table.resize(4,4);
@@ -111,8 +111,7 @@ symmetry::symmetry( string pg )
 		product_table(0,3)= 4;  product_table(1,3)= 3;  product_table(2,3)= 2;  product_table(3,3)= 1;
 	}
 
-	else if ( pg == (string)"d2" )
-	{
+	else if ( pg == (string)"d2" ) {
 		// D2 A:1, B3:2, B2: 3, B1: 4 in Molrpro. Indices here: A:0, B3:1, B2: 2, B1: 3
 		pointGroup = pg;
 		product_table.resize(4,4);
@@ -122,8 +121,7 @@ symmetry::symmetry( string pg )
 		product_table(0,3)= 4;  product_table(1,3)= 3;  product_table(2,3)= 2;  product_table(3,3)= 1;
 	}
 
-	else if ( pg == (string)"cs" )
-	{
+	else if ( pg == (string)"cs" ) {
 		// Cs A':1, A'':2 in MolPro. Indices here A':0, A'':1
 		pointGroup = pg;
 		product_table.resize(2,2);
@@ -131,8 +129,7 @@ symmetry::symmetry( string pg )
 		product_table(0,1)= 2;  product_table(1,1)= 1;
 	}
 
-	else if ( pg == (string)"c2" )
-	{
+	else if ( pg == (string)"c2" ) {
 		// C2 A:1, B:2 in MolPro. Indices here: A:0, B:1
 		pointGroup = pg;
 		product_table.resize(2,2);
@@ -140,8 +137,7 @@ symmetry::symmetry( string pg )
 		product_table(0,1)= 2;  product_table(1,1)= 1;
 	}
 
-	else if ( pg == (string)"ci" )
-	{
+	else if ( pg == (string)"ci" ) {
 		// Ci Ag:1, Au:2 in MolPro. Indices here: Ag:0, Au:1
 		pointGroup = pg;
 		product_table.resize(2,2);
@@ -149,8 +145,7 @@ symmetry::symmetry( string pg )
 		product_table(0,1)= 2;  product_table(1,1)= 1;
 	}
 
-	else
-	{
+	else {
 		cout << "Couldn't find the irrep! Exiting..." << endl;
 		exit(EXIT_FAILURE);
 	}
@@ -158,24 +153,31 @@ symmetry::symmetry( string pg )
 }
 
 
-int symmetry::getProduct(int irrep1, int irrep2)
-{
+int symmetry::getProduct(int irrep1, int irrep2) {
 	// Note here that the irrep and column differ by 1 because the indexing starts
 	// at 0 for the product_table object.
 	return product_table(irrep1 - 1,irrep2 - 1);
 }
 
+int symmetry::getProduct(vector<int>& irreps) { //TODO test this
+	// For more than two irreps.
+	if ( irreps.size() > 2 ) {
+		int irrep = irreps.back();
+		return getProduct( getProduct( irreps.pop_back() ), irrep );
+	}
 
-int symmetry::getSymmetry( char* repArray, vector<int>& irrep)
-{
+	else { return getProduct( irreps[0], irreps[1] ); }
+
+}
+
+
+int symmetry::getSymmetry( char* repArray, vector<int>& irrep) {
 	// Returns the irrep of the determinant with the symmetry of pointGroup.
 	int norbs = sizeof(irrep) / sizeof(irrep[0]) - 1;
 	int old_irrep = 1;
 
-	for ( int i = 0; i < norbs; i++ )
-	{
-		if ( (int) repArray[i] - (int) '0' == 1 ) // TODO Watch out for this.
-		{
+	for ( int i = 0; i < norbs; i++ ) {
+		if ( (int) repArray[i] - (int) '0' == 1 ) {// TODO Watch out for this.
 			old_irrep = getProduct( old_irrep, irrep[i] );
 		}
 	}
@@ -185,32 +187,28 @@ int symmetry::getSymmetry( char* repArray, vector<int>& irrep)
 
 
 void symmetry::getIrrepPairByProduct( vector<string>& irrepCombos,
-  int targetIrrep )
-{
+  int targetIrrep ) {
+
 	int ncol = product_table.rows();
-	for( int i=0; i < product_table.size(); i++ ) // TODO improve efficieny.
-	{
+
+	for( int i=0; i < product_table.size(); i++ ) { // TODO improve efficieny.
 		int r=i/ncol, c=i%ncol;
-		if ( product_table(r,c) == targetIrrep )
-		{
+		if ( product_table(r,c) == targetIrrep ) {
 			string permutedCombo = to_string(c+1) + to_string(r+1);
 			vector<string>::iterator it = find (irrepCombos.begin(),irrepCombos.end(),
 			  permutedCombo);
-			if ( it == irrepCombos.end() )
-			{
+
+			if ( it == irrepCombos.end() ) {
 				string combo = to_string(r+1) + to_string(c+1);
 				irrepCombos.push_back(combo);
 			}
-
 		}
 	}
 }
 
 void symmetry::genIrrepCombo( vector<string>& irrepCombos, int targetIrrep,
-  int spin )
-{
-	if ( spin == 3 )
-	{
+  int spin ) {
+	if ( spin == 3 ) {
 		// Populates vectors where each set of three indices (ABC) generates the
 		// target irrep. First the target irrep (ABC) is split into two lists of
 		// irreps (AB and C) by getIrrepPairByProduct. Then the list of AB is split
@@ -218,81 +216,68 @@ void symmetry::genIrrepCombo( vector<string>& irrepCombos, int targetIrrep,
 		vector<string> ab (0), tempCombos (0);
 		getIrrepPairByProduct( ab, targetIrrep );
 
-		for ( int i=0; i<ab.size(); i++ )
-		{
+		for ( int i=0; i<ab.size(); i++ ) {
 			vector<string> abCombos (0);
 			getIrrepPairByProduct( abCombos, (int)(ab[i][0] - '0') );
 
-			for ( int j=0; j< abCombos.size(); j++ )
-			{
+			for ( int j=0; j< abCombos.size(); j++ ) {
 				tempCombos.push_back( abCombos[j] + ab[i][1] );
 			}
 		}
 		// TODO Remove print statements
-		for ( int i=0; i < tempCombos.size(); i++ )
-		{
+		for ( int i=0; i < tempCombos.size(); i++ ) {
 			cout << tempCombos[i] << endl;
 		}
 		cout << '\n' << endl;
 		removeDuplicateIrreps( tempCombos, irrepCombos );
 	}
 
-	else if ( spin == 4 )
-	{
+	else if ( spin == 4 ) {
 		// Similar methodology excepty the original set of irrep is split into ab
 		// and cd.
 		vector<string> abcd (0), tempCombos (0);
 		getIrrepPairByProduct( abcd, targetIrrep );
 
-		for ( int i=0; i < abcd.size(); i++ )
-		{
+		for ( int i=0; i < abcd.size(); i++ ) {
 			vector<string> ab (0), cd (0);
 			getIrrepPairByProduct( ab, (int)(abcd[i][0] - '0') );
 			getIrrepPairByProduct( cd, (int)(abcd[i][1] - '0') );
 			for ( int j=0; j < ab.size(); j++ )
-				for ( int k=0; k < cd.size(); k++ )
-				{
+				for ( int k=0; k < cd.size(); k++ ) {
 					tempCombos.push_back( ab[j] + cd[k] );
 				}
 		}
 		removeDuplicateIrreps( tempCombos, irrepCombos );
 	}
 
-	else
-	{
+	else {
 		printf ("Spin currently not supported by Dice. Please contact authors");
 		exit (EXIT_FAILURE);
 	}
 };
 
 void symmetry::removeDuplicateIrreps( vector<string>& tempCombos,
-  vector<string>& combos )
-{
+  vector<string>& combos ) {
 	// Removes duplicates from lists of irreps.
-	for ( int i=0; i < tempCombos.size(); i++ )
-	{
+	for ( int i=0; i < tempCombos.size(); i++ ) {
 		vector<string> permutations = getPermutations( tempCombos[0].length(),
 		  tempCombos[i] );
 		bool duplicates = false;
 
-		for ( int j=0; j < combos.size(); j++ )
-		{
+		for ( int j=0; j < combos.size(); j++ ) {
 			for ( int k=0; k < permutations.size(); k++ )
 				if ( combos[j] == permutations[k] ) { duplicates = true; break; }
 			if ( duplicates == true ) { break; }
 		}
 
-		if ( duplicates == false )
-		{
+		if ( duplicates == false ) {
 			combos.push_back( tempCombos[i] );
 		}
 	}
 }
 
-vector<string> symmetry::getPermutations( int spin, string& combo )
-{
-	if ( spin == 3 )
-	{
+vector<string> symmetry::getPermutations( int spin, string& combo ) {
+	if ( spin == 3 ) {
 		// abc: cab bca acb bac cba
 		vector<string> permutations (5);
 		permutations[0] = string() + combo[2] + combo[0] + combo[1]; // cab
@@ -303,9 +288,7 @@ vector<string> symmetry::getPermutations( int spin, string& combo )
 		return permutations;
 	}
 
-	// TODO Add case for spin = 4
-	else if ( spin == 4 )
-	{
+	else if ( spin == 4 ) {
 		vector<string> permutations (23);
 		// 0 1 2 3 First case
 		permutations[0] = string() + combo[0] + combo[1] + combo[3] + combo[2];
@@ -336,41 +319,32 @@ vector<string> symmetry::getPermutations( int spin, string& combo )
 }
 
 vector<int> symmetry::findLowestEnergyCombo( int spin, int targetIrrep,
-  int nDoubleOcc, oneInt I1, vector<int>& irrep )
-{
+  int nDoubleOcc, oneInt I1, vector<int>& irrep ) {
 	// irrepCombos contains an array of the orbital indices that should be
 	// be included in the lowest energy determinant.
 	vector<string> irrepCombos (0); vector<int> orbsToPop (spin);
 	double lowestE = 10^5;
 
 	// Cases
-	if ( spin == 0 )
-	{
-		//Make HF determinant. TODO Should I just delete this?
+	if ( spin == 0 ) {
 	}
 
-	else if ( spin == 1 )
-	{
+	else if ( spin == 1 ) {
 		// Find lowest orbital with given targetIrrep symmetry, already ordered.
-		for ( int i=nDoubleOcc/2; i < irrep.size(); i++ )
-		{
+		for ( int i=nDoubleOcc/2; i < irrep.size(); i++ ) {
 			if ( irrep[i] == targetIrrep ) { orbsToPop.push_back(i); }
 		}
 	}
 
-	else if ( spin == 2 )
-	{
+	else if ( spin == 2 ) {
 		// Use getIrrepPairByProduct to generate list and find lowest energy pair
 		genIrrepCombo(irrepCombos, targetIrrep, spin);
-		for ( int i=0; i < irrepCombos.size(); i++ )
-		{
+		for ( int i=0; i < irrepCombos.size(); i++ ) {
 			int thisEnergy = 0;
-			for ( int j=0; j < irrepCombos[i].size(); j++ )
-			{
+			for ( int j=0; j < irrepCombos[i].size(); j++ ) {
 				int thisIrrep = irrepCombos[i][j] - '0';
 
-				for ( int k=nDoubleOcc/2; k < irrep.size(); k++ )
-				{
+				for ( int k=nDoubleOcc/2; k < irrep.size(); k++ ) {
 					if ( irrep[k] == thisIrrep ) { // Make sure it's the right irrep
 						vector<int>::iterator it = find (orbsToPop.begin(),
 						  orbsToPop.end(), thisIrrep );
@@ -378,8 +352,7 @@ vector<int> symmetry::findLowestEnergyCombo( int spin, int targetIrrep,
 					}
 				}
 			}
-			if ( thisEnergy < lowestE )
-			{
+			if ( thisEnergy < lowestE ) {
 				lowestE = thisEnergy;
 				orbsToPop[0] = irrepCombos[i][0] - '0';
 				orbsToPop[1] = irrepCombos[i][1] - '0';
@@ -388,24 +361,88 @@ vector<int> symmetry::findLowestEnergyCombo( int spin, int targetIrrep,
 		return orbsToPop;
 	}
 
-	else
-	{
+	else {
 		// Use genIrrepCombo to generate list and find lowest energy combo.
 	}
 };
 
 void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
-  vector<int>& irrep, vector<vector<int> >& occupied, vector<Determinant>& Dets )
-{
-	if ( spin == 0 )
-	{
+  vector<int>& irrep, vector<vector<int> >& occupied, vector<Determinant>& Dets ) {
+	vector<pair<double,int> > sort1Body (0); 	// Double: E, int: original idx
+	for ( int i=0; i < I1.norbs; i++ ) {
+		sort1Body.push_back(make_pair( I1(i,i), i ));
+	}
+	sort(sort1Body.begin(),sort1Body.end(),compare);
 
+	int nDOrbs = ocupied[0].size() - spin;
+
+	// Spin dependent estimation
+	if ( spin == 0 ) {
+		// Populate doubly occupied orbitals
+		for ( int i=0; i < nDOrbs; i++ ){Dets[0].setocc(sort1Body[i].second, true);}
+	}
+
+	else if ( spin == 1 ) {
+		// Populate doubly ocupied orbitals
+		for (int i=0; i < nDOrbs; i++) {Dets[0].setocc(sort1Body[i].second, true);}
+
+		// Find lowest energy orbital with targetIrrep
+		for ( int i = nDOrbs; i < I1.norbs; i++ ) {
+			if ( irrep[sort1Body[i].second] == targetIrrep &&
+				(Det[0].getocc(i) == false) ) {
+				Dets[0].settocc( i, true );
+				break;
+			}
+		}
+	}
+
+	else if ( spin == 2 ) {
+		// Populate doubly ocupied orbitals
+		for (int i=0; i < nDOrbs; i++) {Dets[0].setocc(sort1Body[i].second, true);}
+
+		// Find lowest energy orbitals with the appropriate symmetry
+		for ( int i=nDOrbs; i < I1.norbs - 1; i++ ) {
+			for ( int j=i+1; j < I1.norbs; j++ ) {
+				int irrep1 = irrep[sort1Body[i].second];
+				int irrep2 = irrep[sort1Body[j].second];
+				bool unocc = ( (Det[0].getocc(i) == false) &&
+					(Det[0].getocc(j) == false) );
+
+				if ( getProduct( irrep1, irrep2 ) == targetIrrep && unocc ) {
+					Dets[0].setocc( i, true );
+					Dets[0].setocc( j, true );
+					break;
+				}
+			}
+		}
+	}
+
+	else if ( spin == 3 ) {
+		// Populate doubly ocupied orbitals
+		for (int i=0; i < nDOrbs; i++) {Dets[0].setocc(sort1Body[i].second, true);}
+
+		// Find lowest energy orbitals with the appropriate symmetry
+		for ( int i=nDOrbs; i < I1.norbs - 2; i++ ) {
+			for ( int j=i+1; j < I1.norbs - 1; j++ ) {
+				for ( int k=j+1; k < I1.norbs; k++ ) {
+
+				}
+			}
+		}
+	}
+
+	else if ( spin == 4 ) {
+
+	}
+
+	else {
+		printf ("Spin currently not supported by Dice. Please contact authors");
+		exit (EXIT_FAILURE);
 	}
 };
 
 /* MAIN */
-int main()
-{
+int main() {
 	char* repArray="10111";
 	//repArray[0] = 1; repArray[1]=0; repArray[2]=1; repArray[3]=1; repArray[4]=1;
 
@@ -413,7 +450,7 @@ int main()
 	vector<int> irrep(size);
 	irrep[0] = 1; irrep[1] = 4; irrep[2]=2; irrep[3]=2; irrep[4]=3;
 
-	clock_t start; // TODO Debugging
+	clock_t start;
 	start = clock();
 
 	symmetry mol_sym((string)"d2h");
@@ -428,8 +465,7 @@ int main()
 	auto t2 = Clock::now();
 	cout << "Delta t2-t1: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << " milliseconds" << endl;
 
-	for (int i=0; i < irrepCombos.size(); i++)
-	{
+	for (int i=0; i < irrepCombos.size(); i++) {
 		cout << irrepCombos[i][0] << "x" <<  irrepCombos[i][1] << "x" <<  irrepCombos[i][2] << "x" << irrepCombos[i][3] << "=" << targetIrrep;
 		cout << "   " << mol_sym.getProduct(mol_sym.getProduct(mol_sym.getProduct((int)(irrepCombos[i][0]-'0'),(int)(irrepCombos[i][1]-'0')), (int)(irrepCombos[i][2]-'0')), (int)(irrepCombos[i][3] - '0')) << endl;
 		// cout << irrepCombos[i][0] << "x" <<  irrepCombos[i][1] << "x" <<  irrepCombos[i][2] << "=" << targetIrrep;
