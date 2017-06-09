@@ -16,4 +16,5 @@ epsilon2 1.e-8
 deterministic
 noio
 maxiter 12
-#nPTiter 0
+pointGroup d2h
+spin 2
