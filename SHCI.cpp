@@ -60,6 +60,9 @@ boost::interprocess::mapped_region regionInt2SHM;
 boost::interprocess::shared_memory_object hHelpersSegment;
 boost::interprocess::mapped_region regionHelpers;
 string shciHelper;
+boost::interprocess::shared_memory_object DetsCISegment;
+boost::interprocess::mapped_region regionDetsCI;
+std::string shciDetsCI;
 
 void license() {
   pout << endl;
@@ -122,9 +125,11 @@ int main(int argc, char* argv[]) {
   string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
   string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
   int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
   hHelpersSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciHelper.c_str(), boost::interprocess::read_write);
+  DetsCISegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDetsCI.c_str(), boost::interprocess::read_write);
 
 
 
@@ -206,6 +211,9 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+
+  Determinant *SHMDets;
+  SHCIbasics::SHMDetsFromDets(Dets, SHMDets);
 
   if (mpigetrank() == 0) {
     for (int j=0; j<ci[0].rows(); j++)

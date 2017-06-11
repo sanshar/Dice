@@ -80,7 +80,7 @@ namespace SHCImakeHamiltonian {
 			   vector<int* > &SinglesFromAlpha   ,
 			   int*          &SinglesFromBetaLen , 
 			   vector<int* > &SinglesFromBeta    ,
-			   std::vector<Determinant>& Dets,
+			   Determinant *Dets,
 			   int StartIndex,
 			   std::vector<std::vector<int> >&connections,
 			   std::vector<std::vector<CItype> >& Helements,
@@ -130,7 +130,7 @@ namespace SHCImakeHamiltonian {
 
   void MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaVec,
 			int* &AlphaVecLen, vector<int*> &AlphaVec,
-			std::vector<Determinant>& Dets,
+			Determinant *Dets,
 			int StartIndex,
 			std::vector<std::vector<int> >&connections,
 			std::vector<std::vector<CItype> >& Helements,
@@ -141,7 +141,7 @@ namespace SHCImakeHamiltonian {
 			std::vector<std::vector<size_t> >& orbDifference,
 			bool DoRDM=false) ;
 
-  void updateSOCconnections(vector<Determinant>& Dets, int prevSize,
+  void updateSOCconnections(Determinant *Dets, int prevSize,
 			    vector<vector<int> >& connections,
 			    vector<vector<size_t> >& orbDifference,
 			    vector<vector<CItype> >& Helements, int norbs,

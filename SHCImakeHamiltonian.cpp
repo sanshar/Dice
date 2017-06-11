@@ -97,7 +97,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 
   size_t norbs = Norbs;
 
-  for (size_t k=StartIndex; k<Dets.size(); k++) {
+  for (size_t k=StartIndex; k<connections.size(); k++) {
     if (k%(nprocs) != proc) continue;
     connections[k].push_back(k);
     CItype hij = Dets[k].Energy(I1, I2, coreE);
@@ -214,7 +214,7 @@ void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int>
 
 void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaVec,
 					   int* &AlphaVecLen, vector<int*> &AlphaVec,
-					   std::vector<Determinant>& Dets,
+					   Determinant *Dets,
 					   int StartIndex,
 					   std::vector<std::vector<int> >&connections,
 					   std::vector<std::vector<CItype> >& Helements,
@@ -233,7 +233,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 
   size_t norbs = Norbs;
 
-  for (size_t k=StartIndex; k<Dets.size(); k++) {
+  for (size_t k=StartIndex; k<connections.size(); k++) {
     if (k%(nprocs) != proc) continue;
     connections[k].push_back(k);
     CItype hij = Dets[k].Energy(I1, I2, coreE);
@@ -425,7 +425,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	
       }
 
-
+    /*
     double totalMemoryBm = 0, totalMemoryB=0, totalMemoryAm=0, totalMemoryA=0;
     auto it = BetaNm1.begin();
     for (;it != BetaNm1.end(); it++) {
@@ -446,12 +446,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       totalMemoryA += 2.*AlphaMajorToBeta[i].size();
       totalMemoryA += SinglesFromAlpha[i].size();
     }
-    pout << endl;
-    pout << " helpers  "<<((totalMemoryAm)*sizeof(int))/1.e9;
-    pout << "   "<<((totalMemoryBm)*sizeof(int))/1.e9;
-    pout << "   "<<((totalMemoryA)*sizeof(int))/1.e9;
-    pout << "   "<<((totalMemoryB)*sizeof(int))/1.e9<<endl;
-    pout << BetaNm1.size()<<"  "<<BetaMajorToAlpha.size()<<"  "<<AlphaNm1.size()<<"  "<<AlphaMajorToBeta.size()<<endl;
+    */
   }
 }
 
@@ -623,7 +618,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 					      vector<int* > &SinglesFromAlpha   ,
 					      int*          &SinglesFromBetaLen , 
 					      vector<int* > &SinglesFromBeta    ,
-					      std::vector<Determinant>& Dets,
+					      Determinant* Dets,
 					      int StartIndex,
 					      std::vector<std::vector<int> >&connections,
 					      std::vector<std::vector<CItype> >& Helements,
@@ -644,7 +639,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
   size_t norbs = Norbs;
 
   //diagonal element
-  for (size_t k=StartIndex; k<Dets.size(); k++) {
+  for (size_t k=StartIndex; k<connections.size(); k++) {
     if (k%(nprocs) != proc) continue;
     connections[k].push_back(k);
     CItype hij = Dets[k].Energy(I1, I2, coreE);
@@ -1050,12 +1045,12 @@ void SHCImakeHamiltonian::MakeSHMHelpers(std::map<HalfDet, std::vector<int> >& B
 
 
 
-void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int prevSize, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
+void SHCImakeHamiltonian::updateSOCconnections(Determinant *Dets, int prevSize, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference, vector<vector<CItype> >& Helements, int norbs, oneInt& int1, int nelec, bool includeSz) {
 
   size_t Norbs = norbs;
 
   map<Determinant, int> SortedDets;
-  for (int i=0; i<Dets.size(); i++)
+  for (int i=0; i<connections.size(); i++)
     SortedDets[Dets[i]] = i;
 
   int nprocs= mpigetsize(), proc = mpigetrank();
@@ -1064,7 +1059,7 @@ void SHCImakeHamiltonian::updateSOCconnections(vector<Determinant>& Dets, int pr
 #pragma omp parallel
   {
 
-    for (int x=prevSize; x<Dets.size(); x++) {
+    for (int x=prevSize; x<connections.size(); x++) {
       if (x%(nprocs*omp_get_num_threads()) != proc*omp_get_num_threads()+omp_get_thread_num()) continue;
       Determinant& d = Dets[x];
 

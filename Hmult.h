@@ -144,7 +144,8 @@ struct HmultDirect {
   vector<int* > &SinglesFromAlpha   ;
   int*          &SinglesFromBetaLen ; 
   vector<int* > &SinglesFromBeta    ;
-  std::vector<Determinant>& Dets;
+  Determinant *&Dets;
+  int DetsSize;
   int StartIndex;
   int Norbs;
   oneInt& I1;
@@ -162,7 +163,8 @@ struct HmultDirect {
 		     vector<int* > &pSinglesFromAlpha   ,
 		     int*          &pSinglesFromBetaLen , 
 		     vector<int* > &pSinglesFromBeta    ,
-		     std::vector<Determinant>& pDets,
+		     Determinant* &pDets,
+         	     int pDetsSize,
 		     int pStartIndex,
 		     int pNorbs,
 		     oneInt& pI1,
@@ -180,6 +182,7 @@ struct HmultDirect {
     SinglesFromBetaLen (pSinglesFromBetaLen ),
     SinglesFromBeta    (pSinglesFromBeta    ),
     Dets               (pDets               ),
+    DetsSize           (pDetsSize           ),
     StartIndex         (pStartIndex         ),
     Norbs              (pNorbs              ),
     I1                 (pI1                 ),
@@ -189,7 +192,7 @@ struct HmultDirect {
 
   template <typename Derived>
     void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
-    if (StartIndex >= Dets.size()) return;
+    if (StartIndex >= DetsSize) return;
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
@@ -198,7 +201,7 @@ struct HmultDirect {
     size_t norbs = Norbs;
 
     //diagonal element
-    for (size_t k=StartIndex; k<Dets.size(); k++) {
+    for (size_t k=StartIndex; k<DetsSize; k++) {
       if (k%(nprocs) != proc) continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       y(k,0) += hij*x(k,0);

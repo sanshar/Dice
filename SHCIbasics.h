@@ -30,6 +30,7 @@ class twoIntHeatBathSHM;
 class schedule;
 
 namespace SHCIbasics {
+  void SHMDetsFromDets(vector<Determinant>& Dets, Determinant* &SHMDets);
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
 			     vector<Determinant>& SortedDets,
 			     vector<vector<int> >& connections, 
