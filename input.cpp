@@ -34,6 +34,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.restart = false;
   schd.fullrestart = false;
   schd.davidsonTol = 5.e-5;
+  schd.davidsonTolLoose = 8.e-3;
+  schd.startDirectDavidsonIter = 100;
   schd.epsilon2 = 1.e-8;
   schd.epsilon2Large = 1000.0;
   schd.dE = 1.e-8;
@@ -44,7 +46,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.onlyperturbative = false;
   schd.singleList = true;
   int nocc = -1;;
-  schd.io = false;
+  schd.io = true;
   schd.nroots = 1;
   schd.nPTiter = 1000000;
   schd.DoRDM = false;
@@ -114,6 +116,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
     else if (boost::iequals(ArgName, "noio"))
       schd.io=false;
+    else if (boost::iequals(ArgName, "io"))
+      schd.io=true;
+    else if (boost::iequals(ArgName, "directdavidsoniter"))
+      schd.startDirectDavidsonIter = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "num_thrds"))
       schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "outputlevel"))

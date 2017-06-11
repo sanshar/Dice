@@ -43,7 +43,7 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 
 //davidson, implemented very similarly to as implementeded in Block
 //davidson, implemented very similarly to as implementeded in Block
-vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, bool print) {
+vector<double> davidson(Hmult2& H, HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
@@ -93,7 +93,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   if (mpigetrank() == 0) {r=MatrixXx::Zero(x0[0].rows(),1);}
   int convergedRoot = 0;
 
-  int iter = 0;
+  //int iter = 0;
+  numIter = 0;
   double ei = 0.0;
   while(true) {
     //0->continue with the loop, 1 -> continue clause, 2 -> return
@@ -117,6 +118,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       //mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
 #endif
 #endif
+      sigmacol = 1.*MatrixXx::Zero(bcol.rows(),1);
+      Hdirect(bcol, sigmacol);
       H(bcol, sigmacol);
       sigmaSize++;
     }
@@ -156,11 +159,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
       r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
       double error = r.norm();
-      if (iter == 0)
-	if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
-      if (print)
-	pout <<"#"<< iter<<" "<<convergedRoot<<"  "<<ei<<"  "<<error<<std::endl;
-      iter++;
+      //if (numIter == 0)
+      //if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
+      if (print) {
+	if (numIter == 0) printf("nIter  Root               Energy                Error\n");
+	if (mpigetrank() == 0) printf ("%5i  %4i   %18.10g   %18.10g  %10.2f\n", numIter, convergedRoot, ei, error, (getTime()-startofCalc));
+      }
+      numIter++;
 
 
       if (hsubspace.rows() == b.rows()) {
@@ -168,22 +173,22 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	for (int i=0; i<x0.size(); i++) {
 	  x0[i] = b.col(i);
 	  eroots.push_back(eigensolver.eigenvalues()[i]);
-	  if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (i) % eroots[i] );
+	  if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (i) % eroots[i] );
 	}
 	continueOrReturn = 2;
 	goto label1;
 	//return eroots;
       }
 
-      if (error < tol || iter >400*x0.size()) {
-	if (iter >400*x0.size()) {
+      if (error < tol || numIter >400*x0.size()) {
+	if (numIter >400*x0.size()) {
 	  cout << "Davidson calculation Didnt converge"<<endl;
 	  exit(0);
 	  continueOrReturn = 2;
 	  //return eroots;
 	}
 	convergedRoot++;
-	if(print) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(iter) % (convergedRoot-1) % ei );
+	if(print) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
 	if (convergedRoot == nroots) {
 	  for (int i=0; i<convergedRoot; i++) {
 	    x0[i] = b.col(i);
@@ -199,7 +204,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   label1:
 #ifndef SERIAL
     mpi::broadcast(world, continueOrReturn, 0);
-    mpi::broadcast(world, iter, 0);
+    mpi::broadcast(world, numIter, 0);
 #endif
     if (continueOrReturn == 2) return eroots;
 

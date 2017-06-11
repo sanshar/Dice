@@ -24,6 +24,8 @@ private:
   void serialize(Archive & ar, const unsigned int version)
   {
     ar & davidsonTol				\
+      & davidsonTolLoose       			\
+      & startDirectDavidsonIter                 \
       & epsilon2				\
       & epsilon2Large                           \
       & SampleN					\
@@ -63,6 +65,8 @@ private:
 
 public:
   double davidsonTol;
+  double davidsonTolLoose;
+  int startDirectDavidsonIter;
   double epsilon2;
   double epsilon2Large;
   int SampleN;

@@ -21,8 +21,13 @@ You should have received a copy of the GNU General Public License along with thi
 #endif
 #include "communicate.h"
 #include "global.h"
+#include "Determinants.h"
+#include <algorithm>
+#include "SHCISortMpiUtils.h"
 
 using namespace Eigen;
+using namespace std;
+using namespace SHCISortMpiUtils;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
@@ -39,8 +44,6 @@ struct Hmult2 {
 
   template <typename Derived>
   void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
-    for (int i=0;i<y.rows(); i++)
-      y(i,0) = 0.0;
 
 #ifndef SERIAL
     boost::mpi::communicator world;
@@ -58,7 +61,7 @@ struct Hmult2 {
 
 	yarray[ithrd] = MatrixXx::Zero(y.rows(),1);
 
-	for (int i=0; i<x.rows(); i++) {
+	for (int i=0; i<connections.size(); i++) {
 	  if ((i%(nthrd * size)
 	       != rank*nthrd + ithrd)) continue;
 	  for (int j=0; j<connections[i].size(); j++) {
@@ -96,7 +99,7 @@ struct Hmult2 {
 #endif
     }
     else {
-      for (int i=rank; i<x.rows(); i+=size) {
+      for (int i=rank; i<connections.size(); i+=size) {
 	//if (i%size != rank) continue;
 	for (int j=0; j<connections[i].size(); j++) {
 	  CItype hij = Helements[i][j];
@@ -130,5 +133,225 @@ struct Hmult2 {
 
 };
 
+struct HmultDirect {
+  int*          &AlphaMajorToBetaLen; 
+  vector<int* > &AlphaMajorToBeta   ;
+  vector<int* > &AlphaMajorToDet    ;
+  int*          &BetaMajorToAlphaLen; 
+  vector<int* > &BetaMajorToAlpha   ;
+  vector<int* > &BetaMajorToDet     ;
+  int*          &SinglesFromAlphaLen; 
+  vector<int* > &SinglesFromAlpha   ;
+  int*          &SinglesFromBetaLen ; 
+  vector<int* > &SinglesFromBeta    ;
+  std::vector<Determinant>& Dets;
+  int StartIndex;
+  int Norbs;
+  oneInt& I1;
+  twoInt& I2;
+  double& coreE;
+  MatrixXx& diag;
+
+  HmultDirect(  int*          &pAlphaMajorToBetaLen, 
+		     vector<int* > &pAlphaMajorToBeta   ,
+		     vector<int* > &pAlphaMajorToDet    ,
+		     int*          &pBetaMajorToAlphaLen, 
+		     vector<int* > &pBetaMajorToAlpha   ,
+		     vector<int* > &pBetaMajorToDet     ,
+		     int*          &pSinglesFromAlphaLen, 
+		     vector<int* > &pSinglesFromAlpha   ,
+		     int*          &pSinglesFromBetaLen , 
+		     vector<int* > &pSinglesFromBeta    ,
+		     std::vector<Determinant>& pDets,
+		     int pStartIndex,
+		     int pNorbs,
+		     oneInt& pI1,
+		     twoInt& pI2,
+		     double& pcoreE,
+		     MatrixXx& pDiag) : 
+    AlphaMajorToBetaLen(pAlphaMajorToBetaLen),
+    AlphaMajorToBeta   (pAlphaMajorToBeta   ),
+    AlphaMajorToDet    (pAlphaMajorToDet    ),
+    BetaMajorToAlphaLen(pBetaMajorToAlphaLen),
+    BetaMajorToAlpha   (pBetaMajorToAlpha   ),
+    BetaMajorToDet     (pBetaMajorToDet     ),
+    SinglesFromAlphaLen(pSinglesFromAlphaLen),
+    SinglesFromAlpha   (pSinglesFromAlpha   ),
+    SinglesFromBetaLen (pSinglesFromBetaLen ),
+    SinglesFromBeta    (pSinglesFromBeta    ),
+    Dets               (pDets               ),
+    StartIndex         (pStartIndex         ),
+    Norbs              (pNorbs              ),
+    I1                 (pI1                 ),
+    I2                 (pI2                 ),
+    coreE              (pcoreE              ),
+    diag               (pDiag               ) {};
+
+  template <typename Derived>
+    void operator()(MatrixBase<Derived>& x, MatrixBase<Derived>& y) {
+    if (StartIndex >= Dets.size()) return;
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
+    int nprocs = mpigetsize(), proc = mpigetrank();
+    
+    size_t norbs = Norbs;
+
+    //diagonal element
+    for (size_t k=StartIndex; k<Dets.size(); k++) {
+      if (k%(nprocs) != proc) continue;
+      CItype hij = Dets[k].Energy(I1, I2, coreE);
+      y(k,0) += hij*x(k,0);
+    }
+
+    
+    //alpha-beta excitation
+    for (int i=0; i<AlphaMajorToBeta.size(); i++) {
+      
+      for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
+	
+	if (AlphaMajorToDet[i][ii]         < StartIndex || 
+	    AlphaMajorToDet[i][ii]%nprocs != proc         ) 
+	  continue;
+	
+	int Astring = i, 
+	  Bstring = AlphaMajorToBeta[i][ii], 
+	  DetI    = AlphaMajorToDet [i][ii];
+	
+	int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
+	//singles from Astring
+	for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	  int Asingle = SinglesFromAlpha[Astring][j];
+	  
+	  //if (Asingle > maxBToA) break;
+	  int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
+				     0                             , 
+				     BetaMajorToAlphaLen[Bstring]-1, 
+				     Asingle                       );
+	  if (index != -1 ) {
+	    int DetJ = BetaMajorToDet[Bstring][index];
+	    
+	    if (DetJ < DetI) {
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	      y(DetJ, 0) += hij*x(DetI,0);
+#ifdef Complex
+	      y(DetI,0) += conj(hij)*x(DetJ,0);
+#else
+	      y(DetI,0) += hij*x(DetJ,0);
+#endif
+	    }
+	  }
+	}
+
+      //single Alpha and single Beta
+      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
+
+	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
+	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
+	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
+	for (int k=0; k<SinglesFromBLen; k++) {
+	  int& Bsingle = SinglesFromBeta[Bstring][k];
+
+	  if (SearchStartIndex >= AlphaToBetaLen) break;
+	  /*
+	  auto itb = lower_bound(&AlphaMajorToBeta[Asingle][SearchStartIndex],
+				 &AlphaMajorToBeta[Asingle][AlphaToBetaLen]  ,
+				 Bsingle);
+
+	  if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle) {
+	    SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
+	  */
+	  int index=SearchStartIndex;
+	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
+
+	  SearchStartIndex = index;
+	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
+
+	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+
+	    if (DetJ < DetI) {
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	      y(DetJ, 0) += hij*x(DetI,0);
+#ifdef Complex
+	      y(DetI,0) += conj(hij)*x(DetJ,0);
+#else
+	      y(DetI,0) += hij*x(DetJ,0);
+#endif
+	    } //DetJ <Det I
+	  } //*itb == Bsingle
+	} //k 0->SinglesFromBeta
+      } //j singles fromAlpha
+
+
+      
+      //singles from Bstring
+      int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
+      for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
+	int Bsingle =  SinglesFromBeta   [Bstring][j];
+
+	//if (Bsingle > maxAtoB) break;
+	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
+				  0                             , 
+				  AlphaMajorToBetaLen[Astring]-1, 
+				  Bsingle                        );
+	
+	if (index != -1 ) {
+	  int DetJ = AlphaMajorToDet[Astring][index];
+	  
+	  if (DetJ < DetI) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	    y(DetJ, 0) += hij*x(DetI,0);
+#ifdef Complex
+	    y(DetI,0) += conj(hij)*x(DetJ,0);
+#else
+	    y(DetI,0) += hij*x(DetJ,0);
+#endif
+	  }
+	}
+      }
+      
+      
+      //double beta excitation
+      for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
+	int DetJ     = AlphaMajorToDet    [i][j];
+	
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  y(DetJ, 0) += hij*x(DetI,0);
+#ifdef Complex
+	  y(DetI,0) += conj(hij)*x(DetJ,0);
+#else
+	  y(DetI,0) += hij*x(DetJ,0);
+#endif
+	}
+      }
+      
+      //double Alpha excitation
+      for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
+	int DetJ      = BetaMajorToDet     [Bstring][j];
+	
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  y(DetJ, 0) += hij*x(DetI,0);
+#ifdef Complex
+	  y(DetI,0) += conj(hij)*x(DetJ,0);
+#else
+	  y(DetI,0) += hij*x(DetJ,0);
+#endif
+	}
+      }
+      
+      }
+    }
+    
+    
+  };
+};
 
 #endif

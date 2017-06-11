@@ -27,7 +27,7 @@ bool myfn(double i, double j);
 
 class compAbs {
  public:
-  bool operator()(const double& a, const double& b) const {
+  bool operator()(const float& a, const float& b) const {
     return abs(a) < abs(b);
   }
   bool operator()(const complex<double>& a, const complex<double>& b) const {
@@ -109,8 +109,8 @@ class twoIntHeatBath {
   //if the integrals are for the same spin you have to separately store (ia|jb) and (ib|ja)
   //for opposite spin you just have to store for a>b because the integral is (ia|jb) - (ib|ja)
   //now this class is made by just considering integrals that are smaller than threshhold
-  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > sameSpin;
-  std::map<std::pair<int,int>, std::multimap<double, std::pair<int,int>, compAbs > > oppositeSpin;
+  std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > sameSpin;
+  std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
   MatrixXd Singles;
 
   double epsilon;
@@ -123,17 +123,17 @@ class twoIntHeatBath {
   void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int norbs) {
     for (int i=0; i<orbs.size(); i++)
       for (int j=0;j<=i;j++) {
-	std::pair<int,int> IJ=make_pair(i,j);
+	std::pair<short,short> IJ=make_pair(i,j);
 	//sameSpin[IJ]=std::map<double, std::pair<int,int> >();
 	//oppositeSpin[IJ]=std::map<double, std::pair<int,int> >();
 	for (int a=0; a<norbs; a++) {
 	  for (int b=0; b<norbs; b++) {
 	    //opposite spin
 	    if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
-	      oppositeSpin[IJ].insert(pair<double, std::pair<int,int> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
+	      oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
 	    //samespin
 	    if (a>=b && fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a)) > epsilon) {
-	      sameSpin[IJ].insert(pair<double, std::pair<int,int> >( I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a), make_pair(a,b)));
+	      sameSpin[IJ].insert(pair<float, std::pair<short,short> >( I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a), make_pair(a,b)));
 				  //sameSpin[IJ][fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a))] = make_pair<int,int>(a,b);
 	    }
 	  }
@@ -158,12 +158,12 @@ class twoIntHeatBath {
 
 class twoIntHeatBathSHM {
  public:
-  double* sameSpinIntegrals;
-  double* oppositeSpinIntegrals;
+  float* sameSpinIntegrals;
+  float* oppositeSpinIntegrals;
   size_t* startingIndicesSameSpin;
   size_t* startingIndicesOppositeSpin;
-  int* sameSpinPairs;
-  int* oppositeSpinPairs;
+  short* sameSpinPairs;
+  short* oppositeSpinPairs;
   double* singleExcitation;
   MatrixXd Singles;
 

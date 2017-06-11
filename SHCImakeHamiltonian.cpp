@@ -396,6 +396,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       
       
     }
+    size_t max=0, min=0, avg=0;
     for (int i=0; i<AlphaMajorToBeta.size(); i++)
       {
 	vector<int> betacopy = AlphaMajorToBeta[i];
@@ -424,6 +425,33 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	
       }
 
+
+    double totalMemoryBm = 0, totalMemoryB=0, totalMemoryAm=0, totalMemoryA=0;
+    auto it = BetaNm1.begin();
+    for (;it != BetaNm1.end(); it++) {
+      totalMemoryBm += it->second.size();
+      totalMemoryBm += sizeof(HalfDet)/sizeof(int);
+    }
+    for (int i=0; i<BetaMajorToAlpha.size(); i++) {
+      totalMemoryB += 2.*BetaMajorToAlpha[i].size();
+      totalMemoryB += SinglesFromBeta[i].size();
+    }
+    
+    it = AlphaNm1.begin();
+    for (;it != AlphaNm1.end(); it++) {
+      totalMemoryAm += it->second.size();
+      totalMemoryAm += sizeof(HalfDet)/sizeof(int);
+    }
+    for (int i=0; i<AlphaMajorToBeta.size(); i++) {
+      totalMemoryA += 2.*AlphaMajorToBeta[i].size();
+      totalMemoryA += SinglesFromAlpha[i].size();
+    }
+    pout << endl;
+    pout << " helpers  "<<((totalMemoryAm)*sizeof(int))/1.e9;
+    pout << "   "<<((totalMemoryBm)*sizeof(int))/1.e9;
+    pout << "   "<<((totalMemoryA)*sizeof(int))/1.e9;
+    pout << "   "<<((totalMemoryB)*sizeof(int))/1.e9<<endl;
+    pout << BetaNm1.size()<<"  "<<BetaMajorToAlpha.size()<<"  "<<AlphaNm1.size()<<"  "<<AlphaMajorToBeta.size()<<endl;
   }
 }
 
@@ -675,12 +703,20 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 
 	  if (SearchStartIndex >= AlphaToBetaLen) break;
 
+	  /*
+	  auto itb = lower_bound(&AlphaMajorToBeta[Asingle][SearchStartIndex],
+				 &AlphaMajorToBeta[Asingle][AlphaToBetaLen]  ,
+				 Bsingle);
+
+	  if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle) {
+	    SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
+	  */
 	  int index=SearchStartIndex;
 	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
 
 	  SearchStartIndex = index;
 	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
-
+	    
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
 
 	    if (DetJ < DetI) {
