@@ -190,7 +190,6 @@ int main(int argc, char* argv[]) {
 			Dets[d].setocc(HFoccupied[d][i], true);
 		}
 	}
-
 	cout << "Point group: " << schd.pointGroup << endl; // TODO remove after debugging
 	cout << "Spin: " << schd.spin << endl;
 	cout << "Irrep: " << schd.irrep << endl;
@@ -199,7 +198,7 @@ int main(int argc, char* argv[]) {
 #ifndef Complex
 	symmetry molSym ( schd.pointGroup );
 	for ( int d=0; d < HFoccupied.size(); d++ ) {
-		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep, HFoccupied, Dets[d]);
+		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep, HFoccupied[d], Dets[d]);
 	}
 	cout << "Estimated Lowest Energy Det: " << Dets[0] << endl;
 #endif
