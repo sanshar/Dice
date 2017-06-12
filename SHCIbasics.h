@@ -30,7 +30,7 @@ class twoIntHeatBathSHM;
 class schedule;
 
 namespace SHCIbasics {
-  void SHMDetsFromDets(vector<Determinant>& Dets, Determinant* &SHMDets);
+
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
 			     vector<Determinant>& SortedDets,
 			     vector<vector<int> >& connections, 
@@ -80,6 +80,10 @@ namespace SHCIbasics {
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
 			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
 			       bool DoRDM=false);
+
+  vector<double> DoVariationalDirect(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
+				     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
+				     bool DoRDM=false);
 
   double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
 								 , double& E0, oneInt& I1, twoInt& I2,

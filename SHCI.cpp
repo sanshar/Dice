@@ -37,6 +37,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include "communicate.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
+#include "SHCIshm.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -63,6 +64,13 @@ string shciHelper;
 boost::interprocess::shared_memory_object DetsCISegment;
 boost::interprocess::mapped_region regionDetsCI;
 std::string shciDetsCI;
+boost::interprocess::shared_memory_object DavidsonSegment;
+boost::interprocess::mapped_region regionDavidson;
+std::string shciDavidson;
+boost::interprocess::shared_memory_object cMaxSegment;
+boost::interprocess::mapped_region regioncMax;
+std::string shcicMax;
+MPI_Comm shmcomm;
 
 void license() {
   pout << endl;
@@ -102,10 +110,30 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
   if (mpigetrank() == 0) readInput(inputFile, HFoccupied, schd);
+  if (DetLen%2 == 1) {
+    pout << "Change DetLen in global to an even number and recompile."<<endl;
+    exit(0);
+  }
+
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
+
+  MPI_Comm localComm;
+
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+		      MPI_INFO_NULL, &localComm);
+  int shmrank, localrank;
+  MPI_Comm_rank(localComm, &localrank);
+  if (localrank == 0)
+    MPI_Comm_split(MPI_COMM_WORLD, localrank, mpigetrank(), &shmcomm);
+  else
+    MPI_Comm_split(MPI_COMM_WORLD, localrank, mpigetrank(), &shmcomm);
+  MPI_Comm_rank(shmcomm, &shmrank);
+  MPI_Comm_free(&localComm);
 #endif
+  
+
   if (HFoccupied[0].size()%2 != 0 && schd.Trev !=0) {
     pout << "Cannot use time reversal symmetry for odd electron system."<<endl;
     schd.Trev = 0;
@@ -126,10 +154,14 @@ int main(int argc, char* argv[]) {
   string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciDavidson = "SHCIDavidsonshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shcicMax = "SHCIcMaxshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
   int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
   hHelpersSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciHelper.c_str(), boost::interprocess::read_write);
   DetsCISegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDetsCI.c_str(), boost::interprocess::read_write);
+  DavidsonSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDavidson.c_str(), boost::interprocess::read_write);
+  cMaxSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shcicMax.c_str(), boost::interprocess::read_write);
 
 
 
@@ -211,9 +243,6 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-
-  Determinant *SHMDets;
-  SHCIbasics::SHMDetsFromDets(Dets, SHMDets);
 
   if (mpigetrank() == 0) {
     for (int j=0; j<ci[0].rows(); j++)

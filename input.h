@@ -25,7 +25,7 @@ private:
   {
     ar & davidsonTol				\
       & davidsonTolLoose       			\
-      & startDirectDavidsonIter                 \
+      & DirectDavidson                          \
       & epsilon2				\
       & epsilon2Large                           \
       & SampleN					\
@@ -66,7 +66,7 @@ private:
 public:
   double davidsonTol;
   double davidsonTolLoose;
-  int startDirectDavidsonIter;
+  bool DirectDavidson;
   double epsilon2;
   double epsilon2Large;
   int SampleN;

@@ -735,6 +735,30 @@ namespace SHCISortMpiUtils {
     }
   }
 
+
+  void StitchDEH::RemoveOnlyDetsPresentIn(std::vector<Determinant>& SortedDets) {
+    vector<Determinant>::iterator vec_it = SortedDets.begin();
+    std::vector<Determinant>& Detcopy = *Det;
+
+    size_t uniqueSize = 0;
+    for (size_t i=0; i<Detcopy.size();) {
+      if (Detcopy[i] < *vec_it) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	i++; uniqueSize++;
+      }
+      else if (*vec_it < Detcopy[i] && vec_it != SortedDets.end())
+	vec_it ++;
+      else if (*vec_it < Detcopy[i] && vec_it == SortedDets.end()) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	i++; uniqueSize++;
+      }
+      else {
+	vec_it++; i++;
+      }
+    }
+    Det->resize(uniqueSize);
+  }
+
   void StitchDEH::RemoveDuplicates() {
     std::vector<Determinant>& Detcopy = *Det;
     std::vector<CItype>& Numcopy = *Num;
@@ -835,6 +859,7 @@ namespace SHCISortMpiUtils {
     present->resize(s);
     Energy->resize(s);
   }
+
 
   void StitchDEH::merge(const StitchDEH& s) {
     // Merges with disjoint set
