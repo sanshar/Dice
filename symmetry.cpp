@@ -150,19 +150,19 @@ int symmetry::getProduct(vector<int>& irreps) { //TODO test this
 		return symmetry::getProduct( symmetry::getProduct( irreps ), irrep );
 	}
 
-	else { return symmetry::getProduct( irreps[0], irreps[1] ); }
+	else { return symmetry::getProduct( irreps.at(0), irreps.at(0) ); }
 
 }
 
 
 int symmetry::getSymmetry( char* repArray, vector<int>& irrep) {
 	// Returns the irrep of the determinant with the symmetry of pointGroup.
-	int norbs = sizeof(irrep) / sizeof(irrep[0]) - 1;
+	int norbs = sizeof(irrep) / sizeof(irrep.at(0) - 1);
 	int old_irrep = 1;
 
 	for ( int i = 0; i < norbs; i++ ) {
 		if ( (int) repArray[i] - (int) '0' == 1 ) { // TODO Watch out for this.
-			old_irrep = getProduct( old_irrep, irrep[i] );
+			old_irrep = getProduct( old_irrep, irrep.at(i) );
 		}
 	}
 
@@ -185,12 +185,12 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 	int nDOrbs = occupied.size() - spin;
 	for ( int i=0; i < I1.norbs; i++ ) {
 		if ( i < nDOrbs ) {
-			Det.setocc(sort1Body[i].second, true);
+			Det.setocc(sort1Body.at(i).second, true);
 		}
 		else {
-			Det.setocc(sort1Body[i].second, false);
+			Det.setocc(sort1Body.at(i).second, false);
 		}
-		cout << i << " " << Det.getocc(sort1Body[i].second) << endl;
+		cout << i << " " << Det.getocc(sort1Body.at(i).second) << endl;
 	}
 
 	// Spin dependent population of remaining singly occupied orbitals.
@@ -201,7 +201,7 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 	else if ( spin == 1 ) {
 		// Find lowest energy orbital with targetIrrep
 		for ( int i = nDOrbs; i < I1.norbs; i++ ) {
-			if ( irrep[sort1Body[i].second] == targetIrrep &&
+			if ( irrep.at(sort1Body.at(i).second/2) == targetIrrep &&
 			  (Det.getocc(i) == false) ) {
 				Det.setocc( i, true );
 				return;
@@ -214,13 +214,13 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 
 	else if ( spin == 2 ) {
 		// Find lowest energy orbitals with the appropriate symmetry
-		for ( int i=nDOrbs; i < I1.norbs - 1; i++ ) {
-			for ( int j=i+1; j < I1.norbs; j++ ) {
+      for ( int i=nDOrbs; i < I1.norbs - 1; i++ ) {
+			  for ( int j=i+1; j < I1.norbs; j++ ) {
 				cout << i << " " << j << endl;
-				int irrep1 = irrep[sort1Body[i].second];
-				int irrep2 = irrep[sort1Body[j].second];
+				int irrep1 = irrep.at(sort1Body.at(i).second/2);
+				int irrep2 = irrep.at(sort1Body.at(j).second/2);
 				bool unocc = ( (Det.getocc(i) == false) &&
-				  (Det.getocc(j) == false) );
+				  (Det.getocc(j) == false) && (i/2 != j/2) );
 
 				cout << irrep1 << "x" << irrep2 << " = " << endl;
 				cout << symmetry::getProduct( irrep1, irrep2 ) << endl;
@@ -242,11 +242,12 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 			for ( int j=i+1; j < I1.norbs - 1; j++ ) {
 				for ( int k=j+1; k < I1.norbs; k++ ) {
 					vector<int> irreps (3);
-					irreps[0] = irrep[sort1Body[i].second];
-					irreps[1] = irrep[sort1Body[j].second];
-					irreps[2] = irrep[sort1Body[k].second];
+					irreps.at(0) = irrep.at(sort1Body.at(i).second/2);
+					irreps.at(1) = irrep.at(sort1Body.at(j).second/2);
+					irreps.at(2) = irrep.at(sort1Body.at(k).second/2);
 					bool unocc = ( (Det.getocc(i) == false) &&
-					  (Det.getocc(j) == false) && (Det.getocc(k) == false) );
+					  (Det.getocc(j) == false) && (Det.getocc(k) == false) &&
+            ( (i/2 != j/2) || (i/2 != k/2) || (j/2 != k/2) ) );
 
 					if ( symmetry::getProduct( irreps ) == targetIrrep && unocc )
 					{
@@ -270,16 +271,19 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 				for ( int k=j+1; k < I1.norbs - 1; k++ ) {
 					for ( int l=k+1; l < I1.norbs; l++ ) {
 						vector<int> irreps (4);
-						irreps[0] = irrep[sort1Body[i].second];
-						irreps[1] = irrep[sort1Body[j].second];
-						irreps[2] = irrep[sort1Body[k].second];
-						irreps[3] = irrep[sort1Body[l].second];
+						irreps.at(0) = irrep.at(sort1Body.at(i).second/2);
+						irreps.at(1) = irrep.at(sort1Body.at(j).second/2);
+						irreps.at(2) = irrep.at(sort1Body.at(k).second/2);
+						irreps.at(3) = irrep.at(sort1Body.at(l).second/2);
 						bool unocc = ( (Det.getocc(i) == false) &&
 						  (Det.getocc(j) == false) && (Det.getocc(k) == false)  &&
 						  (Det.getocc(k) == false) );
 
-						if ( symmetry::getProduct( irreps ) == targetIrrep && unocc )
-						{
+            bool diffOrbs = ( (i/2!=j/2) || (i/2!=k/2) || (i/2!=l/2) ||
+              (j/2!=k/2) || (j/2!=l/2) || (k/2!=l/2) );
+
+						if ( symmetry::getProduct( irreps ) == targetIrrep && unocc &&
+              diffOrbs ) {
 							Det.setocc( i, true );
 							Det.setocc( j, true );
 							Det.setocc( k, true );
