@@ -161,7 +161,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       MPI_Bcast(bcol, brows, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
       MPI_Bcast(bcol, 2*brows, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      //mpi::broadcast(world, &(bcol(0,0)), b.rows(), 0);
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #endif

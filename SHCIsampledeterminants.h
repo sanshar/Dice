@@ -29,7 +29,11 @@ namespace SHCIsampledeterminants {
   void setUpAliasMethod(MatrixXx& ci, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) ;
   int sample_N2_alias(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) ;
   int sample_N2_withoutalias(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts);
-  int sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts);
+  int sample_N(MatrixXx& ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts)
+;
+  void setUpAliasMethod(CItype *ci, int DetsSize, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) ;
+  int sample_N2_alias(CItype *ci, int DetsSize, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) ;
+
 };
 
 #endif

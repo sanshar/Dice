@@ -64,6 +64,9 @@ string shciHelper;
 boost::interprocess::shared_memory_object DetsCISegment;
 boost::interprocess::mapped_region regionDetsCI;
 std::string shciDetsCI;
+boost::interprocess::shared_memory_object SortedDetsSegment;
+boost::interprocess::mapped_region regionSortedDets;
+std::string shciSortedDets;
 boost::interprocess::shared_memory_object DavidsonSegment;
 boost::interprocess::mapped_region regionDavidson;
 std::string shciDavidson;
@@ -154,12 +157,14 @@ int main(int argc, char* argv[]) {
   string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciSortedDets = "SHCISortedDetsshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDavidson = "SHCIDavidsonshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shcicMax = "SHCIcMaxshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
   int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
   hHelpersSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciHelper.c_str(), boost::interprocess::read_write);
   DetsCISegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDetsCI.c_str(), boost::interprocess::read_write);
+  SortedDetsSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciSortedDets.c_str(), boost::interprocess::read_write);
   DavidsonSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDavidson.c_str(), boost::interprocess::read_write);
   cMaxSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shcicMax.c_str(), boost::interprocess::read_write);
 
@@ -257,6 +262,14 @@ int main(int argc, char* argv[]) {
 
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 
+  Determinant* SHMDets;
+  SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+  int DetsSize = Dets.size();
+#ifndef SERIAL
+  mpi::broadcast(world, DetsSize, 0);
+#endif
+  Dets.clear();
+
 
   if (mpigetrank() == 0) {
     std::string efile;
@@ -276,10 +289,10 @@ int main(int argc, char* argv[]) {
   for (int root=0; root<schd.nroots; root++) {
     pout << "State :"<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
-    for (int i=0; i<min(6, static_cast<int>(Dets.size())); i++) {
+    for (int i=0; i<min(6, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
-      pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << Dets[m]<<endl;
+      pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;
       //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
@@ -291,20 +304,21 @@ int main(int argc, char* argv[]) {
   }
 
 
+  /*
   if (schd.quasiQ) {
     double bkpepsilon2 = schd.epsilon2;
     schd.epsilon2 = schd.quasiQEpsilon;
     for (int root=0; root<schd.nroots;root++) {
-      E0[root] += SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, Psi1Norm, true);
+      E0[root] += SHCIbasics::DoPerturbativeDeterministic(SHMDets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, Psi1Norm, true);
       ci[root] = ci[root]/ci[root].norm();
     }
     schd.epsilon2 = bkpepsilon2;
   }
+  */
 
 #ifndef SERIAL
   world.barrier();
 #endif
-  //boost::interprocess::shared_memory_object::remove(shciint2.c_str());
 
   vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
 #ifdef Complex
@@ -376,7 +390,9 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for (int root=0; root<schd.nroots;root++) {
-      ePT = SHCIbasics::DoPerturbativeDeterministic(Dets, ci[root], E0[root], I1, I2,
+      CItype *ciroot;
+      SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
+      ePT = SHCIbasics::DoPerturbativeDeterministic(SHMDets, ciroot, DetsSize, E0[root], I1, I2,
 						    I2HBSHM, irrep, schd, coreE, nelec,
 						    root, vdVector, Psi1Norm);
       ePT += E0[root];
@@ -392,7 +408,9 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for (int root=0; root<schd.nroots;root++) {
-      ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Dets, ci[root], E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      CItype *ciroot;
+      SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
+      ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       E0[root] += ePT;
       //pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
       if (mpigetrank() == 0) fwrite( &E0[root], 1, sizeof(double), f);

@@ -736,6 +736,66 @@ namespace SHCISortMpiUtils {
   }
 
 
+  void StitchDEH::RemoveDetsPresentIn(Determinant *SortedDets, int DetsSize) {
+    int vecid = 0;
+    std::vector<Determinant>& Detcopy = *Det;
+    std::vector<CItype>& Numcopy = *Num;
+    std::vector<CItype>& Num2copy = *Num2;
+    std::vector<char>& presentcopy = *present;
+    std::vector<double>& Ecopy = *Energy;
+    //if (extra_info) {
+    std::vector<std::vector<int> >& Vcopy = *var_indices;
+    std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
+    //}
+
+    size_t uniqueSize = 0;
+    for (size_t i=0; i<Detcopy.size();) {
+      if (Detcopy[i] < SortedDets[vecid]) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	Num->operator[](uniqueSize) = Numcopy[i];
+	if (Num2->size() != 0)
+	  Num2->operator[](uniqueSize) = Num2copy[i];
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = presentcopy[i];
+	Energy->operator[](uniqueSize) = Ecopy[i];
+	if (extra_info) {
+	  var_indices->operator[](uniqueSize) = Vcopy[i];
+	  orbDifference->operator[](uniqueSize) = Ocopy[i];
+	}
+	i++; uniqueSize++;
+      }
+      else if (SortedDets[vecid] < Detcopy[i] && vecid != DetsSize)
+	vecid++;
+      else if (SortedDets[vecid] < Detcopy[i] && vecid == DetsSize) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	Num->operator[](uniqueSize) = Numcopy[i];
+	if (Num2->size() != 0)
+	  Num2->operator[](uniqueSize) = Num2copy[i];
+	if (present->size() != 0)
+	  present->operator[](uniqueSize) = presentcopy[i];
+	Energy->operator[](uniqueSize) = Ecopy[i];
+	if (extra_info) {
+	  var_indices->operator[](uniqueSize) = Vcopy[i];
+	  orbDifference->operator[](uniqueSize) = Ocopy[i];
+	}
+	i++; uniqueSize++;
+      }
+      else {
+	vecid++; i++;
+      }
+    }
+    Det->resize(uniqueSize); Num->resize(uniqueSize);
+    if (Num2->size() != 0)
+      Num2->resize(uniqueSize);
+    if (present->size() != 0)
+      present->resize(uniqueSize);//operator[](uniqueSize) = presentcopy->at(i);
+    Energy->resize(uniqueSize);
+    if (extra_info) {
+      var_indices->resize(uniqueSize); orbDifference->resize(uniqueSize);
+    }
+  }
+
+
   void StitchDEH::RemoveOnlyDetsPresentIn(std::vector<Determinant>& SortedDets) {
     vector<Determinant>::iterator vec_it = SortedDets.begin();
     std::vector<Determinant>& Detcopy = *Det;

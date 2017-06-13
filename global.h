@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License along with thi
 #endif
 
 typedef unsigned short ushort;
-const int DetLen = 6;
+const int DetLen = 4;
 extern double startofCalc;
 double getTime();
 
@@ -44,6 +44,10 @@ extern std::string shciHelper;
 extern boost::interprocess::shared_memory_object DetsCISegment;
 extern boost::interprocess::mapped_region regionDetsCI;
 extern std::string shciDetsCI;
+
+extern boost::interprocess::shared_memory_object SortedDetsSegment;
+extern boost::interprocess::mapped_region regionSortedDets;
+extern std::string shciSortedDets;
 
 extern boost::interprocess::shared_memory_object DavidsonSegment;
 extern boost::interprocess::mapped_region regionDavidson;
