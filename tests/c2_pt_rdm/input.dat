@@ -1,5 +1,5 @@
 nocc 8
-0 1  4 5  8 9  14 16
+0 1  4 5  8 9  14 15
 end
 
 sampleN 200
@@ -17,5 +17,5 @@ deterministic
 noio
 maxiter 12
 pointGroup d2h
-spin 2
+spin 0
 irrep 1

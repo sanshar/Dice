@@ -16,6 +16,7 @@
 #include <fstream>
 #include "Determinants.h"
 #include "SHCImakeHamiltonian.h"
+#include "SHCIgetdeterminants.h"
 #include "SHCIrdm.h"
 #include "input.h"
 #include "integral.h"
@@ -190,17 +191,46 @@ int main(int argc, char* argv[]) {
 			Dets[d].setocc(HFoccupied[d][i], true);
 		}
 	}
-	cout << "Point group: " << schd.pointGroup << endl; // TODO remove after debugging
-	cout << "Spin: " << schd.spin << endl;
-	cout << "Irrep: " << schd.irrep << endl;
-	cout << "Debugging test, printing HF det: " << Dets[0] << endl;
+
+	cout << Dets[0] << endl;
 
 #ifndef Complex
 	symmetry molSym ( schd.pointGroup );
+	vector<Determinant> tempDets ( Dets );
 	for ( int d=0; d < HFoccupied.size(); d++ ) {
-		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep, HFoccupied[d], Dets[d]);
+		// Guess the lowest energy det with given symmetry from one body integrals.
+		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
+		  HFoccupied.at(d), tempDets.at(d));
+		cout << tempDets[d] << endl; // TODO
+
+		// Generate list of connected determinants to guess determinant.
+		SHCIgetdeterminants::getDeterminantsVariational(tempDets.at(d), 0.0001, 1, 0.0,
+		  I1, I2, I2HBSHM, irrep, coreE, 0, tempDets, schd, 0, nelec );
+
+		// Check all connected and find lowest energy.
+		int counter = 0;
+		for ( int cd = 0; cd < tempDets.size(); cd++ ) {
+			// cout << tempDets.at(cd) << endl;
+			if ( abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) == 0 ) {
+				cout << tempDets.at(cd).Energy(I1,I2,coreE) << endl;
+				cout << tempDets.at(cd) << endl;
+				counter++;
+				// if ( Dets.at(d).Energy(I1,I2,coreE) >
+				//   tempDets.at(cd).Energy(I1,I2,coreE) ) {
+				//
+				// }
+
+			}
+			// cout << Dets.at(d).Energy(I1,I2,coreE) << " " << tempDets.at(cd).Energy(I1,I2,coreE) << tempDets.at(cd) << endl;
+
+			// if ( Dets.at(d).Energy(I1,I2,coreE) > tempDets.at(cd).Energy(I1,I2,coreE) ) {
+			//  Dets.at(d) = tempDets.at(cd);
+			// }
+		}
+		cout << counter << " " << tempDets.size() << endl;
+		cout << "Final predicted lowest energy det: " << Dets[d] << endl;
 	}
-	cout << "Estimated Lowest Energy Det: " << Dets[0] << endl;
+
 #endif
 
 	if (mpigetrank() == 0) {

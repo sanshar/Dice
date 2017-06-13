@@ -190,7 +190,6 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 		else {
 			Det.setocc(sort1Body.at(i).second, false);
 		}
-		cout << i << " " << Det.getocc(sort1Body.at(i).second) << endl;
 	}
 
 	// Spin dependent population of remaining singly occupied orbitals.
@@ -214,16 +213,13 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 
 	else if ( spin == 2 ) {
 		// Find lowest energy orbitals with the appropriate symmetry
-      for ( int i=nDOrbs; i < I1.norbs - 1; i++ ) {
-			  for ( int j=i+1; j < I1.norbs; j++ ) {
-				cout << i << " " << j << endl;
+		for ( int i=nDOrbs; i < I1.norbs - 1; i++ ) {
+			for ( int j=i+1; j < I1.norbs; j++ ) {
 				int irrep1 = irrep.at(sort1Body.at(i).second/2);
 				int irrep2 = irrep.at(sort1Body.at(j).second/2);
 				bool unocc = ( (Det.getocc(i) == false) &&
 				  (Det.getocc(j) == false) && (i/2 != j/2) );
 
-				cout << irrep1 << "x" << irrep2 << " = " << endl;
-				cout << symmetry::getProduct( irrep1, irrep2 ) << endl;
 				if ( symmetry::getProduct( irrep1, irrep2 ) == targetIrrep && unocc ) {
 					Det.setocc( i, true );
 					Det.setocc( j, true );
@@ -247,7 +243,7 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 					irreps.at(2) = irrep.at(sort1Body.at(k).second/2);
 					bool unocc = ( (Det.getocc(i) == false) &&
 					  (Det.getocc(j) == false) && (Det.getocc(k) == false) &&
-            ( (i/2 != j/2) || (i/2 != k/2) || (j/2 != k/2) ) );
+					  ( (i/2 != j/2) || (i/2 != k/2) || (j/2 != k/2) ) );
 
 					if ( symmetry::getProduct( irreps ) == targetIrrep && unocc )
 					{
@@ -279,11 +275,11 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 						  (Det.getocc(j) == false) && (Det.getocc(k) == false)  &&
 						  (Det.getocc(k) == false) );
 
-            bool diffOrbs = ( (i/2!=j/2) || (i/2!=k/2) || (i/2!=l/2) ||
-              (j/2!=k/2) || (j/2!=l/2) || (k/2!=l/2) );
+						bool diffOrbs = ( (i/2!=j/2) || (i/2!=k/2) || (i/2!=l/2) ||
+						  (j/2!=k/2) || (j/2!=l/2) || (k/2!=l/2) );
 
 						if ( symmetry::getProduct( irreps ) == targetIrrep && unocc &&
-              diffOrbs ) {
+						  diffOrbs ) {
 							Det.setocc( i, true );
 							Det.setocc( j, true );
 							Det.setocc( k, true );
