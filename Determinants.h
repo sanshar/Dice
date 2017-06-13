@@ -24,6 +24,14 @@ class twoInt;
 
 using namespace std;
 
+inline int DeterminantToIntegral(int i) {
+  return (i < 64*(DetLen/2)) ? 2*i : 2*(i - 64*(DetLen/2))+1;
+}
+
+inline int IntegralToDeterminant(int i) {
+  return i/2 + (DetLen/2)*64*(i%2);
+}
+
 inline int BitCount (long x)
 {
   x = (x & 0x5555555555555555ULL) + ((x >> 1) & 0x5555555555555555ULL);
@@ -137,6 +145,9 @@ class HalfDet {
 
 };
 
+
+//to the outside world 0,1,2,3... are 0a,0b,1a,1b orbitals (integral convention)
+//but internally we store alpha beta strings (determinant convention)
 class Determinant {
 
  private:
@@ -173,9 +184,15 @@ class Determinant {
 
   double Energy(oneInt& I1, twoInt& I2, double& coreE);
   static void initLexicalOrder(int nelec);
-  void parity(int& i, int& j, int& a, int& b, double& sgn) ;
-  void parity(const int& start, const int& end, double& parity) {
 
+  //i and a are given with integral convention
+  void parity(int& i, int& j, int& a, int& b, double& sgn) ;
+
+
+  //i and a are given with integral convention
+  void parity(const int& s, const int& e, double& parity) {
+    int sD = IntegralToDeterminant(s), eD = IntegralToDeterminant(e);
+    int start = min(sD, eD), end = max(sD, eD);
     long one = 1;
     long mask = (one<< (start%64))-one;
     long result = repr[start/64]&mask;
@@ -191,14 +208,15 @@ class Determinant {
 
 
     parity *= (-2.*(nonZeroBits%2)+1);
-    if (getocc(start)) parity *= -1.;
+    if (getoccDeterminant(start)) parity *= -1.;
 
     return;
   }
 
-
+  //i and a are given with integral convention
   CItype Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2);
 
+  //i, j, a, b are given with integral convention
   CItype Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
 
 
@@ -206,7 +224,7 @@ class Determinant {
     size_t order = 0;
     int pnelec = 0;
     long one = 1;
-    for(int i=0; i<EffDetLen; i++) {
+    for(int i=0; i<DetLen; i++) {
       long reprBit = repr[i];
       while (reprBit != 0) {
 	int pos = __builtin_ffsl(reprBit);
@@ -223,13 +241,14 @@ class Determinant {
     return getLexicalOrder();
   }
 
+  
+  //in standard form alpha string > beta string
   bool isStandard() {
     if (!hasUnpairedElectrons()) return true;
-    
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      if (repr[i] < (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return false;
-      else if (repr[i] > (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return true;
+  
+    for (int i=DetLen/2-1; i>=0; i--) {
+      if (repr[i] < repr[i+DetLen/2]) return false;
+      else if (repr[i] > repr[i+DetLen/2]) return true;
     }
     cout << "Error finding standard for determinant "<<*this<<endl;
     cout << hasUnpairedElectrons()<<endl;
@@ -237,56 +256,29 @@ class Determinant {
   }
 
   bool hasUnpairedElectrons() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      if ( ((repr[i]&even)<<1) != (repr[i]&odd)) return true;
-    }
+    for (int i=DetLen/2-1; i>=0; i--) 
+      if (repr[i] != repr[i+DetLen/2]) return true;
     return false;
   }
 
   void flipAlphaBeta() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=0; i<EffDetLen; i++) 
-      repr[i] = ((repr[i]&even)<<1) + ((repr[i]&odd)>>1);
+    long temp;
+    for (int i=DetLen/2-1; i>=0; i--) {
+      temp = repr[i];
+      repr[i] = repr[i+DetLen/2];
+      repr[i+DetLen/2] = temp;
+    }
   }
 
-  double parityOfFlipAlphaBeta() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA; long temp=0;
-    int numpaired=0;
-    for (int i=0; i<EffDetLen; i++) {
-      temp = ((repr[i]&even)<<1)&repr[i];
-      numpaired += BitCount( temp);
-    }
-    double parity1= numpaired%2 == 0 ? 1.0 : -1.0; 
-    if (Nbeta()%2==0) return parity1;
-    else return -1.*parity1;
-  }
 
   void makeStandard() {
     if (!isStandard())
       flipAlphaBeta();
   }
 
-  bool connected1Alpha1Beta(const Determinant& d) const {
-    int ndiffAlpha = 0, ndiffBeta = 0; long u;
-    //ulong even = 12297829382473034410, odd = 6148914691236517205;
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=0; i<EffDetLen; i++) {
-      u = (repr[i] ^ d.repr[i])&even;
-      ndiffAlpha += BitCount(u);
-      u = (repr[i] ^ d.repr[i])&odd;
-      ndiffBeta += BitCount(u);
-      //if (ndiffAlpha > 2 || ndiffBeta > 2) return false;
-    }
-    if (ndiffAlpha == 2 && ndiffBeta == 2) return true;
-
-    return false;
-
-  }
-
   int Noccupied() const {
     int nelec = 0;
-    for (int i=0; i<EffDetLen; i++) {
+    for (int i=0; i<DetLen; i++) {
       nelec += BitCount(repr[i]);
     }
     return nelec;
@@ -295,20 +287,16 @@ class Determinant {
 
   int Nalpha() const {
     int nalpha = 0;
-    long alleven = 0x5555555555555555;
-    for (int i=0; i<EffDetLen; i++) {
-      long even = repr[i] & alleven;
-      nalpha += BitCount(even);
+    for (int i=0; i<DetLen/2; i++) {
+      nalpha += BitCount(repr[i]);
     }
     return nalpha;
   }
 
   int Nbeta() const {
     int nbeta = 0;
-    long allodd = 0xAAAAAAAAAAAAAAAA;  ;
-    for (int i=0; i<EffDetLen; i++) {
-      long odd = repr[i] & allodd;
-      nbeta += BitCount(odd);
+    for (int i=DetLen/2; i<DetLen; i++) {
+      nbeta += BitCount(repr[i]);
     }
     return nbeta;
   }
@@ -317,35 +305,29 @@ class Determinant {
   bool connected(const Determinant& d) const {
     int ndiff = 0; long u;
 
-    for (int i=0; i<EffDetLen; i++) {
+    for (int i=0; i<DetLen; i++) {
       ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
     return ndiff<=4;
       //return true;
   }
 
-  //Is the excitation between *this and d less than equal to 2.
   bool connectedToFlipAlphaBeta(const Determinant& d) const {
-    int ndiff = 0; long u;
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-
-    for (int i=0; i<EffDetLen; i++) {
-      u = repr[i] ^ ( ( (d.repr[i]&even)<<1) + ((d.repr[i]&odd)>>1));
-      ndiff += BitCount(u);
-      //if (ndiff > 4) return false;
+    int ndiff=0;
+    for (int i=0; i<DetLen/2; i++) {
+      ndiff += BitCount(repr[i] ^ d.repr[i+DetLen/2]);
+    }
+    for (int i=0; i<DetLen/2; i++) {
+      ndiff += BitCount(repr[i+DetLen/2] ^ d.repr[i]);
     }
     return ndiff<=4;
-      //return true;
-    //Determinant dcopy = d;
-    //dcopy.flipAlphaBeta();
-    //return connected(dcopy);
   }
 
   //Get the number of electrons that need to be excited to get determinant d from *this determinant
   //e.g. single excitation will return 1
   int ExcitationDistance(const Determinant& d) const {
     int ndiff = 0; 
-    for (int i=0; i<EffDetLen; i++) {
+    for (int i=0; i<DetLen; i++) {
       ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
     return ndiff/2;
@@ -354,10 +336,8 @@ class Determinant {
   //Get HalfDet with just the alpha string
   HalfDet getAlpha() const {
     HalfDet d;
-    for (int i=0; i<EffDetLen; i++)
-      for (int j=0; j<32; j++) {
-	d.setocc(i*32+j, getocc(i*64+j*2));
-      }
+    for (int i=0; i<DetLen/2; i++)
+      d.repr[i] = repr[i];
     return d;
   }
 
@@ -365,16 +345,15 @@ class Determinant {
   //get HalfDet with just the beta string
   HalfDet getBeta() const {
     HalfDet d;
-    for (int i=0; i<EffDetLen; i++)
-      for (int j=0; j<32; j++)
-	d.setocc(i*32+j, getocc(i*64+j*2+1));
+    for (int i=0; i<DetLen/2; i++)
+      d.repr[i] = repr[i+DetLen/2];
     return d;
   }
 
-
+  /******* CHANGE THIS BACK
   //the comparison between determinants is performed
   bool operator<(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--) {
+    for (int i=DetLen-1; i>=0 ; i--) {
       if (repr[i] < d.repr[i]) return true;
       else if (repr[i] > d.repr[i]) return false;
     }
@@ -383,14 +362,29 @@ class Determinant {
 
   //check if the determinants are equal
   bool operator==(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--)
+    for (int i=DetLen-1; i>=0 ; i--)
       if (repr[i] != d.repr[i]) return false;
+    return true;
+  }
+  */
+  bool operator<(const Determinant& d) const {
+    for (int i=norbs-1; i>=0; i--) {
+      if (getocc(i) && !d.getocc(i)) return false;
+      else if (!getocc(i) && d.getocc(i)) return true;
+    }
+    return false;
+  }
+  bool operator==(const Determinant& d) const {
+    for (int i=norbs-1; i>=0; i--) {
+      if (getocc(i) && !d.getocc(i)) return false;
+      else if (!getocc(i) && d.getocc(i)) return false;
+    }
     return true;
   }
 
   //set the occupation of the ith orbital
-  void setocc(int i, bool occ) {
-    //assert(i< norbs);
+  void setocc(int I, bool occ) {
+    int i = IntegralToDeterminant(I);
     long Integer = i/64, bit = i%64, one=1;
     if (occ)
       repr[Integer] |= one << bit;
@@ -399,9 +393,7 @@ class Determinant {
   }
 
 
-  //get the occupation of the ith orbital
-  bool getocc(int i) const {
-    //asser(i<norbs);
+  bool getoccDeterminant(int i) const {
     long Integer = i/64, bit = i%64, reprBit = repr[Integer];
     if(( reprBit>>bit & 1) == 0)
       return false;
@@ -409,9 +401,17 @@ class Determinant {
       return true;
   }
 
-  //the represenation where each char represents an orbital
-  //have to be very careful that the repArray is properly allocated with enough space
-  //before it is passed to this function
+
+  //get the occupation of the ith orbital
+  bool getocc(int I) const {
+    int i = IntegralToDeterminant(I);
+    long Integer = i/64, bit = i%64, reprBit = repr[Integer];
+    if(( reprBit>>bit & 1) == 0)
+      return false;
+    else
+      return true;
+  }
+
   void getRepArray(char* repArray) const {
     for (int i=0; i<norbs; i++) {
       if (getocc(i)) repArray[i] = 1;
@@ -438,11 +438,12 @@ class Determinant {
     return os;
   }
 
+
   //returns integer array containing the closed and open orbital indices
   int getOpenClosed(unsigned short* open, unsigned short* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed[cindex] = i; cindex++;}
+      if (getocc(i)) {closed[cindex] = i; cindex++;} 
       else {open[oindex] = i; oindex++;}
     }
     return cindex;
@@ -452,8 +453,8 @@ class Determinant {
   void getOpenClosed(vector<int>& open, vector<int>& closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
-      else {open.at(oindex) = i; oindex++;}
+      if (getocc(i)) {closed[cindex] = i; cindex++;} 
+      else {open[oindex] = i; oindex++;}
     }
   }
 
@@ -461,7 +462,7 @@ class Determinant {
   int getOpenClosed(int* open, int* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed[cindex] = i; cindex++;}
+      if (getocc(i)) {closed[cindex] = i; cindex++;} 
       else {open[oindex] = i; oindex++;}
     }
     return cindex;

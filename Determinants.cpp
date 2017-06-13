@@ -26,31 +26,19 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
 			   double& coreE) {
   if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
       dk.hasUnpairedElectrons()) {
-    Determinant detcpy = dk;
-    size_t orbDiff;
-    detcpy.flipAlphaBeta();
-    double parity = dk.parityOfFlipAlphaBeta();
-    CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
-    hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+    hij = (hij + Determinant::Trev*hij)/pow(2.,0.5);
   }
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
 	   !dk.hasUnpairedElectrons()) {
-    Determinant detcpy = dj;
-    size_t orbDiff;
-    detcpy.flipAlphaBeta();
-    double parity = dj.parityOfFlipAlphaBeta();
-    CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
-    hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+    hij = (hij + Determinant::Trev*hij)/pow(2.,0.5);
   }
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
 	   && dk.hasUnpairedElectrons()) {
     Determinant detcpyk = dk;
     size_t orbDiff;
     detcpyk.flipAlphaBeta();
-    double parityk = dk.parityOfFlipAlphaBeta();
     CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
-    CItype hijCopy2, hijCopy3;
-    hij = hij + Determinant::Trev*parityk*hijCopy1;
+    hij = hij + Determinant::Trev*hijCopy1;
 
   }
 }
@@ -113,11 +101,12 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
   double energy = 0.0;
   size_t one = 1;
   vector<int> closed;
-  for(int i=0; i<EffDetLen; i++) {
+  for(int i=0; i<DetLen; i++) {
     long reprBit = repr[i];
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
-      closed.push_back(i*64+pos-1);
+      int fullbit = i*64+pos-1;
+      closed.push_back(DeterminantToIntegral(fullbit));
       reprBit &= ~(one<<(pos-1));
     }
   }
@@ -162,19 +151,9 @@ void Determinant::initLexicalOrder(int nelec) {
   }
 }
 
-double parity(char* d, int& sizeA, int& i) {
-  double sgn = 1.;
-  for (int j=0; i<sizeA; j++) {
-    if (j >= i)
-      break;
-    if (d[j] != 0)
-      sgn *= -1;
-  }
-  return sgn;
-}
 
 
-//i->a and j->b
+//i->a and j->b, all integral format
 void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
   parity(min(i, a), max(i,a), sgn);
   setocc(i, false); setocc(a,true);
@@ -183,17 +162,16 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
   return;
 }
 
+//i,j,a,b are in integral format
 CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
 
   double sgn = 1.0;
-  int I = min(i,j), J= max(i,j), A= min(a,b), B = max(a,b);
-  parity(min(I, A), max(I,A), sgn);
-  parity(min(J, B), max(J,B), sgn);
-  if(A>J || B<I) sgn *= -1.;
-  return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
+  parity(i,j,a,b, sgn);
+  return sgn*(I2(a,i,b,j) - I2(a,j,b,i));
 }
 
 
+//a, i are in integral format
 CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed, int& nclosed) {
   //int a = cre[0], i = des[0];
   double sgn=1.0;
@@ -208,19 +186,20 @@ CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed, int& nclos
   return energy*sgn;
 }
 
-
+//a,i are in integral format
 CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
   double sgn = 1.0;
   parity(min(a,i), max(a,i), sgn);
 
   CItype energy = I1(a,i);
   long one = 1;
-  for (int I=0; I<EffDetLen; I++) {
+  for (int I=0; I<DetLen; I++) {
 
     long reprBit = repr[I];
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
-      int j = I*64+pos-1;
+      int jtemp = I*64+pos-1;
+      int j = DeterminantToIntegral(jtemp);
       energy += (I2(a,i,j,j) - I2(a,j,j,i));
       reprBit &= ~(one<<(pos-1));
     }
@@ -234,20 +213,20 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
   int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
   cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
 
-  for (int i=0;i<Determinant::EffDetLen;i++) {
+  for (int i=0;i<DetLen;i++) {
     u = bra.repr[i] ^ ket.repr[i];
     b = u & bra.repr[i]; //the cre bits
     k = u & ket.repr[i]; //the des bits
 
     while(b != 0) {
       int pos = __builtin_ffsl(b);
-      cre[ncre] = pos-1+i*64;
+      cre[ncre] = DeterminantToIntegral(pos-1+i*64);
       ncre++;
       b &= ~(one<<(pos-1));
     }
     while(k != 0) {
       int pos = __builtin_ffsl(k);
-      des[ndes] = pos-1+i*64;
+      des[ndes] = DeterminantToIntegral(pos-1+i*64);
       ndes++;
       k &= ~(one<<(pos-1));
     }
