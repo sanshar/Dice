@@ -50,7 +50,7 @@ namespace SHCImakeHamiltonian {
 			    vector<vector<int> >& BetaMajorToDet,
 			    vector< vector<int> >& SinglesFromAlpha,
 			    vector< vector<int> >& SinglesFromBeta,
-			    std::vector<Determinant>& Dets,
+			    Determinant *Dets, int DetsSize,
 			    int StartIndex);
 
   void MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBeta,

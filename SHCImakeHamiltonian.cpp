@@ -322,7 +322,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 					       vector<vector<int> >& BetaMajorToDet,
 					       vector< vector<int> >& SinglesFromAlpha,
 					       vector< vector<int> >& SinglesFromBeta,
-					       std::vector<Determinant>& Dets,
+					       Determinant *Dets, int DetsSize,
 					       int StartIndex)
 {
   //ith vector of AlphaMajor contains all Determinants that have
@@ -333,9 +333,9 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 #endif
 
   if (mpigetrank() == 0) {
-    for (int i=StartIndex; i<Dets.size(); i++) {
+    for (int i=StartIndex; i<DetsSize; i++) {
       HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
-      
+
       auto itb = BetaN.find(db);
       if (itb == BetaN.end()) {
 	auto ret = BetaN.insert( std::pair<HalfDet, int>(db, BetaMajorToDet.size()));
@@ -446,6 +446,8 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       totalMemoryA += 2.*AlphaMajorToBeta[i].size();
       totalMemoryA += SinglesFromAlpha[i].size();
     }
+    pout << BetaN.size()<<"  "<<AlphaN.size()<<endl;
+    pout << totalMemoryA<<"  "<<totalMemoryB<<"  "<<totalMemoryAm<<"  "<<totalMemoryBm<<endl;
     */
   }
 }

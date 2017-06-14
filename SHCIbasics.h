@@ -31,16 +31,23 @@ class schedule;
 
 namespace SHCIbasics {
 
+  void writeHelperIntermediate( std::map<HalfDet, int >& BetaN,
+				std::map<HalfDet, int >& AlphaN,
+				std::map<HalfDet, vector<int> >& BetaNm1,
+				std::map<HalfDet, vector<int> >& AlphaNm1, 
+				schedule& schd, int iter);
+  
+  void readHelperIntermediate(std::map<HalfDet, int >& BetaN,
+			      std::map<HalfDet, int >& AlphaN,
+			      std::map<HalfDet, vector<int> >& BetaNm1,
+			      std::map<HalfDet, vector<int> >& AlphaNm1, 
+			      schedule& schd, int iter);
+  
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     vector<Determinant>& SortedDets,
 			     vector<vector<int> >& connections, 
 			     vector<vector<size_t> >& orbdifference,
 			     vector<vector<CItype> >& Helements,
 			     vector<double>& E0, bool& converged, schedule& schd,
-			     std::map<HalfDet, int >& BetaN,
-			     std::map<HalfDet, int >& AlphaN,
-			     std::map<HalfDet, vector<int> >& BetaNm1,
-			     std::map<HalfDet, vector<int> >& AlphaNm1,
 			     vector<vector<int> >& AlphaMajorToBeta,
 			     vector<vector<int> >& AlphaMajorToDet,
 			     vector<vector<int> >& BetaMajorToAlpha,
@@ -49,15 +56,10 @@ namespace SHCIbasics {
 			     vector<vector<int> >& SinglesFromBeta);
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     vector<Determinant>& SortedDets,
 			     vector<vector<int> >& connections, 
 			     vector<vector<size_t> >& orbdifference,
 			     vector<vector<CItype> >& Helements,
 			     vector<double>& E0, bool converged, schedule& schd,
-			     std::map<HalfDet, int >& BetaN,
-			     std::map<HalfDet, int >& AlphaN,
-			     std::map<HalfDet, vector<int> >& BetaNm1,
-			     std::map<HalfDet, vector<int> >& AlphaNm1,
 			     vector<vector<int> >& AlphaMajorToBeta,
 			     vector<vector<int> >& AlphaMajorToDet,
 			     vector<vector<int> >& BetaMajorToAlpha,
@@ -65,13 +67,13 @@ namespace SHCIbasics {
 			     vector< vector<int> >& SinglesFromAlpha,
 			     vector<vector<int> >& SinglesFromBeta);
 
-  void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+  void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 			      vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			      vector<vector<CItype> >& Helements,
 			      vector<double>& E0, bool converged, schedule& schd,
 			      std::map<HalfDet, std::vector<int> >& BetaN,
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
-  void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+  void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 			     vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			     vector<vector<CItype> >& Helements,
 			     vector<double>& E0, bool& converged, schedule& schd,

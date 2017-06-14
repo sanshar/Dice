@@ -891,15 +891,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   boost::mpi::communicator world;
 #endif
 
-  Determinant* SHMDets;
+  Determinant* SHMDets, *SortedDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   if (proc != 0) Dets.resize(0);
-  std::vector<Determinant> SortedDets; //only proc 1 has it
+  std::vector<Determinant> SortedDetsvec; //only proc 1 has it
   if (mpigetrank() == 0) {
-    SortedDets = Dets; 
-    std::sort(SortedDets.begin(), SortedDets.end());
+    SortedDetsvec = Dets; 
+    std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
   }
-  int SortedDetsSize = SortedDets.size(), DetsSize = Dets.size();
+  int SortedDetsSize = SortedDetsvec.size(), DetsSize = Dets.size();
+  SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+  Dets.clear();
+  SortedDetsvec.clear();
 #ifndef SERIAL
   mpi::broadcast(world, SortedDetsSize, 0);
   mpi::broadcast(world, DetsSize, 0);
@@ -947,12 +950,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
   if (schd.algorithm == 0) {
-    if (proc == 0) 
+    if (proc == 0) {
       SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, 
 						AlphaMajorToBeta, AlphaMajorToDet, 
 						BetaMajorToAlpha, BetaMajorToDet, 
-						SinglesFromAlpha, SinglesFromBeta, Dets, 0);
-
+						  SinglesFromAlpha, SinglesFromBeta,
+						SHMDets, DetsSize, 0);
+      if (!(schd.restart || schd.fullrestart)) {
+	SHCIbasics::writeHelperIntermediate(BetaNi, AlphaNi, BetaNm1, AlphaNm1, schd, 0);
+	BetaNi.clear(), AlphaNi.clear(), BetaNm1.clear(), AlphaNm1.clear();
+      }
+    }	
+    
     SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
 					BetaMajorToAlpha, BetaMajorToDet ,
 					SinglesFromAlpha, SinglesFromBeta,
@@ -1006,12 +1015,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   if (schd.restart || schd.fullrestart) {
     bool converged;
     if (schd.algorithm == 0) {
-      readVariationalResult(iterstart, ci, Dets, SortedDets, connections, orbDifference, 
+      readVariationalResult(iterstart, ci, Dets, connections, orbDifference, 
 			    Helements, E0, converged, schd, 
-			    BetaNi, AlphaNi, BetaNm1, AlphaNm1, 
 			    AlphaMajorToBeta, AlphaMajorToDet, 
 			    BetaMajorToAlpha, BetaMajorToDet, 
 			    SinglesFromAlpha, SinglesFromBeta);
+
       SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
       SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
 					  BetaMajorToAlpha, BetaMajorToDet ,
@@ -1024,12 +1033,21 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					  SinglesFromBetaLen , SinglesFromBetaSM);
     }
     else 
-      readVariationalResult(iterstart, ci, Dets, SortedDets, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
+      readVariationalResult(iterstart, ci, Dets, connections, orbDifference, Helements, E0, converged, schd, BetaN, AlphaNm1);
 
-    SortedDetsSize = SortedDets.size(), DetsSize = Dets.size();
+    std::vector<Determinant> SortedDetsvec; //only proc 1 has it
+    if (mpigetrank() == 0) {
+      SortedDetsvec = Dets; 
+      std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
+    }
+    SortedDetsSize = SortedDetsvec.size(); 
+    DetsSize = Dets.size();
+    SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+    Dets.clear();
+    SortedDetsvec.clear();
 #ifndef SERIAL
-  mpi::broadcast(world, SortedDetsSize, 0);
-  mpi::broadcast(world, DetsSize, 0);
+    mpi::broadcast(world, SortedDetsSize, 0);
+    mpi::broadcast(world, DetsSize, 0);
 #endif
 
 
@@ -1037,10 +1055,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       iterstart = 0;
     for (int i=0; i<E0.size(); i++)
      pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n")
-	%(iterstart) %(i) % schd.epsilon1[iterstart] % Dets.size() % (E0[i]+coreEbkp) % (getTime()-startofCalc);
+	%(iterstart) %(i) % schd.epsilon1[iterstart] % DetsSize % (E0[i]+coreEbkp) % (getTime()-startofCalc);
     if (!schd.fullrestart)
       iterstart++;
     else
+      //*************NEEDS TO BE REWRITTEN
       SHCImakeHamiltonian::regenerateH(Dets, connections, Helements, I1, I2, coreE);
     if (schd.onlyperturbative) {
       for (int i=0; i<E0.size(); i++) 
@@ -1054,11 +1073,15 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	E0[i] += coreEbkp;
       coreE = coreEbkp;
       pout << "# restarting from a converged calculation, moving to perturbative part.!!"<<endl;
+      Dets.resize(DetsSize);
+      for (int i=0; i<DetsSize; i++)
+	Dets[i] = SHMDets[i];
+
       return E0;
     }
   }
 
-
+  //pout << "After reading "<<endl;
   //do the variational bit
   for (int iter=iterstart; iter<schd.epsilon1.size(); iter++) {
     double epsilon1 = schd.epsilon1[iter];
@@ -1080,6 +1103,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
     SHMVecFromVecs(cMax, cMaxSHM, shcicMax, cMaxSegment, regioncMax);
     cMax.clear();
+    //pout << "After cmax "<<SortedDetsSize<<" "<<DetsSize<<endl;
     
     CItype zero = 0.0;
     
@@ -1090,13 +1114,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
 							    *uniqueDEH.Det,
-							    schd,0, nelec);
+							    schd,0, nelec, SortedDets, SortedDetsSize);
     }
     if (Determinant::Trev != 0) {
       for (int i=0; i<uniqueDEH.Det->size(); i++) 
 	uniqueDEH.Det->at(i).makeStandard();
     }
-
     sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
     uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
     
@@ -1105,31 +1128,56 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     for (int level = 0; level <ceil(log2(nprocs)); level++) {
       
       if (proc%ipow(2, level+1) == 0 && proc + ipow(2, level) < nprocs) {
-	StitchDEH recvDEH;
 	int getproc = proc+ipow(2,level);
-	world.recv(getproc, nprocs*level+getproc, recvDEH);
-	uniqueDEH.Det->insert(uniqueDEH.Det->end(), recvDEH.Det->begin(), recvDEH.Det->end() );
-	sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
-	uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
-	//uniqueDEH.RemoveDuplicates();
+	long numDets = 0;
+	long oldSize = uniqueDEH.Det->size();
+	long maxint = 26843540;
+	MPI_Recv(&numDets, 1, MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD,MPI_STATUS_IGNORE); 
+	long totalMemory = numDets*DetLen;
+
+	if (totalMemory != 0) {
+	  uniqueDEH.Det->resize(oldSize+numDets);
+	  for (int i=0; i<(totalMemory/maxint); i++)
+	    MPI_Recv(&(uniqueDEH.Det->at(oldSize).repr[0])+i*maxint, 
+		     maxint, MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	  MPI_Recv(&(uniqueDEH.Det->at(oldSize).repr[0])+(totalMemory/maxint)*maxint, 
+		   totalMemory-(totalMemory/maxint)*maxint, MPI_DOUBLE, 
+		   getproc, getproc, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	  
+	  sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
+	  uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
+	}
+
       }
       else if ( proc%ipow(2, level+1) == 0 && proc + ipow(2, level) >= nprocs) {
 	continue ;
       }
       else if ( proc%ipow(2, level) == 0) {
 	int toproc = proc-ipow(2,level);
-	world.send(toproc, nprocs*level+proc, uniqueDEH);
+	int proc = mpigetrank();
+	long numDets = uniqueDEH.Det->size();
+	long maxint = 26843540;
+	long totalMemory = numDets*DetLen;	
+	MPI_Send(&numDets, 1, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD); 
+
+	if (totalMemory != 0) {
+	  for (int i=0; i<(totalMemory/maxint); i++)
+	    MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+i*maxint, 
+		     maxint, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
+	  MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+(totalMemory/maxint)*maxint, 
+		   totalMemory-(totalMemory/maxint)*maxint, MPI_DOUBLE, 
+		   toproc, proc, MPI_COMM_WORLD);	
+	  uniqueDEH.clear();
+	}
       }
     }
     
-    if (mpigetrank() == 0) uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets);
     
 #endif
     
-
-    
     vector<MatrixXx> X0; X0.resize(ci.size());
     vector<Determinant>& newDets = *uniqueDEH.Det;
+
     if (proc == 0) {
       X0 = vector<MatrixXx>(ci.size(), MatrixXx(DetsSize+newDets.size(), 1));
       for (int i=0; i<ci.size(); i++) {
@@ -1139,13 +1187,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
 
     if (proc == 0) {
+      Dets.resize(DetsSize+newDets.size());
+      for (int i=0; i<DetsSize; i++)
+	Dets[i] = SHMDets[i];
       for (int i=0; i<newDets.size(); i++)
-	Dets.push_back(newDets[i]);
+	Dets[i+DetsSize] = newDets[i];
+
+      DetsSize = Dets.size();
     }
     uniqueDEH.resize(0);
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+    Dets.clear();
 
-    DetsSize = Dets.size();
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
@@ -1160,8 +1213,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
     
     if (schd.algorithm == 0) {
-      if (proc == 0) SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, SortedDetsSize);
-      
+      if (proc == 0) {
+	SHCIbasics::readHelperIntermediate( BetaNi, AlphaNi, BetaNm1, AlphaNm1, schd, iter);
+	SHCImakeHamiltonian::PopulateHelperLists2(BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, SHMDets, DetsSize, SortedDetsSize);
+	SHCIbasics::writeHelperIntermediate(BetaNi, AlphaNi, BetaNm1, AlphaNm1,schd,iter+1);
+	BetaNi.clear(), AlphaNi.clear(), BetaNm1.clear(), AlphaNm1.clear();
+      }	
       SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
 					  BetaMajorToAlpha, BetaMajorToDet ,
 					  SinglesFromAlpha, SinglesFromBeta,
@@ -1203,11 +1260,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
 
     if (mpigetrank() == 0) {
-      for (size_t i=SortedDetsSize; i<Dets.size(); i++)
-	SortedDets.push_back(Dets[i]);
-      std::sort(SortedDets.begin(), SortedDets.end());
+      SortedDetsvec.resize(DetsSize);
+      for (int i=0; i<DetsSize; i++)
+	SortedDetsvec[i] = SHMDets[i];
+      std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
     }
-    SortedDetsSize = SortedDets.size();
+    SortedDetsSize = SortedDetsvec.size();
+    SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+    SortedDetsvec.clear();
 #ifndef SERIAL
     mpi::broadcast(world, SortedDetsSize, 0);
 #endif
@@ -1273,26 +1333,31 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
-      pout << endl<<"Performing final tight davidson"<<endl;
+      pout << endl<<"Performing final tight davidson with tol: "<<schd.davidsonTol<<endl;
 
       if (schd.DirectDavidson)
 	E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
       else
-	E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
+	E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
       mpi::broadcast(world, ci, 0);
 #endif
       pout <<endl<<"Exiting variational iterations"<<endl;
+      if (mpigetrank() == 0) {
+	Dets.resize(DetsSize);
+	for (int i=0; i<DetsSize; i++)
+	  Dets[i] = SHMDets[i];
+      }
       boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
       boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
       if (schd.algorithm == 0)
-	writeVariationalResult(iter, ci, Dets, SortedDets, connections, orbDifference, Helements, E0, true, schd, BetaNi, AlphaNi, BetaNm1, AlphaNm1, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta);
+	writeVariationalResult(iter, ci, Dets, connections, orbDifference, Helements, E0, true, schd, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta);
       else
-	writeVariationalResult(iter, ci, Dets, SortedDets, connections,
-      orbDifference, Helements, E0, true, 
-      schd, BetaN, AlphaNm1);
+	writeVariationalResult(iter, ci, Dets, connections,
+			       orbDifference, Helements, E0, true, 
+			       schd, BetaN, AlphaNm1);
       
       Helements.resize(0); BetaN.clear(); AlphaNm1.clear();
 
@@ -1442,19 +1507,24 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
     else {
       if (schd.io) {
+	if (mpigetrank() == 0) {
+	  Dets.resize(DetsSize);
+	  for (int i=0; i<DetsSize; i++)
+	    Dets[i] = SHMDets[i];	  
+	}
 	if (schd.algorithm == 0) {
 
-	  writeVariationalResult(iter, ci, Dets, SortedDets, connections,
+	  writeVariationalResult(iter, ci, Dets, connections,
 				 orbDifference, Helements, E0, false, 
-				 schd, BetaNi, AlphaNi, BetaNm1, AlphaNm1, 
-				 AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha,
+				 schd, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha,
 				 BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta);
 	}
 	else
-	  writeVariationalResult(iter, ci, Dets, SortedDets, connections,
+	  writeVariationalResult(iter, ci, Dets, connections,
 				 orbDifference, Helements, E0, false, 
 				 schd, BetaN, AlphaNm1);
       }
+      Dets.clear();
     }
 
     if (schd.outputlevel>0) pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
@@ -1476,7 +1546,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 
-void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 				        vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference,
 				       vector<vector<CItype> >& Helements,
 				       vector<double>& E0, bool converged, schedule& schd,
@@ -1495,7 +1565,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
-    save << iter <<Dets<<SortedDets;
+    save << iter <<Dets;
     save << ci;
     save << E0;
     save << converged;
@@ -1523,7 +1593,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 }
 
 
-void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 				       vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference,
 				      vector<vector<CItype> >& Helements,
 				      vector<double>& E0, bool& converged, schedule& schd,
@@ -1544,7 +1614,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
 
-    load >> iter >> Dets >> SortedDets ;
+    load >> iter >> Dets ;
     ci.resize(1, MatrixXx(Dets.size(),1));
 
     load >> ci;
@@ -1575,14 +1645,10 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 }
 
 
-void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 				        vector<vector<int> >& connections, vector<vector<size_t> >&orbdifference,
 				       vector<vector<CItype> >& Helements,
 					vector<double>& E0, bool converged, schedule& schd,
-					std::map<HalfDet, int >& BetaN,
-					std::map<HalfDet, int >& AlphaN,
-					std::map<HalfDet, vector<int> >& BetaNm1,
-					std::map<HalfDet, vector<int> >& AlphaNm1,
 					vector<vector<int> >& AlphaMajorToBeta,
 					vector<vector<int> >& AlphaMajorToDet,
 					vector<vector<int> >& BetaMajorToAlpha,
@@ -1602,7 +1668,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
-    save << iter <<Dets<<SortedDets;
+    save << iter <<Dets;
     save << ci;
     save << E0;
     save << converged;
@@ -1623,7 +1689,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ofstream ofs(file, std::ios::binary);
     boost::archive::binary_oarchive save(ofs);
-    save << BetaN<< AlphaN << BetaNm1 << AlphaNm1<< AlphaMajorToBeta<<AlphaMajorToDet
+    save << AlphaMajorToBeta<<AlphaMajorToDet
 	 << BetaMajorToAlpha<<BetaMajorToDet<<SinglesFromAlpha<<SinglesFromBeta;
   }
 
@@ -1632,14 +1698,10 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
 }
 
 
-void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
+void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 				       vector<vector<int> >& connections, vector<vector<size_t> >& orbdifference,
 				      vector<vector<CItype> >& Helements,
 				      vector<double>& E0, bool& converged, schedule& schd,
-				       std::map<HalfDet, int >& BetaN,
-				       std::map<HalfDet, int >& AlphaN,
-				       std::map<HalfDet, vector<int> >& BetaNm1,
-				       std::map<HalfDet, vector<int> >& AlphaNm1,
 				       vector<vector<int> >& AlphaMajorToBeta,
 				       vector<vector<int> >& AlphaMajorToDet,
 				       vector<vector<int> >& BetaMajorToAlpha,
@@ -1662,7 +1724,8 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
 
-    load >> iter >> Dets >> SortedDets ;
+    std::vector<Determinant> sorted;
+    load >> iter >> Dets;// >>sorted ;
     load >> ci;
     load >> E0;
     if (schd.onlyperturbative) {ifs.close();return;}
@@ -1683,12 +1746,55 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), mpigetrank() );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
-    load >> BetaN>> AlphaN >> BetaNm1 >> AlphaNm1 >> AlphaMajorToBeta >> AlphaMajorToDet
+    load >> AlphaMajorToBeta >> AlphaMajorToDet
 	 >> BetaMajorToAlpha >> BetaMajorToDet >> SinglesFromAlpha >> SinglesFromBeta;
     ifs.close();
   }
 
   if (schd.outputlevel >0) pout << format("#End   reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
+}
+
+
+void SHCIbasics::writeHelperIntermediate( std::map<HalfDet, int >& BetaN,
+					  std::map<HalfDet, int >& AlphaN,
+					  std::map<HalfDet, vector<int> >& BetaNm1,
+					  std::map<HalfDet, vector<int> >& AlphaNm1, schedule& schd, int iter){
+  
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+  if (world.rank() == 0)
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-helpers-Intermediate-%d.bkp" , schd.prefix[0].c_str(), mpigetrank(), iter );
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << BetaN<< AlphaN << BetaNm1 << AlphaNm1;
+  }
+
+}
+
+
+void SHCIbasics::readHelperIntermediate(std::map<HalfDet, int >& BetaN,
+				       std::map<HalfDet, int >& AlphaN,
+				       std::map<HalfDet, vector<int> >& BetaNm1,
+					std::map<HalfDet, vector<int> >& AlphaNm1, schedule& schd, int iter){
+			   
+
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+
+  if (world.rank() == 0)
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-helpers-Intermediate-%d.bkp" , schd.prefix[0].c_str(), mpigetrank() , iter);
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    load >> BetaN>> AlphaN >> BetaNm1 >> AlphaNm1;
+    ifs.close();
+  }
+
 }
 

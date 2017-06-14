@@ -528,8 +528,8 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 	bsize++;
       }
       else {
-	bsize = nroots+3;
-	sigmaSize = nroots+2;
+	bsize = min(nroots+3, maxCopies);
+	sigmaSize = bsize-1;
 	b.col(bsize-1) = r/r.norm();
       }
     }

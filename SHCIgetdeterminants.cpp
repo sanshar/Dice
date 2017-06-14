@@ -356,7 +356,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 }
 
 
-void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec) {
+void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec, Determinant* SortedDets, int SortedDetsSize) {
 
   //Make the int represenation of open and closed orbitals of determinant
   //this helps to speed up the energy calculation
@@ -380,8 +380,11 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       continue;
 
     if (abs(integral) > epsilon ) {
-      dets.push_back(d); Determinant& di = *dets.rbegin();
-      di.setocc(open[a], true); di.setocc(closed[i],false);
+      Determinant di = d;
+      di.setocc(open[a], true); 
+      di.setocc(closed[i],false);
+      if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
+	dets.push_back(di);
       //if (Determinant::Trev != 0) di.makeStandard();
     }
   }
@@ -408,9 +411,14 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
-	dets.push_back(d);
-	Determinant& di = *dets.rbegin();
-	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+	Determinant di = d;
+	di.setocc(a, true); 
+	di.setocc(b, true);
+	di.setocc(closed[i],false); 
+	di.setocc(closed[j], false);
+	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
+	  dets.push_back(di);
+
 	//if (Determinant::Trev != 0) di.makeStandard();
       }
 
