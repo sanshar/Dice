@@ -190,9 +190,12 @@ int main(int argc, char* argv[]) {
 		for (int i=0; i<HFoccupied[d].size(); i++) {
 			Dets[d].setocc(HFoccupied[d][i], true);
 		}
-	}
+	};
 
-	cout << Dets[0] << endl;
+	pout << "**************************************************************\n";
+	pout << "SELECTING REFERENCE DETERMINANT(S)\n";
+	pout << "**************************************************************\n";
+	pout << Dets[0] << " Give HF Energy: " << Dets.at(0).Energy(I1,I2,coreE) << "\n\n";
 
 #ifndef Complex
 	symmetry molSym ( schd.pointGroup );
@@ -201,34 +204,29 @@ int main(int argc, char* argv[]) {
 		// Guess the lowest energy det with given symmetry from one body integrals.
 		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
 		  HFoccupied.at(d), tempDets.at(d));
-		cout << tempDets[d] << endl; // TODO
+		cout << tempDets[d] << " Est. Det. Energy: " << tempDets.at(d).Energy(I1,I2,coreE) << "\n\n"; // TODO
 
 		// Generate list of connected determinants to guess determinant.
-		SHCIgetdeterminants::getDeterminantsVariational(tempDets.at(d), 0.0001, 1, 0.0,
+		SHCIgetdeterminants::getDeterminantsVariational(tempDets.at(d), 0.00001, 1, 0.0,
 		  I1, I2, I2HBSHM, irrep, coreE, 0, tempDets, schd, 0, nelec );
 
 		// Check all connected and find lowest energy.
 		int counter = 0;
 		for ( int cd = 0; cd < tempDets.size(); cd++ ) {
-			// cout << tempDets.at(cd) << endl;
-			if ( abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) == 0 ) {
-				cout << tempDets.at(cd).Energy(I1,I2,coreE) << endl;
-				cout << tempDets.at(cd) << endl;
+			// cout << Dets.at(d).Energy(I1,I2,coreE) << endl;
+			cout << tempDets.at(cd) << " ";
+			cout << tempDets.at(cd).Energy(I1,I2,coreE) << endl;
+			if ( abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) == schd.spin ) {
+				// cout << tempDets.at(cd) << " Energy: " << tempDets.at(cd).Energy(I1,I2,coreE) << endl;
 				counter++;
 				// if ( Dets.at(d).Energy(I1,I2,coreE) >
 				//   tempDets.at(cd).Energy(I1,I2,coreE) ) {
-				//
+				//  Dets.at(d) = tempDets.at(cd);
 				// }
-
 			}
-			// cout << Dets.at(d).Energy(I1,I2,coreE) << " " << tempDets.at(cd).Energy(I1,I2,coreE) << tempDets.at(cd) << endl;
-
-			// if ( Dets.at(d).Energy(I1,I2,coreE) > tempDets.at(cd).Energy(I1,I2,coreE) ) {
-			//  Dets.at(d) = tempDets.at(cd);
-			// }
 		}
 		cout << counter << " " << tempDets.size() << endl;
-		cout << "Final predicted lowest energy det: " << Dets[d] << endl;
+		cout << "Predicted lowest energy det: " << Dets[d] << endl << endl;
 	}
 
 #endif

@@ -39,7 +39,7 @@ using namespace std;
 
 bool compareForSortingEnergies(const pair<double,int>& a,
   const pair<double,int>& b) { //TODO decide on name
-	return a.second<b.second;
+	return a.first<b.first;
 }
 
 // Constructor
