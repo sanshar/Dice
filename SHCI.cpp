@@ -39,10 +39,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
 
-#ifndef Complex
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
-#endif
 #include <algorithm>
 #include <boost/bind.hpp>
 
@@ -197,7 +195,7 @@ int main(int argc, char* argv[]) {
 	pout << "**************************************************************\n";
 	pout << Dets[0] << " Give HF Energy: " << Dets.at(0).Energy(I1,I2,coreE) << "\n\n";
 
-#ifndef Complex
+// #ifndef Complex
 	symmetry molSym ( schd.pointGroup );
 	vector<Determinant> tempDets ( Dets );
 	for ( int d=0; d < HFoccupied.size(); d++ ) {
@@ -229,7 +227,7 @@ int main(int argc, char* argv[]) {
 		cout << "Predicted lowest energy det: " << Dets[d] << endl << endl;
 	}
 
-#endif
+// #endif
 
 	if (mpigetrank() == 0) {
 		for (int j=0; j<ci[0].rows(); j++)

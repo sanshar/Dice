@@ -176,9 +176,15 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 	// over all input desired determinants.
 
 	vector<pair<double,int> > sort1Body (0);  // Double: E, int: original idx
+	#ifndef Complex
 	for ( int i=0; i < I1.norbs; i++ ) {
 		sort1Body.push_back(make_pair( I1(i,i), i ));
 	}
+	#else
+	for ( int i=0; i < I1.norbs; i++ ) {
+		sort1Body.push_back(make_pair( I1(i,i).real(), i ));
+	}
+	#endif
 	sort( sort1Body.begin(), sort1Body.end(), compareForSortingEnergies );
 
 	// Populate doubly occupied orbitals and ensure all others are empty
