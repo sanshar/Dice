@@ -93,8 +93,7 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 		energy += I1(I,I);
 #endif
 		for (int j=i+1; j<closed.size(); j++) {
-			cout << "Looping over closed orbs in Determinant::Energy " << j << endl; //TODO
-			int J = closed.at(j); cout << I2.Direct(I/2,J/2) << endl;
+			int J = closed.at(j);
 			energy += I2.Direct(I/2,J/2);
 			if ( (I%2) == (J%2) ) {
 				energy -= I2.Exchange(I/2, J/2);
