@@ -34,8 +34,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.restart = false;
   schd.fullrestart = false;
   schd.davidsonTol = 5.e-5;
-  schd.davidsonTolLoose = 3.e-2;
-  schd.DirectDavidson = false;
+  schd.davidsonTolLoose = 1.e-3;
+  schd.DavidsonType = MEMORY;
   schd.epsilon2 = 1.e-8;
   schd.epsilon2Large = 1000.0;
   schd.dE = 1.e-8;
@@ -119,7 +119,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "io"))
       schd.io=true;
     else if (boost::iequals(ArgName, "directdavidson"))
-      schd.DirectDavidson = true;
+      schd.DavidsonType = DIRECT;
+    else if (boost::iequals(ArgName, "diskdavidson"))
+      schd.DavidsonType = DISK;
     else if (boost::iequals(ArgName, "num_thrds"))
       schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "outputlevel"))
@@ -225,6 +227,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "nocc keyword has to be included."<<endl;
     exit(0);
   }
+  if (schd.DavidsonType == DIRECT)
+    schd.davidsonTolLoose = 3.e-2;
   for (int i=1; i<sweep_iter.size(); i++)
     for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)
       schd.epsilon1.push_back(sweep_epsilon[i-1]);

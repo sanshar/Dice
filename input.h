@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License along with thi
 
 using namespace std;
 
+enum davidsonType {DIRECT, DISK, MEMORY};
+
 struct schedule{
 private:
   friend class boost::serialization::access;
@@ -25,7 +27,7 @@ private:
   {
     ar & davidsonTol				\
       & davidsonTolLoose       			\
-      & DirectDavidson                          \
+      & DavidsonType                            \
       & epsilon2				\
       & epsilon2Large                           \
       & SampleN					\
@@ -66,7 +68,7 @@ private:
 public:
   double davidsonTol;
   double davidsonTolLoose;
-  bool DirectDavidson;
+  davidsonType DavidsonType;
   double epsilon2;
   double epsilon2Large;
   int SampleN;

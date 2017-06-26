@@ -120,6 +120,16 @@ class HalfDet {
     return cindex;
   }
 
+  int getOpenClosed(vector<int>& open, vector<int>& closed){
+    int cindex = 0;
+    int oindex = 0;
+    for (int i=0; i<32*DetLen; i++) {
+      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+      else {open.at(oindex) = i; oindex++;}
+    }
+    return cindex;
+  }
+
   friend ostream& operator<<(ostream& os, const HalfDet& d) {
     char det[norbs/2];
     d.getRepArray(det);

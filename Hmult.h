@@ -24,10 +24,12 @@ You should have received a copy of the GNU General Public License along with thi
 #include "Determinants.h"
 #include <algorithm>
 #include "SHCISortMpiUtils.h"
+#include "SHCImakeHamiltonian.h"
 
 using namespace Eigen;
 using namespace std;
 using namespace SHCISortMpiUtils;
+using namespace SHCImakeHamiltonian;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
@@ -36,11 +38,9 @@ namespace SHCISortMpiUtils{
 };
 
 struct Hmult2 {
-  std::vector<std::vector<int> >& connections;
-  std::vector<std::vector<CItype> >& Helements;
+  SparseHam& sparseHam;
 
-  Hmult2(std::vector<std::vector<int> >& connections_, std::vector<std::vector<CItype> >& Helements_)
-  : connections(connections_), Helements(Helements_) {}
+Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 
   void operator()(CItype *x, CItype *y) {
 
@@ -49,14 +49,24 @@ struct Hmult2 {
 #endif
     int size = mpigetsize(), rank = mpigetrank();
 
-    for (int i=rank; i<connections.size(); i+=size) {
-      for (int j=0; j<connections[i].size(); j++) {
-	CItype hij = Helements[i][j];
-	int J = connections[i][j];
-	y[i] += hij*x[J];
+    for (int batch=0; batch<sparseHam.Nbatches; batch++) {
+      int offset = 0;
+      if (sparseHam.diskio) {
+	sparseHam.readBatch(batch);
+	offset = batch*sparseHam.BatchSize;
       }
+
+      for (int i=0; i<sparseHam.connections.size(); i++) {
+	for (int j=0; j<sparseHam.connections[i].size(); j++) {
+	  CItype hij = sparseHam.Helements[i][j];
+	  int J = sparseHam.connections[i][j];
+	  y[i*size+rank + offset] += hij*x[J];
+	}
+      }
+
+      if (sparseHam.diskio)
+	sparseHam.resize(0);
     }
-    
   }
 
 };
@@ -80,6 +90,35 @@ struct HmultDirect {
   twoInt& I2;
   double& coreE;
   MatrixXx& diag;
+
+  HmultDirect(SHCImakeHamiltonian::HamHelpers2& helpers2, 
+		     Determinant* &pDets,
+         	     int pDetsSize,
+		     int pStartIndex,
+		     int pNorbs,
+		     oneInt& pI1,
+		     twoInt& pI2,
+		     double& pcoreE,
+		     MatrixXx& pDiag) : 
+    AlphaMajorToBetaLen(helpers2.AlphaMajorToBetaLen),
+    AlphaMajorToBeta   (helpers2.AlphaMajorToBetaSM ),
+    AlphaMajorToDet    (helpers2.AlphaMajorToDetSM  ),
+    BetaMajorToAlphaLen(helpers2.BetaMajorToAlphaLen),
+    BetaMajorToAlpha   (helpers2.BetaMajorToAlphaSM ),
+    BetaMajorToDet     (helpers2.BetaMajorToDetSM   ),
+    SinglesFromAlphaLen(helpers2.SinglesFromAlphaLen),
+    SinglesFromAlpha   (helpers2.SinglesFromAlphaSM ),
+    SinglesFromBetaLen (helpers2.SinglesFromBetaLen ),
+    SinglesFromBeta    (helpers2.SinglesFromBetaSM  ),
+    Dets               (pDets               ),
+    DetsSize           (pDetsSize           ),
+    StartIndex         (pStartIndex         ),
+    Norbs              (pNorbs              ),
+    I1                 (pI1                 ),
+    I2                 (pI2                 ),
+    coreE              (pcoreE              ),
+    diag               (pDiag               ) {};
+
 
   HmultDirect(  int*          &pAlphaMajorToBetaLen, 
 		     vector<int* > &pAlphaMajorToBeta   ,

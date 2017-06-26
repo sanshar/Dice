@@ -447,11 +447,13 @@ int main(int argc, char* argv[]) {
     }
 
 
+    /*
     Hmult2 H(connections, Helements);
     LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
 #ifndef SERIAL
     mpi::broadcast(world, lambda[0], 0);
 #endif
+    */
 
     MatrixXx s2RDM, twoRDM;
     s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);

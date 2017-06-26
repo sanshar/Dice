@@ -31,7 +31,68 @@ class schedule;
 
 namespace SHCImakeHamiltonian {
 
-  
+  struct HamHelpers2 {
+
+    vector<vector<int> >                 AlphaMajorToBeta;
+    vector<vector<int> >                 AlphaMajorToDet;
+    vector<vector<int> >                 BetaMajorToAlpha;
+    vector<vector<int> >                 BetaMajorToDet;
+    vector<vector<int> >                 SinglesFromAlpha;
+    vector<vector<int> >                 SinglesFromBeta;
+
+    map<HalfDet, int>                    BetaN;
+    map<HalfDet, int>                    AlphaN;
+
+
+    //Shared Memory stuff
+    int          *AlphaMajorToBetaLen;
+    int          *SinglesFromAlphaLen;
+    int          *BetaMajorToAlphaLen;
+    int          *SinglesFromBetaLen ;
+    
+    vector<int*> AlphaMajorToBetaSM;
+    vector<int*> AlphaMajorToDetSM;
+    vector<int*> SinglesFromAlphaSM;
+    vector<int*> BetaMajorToAlphaSM;
+    vector<int*> BetaMajorToDetSM;
+    vector<int*> SinglesFromBetaSM ;
+
+    
+    void PopulateHelpers(Determinant* SHMDets, int DetsSize, int startIndex);
+    void MakeSHMHelpers();
+  };
+
+  struct SparseHam {
+    std::vector<std::vector<int> > connections;  
+    std::vector<std::vector<CItype> > Helements;
+    std::vector<std::vector<size_t> > orbDifference;
+    int Nbatches;
+    int BatchSize;
+    bool diskio;
+    string prefix;
+    void clear() {
+      connections.clear();
+      Helements.clear();
+      orbDifference.clear();
+    }
+    void resize(int size) {
+      connections.resize(size);
+      Helements.resize(size);
+      orbDifference.resize(size);
+    }
+
+    SparseHam() {
+      diskio = false;
+      Nbatches = 1;
+    }
+    
+    void makeFromHelper(HamHelpers2& helper2, Determinant *SHMDets,
+			int startIndex, int endIndex, int Norbs, oneInt& I1,
+			twoInt& I2, double& coreE);
+    void writeBatch(int batch);
+    void readBatch (int batch);
+    void setNbatches(int DetSize);
+  };
 
   void regenerateH(std::vector<Determinant>& Dets,
 		   std::vector<std::vector<int> >&connections,
@@ -42,8 +103,6 @@ namespace SHCImakeHamiltonian {
 
   void PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 			    std::map<HalfDet, int >& AlphaN,
-			    std::map<HalfDet, vector<int> >& BetaNm1,
-			    std::map<HalfDet, vector<int> >& AlphaNm1,
 			    vector<vector<int> >& AlphaMajorToBeta,
 			    vector<vector<int> >& AlphaMajorToDet,
 			    vector<vector<int> >& BetaMajorToAlpha,
@@ -82,13 +141,12 @@ namespace SHCImakeHamiltonian {
 			   vector<int* > &SinglesFromBeta    ,
 			   Determinant *Dets,
 			   int StartIndex,
-			   std::vector<std::vector<int> >&connections,
-			   std::vector<std::vector<CItype> >& Helements,
+			   int EndIndex, bool diskio,
+			   SparseHam& sparseHam,
 			   int Norbs,
 			   oneInt& I1,
 			   twoInt& I2,
 			   double& coreE,
-			   std::vector<std::vector<size_t> >& orbDifference,
 			   bool DoRDM);
   
   void MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,

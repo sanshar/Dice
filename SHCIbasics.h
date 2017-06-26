@@ -21,6 +21,11 @@ You should have received a copy of the GNU General Public License along with thi
 
 using namespace std;
 using namespace Eigen;
+namespace SHCImakeHamiltonian {
+  struct HamHelpers2;
+  struct SparseHam;
+};
+
 class Determinant;
 class HalfDet;
 class oneInt;
@@ -44,28 +49,14 @@ namespace SHCIbasics {
 			      schedule& schd, int iter);
   
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     vector<vector<int> >& connections, 
-			     vector<vector<size_t> >& orbdifference,
-			     vector<vector<CItype> >& Helements,
+			     SHCImakeHamiltonian::SparseHam& sparseHam,
 			     vector<double>& E0, bool& converged, schedule& schd,
-			     vector<vector<int> >& AlphaMajorToBeta,
-			     vector<vector<int> >& AlphaMajorToDet,
-			     vector<vector<int> >& BetaMajorToAlpha,
-			     vector<vector<int> >& BetaMajorToDet,
-			     vector< vector<int> >& SinglesFromAlpha,
-			     vector<vector<int> >& SinglesFromBeta);
+			     SHCImakeHamiltonian::HamHelpers2& helper2);
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     vector<vector<int> >& connections, 
-			     vector<vector<size_t> >& orbdifference,
-			     vector<vector<CItype> >& Helements,
+			     SHCImakeHamiltonian::SparseHam& sparseHam,
 			     vector<double>& E0, bool converged, schedule& schd,
-			     vector<vector<int> >& AlphaMajorToBeta,
-			     vector<vector<int> >& AlphaMajorToDet,
-			     vector<vector<int> >& BetaMajorToAlpha,
-			     vector<vector<int> >& BetaMajorToDet,
-			     vector< vector<int> >& SinglesFromAlpha,
-			     vector<vector<int> >& SinglesFromBeta);
+			     SHCImakeHamiltonian::HamHelpers2& helper2);
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
 			      vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,

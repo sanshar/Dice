@@ -49,6 +49,88 @@ using namespace boost;
 using namespace SHCISortMpiUtils;
 
 
+void SHCImakeHamiltonian::SparseHam::setNbatches(int DetSize) {
+
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  Nbatches = diskio ? (DetSize)/BatchSize/nprocs : 1;
+  if ((DetSize) > Nbatches*BatchSize*nprocs && diskio)
+    Nbatches +=1;
+}
+
+void SHCImakeHamiltonian::SparseHam::writeBatch(int batch) {
+
+
+  char file [5000];
+  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), mpigetrank(), batch );
+  std::ofstream ofs(file, std::ios::binary);
+  boost::archive::binary_oarchive save(ofs);
+  save << connections << Helements << orbDifference;
+
+}
+
+
+void SHCImakeHamiltonian::SparseHam::readBatch (int batch) {
+
+  char file [5000];
+  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), mpigetrank(), batch );
+  std::ifstream ifs(file, std::ios::binary);
+  boost::archive::binary_iarchive load(ifs);
+  load >> connections >> Helements >> orbDifference;
+
+}
+
+void SHCImakeHamiltonian::SparseHam::makeFromHelper(HamHelpers2& helpers2, Determinant *SHMDets, int startIndex, int endIndex, int Norbs, oneInt& I1, twoInt& I2, double& coreE) {
+
+  std::vector<std::vector<size_t> > orbDifference;
+  bool DoRDM = false;
+  SHCImakeHamiltonian::MakeHfromSMHelpers2(helpers2.AlphaMajorToBetaLen, 
+					   helpers2.AlphaMajorToBetaSM ,
+					   helpers2.AlphaMajorToDetSM  ,
+					   helpers2.BetaMajorToAlphaLen, 
+					   helpers2.BetaMajorToAlphaSM ,
+					   helpers2.BetaMajorToDetSM   ,
+					   helpers2.SinglesFromAlphaLen, 
+					   helpers2.SinglesFromAlphaSM ,
+					   helpers2.SinglesFromBetaLen , 
+					   helpers2.SinglesFromBetaSM  ,
+					   SHMDets, startIndex, endIndex,
+					   diskio, *this, Norbs,
+					   I1, I2, coreE, 
+					   DoRDM);
+
+}
+
+void SHCImakeHamiltonian::HamHelpers2::PopulateHelpers ( Determinant* SHMDets,
+							 int DetsSize, 
+							 int startIndex) {
+
+  SHCImakeHamiltonian::PopulateHelperLists2(BetaN, AlphaN,  
+					    AlphaMajorToBeta, AlphaMajorToDet,
+					    BetaMajorToAlpha, BetaMajorToDet, 
+					    SinglesFromAlpha, SinglesFromBeta,
+					    SHMDets, DetsSize, startIndex);
+}
+
+
+void SHCImakeHamiltonian::HamHelpers2::MakeSHMHelpers() {
+  SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
+				      BetaMajorToAlpha, BetaMajorToDet ,
+				      SinglesFromAlpha, SinglesFromBeta,
+				      AlphaMajorToBetaLen, AlphaMajorToBetaSM,
+				      AlphaMajorToDetSM,
+				      BetaMajorToAlphaLen, BetaMajorToAlphaSM,
+				      BetaMajorToDetSM ,
+				      SinglesFromAlphaLen, SinglesFromAlphaSM,
+				      SinglesFromBetaLen , SinglesFromBetaSM);
+
+}
+
+
 void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 				 std::vector<std::vector<int> >&connections,
 				 std::vector<std::vector<CItype> >& Helements,
@@ -314,8 +396,6 @@ void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaV
 //check if the cost can be reduced by half by only storiong connection > than the index
 void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 					       std::map<HalfDet, int >& AlphaN,
-					       std::map<HalfDet, vector<int> >& BetaNm1,
-					       std::map<HalfDet, vector<int> >& AlphaNm1,
 					       vector<vector<int> >& AlphaMajorToBeta,
 					       vector<vector<int> >& AlphaMajorToDet,
 					       vector<vector<int> >& BetaMajorToAlpha,
@@ -346,20 +426,20 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	
 	int norbs = 64*DetLen;
 	std::vector<int> closedb(norbs/2);//, closedb(norbs);
-	int nclosedb = db.getClosed(closedb);
-	//int nclosedb = db.getClosed(closedb);
-	for (int j=0; j<nclosedb; j++) {
-	  db.setocc(closedb[j], false);
-	  std::vector<int>& dbvec = BetaNm1[db];
-	  dbvec.push_back(itb->second);
-	  db.setocc(closedb[j], true);
-	  
-	  for (int k=0; k<dbvec.size()-1; k++) { //the last one in the list is db
-	    SinglesFromBeta[itb->second].push_back(dbvec[k]);
-	    SinglesFromBeta[dbvec[k]].push_back(itb->second);
-	  }
-	}
-	
+	std::vector<int> openb(norbs/2,0);
+	int nclosedb = db.getOpenClosed(openb, closedb);
+
+	for (int j=0; j<nclosedb; j++)
+	  for (int k=0; k<norbs/2-nclosedb; k++) {
+	    HalfDet dbcopy = db;
+	    dbcopy.setocc(closedb[j], false);
+	    dbcopy.setocc(openb[k], true);
+	    auto itbcopy = BetaN.find(dbcopy);
+	    if (itbcopy != BetaN.end()) {
+	      SinglesFromBeta[itb->second].push_back(itbcopy->second);
+	      SinglesFromBeta[itbcopy->second].push_back(itb->second);
+	    }
+	  }      
       }
       
       auto ita = AlphaN.find(da);
@@ -372,19 +452,21 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	
 	int norbs = 64*DetLen;
 	std::vector<int> closeda(norbs/2);//, closedb(norbs);
-	int ncloseda = da.getClosed(closeda);
+	std::vector<int> opena(norbs/2,0);
+	int ncloseda = da.getOpenClosed(opena, closeda);
+
+	for (int j=0; j<ncloseda; j++)
+	  for (int k=0; k<norbs/2-ncloseda; k++) {
+	    HalfDet dacopy = da;
+	    dacopy.setocc(closeda[j], false);
+	    dacopy.setocc(opena[k], true);
+	    auto itacopy = AlphaN.find(dacopy);
+	    if (itacopy != AlphaN.end()) {
+	      SinglesFromAlpha[ita->second].push_back(itacopy->second);
+	      SinglesFromAlpha[itacopy->second].push_back(ita->second);
+	    }
+	  }      
 	
-	for (int j=0; j<ncloseda; j++) {
-	  da.setocc(closeda[j], false);
-	  std::vector<int>& davec = AlphaNm1[da];
-	  davec.push_back(ita->second);
-	  da.setocc(closeda[j], true);
-	  
-	  for (int k=0; k<davec.size()-1; k++) { //the last one in the list is da
-	    SinglesFromAlpha[ita->second].push_back(davec[k]);
-	    SinglesFromAlpha[davec[k]].push_back(ita->second);
-	  }
-	}
       }
       
       AlphaMajorToBeta[ita->second].push_back(itb->second);
@@ -396,6 +478,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
       
       
     }
+    printf("Nalpha: %12d,  Nbeta: %12d\n", AlphaN.size(), BetaN.size());
     size_t max=0, min=0, avg=0;
     for (int i=0; i<AlphaMajorToBeta.size(); i++)
       {
@@ -424,6 +507,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	std::sort(SinglesFromBeta[i].begin(), SinglesFromBeta[i].end());
 	
       }
+    pout << " ."<<endl;
 
     /*
     double totalMemoryBm = 0, totalMemoryB=0, totalMemoryAm=0, totalMemoryA=0;
@@ -460,7 +544,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 					    vector<vector<int> >& SinglesFromAlpha,
 					    vector<vector<int> >& SinglesFromBeta,
 					    std::vector<Determinant>& Dets,
-					    int StartIndex,
+					    int StartIndex, 
 					    std::vector<std::vector<int> >&connections,
 					    std::vector<std::vector<CItype> >& Helements,
 					    int Norbs,
@@ -482,11 +566,13 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
   //diagonal element
   for (size_t k=StartIndex; k<Dets.size(); k++) {
     if (k%(nprocs) != proc) continue;
-    connections[k].push_back(k);
+    connections.push_back(vector<int>(1,k));
+    //connections[k].push_back(k);
     CItype hij = Dets[k].Energy(I1, I2, coreE);
     if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
-    Helements[k].push_back(hij);
-    if (DoRDM) orbDifference[k].push_back(0);
+    Helements.push_back(vector<CItype>(1, hij));
+    //Helements[k].push_back(hij);
+    if (DoRDM) orbDifference.push_back(vector<size_t>(1,0));
   }
 
   //alpha-beta excitation
@@ -508,9 +594,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	    if (abs(hij) >1.e-10) {
-	      connections[DetI].push_back(DetJ);
-	      Helements[DetI].push_back(hij);
-	      if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	      connections[DetI/nprocs].push_back(DetJ);
+	      Helements[DetI/nprocs].push_back(hij);
+	      if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
 	    }
 	  }
 	}
@@ -542,9 +628,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	      size_t orbDiff;
 	      CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	      if (abs(hij) >1.e-10) {
-		connections[DetI].push_back(DetJ);
-		Helements[DetI].push_back(hij);
-		if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+		connections[DetI/nprocs].push_back(DetJ);
+		Helements[DetI/nprocs].push_back(hij);
+		if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
 	      }
 	    } //DetJ <Det I
 	  } //*itb == Bsingle
@@ -567,9 +653,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	    if (abs(hij) <1.e-10) continue;
-	    connections[DetI].push_back(DetJ);
-	    Helements[DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
 	  }
 	}
       }
@@ -583,9 +669,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
-	    connections[DetI].push_back(DetJ);
-	    Helements[DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
 	  }
 	}
       }
@@ -598,9 +684,9 @@ void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBe
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
-	    connections[DetI].push_back(DetJ);
-	    Helements[DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
 	  }
 	}
       }
@@ -622,13 +708,13 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 					      vector<int* > &SinglesFromBeta    ,
 					      Determinant* Dets,
 					      int StartIndex,
-					      std::vector<std::vector<int> >&connections,
-					      std::vector<std::vector<CItype> >& Helements,
+					      int EndIndex,
+					      bool diskio,
+					      SparseHam& sparseHam,
 					      int Norbs,
 					      oneInt& I1,
 					      twoInt& I2,
 					      double& coreE,
-					      std::vector<std::vector<size_t> >& orbDifference,
 					      bool DoRDM) {
 
 
@@ -638,34 +724,42 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 #endif
   size_t norbs = Norbs;
+  int offSet = 0;
 
+  std::vector<std::vector<int> >& connections = sparseHam.connections;
+  std::vector<std::vector<CItype> >& Helements = sparseHam.Helements;
+  std::vector<std::vector<size_t> >& orbDifference = sparseHam.orbDifference;
+  
   //diagonal element
-  for (size_t k=StartIndex; k<connections.size(); k++) {
-    if (k%(nprocs) != proc) continue;
-    connections[k].push_back(k);
+  for (size_t k=StartIndex; k<EndIndex; k++) {
+    if (k%(nprocs) != proc || k < max(StartIndex, offSet) ) continue;
+    connections.push_back(vector<int>(1,k));
+    //connections[k].push_back(k);
     CItype hij = Dets[k].Energy(I1, I2, coreE);
     if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
-    Helements[k].push_back(hij);
-    if (DoRDM) orbDifference[k].push_back(0);
+    Helements.push_back(vector<CItype>(1,hij));
+    //Helements[k].push_back(hij);
+    if (DoRDM) orbDifference.push_back(vector<size_t>(1,0));
   }
-
+    
   //alpha-beta excitation
   for (int i=0; i<AlphaMajorToBeta.size(); i++) {
-
+    
     for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
-
-      if (AlphaMajorToDet[i][ii]%nprocs != proc) 
-	continue;
-
+      
       int Astring = i, 
-	  Bstring = AlphaMajorToBeta[i][ii], 
-	  DetI    = AlphaMajorToDet [i][ii];
-
+	Bstring = AlphaMajorToBeta[i][ii], 
+	DetI    = AlphaMajorToDet [i][ii];
+      
+      if (DetI%nprocs != proc) 
+	continue;
+      
+      
       int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
       //singles from Astring
       for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
 	int Asingle = SinglesFromAlpha[Astring][j];
-
+	
 	//if (Asingle > maxBToA) break;
 	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
 				   0                             , 
@@ -673,112 +767,113 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 				   Asingle                       );
 	if (index != -1 ) {
 	  int DetJ = BetaMajorToDet[Bstring][index];
-	  if (DetJ < StartIndex && DetI < StartIndex) continue;
+	  if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
-	    connections[DetI].push_back(DetJ);
-	    Helements  [DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[(DetI-offSet)/nprocs].push_back(DetJ);
+	    Helements  [(DetI-offSet)/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[(DetI-offSet)/nprocs].push_back(orbDiff);
 	  }
 	}
       }
-
+	
       //single Alpha and single Beta
       for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
 	int Asingle = SinglesFromAlpha[Astring][j];
-
+	
 	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
 	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
 	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
 	for (int k=0; k<SinglesFromBLen; k++) {
 	  int& Bsingle = SinglesFromBeta[Bstring][k];
-
+	  
 	  if (SearchStartIndex >= AlphaToBetaLen) break;
-
+	  
 	  int index=SearchStartIndex;
 	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
-
+	  
 	  SearchStartIndex = index;
 	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
 	    
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
-	    if (DetJ < StartIndex && DetI < StartIndex) continue;
+	    if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	    if (abs(hij) >1.e-10) {
-	      connections[DetI].push_back(DetJ);
-	      Helements[DetI].push_back(hij);
-	      if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	      connections[(DetI-offSet)/nprocs].push_back(DetJ);
+	      Helements[(DetI-offSet)/nprocs].push_back(hij);
+	      if (DoRDM) orbDifference[(DetI-offSet)/nprocs].push_back(orbDiff);
 	    }
 	  } //*itb == Bsingle
 	} //k 0->SinglesFromBeta
       } //j singles fromAlpha
-
-
       
-      //singles from Bstring
+      
+      
+	//singles from Bstring
       int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
       for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
 	int Bsingle =  SinglesFromBeta   [Bstring][j];
-
+	
 	//if (Bsingle > maxAtoB) break;
 	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
 				  0                             , 
 				  AlphaMajorToBetaLen[Astring]-1, 
 				  Bsingle                        );
-
+	
 	if (index != -1 ) {
 	  int DetJ = AlphaMajorToDet[Astring][index];
 	  //if (DetJ < StartIndex) continue;
-	  if (DetJ < StartIndex && DetI < StartIndex) continue;
-
+	  if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	  
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) <1.e-10) continue;
-	  connections[DetI].push_back(DetJ);
-	  Helements[DetI].push_back(hij);
-	  if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	  connections[(DetI-offSet)/nprocs].push_back(DetJ);
+	  Helements[(DetI-offSet)/nprocs].push_back(hij);
+	  if (DoRDM) orbDifference[(DetI-offSet)/nprocs].push_back(orbDiff);
 	}
       }
-
-
+      
+      
       //double beta excitation
       for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
 	int DetJ     = AlphaMajorToDet    [i][j];
 	//if (DetJ < StartIndex) continue;
-	if (DetJ < StartIndex && DetI < StartIndex) continue;
-
+	if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	
 	if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
-	    connections[DetI].push_back(DetJ);
-	    Helements[DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[(DetI-offSet)/nprocs].push_back(DetJ);
+	    Helements[(DetI-offSet)/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[(DetI-offSet)/nprocs].push_back(orbDiff);
 	  }
 	}
       }
-
+      
       //double Alpha excitation
       for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
 	int DetJ      = BetaMajorToDet     [Bstring][j];
 	//if (DetJ < StartIndex) continue;
-	if (DetJ < StartIndex && DetI < StartIndex) continue;
-
+	if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	
 	if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
-	    connections[DetI].push_back(DetJ);
-	    Helements[DetI].push_back(hij);
-	    if (DoRDM) orbDifference[DetI].push_back(orbDiff);
+	    connections[(DetI-offSet)/nprocs].push_back(DetJ);
+	    Helements[(DetI-offSet)/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[(DetI-offSet)/nprocs].push_back(orbDiff);
 	  }
 	}
       }
-
+      
     }
   }
+  
 }
 
 void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
