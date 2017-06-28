@@ -41,33 +41,50 @@ struct Hmult2 {
   SparseHam& sparseHam;
 
 Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
-
+  
   void operator()(CItype *x, CItype *y) {
-
+    
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
     int size = mpigetsize(), rank = mpigetrank();
 
-    for (int batch=0; batch<sparseHam.Nbatches; batch++) {
-      int offset = 0;
-      if (sparseHam.diskio) {
-	sparseHam.readBatch(batch);
-	offset = batch*sparseHam.BatchSize;
-      }
+    /*
+    MPI_Comm localComm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+			MPI_INFO_NULL, &localComm);
+    int localsize, localrank;
+    MPI_Comm_rank(localComm, &localrank);
+    MPI_Comm_size(localComm, &localsize);
+    */
 
-      for (int i=0; i<sparseHam.connections.size(); i++) {
-	for (int j=0; j<sparseHam.connections[i].size(); j++) {
-	  CItype hij = sparseHam.Helements[i][j];
-	  int J = sparseHam.connections[i][j];
-	  y[i*size+rank + offset] += hij*x[J];
+    for (int i=0; i<sparseHam.connections.size(); i++) {
+      for (int j=0; j<sparseHam.connections[i].size(); j++) {
+	CItype hij = sparseHam.Helements[i][j];
+	int J = sparseHam.connections[i][j];
+	y[i*size+rank] += hij*x[J];
+	//if (i*size+rank != J && J%size == rank) {
+	//y[J] += conj(hij)*x[i*size+rank];
+      }
+    }
+    
+    for (int r=0; r<size; r++) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      if (rank == r) { 
+	for (int i=0; i<sparseHam.connections.size(); i++) {
+	  for (int j=1; j<sparseHam.connections[i].size(); j++) {
+	    CItype hij = sparseHam.Helements[i][j];
+	    int J = sparseHam.connections[i][j];
+	    y[J] += conj(hij)*x[i*size+rank];
+	  }
 	}
       }
-
-      if (sparseHam.diskio)
-	sparseHam.resize(0);
     }
-  }
+    MPI_Barrier(MPI_COMM_WORLD);    
+    //MPI_Comm_free(&localComm);
+  }  
+
+
 
 };
 

@@ -58,5 +58,6 @@ extern boost::interprocess::mapped_region regioncMax;
 extern std::string shcicMax;
 
 extern MPI_Comm shmcomm;
-
+extern int commrank, shmrank, localrank;
+extern int commsize, shmsize, localsize;
 #endif

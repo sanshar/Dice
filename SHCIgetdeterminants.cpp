@@ -46,7 +46,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -57,7 +57,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -75,7 +75,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -316,14 +316,14 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
       integral *= schd.socmultiplier; //make it 100 times so SOC gets preference
 
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
       //if (Determinant::Trev != 0) di.makeStandard();
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
 
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -341,7 +341,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -367,19 +367,20 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
   int nclosed = nelec;
   int nopen = norbs-nclosed;
 
-
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     
-    if (abs(integral) >epsilon)
-      integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    if (fabs(integral) >epsilon) 
+      if (closed[i]%2 == open[a]%2)
+	integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     else
       continue;
 
-    if (abs(integral) > epsilon ) {
+    //if (fabs(integral/(E0-Energyd)) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       Determinant di = d;
       di.setocc(open[a], true); 
       di.setocc(closed[i],false);
@@ -389,7 +390,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
 
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -407,8 +408,13 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, 
+      //i, a, 
+      //j, b, Energyd);
+      //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
 
       if (!(d.getocc(a) || d.getocc(b))) {
 	Determinant di = d;
@@ -455,7 +461,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -471,7 +477,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -489,7 +495,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -539,7 +545,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -551,7 +557,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 #else
       numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
 #endif
-      if (abs(integral) >epsilonLarge)
+      if (fabs(integral) >epsilonLarge)
 	present.push_back(true);
       else
 	present.push_back(false);
@@ -560,7 +566,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -578,7 +584,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -595,10 +601,10 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 #else
 	numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
-	//numerator2A.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+	//numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
 
 
-	if (abs(integrals[index]) >epsilonLarge)
+	if (fabs(integrals[index]) >epsilonLarge)
 	  present.push_back(true);
 	else
 	  present.push_back(false);

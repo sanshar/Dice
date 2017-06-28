@@ -751,7 +751,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	Bstring = AlphaMajorToBeta[i][ii], 
 	DetI    = AlphaMajorToDet [i][ii];
       
-      if (DetI%nprocs != proc) 
+      if (DetI%nprocs != proc || DetI < StartIndex) 
 	continue;
       
       
@@ -767,7 +767,8 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 				   Asingle                       );
 	if (index != -1 ) {
 	  int DetJ = BetaMajorToDet[Bstring][index];
-	  if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	  //if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	  if (DetJ >  DetI) continue;
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) >1.e-10) {
@@ -797,7 +798,8 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
 	    
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
-	    if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	    //if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	    if (DetJ >  DetI) continue;
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	    if (abs(hij) >1.e-10) {
@@ -825,8 +827,9 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	if (index != -1 ) {
 	  int DetJ = AlphaMajorToDet[Astring][index];
 	  //if (DetJ < StartIndex) continue;
-	  if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
-	  
+	  //if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	  if (DetJ > DetI) continue;
+
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
 	  if (abs(hij) <1.e-10) continue;
@@ -841,8 +844,9 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
       for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
 	int DetJ     = AlphaMajorToDet    [i][j];
 	//if (DetJ < StartIndex) continue;
-	if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
-	
+	//if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	if (DetJ > DetI) continue;
+
 	if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
@@ -858,8 +862,9 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
       for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
 	int DetJ      = BetaMajorToDet     [Bstring][j];
 	//if (DetJ < StartIndex) continue;
-	if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
-	
+	//if (DetJ < max(offSet, StartIndex) && DetI < max(offSet, StartIndex)) continue;
+	if (DetJ > DetI) continue;
+
 	if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);

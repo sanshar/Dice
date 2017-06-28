@@ -124,6 +124,7 @@ namespace SHCISortMpiUtils {
    void MergeSortAndRemoveDuplicates() ;
    void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets);
    void RemoveDetsPresentIn(Determinant* SortedDets, int DetsSize);
+   void RemoveOnlyDetsPresentIn(Determinant* SortedDets, int DetsSize);
    void RemoveOnlyDetsPresentIn(std::vector<Determinant>& SortedDets) ;
    void RemoveDuplicates();
    void deepCopy(const StitchDEH& s);

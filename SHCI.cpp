@@ -54,26 +54,6 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment;
-boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment;
-boost::interprocess::mapped_region regionInt2SHM;
-boost::interprocess::shared_memory_object hHelpersSegment;
-boost::interprocess::mapped_region regionHelpers;
-string shciHelper;
-boost::interprocess::shared_memory_object DetsCISegment;
-boost::interprocess::mapped_region regionDetsCI;
-std::string shciDetsCI;
-boost::interprocess::shared_memory_object SortedDetsSegment;
-boost::interprocess::mapped_region regionSortedDets;
-std::string shciSortedDets;
-boost::interprocess::shared_memory_object DavidsonSegment;
-boost::interprocess::mapped_region regionDavidson;
-std::string shciDavidson;
-boost::interprocess::shared_memory_object cMaxSegment;
-boost::interprocess::mapped_region regioncMax;
-std::string shcicMax;
-MPI_Comm shmcomm;
 
 void license() {
   pout << endl;
@@ -101,11 +81,15 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 
 int main(int argc, char* argv[]) {
+  //sleep(10);
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+
   license();
+  initSHM();
+
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
@@ -121,19 +105,6 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
-
-  MPI_Comm localComm;
-
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-		      MPI_INFO_NULL, &localComm);
-  int shmrank, localrank;
-  MPI_Comm_rank(localComm, &localrank);
-  if (localrank == 0)
-    MPI_Comm_split(MPI_COMM_WORLD, localrank, mpigetrank(), &shmcomm);
-  else
-    MPI_Comm_split(MPI_COMM_WORLD, localrank, mpigetrank(), &shmcomm);
-  MPI_Comm_rank(shmcomm, &shmrank);
-  MPI_Comm_free(&localComm);
 #endif
   
 
@@ -149,25 +120,6 @@ int main(int argc, char* argv[]) {
   startofCalc=getTime();
   srand(schd.randomSeed+mpigetrank());
   if (schd.outputlevel>1) pout<<"#using seed: "<<schd.randomSeed<<endl;
-
-
-
-  //set up shared memory files to store the integrals
-  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  shciSortedDets = "SHCISortedDetsshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  shciDavidson = "SHCIDavidsonshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  shcicMax = "SHCIcMaxshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
-  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
-  hHelpersSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciHelper.c_str(), boost::interprocess::read_write);
-  DetsCISegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDetsCI.c_str(), boost::interprocess::read_write);
-  SortedDetsSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciSortedDets.c_str(), boost::interprocess::read_write);
-  DavidsonSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDavidson.c_str(), boost::interprocess::read_write);
-  cMaxSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shcicMax.c_str(), boost::interprocess::read_write);
-
 
 
 
@@ -426,7 +378,6 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
     world.barrier();
 #endif
-    boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
     pout << "Error here"<<endl;
     exit(0);
   }
@@ -473,7 +424,6 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   world.barrier();
 #endif
-  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
   return 0;
 }

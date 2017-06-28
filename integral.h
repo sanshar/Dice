@@ -28,7 +28,7 @@ bool myfn(double i, double j);
 class compAbs {
  public:
   bool operator()(const float& a, const float& b) const {
-    return abs(a) < abs(b);
+    return fabs(a) < fabs(b);
   }
   bool operator()(const complex<double>& a, const complex<double>& b) const {
     return std::abs(a) < std::abs(b);
@@ -115,7 +115,7 @@ class twoIntHeatBath {
 
   double epsilon;
   double zero ;
- twoIntHeatBath(double epsilon_) :zero(0.0),epsilon(abs(epsilon_)) {}
+ twoIntHeatBath(double epsilon_) :zero(0.0),epsilon(fabs(epsilon_)) {}
 
   //the orbs contain all orbitals used to make the ij pair above
   //typically these can be all orbitals of the problem or just the active space ones
@@ -145,7 +145,7 @@ class twoIntHeatBath {
       for (int a=0; a<2*norbs; a++) {
 	Singles(i,a) = I1(i,a);
 	for (int j=0; j<2*norbs; j++) {
-	  if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i, j, j, a)))
+	  if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
 	    Singles(i,a) = I2(i,a,j,j) - I2(i, j, j, a);
 	}
       }
@@ -168,7 +168,7 @@ class twoIntHeatBathSHM {
   MatrixXd Singles;
 
   double epsilon;
- twoIntHeatBathSHM(double epsilon_) : epsilon(abs(epsilon_)) {}
+ twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
 
   void constructClass(int norbs, twoIntHeatBath& I2) ;
 };

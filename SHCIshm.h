@@ -18,6 +18,8 @@ You should have received a copy of the GNU General Public License along with thi
 #include "global.h"
 using namespace Eigen;
 
+void initSHM();
+
 template <typename T>
 void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname, 
 		    boost::interprocess::shared_memory_object& SHMsegment,

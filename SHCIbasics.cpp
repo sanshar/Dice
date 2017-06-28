@@ -884,11 +884,16 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					 twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					 , int nelec, bool DoRDM) {
   
-  int proc=0, nprocs=1;
+  int proc=0, nprocs=1, localrank=0;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   boost::mpi::communicator world;
+  MPI_Comm localComm;
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+		      MPI_INFO_NULL, &localComm);
+  MPI_Comm_rank(localComm, &localrank);
+  MPI_Comm_free(&localComm);
 #endif
 
   Determinant* SHMDets, *SortedDets;
@@ -901,6 +906,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   }
   int SortedDetsSize = SortedDetsvec.size(), DetsSize = Dets.size();
   SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+
+
   Dets.clear();
   SortedDetsvec.clear();
 #ifndef SERIAL
@@ -922,8 +929,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   SHCImakeHamiltonian::SparseHam sparseHam;
   if (schd.DavidsonType == DISK) {
     sparseHam.diskio = true;
-    //sparseHam.BatchSize = 100000;
-    sparseHam.BatchSize = 10;
+    sparseHam.BatchSize = 100000;
+    //sparseHam.BatchSize = 10;
     sparseHam.setNbatches(DetsSize);
     sparseHam.prefix = schd.prefix[0];
   }
@@ -1033,7 +1040,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     CItype zero = 0.0;
     
     for (int i=0; i<SortedDetsSize; i++) {
-      if (i%(nprocs) != proc) continue;
+      if (i%(commsize) != commrank) continue;
       SHCIgetdeterminants::getDeterminantsVariationalApprox(SHMDets[i], 
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
@@ -1048,8 +1055,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
     uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
-    
-    
+    uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
+
 #ifndef SERIAL
     for (int level = 0; level <ceil(log2(nprocs)); level++) {
       
@@ -1147,10 +1154,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     SortedDetsSize = DetsSize;
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
   
-  if (mpigetrank() == 0) 
+  if (localrank == 0) 
       std::sort(SortedDets, SortedDets+DetsSize);
+  
 #ifndef SERIAL
-    mpi::broadcast(world, SortedDetsSize, 0);
+  mpi::broadcast(world, SortedDetsSize, 0);
 #endif
 
 
