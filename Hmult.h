@@ -49,43 +49,76 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 #endif
     int size = mpigetsize(), rank = mpigetrank();
 
-    /*
-    MPI_Comm localComm;
-    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-			MPI_INFO_NULL, &localComm);
-    int localsize, localrank;
-    MPI_Comm_rank(localComm, &localrank);
-    MPI_Comm_size(localComm, &localsize);
-    */
+    int numDets = 0, localDets = sparseHam.connections.size();
+    MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-    for (int i=0; i<sparseHam.connections.size(); i++) {
-      for (int j=0; j<sparseHam.connections[i].size(); j++) {
-	CItype hij = sparseHam.Helements[i][j];
-	int J = sparseHam.connections[i][j];
-	y[i*size+rank] += hij*x[J];
-	//if (i*size+rank != J && J%size == rank) {
-	//y[J] += conj(hij)*x[i*size+rank];
+    if (numDets > 10000000) {//less than 10 million
+      
+      for (int i=0; i<sparseHam.connections.size(); i++) {
+	for (int j=0; j<sparseHam.connections[i].size(); j++) {
+	  CItype hij = sparseHam.Helements[i][j];
+	  int J = sparseHam.connections[i][j];
+	  y[i*size+rank] += hij*x[J];
+	}
       }
-    }
-    
-    for (int r=0; r<size; r++) {
-      MPI_Barrier(MPI_COMM_WORLD);
-      if (rank == r) { 
-	for (int i=0; i<sparseHam.connections.size(); i++) {
-	  for (int j=1; j<sparseHam.connections[i].size(); j++) {
-	    CItype hij = sparseHam.Helements[i][j];
-	    int J = sparseHam.connections[i][j];
-	    y[J] += conj(hij)*x[i*size+rank];
+      
+      for (int r=0; r<localsize; r++) {
+	MPI_Barrier(MPI_COMM_WORLD);
+	if (localrank == r) { 
+	  for (int i=0; i<sparseHam.connections.size(); i++) {
+	    for (int j=1; j<sparseHam.connections[i].size(); j++) {
+	      CItype hij = sparseHam.Helements[i][j];
+	      int J = sparseHam.connections[i][j];
+	      y[J] += conj(hij)*x[i*size+rank];
+	    }
 	  }
 	}
       }
+      MPI_Barrier(MPI_COMM_WORLD);    
+    }  
+    else {
+      vector<double> ytemp(numDets, 0);
+
+      for (int i=0; i<sparseHam.connections.size(); i++) {
+	for (int j=0; j<sparseHam.connections[i].size(); j++) {
+	  CItype hij = sparseHam.Helements[i][j];
+	  int J = sparseHam.connections[i][j];
+	  ytemp[i*size+rank] += hij*x[J];
+	  if (J != i*size+rank)
+	    ytemp[J] += conj(hij)*x[i*size+rank];
+	}
+      }
+      
+      MPI_Comm localComm;
+      MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+			  MPI_INFO_NULL, &localComm);
+      
+#ifndef SERIAL
+      MPI_Barrier(MPI_COMM_WORLD);
+#ifndef Complex
+      if (localrank == 0) {
+	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+	for (int j=0; j<numDets; j++)
+	  y[j] = ytemp[j];
+      }
+      else
+	MPI_Reduce(&ytemp[0], &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);	
+#else
+      if (localrank == 0) {
+	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+	for (int j=0; j<numDets; j++)
+	  y[j] = ytemp[j];
+      }
+      else
+	MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+#endif
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+      
+
+      MPI_Comm_free(&localComm);
     }
-    MPI_Barrier(MPI_COMM_WORLD);    
-    //MPI_Comm_free(&localComm);
-  }  
-
-
-
+  }
 };
 
 struct HmultDirect {
