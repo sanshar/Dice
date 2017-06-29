@@ -88,7 +88,7 @@ namespace SHCImakeHamiltonian {
     
     void makeFromHelper(HamHelpers2& helper2, Determinant *SHMDets,
 			int startIndex, int endIndex, int Norbs, oneInt& I1,
-			twoInt& I2, double& coreE);
+			twoInt& I2, double& coreE, bool DoRDM);
     void writeBatch(int batch);
     void readBatch (int batch);
     void setNbatches(int DetSize);

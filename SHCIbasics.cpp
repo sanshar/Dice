@@ -952,7 +952,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   helper2.MakeSHMHelpers();
   if (schd.DavidsonType != DIRECT)
-    sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE);
+    sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
   
 
 
@@ -1143,7 +1143,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       }	
       helper2.MakeSHMHelpers();
       if (schd.DavidsonType != DIRECT )
-	sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE);
+	sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
 
 
 #ifdef Complex
@@ -1235,7 +1235,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
 
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
-      sparseHam.resize(0);
 
 
 
@@ -1367,20 +1366,27 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 	}
       }
+      */
 
       if (DoRDM || schd.doResponse) {
+	if (schd.DavidsonType == DIRECT) {
+	  pout << "RDM not implemented with direct davidson."<<endl;
+	  exit(0);
+	}
 	pout <<"Calculating RDM"<<endl;
 	for (int i=0; i<schd.nroots; i++) {
 	  MatrixXx twoRDM;
 	  if (schd.DoSpinRDM )
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
-	  SHCIrdm::EvaluateRDM(connections, Dets, ci[i], ci[i], orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	  if (schd.outputlevel>0) SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
+	  SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, ci[i], ci[i], sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
+	  if (schd.outputlevel>0) 
+	    SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
 	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
         } // for i
       }
-      */
+      sparseHam.resize(0);
+
       break;
     }
     else {

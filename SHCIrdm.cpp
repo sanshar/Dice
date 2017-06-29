@@ -289,44 +289,39 @@ void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM
 
 }
 
-void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets,
+void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize,
 			  MatrixXx& cibra, MatrixXx& ciket,
 			  vector<vector<size_t> >& orbDifference, int nelec,
 			  schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
-#ifndef SERIAL
-  boost::mpi::communicator world;
-#endif
 
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
 
   int num_thrds = omp_get_max_threads();
-  int nprocs = mpigetsize(), proc = mpigetrank();
 
-  for (int i=0; i<Dets.size(); i++) {
-    //if ((i/num_thrds)%nprocs != proc) continue;
+  for (int i=0; i<DetsSize; i++) {
+    if (i%commsize != commrank) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
 
     //<Di| Gamma |Di>
-    if ((i/num_thrds)%nprocs == proc){
-      for (int n1=0; n1<nelec; n1++) {
-	for (int n2=0; n2<n1; n2++) {
-	  int orb1 = closed[n1], orb2 = closed[n2];
-	  if (schd.DoSpinRDM)
-	    twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(cibra(i,0))*ciket(i,0);
-	  populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
-	}
+    for (int n1=0; n1<nelec; n1++) {
+      for (int n2=0; n2<n1; n2++) {
+	int orb1 = closed[n1], orb2 = closed[n2];
+	if (schd.DoSpinRDM)
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(cibra(i,0))*ciket(i,0);
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
       }
     }
 
-    for (int j=0; j<connections[i].size(); j++) {
-      if (i == connections[i][j]) continue;
-      int d0=orbDifference[i][j]%norbs, c0=(orbDifference[i][j]/norbs)%norbs ;
-      if (orbDifference[i][j]/norbs/norbs == 0) { //only single excitation
+    for (int j=1; j<connections[i/commsize].size(); j++) {
+      //if (i == connections[i/commsize][j]) continue;
+      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
+
+      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	for (int n1=0;n1<nelec; n1++) {
 	  double sgn = 1.0;
 	  int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
@@ -334,31 +329,30 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
 	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
 	  if (schd.DoSpinRDM) {
-	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*conj(cibra(connections[i][j],0))*ciket(i,0);
-	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*conj(ciket(connections[i][j],0))*cibra(i,0);
+	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
 	  }
 
-	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*conj(cibra(connections[i][j],0))*ciket(i,0), nSpatOrbs);
-	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*conj(ciket(connections[i][j],0))*cibra(i,0), nSpatOrbs);
+	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
+	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
 
 	}
       }
       else {
-	int d1=(orbDifference[i][j]/norbs/norbs)%norbs, c1=(orbDifference[i][j]/norbs/norbs/norbs)%norbs ;
+	int d1=(orbDifference[i/commsize][j]/norbs/norbs)%norbs, c1=(orbDifference[i/commsize][j]/norbs/norbs/norbs)%norbs ;
 	double sgn = 1.0;
 
 	Dets[i].parity(d1,d0,c1,c0,sgn);
 
 	if (schd.DoSpinRDM) {
-	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*conj(cibra(connections[i][j],0))*ciket(i,0);
-	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*conj(ciket(connections[i][j],0))*cibra(i,0);
+	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
 	}
 
-	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*conj(cibra(connections[i][j],0))*ciket(i,0), nSpatOrbs);
-	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*conj(ciket(connections[i][j],0))*cibra(i,0), nSpatOrbs);
+	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
+	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
       }
     }
-
   }
 
 #ifndef SERIAL
@@ -384,7 +378,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
-    if (i%mpigetsize() != mpigetrank()) continue;
+    if (i%commsize != commrank) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
@@ -396,12 +390,12 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
       s1RDM(orb1, orb1) += conj(cibra(i,0))*ciket(i,0);
     }
 
-    for (int j=1; j<connections[i].size(); j++) {
-      int d0=orbDifference[i][j]%norbs, c0=(orbDifference[i][j]/norbs)%norbs ;
-      if (orbDifference[i][j]/norbs/norbs == 0) { //only single excitation
+    for (int j=1; j<connections[i/commsize].size(); j++) {
+      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
+      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
 	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-	s1RDM(c0, d0)+= sgn*conj(cibra(connections[i][j],0))*ciket(i,0);
+	s1RDM(c0, d0)+= sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
       }
     }
   }
@@ -511,7 +505,8 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
   twobody +=  0.5*twoRDM(p*norbs+q,r*norbs+s) * I2(2*p,2*r,2*q,2*s); // 2-body term
 #endif
 
+  pout <<onebody<<"  "<<twobody<<endl;
   energy += onebody + twobody;
-  if (mpigetrank() == 0)  cout << "E from 2RDM: " << energy << endl;
+  if (commrank == 0)  cout << "E from 2RDM: " << energy << endl;
   return energy;
 }

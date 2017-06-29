@@ -409,7 +409,7 @@ int main(int argc, char* argv[]) {
     MatrixXx s2RDM, twoRDM;
     s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
     if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-    SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
+    //SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
 
     if (mpigetrank() == 0) {
       MatrixXx s2RDMdisk, twoRDMdisk;

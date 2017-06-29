@@ -84,10 +84,10 @@ void SHCImakeHamiltonian::SparseHam::readBatch (int batch) {
 
 }
 
-void SHCImakeHamiltonian::SparseHam::makeFromHelper(HamHelpers2& helpers2, Determinant *SHMDets, int startIndex, int endIndex, int Norbs, oneInt& I1, twoInt& I2, double& coreE) {
+void SHCImakeHamiltonian::SparseHam::makeFromHelper(HamHelpers2& helpers2, Determinant *SHMDets, int startIndex, int endIndex, int Norbs, oneInt& I1, twoInt& I2, double& coreE, bool DoRDM) {
 
   std::vector<std::vector<size_t> > orbDifference;
-  bool DoRDM = false;
+
   SHCImakeHamiltonian::MakeHfromSMHelpers2(helpers2.AlphaMajorToBetaLen, 
 					   helpers2.AlphaMajorToBetaSM ,
 					   helpers2.AlphaMajorToDetSM  ,
