@@ -143,10 +143,10 @@ class twoIntHeatBath {
     Singles = MatrixXd::Zero(2*norbs, 2*norbs);
     for (int i=0; i<2*norbs; i++) {
       for (int a=0; a<2*norbs; a++) {
-	Singles(i,a) = I1(i,a);
+	Singles(i,a) = std::abs(I1(i,a));
 	for (int j=0; j<2*norbs; j++) {
 	  if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
-	    Singles(i,a) = I2(i,a,j,j) - I2(i, j, j, a);
+	    Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i, j, j, a));
 	}
       }
     }

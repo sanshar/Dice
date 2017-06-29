@@ -44,7 +44,7 @@ namespace SHCIrdm {
 		      MatrixXx& ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
 		      int root, MatrixXx& s1RDM);
 
- void UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, double *ci, double& E0,
+ void UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
 						  oneInt& I1, twoInt& I2, schedule& schd,
 						  double coreE, int nelec, int norbs,
 						  SHCISortMpiUtils::StitchDEH& uniqueDEH, int root,

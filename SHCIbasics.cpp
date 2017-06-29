@@ -956,7 +956,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 #ifdef Complex
-  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements,
+  SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize, SortedDets, sparseHam.connections, 
+					    sparseHam.orbDifference, 
+					    sparseHam.Helements,
 					    norbs, I1, nelec, false);
 #endif
 
@@ -1141,28 +1143,25 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
     if (commrank == 0) printf("New size of determinant space %8i\n", DetsSize);
     
+    if (proc == 0) {
+      helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
+    }	
+    helper2.MakeSHMHelpers();
+    if (schd.DavidsonType != DIRECT )
+      sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
     
+    SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
     
-    
-      if (proc == 0) {
-	helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
-      }	
-      helper2.MakeSHMHelpers();
-      if (schd.DavidsonType != DIRECT )
-	sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-
-
+    if (localrank == 0) 
+      std::sort(SortedDets, SortedDets+DetsSize);
+  
 #ifdef Complex
-    SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, connections, orbDifference,
-					      Helements, norbs, I1, nelec, false);
+      SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
+						sparseHam.connections, sparseHam.orbDifference,
+						sparseHam.Helements, norbs, I1, nelec, false);
 #endif
 
     SortedDetsSize = DetsSize;
-    SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
-  
-  if (localrank == 0) 
-      std::sort(SortedDets, SortedDets+DetsSize);
-  
 #ifndef SERIAL
   mpi::broadcast(world, SortedDetsSize, 0);
 #endif
@@ -1194,7 +1193,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (schd.DavidsonType == DIRECT)
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
     else
-      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
+      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
 
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
@@ -1224,7 +1223,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       if (schd.DavidsonType == DIRECT)
 	E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
       else
-	E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
+	E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);

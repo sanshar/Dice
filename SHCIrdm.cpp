@@ -184,7 +184,7 @@ void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, Matr
 }
 
 
-void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, double *ci, double& E0,
+void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
 							 oneInt& I1, twoInt& I2, schedule& schd,
 							 double coreE, int nelec, int norbs,
 							 StitchDEH& uniqueDEH, int root,
