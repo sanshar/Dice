@@ -157,6 +157,7 @@ class Determinant {
   double Energy(oneInt& I1, twoInt& I2, double& coreE);
   static void initLexicalOrder(int nelec);
   void parity(int& i, int& j, int& a, int& b, double& sgn) ;
+  void parity(int& i, int& j, int& k, int& a, int& b, int& c, double& sgn);
   void parity(const int& start, const int& end, double& parity) {
 
     long one = 1;

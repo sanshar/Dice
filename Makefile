@@ -1,7 +1,7 @@
 USE_MPI = yes
 USE_INTEL = no
-EIGEN=/home/james/Documents/Apps/eigen
-BOOST=/home/james/Documents/Apps/boost_1_57_0
+EIGEN=/projects/jasm3285/eigen
+BOOST=/projects/jasm3285/boost_1_57_0
 
 FLAGS = -std=c++11 -g -O3  -I${EIGEN} -I${BOOST} #-DComplex
 DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
@@ -12,11 +12,11 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage_blanca/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = icpc
 		CC = icpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage_blanca/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
@@ -26,11 +26,11 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage_blanca/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = g++
 		CC = g++
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage_blanca/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif

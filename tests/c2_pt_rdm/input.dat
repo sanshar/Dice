@@ -17,5 +17,5 @@ deterministic
 noio
 maxiter 12
 pointGroup d2h
-spin 2
-irrep 3
+spin 0
+irrep 1

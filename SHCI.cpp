@@ -189,7 +189,8 @@ int main(int argc, char* argv[]) {
 			Dets[d].setocc(HFoccupied[d][i], true);
 		}
 	};
-
+  
+  // TODO Make this work with MPI and not print one set from each processor 
 	pout << "**************************************************************\n";
 	pout << "SELECTING REFERENCE DETERMINANT(S)\n";
 	pout << "**************************************************************\n";
@@ -426,21 +427,33 @@ int main(int argc, char* argv[]) {
 		s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
 		if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 		SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
+    
+    cout << "Calculation s3RDM" << endl;
+    MatrixXx s3RDM;
+    s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
+    SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0, s3RDM);
+    cout << "About to print the s3RDM" << endl; //TODO
+    SHCIrdm::saves3RDM(schd, s3RDM, 0);
 
 		if (mpigetrank() == 0) {
 			MatrixXx s2RDMdisk, twoRDMdisk;
 			SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
 			s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
-			SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
-		}
+			SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0); 
+    }
 		//pout <<" response ";
 		//SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
-	}
+	
+  }
 
 #ifndef SERIAL
 	world.barrier();
 #endif
 	boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
+    
+
+
 	return 0;
 }
+

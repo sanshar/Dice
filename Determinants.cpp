@@ -146,6 +146,18 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
 	return;
 }
 
+void Determinant::parity(int& i, int& j, int& k, int& a, int& b, int& c,
+  double& sgn) {
+  parity(min(i, a), max(i,a), sgn);
+  setocc(i,false); setocc(a,true);
+  parity(min(j, b), max(j,b), sgn);
+  setocc(j,false); setocc(b,true);
+  parity(min(k, c), max(k,c), sgn);
+  setocc(i,true); setocc(a,false);
+  setocc(j,true); setocc(b,false);
+  return;
+}
+
 CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
 
 	double sgn = 1.0;

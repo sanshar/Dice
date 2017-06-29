@@ -127,6 +127,11 @@ symmetry::symmetry( string pg ) {
 		product_table = (fullD2hTable.topRows(2)).leftCols(2);
 	}
 
+  else if ( pg == (string)"c1" ) {
+    pointGroup = pg;
+    product_table.resize(1,1);
+    product_table = (fullD2hTable.topRows(1)).leftCols(1);
+  }
 	else {
 		cout << "Couldn't find the irrep! Exiting..." << endl;
 		exit(EXIT_FAILURE);
