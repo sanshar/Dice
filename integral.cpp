@@ -29,7 +29,7 @@ bool myfn(double i, double j) { return fabs(i)<fabs(j); }
 
 #ifdef Complex
 void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     vector<string> tok;
     string msg;
 
@@ -125,7 +125,7 @@ void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
 }
 
 void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     vector<string> tok;
     string msg;
 
@@ -221,7 +221,7 @@ int readNorbs(string fcidump) {
   boost::mpi::communicator world;
 #endif
   int norbs;
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     ifstream dump(fcidump.c_str());
     vector<string> tok;
     string msg;
@@ -250,7 +250,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   ifstream dump(fcidump.c_str());
 
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     I2.ksym = false;
     bool startScaling = false;
     norbs = -1;
@@ -328,7 +328,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
   I2.store = static_cast<double*>(regionInt2.get_address());
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     I1.store.clear();
     I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
     coreE = 0.0;
@@ -406,7 +406,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   boost::mpi::communicator world;
 #endif
   Singles = I2.Singles;
-  if (mpigetrank() != 0)
+  if (commrank != 0)
     Singles.resize(2*norbs, 2*norbs);
 
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
@@ -415,7 +415,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   size_t nonZeroSameSpinIntegrals = 0;
   size_t nonZeroOppositeSpinIntegrals = 0;
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.begin();
 
     for (;it1!= I2.sameSpin.end(); it1++) {
@@ -456,7 +456,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   startingIndicesOppositeSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(float) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
   oppositeSpinPairs = static_cast<short*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(float) + (norbs*(norbs+1)/2+1)*sizeof(size_t) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
 
     startingIndicesSameSpin[0] = 0;
     size_t index = 0, pairIter = 1;

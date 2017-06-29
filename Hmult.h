@@ -47,7 +47,7 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
-    int size = mpigetsize(), rank = mpigetrank();
+    int size = commsize, rank = commrank;
 
     int numDets = 0, localDets = sparseHam.connections.size();
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -212,7 +212,7 @@ struct HmultDirect {
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
-    int nprocs = mpigetsize(), proc = mpigetrank();
+    int nprocs = commsize, proc = commrank;
     
     size_t norbs = Norbs;
 

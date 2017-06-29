@@ -86,9 +86,9 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+  initSHM();
 
   license();
-  initSHM();
 
   string inputFile = "input.dat";
   if (argc > 1)
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
-  if (mpigetrank() == 0) readInput(inputFile, HFoccupied, schd);
+  if (commrank == 0) readInput(inputFile, HFoccupied, schd);
   if (DetLen%2 == 1) {
     pout << "Change DetLen in global to an even number and recompile."<<endl;
     exit(0);
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+mpigetrank());
+  srand(schd.randomSeed+commrank);
   if (schd.outputlevel>1) pout<<"#using seed: "<<schd.randomSeed<<endl;
 
 
@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   int num_thrds;
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
   Dets.clear();
 
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
 						    root, vdVector, Psi1Norm);
       ePT += E0[root];
       //pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
-      if (mpigetrank() == 0) fwrite( &ePT, 1, sizeof(double), f);
+      if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
     }
     fclose(f);
 
@@ -365,7 +365,7 @@ int main(int argc, char* argv[]) {
       ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       E0[root] += ePT;
       //pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
-      if (mpigetrank() == 0) fwrite( &E0[root], 1, sizeof(double), f);
+      if (commrank == 0) fwrite( &E0[root], 1, sizeof(double), f);
     }
     fclose(f);
 
@@ -386,32 +386,30 @@ int main(int argc, char* argv[]) {
   //THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
   if ((schd.doResponse || schd.DoRDM) && (!schd.stochastic && schd.nblocks==1)) {
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
-    std::vector<std::vector<int> > connections;
-    std::vector<std::vector<CItype> > Helements;
-    std::vector<std::vector<size_t> > orbDifference;
+    SHCImakeHamiltonian::SparseHam sparseHam;
     {
       char file [5000];
-      sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), mpigetrank() );
+      sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
       std::ifstream ifs(file, std::ios::binary);
       boost::archive::binary_iarchive load(ifs);
-      load >> connections >> Helements >> orbDifference;
+      load >> sparseHam.connections >> sparseHam.Helements >> sparseHam.orbDifference;
     }
 
 
-    /*
-    Hmult2 H(connections, Helements);
+    Hmult2 H(sparseHam);
     LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
 #ifndef SERIAL
     mpi::broadcast(world, lambda[0], 0);
 #endif
-    */
+
 
     MatrixXx s2RDM, twoRDM;
     s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
     if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-    //SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
+    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, lambda[0], ci[0], 
+			 sparseHam.orbDifference, nelec, schd, 0, twoRDM, s2RDM);
 
-    if (mpigetrank() == 0) {
+    if (commrank == 0) {
       MatrixXx s2RDMdisk, twoRDMdisk;
       SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;

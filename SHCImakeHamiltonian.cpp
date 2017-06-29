@@ -66,7 +66,7 @@ void SHCImakeHamiltonian::SparseHam::writeBatch(int batch) {
 
 
   char file [5000];
-  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), mpigetrank(), batch );
+  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), commrank, batch );
   std::ofstream ofs(file, std::ios::binary);
   boost::archive::binary_oarchive save(ofs);
   save << connections << Helements << orbDifference;
@@ -77,7 +77,7 @@ void SHCImakeHamiltonian::SparseHam::writeBatch(int batch) {
 void SHCImakeHamiltonian::SparseHam::readBatch (int batch) {
 
   char file [5000];
-  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), mpigetrank(), batch );
+  sprintf (file, "%s/%d-hamiltonian-batch%d.bkp" , prefix.c_str(), commrank, batch );
   std::ifstream ifs(file, std::ios::binary);
   boost::archive::binary_iarchive load(ifs);
   load >> connections >> Helements >> orbDifference;
@@ -142,7 +142,7 @@ void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
-  int size = mpigetsize(), rank = mpigetrank();
+  int size = commsize, rank = commrank;
 
 #pragma omp parallel
   {
@@ -175,7 +175,7 @@ void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >&
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
-  int nprocs= mpigetsize(), proc = mpigetrank();
+  int nprocs= commsize, proc = commrank;
 
   size_t norbs = Norbs;
 
@@ -412,7 +412,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   boost::mpi::communicator world;
 #endif
 
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int i=StartIndex; i<DetsSize; i++) {
       HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
 
@@ -1145,7 +1145,7 @@ void SHCImakeHamiltonian::updateSOCconnections(Determinant *Dets, int prevSize, 
   for (int i=0; i<connections.size(); i++)
     SortedDets[Dets[i]] = i;
 
-  int nprocs= mpigetsize(), proc = mpigetrank();
+  int nprocs= commsize, proc = commrank;
 
   //#pragma omp parallel for schedule(dynamic)
 #pragma omp parallel

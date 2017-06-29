@@ -47,12 +47,7 @@ void initSHM() {
   MPI_Comm_size(shmcomm, &shmsize);
 
   MPI_Comm_free(&localComm);
-  for (int i=0; i<commsize; i++) {
-    if (commrank == i) {
-      cout <<i<<"  "<< commrank<<"  "<<localrank<<"  "<<shmrank<<endl;
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-  }
+
 #endif
 
   //set up shared memory files to store the integrals

@@ -14,11 +14,6 @@ You should have received a copy of the GNU General Public License along with thi
 #include <Eigen/Dense>
 #include <iostream>
 #include <iostream>
-#ifndef SERIAL
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi.hpp>
-#endif
 #include "boost/format.hpp"
 #include "communicate.h"
 #include "iowrapper.h"
@@ -75,7 +70,6 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
   int localrank;
 #ifndef SERIAL
-  boost::mpi::communicator world;
   MPI_Comm localComm;
   MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
 		      MPI_INFO_NULL, &localComm);
@@ -88,7 +82,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
   int nroots = x0.size();
   MatrixXx b;
-  if (mpigetrank() == 0)
+  if (commrank == 0)
     b=MatrixXx::Zero(x0[0].rows(), maxCopies);
 
   int brows = x0[0].rows();
@@ -98,7 +92,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
   int niter;
   //if some vector has zero norm then randomise it
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int i=0; i<nroots; i++)  {
       b.col(i) = 1.*x0[i];
       if (x0[i].norm() < 1.e-10) {
@@ -125,12 +119,12 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   }
 
   MatrixXx sigma;
-  if (mpigetrank() == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
+  if (commrank == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
 
 
   int sigmaSize=0, bsize = x0.size();
   MatrixXx r;
-  if (mpigetrank() == 0) {r=MatrixXx::Zero(x0[0].rows(),1);}
+  if (commrank == 0) {r=MatrixXx::Zero(x0[0].rows(),1);}
   int convergedRoot = 0;
 
   //int iter = 0;
@@ -140,12 +134,12 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     //0->continue with the loop, 1 -> continue clause, 2 -> return
     int continueOrReturn = 0;
 #ifndef SERIAL
-    mpi::broadcast(world, bsize, 0);
-    mpi::broadcast(world, sigmaSize, 0);
+  MPI_Bcast(&bsize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&sigmaSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
 
     for (int i=sigmaSize; i<bsize; i++) {
-      if (mpigetrank()==0) {
+      if (commrank==0) {
 	for (int k=0; k<brows; k++) {
 	  bcol[k] = b(k,i);
 	}
@@ -171,13 +165,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       MPI_Barrier(MPI_COMM_WORLD);
       if (localrank == 0) {
 #ifndef Complex
-	if (mpigetrank() == 0)
+	if (commrank == 0)
 	  MPI_Reduce(MPI_IN_PLACE, sigmacol,  brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	else
 	  MPI_Reduce(sigmacol, sigmacol,  brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	
 #else
-	if (mpigetrank() == 0)
+	if (commrank == 0)
 	  MPI_Reduce(MPI_IN_PLACE, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	else
 	  MPI_Reduce(sigmacol, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
@@ -187,7 +181,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-      if (mpigetrank()==0) {
+      if (commrank==0) {
 	for (int k=0; k<brows; k++) {
 	  sigma(k,i) = sigmacol[k];
 	}
@@ -199,7 +193,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     }
 
 
-    if (mpigetrank() == 0) {
+    if (commrank == 0) {
       MatrixXx hsubspace(bsize, bsize);hsubspace.setZero(bsize, bsize);
       for (int i=0; i<bsize; i++)
 	for (int j=i; j<bsize; j++) {
@@ -237,7 +231,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       //if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
       if (print) {
 	if (numIter == 0) printf("nIter  Root               Energy                Error\n");
-	if (mpigetrank() == 0) printf ("%5i  %4i   %18.10g   %18.10g  %10.2f\n", numIter, convergedRoot, ei, error, (getTime()-startofCalc));
+	if (commrank == 0) printf ("%5i  %4i   %18.10g   %18.10g  %10.2f\n", numIter, convergedRoot, ei, error, (getTime()-startofCalc));
       }
       numIter++;
 
@@ -277,12 +271,12 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
   label1:
 #ifndef SERIAL
-    mpi::broadcast(world, continueOrReturn, 0);
-    mpi::broadcast(world, numIter, 0);
+    MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
     if (continueOrReturn == 2) return eroots;
 
-    if (mpigetrank() == 0) {
+    if (commrank == 0) {
       precondition(r,diag,ei);
       for (int i=0; i<bsize; i++)
 	r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
@@ -307,7 +301,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
   int localrank, shmrank;
 #ifndef SERIAL
-  boost::mpi::communicator world;
   MPI_Comm localComm;
   MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
 		      MPI_INFO_NULL, &localComm);
@@ -323,7 +316,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
   int nroots = x0.size();
   MatrixXx b;
-  if (mpigetrank() == 0)
+  if (commrank == 0)
     b=MatrixXx::Zero(x0[0].rows(), maxCopies);
 
   int brows = x0[0].rows();
@@ -333,7 +326,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
   int niter;
   //if some vector has zero norm then randomise it
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int i=0; i<nroots; i++)  {
       b.col(i) = 1.*x0[i];
       if (x0[i].norm() < 1.e-10) {
@@ -360,12 +353,12 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
   }
 
   MatrixXx sigma;
-  if (mpigetrank() == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
+  if (commrank == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
 
 
   int sigmaSize=0, bsize = x0.size();
   MatrixXx r;
-  if (mpigetrank() == 0) {r=MatrixXx::Zero(x0[0].rows(),1);}
+  if (commrank == 0) {r=MatrixXx::Zero(x0[0].rows(),1);}
   int convergedRoot = 0;
 
   //int iter = 0;
@@ -375,12 +368,12 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
     //0->continue with the loop, 1 -> continue clause, 2 -> return
     int continueOrReturn = 0;
 #ifndef SERIAL
-    mpi::broadcast(world, bsize, 0);
-    mpi::broadcast(world, sigmaSize, 0);
+    MPI_Bcast(&bsize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&sigmaSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
 
     for (int i=sigmaSize; i<bsize; i++) {
-      if (mpigetrank()==0) {
+      if (commrank==0) {
 	for (int k=0; k<brows; k++) {
 	  bcol[k] = b(k,i);
 	}
@@ -424,7 +417,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-      if (mpigetrank()==0) {
+      if (commrank==0) {
 	for (int k=0; k<brows; k++){
 	  sigma(k,i) = sigmacol[k];
 	}
@@ -435,7 +428,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
     }
 
 
-    if (mpigetrank() == 0) {
+    if (commrank == 0) {
       MatrixXx hsubspace(bsize, bsize);hsubspace.setZero(bsize, bsize);
       for (int i=0; i<bsize; i++)
 	for (int j=i; j<bsize; j++) {
@@ -473,7 +466,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
       //if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
       if (print) {
 	if (numIter == 0) printf("nIter  Root               Energy                Error\n");
-	if (mpigetrank() == 0) printf ("%5i  %4i   %18.10g   %18.10g  %10.2f\n", numIter, convergedRoot, ei, error, (getTime()-startofCalc));
+	if (commrank == 0) printf ("%5i  %4i   %18.10g   %18.10g  %10.2f\n", numIter, convergedRoot, ei, error, (getTime()-startofCalc));
       }
       numIter++;
 
@@ -513,12 +506,12 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
   label1:
 #ifndef SERIAL
-    mpi::broadcast(world, continueOrReturn, 0);
-    mpi::broadcast(world, numIter, 0);
+    MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
     if (continueOrReturn == 2) return eroots;
 
-    if (mpigetrank() == 0) {
+    if (commrank == 0) {
       precondition(r,diag,ei);
       for (int i=0; i<bsize; i++)
 	r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
@@ -540,9 +533,6 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
 double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<MatrixXx>& proj, double tol, bool print) {
-#ifndef SERIAL
-  boost::mpi::communicator world;
-#endif
 
   for (int i=0; i<proj.size(); i++)
     b = b- ((proj[i].adjoint()*b)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
@@ -554,9 +544,9 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
   int iter = 0;
   while (true) {
     MatrixXx Ap = 0.*p; 
-    //H(p,Ap); ///REPLACE THIS WITH SOMETHING
+    H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
 #ifndef SERIAL
-    mpi::broadcast(world, Ap, 0);
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     Ap = Ap - E0*p; //H0-E0
     CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
