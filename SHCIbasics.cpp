@@ -974,31 +974,30 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, 
 		   DetsCISegment, regionDetsCI);
-    helper2.MakeSHMHelpers();
 
     DetsSize = Dets.size(); SortedDetsSize = DetsSize;
     SHMVecFromVecs(Dets, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
-    if (commrank == 0) 
-      std::sort(SortedDets, SortedDets+SortedDetsSize);
-    MPI_Barrier(MPI_COMM_WORLD);
-    Dets.clear();
 #ifndef SERIAL
     mpi::broadcast(world, SortedDetsSize, 0);
     mpi::broadcast(world, DetsSize, 0);
 #endif
+    if (localrank == 0) 
+      std::sort(SortedDets, SortedDets+SortedDetsSize);
+    MPI_Barrier(MPI_COMM_WORLD);
+    Dets.clear();
 
-
-    if (schd.fullrestart)
-      iterstart = 0;
-    for (int i=0; i<E0.size(); i++)
-     pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n")
-	%(iterstart) %(i) % schd.epsilon1[iterstart] % DetsSize % (E0[i]+coreEbkp) % (getTime()-startofCalc);
-    if (!schd.fullrestart)
-      iterstart++;
-    else {
-      sparseHam.resize(0);
+    helper2.MakeSHMHelpers();
+    if (schd.DavidsonType != DIRECT)
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-    }
+
+
+    for (int i=0; i<E0.size(); i++)
+      pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n")
+	%(iterstart) %(i) % schd.epsilon1[iterstart] % DetsSize % (E0[i]+coreEbkp) % (getTime()-startofCalc);
+
+    if (!schd.fullrestart) iterstart++;
+    else iterstart = 0;
+    
 
     if (converged && iterstart >= schd.epsilon1.size()) {
       for (int i=0; i<E0.size(); i++) 
@@ -1551,6 +1550,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     ofs.close();
   }
 
+  /*
   {
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
@@ -1558,6 +1558,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     boost::archive::binary_oarchive save(ofs);
     save << sparseHam.connections<<sparseHam.Helements<<sparseHam.orbDifference;
   }
+  */
 
   if (world.rank() == 0)
   {
@@ -1604,6 +1605,8 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     load >> converged;
   }
 
+  /*
+  if (schd.DavidsonType != DIRECT)
   {
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
@@ -1611,6 +1614,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     boost::archive::binary_iarchive load(ifs);
     load >> sparseHam.connections >> sparseHam.Helements >>sparseHam.orbDifference;
   }
+  */
 
   if (world.rank() == 0)
   {
