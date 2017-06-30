@@ -9,7 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "omp.h"
+
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -322,7 +322,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   }
 }
 
-void fixForTreversal(Determinant* Dets, int DetI, int DetJ, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff, double& hij) {
+void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff, double& hij) {
   if (DetI < 0) hij = 0.0;
   else if (DetI >= 0 && Determinant::Trev != 0) {
     if (!Dets[abs(DetJ)].hasUnpairedElectrons() && !Dets[abs(DetI)].hasUnpairedElectrons())
