@@ -96,9 +96,9 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 	  ytemp[i*size+rank] += hij*x[J];
 	  if (J != i*size+rank)
 #ifdef Complex
-	      y[J] += std::conj(hij)*x[i*size+rank];
+	      ytemp[J] += std::conj(hij)*x[i*size+rank];
 #else
-				y[J] += hij*x[i*size+rank];
+				ytemp[J] += hij*x[i*size+rank];
 #endif
 	}
       }
