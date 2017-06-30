@@ -7,9 +7,11 @@ davidsonTol 5e-05
 dE 1e-08
 DoRDM 
 schedule
-0	0.01
-3	0.001
+0	0.0001
+3	0.00001
 end
-nPTiter 1000 
+nPTiter 200 
+DoRDM
 noio
 maxiter 9
+targeterror 8e-6

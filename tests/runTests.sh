@@ -14,31 +14,48 @@ printf "...running o2_omp1_stoc\n"
 export OMP_NUM_THREADS=1
 $HCIPATH > output.dat
 python ../test_energy.py 1  1.0e-5
-
+python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 cd $here/o2_omp1_det
 printf "...running o2_omp1_det\n"
 $HCIPATH > output.dat
 python ../test_energy.py 1  1.0e-6
-python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 cd $here/o2_omp4_det
 printf "...running o2_omp4_det\n"
 export OMP_NUM_THREADS=4
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  1.0e-6
-python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 cd $here/o2_omp4_seed
 printf "...running o2_omp4_seed\n"
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  5.0e-6
-
-# PT RDM Test
-cd $here/c2_pt_rdm
-printf "...running c2_pt_rdm\n"
-$MPICOMMAND $HCIPATH > output.dat
 python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+cd $here/restart
+printf "...running restart test\n"
+$MPICOMMAND $HCIPATH input1.dat > output1.dat
+mv shci.e trusted_hci.e
+$MPICOMMAND $HCIPATH input2.dat > output2.dat
+$MPICOMMAND $HCIPATH input3.dat > output3.dat
+python $here/test_energy.py 1 5e-5
+
+cd $here/fullrestart
+printf "...running full restart test\n"
+$MPICOMMAND $HCIPATH input1.dat > output1.dat
+mv shci.e trusted_hci.e
+$MPICOMMAND $HCIPATH input2.dat > output2.dat
+$MPICOMMAND $HCIPATH input3.dat > output3.dat
+python $here/test_energy.py 1 5e-5
+
+## PT RDM Test
+#cd $here/c2_pt_rdm
+#printf "...running c2_pt_rdm\n"
+#$MPICOMMAND $HCIPATH > output.dat
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 # Mn(salen) tests.
 cd $here/mn_salen_stoc
@@ -58,15 +75,6 @@ python ../test_energy.py 1  8.0e-5
 #export OMP_NUM_THREADS=7
 #$MPICOMMAND $HCIPATH > output.dat
 #python ../test_energy.py 1  1.0e-6
-
-
-
-
-
-## Pyscf/SHCI (SHCISCF) tests. (6 x unittests)
-#cd $here/shciscf_c2
-#printf "...running test_c2.py\n" >> ../shciTest.log
-
 
 
 ## Clean up

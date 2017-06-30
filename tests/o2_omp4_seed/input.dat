@@ -5,7 +5,7 @@ epsilon2 1e-07
 sampleN 200
 davidsonTol 5e-05
 dE 1e-08
-DoRDM True
+DoRDM
 schedule
 0	0.01
 3	0.001
