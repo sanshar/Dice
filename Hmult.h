@@ -77,7 +77,7 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
       MPI_Barrier(MPI_COMM_WORLD);    
     }  
     else {
-      vector<double> ytemp(numDets, 0);
+      vector<CItype> ytemp(numDets, 0);
 
       for (int i=0; i<sparseHam.connections.size(); i++) {
 	for (int j=0; j<sparseHam.connections[i].size(); j++) {
