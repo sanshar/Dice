@@ -144,10 +144,8 @@ void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 #endif
   int size = commsize, rank = commrank;
 
-#pragma omp parallel
-  {
     for (int i=0; i<connections.size(); i++) {
-      if ((i/omp_get_num_threads())%size != rank) continue;
+      if ((i)%size != rank) continue;
       Helements[i][0] = Dets[i].Energy(I1, I2, coreE);
       for (int j=1; j<connections[i].size(); j++) {
 	size_t orbDiff;
@@ -156,7 +154,6 @@ void SHCImakeHamiltonian::regenerateH(std::vector<Determinant>& Dets,
 	Helements[i][j] = hij;
       }
     }
-  }
 }
 
 void updateAlphaBeta(HalfDet &da, HalfDet &db,

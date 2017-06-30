@@ -409,7 +409,9 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   if (commrank != 0)
     Singles.resize(2*norbs, 2*norbs);
 
+#ifndef SERIAL
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+#endif
   I2.Singles.resize(0,0);
   size_t memRequired = 0;
   size_t nonZeroSameSpinIntegrals = 0;
@@ -448,13 +450,14 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   world.barrier();
 #endif
 
-  sameSpinIntegrals = static_cast<float*>(regionInt2SHM.get_address());
-  startingIndicesSameSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*sizeof(float));
-  sameSpinPairs = static_cast<short*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*sizeof(float) + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  char* startAddress = (char*)(regionInt2SHM.get_address());
+  sameSpinIntegrals = (float*)(startAddress);
+  startingIndicesSameSpin = (size_t*)(startAddress + nonZeroSameSpinIntegrals*sizeof(float));
+  sameSpinPairs = (short*)(startAddress + nonZeroSameSpinIntegrals*sizeof(float) + (norbs*(norbs+1)/2+1)*sizeof(size_t));
 
-  oppositeSpinIntegrals = static_cast<float*>(regionInt2SHM.get_address() + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  startingIndicesOppositeSpin = static_cast<size_t*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(float) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  oppositeSpinPairs = static_cast<short*>(regionInt2SHM.get_address() + nonZeroOppositeSpinIntegrals*sizeof(float) + (norbs*(norbs+1)/2+1)*sizeof(size_t) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  oppositeSpinIntegrals = (float*)(startAddress + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  startingIndicesOppositeSpin = (size_t*)(startAddress + nonZeroOppositeSpinIntegrals*sizeof(float) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  oppositeSpinPairs = (short*)(startAddress + nonZeroOppositeSpinIntegrals*sizeof(float) + (norbs*(norbs+1)/2+1)*sizeof(size_t) + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short)) +  (norbs*(norbs+1)/2+1)*sizeof(size_t));
 
   if (commrank == 0) {
 
@@ -506,7 +509,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   long maxIter = intdim/maxint;
 #ifndef SERIAL
   world.barrier();
-  char* shrdMem = static_cast<char*>(regionInt2SHM.get_address());
+  char* shrdMem = static_cast<char*>(startAddress);
   for (int i=0; i<maxIter; i++) {
     MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
     world.barrier();
