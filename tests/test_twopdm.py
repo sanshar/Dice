@@ -29,9 +29,10 @@ def run(file1, file2, tol):
           res = (mat1[i,j,k,l] - mat2[i,j,k,l])*(mat1[i,j,k,l] - mat2[i,j,k,l])
           val = val + res
   if val > float(tol):
-    print "FAILED ...."
+    print "\t ", val , " > ", tol
+    print "\t FAILED 2RDM...."
   else:
-    print "PASSED ...."
+    print "\t PASSED 2RDM...."
 
 if __name__=="__main__":
     import sys
