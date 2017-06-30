@@ -227,8 +227,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "nocc keyword has to be included."<<endl;
     exit(0);
   }
+#ifndef Complex
   if (schd.DavidsonType == DIRECT)
-    schd.davidsonTolLoose = 3.e-2;
+    schd.davidsonTolLoose = 3.e-3;
+#else
+  schd.davidsonTolLoose = 1.e-5;
+#endif
+
   for (int i=1; i<sweep_iter.size(); i++)
     for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)
       schd.epsilon1.push_back(sweep_epsilon[i-1]);

@@ -1063,7 +1063,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
     uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
-    //uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
+
+    if (Determinant::Trev != 0) 
+      uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
 
 #ifndef SERIAL
     for (int level = 0; level <ceil(log2(nprocs)); level++) {
@@ -1165,9 +1167,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
   mpi::broadcast(world, SortedDetsSize, 0);
 #endif
-
-
-
+  
     if (proc == 0) {
       MatrixXx diagbkp = diag;
       diag =MatrixXx::Zero(DetsSize,1);

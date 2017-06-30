@@ -491,6 +491,12 @@ CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclos
 void updateHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
 			   oneInt& I1,
 			   twoInt& I2, 
-			   double& coreE);
+			   double& coreE,
+			   size_t& orbDiff);
+void getHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
+			oneInt& I1,
+			twoInt& I2, 
+			double& coreE,
+			size_t& orbDiff);
 
 #endif

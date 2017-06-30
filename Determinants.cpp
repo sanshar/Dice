@@ -19,15 +19,53 @@ You should have received a copy of the GNU General Public License along with thi
 using namespace std;
 using namespace Eigen;
 
+//with treversal symmetry dj and dk will find each other multiple times
+//we prune this possibility as follows
+// ->  we only look for connection is dj is positive (starndard form)
+// -> even it is positive there still might be two connections to dk
+//     -> so this updates hij
+void getHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
+			oneInt& I1,
+			twoInt& I2, 
+			double& coreE,
+			size_t& orbDiff,
+			int plusORminus) {
+  if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
+      dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dk;
+    detcpy.flipAlphaBeta();
+    double parity = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
+    hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
+	   !dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dj;
+    detcpy.flipAlphaBeta();
+    double parity = dj.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
+    hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
+	   && dk.hasUnpairedElectrons()) {
+    Determinant detcpyk = dk;
+    detcpyk.flipAlphaBeta();
+    double parityk = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
+    hij = Determinant::Trev*parityk*hijCopy1;
+
+  }
+}
 
 void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
 			   oneInt& I1,
 			   twoInt& I2, 
-			   double& coreE) {
+			   double& coreE,
+			   size_t& orbDiff) {
   if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
       dk.hasUnpairedElectrons()) {
     Determinant detcpy = dk;
-    size_t orbDiff;
+
     detcpy.flipAlphaBeta();
     double parity = dk.parityOfFlipAlphaBeta();
     CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
@@ -36,7 +74,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
 	   !dk.hasUnpairedElectrons()) {
     Determinant detcpy = dj;
-    size_t orbDiff;
+
     detcpy.flipAlphaBeta();
     double parity = dj.parityOfFlipAlphaBeta();
     CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
@@ -45,7 +83,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
 	   && dk.hasUnpairedElectrons()) {
     Determinant detcpyk = dk;
-    size_t orbDiff;
+
     detcpyk.flipAlphaBeta();
     double parityk = dk.parityOfFlipAlphaBeta();
     CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);

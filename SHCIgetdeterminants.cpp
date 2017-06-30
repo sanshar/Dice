@@ -386,7 +386,12 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       di.setocc(closed[i],false);
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	dets.push_back(di);
-      //if (Determinant::Trev != 0) di.makeStandard();
+#ifdef Complex
+      Determinant detcpy = di;
+      detcpy.flipAlphaBeta();
+      if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy))
+	dets.push_back(detcpy);
+#endif
     }
   }
 
@@ -424,6 +429,13 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
 	di.setocc(closed[j], false);
 	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	  dets.push_back(di);
+
+#ifdef Complex
+	Determinant detcpy = di;
+	detcpy.flipAlphaBeta();
+	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy))
+	  dets.push_back(detcpy);
+#endif
 
 	//if (Determinant::Trev != 0) di.makeStandard();
       }
