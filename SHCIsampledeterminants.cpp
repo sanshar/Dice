@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License along with thi
 using namespace Eigen;
 
 
-int SHCIsampledeterminants::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts){
+void SHCIsampledeterminants::sample_round(MatrixXx& ci, double eps, std::vector<int>& Sample1, std::vector<CItype>& newWts){
   for (int i=0; i<ci.rows(); i++) {
     if (abs(ci(i,0)) > eps) {
       Sample1.push_back(i);

@@ -57,7 +57,9 @@ extern boost::interprocess::shared_memory_object cMaxSegment;
 extern boost::interprocess::mapped_region regioncMax;
 extern std::string shcicMax;
 
+#ifndef SERIAL
 extern MPI_Comm shmcomm;
+#endif
 extern int commrank, shmrank, localrank;
 extern int commsize, shmsize, localsize;
 #endif

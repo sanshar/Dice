@@ -236,7 +236,7 @@ class Determinant {
   bool isStandard() {
     if (!hasUnpairedElectrons()) return true;
     
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=EffDetLen-1; i>=0 ; i--) {
       if (repr[i] < (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return false;
       else if (repr[i] > (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return true;
@@ -247,7 +247,7 @@ class Determinant {
   }
 
   bool hasUnpairedElectrons() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=EffDetLen-1; i>=0 ; i--) {
       if ( ((repr[i]&even)<<1) != (repr[i]&odd)) return true;
     }
@@ -255,13 +255,13 @@ class Determinant {
   }
 
   void flipAlphaBeta() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=0; i<EffDetLen; i++) 
       repr[i] = ((repr[i]&even)<<1) + ((repr[i]&odd)>>1);
   }
 
   double parityOfFlipAlphaBeta() {
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA; long temp=0;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA; long temp=0;
     int numpaired=0;
     for (int i=0; i<EffDetLen; i++) {
       temp = ((repr[i]&even)<<1)&repr[i];
@@ -279,8 +279,8 @@ class Determinant {
 
   bool connected1Alpha1Beta(const Determinant& d) const {
     int ndiffAlpha = 0, ndiffBeta = 0; long u;
-    //ulong even = 12297829382473034410, odd = 6148914691236517205;
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    //unsigned long even = 12297829382473034410, odd = 6148914691236517205;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=0; i<EffDetLen; i++) {
       u = (repr[i] ^ d.repr[i])&even;
       ndiffAlpha += BitCount(u);
@@ -337,7 +337,7 @@ class Determinant {
   //Is the excitation between *this and d less than equal to 2.
   bool connectedToFlipAlphaBeta(const Determinant& d) const {
     int ndiff = 0; long u;
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
 
     for (int i=0; i<EffDetLen; i++) {
       u = repr[i] ^ ( ( (d.repr[i]&even)<<1) + ((d.repr[i]&odd)>>1));

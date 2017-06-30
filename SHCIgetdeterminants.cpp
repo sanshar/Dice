@@ -374,10 +374,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     
     if (fabs(integral) >epsilon) 
-      if (closed[i]%2 == open[a]%2)
+      if (closed[i]%2 == open[a]%2) 
 	integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-    else
-      continue;
 
     //if (fabs(integral/(E0-Energyd)) > epsilon ) {
     if (fabs(integral) > epsilon ) {

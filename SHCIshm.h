@@ -128,58 +128,6 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
 
 
 
-template <typename T>
-void extendSHMAndAddVec(std::vector<T>& vec, T* &SHMvec, std::string& SHMname, 
-			boost::interprocess::shared_memory_object& SHMsegment,
-		    boost::interprocess::mapped_region& SHMregion) {
-
-  size_t totalMemory = 0;
-  int comm_rank=0, comm_size=1;
-#ifndef SERIAL
-  MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-#endif
-  
-  if (comm_rank == 0) 
-    totalMemory = vec.size()*sizeof(T);
-#ifndef SERIAL
-  MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  long oldSize; SHMsegment.get_size(oldSize);
-  SHMsegment.truncate(totalMemory+oldSize);
-  SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
-  memset(SHMregion.get_address()+oldSize, 0., totalMemory);
-  SHMvec = (T*)(SHMregion.get_address()+oldSize);
-  
-#ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-  
-  if (comm_rank == 0) {
-    for (size_t i=0; i<vec.size(); i++) 
-      SHMvec[i] = vec[i];
-  }
-#ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-  long intdim  = totalMemory;
-  long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
-#ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-  
-  char* shrdMem = static_cast<char*>(SHMregion.get_address());
-  for (int i=0; i<maxIter; i++) {
-    MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-  }
-  
-  MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, MPI_COMM_WORLD);
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-}
-
 
 
 void SHMVecFromMatrix(MatrixXx& vec, CItype* &SHMvec, std::string& SHMname,

@@ -9,7 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "omp.h"
+
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -45,6 +45,16 @@ using namespace std;
 using namespace Eigen;
 using namespace boost;
 using namespace SHCISortMpiUtils;
+
+namespace localConj {
+  CItype conj(CItype a) {
+#ifdef Complex
+    return std::conj(a);
+#else
+    return a;
+#endif
+  }
+};
 
 void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root) {
   int norbs = twoRDM.rows();
@@ -115,73 +125,6 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 }
 
-void SHCIrdm::UpdateRDMPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0,
-						 oneInt& I1, twoInt& I2, schedule& schd,
-						 double coreE, int nelec, int norbs,
-						 std::vector<StitchDEH>& uniqueDEH, int root,
-						 MatrixXx& s2RDM, MatrixXx& twoRDM) {
-
-  int nSpatOrbs = norbs/2;
-
-  int num_thrds = omp_get_max_threads();
-  for (int thrd = 0; thrd <num_thrds; thrd++) {
-
-    vector<Determinant>& uniqueDets = *uniqueDEH[thrd].Det;
-    vector<double>& uniqueEnergy = *uniqueDEH[thrd].Energy;
-    vector<CItype>& uniqueNumerator = *uniqueDEH[thrd].Num;
-    vector<vector<int> >& uniqueVarIndices = *uniqueDEH[thrd].var_indices;
-    vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH[thrd].orbDifference;
-
-    for (size_t k=0; k<uniqueDets.size();k++) {
-      for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
-	int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;
-
-	if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
-	  vector<int> closed(nelec, 0);
-	  vector<int> open(norbs-nelec,0);
-	  Dets[uniqueVarIndices[k][i]].getOpenClosed(open, closed);
-	  for (int n1=0;n1<nelec; n1++) {
-	    double sgn = 1.0;
-	    int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
-	    if (closed[n1] == d0) continue;
-	    Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
-	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-	    if (schd.DoSpinRDM) {
-	      twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	      twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	    }
-	    populateSpatialRDM(a, b, I, J, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	    populateSpatialRDM(I, J, a, b, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	  } // for n1
-	}  // single
-	else { // double excitation
-	  int d1=(uniqueOrbDiff[k][i]/norbs/norbs)%norbs, c1=(uniqueOrbDiff[k][i]/norbs/norbs/norbs)%norbs ;
-	  double sgn = 1.0;
-	  Dets[uniqueVarIndices[k][i]].parity(d1,d0,c1,c0,sgn);
-	  int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
-	  if (P != c0)  sgn *= -1;
-	  if (Q != d0)  sgn *= -1;
-
-	  if (schd.DoSpinRDM) {
-	    twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	    twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]);
-	  }
-
-	  populateSpatialRDM(P, Q, R, S, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	  populateSpatialRDM(R, S, P, Q, s2RDM, 0.5*sgn*uniqueNumerator[k]*ci(uniqueVarIndices[k][i],0)/(E0-uniqueEnergy[k]), nSpatOrbs);
-	}// If
-      } // i in variational connections to PT det k
-    } // k in PT dets
-  } //thrd in num_thrds
-
-#ifndef SERIAL
-  if (schd.DoSpinRDM)
-    MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-
-}
 
 
 void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
@@ -212,8 +155,8 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
       for (int n2=0; n2<n1; n2++) {
 	int orb1 = closed[n1], orb2 = closed[n2];
 	if (schd.DoSpinRDM)
-	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(coeff)*coeff;
-	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff)*coeff, nSpatOrbs);
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(coeff)*coeff;
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(coeff)*coeff, nSpatOrbs);
       }
     }
     
@@ -294,7 +237,6 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
   int nSpatOrbs = norbs/2;
 
 
-  int num_thrds = omp_get_max_threads();
 
   for (int i=0; i<DetsSize; i++) {
     if (i%commsize != commrank) continue;
@@ -308,8 +250,8 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
       for (int n2=0; n2<n1; n2++) {
 	int orb1 = closed[n1], orb2 = closed[n2];
 	if (schd.DoSpinRDM)
-	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(cibra(i,0))*ciket(i,0);
-	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra(i,0))*ciket(i,0);
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
       }
     }
 
@@ -325,12 +267,12 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
 	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
 	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
 	  if (schd.DoSpinRDM) {
-	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
-	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
+	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
 	  }
 
-	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
-	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
+	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
+	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
 
 	}
       }
@@ -340,12 +282,12 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
 
 	Dets[i].parity(d1,d0,c1,c0,sgn);
 	if (schd.DoSpinRDM) {
-	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
-	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
+	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
 	}
 
-	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
-	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
+	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
+	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
 
       }
     }
@@ -371,7 +313,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
   int nSpatOrbs = norbs/2;
 
 
-  int num_thrds = omp_get_max_threads();
+
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
@@ -384,7 +326,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
       int orb1 = closed[n1];
-      s1RDM(orb1, orb1) += conj(cibra(i,0))*ciket(i,0);
+      s1RDM(orb1, orb1) += localConj::conj(cibra(i,0))*ciket(i,0);
     }
 
     for (int j=1; j<connections[i/commsize].size(); j++) {
@@ -392,7 +334,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
       if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
 	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-	s1RDM(c0, d0)+= sgn*conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	s1RDM(c0, d0)+= sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
       }
     }
   }

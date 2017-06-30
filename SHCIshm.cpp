@@ -27,7 +27,9 @@ std::string shciDavidson;
 boost::interprocess::shared_memory_object cMaxSegment;
 boost::interprocess::mapped_region regioncMax;
 std::string shcicMax;
+#ifndef SERIAL
 MPI_Comm shmcomm;
+#endif
 int commrank, shmrank, localrank;
 int commsize, shmsize, localsize;
 
@@ -47,7 +49,9 @@ void initSHM() {
   MPI_Comm_size(shmcomm, &shmsize);
 
   MPI_Comm_free(&localComm);
-
+#else
+  commrank=0;shmrank=0;localrank=0;
+  commsize=1;shmsize=1;localsize=1;
 #endif
 
   //set up shared memory files to store the integrals

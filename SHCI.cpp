@@ -9,7 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "omp.h"
+
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -113,7 +113,6 @@ int main(int argc, char* argv[]) {
     schd.Trev = 0;
   }
   Determinant::Trev = schd.Trev;
-  omp_set_num_threads(schd.num_thrds);
 
 
   //set the random seed
@@ -301,6 +300,7 @@ int main(int argc, char* argv[]) {
     }
     MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
 
+    /*
     for (int root1 =0 ;root1<schd.nroots; root1++) {
       for (int root2=root1+1 ;root2<schd.nroots; root2++) {
 	Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
@@ -310,9 +310,14 @@ int main(int argc, char* argv[]) {
 							   coreE, nelec, root1, Heff(root1,root1),
 							   Heff(root2, root2), Heff(root1, root2),
 							   spinRDM);
-	Heff(root2, root1) = conj(Heff(root1, root2));
+	#ifdef Complex
+  Heff(root2, root1) = conj(Heff(root1, root2));
+#else
+  Heff(root2, root1) = Heff(root1, root2);
+#endif
       }
     }
+    */
     for (int root1 =0 ;root1<schd.nroots; root1++)
       Heff(root1, root1) += E0[root1];
 

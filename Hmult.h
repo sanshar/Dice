@@ -11,7 +11,7 @@ You should have received a copy of the GNU General Public License along with thi
 */
 #ifndef HMULT_HEADER_H
 #define HMULT_HEADER_H
-#include "omp.h"
+
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #ifndef SERIAL
@@ -49,8 +49,10 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 #endif
     int size = commsize, rank = commrank;
 
-    int numDets = 0, localDets = sparseHam.connections.size();
+    int numDets = sparseHam.connections.size(), localDets = sparseHam.connections.size();
+#ifndef SERIAL
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
 
     if (numDets > 10000000) {//less than 10 million
       
@@ -63,18 +65,26 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
       }
       
       for (int r=0; r<localsize; r++) {
+#ifndef SERIAL
 	MPI_Barrier(MPI_COMM_WORLD);
+#endif
 	if (localrank == r) { 
 	  for (int i=0; i<sparseHam.connections.size(); i++) {
 	    for (int j=1; j<sparseHam.connections[i].size(); j++) {
 	      CItype hij = sparseHam.Helements[i][j];
 	      int J = sparseHam.connections[i][j];
-	      y[J] += conj(hij)*x[i*size+rank];
+#ifdef Complex
+	      y[J] += std::conj(hij)*x[i*size+rank];
+#else
+				y[J] += hij*x[i*size+rank];
+#endif
 	    }
 	  }
 	}
       }
+#ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);    
+#endif
     }  
     else {
       vector<CItype> ytemp(numDets, 0);
@@ -85,15 +95,19 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 	  int J = sparseHam.connections[i][j];
 	  ytemp[i*size+rank] += hij*x[J];
 	  if (J != i*size+rank)
-	    ytemp[J] += conj(hij)*x[i*size+rank];
+#ifdef Complex
+	      y[J] += std::conj(hij)*x[i*size+rank];
+#else
+				y[J] += hij*x[i*size+rank];
+#endif
 	}
       }
       
+      
+#ifndef SERIAL
       MPI_Comm localComm;
       MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
 			  MPI_INFO_NULL, &localComm);
-      
-#ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #ifndef Complex
       if (localrank == 0) {
@@ -113,10 +127,10 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 	MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Comm_free(&localComm);
 #endif
       
 
-      MPI_Comm_free(&localComm);
     }
   }
 };
