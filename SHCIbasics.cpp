@@ -1278,7 +1278,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     ofs.close();
   }
 
-  /*
+  if (converged)
   {
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
@@ -1286,7 +1286,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     boost::archive::binary_oarchive save(ofs);
     save << sparseHam.connections<<sparseHam.Helements<<sparseHam.orbDifference;
   }
-  */
+  
 
   if (commrank == 0)
   {
