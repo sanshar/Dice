@@ -1179,6 +1179,7 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
     ofs.close();
   }
 
+  if (converged)
   {
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
@@ -1230,6 +1231,7 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     load >> converged;
   }
 
+  if (converged)
   {
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
