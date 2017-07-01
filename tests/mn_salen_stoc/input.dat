@@ -4,7 +4,7 @@ end
 
 
 epsilon2 1.e-6
-epsilon2large 1.e-5
+epsilon2large 5.e-6
 sampleN 200
 davidsontol 5.e-5
 dE 1.e-7

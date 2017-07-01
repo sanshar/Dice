@@ -8,11 +8,10 @@ schedule
 end
 davidsonTol 5e-05
 dE 1e-08
-
 nPTiter 0
 epsilon2 1e-08
 sampleN 200
 noio 
 prefix .
-maxiter 12
+maxiter 6
 

@@ -55,16 +55,12 @@ python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 cd $here/restart
 printf "...running restart test\n"
-$MPICOMMAND $HCIPATH input1.dat > output1.dat
-mv shci.e trusted_hci.e
 $MPICOMMAND $HCIPATH input2.dat > output2.dat
 $MPICOMMAND $HCIPATH input3.dat > output3.dat
 python $here/test_energy.py 1 5e-5
 
 cd $here/fullrestart
 printf "...running full restart test\n"
-$MPICOMMAND $HCIPATH input1.dat > output1.dat
-mv shci.e trusted_hci.e
 $MPICOMMAND $HCIPATH input2.dat > output2.dat
 $MPICOMMAND $HCIPATH input3.dat > output3.dat
 python $here/test_energy.py 1 5e-5

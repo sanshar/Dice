@@ -13,5 +13,5 @@ epsilon2 1e-08
 sampleN 200
 noio 
 prefix .
-maxiter 12
+maxiter 6
 
