@@ -4,7 +4,7 @@
 printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
-MPICOMMAND="mpirun -np 6"
+MPICOMMAND="mpirun -np 28"
 HCIPATH="../../Dice"
 here=`pwd`
 
@@ -18,6 +18,24 @@ python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
 
 cd $here/o2_omp1_det
 printf "...running o2_omp1_det\n"
+$HCIPATH > output.dat
+python ../test_energy.py 1  1.0e-6
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+cd $here/o2_omp1_det_trev
+printf "...running o2_omp1_det_trev\n"
+$HCIPATH > output.dat
+python ../test_energy.py 1  1.0e-6
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+cd $here/o2_omp1_det_trev_direct
+printf "...running o2_omp1_det_trev_direct\n"
+$HCIPATH > output.dat
+python ../test_energy.py 1  1.0e-6
+#python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+cd $here/o2_omp1_det_direct
+printf "...running o2_omp1_det_direct\n"
 $HCIPATH > output.dat
 python ../test_energy.py 1  1.0e-6
 #python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
