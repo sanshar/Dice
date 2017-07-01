@@ -177,6 +177,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.nblocks = atof(tok[1].c_str());
     else if (boost::iequals(ArgName , "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName , "davidsonTolLoose"))
+      schd.davidsonTolLoose = atof(tok[1].c_str());
     else if (boost::iequals(ArgName , "excitation"))
       schd.excitation = atof(tok[1].c_str());
     else if (boost::iequals(ArgName , "sampleN"))
@@ -229,7 +231,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   }
 #ifndef Complex
   if (schd.DavidsonType == DIRECT)
-    schd.davidsonTolLoose = 3.e-3;
+    schd.davidsonTolLoose = 3.e-2;
 #else
   schd.davidsonTolLoose = 1.e-5;
 #endif
