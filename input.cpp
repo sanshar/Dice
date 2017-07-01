@@ -34,7 +34,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.restart = false;
   schd.fullrestart = false;
   schd.davidsonTol = 5.e-5;
-  schd.davidsonTolLoose = 3.e-2;
+  schd.davidsonTolLoose = 5.e-5;
   schd.DavidsonType = MEMORY;
   schd.epsilon2 = 1.e-8;
   schd.epsilon2Large = 1000.0;
