@@ -248,7 +248,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   boost::mpi::communicator world;
 #endif
   ifstream dump(fcidump.c_str());
-
+  if (!dump.good()) {
+    pout << "Integral file "<<fcidump<<" does not exist!"<<endl;
+    exit(0);
+  }
 
   if (commrank == 0) {
     I2.ksym = false;

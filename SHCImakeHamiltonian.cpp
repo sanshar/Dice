@@ -502,9 +502,9 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 	//if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
 	if (std::abs(DetJ) >= std::abs(DetI)) continue;
 
-	Determinant dj = Dets[std::abs(DetI)];
-	if (DetJ <0) dj.flipAlphaBeta();
-	if (Dets[std::abs(DetJ)].ExcitationDistance(dj) == 2 ) {
+	Determinant di = Dets[std::abs(DetI)];
+	if (DetJ <0) di.flipAlphaBeta();
+	if (Dets[std::abs(DetJ)].ExcitationDistance(di) == 2 ) {
 	  size_t orbDiff;
 	  CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
 	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
