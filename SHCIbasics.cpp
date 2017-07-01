@@ -716,9 +716,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     Dets.clear();
 
     helper2.MakeSHMHelpers();
-    if (schd.DavidsonType != DIRECT)
+    if (schd.DavidsonType != DIRECT) {
+      sparseHam.clear();
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-
+    }
 
     for (int i=0; i<E0.size(); i++)
       pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n")
@@ -1231,14 +1232,13 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
     load >> converged;
   }
 
-  if (converged)
-  {
+  
     char file [5000];
     sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     load >> connections >> Helements >>orbdifference;
-  }
+  
 
   {
     char file [5000];
