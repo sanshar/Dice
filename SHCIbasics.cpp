@@ -599,6 +599,44 @@ vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDi
 
 
 
+void unpackTrevState(vector<Determinant>& Dets, int DetsSize, vector<MatrixXx>& ci) {
+
+  if (Determinant::Trev != 0) {
+    int numDets = 0;
+    for (int i=0; i<DetsSize; i++) {
+      if (Dets[i].hasUnpairedElectrons()) 
+	numDets += 2;
+      else
+	numDets += 1;
+    }
+    Dets.resize(numDets);
+    vector<MatrixXx> cibkp = ci;
+    for (int i=0; i<ci.size(); i++) {
+      ci[i].resize(Dets.size(), 1); 
+      ci[i].block(0, 0, cibkp[i].rows(), 1) = 1.*cibkp[i];
+    }
+    
+    int newIndex=0, oldLen = cibkp[0].rows();
+    vector<int> partnerLocation(oldLen,-1);
+    for (int i=0; i<oldLen; i++) {
+      if (Dets[i].hasUnpairedElectrons()) {
+	partnerLocation[i] = newIndex;
+	Dets[newIndex+oldLen] = Dets[i];
+	Dets[newIndex+oldLen].flipAlphaBeta();
+	for (int j=0; j<ci.size(); j++) {
+	  ci[j](i,0) = cibkp[j](i,0)/sqrt(2.0);
+	  double parity = Dets[i].parityOfFlipAlphaBeta();
+	  ci[j](newIndex+oldLen,0) = Determinant::Trev*parity*cibkp[j](i,0)/sqrt(2.0);
+	}
+	newIndex++;
+      }
+      
+    }
+  }
+
+}
+
+
 //this takes in a ci vector for determinants placed in Dets
 //it then does a SHCI varitional calculation and the resulting
 //ci and dets are returned here
@@ -871,7 +909,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
-    if (commrank == 0) printf("New size of determinant space %8i\n", DetsSize);
+    if (commrank == 0 && schd.DavidsonType == DIRECT) 
+      printf("New size of determinant space %8i\n", DetsSize);
     
     if (proc == 0) {
       helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
@@ -921,7 +960,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (schd.DavidsonType == DIRECT)
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
     else
-      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
+      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
 
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
@@ -965,40 +1004,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       }
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
 
+      unpackTrevState(Dets, DetsSize, ci);
 
 
       /*
-      if (Determinant::Trev != 0) {
-	int numDets = 0;
-	for (int i=0; i<DetsSize; i++) {
-	  if (Dets[i].hasUnpairedElectrons()) 
-	    numDets += 2;
-	  else
-	    numDets += 1;
-	}
-	Dets.resize(numDets);
-	vector<MatrixXx> cibkp = ci;
-	for (int i=0; i<E0.size(); i++) {
-	  ci[i].resize(Dets.size(), 1); 
-	  ci[i].block(0, 0, cibkp[i].rows(), 1) = 1.*cibkp[i];
-	}
-
-	int newIndex=0, oldLen = cibkp[0].rows();
-	vector<int> partnerLocation(oldLen,-1);
-	for (int i=0; i<oldLen; i++) {
-	  if (Dets[i].hasUnpairedElectrons()) {
-	    partnerLocation[i] = newIndex;
-	    Dets[newIndex+oldLen] = Dets[i];
-	    Dets[newIndex+oldLen].flipAlphaBeta();
-	    for (int j=0; j<E0.size(); j++) {
-	      ci[j](i,0) = cibkp[j](i,0)/sqrt(2.0);
-	      double parity = Dets[i].parityOfFlipAlphaBeta();
-	      ci[j](newIndex+oldLen,0) = Determinant::Trev*parity*cibkp[j](i,0)/sqrt(2.0);
-	    }
-	    newIndex++;
-	  }
-	    
-	}
 
 	if (DoRDM || schd.doResponse) {
 	  int proc=0, nprocs=1;
