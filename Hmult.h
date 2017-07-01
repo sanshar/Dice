@@ -234,6 +234,9 @@ struct HmultDirect {
     for (size_t k=StartIndex; k<DetsSize; k++) {
       if (k%(nprocs) != proc) continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
+      size_t orbDiff;
+      if (Determinant::Trev != 0) 
+	updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
       y[k] += hij*x[k];
     }
 
@@ -243,13 +246,14 @@ struct HmultDirect {
       
       for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
 	
-	if (AlphaMajorToDet[i][ii]         < StartIndex ||
-	    AlphaMajorToDet[i][ii]%nprocs != proc         ) 
-	  continue;
-	
 	int Astring = i, 
 	  Bstring = AlphaMajorToBeta[i][ii], 
 	  DetI    = AlphaMajorToDet [i][ii];
+	
+	if (AlphaMajorToDet[i][ii]         < StartIndex ||
+	    AlphaMajorToDet[i][ii]%nprocs != proc       ||
+	    DetI < 0) 
+	  continue;
 	
 	int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
 	//singles from Astring
@@ -263,9 +267,11 @@ struct HmultDirect {
 				     Asingle                       );
 	  if (index != -1 ) {
 	    int DetJ = BetaMajorToDet[Bstring][index];
+	    if (abs(DetJ) == abs(DetI) ) continue;
 	    size_t orbDiff;
-	    CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
-	    y[DetI] += hij*x[DetJ];
+	    CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	    y[abs(DetI)] += hij*x[abs(DetJ)];
 	  }
 	}
 
@@ -295,9 +301,11 @@ struct HmultDirect {
 	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
 
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+	    if (abs(DetJ) == abs(DetI) ) continue;
 	    size_t orbDiff;
-	    CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
-	    y[DetI] += hij*x[DetJ];
+	    CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	    y[abs(DetI)] += hij*x[abs(DetJ)];
 	  } //*itb == Bsingle
 	} //k 0->SinglesFromBeta
       } //j singles fromAlpha
@@ -317,9 +325,11 @@ struct HmultDirect {
 	
 	if (index != -1 ) {
 	  int DetJ = AlphaMajorToDet[Astring][index];
+	  if (abs(DetJ) == abs(DetI) ) continue;
 	  size_t orbDiff;
-	  CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
-	  y[DetI] += hij*x[DetJ];
+	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	  y[abs(DetI)] += hij*x[abs(DetJ)];
 	}
       }
       
@@ -327,23 +337,29 @@ struct HmultDirect {
       //double beta excitation
       for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
 	int DetJ     = AlphaMajorToDet    [i][j];
-	
-	  if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
-	    size_t orbDiff;
-	    CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
-	    y[DetI] += hij*x[DetJ];
-	  }
+	if (abs(DetJ) == abs(DetI) ) continue;
+	Determinant dj = Dets[abs(DetJ)];
+	if (DetJ <0) dj.flipAlphaBeta();
+	if (dj.ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	  y[abs(DetI)] += hij*x[abs(DetJ)];
+	}
       }
       
       //double Alpha excitation
       for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
 	int DetJ      = BetaMajorToDet     [Bstring][j];
-	
-	  if (Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
-	    size_t orbDiff;
-	    CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
-	    y[DetI] += hij*x[DetJ];
-	  }
+	if (abs(DetJ) == abs(DetI) ) continue;
+	Determinant dj = Dets[std::abs(DetJ)];
+	if (DetJ <0) dj.flipAlphaBeta();
+	if (Dets[DetI].ExcitationDistance(dj) == 2 ) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	  y[abs(DetI)] += hij*x[abs(DetJ)];
+	}
       }
       
       }
