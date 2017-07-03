@@ -142,11 +142,6 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
   vector<vector<int> >& uniqueVarIndices = *uniqueDEH.var_indices;
   vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH.orbDifference;
 
-  if (commrank == 3) {
-    for (int i=0; i<DetsSize; i++) {
-      cout << Dets[i]<<" --- "<<Dets[i].Noccupied()<<endl;
-    }
-  }
   for (size_t k=0; k<uniqueDets.size();k++) {
     for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
       int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;

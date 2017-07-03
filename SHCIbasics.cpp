@@ -924,7 +924,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     
     if (localrank == 0) 
       std::sort(SortedDets, SortedDets+DetsSize);
-  
+#ifndef SERIAL
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
 #ifdef Complex
       SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
 						sparseHam.connections, sparseHam.orbDifference,
