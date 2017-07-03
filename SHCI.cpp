@@ -81,7 +81,7 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 
 int main(int argc, char* argv[]) {
-  //sleep(10);
+
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
@@ -220,7 +220,6 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, DetsSize, 0);
 #endif
   Dets.clear();
-
 
   if (commrank == 0) {
     std::string efile;
@@ -388,6 +387,7 @@ int main(int argc, char* argv[]) {
   }
 
 
+  /*
   //THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
   if ((schd.doResponse || schd.DoRDM) && (!schd.stochastic && schd.nblocks==1)) {
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
@@ -423,7 +423,7 @@ int main(int argc, char* argv[]) {
     //pout <<" response ";
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
-
+  */
 #ifndef SERIAL
   world.barrier();
 #endif

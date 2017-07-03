@@ -516,7 +516,6 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
   uniqueDEH.MergeSortAndRemoveDuplicates();
   uniqueDEH.RemoveDetsPresentIn(SortedDets, DetsSize);
   
-  
   vector<Determinant>& hasHEDDets = *uniqueDEH.Det;
   vector<CItype>& hasHEDNumerator = *uniqueDEH.Num;
   vector<double>& hasHEDEnergy    = *uniqueDEH.Energy;
@@ -560,11 +559,13 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       s2RDM = 0.*s2RDM;
       twoRDM = 0.*twoRDM;
     }
+    //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
     SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Dets, DetsSize, ci, E0, I1, I2, schd, coreE,
 							nelec, norbs, uniqueDEH, root, Psi1Norm,
 							s2RDM, twoRDM);
+    //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
     SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
-
+    /*
     //construct the vector Via x da
     //where Via is the perturbation matrix element
     //da are the elements of the PT wavefunctions
@@ -592,8 +593,8 @@ vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDi
     MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
 		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
+    */
   }
-
   return finalE;
 }
 
@@ -999,9 +1000,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       pout <<endl<<"Exiting variational iterations"<<endl;
       if (commrank == 0) {
 	Dets.resize(DetsSize);
-	for (int i=0; i<DetsSize; i++)
-	  Dets[i] = SHMDets[i];
+	for (int i=0; i<DetsSize; i++) {
+	  Dets[i] = SHMDets[i];	
+	}
       }
+#ifndef SERIAL
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
 
       unpackTrevState(Dets, DetsSize, ci);
@@ -1119,7 +1124,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
 	  SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, ci[i], 
 			       ci[i], sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	  //if (schd.outputlevel>0) 
+	  if (schd.outputlevel>0) 
 	    SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
 	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
         } // for i
