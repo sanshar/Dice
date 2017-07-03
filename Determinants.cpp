@@ -146,6 +146,7 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
 	return;
 }
 
+//i->a, j->b, and k->c
 void Determinant::parity(int& i, int& j, int& k, int& a, int& b, int& c,
   double& sgn) {
   parity(min(i, a), max(i,a), sgn);

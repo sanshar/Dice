@@ -428,12 +428,12 @@ int main(int argc, char* argv[]) {
 		if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 		SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
     
-    cout << "Calculation s3RDM" << endl;
-    MatrixXx s3RDM;
-    s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
-    SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0, s3RDM);
-    cout << "About to print the s3RDM" << endl; //TODO
-    SHCIrdm::saves3RDM(schd, s3RDM, 0);
+		cout << "Calculation s3RDM" << endl;
+		MatrixXx s3RDM;
+		s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
+		SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0, s3RDM);
+		cout << "About to write the s3RDM" << endl; //TODO
+		SHCIrdm::saves3RDM(schd, s3RDM, 0);
 
 		if (mpigetrank() == 0) {
 			MatrixXx s2RDMdisk, twoRDMdisk;
