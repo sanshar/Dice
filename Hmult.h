@@ -105,29 +105,24 @@ Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
       
       
 #ifndef SERIAL
-      MPI_Comm localComm;
-      MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-			  MPI_INFO_NULL, &localComm);
-      MPI_Barrier(MPI_COMM_WORLD);
 #ifndef Complex
       if (localrank == 0) {
-	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
 	for (int j=0; j<numDets; j++)
 	  y[j] = ytemp[j];
       }
       else
-	MPI_Reduce(&ytemp[0], &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);	
+	MPI_Reduce(&ytemp[0], &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);	
 #else
       if (localrank == 0) {
-	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+	MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
 	for (int j=0; j<numDets; j++)
 	  y[j] = ytemp[j];
       }
       else
-	MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localComm);
+	MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
-      MPI_Comm_free(&localComm);
 #endif
       
 
