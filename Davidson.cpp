@@ -69,12 +69,7 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
   int localrank;
-#ifndef SERIAL
-  MPI_Comm localComm;
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-		      MPI_INFO_NULL, &localComm);
-  MPI_Comm_rank(localComm, &localrank);
-#endif
+
   std::vector<double> eroots;
 
   CItype* bcol, *sigmacol;
@@ -158,11 +153,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
       H(bcol, sigmacol);
       sigmaSize++;
 
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
+
       if (localrank == 0) {
 #ifndef Complex
 	if (commrank == 0)
@@ -300,15 +297,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 //davidson, implemented very similarly to as implementeded in Block
 vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
   int localrank, shmrank;
-#ifndef SERIAL
-  MPI_Comm localComm;
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-		      MPI_INFO_NULL, &localComm);
-  MPI_Comm_rank(localComm, &localrank);
-  MPI_Comm_rank(shmcomm, &shmrank);
-  MPI_Comm_free(&localComm);
-#endif
-
   std::vector<double> eroots;
 
   CItype* bcol, *sigmacol;
@@ -537,9 +525,12 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
   for (int i=0; i<proj.size(); i++)
     b = b- ((proj[i].adjoint()*b)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
 
-  x0.setZero(x0.rows(),1);
+  x0.setZero(b.rows(),1);
   MatrixXx r = 1.*b, p = 1.*b;
   double rsold = r.squaredNorm();
+
+  if (fabs(r.norm()) < tol) 
+    return 0.0;
 
   int iter = 0;
   while (true) {
@@ -559,11 +550,11 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
 
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (false)
+    if (true)
       cout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) {
       p.setZero(p.rows(),1); 
-      //H(x0,p); ///REPLACE THIS WITH SOMETHING
+      H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
       p -=b;
       return abs(ept);
     }
