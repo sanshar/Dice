@@ -387,9 +387,12 @@ int main(int argc, char* argv[]) {
   }
 
 
-  /*
+
   //THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
-  if ((schd.doResponse || schd.DoRDM) && (!schd.stochastic && schd.nblocks==1)) {
+  if ((schd.doResponse || schd.DoRDM) && 
+      schd.RdmType == RELAXED &&
+      (!schd.stochastic && schd.nblocks==1)) {
+
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
     SHCImakeHamiltonian::SparseHam sparseHam;
     {
@@ -423,7 +426,7 @@ int main(int argc, char* argv[]) {
     //pout <<" response ";
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
-  */
+
 #ifndef SERIAL
   world.barrier();
 #endif
