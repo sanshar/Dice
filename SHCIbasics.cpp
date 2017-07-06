@@ -380,6 +380,10 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       SortedDetsvec.push_back(Dets[i]);
     std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
   }
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
   SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
   SortedDetsvec.clear();
 
@@ -530,7 +534,18 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
   Psi1NormProc += psi1normthrd;
   totalPT += PTEnergy;
 
-  
+  /*  
+  //PROBABLY SHOULD DELETE IT
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-PTdata.bkp" , schd.prefix[0].c_str(), commrank );
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    printf("writing file %s\n", file);
+    save << uniqueDEH;
+    ofs.close();
+  }
+*/
 
 
   double finalE = 0.;
@@ -565,35 +580,42 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
 							s2RDM, twoRDM);
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE, s2RDM);
     SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
-    /*
-    //construct the vector Via x da
-    //where Via is the perturbation matrix element
-    //da are the elements of the PT wavefunctions
-    vdVector[root]= MatrixXx::Zero(DetsSize,1);
 
-    vector<Determinant>& uniqueDets = *uniqueDEH.Det;
-    vector<double>& uniqueEnergy = *uniqueDEH.Energy;
-    vector<CItype>& uniqueNumerator = *uniqueDEH.Num;
-    vector<vector<int> >& uniqueVarIndices = *uniqueDEH.var_indices;
-    vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH.orbDifference;
-    for (int a=0; a<uniqueDets.size(); a++) {
-      CItype da = uniqueNumerator[a]/(E0-uniqueEnergy[a]); //coefficient for det a
-      for (int i=0; i<uniqueVarIndices[a].size(); i++) {
-	int I = uniqueVarIndices[a][i]; //index of the Var determinant
-	size_t orbDiff;
-  #ifndef Complex
-	vdVector[root](I,0) -= da*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
-  #else
-vdVector[root](I,0) -= conj(da)*Hij(uniqueDets[a], Dets[I], I1, I2, coreE, orbDiff);
-  #endif
-      }
-    }
-    
-#ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
-		  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if (schd.RdmType == RELAXED) {
+      //construct the vector Via x da
+      //where Via is the perturbation matrix element
+      //da are the elements of the PT wavefunctions
+      vdVector[root]= MatrixXx::Zero(DetsSize,1);
+      
+      vector<Determinant>& uniqueDets = *uniqueDEH.Det;
+
+      vector<double>& uniqueEnergy = *uniqueDEH.Energy;
+      vector<CItype>& uniqueNumerator = *uniqueDEH.Num;
+      vector<vector<int> >& uniqueVarIndices = *uniqueDEH.var_indices;
+      vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH.orbDifference;
+
+      for (int a=0; a<uniqueDets.size(); a++) {
+	CItype da = uniqueNumerator[a]/(E0-uniqueEnergy[a]); //coefficient for det a
+	for (int i=0; i<uniqueVarIndices[a].size(); i++) {
+	  int I = uniqueVarIndices[a][i]; //index of the Var determinant
+	  size_t orbDiff;
+#ifndef Complex
+	  vdVector[root](I,0) -= da*Hij(Dets[I], uniqueDets[a], I1, I2, coreE, orbDiff);
+#else
+	  vdVector[root](I,0) -= conj(da)*Hij(Dets[I], uniqueDets[a], I1, I2, coreE, orbDiff) ;
 #endif
-    */
+	}
+      }
+
+      for (int I=0;I<DetsSize; I++) {
+	vdVector[0](I,0) += E0*ci[I]*Psi1Norm;
+      }
+
+#ifndef SERIAL
+      MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
+		    MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    }
   }
   return finalE;
 }
@@ -647,16 +669,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 					 twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE
 					 , int nelec, bool DoRDM) {
   
-  int proc=0, nprocs=1, localrank=0;
+  int proc=0, nprocs=1;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   boost::mpi::communicator world;
-  MPI_Comm localComm;
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-		      MPI_INFO_NULL, &localComm);
-  MPI_Comm_rank(localComm, &localrank);
-  MPI_Comm_free(&localComm);
+
 #endif
 
   Determinant* SHMDets, *SortedDets;
@@ -749,7 +767,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
     if (localrank == 0) 
       std::sort(SortedDets, SortedDets+SortedDetsSize);
-      #ifndef SERIAL
+#ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
     Dets.clear();

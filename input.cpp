@@ -30,22 +30,27 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   int maxiter = -1;
   vector<int> sweep_iter;
   vector<double> sweep_epsilon;
-  schd.nblocks = 1;
-  schd.restart = false;
-  schd.fullrestart = false;
+  int nocc = -1;
+
   schd.davidsonTol = 5.e-5;
   schd.davidsonTolLoose = 5.e-5;
+  schd.RdmType = RELAXED;
   schd.DavidsonType = MEMORY;
   schd.epsilon2 = 1.e-8;
   schd.epsilon2Large = 1000.0;
-  schd.dE = 1.e-8;
-  schd.stochastic = true;
   schd.SampleN = -1;
+
+  schd.onlyperturbative = false;
+  schd.restart = false;
+  schd.fullrestart = false;
+  schd.dE = 1.e-8;
+
+
+  schd.stochastic = true;
+  schd.nblocks = 1;
   schd.excitation = 1000;
   schd.nvirt = 1e6;
-  schd.onlyperturbative = false;
   schd.singleList = true;
-  int nocc = -1;;
   schd.io = true;
   schd.nroots = 1;
   schd.nPTiter = 1000000;
@@ -65,6 +70,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.Trev = 0;
   schd.algorithm = 0;
   schd.outputlevel = 0;
+
   while (dump.good()) {
 
     std::string
@@ -122,6 +128,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.DavidsonType = DIRECT;
     else if (boost::iequals(ArgName, "diskdavidson"))
       schd.DavidsonType = DISK;
+    else if (boost::iequals(ArgName, "relaxedRDM"))
+      schd.RdmType = UNRELAXED;
     else if (boost::iequals(ArgName, "num_thrds"))
       schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "outputlevel"))

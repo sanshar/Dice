@@ -41,7 +41,8 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
   
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
-  memset(SHMregion.get_address(), 0., totalMemory);
+  if (localrank == 0)
+    memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
   
 #ifndef SERIAL
@@ -55,19 +56,21 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  long intdim  = totalMemory;
-  long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
+  if (localrank == 0) {
+    long intdim  = totalMemory;
+    long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
+    long maxIter = intdim/maxint;
 #ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-  
-  char* shrdMem = static_cast<char*>(SHMregion.get_address());
-  for (int i=0; i<maxIter; i++) {
-    MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(shmcomm);
+    
+    char* shrdMem = static_cast<char*>(SHMregion.get_address());
+    for (int i=0; i<maxIter; i++) {
+      MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, shmcomm);
+      MPI_Barrier(shmcomm);
+    }
+    
+    MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
   }
-  
-  MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
@@ -95,7 +98,8 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
   
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
-  memset(SHMregion.get_address(), 0., totalMemory);
+  if (localrank == 0)
+    memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
   
 #ifndef SERIAL
@@ -109,19 +113,21 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  long intdim  = totalMemory;
-  long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
+  if (localrank == 0) {
+    long intdim  = totalMemory;
+    long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
+    long maxIter = intdim/maxint;
 #ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-  
-  char* shrdMem = static_cast<char*>(SHMregion.get_address());
-  for (int i=0; i<maxIter; i++) {
-    MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(shmcomm);
+    
+    char* shrdMem = static_cast<char*>(SHMregion.get_address());
+    for (int i=0; i<maxIter; i++) {
+      MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, shmcomm);
+      MPI_Barrier(shmcomm);
+    }
+    
+    MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
   }
-  
-  MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }

@@ -58,7 +58,7 @@ extern boost::interprocess::mapped_region regioncMax;
 extern std::string shcicMax;
 
 #ifndef SERIAL
-extern MPI_Comm shmcomm;
+extern MPI_Comm shmcomm, localcomm;
 #endif
 extern int commrank, shmrank, localrank;
 extern int commsize, shmsize, localsize;

@@ -28,7 +28,7 @@ boost::interprocess::shared_memory_object cMaxSegment;
 boost::interprocess::mapped_region regioncMax;
 std::string shcicMax;
 #ifndef SERIAL
-MPI_Comm shmcomm;
+MPI_Comm shmcomm, localcomm;
 #endif
 int commrank, shmrank, localrank;
 int commsize, shmsize, localsize;
@@ -38,17 +38,16 @@ void initSHM() {
   MPI_Comm_rank(MPI_COMM_WORLD, &commrank);
   MPI_Comm_size(MPI_COMM_WORLD, &commsize);
 
-  MPI_Comm localComm;
   MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-		      MPI_INFO_NULL, &localComm);
-  MPI_Comm_rank(localComm, &localrank);
-  MPI_Comm_size(localComm, &localsize);
+		      MPI_INFO_NULL, &localcomm);
+  MPI_Comm_rank(localcomm, &localrank);
+  MPI_Comm_size(localcomm, &localsize);
   MPI_Comm_split(MPI_COMM_WORLD, localrank, commrank, &shmcomm);
 
   MPI_Comm_rank(shmcomm, &shmrank);
   MPI_Comm_size(shmcomm, &shmsize);
 
-  MPI_Comm_free(&localComm);
+  //MPI_Comm_free(&localcomm);
 #else
   commrank=0;shmrank=0;localrank=0;
   commsize=1;shmsize=1;localsize=1;
@@ -93,7 +92,8 @@ void SHMVecFromMatrix(MatrixXx& vec, CItype* &SHMvec, std::string& SHMname,
   
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
-  memset(SHMregion.get_address(), 0., totalMemory);
+  if (localrank == 0)
+    memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (CItype*)(SHMregion.get_address());
   
 #ifndef SERIAL
@@ -107,19 +107,21 @@ void SHMVecFromMatrix(MatrixXx& vec, CItype* &SHMvec, std::string& SHMname,
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  long intdim  = totalMemory;
-  long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
+  if (localrank == 0) {
+    long intdim  = totalMemory;
+    long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
+    long maxIter = intdim/maxint;
 #ifndef SERIAL
-  MPI_Barrier(MPI_COMM_WORLD);
-  
-  char* shrdMem = static_cast<char*>(SHMregion.get_address());
-  for (int i=0; i<maxIter; i++) {
-    MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(shmcomm);
+    
+    char* shrdMem = static_cast<char*>(SHMregion.get_address());
+    for (int i=0; i<maxIter; i++) {
+      MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, shmcomm);
+      MPI_Barrier(shmcomm);
+    }
+    
+    MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
   }
-  
-  MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }

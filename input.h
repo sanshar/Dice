@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License along with thi
 using namespace std;
 
 enum davidsonType {DIRECT, DISK, MEMORY};
+enum rdmType {RELAXED, UNRELAXED};
 
 struct schedule{
 private:
@@ -27,6 +28,7 @@ private:
   {
     ar & davidsonTol				\
       & davidsonTolLoose       			\
+      & RdmType                                 \
       & DavidsonType                            \
       & epsilon2				\
       & epsilon2Large                           \
@@ -68,6 +70,7 @@ private:
 public:
   double davidsonTol;
   double davidsonTolLoose;
+  rdmType RdmType;
   davidsonType DavidsonType;
   double epsilon2;
   double epsilon2Large;
