@@ -68,7 +68,6 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 
 
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
-  int localrank;
 
   std::vector<double> eroots;
 
@@ -296,7 +295,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 //davidson, implemented very similarly to as implementeded in Block
 //davidson, implemented very similarly to as implementeded in Block
 vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
-  int localrank, shmrank;
   std::vector<double> eroots;
 
   CItype* bcol, *sigmacol;
@@ -390,13 +388,13 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
       if (localrank == 0) {
 #ifndef Complex
 
-	if (shmrank == 0)
+	if (commrank == 0)
 	  MPI_Reduce(MPI_IN_PLACE, sigmacol,  brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	else
 	  MPI_Reduce(sigmacol, sigmacol,  brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	
 #else
-	if (shmrank == 0)
+	if (commrank == 0)
 	  MPI_Reduce(MPI_IN_PLACE, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 	else
 	  MPI_Reduce(sigmacol, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
