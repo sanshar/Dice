@@ -520,10 +520,17 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
 
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
-double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<MatrixXx>& proj, double tol, bool print) {
+double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
 
-  for (int i=0; i<proj.size(); i++)
-    b = b- ((proj[i].adjoint()*b)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
+  for (int i=0; i<proj.size(); i++) {
+    CItype dotProduct = 0.0, norm=0.0;
+    for (int j=0; j<b.rows(); j++) {
+      dotProduct += conj(proj[i][j])*b(j,0);
+      norm = conj(proj[i][j])*proj[i][j];
+    }
+    for (int j=0; j<b.rows(); j++) 
+      b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
+  }
 
   x0.setZero(b.rows(),1);
   MatrixXx r = 1.*b, p = 1.*b;
@@ -544,8 +551,17 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<Matr
     x0 += alpha*p;
     r -= alpha*Ap;
 
-    for (int i=0; i<proj.size(); i++)
-      r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
+    for (int i=0; i<proj.size(); i++) {
+      CItype dotProduct = 0.0, norm=0.0;
+      for (int j=0; j<b.rows(); j++) {
+	dotProduct += conj(proj[i][j])*r(j,0);
+	norm = conj(proj[i][j])*proj[i][j];
+      }
+      for (int j=0; j<r.rows(); j++) 
+	r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
+    }
+
+      //r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
       //r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
 
     double rsnew = r.squaredNorm();

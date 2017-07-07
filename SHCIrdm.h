@@ -36,8 +36,8 @@ namespace SHCIrdm {
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 
-  void EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize, MatrixXx& cibra,
-		   MatrixXx& ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
+  void EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize, CItype *cibra,
+		   CItype *ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
 		   int root, MatrixXx& s2RDM, MatrixXx& twoRDM);
 
   void EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,

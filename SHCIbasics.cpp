@@ -66,6 +66,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       SortedDetsvec.push_back(Dets[i]);
     std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
   }
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
   SortedDetsvec.clear();
 
@@ -534,7 +537,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
   Psi1NormProc += psi1normthrd;
   totalPT += PTEnergy;
 
-  /*  
+  /*
   //PROBABLY SHOULD DELETE IT
   {
     char file [5000];
@@ -545,7 +548,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
     save << uniqueDEH;
     ofs.close();
   }
-*/
+  */
 
 
   double finalE = 0.;
@@ -607,10 +610,6 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
 	}
       }
 
-      for (int I=0;I<DetsSize; I++) {
-	vdVector[0](I,0) += E0*ci[I]*Psi1Norm;
-      }
-
 #ifndef SERIAL
       MPI_Allreduce(MPI_IN_PLACE, &vdVector[root](0,0), vdVector[root].rows(),
 		    MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -624,38 +623,41 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
 
 void unpackTrevState(vector<Determinant>& Dets, int DetsSize, vector<MatrixXx>& ci) {
 
-  if (Determinant::Trev != 0) {
-    int numDets = 0;
-    for (int i=0; i<DetsSize; i++) {
-      if (Dets[i].hasUnpairedElectrons()) 
-	numDets += 2;
-      else
-	numDets += 1;
-    }
-    Dets.resize(numDets);
-    vector<MatrixXx> cibkp = ci;
-    for (int i=0; i<ci.size(); i++) {
-      ci[i].resize(Dets.size(), 1); 
-      ci[i].block(0, 0, cibkp[i].rows(), 1) = 1.*cibkp[i];
-    }
-    
-    int newIndex=0, oldLen = cibkp[0].rows();
-    vector<int> partnerLocation(oldLen,-1);
-    for (int i=0; i<oldLen; i++) {
-      if (Dets[i].hasUnpairedElectrons()) {
-	partnerLocation[i] = newIndex;
-	Dets[newIndex+oldLen] = Dets[i];
-	Dets[newIndex+oldLen].flipAlphaBeta();
-	for (int j=0; j<ci.size(); j++) {
-	  ci[j](i,0) = cibkp[j](i,0)/sqrt(2.0);
-	  double parity = Dets[i].parityOfFlipAlphaBeta();
-	  ci[j](newIndex+oldLen,0) = Determinant::Trev*parity*cibkp[j](i,0)/sqrt(2.0);
-	}
-	newIndex++;
+  if(localrank == 0) {
+    if (Determinant::Trev != 0) {
+      int numDets = 0;
+      for (int i=0; i<DetsSize; i++) {
+	if (Dets[i].hasUnpairedElectrons()) 
+	  numDets += 2;
+	else
+	  numDets += 1;
+      }
+      Dets.resize(numDets);
+      vector<MatrixXx> cibkp = ci;
+      for (int i=0; i<ci.size(); i++) {
+	ci[i].resize(Dets.size(), 1); 
+	ci[i].block(0, 0, cibkp[i].rows(), 1) = 1.*cibkp[i];
       }
       
+      int newIndex=0, oldLen = cibkp[0].rows();
+      vector<int> partnerLocation(oldLen,-1);
+      for (int i=0; i<oldLen; i++) {
+	if (Dets[i].hasUnpairedElectrons()) {
+	  partnerLocation[i] = newIndex;
+	  Dets[newIndex+oldLen] = Dets[i];
+	  Dets[newIndex+oldLen].flipAlphaBeta();
+	  for (int j=0; j<ci.size(); j++) {
+	    ci[j](i,0) = cibkp[j](i,0)/sqrt(2.0);
+	    double parity = Dets[i].parityOfFlipAlphaBeta();
+	    ci[j](newIndex+oldLen,0) = Determinant::Trev*parity*cibkp[j](i,0)/sqrt(2.0);
+	  }
+	  newIndex++;
+	}
+	
+      }
     }
   }
+  MPI_Bcast(&DetsSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 }
 
@@ -773,7 +775,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     Dets.clear();
 
     helper2.MakeSHMHelpers();
-    if (schd.DavidsonType != DIRECT) {
+
+    if (!(schd.DavidsonType == DIRECT || (!schd.fullrestart && converged && iterstart>= schd.epsilon1.size()-1))  ) {
       sparseHam.clear();
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
     }
@@ -794,6 +797,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       Dets.resize(DetsSize);
       for (int i=0; i<DetsSize; i++)
 	Dets[i] = SHMDets[i];
+
+#ifdef SERIAL
+      MPI_Barrier(MPI_COMM_WORLD);
+      mpi::broadcast(world, E0, 0);
+#endif
+      unpackTrevState(Dets, DetsSize, ci);
 
       return E0;
     }
@@ -1015,7 +1024,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
-      mpi::broadcast(world, ci, 0);
 #endif
       pout <<endl<<"Exiting variational iterations"<<endl;
       if (commrank == 0) {
@@ -1138,15 +1146,21 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	}
 	pout <<"Calculating RDM"<<endl;
 	for (int i=0; i<schd.nroots; i++) {
+	  CItype *SHMci;
+	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+ 
 	  MatrixXx twoRDM;
 	  if (schd.DoSpinRDM )
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
-	  SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, ci[i], 
-			       ci[i], sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	  if (schd.outputlevel>0) 
+	  SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
+			       SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
+	  //if (schd.outputlevel>0) 
 	    SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
 	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+
+	  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+
         } // for i
       }
       sparseHam.resize(0);

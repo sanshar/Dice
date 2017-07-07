@@ -94,6 +94,7 @@ namespace SHCISortMpiUtils {
     present.resize(uniqueSize+1);
   }
 
+  /*
   void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets, std::vector<Determinant>& Det,
 			   std::vector<double>& Num1, std::vector<double>& Num2,
 			   std::vector<double>& Energy, std::vector<char>& present) {
@@ -129,7 +130,7 @@ namespace SHCISortMpiUtils {
     Num2.resize(uniqueSize); Energy.resize(uniqueSize);
     present.resize(uniqueSize);
   }
-
+  */
   void RemoveDuplicates(vector<Determinant>& Det) {
     if (Det.size() <= 1) return;
     std::vector<Determinant>& Detcopy = Det;
@@ -688,8 +689,8 @@ namespace SHCISortMpiUtils {
     std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
     //}
 
-    size_t uniqueSize = 0;
-    for (size_t i=0; i<Detcopy.size();) {
+    size_t uniqueSize = 0, i=0;
+    while (i <Detcopy.size() && vec_it != SortedDets.end()) {
       if (Detcopy[i] < *vec_it) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
@@ -704,26 +705,28 @@ namespace SHCISortMpiUtils {
 	}
 	i++; uniqueSize++;
       }
-      else if (*vec_it < Detcopy[i] && vec_it != SortedDets.end())
+      else if (*vec_it < Detcopy[i])
 	vec_it ++;
-      else if (*vec_it < Detcopy[i] && vec_it == SortedDets.end()) {
-	Det->operator[](uniqueSize) = Detcopy[i];
-	Num->operator[](uniqueSize) = Numcopy[i];
-	if (Num2->size() != 0)
-	  Num2->operator[](uniqueSize) = Num2copy[i];
-	if (present->size() != 0)
-	  present->operator[](uniqueSize) = presentcopy[i];
-	Energy->operator[](uniqueSize) = Ecopy[i];
-	if (extra_info) {
-	  var_indices->operator[](uniqueSize) = Vcopy[i];
-	  orbDifference->operator[](uniqueSize) = Ocopy[i];
-	}
-	i++; uniqueSize++;
-      }
       else {
 	vec_it++; i++;
       }
     }
+
+    while (i <Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      Num->operator[](uniqueSize) = Numcopy[i];
+      if (Num2->size() != 0)
+	Num2->operator[](uniqueSize) = Num2copy[i];
+      if (present->size() != 0)
+	present->operator[](uniqueSize) = presentcopy[i];
+      Energy->operator[](uniqueSize) = Ecopy[i];
+      if (extra_info) {
+	var_indices->operator[](uniqueSize) = Vcopy[i];
+	orbDifference->operator[](uniqueSize) = Ocopy[i];
+      }
+      i++; uniqueSize++;
+    }
+
     Det->resize(uniqueSize); Num->resize(uniqueSize);
     if (Num2->size() != 0)
       Num2->resize(uniqueSize);
@@ -748,8 +751,8 @@ namespace SHCISortMpiUtils {
     std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
     //}
 
-    size_t uniqueSize = 0;
-    for (size_t i=0; i<Detcopy.size();) {
+    size_t uniqueSize = 0, i=0;
+    while (i<Detcopy.size() && vecid <DetsSize) {
       if (Detcopy[i] < SortedDets[vecid]) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
@@ -764,26 +767,28 @@ namespace SHCISortMpiUtils {
 	}
 	i++; uniqueSize++;
       }
-      else if (SortedDets[vecid] < Detcopy[i] && vecid != DetsSize)
+      else if (SortedDets[vecid] < Detcopy[i])
 	vecid++;
-      else if (SortedDets[vecid] < Detcopy[i] && vecid == DetsSize) {
-	Det->operator[](uniqueSize) = Detcopy[i];
-	Num->operator[](uniqueSize) = Numcopy[i];
-	if (Num2->size() != 0)
-	  Num2->operator[](uniqueSize) = Num2copy[i];
-	if (present->size() != 0)
-	  present->operator[](uniqueSize) = presentcopy[i];
-	Energy->operator[](uniqueSize) = Ecopy[i];
-	if (extra_info) {
-	  var_indices->operator[](uniqueSize) = Vcopy[i];
-	  orbDifference->operator[](uniqueSize) = Ocopy[i];
-	}
-	i++; uniqueSize++;
-      }
       else {
 	vecid++; i++;
       }
     }
+
+    while (i< Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      Num->operator[](uniqueSize) = Numcopy[i];
+      if (Num2->size() != 0)
+	Num2->operator[](uniqueSize) = Num2copy[i];
+      if (present->size() != 0)
+	present->operator[](uniqueSize) = presentcopy[i];
+      Energy->operator[](uniqueSize) = Ecopy[i];
+      if (extra_info) {
+	var_indices->operator[](uniqueSize) = Vcopy[i];
+	orbDifference->operator[](uniqueSize) = Ocopy[i];
+      }
+      i++; uniqueSize++;
+    }
+
     Det->resize(uniqueSize); Num->resize(uniqueSize);
     if (Num2->size() != 0)
       Num2->resize(uniqueSize);

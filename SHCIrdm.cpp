@@ -235,7 +235,7 @@ void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM
 }
 
 void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize,
-			  MatrixXx& cibra, MatrixXx& ciket,
+			  CItype *cibra, CItype *ciket,
 			  vector<vector<size_t> >& orbDifference, int nelec,
 			  schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
 
@@ -256,8 +256,8 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
       for (int n2=0; n2<n1; n2++) {
 	int orb1 = closed[n1], orb2 = closed[n2];
 	if (schd.DoSpinRDM)
-	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra(i,0))*ciket(i,0);
-	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra(i,0))*ciket(i,0), nSpatOrbs);
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra[i])*ciket[i];
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra[i])*ciket[i], nSpatOrbs);
       }
     }
 
@@ -273,12 +273,12 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
 	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
 	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
 	  if (schd.DoSpinRDM) {
-	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
-	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
+	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
 	  }
 
-	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
-	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
+	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
+	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
 
 	}
       }
@@ -288,12 +288,12 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
 
 	Dets[i].parity(d1,d0,c1,c0,sgn);
 	if (schd.DoSpinRDM) {
-	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
-	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0);
+	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
 	}
 
-	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0), nSpatOrbs);
-	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket(connections[i/commsize][j],0))*cibra(i,0), nSpatOrbs);
+	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
+	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
 
       }
     }
@@ -451,6 +451,7 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
 #endif
 	}
   energy += onebody + twobody;
+  pout << onebody<<"  "<<twobody<<endl;
   if (commrank == 0)  cout << "E from 2RDM: " << energy << endl;
   return energy;
 }

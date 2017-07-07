@@ -352,7 +352,7 @@ int main(int argc, char* argv[]) {
 						    I2HBSHM, irrep, schd, coreE, nelec,
 						    root, vdVector, Psi1Norm);
       ePT += E0[root];
-      //pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
+      pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
       if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
     }
     fclose(f);
@@ -404,17 +404,19 @@ int main(int argc, char* argv[]) {
     }
 
 
+    vector<CItype*> ciroot(schd.nroots);
+    SHMVecFromMatrix(ci[0], ciroot[0], shcicMax, cMaxSegment, regioncMax);
     Hmult2 H(sparseHam);
-    LinearSolver(H, E0[0], lambda[0], vdVector[0], ci, 1.e-5, false);
+    LinearSolver(H, E0[0], lambda[0], vdVector[0], ciroot, 1.e-5, false);
 #ifndef SERIAL
     mpi::broadcast(world, lambda[0], 0);
 #endif
-
-
+    
     MatrixXx s2RDM, twoRDM;
     s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
     if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, lambda[0], ci[0], 
+
+    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
 			 sparseHam.orbDifference, nelec, schd, 0, twoRDM, s2RDM);
 
     if (commrank == 0) {
@@ -423,6 +425,7 @@ int main(int argc, char* argv[]) {
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
       SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
     }
+
     //pout <<" response ";
     //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
   }
