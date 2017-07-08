@@ -54,7 +54,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   schd.epsilon2 = schd.epsilon2Large;
   vector<MatrixXx> vdVector;
   double Psi1Norm;
-  double EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
+  double EptLarge = 0.0;
+  if (schd.epsilon2 < 999)
+    EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
 
   schd.epsilon2 = epsilon2;
 
@@ -239,9 +241,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       
       CItype currentNum1A=0.; CItype currentNum2A=0.;
       CItype currentNum1B=0.; CItype currentNum2B=0.;
-      int vec_it = 0;
+      size_t vec_it = 0, i=0;
       
-      for (int i=0;i<Psi1.size();) {
+      while (i <Psi1.size() && vec_it < DetsSize) {
 	if (Psi1[i] < SortedDets[vec_it]) {
 	  currentNum1A += numerator1A[i];
 	  currentNum2A += numerator2A[i];
@@ -276,47 +278,49 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	}
 	else if (SortedDets[vec_it] <Psi1[i] && vec_it != DetsSize)
 	  vec_it++;
-	else if (SortedDets[vec_it] <Psi1[i] && vec_it == DetsSize) {
-	  currentNum1A += numerator1A[i];
-	  currentNum2A += numerator2A[i];
-	  if (present[i]) {
-	    currentNum1B += numerator1A[i];
-	    currentNum2B += numerator2A[i];
-	  }
-
-	  if ( i == Psi1.size()-1) {
-#ifndef Complex
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	  }
-	  else if (!(Psi1[i] == Psi1[i+1])) {
-#ifndef Complex
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	    currentNum1A = 0.;
-	    currentNum2A = 0.;
-	    currentNum1B = 0.;
-	    currentNum2B = 0.;
-	  }
-	  i++;
-	}
 	else {
-	  if (Psi1[i] == Psi1[i+1])
+	  if (i == Psi1.size()-1 || Psi1[i] == Psi1[i+1])
 	    i++;
 	  else {
 	    vec_it++; i++;
 	  }
 	}
+
       }
       
+      while (i <Psi1.size()) {
+	currentNum1A += numerator1A[i];
+	currentNum2A += numerator2A[i];
+	if (present[i]) {
+	  currentNum1B += numerator1A[i];
+	  currentNum2B += numerator2A[i];
+	}
+	
+	if ( i == Psi1.size()-1) {
+#ifndef Complex
+	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+	}
+	else if (!(Psi1[i] == Psi1[i+1])) {
+#ifndef Complex
+	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+	  currentNum1A = 0.;
+	  currentNum2A = 0.;
+	  currentNum1B = 0.;
+	  currentNum2B = 0.;
+	}
+	i++;
+      }
+
       totalPT=0; totalPTLargeEps=0;
       
       totalPT += energyEN;
@@ -435,7 +439,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
     boost::shared_ptr<vector<double> >& Energy = uniqueDEH.Energy;
     boost::shared_ptr<vector<int > >& var_indices = uniqueDEH.var_indices_beforeMerge;
     boost::shared_ptr<vector<size_t > >& orbDifference = uniqueDEH.orbDifference_beforeMerge;
-    
+ 
     std::vector<size_t> hashValues(Det->size());
     
     std::vector<size_t> all_to_all_cumulative(size,0);
@@ -455,10 +459,10 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       atoaVarIndices.resize(Det->size()); atoaOrbDiff.resize(Det->size());
     }
     
-    #ifndef SERIAL
+#ifndef SERIAL
     vector<size_t> all_to_allCopy = all_to_all;
     MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-   #endif    
+#endif    
     vector<size_t> counter(size, 0);
     for (int i=0; i<Det->size(); i++) {
       int toProc = hashValues[i]%size;
