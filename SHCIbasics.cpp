@@ -625,8 +625,11 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
 
 
 
-void unpackTrevState(vector<Determinant>& Dets, int DetsSize, vector<MatrixXx>& ci) {
+void unpackTrevState(vector<Determinant>& Dets, int &DetsSize, vector<MatrixXx>& ci, SparseHam& sparseHam, bool DoRDM, oneInt& I1, twoInt& I2, double& coreE) {
 
+  boost::mpi::communicator world;
+  int oldLen = Dets.size();
+  vector<int> partnerLocation(oldLen,-1);
   if(localrank == 0) {
     if (Determinant::Trev != 0) {
       int numDets = 0;
@@ -644,7 +647,6 @@ void unpackTrevState(vector<Determinant>& Dets, int DetsSize, vector<MatrixXx>& 
       }
       
       int newIndex=0, oldLen = cibkp[0].rows();
-      vector<int> partnerLocation(oldLen,-1);
       for (int i=0; i<oldLen; i++) {
 	if (Dets[i].hasUnpairedElectrons()) {
 	  partnerLocation[i] = newIndex;
@@ -661,8 +663,12 @@ void unpackTrevState(vector<Determinant>& Dets, int DetsSize, vector<MatrixXx>& 
       }
     }
   }
+#ifndef SERIAL
+  DetsSize = Dets.size();
   MPI_Bcast(&DetsSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
+  MPI_Bcast(&oldLen, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
+  
 }
 
 
@@ -806,7 +812,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       MPI_Barrier(MPI_COMM_WORLD);
       mpi::broadcast(world, E0, 0);
 #endif
-      unpackTrevState(Dets, DetsSize, ci);
+      unpackTrevState(Dets, DetsSize, ci, sparseHam, false, I1, I2, coreE);
 
       return E0;
     }
@@ -1041,113 +1047,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
 
-      unpackTrevState(Dets, DetsSize, ci);
-
-
-      /*
-
-	if (DoRDM || schd.doResponse) {
-	  int proc=0, nprocs=1;
-#ifndef SERIAL
-	  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
-	  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-#endif
-	  connections.resize(Dets.size());
-	  orbDifference.resize(Dets.size());
-
-	  for (int i=oldLen; i<Dets.size(); i++) {
-	    if (i%nprocs != proc) continue;
-	    connections[i].push_back(i); 
-	    orbDifference[i].push_back(0);
-	  }
-
-	  for (int i=0; i<oldLen; i++) {
-	    if (i%nprocs != proc) continue;
-	    if (Dets[i].hasUnpairedElectrons()) {
-	      if (Dets[i].connected(Dets[partnerLocation[i]+oldLen]) ) {
-		size_t orbDiff; 
-		CItype hij = Hij(Dets[i], 
-				 Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		connections[partnerLocation[i]+oldLen].push_back(i);
-		orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-	      }
-	    }
-	    for (int j=1; j<connections[i].size(); j++) {
-	      int J = connections[i][j];
-
-	      if (Dets[i].hasUnpairedElectrons() &&
-		  Dets[J].hasUnpairedElectrons()) {
-
-		if (Dets[i].connected(Dets[J])  && !Dets[i].connected(Dets[partnerLocation[J]+oldLen])) {
-		  size_t orbDiff; 
-		  CItype hij = Hij(Dets[partnerLocation[J]+oldLen], 
-				   Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		  connections[partnerLocation[i]+oldLen].push_back(partnerLocation[J]+oldLen);
-		  orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-					
-		}
-		else if (Dets[i].connected(Dets[J]) && Dets[i].connected(Dets[partnerLocation[J]+oldLen]) ) {
-		  size_t orbDiff; 
-		  CItype hij = Hij(Dets[i], 
-				   Dets[partnerLocation[J]+oldLen], I1, I2, coreE, orbDiff);
-		  connections[partnerLocation[J]+oldLen].push_back(i);
-		  orbDifference[partnerLocation[J]+oldLen].push_back(orbDiff);
-
-		  hij = Hij(Dets[J], 
-			    Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		  connections[partnerLocation[i]+oldLen].push_back(J);
-		  orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-
-		  hij = Hij(Dets[partnerLocation[J]+oldLen], 
-			    Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		  connections[partnerLocation[i]+oldLen].push_back(partnerLocation[J]+oldLen);
-		  orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-		  }
-		else if (!Dets[i].connected(Dets[J]) && Dets[i].connected(Dets[partnerLocation[J]+oldLen]) ) {
-		  size_t orbDiff; 
-		  CItype hij = Hij(Dets[partnerLocation[J]+oldLen], 
-				   Dets[i], I1, I2, coreE, orbDiff);
-		  connections[i][j] = partnerLocation[J]+oldLen;
-		  orbDifference[i][j] = orbDiff;
-		  
-
-		  hij = Hij(Dets[J], 
-			    Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		  connections[partnerLocation[i]+oldLen].push_back(J);
-		  orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-		}
-	      }
-	      else if (!Dets[i].hasUnpairedElectrons() &&
-		       Dets[J].hasUnpairedElectrons()) {
-		size_t orbDiff; 
-		CItype hij = Hij(Dets[i], 
-				 Dets[partnerLocation[J]+oldLen], I1, I2, coreE, orbDiff);
-		connections[partnerLocation[J]+oldLen].push_back(i);
-		orbDifference[partnerLocation[J]+oldLen].push_back(orbDiff);
-		
-	      }
-	      else if (Dets[i].hasUnpairedElectrons() &&
-		       !Dets[J].hasUnpairedElectrons()) {
-		size_t orbDiff; 
-		CItype hij = Hij(Dets[J], 
-				 Dets[partnerLocation[i]+oldLen], I1, I2, coreE, orbDiff);
-		connections[partnerLocation[i]+oldLen].push_back(J);
-		orbDifference[partnerLocation[i]+oldLen].push_back(orbDiff);
-		
-	      }
-
-	    }
-	  }
-
-	}
+      unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||schd.doResponse, I1, I2, coreE);
+      if (Determinant::Trev != 0) {
+	//we add additional determinats 
+	SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);    
       }
-      */
 
       if (DoRDM || schd.doResponse) {
-	if (schd.DavidsonType == DIRECT) {
-	  pout << "RDM not implemented with direct davidson."<<endl;
-	  exit(0);
-	}
+	//if (schd.DavidsonType == DIRECT) {
+	//pout << "RDM not implemented with direct davidson."<<endl;
+	//exit(0);
+	//}
 	pout <<"Calculating RDM"<<endl;
 	for (int i=0; i<schd.nroots; i++) {
 	  CItype *SHMci;
@@ -1157,14 +1067,43 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	  if (schd.DoSpinRDM )
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
-	  SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
-			       SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	  //if (schd.outputlevel>0) 
-	    SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
-	  SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
 
-	  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+	  if (Determinant::Trev != 0 || schd.DavidsonType == DIRECT) {
+	    Determinant::Trev = 0;
+	    //now that we have unpacked Trev list, we can forget about t-reversal symmetry
+	    if (proc == 0) {
+	      helper2.clear();
+	      helper2.PopulateHelpers(SHMDets, DetsSize, 0);
+	    }	
+	    helper2.MakeSHMHelpers();
+	    SHCIrdm::makeRDM(helper2.AlphaMajorToBetaLen, 
+			     helper2.AlphaMajorToBetaSM ,
+			     helper2.AlphaMajorToDetSM  ,
+			     helper2.BetaMajorToAlphaLen, 
+			     helper2.BetaMajorToAlphaSM ,
+			     helper2.BetaMajorToDetSM   ,
+			     helper2.SinglesFromAlphaLen, 
+			     helper2.SinglesFromAlphaSM ,
+			     helper2.SinglesFromBetaLen , 
+			     helper2.SinglesFromBetaSM  ,
+			     SHMDets, DetsSize,
+			     Norbs, nelec, SHMci, SHMci,
+			     s2RDM);
 
+	    //if (schd.outputlevel>0) 
+	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
+	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+
+	  }
+	  else {
+	    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
+				 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
+	    if (schd.outputlevel>0) 
+	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
+	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+	    
+	    boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+	  }
         } // for i
       }
       sparseHam.resize(0);

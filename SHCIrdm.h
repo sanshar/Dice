@@ -33,6 +33,22 @@ namespace SHCISortMpiUtils{
 };
 
 namespace SHCIrdm {
+  void makeRDM(int* &AlphaMajorToBetaLen, 
+	       vector<int* > &AlphaMajorToBeta   ,
+	       vector<int* > &AlphaMajorToDet    ,
+	       int*          &BetaMajorToAlphaLen, 
+	       vector<int* > &BetaMajorToAlpha   ,
+	       vector<int* > &BetaMajorToDet     ,
+	       int*          &SinglesFromAlphaLen, 
+	       vector<int* > &SinglesFromAlpha   ,
+	       int*          &SinglesFromBetaLen , 
+	       vector<int* > &SinglesFromBeta    ,
+	       Determinant* Dets,
+	       int DetsSize,
+	       int Norbs, int nelec, CItype* cibra,
+	       CItype* ciket,
+	       MatrixXx& s2RDM);
+
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 

@@ -393,6 +393,10 @@ int main(int argc, char* argv[]) {
       schd.RdmType == RELAXED &&
       (!schd.stochastic && schd.nblocks==1)) {
 
+    if (schd.DavidsonType == DIRECT) {
+      pout << "PT RDM not implemented with direct davidson."<<endl;
+      exit(0);
+    }
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
     SHCImakeHamiltonian::SparseHam sparseHam;
     {

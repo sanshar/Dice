@@ -60,6 +60,16 @@ namespace SHCImakeHamiltonian {
     
     void PopulateHelpers(Determinant* SHMDets, int DetsSize, int startIndex);
     void MakeSHMHelpers();
+    void clear() {
+      AlphaMajorToBeta.clear();
+      AlphaMajorToDet .clear();
+      BetaMajorToAlpha.clear();
+      BetaMajorToDet  .clear();
+      SinglesFromAlpha.clear();
+      SinglesFromBeta .clear();
+      BetaN.clear();
+      AlphaN.clear();
+    }
   };
 
   struct SparseHam {

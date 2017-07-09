@@ -499,4 +499,6 @@ void getHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
 			double& coreE,
 			size_t& orbDiff);
 
+void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbdiff);
+
 #endif

@@ -56,6 +56,228 @@ namespace localConj {
   }
 };
 
+
+
+void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen, 
+		      vector<int* > &AlphaMajorToBeta   ,
+		      vector<int* > &AlphaMajorToDet    ,
+		      int*          &BetaMajorToAlphaLen, 
+		      vector<int* > &BetaMajorToAlpha   ,
+		      vector<int* > &BetaMajorToDet     ,
+		      int*          &SinglesFromAlphaLen, 
+		      vector<int* > &SinglesFromAlpha   ,
+		      int*          &SinglesFromBetaLen , 
+		      vector<int* > &SinglesFromBeta    ,
+		      Determinant* Dets,
+		      int DetsSize,
+		      int Norbs, int nelec, CItype* cibra, 
+		      CItype* ciket,
+		      MatrixXx& s2RDM) {
+
+
+  int proc=commrank, nprocs=commsize;
+
+  size_t norbs = Norbs;
+  int nSpatOrbs = norbs/2;
+
+  int EndIndex = DetsSize;
+
+  //diagonal element
+  for (size_t k=0; k<EndIndex; k++) {
+    if (k%(nprocs) != proc ) continue;
+
+    vector<int> closed(nelec, 0);
+    vector<int> open(norbs-nelec,0);
+    Dets[k].getOpenClosed(open, closed);
+
+    for (int n1=0; n1<nelec; n1++) {
+      for (int n2=0; n2<n1; n2++) {
+	int orb1 = closed[n1], orb2 = closed[n2];
+	//if (schd.DoSpinRDM)
+	//twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra[i])*ciket[i];
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra[k])*ciket[k], nSpatOrbs);
+      }
+    }
+  }
+    
+  //alpha-beta excitation
+  for (int i=0; i<AlphaMajorToBeta.size(); i++) {
+    
+    for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
+      
+      int Astring = i, 
+	Bstring = AlphaMajorToBeta[i][ii], 
+	DetI    = AlphaMajorToDet [i][ii];
+
+      
+      if (std::abs(DetI)%nprocs != proc ) 
+	continue;
+      
+      vector<int> closed(nelec, 0);
+      vector<int> open(norbs-nelec,0);
+      Dets[DetI].getOpenClosed(open, closed);
+      Determinant di = Dets[DetI];
+
+
+      int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
+      //singles from Astring
+      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
+	
+	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
+				   0                             , 
+				   BetaMajorToAlphaLen[Bstring]-1, 
+				   Asingle                       );
+	if (index != -1 ) {
+	  int DetJ = BetaMajorToDet[Bstring][index];
+
+	  if (std::abs(DetJ) >=  std::abs(DetI)) continue;
+	  Determinant dj = Dets[DetJ];
+	  size_t orbDiff;
+	  getOrbDiff(dj, di, orbDiff);
+	  int d0 = orbDiff%norbs, c0= (orbDiff/norbs)%norbs;
+
+	  for (int n1=0;n1<nelec; n1++) {
+	    double sgn = 1.0;
+	    int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
+	    if (closed[n1] == d0) continue;
+	    di.parity(min(d0,c0), max(d0,c0),sgn);
+	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0)))
+	      sgn *=-1.;
+	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
+	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	  }
+
+	}
+      }
+	
+      //single Alpha and single Beta
+      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
+	
+	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
+	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
+	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
+	for (int k=0; k<SinglesFromBLen; k++) {
+	  int& Bsingle = SinglesFromBeta[Bstring][k];
+	  
+	  if (SearchStartIndex >= AlphaToBetaLen) break;
+	  
+	  int index=SearchStartIndex;
+	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
+	  
+	  SearchStartIndex = index;
+	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
+	    
+	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+	    //if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
+	    if (std::abs(DetJ) >=  std::abs(DetI)) continue;
+	    Determinant dj = Dets[DetJ];
+	    size_t orbDiff;
+	    getOrbDiff(dj, di, orbDiff);
+	    //CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
+
+	    int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
+	    int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
+	    double sgn = 1.0;
+	    
+	    di.parity(d1,d0,c1,c0,sgn);
+	    populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
+	    populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	  }
+	}
+      }
+      
+	//singles from Bstring
+      int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
+      for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
+	int Bsingle =  SinglesFromBeta   [Bstring][j];
+	
+	//if (Bsingle > maxAtoB) break;
+	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
+				  0                             , 
+				  AlphaMajorToBetaLen[Astring]-1, 
+				  Bsingle                        );
+	
+	if (index != -1 ) {
+	  int DetJ = AlphaMajorToDet[Astring][index];
+	  if (std::abs(DetJ) >= std::abs(DetI)) continue;
+	  Determinant dj = Dets[DetJ];
+
+	  size_t orbDiff;
+	  getOrbDiff(dj, di, orbDiff);
+	  //CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
+	  int d0 = orbDiff%norbs, c0= (orbDiff/norbs)%norbs;
+
+	  for (int n1=0;n1<nelec; n1++) {
+	    double sgn = 1.0;
+	    int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
+	    if (closed[n1] == d0) continue;
+	    di.parity(min(d0,c0), max(d0,c0),sgn);
+	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0)))
+	      sgn *=-1.;
+	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
+	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	  }
+
+	}
+      }
+      
+      
+      //double beta excitation
+      for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
+	int DetJ     = AlphaMajorToDet    [i][j];
+	//if (std::abs(DetJ) < StartIndex) continue;
+	//if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
+	if (std::abs(DetJ) >= std::abs(DetI)) continue;
+	Determinant dj = Dets[DetJ];
+
+	if (dj.ExcitationDistance(di) == 2 ) {
+	  size_t orbDiff;
+	  getOrbDiff(dj, di, orbDiff);
+	  //CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
+	  int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
+	  int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
+	  double sgn = 1.0;
+	  
+	  di.parity(d1,d0,c1,c0,sgn);
+	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
+	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	}
+      }
+      
+      //double Alpha excitation
+      for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
+	int DetJ      = BetaMajorToDet     [Bstring][j];
+	//if (std::abs(DetJ) < StartIndex) continue;
+	//if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
+	if (std::abs(DetJ) >= std::abs(DetI)) continue;
+
+	Determinant dj = Dets[DetJ];
+	if (di.ExcitationDistance(dj) == 2) {
+	  size_t orbDiff;
+	  getOrbDiff(dj, di, orbDiff);
+	  //CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
+	  int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
+	  int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
+	  double sgn = 1.0;
+	  
+	  di.parity(d1,d0,c1,c0,sgn);
+	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
+	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	}
+      }
+      
+    }
+  }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  
+}
+
+
 void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root) {
   int norbs = twoRDM.rows();
   int nSpatOrbs = pow(s2RDM.rows(),0.5);
