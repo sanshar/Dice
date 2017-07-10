@@ -11,7 +11,6 @@ here=`pwd`
 # O2 SHCI tests.
 cd $here/o2_omp1_stoc
 printf "...running o2_omp1_stoc\n"
-export OMP_NUM_THREADS=1
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  1.0e-5
 python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
@@ -76,6 +75,19 @@ $MPICOMMAND $HCIPATH input2.dat > output2.dat
 $MPICOMMAND $HCIPATH input3.dat > output3.dat
 python $here/test_energy.py 1 5e-5
 
+cd $here/cr2_dinfh_rdm
+printf "...running cr2_dinfh_rdm\n"
+$MPICOMMAND $HCIPATH > output.dat
+python ../test_energy.py 1  5.0e-6
+python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+cd $here/cr2_dinfh_trev_rdm
+printf "...running cr2_dinfh_trev_rdm\n"
+$MPICOMMAND $HCIPATH > output.dat
+python ../test_energy.py 1  5.0e-6
+python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-8
+
+
 ## PT RDM Test
 #cd $here/c2_pt_rdm
 #printf "...running c2_pt_rdm\n"
@@ -84,7 +96,6 @@ python $here/test_energy.py 1 5e-5
 
 # Mn(salen) tests.
 cd $here/mn_salen_stoc
-export OMP_NUM_THREADS=1
 printf "...running mn_salen_stoc\n"
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py 1  8.0e-5

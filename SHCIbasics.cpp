@@ -1000,7 +1000,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (schd.DavidsonType == DIRECT)
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
     else
-      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
+      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
 
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
@@ -1098,7 +1098,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	  else {
 	    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
 				 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	    if (schd.outputlevel>0) 
+	    //if (schd.outputlevel>0) 
 	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
 	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
 	    
