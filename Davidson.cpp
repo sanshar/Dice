@@ -524,7 +524,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     CItype dotProduct = 0.0, norm=0.0;
     for (int j=0; j<b.rows(); j++) {
       dotProduct += conj(proj[i][j])*b(j,0);
-      norm = conj(proj[i][j])*proj[i][j];
+      norm += conj(proj[i][j])*proj[i][j];
     }
     for (int j=0; j<b.rows(); j++) 
       b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
@@ -553,7 +553,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
       CItype dotProduct = 0.0, norm=0.0;
       for (int j=0; j<b.rows(); j++) {
 	dotProduct += conj(proj[i][j])*r(j,0);
-	norm = conj(proj[i][j])*proj[i][j];
+	norm += conj(proj[i][j])*proj[i][j];
       }
       for (int j=0; j<r.rows(); j++) 
 	r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
