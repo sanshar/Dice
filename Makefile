@@ -1,7 +1,7 @@
 USE_MPI = yes
-USE_INTEL = yes
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
+USE_INTEL = no
+EIGEN=/home/mahajank/eigen-eigen-5a0156e40feb
+BOOST=/home/mahajank/boost_1_64_0
 #EIGEN=/home/mussard/softwares/eigen
 #BOOST=/home/mussard/softwares/boost_1_64_0
 
@@ -29,7 +29,7 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L/home/mahajank/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = g++
 		CC = g++
@@ -46,7 +46,7 @@ SRC_Dice = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp David
 SRC_ZDice = SHCI.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp SOChelper.cpp new_anglib.cpp SHCIgetdeterminants.cpp SHCIsampledeterminants.cpp SHCIrdm.cpp SHCISortMpiUtils.cpp SHCImakeHamiltonian.cpp SHCIshm.cpp
 SRC_forcyrus = forCyrus.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp Davidson.cpp
 SRC_Excitations = Excitations.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp
-
+SRC_GreensFunction = GreensFunction.cpp Determinants.cpp integral.cpp Davidson.cpp SHCISortMpiUtils.cpp SHCImakeHamiltonian.cpp SHCIshm.cpp
 
 OBJ_qdptsoc+=obj_z/QDPTSOC.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o
 OBJ_gtensorft+=obj_z/GTensorFT.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o
@@ -55,6 +55,7 @@ OBJ_Dice+=obj/SHCI.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/inpu
 OBJ_ZDice+=obj_z/SHCI.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/SOChelper.o obj_z/new_anglib.o obj_z/SHCIgetdeterminants.o  obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o
 OBJ_forcyrus+=obj/forCyrus.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o obj/SHCIgetdeterminants.o  obj/SHCIsampledeterminants.o obj/SHCIrdm.o obj/SHCISortMpiUtils.o obj/SHCImakeHamiltonian.o
 OBJ_Excitations+=obj/Excitations.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o
+OBJ_GreensFunction+=obj/GreensFunction.o obj/Determinants.o obj/integral.o obj/Davidson.o obj/SHCISortMpiUtils.o obj/SHCImakeHamiltonian.o obj/SHCIshm.o
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
@@ -82,6 +83,8 @@ GTensorFT	: $(OBJ_gtensorft)
 	$(CXX)   $(DFLAGS) $(OPT) -o  GTensorFT $(OBJ_gtensorft) $(LFLAGS)
 GTensorFT2	: $(OBJ_gtensorft2)
 	$(CXX)   $(DFLAGS) $(OPT) -o  GTensorFT2 $(OBJ_gtensorft2) $(LFLAGS)
+GreensFunction : $(OBJ_GreensFunction) 
+	$(CXX)   $(FLAGS) $(OPT) -o  GreensFunction $(OBJ_GreensFunction) $(LFLAGS)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm CIST Dice ZDice QDPTSOC GTensorFT forcyrus >/dev/null 2>&1
