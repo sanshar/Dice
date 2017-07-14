@@ -72,15 +72,17 @@ void license() {
   pout << endl;
 }
 
-//void calcGreensFunction(std::vector< vector<double> > greensFunction, Determinant* Dets, CItype *ci, int DetsSize, double& E0, oneInt& I1, twoInt& I2,
-//				     vector<int>& irrep, double coreE, int nelec) ;
+double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Hmult2& HNm1, double E0, MatrixXx& diag) ; 
+
 
 int main(int argc, char* argv[]) {
 
 #ifndef SERIAL
+  //initialize mpi environment
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+  //initialize
   initSHM();
 
   license();
@@ -104,34 +106,99 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
-  //read dets and ci coeffs of the variational result
+  //read dets and ci coeffs of the variational result psi0
   char file [5000];
   sprintf (file, "%d-variational.bkp" , 0 );
   std::ifstream ifs(file, std::ios::binary);
   boost::archive::binary_iarchive load(ifs);
-
+  //Dets has deteminants with nonzero psi0 overlap, ci has the corresponding coeffs
   int iter; std::vector<Determinant> Dets; std::vector<MatrixXx> ci; std::vector<double> E0;
-    load >> iter >> Dets;
-    load >> ci;
-    load >> E0;
-
+  load >> iter >> Dets;
+  load >> ci;
+  load >> E0;
   ifs.close();
 
-#ifndef SERIAL
-  mpi::broadcast(world, ci, 0);
-#endif
 
-  Determinant* SHMDets;
+  //to store dets in psi0 less one electron, to construct H0 on N-1 electron space 
+  //calc only in 0 proc
+  std::vector<Determinant> DetsNm1;
+  
+  if (commrank == 0) {
+      //fill up DetsNm1
+      for(int k=0; k<Dets.size(); k++){
+          
+          //get the occupied orbs in Dets[k]
+          std::vector<int> closed(64*DetLen);
+          int nclosed = Dets[k].getClosed(closed);
+          
+          //remove electrons from occupied orbs
+          for(int l=0; l<nclosed; l++){
+              Dets[k].setocc(closed[l], false);
+              DetsNm1.push_back(Dets[k]);
+              Dets[k].setocc(closed[l], true);
+          }
+      }
+
+      //remove duplicates
+      SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
+  }
+
+ 
+  //put dets in shared memory
+  Determinant* SHMDets, *SHMDetsNm1; CItype *ciroot;
+  int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
-  int DetsSize = Dets.size();
-#ifndef SERIAL
-  mpi::broadcast(world, DetsSize, 0);
-#endif
+  SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
+  SHMVecFromMatrix(ci[0], ciroot, shcicMax, cMaxSegment, regioncMax);
   Dets.clear();
+  DetsNm1.clear();
+  
+  //now make H0 in the DetsNm1 space
+  SHCImakeHamiltonian::HamHelpers2 helper2;
+  SHCImakeHamiltonian::SparseHam sparseHam;
+  int Norbs = 2.*I2.Direct.rows();
+  
+  if (commrank == 0) {
+    helper2.PopulateHelpers(SHMDetsNm1, DetsNm1Size, 0);
+  }	
+  helper2.MakeSHMHelpers();
+  sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsSize, Norbs, I1, I2, coreE, false);
+  Hmult2 H(sparseHam);
+  MatrixXx diag;
 
-#ifndef SERIAL
-  world.barrier();
-#endif
-
+  calcGreensFunction(0, 1, SHMDets, ciroot, DetsSize, H,  E0[0], diag); 
+  
   return 0;
+
+}
+
+//to calculate G_ij(w=0) = <psi0| a_i^(dag) 1/H0-E0 a_j |psi0>
+//psi0 is the variational ground state, a_i, a_j are 
+//psi0_dets has dets in psi0, psi0_ci has the corresponding coeffs, psi0_detsize is the number of dets in psi0
+//psi0_detsNm1 has dets with one electron less than those in psi0_dets 
+//delta_HNm1 is H0-E0 on the N-1 electron space
+double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Hmult2& HNm1, double E0, MatrixXx& diag) {
+
+    int proc=0, nprocs=1;
+    #ifndef SERIAL
+    boost::mpi::communicator world;
+    proc = world.rank();
+    nprocs = world.size();
+    #endif
+   
+
+    std::vector<Determinant> aj_Dets; //to store dets in a_j|psi0> 
+    std::vector<double> aj_ci; //to store ci coeffs in a_j|psi0> 
+    
+    //calc a_j|psi0>
+    for(int k=0; k<DetsSize; k++){
+        if(Dets[k].getocc(j)) {
+            Dets[k].setocc(j, false);
+            aj_Dets.push_back(Dets[k]);
+            aj_ci.push_back(ci[k]);
+            Dets[k].setocc(j, true);
+        }
+    }
+    
+
 }

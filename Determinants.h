@@ -468,6 +468,15 @@ class Determinant {
   }
 
   //returns integer array containing the closed and open orbital indices
+  int getClosed(vector<int>& closed) const {
+    int cindex=0;
+    for (int i=0; i<norbs; i++) {
+      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+    }
+    return cindex;
+  }
+  
+  //returns integer array containing the closed and open orbital indices
   int getOpenClosed(int* open, int* closed) const {
     int oindex=0,cindex=0;
     for (int i=0; i<norbs; i++) {
