@@ -72,7 +72,8 @@ void license() {
   pout << endl;
 }
 
-double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Hmult2& HNm1, double E0, MatrixXx& diag) ; 
+double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0) ; 
 
 
 int main(int argc, char* argv[]) {
@@ -123,6 +124,7 @@ int main(int argc, char* argv[]) {
   //calc only in 0 proc
   std::vector<Determinant> DetsNm1;
   
+  //needs to be parallelized
   if (commrank == 0) {
       //fill up DetsNm1
       for(int k=0; k<Dets.size(); k++){
@@ -142,18 +144,24 @@ int main(int argc, char* argv[]) {
       //remove duplicates
       SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
   }
-
  
-  //put dets in shared memory
-  Determinant* SHMDets, *SHMDetsNm1; CItype *ciroot;
+  //put dets in shared memory: haven't figured out how this works yet
+  Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
   int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
-  SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
-  SHMVecFromMatrix(ci[0], ciroot, shcicMax, cMaxSegment, regioncMax);
   Dets.clear();
+  SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
   DetsNm1.clear();
-  
-  //now make H0 in the DetsNm1 space
+  SHMVecFromMatrix(ci[0], SHMci, shcicMax, cMaxSegment, regioncMax);
+  ci.clear();
+
+#ifndef SERIAL
+  world.barrier();
+  mpi::broadcast(world, DetsNm1Size, 0);
+#endif
+
+
+  //make H0 in the DetsNm1 space
   SHCImakeHamiltonian::HamHelpers2 helper2;
   SHCImakeHamiltonian::SparseHam sparseHam;
   int Norbs = 2.*I2.Direct.rows();
@@ -162,22 +170,25 @@ int main(int argc, char* argv[]) {
     helper2.PopulateHelpers(SHMDetsNm1, DetsNm1Size, 0);
   }	
   helper2.MakeSHMHelpers();
-  sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsSize, Norbs, I1, I2, coreE, false);
+  sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsNm1Size, Norbs, I1, I2, coreE, false);
   Hmult2 H(sparseHam);
-  MatrixXx diag;
 
-  calcGreensFunction(0, 1, SHMDets, ciroot, DetsSize, H,  E0[0], diag); 
-  
+
+  for(int i=0; i<norbs; i++){
+      for(int j=0; j<=i; j++){
+          pout << endl << "G_" << i << "_" << j << "  " << calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]) << endl << endl; 
+      }
+  }
   return 0;
 
 }
 
 //to calculate G_ij(w=0) = <psi0| a_i^(dag) 1/H0-E0 a_j |psi0>
-//psi0 is the variational ground state, a_i, a_j are 
-//psi0_dets has dets in psi0, psi0_ci has the corresponding coeffs, psi0_detsize is the number of dets in psi0
-//psi0_detsNm1 has dets with one electron less than those in psi0_dets 
-//delta_HNm1 is H0-E0 on the N-1 electron space
-double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Hmult2& HNm1, double E0, MatrixXx& diag) {
+//psi0 is the variational ground state, a_i, a_j are annihilation operators 
+//H0 is the Hamiltonian and E0 is the N electron variational ground state energy 
+//Dets has dets in psi0, ci has the corresponding coeffs
+//DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
+double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0) {
 
     int proc=0, nprocs=1;
     #ifndef SERIAL
@@ -185,20 +196,45 @@ double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
     proc = world.rank();
     nprocs = world.size();
     #endif
-   
-
-    std::vector<Determinant> aj_Dets; //to store dets in a_j|psi0> 
-    std::vector<double> aj_ci; //to store ci coeffs in a_j|psi0> 
+    
+    //to store ci coeffs in a_j|psi0>, corresponding to dets in DetsNm1
+    MatrixXx aj_ci = MatrixXx::Zero(DetsNm1Size,1);  
     
     //calc a_j|psi0>
     for(int k=0; k<DetsSize; k++){
         if(Dets[k].getocc(j)) {
             Dets[k].setocc(j, false);
-            aj_Dets.push_back(Dets[k]);
-            aj_ci.push_back(ci[k]);
+            int n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, Dets[k]));
+            aj_ci(n) = ci[k];
             Dets[k].setocc(j, true);
         }
     }
     
+    //solve for x0 = 1/H0-E0 a_j |psi0>
+    MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
+    vector<CItype*> proj;
+    LinearSolver(HNm1, E0, x0, aj_ci, proj, 1.e-5, false);
+    
+    //to store ci coeffs in a_i|psi0>, corresponding to dets in DetsNm1
+    MatrixXx ai_ci = MatrixXx::Zero(DetsNm1Size,1); 
+    
+    //calc a_i|psi0>
+    for(int k=0; k<DetsSize; k++){
+        if(Dets[k].getocc(i)) {
+            Dets[k].setocc(i, false);
+            int n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, Dets[k]));
+            ai_ci(n) = ci[k];
+            Dets[k].setocc(i, true);
+        }
+    }
+    
+
+    double dotProduct = 0.0;
+    for(int k=0; k<DetsNm1Size; k++){
+        dotProduct += ai_ci(k)*x0(k);
+    }
+    
+    return dotProduct;
+
 
 }

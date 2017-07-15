@@ -97,6 +97,7 @@ void initSHM() {
   string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciDetsNm1 = "SHCIDetsNm1shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciSortedDets = "SHCISortedDetsshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDavidson = "SHCIDavidsonshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shcicMax = "SHCIcMaxshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
