@@ -144,7 +144,8 @@ int main(int argc, char* argv[]) {
       //remove duplicates
       SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
   }
- 
+
+
   //put dets in shared memory: haven't figured out how this works yet
   Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
   int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
@@ -156,10 +157,8 @@ int main(int argc, char* argv[]) {
   ci.clear();
 
 #ifndef SERIAL
-  world.barrier();
   mpi::broadcast(world, DetsNm1Size, 0);
 #endif
-
 
   //make H0 in the DetsNm1 space
   SHCImakeHamiltonian::HamHelpers2 helper2;
@@ -173,12 +172,19 @@ int main(int argc, char* argv[]) {
   sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsNm1Size, Norbs, I1, I2, coreE, false);
   Hmult2 H(sparseHam);
 
-
+  double g_ij = 0;
   for(int i=0; i<norbs; i++){
       for(int j=0; j<=i; j++){
-          pout << endl << "G_" << i << "_" << j << "  " << calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]) << endl << endl; 
+          g_ij = calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
+          pout << endl << "G_" << i << "_" << j << "  " << g_ij << endl; 
       }
   }
+   
+  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+  boost::interprocess::shared_memory_object::remove(shciDetsNm1.c_str());
+  boost::interprocess::shared_memory_object::remove(shcicMax.c_str());
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+  
   return 0;
 
 }
@@ -190,49 +196,62 @@ int main(int argc, char* argv[]) {
 //DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
 double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0) {
 
-    int proc=0, nprocs=1;
-    #ifndef SERIAL
+#ifndef SERIAL
     boost::mpi::communicator world;
-    proc = world.rank();
-    nprocs = world.size();
-    #endif
-    
-    //to store ci coeffs in a_j|psi0>, corresponding to dets in DetsNm1
-    MatrixXx aj_ci = MatrixXx::Zero(DetsNm1Size,1);  
+#endif
+
+    //to store ci coeffs in a_j|psi0> and a_i|psi0>, corresponding to dets in DetsNm1
+    MatrixXx ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);  
     
     //calc a_j|psi0>
+    int n = 0;
+    Determinant detTemp;
     for(int k=0; k<DetsSize; k++){
         if(Dets[k].getocc(j)) {
-            Dets[k].setocc(j, false);
-            int n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, Dets[k]));
-            aj_ci(n) = ci[k];
-            Dets[k].setocc(j, true);
+            detTemp = Dets[k];
+            detTemp.setocc(j, false);
+            n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, detTemp));
+            ciNm1(n) = ci[k];
         }
     }
+     
+#ifndef SERIAL
+    world.barrier();
+#endif
+    
     
     //solve for x0 = 1/H0-E0 a_j |psi0>
     MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
     vector<CItype*> proj;
-    LinearSolver(HNm1, E0, x0, aj_ci, proj, 1.e-5, false);
+    LinearSolver(HNm1, E0, x0, ciNm1, proj, 1.e-5, false);
     
-    //to store ci coeffs in a_i|psi0>, corresponding to dets in DetsNm1
-    MatrixXx ai_ci = MatrixXx::Zero(DetsNm1Size,1); 
+#ifndef SERIAL
+    world.barrier();
+#endif
+    
     
     //calc a_i|psi0>
+    ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);
     for(int k=0; k<DetsSize; k++){
         if(Dets[k].getocc(i)) {
-            Dets[k].setocc(i, false);
-            int n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, Dets[k]));
-            ai_ci(n) = ci[k];
-            Dets[k].setocc(i, true);
+            detTemp = Dets[k];
+            detTemp.setocc(i, false);
+            n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, detTemp));
+            if (n >= DetsNm1Size || n < 0) std::cout << commrank << " n = " << n << " k " << k << std::endl; 
+            ciNm1(n) = ci[k];
         }
     }
+    
+#ifndef SERIAL
+    world.barrier();
+#endif
     
 
     double dotProduct = 0.0;
     for(int k=0; k<DetsNm1Size; k++){
-        dotProduct += ai_ci(k)*x0(k);
+        dotProduct += ciNm1(k)*x0(k);
     }
+    //}
     
     return dotProduct;
 

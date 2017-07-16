@@ -539,7 +539,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 
   int iter = 0;
   while (true) {
-    MatrixXx Ap = 0.*p; 
+    MatrixXx Ap = 0.*p;
     H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
 #ifndef SERIAL
     MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -564,8 +564,8 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (true)
-      cout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
+    if (print)
+      pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) {
       p.setZero(p.rows(),1); 
       H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
