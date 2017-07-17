@@ -13,8 +13,10 @@ using namespace std;
 
 boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
+string shciint2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
+string shciint2shm;
 boost::interprocess::shared_memory_object hHelpersSegment;
 boost::interprocess::mapped_region regionHelpers;
 string shciHelper;
@@ -93,8 +95,8 @@ void initSHM() {
 #endif
 
   //set up shared memory files to store the integrals
-  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsNm1 = "SHCIDetsNm1shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
@@ -110,6 +112,17 @@ void initSHM() {
   DavidsonSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDavidson.c_str(), boost::interprocess::read_write);
   cMaxSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shcicMax.c_str(), boost::interprocess::read_write);
 
+}
+
+void removeSHM(){
+  boost::interprocess::shared_memory_object::remove(shciint2.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
+  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+  boost::interprocess::shared_memory_object::remove(shciDetsNm1.c_str());
+  boost::interprocess::shared_memory_object::remove(shciSortedDets.c_str());
+  boost::interprocess::shared_memory_object::remove(shciDavidson.c_str());
+  boost::interprocess::shared_memory_object::remove(shcicMax.c_str());
 }
 
 void SHMVecFromMatrix(MatrixXx& vec, CItype* &SHMvec, std::string& SHMname,

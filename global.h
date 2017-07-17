@@ -34,9 +34,12 @@ double getTime();
 
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
-extern boost::interprocess::shared_memory_object int2SHMSegment;
+extern std::string shciint2;
 
+extern boost::interprocess::shared_memory_object int2SHMSegment;
 extern boost::interprocess::mapped_region regionInt2SHM;
+extern std::string shciint2shm;
+
 extern boost::interprocess::shared_memory_object hHelpersSegment;
 extern boost::interprocess::mapped_region regionHelpers;
 extern std::string shciHelper;

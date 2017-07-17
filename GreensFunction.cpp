@@ -123,8 +123,8 @@ int main(int argc, char* argv[]) {
   //to store dets in psi0 less one electron, to construct H0 on N-1 electron space 
   //calc only in 0 proc
   std::vector<Determinant> DetsNm1;
-  
-  //needs to be parallelized
+ 
+  double t1 = 0., t2 = 0., t3 = 0.;
   if (commrank == 0) {
       //fill up DetsNm1
       for(int k=0; k<Dets.size(); k++){
@@ -140,13 +140,14 @@ int main(int argc, char* argv[]) {
               Dets[k].setocc(closed[l], true);
           }
       }
-
+      
       //remove duplicates
+      std::sort(DetsNm1.begin(), DetsNm1.end());
       SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
   }
 
 
-  //put dets in shared memory: haven't figured out how this works yet
+  //put dets in shared memory
   Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
   int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
@@ -169,22 +170,27 @@ int main(int argc, char* argv[]) {
     helper2.PopulateHelpers(SHMDetsNm1, DetsNm1Size, 0);
   }	
   helper2.MakeSHMHelpers();
+  t1 = MPI_Wtime();
   sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsNm1Size, Norbs, I1, I2, coreE, false);
   Hmult2 H(sparseHam);
+  t2 = MPI_Wtime();
 
-  double g_ij = 0;
-  for(int i=0; i<norbs; i++){
-      for(int j=0; j<=i; j++){
-          g_ij = calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
-          pout << endl << "G_" << i << "_" << j << "  " << g_ij << endl; 
-      }
-  }
-   
-  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
-  boost::interprocess::shared_memory_object::remove(shciDetsNm1.c_str());
-  boost::interprocess::shared_memory_object::remove(shcicMax.c_str());
-  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+  double g_ij = calcGreensFunction(1, 1, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
+  t3 = MPI_Wtime();
+  pout << endl << "G_" << 1 << "_" << 1 << "  " << g_ij << endl; 
   
+  //for(int i=0; i<norbs; i++){
+  //    for(int j=0; j<=i; j++){
+  //        double g_ij = calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
+  //        pout << endl << "G_" << i << "_" << j << "  " << g_ij << endl; 
+  //    }
+  //}
+ 
+  //pout << "t_makefromhelpers " << t2 - t1 << endl;
+  //pout << "t_calcgreens = " << t3 - t2 << endl;
+
+  removeSHM();
+
   return 0;
 
 }
@@ -200,17 +206,16 @@ double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
     boost::mpi::communicator world;
 #endif
 
-    //to store ci coeffs in a_j|psi0> and a_i|psi0>, corresponding to dets in DetsNm1
+    //to store ci coeffs in a_j|psi0>, corresponding to dets in DetsNm1
     MatrixXx ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);  
     
     //calc a_j|psi0>
-    int n = 0;
     Determinant detTemp;
     for(int k=0; k<DetsSize; k++){
         if(Dets[k].getocc(j)) {
             detTemp = Dets[k];
-            detTemp.setocc(j, false);
-            n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, detTemp));
+            detTemp.setocc(j, false); //annihilated Det[k]
+            int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); //binary search for detTemp in DetsNm1
             ciNm1(n) = ci[k];
         }
     }
@@ -225,35 +230,24 @@ double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
     vector<CItype*> proj;
     LinearSolver(HNm1, E0, x0, ciNm1, proj, 1.e-5, false);
     
-#ifndef SERIAL
-    world.barrier();
-#endif
     
-    
-    //calc a_i|psi0>
-    ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);
-    for(int k=0; k<DetsSize; k++){
-        if(Dets[k].getocc(i)) {
-            detTemp = Dets[k];
-            detTemp.setocc(i, false);
-            n = std::distance(DetsNm1, std::find(DetsNm1, DetsNm1+DetsNm1Size, detTemp));
-            if (n >= DetsNm1Size || n < 0) std::cout << commrank << " n = " << n << " k " << k << std::endl; 
-            ciNm1(n) = ci[k];
+    //calc <psi0|a_i^(dag) x0
+    double overlap = 0.0;
+    if(commrank == 0){
+        for(int k=0; k<DetsSize; k++){
+            if(Dets[k].getocc(i)) {
+                detTemp = Dets[k];
+                detTemp.setocc(i, false); //annihilated Det[k]
+                int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); //binary search for detTemp in DetsNm1
+                overlap += ci[k]*x0(n);
+            }
         }
     }
     
 #ifndef SERIAL
-    world.barrier();
+    mpi::broadcast(world, overlap, 0);
 #endif
     
-
-    double dotProduct = 0.0;
-    for(int k=0; k<DetsNm1Size; k++){
-        dotProduct += ciNm1(k)*x0(k);
-    }
-    //}
-    
-    return dotProduct;
-
+    return overlap;
 
 }

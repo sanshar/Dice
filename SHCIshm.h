@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License along with thi
 using namespace Eigen;
 
 void initSHM();
+void removeSHM();
 
 template <typename T>
 void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname, 
