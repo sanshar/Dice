@@ -353,7 +353,6 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
-
   int num_thrds = omp_get_max_threads();
 
   //#pragma omp parallel for schedule(dynamic)
@@ -611,7 +610,30 @@ inline bool SHCIrdm::cFO( int& ladderOp, vector<int>& opIndices) {
 
 void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
   int& d2, CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
-  c0 /= 2; c1 /= 2; c2 /= 2; d0 /= 2; d1 /= 2; d2 /= 2;
+  C0 /= 2; C1 /= 2; C2 /= 2; D0 /= 2; D1 /= 2; D2 /= 2;
+
+  if ( c0%2==d0%2 && c1%2==d1%2 && c2%2==d2%2 ) {
+    C0 D0 C1 D1 C2 D2
+C1 D1 C2 D2 C0 D0
+C2 D2 C0 D0 C1 D1
+C0 D0 C2 D2 C1 D1
+C1 D1 C0 D0 C2 D2
+C2 D2 C1 D1 C0 D0
+
+  }
+  if ( c0%2==d1%2 && c1%2==d2%2 && c2%2==d0%2 ) {
+  }
+  if ( c0%2==d2%2 && c1%2==d0%2 && c2%2==d1%2 ) {
+  }
+
+  if ( c0%2==d0%2 && c1%2==d2%2 && c2%2==d1%2 ) {
+  }
+  if ( c0%2==d1%2 && c1%2==d0%2 && c2%2==d2%2 ) {
+  }
+  if ( c0%2==d2%2 && c1%2==d1%2 && c2%2==d0%2 ) {
+  }
+
+  /*
   s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c2*nSpatOrbs+d2) += value;
   s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d2*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
   s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d1*nSpatOrbs2+c1*nSpatOrbs+d2) -= value;
@@ -648,6 +670,7 @@ void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
   s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d1*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
   s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d0*nSpatOrbs2+c0*nSpatOrbs+d1) -= value;
   s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d1*nSpatOrbs2+c1*nSpatOrbs+d0) -= value;
+  */
 }
 
 void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& d0, int& d1,
