@@ -144,15 +144,15 @@ void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& s3RDM, int root) {
       std::ofstream ofs(file, std::ios::out);
       ofs << nSpatOrbs << endl;
 
-      for (int c0=0; c0 < nSpatOrbs; c0++)
-	for (int d0=0; d0 < nSpatOrbs; d0++)
-	  for (int c1=0; c1 < nSpatOrbs; c1++)
-	    for (int d1=0; d1 < nSpatOrbs; d1++)
-	      for (int c2=0; c2 < nSpatOrbs; c2++)
-		for (int d2=0; d2 < nSpatOrbs; d2++) {
-		  if ( abs( s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,
-				  d1*nSpatOrbs2+c2*nSpatOrbs+d0) ) > 1.e-8 ) {
-		    ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%c0%d0%c1%d1%c2%d2%s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c2*nSpatOrbs+d2));
+      for (int n0=0; n0 < nSpatOrbs; n0++)
+	for (int n1=0; n1 < nSpatOrbs; n1++)
+	  for (int n2=0; n2 < nSpatOrbs; n2++)
+	    for (int n3=0; n3 < nSpatOrbs; n3++)
+	      for (int n4=0; n4 < nSpatOrbs; n4++)
+		for (int n5=0; n5 < nSpatOrbs; n5++) {
+		  if ( abs( s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,
+				  n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-8 ) {
+		    ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%n0%n1%n2%n3%n4%n5%s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,n3*nSpatOrbs2+n4*nSpatOrbs+n5));
 		  } 
 		}
       ofs.close();
