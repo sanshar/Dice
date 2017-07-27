@@ -998,7 +998,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     //cout <<commrank<<"  "<< sparseHam.Helements[0][0]<<endl;
     int numIter = 0;
     if (schd.DavidsonType == DIRECT)
-      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, true);
+      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, true);
     else
       E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
 

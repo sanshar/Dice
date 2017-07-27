@@ -319,7 +319,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
   }
 }
 
-void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff, double& hij) {
+void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff, CItype& hij) {
   if (DetI < 0) hij = 0.0;
   else if (DetI >= 0 && Determinant::Trev != 0) {
     if (!Dets[abs(DetJ)].hasUnpairedElectrons() && !Dets[abs(DetI)].hasUnpairedElectrons())

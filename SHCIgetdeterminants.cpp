@@ -307,14 +307,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     
     if (closed[i]%2 != open[a]%2) {
-      double sgn = 1.0;
-      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-      integral = int1(open[a], closed[i])*sgn;
+      integral = int1(open[a], closed[i])*schd.socmultiplier;
     }
-
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2])
-      integral *= schd.socmultiplier; //make it 100 times so SOC gets preference
-
 
     if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
