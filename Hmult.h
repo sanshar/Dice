@@ -141,6 +141,10 @@ struct HmultDirect {
   vector<int* > &SinglesFromAlpha   ;
   int*          &SinglesFromBetaLen ; 
   vector<int* > &SinglesFromBeta    ;
+  int*          &DoublesFromAlphaLen; 
+  vector<int* > &DoublesFromAlpha   ;
+  int*          &DoublesFromBetaLen ; 
+  vector<int* > &DoublesFromBeta    ;
   Determinant *&Dets;
   int DetsSize;
   int StartIndex;
@@ -169,6 +173,10 @@ struct HmultDirect {
     SinglesFromAlpha   (helpers2.SinglesFromAlphaSM ),
     SinglesFromBetaLen (helpers2.SinglesFromBetaLen ),
     SinglesFromBeta    (helpers2.SinglesFromBetaSM  ),
+    DoublesFromAlphaLen(helpers2.DoublesFromAlphaLen),
+    DoublesFromAlpha   (helpers2.DoublesFromAlphaSM ),
+    DoublesFromBetaLen (helpers2.DoublesFromBetaLen ),
+    DoublesFromBeta    (helpers2.DoublesFromBetaSM  ),
     Dets               (pDets               ),
     DetsSize           (pDetsSize           ),
     StartIndex         (pStartIndex         ),
@@ -189,6 +197,10 @@ struct HmultDirect {
 		     vector<int* > &pSinglesFromAlpha   ,
 		     int*          &pSinglesFromBetaLen , 
 		     vector<int* > &pSinglesFromBeta    ,
+		     int*          &pDoublesFromAlphaLen, 
+		     vector<int* > &pDoublesFromAlpha   ,
+		     int*          &pDoublesFromBetaLen , 
+		     vector<int* > &pDoublesFromBeta    ,
 		     Determinant* &pDets,
          	     int pDetsSize,
 		     int pStartIndex,
@@ -207,6 +219,10 @@ struct HmultDirect {
     SinglesFromAlpha   (pSinglesFromAlpha   ),
     SinglesFromBetaLen (pSinglesFromBetaLen ),
     SinglesFromBeta    (pSinglesFromBeta    ),
+    DoublesFromAlphaLen(pDoublesFromAlphaLen),
+    DoublesFromAlpha   (pDoublesFromAlpha   ),
+    DoublesFromBetaLen (pDoublesFromBetaLen ),
+    DoublesFromBeta    (pDoublesFromBeta    ),
     Dets               (pDets               ),
     DetsSize           (pDetsSize           ),
     StartIndex         (pStartIndex         ),
@@ -250,6 +266,42 @@ struct HmultDirect {
 	    DetI < 0) 
 	  continue;
 	
+	//single Alpha and single Beta
+	for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
+	  int Asingle = SinglesFromAlpha[Astring][j];
+
+	  int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
+	    SinglesFromBLen  = SinglesFromBetaLen[Bstring];
+	  int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
+	  for (int k=0; k<SinglesFromBLen; k++) {
+	    int& Bsingle = SinglesFromBeta[Bstring][k];
+	    
+	    if (SearchStartIndex >= AlphaToBetaLen) break;
+	    /*
+	      auto itb = lower_bound(&AlphaMajorToBeta[Asingle][SearchStartIndex],
+	      &AlphaMajorToBeta[Asingle][AlphaToBetaLen]  ,
+	      Bsingle);
+	      
+	      if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle) {
+	      SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
+	    */
+	    int index=SearchStartIndex;
+	    for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
+	    
+	    SearchStartIndex = index;
+	    if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
+	      
+	      int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+	      if (abs(DetJ) == abs(DetI) ) continue;
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	      fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	      y[abs(DetI)] += hij*x[abs(DetJ)];
+	    } //*itb == Bsingle
+	  } //k 0->SinglesFromBeta
+	} //j singles fromAlpha
+	
+	
 	int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
 	//singles from Astring
 	for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
@@ -269,94 +321,106 @@ struct HmultDirect {
 	    y[abs(DetI)] += hij*x[abs(DetJ)];
 	  }
 	}
-
-      //single Alpha and single Beta
-      for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
-	int Asingle = SinglesFromAlpha[Astring][j];
-
-	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
-	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
-	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
-	for (int k=0; k<SinglesFromBLen; k++) {
-	  int& Bsingle = SinglesFromBeta[Bstring][k];
-
-	  if (SearchStartIndex >= AlphaToBetaLen) break;
-	  /*
-	  auto itb = lower_bound(&AlphaMajorToBeta[Asingle][SearchStartIndex],
-				 &AlphaMajorToBeta[Asingle][AlphaToBetaLen]  ,
-				 Bsingle);
-
-	  if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle) {
-	    SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
-	  */
-	  int index=SearchStartIndex;
-	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
-
-	  SearchStartIndex = index;
-	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
-
-	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+	
+	
+	//singles from Bstring
+	int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
+	for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
+	  int Bsingle =  SinglesFromBeta   [Bstring][j];
+	  
+	  if (Bsingle > maxAtoB) break;
+	  int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
+				    0                             , 
+				    AlphaMajorToBetaLen[Astring]-1, 
+				    Bsingle                        );
+	  
+	  if (index != -1 ) {
+	    int DetJ = AlphaMajorToDet[Astring][index];
 	    if (abs(DetJ) == abs(DetI) ) continue;
 	    size_t orbDiff;
 	    CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
 	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
 	    y[abs(DetI)] += hij*x[abs(DetJ)];
-	  } //*itb == Bsingle
-	} //k 0->SinglesFromBeta
-      } //j singles fromAlpha
-
-
-      
-      //singles from Bstring
-      int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
-      for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
-	int Bsingle =  SinglesFromBeta   [Bstring][j];
-
-	if (Bsingle > maxAtoB) break;
-	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
-				  0                             , 
-				  AlphaMajorToBetaLen[Astring]-1, 
-				  Bsingle                        );
+	  }
+	}
 	
-	if (index != -1 ) {
-	  int DetJ = AlphaMajorToDet[Astring][index];
-	  if (abs(DetJ) == abs(DetI) ) continue;
-	  size_t orbDiff;
-	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
-	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-	  y[abs(DetI)] += hij*x[abs(DetJ)];
+
+	/*
+	//double beta excitation
+	for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
+	  int DetJ     = AlphaMajorToDet    [i][j];
+	  //if (std::abs(DetJ) < StartIndex) continue;
+	  //if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
+	  if (std::abs(DetJ) == std::abs(DetI)) continue;
+	  
+	  Determinant di = Dets[std::abs(DetI)];
+	  if (DetJ <0) di.flipAlphaBeta();
+	  if (Dets[std::abs(DetJ)].ExcitationDistance(di) == 2 ) {
+	    cout << DetI<<"  "<<DetJ<<endl;
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
+	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	    y[abs(DetI)] += hij*x[abs(DetJ)];
+	  }
 	}
-      }
-      
-      
-      //double beta excitation
-      for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
-	int DetJ     = AlphaMajorToDet    [i][j];
-	if (abs(DetJ) == abs(DetI) ) continue;
-	Determinant dj = Dets[abs(DetJ)];
-	if (DetJ <0) dj.flipAlphaBeta();
-	if (dj.ExcitationDistance(Dets[DetI]) == 2) {
-	  size_t orbDiff;
-	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
-	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-	  y[abs(DetI)] += hij*x[abs(DetJ)];
+	*/
+
+	//doubles from Bstring
+	maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
+	for (int j=0; j< DoublesFromBetaLen[Bstring]; j++) {
+	  int Bdouble =  DoublesFromBeta   [Bstring][j];
+	  
+	  if (Bdouble > maxAtoB) break;
+	  int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
+				    0                             , 
+				    AlphaMajorToBetaLen[Astring]-1, 
+				    Bdouble                        );
+	  
+	  if (index != -1 ) {
+	    int DetJ = AlphaMajorToDet[Astring][index];
+	    if (abs(DetJ) == abs(DetI) ) continue;
+	    if (Dets[std::abs(DetJ)].ExcitationDistance(Dets[std::abs(DetI)]) != 2 ) {
+	      cout << Dets[std::abs(DetJ)]<<"  "<<Dets[std::abs(DetI)]<<endl;
+	      exit(0);
+	    }
+	    //cout << DetI<<"  "<<DetJ<<endl;
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	    y[abs(DetI)] += hij*x[abs(DetJ)];
+	  }
 	}
-      }
-      
-      //double Alpha excitation
-      for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
-	int DetJ      = BetaMajorToDet     [Bstring][j];
-	if (abs(DetJ) == abs(DetI) ) continue;
-	Determinant dj = Dets[std::abs(DetJ)];
-	if (DetJ <0) dj.flipAlphaBeta();
-	if (Dets[DetI].ExcitationDistance(dj) == 2 ) {
-	  size_t orbDiff;
-	  CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
-	  fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-	  y[abs(DetI)] += hij*x[abs(DetJ)];
+
+
+	//int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
+	//doubles from Astring
+	maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
+	for (int j=0; j<DoublesFromAlphaLen[Astring]; j++) {
+	  int Adouble = DoublesFromAlpha[Astring][j];
+	  
+	  if (Adouble > maxBToA) break;
+	  int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
+				     0                             , 
+				     BetaMajorToAlphaLen[Bstring]-1, 
+				     Adouble                       );
+	  if (index != -1 ) {
+	    int DetJ = BetaMajorToDet[Bstring][index];
+	    if (abs(DetJ) == abs(DetI) ) continue;
+	    if (Dets[std::abs(DetJ)].ExcitationDistance(Dets[std::abs(DetI)]) != 2 ) {
+	      cout << Astring<<"  "<<Bstring<<"  "<<DetI<<endl;
+	      cout << Adouble<<"  "<<Bstring<<"  "<<DetJ<<endl;
+	      cout << Astring<<"  "<<Adouble<<endl;
+	      cout << Dets[std::abs(DetI)]<<"  "<<Dets[std::abs(DetJ)]<<endl;
+	      exit(0);
+	    }
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[abs(DetI)], Dets[abs(DetJ)], I1, I2, coreE, orbDiff);
+	    fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+	    y[abs(DetI)] += hij*x[abs(DetJ)];
+	  }
 	}
-      }
-      
+	
+	
       }
     }
     

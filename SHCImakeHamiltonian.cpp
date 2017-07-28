@@ -88,12 +88,15 @@ void SHCImakeHamiltonian::HamHelpers2::MakeSHMHelpers() {
   SHCImakeHamiltonian::MakeSMHelpers( AlphaMajorToBeta, AlphaMajorToDet,
 				      BetaMajorToAlpha, BetaMajorToDet ,
 				      SinglesFromAlpha, SinglesFromBeta,
+				      DoublesFromAlpha, DoublesFromBeta,
 				      AlphaMajorToBetaLen, AlphaMajorToBetaSM,
 				      AlphaMajorToDetSM,
 				      BetaMajorToAlphaLen, BetaMajorToAlphaSM,
 				      BetaMajorToDetSM ,
 				      SinglesFromAlphaLen, SinglesFromAlphaSM,
-				      SinglesFromBetaLen , SinglesFromBetaSM);
+				      SinglesFromBetaLen , SinglesFromBetaSM,
+				      DoublesFromAlphaLen, DoublesFromAlphaSM,
+				      DoublesFromBetaLen , DoublesFromBetaSM);
 
 }
 
@@ -109,8 +112,13 @@ void SHCImakeHamiltonian::SparseHam::makeFromHelper(HamHelpers2& helpers2, Deter
 					   helpers2.BetaMajorToDetSM   ,
 					   helpers2.SinglesFromAlphaLen, 
 					   helpers2.SinglesFromAlphaSM ,
+					   helpers2.DoublesFromAlphaLen, 
+					   helpers2.DoublesFromAlphaSM ,
+
 					   helpers2.SinglesFromBetaLen , 
 					   helpers2.SinglesFromBetaSM  ,
+					   helpers2.DoublesFromBetaLen , 
+					   helpers2.DoublesFromBetaSM  ,
 					   SHMDets, startIndex, endIndex,
 					   diskio, *this, Norbs,
 					   I1, I2, coreE, 
@@ -126,6 +134,7 @@ void SHCImakeHamiltonian::HamHelpers2::PopulateHelpers ( Determinant* SHMDets,
 					    AlphaMajorToBeta, AlphaMajorToDet,
 					    BetaMajorToAlpha, BetaMajorToDet, 
 					    SinglesFromAlpha, SinglesFromBeta,
+					    DoublesFromAlpha, DoublesFromBeta,
 					    SHMDets, DetsSize, startIndex);
 }
 
@@ -165,6 +174,8 @@ void updateAlphaBeta(HalfDet &da, HalfDet &db,
 		     vector<vector<int> >& BetaMajorToDet,
 		     vector< vector<int> >& SinglesFromAlpha,
 		     vector< vector<int> >& SinglesFromBeta,
+		     vector< vector<int> >& DoublesFromAlpha,
+		     vector< vector<int> >& DoublesFromBeta,
 		     Determinant *Dets, int DetsSize,
 		     int StartIndex, int DetIndex)
 {
@@ -176,12 +187,13 @@ void updateAlphaBeta(HalfDet &da, HalfDet &db,
     BetaMajorToAlpha.resize(itb->second+1);
     BetaMajorToDet.resize(itb->second+1);
     SinglesFromBeta.resize(itb->second+1);
+    DoublesFromBeta.resize(itb->second+1);
     
     int norbs = 64*DetLen;
     std::vector<int> closedb(norbs/2);//, closedb(norbs);
     std::vector<int> openb(norbs/2,0);
     int nclosedb = db.getOpenClosed(openb, closedb);
-    
+
     for (int j=0; j<nclosedb; j++)
       for (int k=0; k<norbs/2-nclosedb; k++) {
 	HalfDet dbcopy = db;
@@ -192,6 +204,18 @@ void updateAlphaBeta(HalfDet &da, HalfDet &db,
 	  SinglesFromBeta[itb->second].push_back(itbcopy->second);
 	  SinglesFromBeta[itbcopy->second].push_back(itb->second);
 	}
+	for (int l=0; l<j; l++)
+	  for (int m=0; m<k; m++) {
+	    HalfDet dbcopy1 = dbcopy;
+	    dbcopy1.setocc(closedb[l], false);
+	    dbcopy1.setocc(openb[m], true);
+	    auto itbcopy = BetaN.find(dbcopy1);
+	    //cout << j<<"  "<<k<<"  "<<l<<"  "<<m<<"  "<<dbcopy<<endl;
+	    if (itbcopy != BetaN.end()) {
+	      DoublesFromBeta[itb->second].push_back(itbcopy->second);
+	      DoublesFromBeta[itbcopy->second].push_back(itb->second);
+	    }
+	  }
       }      
   }
   
@@ -202,12 +226,12 @@ void updateAlphaBeta(HalfDet &da, HalfDet &db,
     AlphaMajorToBeta.resize(ita->second+1);
     AlphaMajorToDet.resize(ita->second+1);
     SinglesFromAlpha.resize(ita->second+1);
+    DoublesFromAlpha.resize(ita->second+1);
     
     int norbs = 64*DetLen;
     std::vector<int> closeda(norbs/2);//, closedb(norbs);
     std::vector<int> opena(norbs/2,0);
     int ncloseda = da.getOpenClosed(opena, closeda);
-    
     for (int j=0; j<ncloseda; j++)
       for (int k=0; k<norbs/2-ncloseda; k++) {
 	HalfDet dacopy = da;
@@ -218,8 +242,18 @@ void updateAlphaBeta(HalfDet &da, HalfDet &db,
 	  SinglesFromAlpha[ita->second].push_back(itacopy->second);
 	  SinglesFromAlpha[itacopy->second].push_back(ita->second);
 	}
+	for (int l=0; l<j; l++)
+	  for (int m=0; m<k; m++) {
+	    HalfDet dacopy1 = dacopy;
+	    dacopy1.setocc(closeda[l], false);
+	    dacopy1.setocc(opena[m], true);
+	    auto itacopy = AlphaN.find(dacopy1);
+	    if (itacopy != AlphaN.end()) {
+	      DoublesFromAlpha[ita->second].push_back(itacopy->second);
+	      DoublesFromAlpha[itacopy->second].push_back(ita->second);
+	    }
+	  }
       }      
-    
   }
   
   AlphaMajorToBeta[ita->second].push_back(itb->second);
@@ -239,6 +273,8 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 					       vector<vector<int> >& BetaMajorToDet,
 					       vector< vector<int> >& SinglesFromAlpha,
 					       vector< vector<int> >& SinglesFromBeta,
+					       vector< vector<int> >& DoublesFromAlpha,
+					       vector< vector<int> >& DoublesFromBeta,
 					       Determinant *Dets, int DetsSize,
 					       int StartIndex)
 {
@@ -253,11 +289,11 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
     for (int i=StartIndex; i<DetsSize; i++) {
       HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
       int sgn = 1;
-      updateAlphaBeta(da, db, BetaN, AlphaN, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, DetsSize, StartIndex, sgn*i);
+      updateAlphaBeta(da, db, BetaN, AlphaN, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, DetsSize, StartIndex, sgn*i);
 
       if (Determinant::Trev != 0 && Dets[i].hasUnpairedElectrons()) {
 	int sgn = -1;
-	updateAlphaBeta(db, da, BetaN, AlphaN, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, Dets, DetsSize, StartIndex, sgn*i);
+	updateAlphaBeta(db, da, BetaN, AlphaN, AlphaMajorToBeta, AlphaMajorToDet, BetaMajorToAlpha, BetaMajorToDet, SinglesFromAlpha, SinglesFromBeta, DoublesFromAlpha, DoublesFromBeta, Dets, DetsSize, StartIndex, sgn*i);
       }
     }
     //printf("Nalpha: %12d,  Nbeta: %12d\n", AlphaN.size(), BetaN.size());
@@ -273,6 +309,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	reorder(AlphaMajorToDet[i], detIndex);
 	
 	std::sort(SinglesFromAlpha[i].begin(), SinglesFromAlpha[i].end());
+	std::sort(DoublesFromAlpha[i].begin(), DoublesFromAlpha[i].end());
 	
       }
     
@@ -287,7 +324,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(std::map<HalfDet, int >& BetaN,
 	reorder(BetaMajorToDet[i], detIndex);
 	
 	std::sort(SinglesFromBeta[i].begin(), SinglesFromBeta[i].end());
-	
+	std::sort(DoublesFromBeta[i].begin(), DoublesFromBeta[i].end());
       }
 
     //pout << " ."<<endl;
@@ -357,8 +394,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(int*          &AlphaMajorToBetaLen
 					      vector<int* > &BetaMajorToDet     ,
 					      int*          &SinglesFromAlphaLen, 
 					      vector<int* > &SinglesFromAlpha   ,
+					      int*          &DoublesFromAlphaLen, 
+					      vector<int* > &DoublesFromAlpha   ,
 					      int*          &SinglesFromBetaLen , 
 					      vector<int* > &SinglesFromBeta    ,
+					      int*          &DoublesFromBetaLen, 
+					      vector<int* > &DoublesFromBeta    ,
 					      Determinant* Dets,
 					      int StartIndex,
 					      int EndIndex,
@@ -548,12 +589,16 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
 					vector<vector<int> >& BetaMajorToDet,
 					vector<vector<int> >& SinglesFromAlpha,
 					vector<vector<int> >& SinglesFromBeta,
+					vector<vector<int> >& DoublesFromAlpha,
+					vector<vector<int> >& DoublesFromBeta,
 					int* &AlphaMajorToBetaLen, vector<int* >& AlphaMajorToBetaSM,
 					vector<int* >& AlphaMajorToDetSM,
 					int* &BetaMajorToAlphaLen, vector<int* >& BetaMajorToAlphaSM,
 					vector<int* >& BetaMajorToDetSM,
 					int* &SinglesFromAlphaLen, vector<int* >& SinglesFromAlphaSM,
-					int* &SinglesFromBetaLen, vector<int* >& SinglesFromBetaSM) {
+					int* &SinglesFromBetaLen, vector<int* >& SinglesFromBetaSM,
+					int* &DoublesFromAlphaLen, vector<int* >& DoublesFromAlphaSM,
+					int* &DoublesFromBetaLen, vector<int* >& DoublesFromBetaSM) {
 
   int comm_rank=0, comm_size=1;
 #ifndef SERIAL
@@ -564,22 +609,28 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
 
   size_t totalMemory = 0, nBeta=BetaMajorToAlpha.size(), nAlpha =AlphaMajorToBeta.size();
   vector<int> AlphaToBetaTemp(nAlpha,0), BetaToAlphaTemp(nBeta,0), 
-    AlphaSinglesTemp(nAlpha,0), BetaSinglesTemp(nBeta,0);
+    AlphaSinglesTemp(nAlpha,0), BetaSinglesTemp(nBeta,0),
+    AlphaDoublesTemp(nAlpha,0), BetaDoublesTemp(nBeta,0);
 
   if (comm_rank == 0) {
     for (int i=0; i<nAlpha; i++) {
-      totalMemory        += 2*sizeof(int);
+      totalMemory        += 3*sizeof(int);
       totalMemory        += 2*sizeof(int) * AlphaMajorToBeta[i].size();
       totalMemory        +=   sizeof(int) * SinglesFromAlpha[i].size();
+      totalMemory        +=   sizeof(int) * DoublesFromAlpha[i].size();
       AlphaToBetaTemp[i]  = AlphaMajorToBeta[i].size();
       AlphaSinglesTemp[i] = SinglesFromAlpha[i].size();
+      AlphaDoublesTemp[i] = DoublesFromAlpha[i].size();
     }
+
     for (int i=0; i<nBeta; i++) {
-      totalMemory       += 2*sizeof(int);
+      totalMemory       += 3*sizeof(int);
       totalMemory       += 2*sizeof(int) * BetaMajorToAlpha[i].size();
       totalMemory       +=   sizeof(int) * SinglesFromBeta[i].size();
+      totalMemory       +=   sizeof(int) * DoublesFromBeta[i].size();
       BetaToAlphaTemp[i] = BetaMajorToAlpha[i].size();
       BetaSinglesTemp[i] = SinglesFromBeta[i].size();
+      BetaDoublesTemp[i] = DoublesFromBeta[i].size();
     }
   }
 
@@ -590,13 +641,20 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
   if (comm_rank != 0) {
     BetaToAlphaTemp.resize(nBeta); 
     AlphaToBetaTemp.resize(nAlpha);
+
     BetaSinglesTemp.resize(nBeta);
     AlphaSinglesTemp.resize(nAlpha);
+
+    BetaDoublesTemp.resize(nBeta);
+    AlphaDoublesTemp.resize(nAlpha);
   }
   MPI_Bcast(&BetaToAlphaTemp[0] , nBeta , MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&BetaSinglesTemp[0] , nBeta , MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&BetaDoublesTemp[0] , nBeta , MPI_INT, 0, MPI_COMM_WORLD);
+
   MPI_Bcast(&AlphaToBetaTemp[0] , nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&AlphaSinglesTemp[0], nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&AlphaDoublesTemp[0], nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
@@ -610,40 +668,49 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
 
   AlphaMajorToBetaLen = static_cast<int*>(regionHelpers.get_address());
   SinglesFromAlphaLen = AlphaMajorToBetaLen + nAlpha;
-  BetaMajorToAlphaLen = SinglesFromAlphaLen + nAlpha;
+  DoublesFromAlphaLen = SinglesFromAlphaLen  + nAlpha;
+
+  BetaMajorToAlphaLen = DoublesFromAlphaLen + nAlpha;
   SinglesFromBetaLen  = BetaMajorToAlphaLen + nBeta;
+  DoublesFromBetaLen  = SinglesFromBetaLen + nBeta;
 
   for (int i=0; i<nAlpha; i++) {
     AlphaMajorToBetaLen[i] = AlphaToBetaTemp [i];
     SinglesFromAlphaLen[i] = AlphaSinglesTemp[i];
+    DoublesFromAlphaLen[i] = AlphaDoublesTemp[i];
   }
+
   for (int i=0; i<nBeta; i++) {
     BetaMajorToAlphaLen[i] = BetaToAlphaTemp[i];
     SinglesFromBetaLen [i] = BetaSinglesTemp[i];
+    DoublesFromBetaLen [i] = BetaDoublesTemp[i];
   }
 
   AlphaMajorToBetaSM.resize(nAlpha); 
   AlphaMajorToDetSM .resize(nAlpha); 
   SinglesFromAlphaSM.resize(nAlpha);
+  DoublesFromAlphaSM.resize(nAlpha);
 
   BetaMajorToAlphaSM.resize(nBeta); 
   BetaMajorToDetSM  .resize(nBeta); 
   SinglesFromBetaSM .resize(nBeta);
+  DoublesFromBetaSM .resize(nBeta);
 
-  int* begin = SinglesFromBetaLen + nBeta;
+  int* begin = DoublesFromBetaLen + nBeta;
   size_t counter = 0;
   for (int i=0; i<nAlpha; i++) {
     AlphaMajorToBetaSM[i] = begin + counter;  counter += AlphaMajorToBetaLen[i];
     AlphaMajorToDetSM [i] = begin + counter;  counter += AlphaMajorToBetaLen[i];
     SinglesFromAlphaSM[i] = begin + counter;  counter += SinglesFromAlphaLen[i];
+    DoublesFromAlphaSM[i] = begin + counter;  counter += DoublesFromAlphaLen[i];
   }
 
   for (int i=0; i<nBeta; i++) {
     BetaMajorToAlphaSM[i] = begin + counter;  counter += BetaMajorToAlphaLen[i];
     BetaMajorToDetSM  [i] = begin + counter;  counter += BetaMajorToAlphaLen[i];
     SinglesFromBetaSM [i] = begin + counter;  counter += SinglesFromBetaLen [i];
+    DoublesFromBetaSM [i] = begin + counter;  counter += DoublesFromBetaLen [i];
   }
-
 
   //now fill the memory
   if (comm_rank == 0) {
@@ -656,8 +723,9 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
       }
       for (int j=0; j<SinglesFromAlpha[i].size(); j++) 
 	SinglesFromAlphaSM[i][j]  =  SinglesFromAlpha[i][j];
+      for (int j=0; j<DoublesFromAlpha[i].size(); j++) 
+	DoublesFromAlphaSM[i][j]  =  DoublesFromAlpha[i][j];
     }
-
 
     for (int i=0; i<nBeta; i++) {
 
@@ -667,8 +735,10 @@ void SHCImakeHamiltonian::MakeSMHelpers(vector<vector<int> >& AlphaMajorToBeta,
       }
       for (int j=0; j<SinglesFromBeta[i].size(); j++) 
 	SinglesFromBetaSM[i][j]  =  SinglesFromBeta[i][j];
+      for (int j=0; j<DoublesFromBeta[i].size(); j++)  {
+	DoublesFromBetaSM[i][j]  =  DoublesFromBeta[i][j];
+      }
     }
-
   }
 
 

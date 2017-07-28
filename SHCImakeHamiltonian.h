@@ -39,6 +39,8 @@ namespace SHCImakeHamiltonian {
     vector<vector<int> >                 BetaMajorToDet;
     vector<vector<int> >                 SinglesFromAlpha;
     vector<vector<int> >                 SinglesFromBeta;
+    vector<vector<int> >                 DoublesFromAlpha;
+    vector<vector<int> >                 DoublesFromBeta;
 
     map<HalfDet, int>                    BetaN;
     map<HalfDet, int>                    AlphaN;
@@ -47,15 +49,19 @@ namespace SHCImakeHamiltonian {
     //Shared Memory stuff
     int          *AlphaMajorToBetaLen;
     int          *SinglesFromAlphaLen;
+    int          *DoublesFromAlphaLen;
     int          *BetaMajorToAlphaLen;
     int          *SinglesFromBetaLen ;
+    int          *DoublesFromBetaLen ;
     
     vector<int*> AlphaMajorToBetaSM;
     vector<int*> AlphaMajorToDetSM;
     vector<int*> SinglesFromAlphaSM;
+    vector<int*> DoublesFromAlphaSM;
     vector<int*> BetaMajorToAlphaSM;
     vector<int*> BetaMajorToDetSM;
     vector<int*> SinglesFromBetaSM ;
+    vector<int*> DoublesFromBetaSM ;
 
     
     void PopulateHelpers(Determinant* SHMDets, int DetsSize, int startIndex);
@@ -67,6 +73,8 @@ namespace SHCImakeHamiltonian {
       BetaMajorToDet  .clear();
       SinglesFromAlpha.clear();
       SinglesFromBeta .clear();
+      DoublesFromAlpha.clear();
+      DoublesFromBeta .clear();
       BetaN.clear();
       AlphaN.clear();
     }
@@ -123,6 +131,8 @@ namespace SHCImakeHamiltonian {
 			    vector<vector<int> >& BetaMajorToDet,
 			    vector< vector<int> >& SinglesFromAlpha,
 			    vector< vector<int> >& SinglesFromBeta,
+			    vector< vector<int> >& DoublesFromAlpha,
+			    vector< vector<int> >& DoublesFromBeta,
 			    Determinant *Dets, int DetsSize,
 			    int StartIndex);
 
@@ -153,6 +163,10 @@ namespace SHCImakeHamiltonian {
 			   vector<int* > &SinglesFromAlpha   ,
 			   int*          &SinglesFromBetaLen , 
 			   vector<int* > &SinglesFromBeta    ,
+			   int*          &DoublesFromAlphaLen, 
+			   vector<int* > &DoublesFromAlpha   ,
+			   int*          &DoublesFromBetaLen , 
+			   vector<int* > &DoublesFromBeta    ,
 			   Determinant *Dets,
 			   int StartIndex,
 			   int EndIndex, bool diskio,
@@ -169,12 +183,16 @@ namespace SHCImakeHamiltonian {
 		     vector<vector<int> >& BetaMajorToDet,
 		     vector<vector<int> >& SinglesFromAlpha,
 		     vector<vector<int> >& SinglesFromBeta,
+		     vector<vector<int> >& DoublesFromAlpha,
+		     vector<vector<int> >& DoublesFromBeta,
 		     int* &AlphaMajorToBetaLen, vector<int* >& AlphaMajorToBetaSM,
 		     vector<int* >& AlphaMajorToDetSM,
 		     int* &BetaMajorToAlphaLen, vector<int* >& BetaMajorToAlphaSM,
 		     vector<int* >& BetaMajorToDetSM,
 		     int* &SinglesFromAlphaLen, vector<int* >& SinglesFromAlphaSM,
-		     int* &SinglesFromBetaLen, vector<int* >& SinglesFromBetaSM) ;
+		     int* &SinglesFromBetaLen, vector<int* >& SinglesFromBetaSM,
+		     int* &DoublesFromAlphaLen, vector<int* >& DoublesFromAlphaSM,
+		     int* &DoublesFromBetaLen, vector<int* >& DoublesFromBetaSM) ;
   
   void PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
 			   std::map<HalfDet, std::vector<int> >& AlphaNm1,
