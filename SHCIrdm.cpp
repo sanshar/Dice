@@ -703,6 +703,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
   double d6 = 1/6.0; // 3 factorial fraction
 
+
   for (int b=0; b < Dets.size(); b++ ) {
     for (int k=b; k < Dets.size(); k++ ) {
 
@@ -713,7 +714,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       double sgn = 1.0;
 
       if ( dist == 3 ) {
-        Dets[k].parity( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2], sgn);
+        Dets[k].parity( ds[0], ds[1], ds[2], cs[2], cs[1], cs[0], sgn); //TODO Change this function to make more clear
 	
 	threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
 		 ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2]) += 
@@ -723,10 +724,6 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		 cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2]) +=
 	  sgn*conj(ciket(b,0)*cibra(k,0));
 	
-	//        populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-	//          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	//        populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-	//          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
       }
 
       else if ( dist == 2 ) {
@@ -741,21 +738,18 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	cs.push_back(0); ds.push_back(0); 
 	ds[2] = ds[1]; ds[1] = ds[0]; 
 
-        for ( int i=0; i < closed.size(); i++ ) {
+        for ( int i=0; i < nelec; i++ ) {
           cs[2]=closed[i]; ds[0]=closed[i];
-	  if ( ds[0] == ds[1] || ds[0] == ds[2] ) continue;
-	  if ( cs[2] == cs[0] || cs[2] == cs[1] ) continue; // TODO CHECK W/ SS
+	  if ( closed[i] == ds[1] || closed[i] == ds[2] ) continue;
+	  if ( closed[i] == cs[0] || closed[i] == cs[1] ) continue; // TODO CHECK W/ SS
 	  
 	  int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
 	  int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
 	  int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
 
 	  // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
-	  //	  cout << c0 <<" "<< c1 <<" "<< c2 <<" "<< d0 <<" "<< d1 <<" " << d2 << endl;
-	  //	  cout << Dets[k] << endl;
-	  Dets[k].parity(d2,d1,d0,c0,c1,c2,sgn);
-	  Dets[k].setocc(ds[0], true);
-	  //	  cout << Dets[k] << endl;
+	  Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
+	  Dets[k].setocc(closed[i], true);
 	  
 	  // TODO Make spinRDM optional
 	  threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
@@ -765,52 +759,34 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	  threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
 		   c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
 	    sgn*conj(ciket(b,0)*cibra(k,0));
-	  /*
-	  threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
-		   ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
-	    sgn*conj(cibra(b,0)*ciket(k,0));
-	  
-	  threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
-		   cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2])  +=
-	    sgn*conj(ciket(b,0)*cibra(k,0));
-	  
-	  populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-			       sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	  populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-			       sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	  */
-        }
+          }
       }
+    
 
       else if ( dist == 1 ) {
-        vector<int> closed(nelec, 0);
-        vector<int> open(norbs-nelec,0);
-        Dets[k].getOpenClosed(open, closed);
-        Dets[k].parity( min(ds[0],cs[0]), max(ds[0],cs[0]), sgn);
-
-        cs.push_back(0); cs.push_back(0);
-        ds.push_back(0); ds.push_back(0);
-	
-	// Move operators as in dist == 2 case
+	vector<int> closed(nelec,0);
+	vector<int> open(norbs-nelec,0);
+	Dets[k].getOpenClosed(open,closed);
+	cs.push_back(0); cs.push_back(0);
+	ds.push_back(0); ds.push_back(0);
 	ds[2] = ds[0];
-
-        for ( int i=0; i < closed.size(); i++ ) {
-          cs[1]=closed[i]; ds[1]=closed[i];
-	  if ( ds[1] == ds[2] ) continue;
-	  if ( cs[1] == cs[0] ) continue; //TODO
-
-          for ( int j=0; j < i; j++ ) {
-            cs[2]=closed[j]; ds[0]=closed[j];
-	    if ( ds[0] == ds[1] || ds[0] == ds[2] ) continue; // TODO do we need both?
-	    if ( cs[2] == cs[1] || cs[2] == ds[0] ) continue; // TODO
+	
+	for ( int i=0; i<nelec; i++ ) {
+	  cs[1] = closed[i]; ds[1] = closed[i];
+	  if ( closed[i] == cs[0] || closed[i] == ds[2] ) continue;
+	  for ( int j=0; j<i; j++ ) {
+	    cs[2] = closed[j]; ds[0] = closed[j];
+	    if ( closed[j] == ds[1] || closed[j] == ds[2] ) continue;
+	    if ( closed[j] == cs[0] || closed[j] == cs[1] ) continue; // TODO CHECK W/ SS
 	    
 	    int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
 	    int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
 	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
 	    
-	    // Gamma = c0 d1 c2 d0 d1 d2
-	    Dets[k].parity(d2,d1,d0,c0,c1,c2,sgn);
-	    Dets[k].setocc(closed[i],true); Dets[k].setocc(closed[j],true);
+	    // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
+	    Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
+	    Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
+	    
 	    // TODO Make spinRDM optional
 	    threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
 		     d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2)  +=
@@ -819,51 +795,31 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
 		     c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
 	      sgn*conj(ciket(b,0)*cibra(k,0));
-	    /*
-	    threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
-		     ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
-	      sgn*conj(cibra(b,0)*ciket(k,0));
-
-	    threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
-		     cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2])  +=
-	      sgn*conj(ciket(b,0)*cibra(k,0));
 	    
-	    
-	    populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-				 sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs,
-				 nSpatOrbs2, s3RDM );
-
-	    populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-	    			 sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs,
-	    			 nSpatOrbs2, s3RDM );
-	    */
-          }
-        }
+	  }
+	}
       }
 
       else if ( dist == 0 ) {
-        vector<int> closed(nelec, 0);
-        vector<int> open(norbs-nelec,0);
-        Dets[k].getOpenClosed(open, closed);
-        cs.push_back(0); cs.push_back(0); cs.push_back(0);
-        ds.push_back(0); ds.push_back(0); ds.push_back(0);
-        for ( int m=0; m < closed.size(); m++ ) {
-          cs[0]=closed[m]; ds[2]=closed[m];
-          for ( int n=0; n < m; n++ ) {
-            cs[1]=closed[n]; ds[1]=closed[n];
-            for ( int o=0; o < n; o++ ) {
-              cs[2]=closed[o]; ds[0]=closed[o];
-
+	vector<int> closed(nelec, 0);
+	vector<int> open(norbs-nelec,0);
+	Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); cs.push_back(0); cs.push_back(0);
+	ds.push_back(0); ds.push_back(0); ds.push_back(0);
+	for ( int m=0; m < nelec; m++ ) {
+	  cs[0]=closed[m]; ds[2]=closed[m];
+	  for ( int n=0; n < m; n++ ) {
+	    cs[1]=closed[n]; ds[1]=closed[n];
+	    for ( int o=0; o < n; o++ ) {
+	      cs[2]=closed[o]; ds[0]=closed[o];
+	      if ( m/2 == n/2 && m/2 == 0 && o/2 == 1 ) cout << "Reached test case" << endl;
 	      // TODO Make spin RDM optional
 	      threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
 		       ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
-		conj(cibra(b,0)*ciket(k,0));
-
-	      //populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-              //  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-            }
-          }
-        }
+		conj(cibra(b,0)*ciket(b,0));
+	    }	
+	  }
+	}
       }
     }
   }
@@ -878,19 +834,13 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		for ( int b=0; b < 2; b++ )
 		  for ( int c=0; c < 2; c++ ) {
 		    
-		    int ip=i+a, jp=j+b, kp=k+c, lp=l+c, mp=m+b, np=n+a;
+		    int ip=2*i+a, jp=2*j+b, kp=2*k+c;
+		    int lp=2*l+c, mp=2*m+b, np=2*n+a;
 		    
+		    // Gamma = i j k l m n
 		    s3RDM(i*nSpatOrbs2+j*nSpatOrbs+k,
 			  l*nSpatOrbs2+m*nSpatOrbs+n) += threeRDM(ip*(ip+1)*(ip+2)*d6+jp*(jp+1)*0.5+kp,
 								  lp*(lp+1)*(lp+2)*d6+mp*(mp+1)*0.5+np);
-		    //		  s3RDM(i,j,k,l,m,n) = threeRDM(2*i,2*j,2*k,2*l,2*m,2*n) +
-		    //		    threeRDM(2*i+1,2*j+1,2*k+1,2*l+1,2*m+1,2*n+1) +
-		    //		    threeRDM(2*i,2*j,2*k+1,2*l+1,2*m,2*n) +
-		    //		    threeRDM(2*i+1,2*j+1,2*k,2*l,2*m+1,2*n+1) +
-		    //		    threeRDM(2*i,2*j+1,2*k,2*l,2*m+1,2*n) +
-		    //		    threeRDM(2*i+1,2*j,2*k+1,2*l+1,2*m,2*n+1) +
-		    //		    threeRDM(2*i+1,2*j,2*k,2*l,2*m,2*n+1) +
-		    //		    threeRDM(2*i,2*j+1,2*k+1,2*l+1,2*m+1,2*n);
 		  }
     
   
