@@ -133,7 +133,8 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 }
 
-void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& s3RDM, int root) {
+void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
+			int root) {
   int nSpatOrbs = pow(s3RDM.rows(),1/3.0);
   int nSpatOrbs2 = nSpatOrbs*nSpatOrbs;
 
@@ -151,11 +152,19 @@ void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& s3RDM, int root) {
 	      for (int n4=0; n4 < nSpatOrbs; n4++)
 		for (int n5=0; n5 < nSpatOrbs; n5++) {
 		  if ( abs( s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,
-				  n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-8 ) {
+				  n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-12 ) {
 		    ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%n0%n1%n2%n3%n4%n5%s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,n3*nSpatOrbs2+n4*nSpatOrbs+n5));
 		  } 
 		}
       ofs.close();
+    }
+
+    if ( true ) { // TODO change to schd.DoSpinRDM
+      char file [5000];
+      sprintf (file, "%s/%d-spin3RDM.bkp", schd.prefix[0].c_str(), root);
+      std::ofstream ofs( file, std::ios::binary );
+      boost::archive::binary_oarchive save(ofs);
+      save << threeRDM;
     }
 
     {
@@ -380,6 +389,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>
 	  double sgn = 1.0;
 	  int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
 	  if (closed[n1] == d0) continue;
+	  if (closed[n1] == c0) continue; // TODO REMOVE
 	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
 	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
 	  if (schd.DoSpinRDM) {
@@ -573,7 +583,6 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
 inline void SHCIrdm::getUniqueIndices( Determinant& bra, Determinant& ket,
   vector<int>& cs, vector<int>& ds ) {
   // Appends two lists of creation and annihilation operator indices.
-  // TODO clean up 
   for ( int i=0; i < bra.norbs; i++ ) {
     if ( bra.getocc(i) == ket.getocc(i) ) { continue; }
     else {
@@ -581,26 +590,12 @@ inline void SHCIrdm::getUniqueIndices( Determinant& bra, Determinant& ket,
       else { ds.push_back(i); }
     }
   }
-  
-  //for ( int i=0; i < bra.EffDetLen; i++ ) {
-  //  for ( int j=0; j < 32; j++ ) {
-  //    if ((((bra.repr[i] & ( 1 << j )) >> j))==
-  //      (((ket.repr[i] & ( 1 << j )) >> j))) { break; }
-  //    else {
-  //      if ( (((ket.repr[i] & ( 1 << j )) >> j)) == 0 ) {
-  //          cIndices.push_back(32*i + j);
-  //      }
-  //      else {
-  //        dIndices.push_back(32*i + j);
-  //      }
-  //    }
-  //  }
-  //}
-  return; // (cIndices.insert(cIndices.end(), dIndices.begin(), dIndices.end()));
+  return; 
 }
 
 inline bool SHCIrdm::cFO( int& ladderOp, vector<int>& opIndices) {
   // This gets used a lot in the same line so cFO stands for check for operator
+  // TODO DELETE this here and in header
   for ( int i=0; i < opIndices.size(); i++ ) {
     if ( ladderOp == opIndices[i] ) { return true; }
   
@@ -666,49 +661,11 @@ void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
     s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D0*nSpatOrbs2+D1*nSpatOrbs+D2) -= value;
     s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D0*nSpatOrbs2+D2*nSpatOrbs+D1) -= value;
   }
-
-  /*
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c2*nSpatOrbs+d2) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d2*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d1*nSpatOrbs2+c1*nSpatOrbs+d2) -= value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d2*nSpatOrbs2+c2*nSpatOrbs+d1) -= value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d0*nSpatOrbs2+c2*nSpatOrbs+d2) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d2*nSpatOrbs2+c1*nSpatOrbs+d0) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d0*nSpatOrbs2+c1*nSpatOrbs+d2) -= value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d2*nSpatOrbs2+c2*nSpatOrbs+d0) -= value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d0*nSpatOrbs2+c2*nSpatOrbs+d1) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d1*nSpatOrbs2+c1*nSpatOrbs+d0) += value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c2,d0*nSpatOrbs2+c1*nSpatOrbs+d1) -= value;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c2*nSpatOrbs+d0) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d1*nSpatOrbs2+c2*nSpatOrbs+d2) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d2*nSpatOrbs2+c0*nSpatOrbs+d1) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d1*nSpatOrbs2+c0*nSpatOrbs+d2) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d2*nSpatOrbs2+c2*nSpatOrbs+d1) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d0*nSpatOrbs2+c2*nSpatOrbs+d2) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d2*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d0*nSpatOrbs2+c0*nSpatOrbs+d2) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d2*nSpatOrbs2+c2*nSpatOrbs+d0) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d0*nSpatOrbs2+c2*nSpatOrbs+d1) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d1*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c2,d0*nSpatOrbs2+c0*nSpatOrbs+d1) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d1*nSpatOrbs2+c2*nSpatOrbs+d0) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d1*nSpatOrbs2+c1*nSpatOrbs+d2) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d2*nSpatOrbs2+c0*nSpatOrbs+d1) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d1*nSpatOrbs2+c0*nSpatOrbs+d2) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d2*nSpatOrbs2+c1*nSpatOrbs+d1) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d0*nSpatOrbs2+c1*nSpatOrbs+d2) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d2*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d0*nSpatOrbs2+c0*nSpatOrbs+d2) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d2*nSpatOrbs2+c1*nSpatOrbs+d0) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d0*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d1*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c1,d0*nSpatOrbs2+c0*nSpatOrbs+d1) -= value;
-  s3RDM(c2*nSpatOrbs2+d2*nSpatOrbs+c0,d1*nSpatOrbs2+c1*nSpatOrbs+d0) -= value;
-  */
 }
 
 void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& d0, int& d1,
   CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
+  // TODO DELETE
   c0 /= 2; c1 /= 2; d0 /= 2; d1 /= 2;
   s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
   s3RDM(c0*nSpatOrbs2+d1*nSpatOrbs+c1,d1*nSpatOrbs2+c1*nSpatOrbs+d0) += value;
@@ -723,16 +680,17 @@ void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& d0, int& d1,
 
 void SHCIrdm::populateSpatial3RDM( int& c0, int& d0, CItype value,
   int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
+  // TODO DELETE
   c0 /= 2; d0 /= 2;
   s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c0,d0*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
 }
 
 void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-  MatrixXx& ciket, int nelec, schedule& schd, int root, MatrixXx& s3RDM ) {
+			    MatrixXx& ciket, int nelec, schedule& schd, int root,
+			    MatrixXx & threeRDM, MatrixXx& s3RDM ) {
   /*
-     Currently this method only allows for storage and writing of spatial 3RDM
-     to conserve space.
      TODO optimize speed and memory
+     TODO make spin 3RDM optional
   */
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -743,11 +701,10 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
+  double d6 = 1/6.0; // 3 factorial fraction
 
   for (int b=0; b < Dets.size(); b++ ) {
-    for (int k=0; k < Dets.size(); k++ ) {
-      //cout << "Bra: " << Dets[b] << " # " << b << endl; // TODO
-      //cout << "Ket: " << Dets[k] << " # " << k << endl; // TODO
+    for (int k=b; k < Dets.size(); k++ ) {
 
       int dist = Dets[b].ExcitationDistance( Dets[k] );
       if ( dist > 3 ) { continue; } 
@@ -757,39 +714,70 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
       if ( dist == 3 ) {
         Dets[k].parity( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2], sgn);
-        populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-        populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
+	
+	threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
+		 ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2]) += 
+	  sgn*conj(cibra(b,0)*ciket(k,0));
+
+	threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
+		 cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2]) +=
+	  sgn*conj(ciket(b,0)*cibra(k,0));
+	
+	//        populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
+	//          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
+	//        populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
+	//          sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
       }
 
       else if ( dist == 2 ) {
         vector<int> closed(nelec, 0);
         vector<int> open(norbs-nelec,0);
-	//cout << Dets[k] << endl; //TODO
-        Dets[k].getOpenClosed(open, closed);
-	Dets[k].parity(ds[0], ds[1], cs[0], cs[1], sgn);
 
-	cs.push_back(0); ds.push_back(0); // Initialize the final spot in operator arrays
-        for ( int i=0; i < closed.size() -1; i++ ) {
-          cs[2]=closed[i]; ds[2]=closed[i];
-	  populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-	    sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	  populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-            sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
+        Dets[k].getOpenClosed(open, closed);
+	//Dets[k].parity(ds[0], ds[1], cs[0], cs[1], sgn); //TODO
+
+	// Initialize the final spot in operator arrays and move d ops toward
+	// ket so inner two c/d operators are paired
+	cs.push_back(0); ds.push_back(0); 
+	ds[2] = ds[1]; ds[1] = ds[0]; 
+
+        for ( int i=0; i < closed.size(); i++ ) {
+          cs[2]=closed[i]; ds[0]=closed[i];
+	  if ( ds[0] == ds[1] || ds[0] == ds[2] ) continue;
+	  if ( cs[2] == cs[0] || cs[2] == cs[1] ) continue; // TODO CHECK W/ SS
+	  
+	  int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
+	  int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
+	  int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
+
+	  // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
+	  //	  cout << c0 <<" "<< c1 <<" "<< c2 <<" "<< d0 <<" "<< d1 <<" " << d2 << endl;
+	  //	  cout << Dets[k] << endl;
+	  Dets[k].parity(d2,d1,d0,c0,c1,c2,sgn);
+	  Dets[k].setocc(ds[0], true);
+	  //	  cout << Dets[k] << endl;
+	  
+	  // TODO Make spinRDM optional
+	  threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
+		   d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2)  +=
+	    sgn*conj(cibra(b,0)*ciket(k,0));
+
+	  threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
+		   c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
+	    sgn*conj(ciket(b,0)*cibra(k,0));
 	  /*
-          if ( cs[2] == cs[0] ) {
-            populateSpatial3RDM( cs[0], cs[1], ds[0], ds[1],
-              sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2,  s3RDM );
-          }
-          else if ( cs[2] == cs[1] ) {
-            populateSpatial3RDM( cs[1], cs[0], ds[0], ds[1],
-              sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-          }
-          else {
-            populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-              sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-          }
+	  threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
+		   ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
+	    sgn*conj(cibra(b,0)*ciket(k,0));
+	  
+	  threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
+		   cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2])  +=
+	    sgn*conj(ciket(b,0)*cibra(k,0));
+	  
+	  populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
+			       sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
+	  populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
+			       sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
 	  */
         }
       }
@@ -802,36 +790,52 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
         cs.push_back(0); cs.push_back(0);
         ds.push_back(0); ds.push_back(0);
+	
+	// Move operators as in dist == 2 case
+	ds[2] = ds[0];
 
-        for ( int i=0; i < closed.size() - 1; i++ ) {
+        for ( int i=0; i < closed.size(); i++ ) {
           cs[1]=closed[i]; ds[1]=closed[i];
-          for ( int j=i; j < i + 1; j++ ) {
-            cs[2]=closed[j]; ds[2]=closed[j];
-	    populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-	      sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	    populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-              sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
+	  if ( ds[1] == ds[2] ) continue;
+	  if ( cs[1] == cs[0] ) continue; //TODO
+
+          for ( int j=0; j < i; j++ ) {
+            cs[2]=closed[j]; ds[0]=closed[j];
+	    if ( ds[0] == ds[1] || ds[0] == ds[2] ) continue; // TODO do we need both?
+	    if ( cs[2] == cs[1] || cs[2] == ds[0] ) continue; // TODO
+	    
+	    int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
+	    int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
+	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
+	    
+	    // Gamma = c0 d1 c2 d0 d1 d2
+	    Dets[k].parity(d2,d1,d0,c0,c1,c2,sgn);
+	    Dets[k].setocc(closed[i],true); Dets[k].setocc(closed[j],true);
+	    // TODO Make spinRDM optional
+	    threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
+		     d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2)  +=
+	      sgn*conj(cibra(b,0)*ciket(k,0));
+	    
+	    threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
+		     c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
+	      sgn*conj(ciket(b,0)*cibra(k,0));
 	    /*
-            if ( (cs[0] == cs[1]) && (cs[2] != cs[1]) ) {
-              populateSpatial3RDM( cs[0], cs[2], ds[0], ds[2],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-            }
-            else if ( (cs[0] == cs[2]) && (cs[2] != cs[1]) ) {
-              populateSpatial3RDM( cs[0], cs[1], ds[0], ds[1],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-            }
-            else if ( (cs[0] == cs[1]) && (cs[2] == cs[1]) ) {
-              populateSpatial3RDM( cs[0], ds[0],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-            }
-            else if ( (cs[0] != cs[1]) && (cs[2] == cs[1]) ) {
-              populateSpatial3RDM( cs[0], cs[1], ds[0], ds[1],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-            }
-            else if ( (cs[0] != cs[1]) && (cs[2] != cs[1]) && (cs[0] != cs[2]) ) {
-              populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-            }
+	    threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
+		     ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
+	      sgn*conj(cibra(b,0)*ciket(k,0));
+
+	    threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
+		     cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2])  +=
+	      sgn*conj(ciket(b,0)*cibra(k,0));
+	    
+	    
+	    populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
+				 sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs,
+				 nSpatOrbs2, s3RDM );
+
+	    populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
+	    			 sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs,
+	    			 nSpatOrbs2, s3RDM );
 	    */
           }
         }
@@ -843,44 +847,51 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
         Dets[k].getOpenClosed(open, closed);
         cs.push_back(0); cs.push_back(0); cs.push_back(0);
         ds.push_back(0); ds.push_back(0); ds.push_back(0);
-        for ( int m=0; m < closed.size()-2; m++ ) {
-          cs[0]=closed[m]; ds[0]=closed[m];
-          for ( int n=m; n < closed.size()-1; n++ ) {
+        for ( int m=0; m < closed.size(); m++ ) {
+          cs[0]=closed[m]; ds[2]=closed[m];
+          for ( int n=0; n < m; n++ ) {
             cs[1]=closed[n]; ds[1]=closed[n];
-            for ( int o=n; o < closed.size(); o++ ) {
-              cs[2]=closed[o]; ds[2]=closed[o];
-              //cout << cs[0] << " " <<  cs[1] << " " <<  cs[2] << " " <<  ds[0] << " " <<  ds[1] << " " << ds[2] << endl;
-	      //Dets[k].parity( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2], sgn);
-	      populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	      populateSpatial3RDM( ds[0], ds[1], ds[2], cs[0], cs[1], cs[2],
-                sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-	      /*
-              if ( (cs[0] == cs[1]) && (cs[2] != cs[1]) ) {
-                populateSpatial3RDM( cs[0], cs[2], ds[0], ds[2],
-                  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-              }
-              else if ( (cs[0] == cs[2]) && (cs[2] != cs[1]) ) {
-                populateSpatial3RDM( cs[0], cs[1], ds[0], ds[1],
-                  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-              }
-              else if ( (cs[0] == cs[1]) && (cs[2] == cs[1]) ) {
-                populateSpatial3RDM( cs[0], ds[0],
-                  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-              }
-              else if ( (cs[0] != cs[1]) && (cs[2] == cs[1]) ) {
-                populateSpatial3RDM( cs[0], cs[1], ds[0], ds[1],
-                  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM ); // TODO
-              }
-              else if ( (cs[0] != cs[1]) && (cs[2] != cs[1]) && (cs[0] != cs[2]) ) {
-                populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
-                  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
-              }
-	      */
+            for ( int o=0; o < n; o++ ) {
+              cs[2]=closed[o]; ds[0]=closed[o];
+
+	      // TODO Make spin RDM optional
+	      threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
+		       ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
+		conj(cibra(b,0)*ciket(k,0));
+
+	      //populateSpatial3RDM( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2],
+              //  sgn*conj(cibra(b,0)*ciket(k,0)), nSpatOrbs, nSpatOrbs2, s3RDM );
             }
           }
         }
       }
     }
   }
+
+  for ( int i=0; i < nSpatOrbs; i++ )
+    for ( int j=i; j < nSpatOrbs; j++ )
+      for ( int k=j; k < nSpatOrbs; k++ )
+	for ( int l=0; l < nSpatOrbs; l++ )
+	  for ( int m=l; m < nSpatOrbs; m++ )
+	    for ( int n=m; n < nSpatOrbs; n++ ) 
+	      for ( int a=0; a < 2; a++ )
+		for ( int b=0; b < 2; b++ )
+		  for ( int c=0; c < 2; c++ ) {
+		    
+		    int ip=i+a, jp=j+b, kp=k+c, lp=l+c, mp=m+b, np=n+a;
+		    
+		    s3RDM(i*nSpatOrbs2+j*nSpatOrbs+k,
+			  l*nSpatOrbs2+m*nSpatOrbs+n) += threeRDM(ip*(ip+1)*(ip+2)*d6+jp*(jp+1)*0.5+kp,
+								  lp*(lp+1)*(lp+2)*d6+mp*(mp+1)*0.5+np);
+		    //		  s3RDM(i,j,k,l,m,n) = threeRDM(2*i,2*j,2*k,2*l,2*m,2*n) +
+		    //		    threeRDM(2*i+1,2*j+1,2*k+1,2*l+1,2*m+1,2*n+1) +
+		    //		    threeRDM(2*i,2*j,2*k+1,2*l+1,2*m,2*n) +
+		    //		    threeRDM(2*i+1,2*j+1,2*k,2*l,2*m+1,2*n+1) +
+		    //		    threeRDM(2*i,2*j+1,2*k,2*l,2*m+1,2*n) +
+		    //		    threeRDM(2*i+1,2*j,2*k+1,2*l+1,2*m,2*n+1) +
+		    //		    threeRDM(2*i+1,2*j,2*k,2*l,2*m,2*n+1) +
+		    //		    threeRDM(2*i,2*j+1,2*k+1,2*l+1,2*m+1,2*n);
+		  }
+    
+  
 }

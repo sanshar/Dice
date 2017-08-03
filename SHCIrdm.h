@@ -35,7 +35,7 @@ namespace SHCISortMpiUtils{
 namespace SHCIrdm {
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
-  void saves3RDM(schedule& schd, MatrixXx& s3RDM, int root);
+  void saves3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root);
   void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
 
   void EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,
@@ -75,7 +75,8 @@ namespace SHCIrdm {
     CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM );
 
   void populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
-    int& d2, CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM );
+			    int& d2, CItype value, int& nSpatOrbs, int& nSpatOrbs2,
+			    MatrixXx& s3RDM );
 
   bool cFO( int& ladderOp, vector<int>& opIndices);
 
@@ -83,7 +84,8 @@ namespace SHCIrdm {
     vector<int>& cIndices, vector<int>& dIndices );
 
   void Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-    MatrixXx& ciket, int nelec, schedule& schd, int root, MatrixXx& s3RDM );
+		     MatrixXx& ciket, int nelec, schedule& schd, int root, 
+		     MatrixXx& threeRDM, MatrixXx& s3RDM );
 };
 
 #endif

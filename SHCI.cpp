@@ -425,15 +425,20 @@ int main(int argc, char* argv[]) {
 
 		MatrixXx s2RDM, twoRDM;
 		s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
-		if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-		SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0], orbDifference, nelec, schd, 0, twoRDM, s2RDM);
+		if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2,
+						   norbs*(norbs+1)/2);
+		SHCIrdm::EvaluateRDM(connections, Dets, lambda[0], ci[0],
+				     orbDifference, nelec, schd, 0, twoRDM, s2RDM);
     
-		cout << "Calculation s3RDM" << endl;
-		MatrixXx s3RDM;
+		cout << "Calculating threeRDM and s3RDM" << endl;
+		MatrixXx s3RDM, threeRDM;
+		threeRDM.setZero(norbs*(norbs+1)*(norbs+2)/6,
+				 norbs*(norbs+1)*(norbs+2)/2); // TODO
 		s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
-		SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0, s3RDM);
+		SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0,
+				      threeRDM, s3RDM);
 		cout << "About to write the s3RDM" << endl; //TODO
-		SHCIrdm::saves3RDM(schd, s3RDM, 0);
+		SHCIrdm::saves3RDM(schd, threeRDM, s3RDM, 0);
 
 		if (mpigetrank() == 0) {
 			MatrixXx s2RDMdisk, twoRDMdisk;
