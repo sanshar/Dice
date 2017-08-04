@@ -698,7 +698,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
   int nprocs = mpigetsize(), proc = mpigetrank();
 
   size_t norbs = Dets[0].norbs;
-  int nSpatOrbs = norbs/2;
+  int nSpatOrbs = norbs/2; size_t nSOrbs = norbs/2;
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
   double d6 = 1/6.0; // 3 factorial fraction
 
@@ -765,17 +765,17 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    cs[2] = closed[j]; ds[0] = closed[j];
 	    if ( closed[j] == ds[1] || closed[j] == ds[2] ) continue;
 	    if ( closed[j] == cs[0] || closed[j] == cs[1] ) continue; // TODO CHECK W/ SS
-	    
+	    /*
 	    int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
 	    int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
 	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
-	    
+	    */
 	    // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
 	    //Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
 	    Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
 	    Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
 	    
-	    // TODO Make spinRDM optional
+
 	    fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	  }
 	}
@@ -793,33 +793,36 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    cs[1]=closed[n]; ds[1]=closed[n];
 	    for ( int o=0; o < n; o++ ) {
 	      cs[2]=closed[o]; ds[0]=closed[o];
-	      if ( m/2 == n/2 && m/2 == 0 && o/2 == 1 ) cout << "Reached test case" << endl;
-	      // TODO Make spin RDM optional
+
 	      fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	      if ( closed[m] == 2 && closed[n] == 1 && closed[o] == 0 ) cout << closed[m] << " " << closed[n] << " " << closed[o] << " " << threeRDM( genIdx(cs[1],cs[2],cs[0],norbs), genIdx(ds[2],ds[0],ds[1],norbs) ) << " " << genIdx(cs[1],cs[2],cs[0],norbs) << " " <<  genIdx(ds[2],ds[0],ds[1],norbs) << endl;
 	    }	
 	  }
 	}
       }
     }
   }
-  // TODO no SYM
-  for ( int i=0; i < nSpatOrbs; i++ )
-    for ( int j=0; j < nSpatOrbs; j++ )
-      for ( int k=0; k < nSpatOrbs; k++ )
-	for ( int l=0; l < nSpatOrbs; l++ )
-	  for ( int m=0; m < nSpatOrbs; m++ )
-	    for ( int n=0; n < nSpatOrbs; n++ ) 
-	      for ( int a=0; a < 2; a++ )
-		for ( int b=0; b < 2; b++ )
-		  for ( int c=0; c < 2; c++ ) {
+
+  for ( int c0=0; c0 < nSpatOrbs; c0++ )
+    for ( int c1=0; c1 < nSpatOrbs; c1++ )
+      for ( int c2=0; c2 < nSpatOrbs; c2++ )
+	for ( int d0=0; d0 < nSpatOrbs; d0++ )
+	  for ( int d1=0; d1 < nSpatOrbs; d1++ )
+	    for ( int d2=0; d2 < nSpatOrbs; d2++ ) 
+	      for ( int i=0; i < 2; i++ )
+		for ( int j=0; j < 2; j++ )
+		  for ( int k=0; k < 2; k++ ) {
 		    
-		    int ip=2*i+a, jp=2*j+b, kp=2*k+c;
-		    int lp=2*l+c, mp=2*m+b, np=2*n+a;
-		    
+		    int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k;
+		    int d0p=2*d0+k, d1p=2*d1+j, d2p=2*d2+i;
+
+		    if ( c0==0 && c1==0 && c2==1 && d0==0 && d1==0 && d2==1) {
+		      cout << c0p<<c1p<<c2p<<d0p<<d1p<<d2p<<" "<<genIdx(c0p,c1p,c2p,norbs) <<" "<< genIdx(d0p,d1p,d2p,norbs);
+		      cout <<" "<< threeRDM(genIdx(c0p,c1p,c2p,norbs), genIdx(d0p,d1p,d2p,norbs)) <<  endl;
+		    }
 		    // Gamma = i j k l m n
-		    s3RDM(i*nSpatOrbs2+j*nSpatOrbs+k,
-			  l*nSpatOrbs2+m*nSpatOrbs+n) += threeRDM(ip*(ip+1)*(ip+2)*d6+jp*(jp+1)*0.5+kp,
-								  lp*(lp+1)*(lp+2)*d6+mp*(mp+1)*0.5+np);
+		    s3RDM(genIdx(c0,c1,c2,nSOrbs),genIdx(d0,d1,d2,nSOrbs)) +=
+			  threeRDM(genIdx(c0p,c1p,c2p,norbs),genIdx(d0p,d1p,d2p,norbs));
 		  }
     
   
