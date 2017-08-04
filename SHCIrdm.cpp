@@ -152,7 +152,7 @@ void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 	      for (int n4=0; n4 < nSpatOrbs; n4++)
 		for (int n5=0; n5 < nSpatOrbs; n5++) {
 		  if ( abs( s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,
-				  n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-12 ) {
+				  n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-9 ) {
 		    ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%n0%n1%n2%n3%n4%n5%s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,n3*nSpatOrbs2+n4*nSpatOrbs+n5));
 		  } 
 		}
@@ -663,26 +663,25 @@ void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
   }
 }
 
-void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& d0, int& d1,
-  CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
-  // TODO DELETE
-  c0 /= 2; c1 /= 2; d0 /= 2; d1 /= 2;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
-  s3RDM(c0*nSpatOrbs2+d1*nSpatOrbs+c1,d1*nSpatOrbs2+c1*nSpatOrbs+d0) += value;
-  s3RDM(c0*nSpatOrbs2+d1*nSpatOrbs+c1,d0*nSpatOrbs2+c1*nSpatOrbs+d1) -= value;
-  s3RDM(c1*nSpatOrbs2+d0*nSpatOrbs+c1,d1*nSpatOrbs2+c0*nSpatOrbs+d1) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c1,d1*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c1,d0*nSpatOrbs2+c0*nSpatOrbs+d1) -= value;
-  s3RDM(c1*nSpatOrbs2+d0*nSpatOrbs+c0,d1*nSpatOrbs2+c1*nSpatOrbs+d1) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d1*nSpatOrbs2+c1*nSpatOrbs+d0) -= value;
-  s3RDM(c1*nSpatOrbs2+d1*nSpatOrbs+c0,d0*nSpatOrbs2+c1*nSpatOrbs+d1) += value;
-}
 
-void SHCIrdm::populateSpatial3RDM( int& c0, int& d0, CItype value,
-  int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
-  // TODO DELETE
-  c0 /= 2; d0 /= 2;
-  s3RDM(c0*nSpatOrbs2+d0*nSpatOrbs+c0,d0*nSpatOrbs2+c0*nSpatOrbs+d0) += value;
+int genIdx( int& a, int& b, int& c, size_t& norbs ) {
+  return a*norbs*norbs+b*norbs+c;
+} 
+
+void fillSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
+		   size_t& norbs, MatrixXx& threeRDM ) {
+  // d2->c0    d1->c1    d2->c0
+  for ( int i=0; i < 6; i++ ) {
+
+    threeRDM( genIdx(cs[i%3],cs[(i+1)%3],cs[(i+2)%3],norbs), genIdx(ds[i%3],ds[(i+1)%3],ds[(i+2)%3],norbs) ) += value; 
+    threeRDM( genIdx(cs[(i+2)%3],cs[i%3],cs[(i+1)%3],norbs), genIdx(ds[(i+1)%3],ds[(i+2)%3],ds[i%3],norbs) ) += value; 
+    threeRDM( genIdx(cs[(i+1)%3],cs[(i+2)%3],cs[i%3],norbs), genIdx(ds[(i+2)%3],ds[i%3],ds[(i+1)%3],norbs) ) += value; 
+
+    threeRDM( genIdx(cs[i%3],cs[(i+2)%3],cs[(i+1)%3],norbs), genIdx(ds[(i+1)%3],ds[i%3],ds[(i+2)%3],norbs) ) -= value; 
+    threeRDM( genIdx(cs[(i+1)%3],cs[i%3],cs[(i+2)%3],norbs), genIdx(ds[i%3],ds[(i+2)%3],ds[(i+1)%3],norbs) ) -= value; 
+    threeRDM( genIdx(cs[(i+2)%3],cs[(i+1)%3],cs[i%3],norbs), genIdx(ds[(i+2)%3],ds[(i+1)%3],ds[i%3],norbs) ) -= value; 
+
+  }
 }
 
 void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
@@ -705,7 +704,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
 
   for (int b=0; b < Dets.size(); b++ ) {
-    for (int k=b; k < Dets.size(); k++ ) {
+    for (int k=0; k < Dets.size(); k++ ) {
 
       int dist = Dets[b].ExcitationDistance( Dets[k] );
       if ( dist > 3 ) { continue; } 
@@ -715,15 +714,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
       if ( dist == 3 ) {
         Dets[k].parity( ds[0], ds[1], ds[2], cs[2], cs[1], cs[0], sgn); //TODO Change this function to make more clear
-	
-	threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
-		 ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2]) += 
-	  sgn*conj(cibra(b,0)*ciket(k,0));
-
-	threeRDM(ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2],
-		 cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2]) +=
-	  sgn*conj(ciket(b,0)*cibra(k,0));
-	
+	fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
       }
 
       else if ( dist == 2 ) {
@@ -743,22 +734,18 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	  if ( closed[i] == ds[1] || closed[i] == ds[2] ) continue;
 	  if ( closed[i] == cs[0] || closed[i] == cs[1] ) continue; // TODO CHECK W/ SS
 	  
-	  int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
-	  int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
-	  int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
+	  /*
+	    int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
+	    int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
+	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
+	   */
 
 	  // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
-	  Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
+	  Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
 	  Dets[k].setocc(closed[i], true);
 	  
 	  // TODO Make spinRDM optional
-	  threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
-		   d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2)  +=
-	    sgn*conj(cibra(b,0)*ciket(k,0));
-
-	  threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
-		   c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
-	    sgn*conj(ciket(b,0)*cibra(k,0));
+	  fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
           }
       }
     
@@ -784,18 +771,12 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
 	    
 	    // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
-	    Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
+	    //Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
+	    Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
 	    Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
 	    
 	    // TODO Make spinRDM optional
-	    threeRDM(c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2,
-		     d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2)  +=
-	      sgn*conj(cibra(b,0)*ciket(k,0));
-	    
-	    threeRDM(d0*(d0+1)*(d0+2)*d6 + d1*(d1+1)*0.5 + d2,
-		     c0*(c0+1)*(c0+2)*d6 + c1*(c1+1)*0.5 + c2)  +=
-	      sgn*conj(ciket(b,0)*cibra(k,0));
-	    
+	    fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	  }
 	}
       }
@@ -814,22 +795,20 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	      cs[2]=closed[o]; ds[0]=closed[o];
 	      if ( m/2 == n/2 && m/2 == 0 && o/2 == 1 ) cout << "Reached test case" << endl;
 	      // TODO Make spin RDM optional
-	      threeRDM(cs[0]*(cs[0]+1)*(cs[0]+2)*d6 + cs[1]*(cs[1]+1)*0.5 + cs[2],
-		       ds[0]*(ds[0]+1)*(ds[0]+2)*d6 + ds[1]*(ds[1]+1)*0.5 + ds[2])  +=
-		conj(cibra(b,0)*ciket(b,0));
+	      fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	    }	
 	  }
 	}
       }
     }
   }
-
+  // TODO no SYM
   for ( int i=0; i < nSpatOrbs; i++ )
-    for ( int j=i; j < nSpatOrbs; j++ )
-      for ( int k=j; k < nSpatOrbs; k++ )
+    for ( int j=0; j < nSpatOrbs; j++ )
+      for ( int k=0; k < nSpatOrbs; k++ )
 	for ( int l=0; l < nSpatOrbs; l++ )
-	  for ( int m=l; m < nSpatOrbs; m++ )
-	    for ( int n=m; n < nSpatOrbs; n++ ) 
+	  for ( int m=0; m < nSpatOrbs; m++ )
+	    for ( int n=0; n < nSpatOrbs; n++ ) 
 	      for ( int a=0; a < 2; a++ )
 		for ( int b=0; b < 2; b++ )
 		  for ( int c=0; c < 2; c++ ) {

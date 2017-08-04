@@ -432,10 +432,11 @@ int main(int argc, char* argv[]) {
     
 		cout << "Calculating threeRDM and s3RDM" << endl;
 		MatrixXx s3RDM, threeRDM;
-		threeRDM.setZero(norbs*(norbs+1)*(norbs+2)/6,
-				 norbs*(norbs+1)*(norbs+2)/2); // TODO
+		//		threeRDM.setZero(norbs*(norbs+1)*(norbs+2)/6,
+		//				 norbs*(norbs+1)*(norbs+2)/2); // TODO
+		threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
 		s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
-		SHCIrdm::Evaluate3RDM(Dets, lambda[0], ci[0], nelec, schd, 0,
+		SHCIrdm::Evaluate3RDM(Dets, ci[0], ci[0], nelec, schd, 0,
 				      threeRDM, s3RDM);
 		cout << "About to write the s3RDM" << endl; //TODO
 		SHCIrdm::saves3RDM(schd, threeRDM, s3RDM, 0);
