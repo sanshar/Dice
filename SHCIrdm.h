@@ -35,7 +35,7 @@ namespace SHCISortMpiUtils{
 namespace SHCIrdm {
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
-  void saves3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root);
+  void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root, size_t norbs);
   void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
 
   void EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,

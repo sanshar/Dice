@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include "input.h"
 #include "integral.h"
 #include <vector>
+#include <algorithm>
 #include "math.h"
 #include "Hmult.h"
 #include <tuple>
@@ -133,8 +134,8 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 }
 
-void SHCIrdm::saves3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
-			int root) {
+void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
+			int root, size_t norbs ) {
   int nSpatOrbs = pow(s3RDM.rows(),1/3.0);
   int nSpatOrbs2 = nSpatOrbs*nSpatOrbs;
 
@@ -671,17 +672,17 @@ int genIdx( int& a, int& b, int& c, size_t& norbs ) {
 void fillSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
 		   size_t& norbs, MatrixXx& threeRDM ) {
   // d2->c0    d1->c1    d2->c0
-  for ( int i=0; i < 6; i++ ) {
+  double  par = 1.0;
+  bool test = (cs[0]/2==1 && cs[1]/2==0 && cs[2]/2==0 && ds[0]/2==0 && ds[1]/2==0 && ds[2]/2==1);
+  do {
+    do {
+      if (test) cout << "GenIdx: "<< cs[0]*norbs*norbs+cs[1]*norbs+norbs << endl;
+      threeRDM( genIdx(cs[0],cs[1],cs[2],norbs),
+		genIdx(ds[0],ds[1],ds[2],norbs) ) += par*value;
+      par *= -1;
+    } while ( next_permutation(ds.begin(),ds.end()) );
+  } while ( next_permutation(cs.begin(),cs.end()) );
 
-    threeRDM( genIdx(cs[i%3],cs[(i+1)%3],cs[(i+2)%3],norbs), genIdx(ds[i%3],ds[(i+1)%3],ds[(i+2)%3],norbs) ) += value; 
-    threeRDM( genIdx(cs[(i+2)%3],cs[i%3],cs[(i+1)%3],norbs), genIdx(ds[(i+1)%3],ds[(i+2)%3],ds[i%3],norbs) ) += value; 
-    threeRDM( genIdx(cs[(i+1)%3],cs[(i+2)%3],cs[i%3],norbs), genIdx(ds[(i+2)%3],ds[i%3],ds[(i+1)%3],norbs) ) += value; 
-
-    threeRDM( genIdx(cs[i%3],cs[(i+2)%3],cs[(i+1)%3],norbs), genIdx(ds[(i+1)%3],ds[i%3],ds[(i+2)%3],norbs) ) -= value; 
-    threeRDM( genIdx(cs[(i+1)%3],cs[i%3],cs[(i+2)%3],norbs), genIdx(ds[i%3],ds[(i+2)%3],ds[(i+1)%3],norbs) ) -= value; 
-    threeRDM( genIdx(cs[(i+2)%3],cs[(i+1)%3],cs[i%3],norbs), genIdx(ds[(i+2)%3],ds[(i+1)%3],ds[i%3],norbs) ) -= value; 
-
-  }
 }
 
 void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
@@ -714,7 +715,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
       if ( dist == 3 ) {
         Dets[k].parity( ds[0], ds[1], ds[2], cs[2], cs[1], cs[0], sgn); //TODO Change this function to make more clear
-	fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	//fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
       }
 
       else if ( dist == 2 ) {
@@ -734,18 +735,13 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	  if ( closed[i] == ds[1] || closed[i] == ds[2] ) continue;
 	  if ( closed[i] == cs[0] || closed[i] == cs[1] ) continue; // TODO CHECK W/ SS
 	  
-	  /*
-	    int c0=max(cs[2],max(cs[1],cs[0])), d0=max(ds[2],max(ds[1],ds[0]));
-	    int c1=min(cs[2],max(cs[1],cs[0])), d1=min(ds[2],max(ds[1],ds[0]));
-	    int c2=min(cs[2],min(cs[1],cs[0])), d2=min(cs[2],min(ds[1],ds[0]));
-	   */
 
 	  // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
 	  Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
 	  Dets[k].setocc(closed[i], true);
 	  
 	  // TODO Make spinRDM optional
-	  fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	  //fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
           }
       }
     
@@ -776,7 +772,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
 	    
 
-	    fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	    //fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	  }
 	}
       }
@@ -793,9 +789,32 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    cs[1]=closed[n]; ds[1]=closed[n];
 	    for ( int o=0; o < n; o++ ) {
 	      cs[2]=closed[o]; ds[0]=closed[o];
+	      
+	      if ( closed[m]/2==1 && closed[n]/2==0 && closed[o]/2==0) {
+		do {
+		  do {
+		    cout << threeRDM( genIdx(cs[0],cs[1],cs[2],norbs),
+				      genIdx(ds[0],ds[1],ds[2],norbs) ) << " ";
+		  } while ( next_permutation(ds.begin(),ds.end()) );
+		} while ( next_permutation(cs.begin(),cs.end()) );
+		cout << endl;
+	      }
 
+	      
 	      fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
-	      if ( closed[m] == 2 && closed[n] == 1 && closed[o] == 0 ) cout << closed[m] << " " << closed[n] << " " << closed[o] << " " << threeRDM( genIdx(cs[1],cs[2],cs[0],norbs), genIdx(ds[2],ds[0],ds[1],norbs) ) << " " << genIdx(cs[1],cs[2],cs[0],norbs) << " " <<  genIdx(ds[2],ds[0],ds[1],norbs) << endl;
+
+	      if ( closed[m]/2==1 && closed[n]/2==0 && closed[o]/2==0) {
+		cout << "After Fill ";
+		cout << sgn*conj(cibra(b,0))*ciket(k,0) << endl;
+		do {
+		  do {
+		    cout << threeRDM( genIdx(cs[0],cs[1],cs[2],norbs),
+				      genIdx(ds[0],ds[1],ds[2],norbs) ) << " ";
+		  } while ( next_permutation(ds.begin(),ds.end()) );
+		} while ( next_permutation(cs.begin(),cs.end()) );
+		cout << endl;
+	      }
+
 	    }	
 	  }
 	}
