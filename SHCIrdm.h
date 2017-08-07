@@ -35,7 +35,10 @@ namespace SHCISortMpiUtils{
 namespace SHCIrdm {
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
-  void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root, size_t norbs);
+  void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
+		size_t norbs);
+  void save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM, int root,
+		int norbs);
   void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
 
   void EvaluateRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,
@@ -68,24 +71,16 @@ namespace SHCIrdm {
   double ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
 				   double coreE, MatrixXx& twoRDM);
 
-  void populateSpatial3RDM( int& c0, int& d0, CItype value,
-    int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM );
-
-  void populateSpatial3RDM( int& c0, int& c1, int& d0, int& d1,
-    CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM );
-
-  void populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
-			    int& d2, CItype value, int& nSpatOrbs, int& nSpatOrbs2,
-			    MatrixXx& s3RDM );
-
-  bool cFO( int& ladderOp, vector<int>& opIndices);
-
   void getUniqueIndices( Determinant& bra, Determinant& ket,
     vector<int>& cIndices, vector<int>& dIndices );
 
   void Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		     MatrixXx& ciket, int nelec, schedule& schd, int root, 
 		     MatrixXx& threeRDM, MatrixXx& s3RDM );
+
+  void Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
+		     MatrixXx& ciket, int nelec, schedule& schd, int root, 
+		     MatrixXx& fourRDM, MatrixXx& s4RDM );
 };
 
 #endif

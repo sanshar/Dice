@@ -146,16 +146,40 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
 	return;
 }
 
-//i->a, j->b, and k->c
-void Determinant::parity(int& i, int& j, int& k, int& a, int& b, int& c,
+// Gamma = c0 c1 c2 d0 d1 d2
+// d2 -> c0   d1 -> c1   d0 -> c2
+// Always set true last so if there are duplicates the last operation doesn't
+// depopulate determinants.
+void Determinant::parity(int& c0, int& c1, int& c2, int& d0, int& d1, int& d2,
   double& sgn) {
-  parity(min(i, a), max(i,a), sgn);
-  setocc(i,false); setocc(a,true);
-  parity(min(j, b), max(j,b), sgn);
-  setocc(j,false); setocc(b,true);
-  parity(min(k, c), max(k,c), sgn);
-  setocc(i,true); setocc(a,false);
-  setocc(j,true); setocc(b,false);
+  parity(min(d2, c0), max(d2,c0), sgn);
+  setocc(d2,false); setocc(c0,true);
+  parity(min(d1, c1), max(d1,c1), sgn);
+  setocc(d1,false); setocc(c1,true);
+  parity(min(d0, c2), max(d0,c2), sgn);
+  setocc(c1,false); setocc(d1,true);
+  setocc(c0,false); setocc(d2,true); 
+  return;
+}
+
+// Gamma = c0 c1 c2 c3 d0 d1 d2 d3
+// Do NOT use with matching c and d pairs.
+void Determinant::parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1,
+			 int& d2, int& d3,  double& sgn) {
+  parity(min(d3, c0), max(d3,c0), sgn);
+  setocc(d3,false); setocc(c0,true);
+
+  parity(min(d2, c1), max(d2,c1), sgn);
+  setocc(d2,false); setocc(c1,true);
+
+  parity(min(d1, c2), max(d1,c2), sgn);
+  setocc(d1,false); setof(c2,true);
+
+  parity(min(d0,c3),max(d0,c3), sgn);
+
+  setocc(c2,false); setocc(d1,true);
+  setocc(c1,false); setocc(d2,true);
+  setocc(c0,false); setocc(d3,true); 
   return;
 }
 
