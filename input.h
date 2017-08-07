@@ -64,7 +64,9 @@ private:
       & num_thrds                               \
       & Trev                                    \
       & algorithm                               \
-      & outputlevel;
+      & outputlevel                             \
+      & printBestDeterminants;
+
   }
 
 public:
@@ -107,6 +109,7 @@ public:
   char Trev;
   int algorithm;
   int outputlevel;
+  int printBestDeterminants;
 };
 
 #endif

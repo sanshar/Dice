@@ -239,7 +239,8 @@ int main(int argc, char* argv[]) {
   for (int root=0; root<schd.nroots; root++) {
     pout << "State :"<<root<<endl;
     MatrixXx prevci = 1.*ci[root];
-    for (int i=0; i<min(6, static_cast<int>(DetsSize)); i++) {
+    int num = max(6, schd.printBestDeterminants);
+    for (int i=0; i<min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
       pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;

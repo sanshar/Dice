@@ -70,6 +70,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.Trev = 0;
   schd.algorithm = 0;
   schd.outputlevel = 0;
+  schd.printBestDeterminants = 0;
 
   while (dump.good()) {
 
@@ -164,6 +165,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.epsilon2Large = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "onlyperturbative"))
       schd.onlyperturbative = true;
+    else if (boost::iequals(ArgName, "printbestdeterminants"))
+      schd.printBestDeterminants = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
     else if (boost::iequals(ArgName, "Treversal")) {
