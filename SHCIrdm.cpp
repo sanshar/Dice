@@ -594,96 +594,72 @@ inline void SHCIrdm::getUniqueIndices( Determinant& bra, Determinant& ket,
   return; 
 }
 
-inline bool SHCIrdm::cFO( int& ladderOp, vector<int>& opIndices) {
-  // This gets used a lot in the same line so cFO stands for check for operator
-  // TODO DELETE this here and in header
-  for ( int i=0; i < opIndices.size(); i++ ) {
-    if ( ladderOp == opIndices[i] ) { return true; }
-  
-  }
-  return false;
-}
-
-void SHCIrdm::populateSpatial3RDM( int& c0, int& c1, int& c2, int& d0, int& d1,
-  int& d2, CItype value, int& nSpatOrbs, int& nSpatOrbs2, MatrixXx& s3RDM ) {
-  
-  int C0=c0/2; int C1=c1/2; int C2=c2/2; int D0=d0/2; int D1=d1/2; int D2=d2/2;
-
-  if ( c0%2==d0%2 && c1%2==d1%2 && c2%2==d2%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D0*nSpatOrbs2+D1*nSpatOrbs+D2) += value;
-    s3RDM(C0*nSpatOrbs2+C2*nSpatOrbs+C1, D0*nSpatOrbs2+D2*nSpatOrbs+D1) += value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D1*nSpatOrbs2+D0*nSpatOrbs+D2) += value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D1*nSpatOrbs2+D2*nSpatOrbs+D0) += value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D2*nSpatOrbs2+D1*nSpatOrbs+D0) += value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D2*nSpatOrbs2+D0*nSpatOrbs+D1) += value;
-  }
-
-  if ( c0%2==d1%2 && c1%2==d2%2 && c2%2==d0%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D1*nSpatOrbs2+D2*nSpatOrbs+D0) += value;
-    s3RDM(C0*nSpatOrbs2+C2*nSpatOrbs+C1, D1*nSpatOrbs2+D0*nSpatOrbs+D2) += value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D2*nSpatOrbs2+D1*nSpatOrbs+D0) += value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D2*nSpatOrbs2+D0*nSpatOrbs+D1) += value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D0*nSpatOrbs2+D2*nSpatOrbs+D1) += value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D0*nSpatOrbs2+D1*nSpatOrbs+D2) += value;
-  }
-
-  if ( c0%2==d2%2 && c1%2==d0%2 && c2%2==d1%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D2*nSpatOrbs2+D0*nSpatOrbs+D1) += value;
-    s3RDM(C0*nSpatOrbs2+C2*nSpatOrbs+C1, D2*nSpatOrbs2+D1*nSpatOrbs+D0) += value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D0*nSpatOrbs2+D2*nSpatOrbs+D1) += value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D0*nSpatOrbs2+D1*nSpatOrbs+D2) += value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D1*nSpatOrbs2+D0*nSpatOrbs+D2) += value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D1*nSpatOrbs2+D2*nSpatOrbs+D0) += value;
-  }
-
-  if ( c0%2==d0%2 && c1%2==d2%2 && c2%2==d1%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D0*nSpatOrbs2+D2*nSpatOrbs+D1) -= value;
-    s3RDM(C0*nSpatOrbs2+C0*nSpatOrbs+C1, D0*nSpatOrbs2+D1*nSpatOrbs+D2) -= value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D2*nSpatOrbs2+D1*nSpatOrbs+D0) -= value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D2*nSpatOrbs2+D0*nSpatOrbs+D1) -= value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D1*nSpatOrbs2+D2*nSpatOrbs+D0) -= value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D1*nSpatOrbs2+D0*nSpatOrbs+D2) -= value;
-  }
-
-  if ( c0%2==d1%2 && c1%2==d0%2 && c2%2==d2%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D1*nSpatOrbs2+D0*nSpatOrbs+D2) -= value;
-    s3RDM(C0*nSpatOrbs2+C2*nSpatOrbs+C1, D1*nSpatOrbs2+D2*nSpatOrbs+D0) -= value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D0*nSpatOrbs2+D1*nSpatOrbs+D2) -= value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D0*nSpatOrbs2+D2*nSpatOrbs+D1) -= value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D2*nSpatOrbs2+D0*nSpatOrbs+D1) -= value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D2*nSpatOrbs2+D1*nSpatOrbs+D0) -= value;
-  }
-
-  if ( c0%2==d2%2 && c1%2==d1%2 && c2%2==d0%2 ) {
-    s3RDM(C0*nSpatOrbs2+C1*nSpatOrbs+C2, D2*nSpatOrbs2+D1*nSpatOrbs+D0) -= value;
-    s3RDM(C0*nSpatOrbs2+C2*nSpatOrbs+C1, D2*nSpatOrbs2+D0*nSpatOrbs+D1) -= value;
-    s3RDM(C1*nSpatOrbs2+C0*nSpatOrbs+C2, D1*nSpatOrbs2+D2*nSpatOrbs+D0) -= value;
-    s3RDM(C1*nSpatOrbs2+C2*nSpatOrbs+C0, D1*nSpatOrbs2+D0*nSpatOrbs+D2) -= value;
-    s3RDM(C2*nSpatOrbs2+C1*nSpatOrbs+C0, D0*nSpatOrbs2+D1*nSpatOrbs+D2) -= value;
-    s3RDM(C2*nSpatOrbs2+C0*nSpatOrbs+C1, D0*nSpatOrbs2+D2*nSpatOrbs+D1) -= value;
-  }
-}
-
 
 int genIdx( int& a, int& b, int& c, size_t& norbs ) {
   return a*norbs*norbs+b*norbs+c;
 } 
 
+
 void fillSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
 		   size_t& norbs, MatrixXx& threeRDM ) {
   // d2->c0    d1->c1    d2->c0
-  double  par = 1.0;
-  bool test = (cs[0]/2==1 && cs[1]/2==0 && cs[2]/2==0 && ds[0]/2==0 && ds[1]/2==0 && ds[2]/2==1);
+  //double  par = 1.0;
+  //bool test = (cs[0]/2==1 && cs[1]/2==0 && cs[2]/2==0 && ds[0]/2==0 && ds[1]/2==0 && ds[2]/2==1);
+
+  //vector<int> pars (6); pars[0]=1; pars[1]=-1; pars[2]=-1; pars[3]=1; pars[4]=1; pars[5]=-1;
+  //int ctr = 0;
+
+  /*
   do {
     do {
       if (test) cout << "GenIdx: "<< cs[0]*norbs*norbs+cs[1]*norbs+norbs << endl;
+      par = pars[ctr/6]*pars[ctr%6];
       threeRDM( genIdx(cs[0],cs[1],cs[2],norbs),
 		genIdx(ds[0],ds[1],ds[2],norbs) ) += par*value;
-      par *= -1;
+      ctr++;
     } while ( next_permutation(ds.begin(),ds.end()) );
   } while ( next_permutation(cs.begin(),cs.end()) );
-
+  */
+  
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) += value;
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[0], cs[1], cs[2], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[0], cs[2], cs[1], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[1], cs[0], cs[2], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[1], cs[2], cs[0], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) += value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[2], cs[0], cs[1], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[0], ds[1], ds[2], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[0], ds[2], ds[1], norbs) ) += value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[1], ds[0], ds[2], norbs) ) += value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[1], ds[2], ds[0], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[2], ds[0], ds[1], norbs) ) -= value;
+  threeRDM( genIdx( cs[2], cs[1], cs[0], norbs), genIdx( ds[2], ds[1], ds[0], norbs) ) += value;
+  return;
 }
+
 
 void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			    MatrixXx& ciket, int nelec, schedule& schd, int root,
@@ -711,10 +687,11 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       if ( dist > 3 ) { continue; } 
       vector<int> cs (0), ds(0);
       getUniqueIndices( Dets[b], Dets[k], cs, ds );
-      double sgn = 1.0;
+      //double sgn = 1.0;
 
       if ( dist == 3 ) {
-        Dets[k].parity( ds[0], ds[1], ds[2], cs[2], cs[1], cs[0], sgn); //TODO Change this function to make more clear
+	double sgn = 1.0;
+        //Dets[k].parity( ds[0], ds[1], ds[2], cs[2], cs[1], cs[0], sgn); //TODO Change this function to make more clear
 	//fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
       }
 
@@ -723,6 +700,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
         vector<int> open(norbs-nelec,0);
 
         Dets[k].getOpenClosed(open, closed);
+	double sgn = 1.0;
 	//Dets[k].parity(ds[0], ds[1], cs[0], cs[1], sgn); //TODO
 
 	// Initialize the final spot in operator arrays and move d ops toward
@@ -737,8 +715,9 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	  
 
 	  // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
-	  Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
-	  Dets[k].setocc(closed[i], true);
+	  double sgn = 1.0;
+	  //Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
+	  //Dets[k].setocc(closed[i], true);
 	  
 	  // TODO Make spinRDM optional
 	  //fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
@@ -768,8 +747,9 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    */
 	    // Gamma = c0 c1 c2 d0 d1 d2 TODO:Clean up this section
 	    //Dets[k].parity(d0,d1,d2,c2,c1,c0,sgn);
-	    Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
-	    Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
+	    double sgn = 0;
+	    //Dets[k].parity(ds[0],ds[1],ds[2],cs[0],cs[1],cs[2],sgn);
+	    //Dets[k].setocc(closed[i], true); Dets[k].setocc(closed[j],true);
 	    
 
 	    //fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
@@ -790,7 +770,9 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    for ( int o=0; o < n; o++ ) {
 	      cs[2]=closed[o]; ds[0]=closed[o];
 	      
+	      /*
 	      if ( closed[m]/2==1 && closed[n]/2==0 && closed[o]/2==0) {
+		cout << "Cs before: " << cs[0] << cs[1] << cs[2] << " Ds before: " <<ds[0]<<ds[1]<<ds[2]<<endl;
 		do {
 		  do {
 		    cout << threeRDM( genIdx(cs[0],cs[1],cs[2],norbs),
@@ -798,11 +780,13 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		  } while ( next_permutation(ds.begin(),ds.end()) );
 		} while ( next_permutation(cs.begin(),cs.end()) );
 		cout << endl;
+		cout << "Cs after: " << cs[0] << cs[1] << cs[2] << " Ds before: " <<ds[0]<<ds[1]<<ds[2]<< endl;
 	      }
+	      */
 
-	      
-	      fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	      fillSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 
+	      /*
 	      if ( closed[m]/2==1 && closed[n]/2==0 && closed[o]/2==0) {
 		cout << "After Fill ";
 		cout << sgn*conj(cibra(b,0))*ciket(k,0) << endl;
@@ -814,7 +798,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		} while ( next_permutation(cs.begin(),cs.end()) );
 		cout << endl;
 	      }
-
+	      */
 	    }	
 	  }
 	}
