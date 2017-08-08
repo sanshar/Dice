@@ -774,4 +774,185 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 *** 4-RDM Methods
  */
 
-void
+int gen4Idx(int& a, int& b, int& c, int& d, int& norbs) {
+  return a*norbs*norbs*norbs+b*norbs*norbs+c*norbs+d;
+}
+
+void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
+		  MatrixXx& fourRDM ){
+  
+  vector<int> cc( cs ); vector<int> dc ( ds ); // Need copies with next_perm.
+  int ctr = 0;
+  do {
+    do {
+      par = pars[counter/24]*pars[counter%24];
+      ctr++;
+
+      fourRDM( gen4Idx(cc[0], cc[1], cc[2], cc[3], norbs),
+	       gen4Idx(dc[0], dc[1], dc[2], dc[3], norbs) ) += par*value;
+
+    } while ( next_permutation(dc.begin(),dc.end()) );
+  } while ( next_permutation(cc.begin(),cc.end()) );
+
+  return;
+}
+
+
+void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
+			    MatrixXx& ciket, int nelec, schedule& schd,
+			    int root, MatrixXx& fourRDM, MatrixXx& s4RDM ){
+
+  /*
+     TODO optimize speed and memory
+     TODO make spin 4RDM optional
+  */
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+  int num_thrds = omp_get_max_threads();
+  int nprocs = mpigetsize(), proc = mpigetrank();
+
+  int norbs = Dets[0].norbs;
+  int nSOs = norbs/2; // Number of spatial orbitals
+
+  for (int b=0; b<Dets.size(); b++) {
+    for (int k=0; k<Dets.size(); k++) {
+
+      int dist = Dets[b].ExcitationDistance( Dets[k] );
+      if ( dist > 4 ) { continue; } 
+      vector<int> cs (0), ds(0);
+      getUniqueIndices( Dets[b], Dets[k], cs, ds );
+
+      if ( dist == 4 ) {
+	double sgn = 1.0;
+	Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
+	popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+      }
+
+      else if ( dist == 3 ) {
+	vector<int> closed(nelec, 0);
+        vector<int> open(norbs-nelec,0);
+        Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); ds.push_back(0); 
+	ds[3]=ds[2]; ds[2]=ds[1]; ds[1]=ds[0]; //Keep notation
+
+	for ( int i=0; i<nelec; i++) {
+	  cs[3]=closed[i]; ds[0]=closed[i];
+	  if ( closed[i]==cs[0] || closed[i]==cs[1] || closed[i]==cs[2] ||
+	       closed[i]==ds[3] || closed[i]==ds[2] || closed[i]==ds[1] ) {
+	    continue;
+	  }
+
+	  double sgn = 1.0;
+	  Dets[k].parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
+	  popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	}
+      }
+      
+      else if ( dist == 2 ) {
+        vector<int> closed(nelec, 0);
+        vector<int> open(norbs-nelec,0);
+        Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); ds.push_back(0); 
+	cs.push_back(0); ds.push_back(0); 
+	ds[3]=ds[1]; ds[2]=ds[0]; //Keep notation
+
+	for (int i=0; i<nelec; i++){
+	  cs[2]=closed[i]; ds[1]=closed[i]; 
+	  if (closed[i]==cs[0] || closed[i]==cs[1]) continue;
+	  if (closed[i]==ds[3] || closed[i]==ds[2]) continue;
+
+	  for (int j=0; j<i; j++) {
+	    cs[3]=closed[i]; ds[0]=closed[j];
+	    if (closed[j]==cs[0] || closed[j]==cs[1]) continue;
+	    if (closed[j]==ds[3] || closed[j]==ds[2]) continue; 
+
+	    double sgn = 1.0;
+	    Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
+	    popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	  }
+	}
+
+      }
+
+      else if ( dist == 1 ) {
+        vector<int> closed(nelec, 0);
+        vector<int> open(norbs-nelec,0);
+        Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); ds.push_back(0); 
+	cs.push_back(0); ds.push_back(0);
+	cs.push_back(0); ds.push_back(0); 
+
+	ds[3]=ds[0]; //Keep notation
+
+	for (int i=0; i<nelec; i++){
+	  cs[1]=closed[i]; ds[2]=closed[i]; 
+	  if (closed[i]==cs[0] || closed[i]==ds[3]) continue;
+
+	  for (int j=0; j<i; j++) {
+	    cs[2]=closed[i]; ds[1]=closed[j];
+	    if (closed[j]==cs[0] || closed[j]==ds[3]) continue;
+
+	    for (int k=0; k<j; k++) {
+	      cs[3]=closed[k]; ds[0]=closed[k];
+	      if (closed[k]==cs[0] || closed[k]==ds[3]) continue;
+
+	      double sgn = 1.0;
+	      Dets[k].parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
+	      popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	    }
+	  }
+	}
+      }
+
+      else if ( dist == 0 ) {
+        vector<int> closed(nelec, 0);
+        vector<int> open(norbs-nelec,0);
+        Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); ds.push_back(0); 
+	cs.push_back(0); ds.push_back(0); 
+	cs.push_back(0); ds.push_back(0);
+	cs.push_back(0); ds.push_back(0); 
+
+	for (int i=0; i<nelec; i++){
+	  cs[0]=closed[i]; ds[3]=closed[i]; 	  
+	  for (int j=0; j<i; j++) {
+	    cs[1]=closed[i]; ds[2]=closed[j];	   
+	    for (int k=0; k<j; k++) {
+	      cs[2]=closed[k]; ds[1]=closed[k];
+	      for (int l=0; l<k; l++ ){
+		cs[3]=closed[l]; ds[0]=closed[l];
+		popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	      }
+	    }
+	  }
+	}
+      }
+
+      // Pop. Spatial 4RDM
+      for ( int c0=0; c0 < nSOs; c0++ )
+	for ( int c1=0; c1 < nSOs; c1++ )
+	  for ( int c2=0; c2 < nSOs; c2++ )
+	    for ( int c3=0; c3 < nSOs; c3++ )
+	      for ( int d0=0; d0 < nSOs; d0++ )
+		for ( int d1=0; d1 < nSOs; d1++ )
+		  for ( int d2=0; d2 < nSOs; d2++ ) 
+		    for ( int d3=0; d3 < nSOs; d3++ ) 
+		      for ( int i=0; i < 2; i++ )
+			for ( int j=0; j < 2; j++ )
+			  for ( int k=0; k < 2; k++ )
+			    for ( int l=0; l < 2; l++ ) {
+			      
+			      int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k, c3p=2*c3+l;
+			      int d0p=2*d0+l, d1p=2*d1+k, d2p=2*d2+j, d3p=2*d3+i;
+			      
+			      // Gamma = i j k l m n
+			      s4RDM(gen4Idx(c0,c1,c2,c3,nSOs),
+				    gen4Idx(d0,d1,d2,d3,nSOs)) +=
+				fourRDM(gen4Idx(c0p,c1p,c2p,c3p,norbs),
+					gen4Idx(d0p,d1p,d2p,d3p,norbs));
+			    }
+    }
+  }
+  return;
+}
