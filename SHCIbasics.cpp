@@ -166,11 +166,12 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	for (int i=0; i<size; i++)
 	  all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
 	
-	vector<Determinant> atoaDets(Det->size());
-	vector<CItype> atoaNum(Det->size());
-	vector<CItype> atoaNum2(Det->size());
-	vector<double> atoaE(Det->size());
-	vector<char> atoaPresent(Det->size());
+	size_t dsize = Det->size() == 0 ? 1 : Det->size();
+	vector<Determinant> atoaDets(dsize);
+	vector<CItype> atoaNum(dsize);
+	vector<CItype> atoaNum2(dsize);
+	vector<double> atoaE(dsize);
+	vector<char> atoaPresent(dsize);
 	
 	#ifndef SERIAL
 	vector<size_t> all_to_allCopy = all_to_all;
@@ -217,6 +218,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 	  recvSize += all_to_all[i*size+rank];
 	}
 	
+	recvSize =  recvSize == 0 ? 1 : recvSize;
 	Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
 	Num2->resize(recvSize), present->resize(recvSize);
 	
@@ -450,15 +452,16 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
     for (int i=0; i<size; i++)
       all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
     
-    vector<Determinant> atoaDets(Det->size());
-    vector<CItype> atoaNum(Det->size());
-    vector<double> atoaE(Det->size());
+    size_t dsize = Det->size() == 0 ? 1 : Det->size();
+    vector<Determinant> atoaDets(dsize);
+    vector<CItype> atoaNum(dsize);
+    vector<double> atoaE(dsize);
     vector<int > atoaVarIndices;
     vector<size_t > atoaOrbDiff;
     if (schd.DoRDM || schd.doResponse) {
-      atoaVarIndices.resize(Det->size()); atoaOrbDiff.resize(Det->size());
+      atoaVarIndices.resize(dsize); atoaOrbDiff.resize(dsize);
     }
-    
+
 #ifndef SERIAL
     vector<size_t> all_to_allCopy = all_to_all;
     MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -505,6 +508,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       recvSize += all_to_all[i*size+rank];
     }
     
+    recvSize =  recvSize == 0 ? 1 : recvSize;
     Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
     if (schd.DoRDM||schd.doResponse) {
       var_indices->resize(recvSize);
@@ -846,18 +850,19 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     
     for (int i=0; i<SortedDetsSize; i++) {
       if (i%(commsize) != commrank) continue;
+      /*
       SHCIgetdeterminants::getDeterminantsVariationalApprox(SHMDets[i], 
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
 							    *uniqueDEH.Det,
 							    schd,0, nelec, SortedDets, SortedDetsSize);
-      /*
+      */
+
       SHCIgetdeterminants::getDeterminantsVariational(SHMDets[i], 
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
 							    *uniqueDEH.Det,
 							    schd,0, nelec);
-      */
     }
 
     if (Determinant::Trev != 0) {
@@ -870,6 +875,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     if (Determinant::Trev != 0) 
       uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
+    uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
 
 #ifndef SERIAL
     for (int level = 0; level <ceil(log2(nprocs)); level++) {
@@ -964,6 +970,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
 #ifdef Complex
       SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
 						sparseHam.connections, sparseHam.orbDifference,
@@ -1001,6 +1008,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, true);
     else
       E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
+
 
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);

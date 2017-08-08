@@ -700,6 +700,10 @@ void SHCImakeHamiltonian::updateSOCconnections(Determinant *Dets, int prevSize, 
   size_t Norbs = norbs;
 
   int nprocs= commsize, proc = commrank;
+  map<Determinant, int> SortedDetsMap;
+  for (int i=0; i<DetsSize; i++) {
+    SortedDetsMap[Dets[i]] = i;
+  }
 
   for (int x=prevSize; x<DetsSize; x++) {
     if (x%(nprocs) != proc) continue;
@@ -727,16 +731,17 @@ void SHCImakeHamiltonian::updateSOCconnections(Determinant *Dets, int prevSize, 
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
       
       
-      //map<Determinant, int>::iterator it = SortedDets.find(di);
-      Determinant* it = std::lower_bound(SortedDets, SortedDets+DetsSize, di);
-      if (it != SortedDets+DetsSize ) {
-	int y = it - SortedDets;
+      map<Determinant, int>::iterator it = SortedDetsMap.find(di);
+      if (it != SortedDetsMap.end() ) {
+	int y = it->second;
 	if (y < x) {
-	  connections[x/nprocs].push_back(y);
-	  Helements[x/nprocs].push_back(integral*sgn);
-	  if (orbDifference.size() != 0) orbDifference[x/nprocs].push_back(open[a]*norbs+closed[i]);
+	  connections[x/commsize].push_back(y);
+	  Helements[x/commsize].push_back(integral*sgn);
+	  //if (DoRDM)
+	  //orbDifference[x/commsize].push_back(open[a]*norbs+closed[i]);
 	}
       }
+
     }
   }
 }
