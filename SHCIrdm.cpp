@@ -657,6 +657,16 @@ void fillSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
   vector<double> pars (6); pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
   double par;
 
+  bool b1 = cs[2]/2==cs[1]/2 && ds[0]/2==ds[1]/2; 
+  bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==1;
+  if ( b1 && b2 ){
+    cout << cs[0]<<" "<<cs[1]<<" "<<cs[2]<<" ";
+    cout << ds[0]<<" "<<ds[1]<<" "<<ds[2]<<" ";
+    cout << " " << value << endl;
+  }
+
+
+
   do {
     do {
       par = pars[ctr/6]*pars[ctr%6];
@@ -821,10 +831,10 @@ void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
   do {
     do {
       par = pars[ctr/24]*pars[ctr%24];
-      if (b1 && b2) {
+      /*if (b1 && b2) {
 	cout << cs[cI[0]]<<cs[cI[1]]<<cs[cI[2]]<<cs[cI[3]];
 	cout << ds[dI[0]]<<ds[dI[1]]<<ds[dI[2]]<<ds[dI[3]] << " " << par<< endl;
-      }
+      }*/
 
       fourRDM( gen4Idx(cs[cI[0]],cs[cI[1]],cs[cI[2]],cs[cI[3]], norbs),
 		gen4Idx(ds[dI[0]],ds[dI[1]],ds[dI[2]],ds[dI[3]], norbs) ) += par*value;
