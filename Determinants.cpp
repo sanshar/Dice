@@ -173,8 +173,7 @@ void Determinant::parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1,
   setocc(d2,false); setocc(c1,true);
 
   parity(min(d1, c2), max(d1,c2), sgn);
-  setocc(d1,false); setof(c2,true);
-
+  setocc(d1,false); setocc(c2,true);
   parity(min(d0,c3),max(d0,c3), sgn);
 
   setocc(c2,false); setocc(d1,true);
