@@ -65,7 +65,10 @@ private:
       & Trev                                    \
       & algorithm                               \
       & outputlevel                             \
-      & printBestDeterminants;
+      & printBestDeterminants                   \
+      & ncore                                   \
+      & nact                                    \
+      & doLCC ;
 
   }
 
@@ -110,6 +113,9 @@ public:
   int algorithm;
   int outputlevel;
   int printBestDeterminants;
+  int ncore;
+  int nact;
+  bool doLCC;
 };
 
 #endif

@@ -299,6 +299,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
+    if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
@@ -327,6 +329,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
+
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
@@ -337,6 +341,9 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     for (size_t index=start; index<end; index++) {
       if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+
+      if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) 
+	continue;
 
       if (!(d.getocc(a) || d.getocc(b))) {
 	dets.push_back(d);
@@ -364,6 +371,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
+    if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     
@@ -397,6 +405,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
     int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
+
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
@@ -412,6 +422,9 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       //i, a, 
       //j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
+
+      if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) 
+	continue;
 
       if (!(d.getocc(a) || d.getocc(b))) {
 	Determinant di = d;

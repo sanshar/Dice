@@ -38,6 +38,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
 #include "SHCIshm.h"
+#include "LCC.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -134,6 +135,16 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
+  if (schd.doLCC) {
+    //no nact was given in the input file
+    if (schd.nact == 1000000) 
+      schd.nact = norbs - schd.ncore;
+    else if (schd.nact+schd.ncore > norbs) {
+      pout << "core + active orbitals = "<<schd.nact+schd.ncore<<
+	" greater than orbitals "<<norbs<<endl;
+      exit(0);
+    }
+  }
 
   //setup the lexical table for the determinants
   norbs *=2;
@@ -340,7 +351,14 @@ int main(int argc, char* argv[]) {
     return 0;
 #endif
   }
-
+  else if (schd.doLCC) {
+    for (int root = 0; root<schd.nroots; root++) {
+      CItype *ciroot;
+      SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
+      double LCC2 = LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, 
+			  I2HBSHM, irrep, schd, coreE, nelec, root);
+    }    
+  }
   else if (!schd.stochastic && schd.nblocks == 1) {
     double ePT = 0.0;
     std::string efile;
