@@ -818,7 +818,7 @@ void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
   double pars[] = {1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1};
   double par= 1.0;
   bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
-  bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==5;
+  bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
   if ( b1 && b2 ){
     cout << cs[0]<<" "<<cs[1]<<" "<<cs[2]<<" "<<cs[3]<<" ";
     cout << ds[0]<<" "<<ds[1]<<" "<<ds[2]<<" "<<ds[3];
@@ -868,6 +868,17 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       getUniqueIndices( Dets[b], Dets[k], cs, ds );
 
       if ( dist == 4 ) {
+
+	bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
+	bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
+	if ( b1 && b2 ){
+	  //cout <<"Bra: "<< Dets[b] <<"    Ket:  "<<Dets[k]  << conj(cibra(b,0));
+	  //cout <<"    "<< ciket(k,0) <<endl;
+	  cout << "DIST: "<< dist << "   ";
+	}
+	
+
+
 	double sgn = 1.0;
 	Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
 	popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
@@ -911,11 +922,12 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    if (closed[x]==cs[0] || closed[x]==cs[1]) continue;
 	    if (closed[x]==ds[3] || closed[x]==ds[2]) continue; 
 
-	    /*bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
-	    bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==5;
+	    bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
+	    bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
 	    if ( b1 && b2 ){
-	      cout <<"Bra: "<< Dets[b] <<"    Ket:  "<<Dets[k]  << conj(cibra(b,0)) <<"    "<< ciket(k,0) <<endl;
-	    }*/
+	      //cout <<"Bra: "<< Dets[b] <<"    Ket:  "<<Dets[k]  << conj(cibra(b,0)) <<"    "<< ciket(k,0) <<endl;
+	      cout << "DIST: "<< dist << "   ";
+	    }
 
 	    double sgn = 1.0;
 	    Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
@@ -998,7 +1010,7 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			  
 			  int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k, c3p=2*c3+l;
 			  int d0p=2*d0+l, d1p=2*d1+k, d2p=2*d2+j, d3p=2*d3+i;
-			  if ( c0==1 && c1==1 && c2==0&&c3==0 && d0==0&&d1==0&&d2==5&&d3==5) {
+			  if ( c0==1 && c1==1 && c2==0&&c3==0 && d0==0&&d1==0&&d2==4&&d3==4) {
 			    cout << c0p<<" "<<c1p<<" "<<c2p<<" "<<c3p<<" ";
 			    cout << d0p<<" "<<d1p<<" "<<d2p<<" "<<d3p<<"   ";
 			    cout << fourRDM(gen4Idx(c0p,c1p,c2p,c3p,norbs),
