@@ -71,6 +71,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.algorithm = 0;
   schd.outputlevel = 0;
   schd.printBestDeterminants = 0;
+  schd.extrapolate = false;
+  schd.extrapolationFactor = 2.0/3.0;
 
   while (dump.good()) {
 
@@ -135,6 +137,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "outputlevel"))
       schd.outputlevel = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "extrapolate")) {
+      schd.extrapolate = true;
+      if (tok.size() == 2)
+	schd.extrapolationFactor = atoi(tok[1].c_str());
+    }
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
     else if (boost::iequals(ArgName, "algorithm"))

@@ -802,25 +802,27 @@ namespace SHCISortMpiUtils {
 
 
   void StitchDEH::RemoveOnlyDetsPresentIn(Determinant *SortedDets, int DetsSize) {
-    int vecid = 0;
+    int vecid = 0, i=0;
     std::vector<Determinant>& Detcopy = *Det;
 
     size_t uniqueSize = 0;
-    for (size_t i=0; i<Detcopy.size();) {
+    while (i <Detcopy.size() && vecid < DetsSize) {
       if (Detcopy[i] < SortedDets[vecid]) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	i++; uniqueSize++;
       }
-      else if (SortedDets[vecid] < Detcopy[i] && vecid != DetsSize)
+      else if (SortedDets[vecid] < Detcopy[i])
 	vecid++;
-      else if (SortedDets[vecid] < Detcopy[i] && vecid == DetsSize) {
-	Det->operator[](uniqueSize) = Detcopy[i];
-	i++; uniqueSize++;
-      }
       else {
 	vecid++; i++;
       }
     }
+
+    while (i <Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      i++; uniqueSize++;
+    }
+
     Det->resize(uniqueSize); 
   }
 

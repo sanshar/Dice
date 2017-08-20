@@ -58,6 +58,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   if (schd.epsilon2 < 999)
     EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
 
+
   schd.epsilon2 = epsilon2;
 
   int norbs = Determinant::norbs;
@@ -850,19 +851,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     
     for (int i=0; i<SortedDetsSize; i++) {
       if (i%(commsize) != commrank) continue;
-      /*
+#ifndef Complex
       SHCIgetdeterminants::getDeterminantsVariationalApprox(SHMDets[i], 
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
 							    *uniqueDEH.Det,
 							    schd,0, nelec, SortedDets, SortedDetsSize);
-      */
 
+#else
       SHCIgetdeterminants::getDeterminantsVariational(SHMDets[i], 
 							    epsilon1/abs(cMaxSHM[i]), cMaxSHM[i], zero,
 							    I1, I2, I2HB, irrep, coreE, E0[0],
 							    *uniqueDEH.Det,
 							    schd,0, nelec);
+#endif
     }
 
     if (Determinant::Trev != 0) {
@@ -875,7 +877,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     if (Determinant::Trev != 0) 
       uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
+#ifdef Complex
     uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
+#endif
 
 #ifndef SERIAL
     for (int level = 0; level <ceil(log2(nprocs)); level++) {

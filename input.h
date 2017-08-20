@@ -65,7 +65,9 @@ private:
       & Trev                                    \
       & algorithm                               \
       & outputlevel                             \
-      & printBestDeterminants;
+      & printBestDeterminants                   \
+      & extrapolate                             \
+      & extrapolationFactor;
 
   }
 
@@ -110,6 +112,8 @@ public:
   int algorithm;
   int outputlevel;
   int printBestDeterminants;
+  bool extrapolate;
+  double extrapolationFactor;
 };
 
 #endif
