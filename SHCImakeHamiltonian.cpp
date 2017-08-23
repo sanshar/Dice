@@ -10,6 +10,7 @@ This program is free software: you can redistribute it and/or modify it under th
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "time.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -115,7 +116,6 @@ void SHCImakeHamiltonian::SparseHam::makeFromHelper(HamHelpers2& helpers2, Deter
 					   diskio, *this, Norbs,
 					   I1, I2, coreE, 
 					   DoRDM);
-
 }
 
 void SHCImakeHamiltonian::HamHelpers2::PopulateHelpers ( Determinant* SHMDets,
