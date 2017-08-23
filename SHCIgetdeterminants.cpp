@@ -360,13 +360,14 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
   d.getOpenClosed(open, closed);
   int nclosed = nelec;
   int nopen = norbs-nclosed;
+  int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-    
+
     if (fabs(integral) >epsilon) 
       if (closed[i]%2 == open[a]%2) 
 	integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
@@ -376,6 +377,9 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       Determinant di = d;
       di.setocc(open[a], true); 
       di.setocc(closed[i],false);
+
+      if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	dets.push_back(di);
 #ifdef Complex
@@ -419,6 +423,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
 	di.setocc(b, true);
 	di.setocc(closed[i],false); 
 	di.setocc(closed[j], false);
+
+	if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
 	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	  dets.push_back(di);
 

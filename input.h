@@ -67,7 +67,9 @@ private:
       & outputlevel                             \
       & printBestDeterminants                   \
       & extrapolate                             \
-      & extrapolationFactor;
+      & extrapolationFactor                     \
+      & enforceSeniority                        \
+      & maxSeniority;
 
   }
 
@@ -114,6 +116,8 @@ public:
   int printBestDeterminants;
   bool extrapolate;
   double extrapolationFactor;
+  bool enforceSeniority;
+  int maxSeniority;
 };
 
 #endif

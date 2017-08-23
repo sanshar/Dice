@@ -635,7 +635,7 @@ void unpackTrevState(vector<Determinant>& Dets, int &DetsSize, vector<MatrixXx>&
   boost::mpi::communicator world;
   int oldLen = Dets.size();
   vector<int> partnerLocation(oldLen,-1);
-  if(localrank == 0) {
+  if(commrank == 0) {
     if (Determinant::Trev != 0) {
       int numDets = 0;
       for (int i=0; i<DetsSize; i++) {

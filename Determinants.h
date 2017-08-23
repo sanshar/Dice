@@ -254,6 +254,17 @@ class Determinant {
     return false;
   }
 
+  int numUnpairedElectrons() {
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    int unpairedElecs = 0;
+    for (int i=EffDetLen-1; i>=0 ; i--) {
+      unsigned long unpaired = ( ((repr[i]&even)<<1) ^ (repr[i]&odd));
+      unpairedElecs += BitCount(unpaired);
+    }
+    return unpairedElecs;
+  }
+
+
   void flipAlphaBeta() {
     unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=0; i<EffDetLen; i++) 

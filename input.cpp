@@ -73,6 +73,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.printBestDeterminants = 0;
   schd.extrapolate = false;
   schd.extrapolationFactor = 2.0/3.0;
+  schd.enforceSeniority = false;
+  schd.maxSeniority = 10000;
 
   while (dump.good()) {
 
@@ -149,6 +151,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "doresponse"))  {
       schd.doResponse=true;
       schd.responseFile = tok[1];
+    }
+    else if (boost::iequals(ArgName, "maxseniority")) {
+      schd.enforceSeniority = true;
+      if (tok.size() == 1) 
+	schd.maxSeniority = 0;
+      else
+	schd.maxSeniority = atoi(tok[1].c_str());
     }
     else if (boost::iequals(ArgName, "dogtensor"))
       schd.doGtensor=true;
