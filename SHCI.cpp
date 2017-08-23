@@ -10,6 +10,7 @@ This program is free software: you can redistribute it and/or modify it under th
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "time.h"
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -90,6 +91,7 @@ int main(int argc, char* argv[]) {
 
   license();
 
+
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
@@ -97,6 +99,7 @@ int main(int argc, char* argv[]) {
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
   if (commrank == 0) readInput(inputFile, HFoccupied, schd);
+  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("begin");
   if (DetLen%2 == 1) {
     pout << "Change DetLen in global to an even number and recompile."<<endl;
     exit(0);

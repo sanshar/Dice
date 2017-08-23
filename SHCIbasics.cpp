@@ -9,6 +9,7 @@ This program is free software: you can redistribute it and/or modify it under th
 You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "time.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -720,6 +721,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   pout << "VARIATIONAL STEP  "<<endl;
   pout << "**************************************************************"<<endl;
 
+  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("start variation");
+
 
   int nroots = ci.size();
   SHCImakeHamiltonian::HamHelpers2 helper2;
@@ -748,9 +751,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   }	
   helper2.MakeSHMHelpers();
 
-  if (schd.DavidsonType != DIRECT)
+  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
+
+  if (schd.DavidsonType != DIRECT) {
     sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-  
+    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("hamiltonian generated");
+  }
 
 
 #ifdef Complex
@@ -955,14 +961,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
     if (commrank == 0 && schd.DavidsonType == DIRECT) 
       printf("New size of determinant space %8i\n", DetsSize);
+
+    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("new dets found");
     
     if (proc == 0) {
       helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
     }	
     helper2.MakeSHMHelpers();
-    if (schd.DavidsonType != DIRECT )
+
+    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
+
+    if (schd.DavidsonType != DIRECT ) {
       sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-    
+      if (schd.outputlevel > 0 && commrank == 0) Time::print_time("hamiltonian generated");
+    }
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
     
     if (localrank == 0) 
@@ -1008,6 +1020,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, true);
     else
       E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
+
+    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
 
 
 #ifndef SERIAL
