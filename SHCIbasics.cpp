@@ -752,6 +752,16 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   }	
   helper2.MakeSHMHelpers();
 
+  if (schd.outputlevel > 1 && commrank == 0) {
+    std::setlocale(LC_NUMERIC, "");
+    printf("AlphaN size: %'zu\nBetaN size: %'zu\n", helper2.AlphaN.size(), helper2.BetaN.size());
+    unsigned long long singleAlphaSize = 0, singleBetaSize = 0;
+    for (const auto& singles : helper2.SinglesFromAlpha) singleAlphaSize += singles.size();
+    for (const auto& singles : helper2.SinglesFromBeta) singleBetaSize += singles.size();
+    printf("SinglesFromAlpha size: %'llu\nSinglesFromBeta size: %'llu\n", singleAlphaSize, singleBetaSize);
+    fflush(stdout);
+  }
+
   if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
 
   if (schd.DavidsonType != DIRECT) {
@@ -972,6 +982,15 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
     }	
     helper2.MakeSHMHelpers();
+
+    if (schd.outputlevel > 1 && commrank == 0) {
+      printf("AlphaN size: %'zu\nBetaN size: %'zu\n", helper2.AlphaN.size(), helper2.BetaN.size());
+      unsigned long long singleAlphaSize = 0, singleBetaSize = 0;
+      for (const auto& singles : helper2.SinglesFromAlpha) singleAlphaSize += singles.size();
+      for (const auto& singles : helper2.SinglesFromBeta) singleBetaSize += singles.size();
+      printf("SinglesFromAlpha size: %'llu\nSinglesFromBeta size: %'llu\n", singleAlphaSize, singleBetaSize);
+      fflush(stdout);
+    }
 
     if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
 
