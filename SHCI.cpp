@@ -363,23 +363,23 @@ int main(int argc, char* argv[]) {
 
   }
   else if (schd.SampleN != -1 && schd.singleList){
-    double ePT = 0.0;
+    vector<double> ePT (schd.nroots,0.0);
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for (int root=0; root<schd.nroots;root++) {
       CItype *ciroot;
       SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
-      ePT = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
-      ePT += E0[root];
+      ePT[root] = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
+      ePT[root] += E0[root];
       //pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
-      if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
+      if (commrank == 0) fwrite( &ePT[root], 1, sizeof(double), f);
     }
     fclose(f);
 
     if (schd.doSOC) {
       for (int j=0; j<E0.size(); j++)
-	pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
+	pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(ePT[j]) %( (ePT[j]-ePT[0])*219470));
     }
   }
   else {

@@ -43,14 +43,24 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
+
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
+
 
     if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator.push_back(integral*ci1);
       energy.push_back(E);
@@ -550,22 +560,31 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
 
 
     if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator1A.push_back(integral*ci1);
 #ifndef Complex
       numerator2A.push_back( integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-      numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
+      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+      //numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
 #endif
       if (fabs(integral) >epsilonLarge)
 	present.push_back(true);
@@ -609,7 +628,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 #ifndef Complex
 	numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-	numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
+	numerator2A.push_back( pow( abs(integrals[index]*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+	//numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
 	//numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
 
