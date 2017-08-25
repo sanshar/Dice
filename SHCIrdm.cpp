@@ -649,20 +649,14 @@ int genIdx( int& a, int& b, int& c, size_t& norbs ) {
 } 
 
 
-void fillSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
+void popSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
 		   size_t& norbs, MatrixXx& threeRDM ) {
   // d2->c0    d1->c1    d2->c0
   int cI[] = {0,1,2}; int dI[] = {0,1,2}; 
   int ctr = 0;
-  vector<double> pars (6); pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
+  vector<double> pars (6);
+  pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
   double par;
-  bool b1 = cs[0]/2==cs[1]/2 && ds[2]/2==ds[1]/2; 
-  bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==1;
-  /*if ( b1 && b2 ){
-    cout << cs[0]<<" "<<cs[1]<<" "<<cs[2]<<" ";
-    cout << ds[0]<<" "<<ds[1]<<" "<<ds[2]<<" ";
-    cout << " " << value << endl;
-    }*/
 
   do {
     do {
@@ -692,8 +686,6 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2; size_t nSOrbs = norbs/2;
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
-  double d6 = 1/6.0; // 3 factorial fraction
-
 
   for (int b=0; b < Dets.size(); b++ ) {
     for (int k=0; k < Dets.size(); k++ ) {
@@ -707,7 +699,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       if ( dist == 3 ) {
 	double sgn = 1.0;
         Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
-	fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
       }
 
       else if ( dist == 2 ) {
@@ -720,17 +712,17 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	cs.push_back(0); ds.push_back(0); 
 	ds[2] = ds[1]; ds[1] = ds[0]; 
 
-        for ( int i=0; i < nelec; i++ ) {
-          cs[2]=closed[i]; ds[0]=closed[i];
-	  if ( closed[i] == ds[1] || closed[i] == ds[2] ) continue;
-	  if ( closed[i] == cs[0] || closed[i] == cs[1] ) continue; // TODO CHECK W/ SS
+        for ( int x=0; x < nelec; x++ ) {
+          cs[2]=closed[x]; ds[0]=closed[x];
+	  if ( closed[x] == ds[1] || closed[x] == ds[2] ) continue;
+	  if ( closed[x] == cs[0] || closed[x] == cs[1] ) continue; // TODO CHECK W/ SS
 	  
 	  // Gamma = c0 c1 c2 d0 d1 d2
 	  double sgn = 1.0;
 	  Dets[k].parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD	  
 	  
 	  // TODO Make spinRDM optional
-	  fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	  popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	}
       }
     
@@ -743,19 +735,19 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	ds.push_back(0); ds.push_back(0);
 	ds[2] = ds[0];
 	
-	for ( int i=0; i<nelec; i++ ) {
-	  cs[1] = closed[i]; ds[1] = closed[i];
-	  if ( closed[i] == cs[0] || closed[i] == ds[2] ) continue;
-	  for ( int j=0; j<i; j++ ) {
-	    cs[2] = closed[j]; ds[0] = closed[j];
-	    if ( closed[j] == ds[1] || closed[j] == ds[2] ) continue;
-	    if ( closed[j] == cs[0] || closed[j] == cs[1] ) continue; // TODO CHECK W/ SS
+	for ( int x=0; x<nelec; x++ ) {
+	  cs[1] = closed[x]; ds[1] = closed[x];
+	  if ( closed[x] == cs[0] || closed[x] == ds[2] ) continue;
+	  for ( int y=0; y<x; y++ ) {
+	    cs[2] = closed[y]; ds[0] = closed[y];
+	    if ( closed[y] == ds[1] || closed[y] == ds[2] ) continue;
+	    if ( closed[y] == cs[0] || closed[y] == cs[1] ) continue; // TODO CHECK W/ SS
 
 	    // Gamma = c0 c1 c2 d0 d1 d2
 	    double sgn = 1.0;
 	    Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
 
-	    fillSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	    popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	  }
 	}
       }
@@ -766,14 +758,14 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	Dets[k].getOpenClosed(open, closed);
 	cs.push_back(0); cs.push_back(0); cs.push_back(0);
 	ds.push_back(0); ds.push_back(0); ds.push_back(0);
-	for ( int m=0; m < nelec; m++ ) {
-	  cs[0]=closed[m]; ds[2]=closed[m];
-	  for ( int n=0; n < m; n++ ) {
-	    cs[1]=closed[n]; ds[1]=closed[n];
-	    for ( int o=0; o < n; o++ ) {
-	      cs[2]=closed[o]; ds[0]=closed[o];	      
+	for ( int x=0; x < nelec; x++ ) {
+	  cs[0]=closed[x]; ds[2]=closed[x];
+	  for ( int y=0; y < x; y++ ) {
+	    cs[1]=closed[y]; ds[1]=closed[y];
+	    for ( int z=0; z < y; z++ ) {
+	      cs[2]=closed[z]; ds[0]=closed[z];	      
 
-	      fillSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	      popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 
 	    }	
 	  }
@@ -817,22 +809,10 @@ void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
   int ctr = 0;
   double pars[] = {1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1};
   double par= 1.0;
-  bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
-  bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
-  if ( b1 && b2 ){
-    cout << cs[0]<<" "<<cs[1]<<" "<<cs[2]<<" "<<cs[3]<<" ";
-    cout << ds[0]<<" "<<ds[1]<<" "<<ds[2]<<" "<<ds[3];
-    cout << "   value: " << value << endl;
-  }
 
   do {
     do {
       par = pars[ctr/24]*pars[ctr%24];
-      /*if (b1 && b2) {
-	cout << cs[cI[0]]<<cs[cI[1]]<<cs[cI[2]]<<cs[cI[3]];
-	cout << ds[dI[0]]<<ds[dI[1]]<<ds[dI[2]]<<ds[dI[3]] << " " << par<< endl;
-      }*/
-
       fourRDM( gen4Idx(cs[cI[0]],cs[cI[1]],cs[cI[2]],cs[cI[3]], norbs),
 		gen4Idx(ds[dI[0]],ds[dI[1]],ds[dI[2]],ds[dI[3]], norbs) ) += par*value;
       ctr++;
@@ -840,7 +820,6 @@ void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
   } while ( next_permutation( cI, cI+4 ) );
   return;
 }
-
 
 void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			    MatrixXx& ciket, int nelec, schedule& schd,
@@ -868,17 +847,6 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       getUniqueIndices( Dets[b], Dets[k], cs, ds );
 
       if ( dist == 4 ) {
-
-	bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
-	bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
-	if ( b1 && b2 ){
-	  //cout <<"Bra: "<< Dets[b] <<"    Ket:  "<<Dets[k]  << conj(cibra(b,0));
-	  //cout <<"    "<< ciket(k,0) <<endl;
-	  cout << "DIST: "<< dist << "   ";
-	}
-	
-
-
 	double sgn = 1.0;
 	Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
 	popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
@@ -921,13 +889,6 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    cs[3]=closed[x]; ds[0]=closed[x];
 	    if (closed[x]==cs[0] || closed[x]==cs[1]) continue;
 	    if (closed[x]==ds[3] || closed[x]==ds[2]) continue; 
-
-	    bool b1 = cs[0]/2==cs[1]/2 && cs[2]/2==cs[3]/2 && ds[0]/2==ds[1]/2 && ds[2]/2==ds[3]/2; 
-	    bool b2 = cs[0]/2==1 && cs[2]/2==0 && ds[0]/2==0 && ds[2]/2==4;
-	    if ( b1 && b2 ){
-	      //cout <<"Bra: "<< Dets[b] <<"    Ket:  "<<Dets[k]  << conj(cibra(b,0)) <<"    "<< ciket(k,0) <<endl;
-	      cout << "DIST: "<< dist << "   ";
-	    }
 
 	    double sgn = 1.0;
 	    Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
@@ -1010,12 +971,7 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			  
 			  int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k, c3p=2*c3+l;
 			  int d0p=2*d0+l, d1p=2*d1+k, d2p=2*d2+j, d3p=2*d3+i;
-			  if ( c0==1 && c1==1 && c2==0&&c3==0 && d0==0&&d1==0&&d2==4&&d3==4) {
-			    cout << c0p<<" "<<c1p<<" "<<c2p<<" "<<c3p<<" ";
-			    cout << d0p<<" "<<d1p<<" "<<d2p<<" "<<d3p<<"   ";
-			    cout << fourRDM(gen4Idx(c0p,c1p,c2p,c3p,norbs),
-					    gen4Idx(d0p,d1p,d2p,d3p,norbs)) << endl;
-			  }
+
 			  // Gamma = c0 c1 c2 c3 d0 d1 d2 d3
 			  s4RDM(gen4Idx(c0,c1,c2,c3,nSOs),
 				gen4Idx(d0,d1,d2,d3,nSOs)) +=
