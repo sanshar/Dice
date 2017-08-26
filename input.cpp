@@ -75,6 +75,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.extrapolationFactor = 2.0/3.0;
   schd.enforceSeniority = false;
   schd.maxSeniority = 10000;
+  schd.ncore = 0;
+  //the ridiculously large number of active spacce orbitals
+  schd.nact = 1000000;
+  schd.doLCC = false;
 
   while (dump.good()) {
 
@@ -125,8 +129,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	index++;
       }
     }
+    else if (boost::iequals(ArgName, "nact"))
+      schd.nact = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "ncore"))
+      schd.ncore = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "noio"))
       schd.io=false;
+    else if (boost::iequals(ArgName, "dolcc"))
+      schd.doLCC=true;
     else if (boost::iequals(ArgName, "io"))
       schd.io=true;
     else if (boost::iequals(ArgName, "directdavidson"))

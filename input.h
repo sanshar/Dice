@@ -70,6 +70,9 @@ private:
       & extrapolationFactor                     \
       & enforceSeniority                        \
       & maxSeniority;
+      & ncore                                   \
+      & nact                                    \
+      & doLCC ;
 
   }
 
@@ -118,6 +121,9 @@ public:
   double extrapolationFactor;
   bool enforceSeniority;
   int maxSeniority;
+  int ncore;
+  int nact;
+  bool doLCC;
 };
 
 #endif
