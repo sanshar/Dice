@@ -498,7 +498,11 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator1.push_back(integral*ci1);
 #ifndef Complex

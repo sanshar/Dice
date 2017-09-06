@@ -358,8 +358,8 @@ int main(int argc, char* argv[]) {
     for (int root = 0; root<schd.nroots; root++) {
       CItype *ciroot;
       SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
-      double LCC2 = LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, 
-			  I2HBSHM, irrep, schd, coreE, nelec, root);
+      //double LCC2 = LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, 
+      //I2HBSHM, irrep, schd, coreE, nelec, root);
     }    
   }
   else if (!schd.stochastic && schd.nblocks == 1) {

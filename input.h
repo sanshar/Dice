@@ -69,7 +69,7 @@ private:
       & extrapolate                             \
       & extrapolationFactor                     \
       & enforceSeniority                        \
-      & maxSeniority;
+      & maxSeniority                            \
       & ncore                                   \
       & nact                                    \
       & doLCC ;

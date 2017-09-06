@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License along with thi
 #endif
 
 typedef unsigned short ushort;
-const int DetLen = 4;
+const int DetLen = 6;
 extern double startofCalc;
 double getTime();
 
