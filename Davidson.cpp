@@ -244,8 +244,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 	//return eroots;
       }
 
-      if (error < tol || numIter >400*x0.size()) {
-	if (numIter >400*x0.size()) {
+      if (error < tol || numIter >800*x0.size()) {
+	if (numIter >800*x0.size()) {
 	  cout << "Davidson calculation Didnt converge"<<endl;
 	  exit(0);
 	  continueOrReturn = 2;
