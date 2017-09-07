@@ -954,7 +954,7 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       }
     }
   }
-  cout << "Populating spatial 4-RDM" << endl; // TODO
+  //cout << "Populating spatial 4-RDM" << endl; // TODO
   // Pop. Spatial 4RDM
   for ( int c0=0; c0 < nSOs; c0++ )
     for ( int c1=0; c1 < nSOs; c1++ )

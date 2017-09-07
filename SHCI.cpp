@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
 		// Guess the lowest energy det with given symmetry from one body integrals.
 		molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
 		  HFoccupied.at(d), tempDets.at(d));
-		cout << tempDets[d] << " Est. Det. Energy: " << tempDets.at(d).Energy(I1,I2,coreE) << "\n\n"; // TODO
+		if (mpigetrank() == 0 ) cout << tempDets[d] << " Est. Det. Energy: " << tempDets.at(d).Energy(I1,I2,coreE) << "\n\n"; // TODO
 
 		// Generate list of connected determinants to guess determinant.
 		// TODO This may be unstable, check for alternatives
@@ -213,21 +213,24 @@ int main(int argc, char* argv[]) {
 		// Check all connected and find lowest energy.
 		for ( int cd = 0; cd < tempDets.size(); cd++ ) {	
 			if ( tempDets.at(d).connected( tempDets.at(cd) ) ) {
-        if ( abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) == schd.spin ) {
+			  if ( abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) == schd.spin ) {
           
-          char repArray[tempDets.at(cd).norbs];
-          tempDets.at(cd).getRepArray(repArray);
-				  
-          if ( Dets.at(d).Energy(I1,I2,coreE) >
-				    tempDets.at(cd).Energy(I1,I2,coreE) &&
-            ( molSym.getSymmetry(repArray,irrep) == schd.irrep  )) {
-				    Dets.at(d) = tempDets.at(cd);
-				  }
-        }
+			    char repArray[tempDets.at(cd).norbs];
+			    tempDets.at(cd).getRepArray(repArray);
+			    
+			    if ( Dets.at(d).Energy(I1,I2,coreE) >
+				 tempDets.at(cd).Energy(I1,I2,coreE) &&
+				 ( molSym.getSymmetry(repArray,irrep) == schd.irrep  )) {
+			      Dets.at(d) = tempDets.at(cd);
+			    }
+			  }
 			}
 		}
-    cout << Dets[d] << " Final ref. Energy: ";
-    cout << Dets[d].Energy(I1,I2,coreE) << endl << endl;
+
+		if (mpigetrank()==0) {
+		  cout << Dets[d] << " Final ref. Energy: ";
+		  cout << Dets[d].Energy(I1,I2,coreE) << endl << endl;
+		}
 	}
 
 // #endif
