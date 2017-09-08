@@ -318,7 +318,7 @@ int main(int argc, char* argv[]) {
 	pout << "**************************************************************"<<endl;
 
 	// TODO Find permanent home for 3RDM
-	if ( schd.threeRDM ) { 
+	if ( schd.DoThreeRDM ) { 
 	  if (mpigetrank()==0) cout << "Calculating 3-RDM..." << endl;
 	  MatrixXx s3RDM, threeRDM;
 
@@ -328,7 +328,7 @@ int main(int argc, char* argv[]) {
 	  SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
 	}
 
-	if ( schd.fourRDM ) {
+	if ( schd.DoFourRDM ) {
 	  if (mpigetrank()==0) cout << "Calculating 4-RDM..." << endl;
 	  MatrixXx s4RDM, fourRDM;
 

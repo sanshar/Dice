@@ -60,8 +60,8 @@ private:
 		& pointGroup                              \
 		& spin                                    \
 		& irrep                                   \
-		& threeRDM                                \
-		& fourRDM;  
+		& DoThreeRDM                                \
+		& DoFourRDM;  
 	}
 
 public:
@@ -102,8 +102,8 @@ public:
 	string pointGroup;
 	int spin;
 	int irrep;
-        bool threeRDM;
-        bool fourRDM;
+        bool DoThreeRDM;
+        bool DoFourRDM;
 };
 
 #endif
