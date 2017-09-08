@@ -318,20 +318,25 @@ int main(int argc, char* argv[]) {
 	pout << "**************************************************************"<<endl;
 
 	// TODO Find permanent home for 3RDM
-	cout << "Calculating 3- and 4-RDM..." << endl;
-	MatrixXx s3RDM, threeRDM, s4RDM, fourRDM;
-	//		threeRDM.setZero(norbs*(norbs+1)*(norbs+2)/6,
-	//				 norbs*(norbs+1)*(norbs+2)/2); // TODO
-	threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
-	s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
-	SHCIrdm::Evaluate3RDM(Dets,ci[0],ci[0],nelec,schd,0,threeRDM,s3RDM);
-	SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
+	if ( schd.threeRDM ) { 
+	  if (mpigetrank()==0) cout << "Calculating 3-RDM..." << endl;
+	  MatrixXx s3RDM, threeRDM;
 
-	fourRDM.setZero(norbs*norbs*norbs*norbs,norbs*norbs*norbs*norbs);
-	s4RDM.setZero(norbs*norbs*norbs*norbs/16,norbs*norbs*norbs*norbs/16);
-	SHCIrdm::Evaluate4RDM(Dets,ci[0],ci[0],nelec,schd,0,fourRDM,s4RDM);
-	SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
-	
+	  threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
+	  s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
+	  SHCIrdm::Evaluate3RDM(Dets,ci[0],ci[0],nelec,schd,0,threeRDM,s3RDM);
+	  SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
+	}
+
+	if ( schd.fourRDM ) {
+	  if (mpigetrank()==0) cout << "Calculating 4-RDM..." << endl;
+	  MatrixXx s4RDM, fourRDM;
+
+	  fourRDM.setZero(norbs*norbs*norbs*norbs,norbs*norbs*norbs*norbs);
+	  s4RDM.setZero(norbs*norbs*norbs*norbs/16,norbs*norbs*norbs*norbs/16);
+	  SHCIrdm::Evaluate4RDM(Dets,ci[0],ci[0],nelec,schd,0,fourRDM,s4RDM);
+	  SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
+	}
 
 	if (schd.doSOC && !schd.stochastic) { //deterministic SOC calculation
 		pout << "About to perform Perturbation theory"<<endl;

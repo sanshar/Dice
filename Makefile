@@ -1,5 +1,5 @@
 USE_MPI = yes
-USE_INTEL = no
+USE_INTEL = yes
 EIGEN=/projects/jasm3285/eigen
 BOOST=/projects/jasm3285/boost_1_57_0
 

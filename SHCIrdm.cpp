@@ -644,7 +644,7 @@ inline void SHCIrdm::getUniqueIndices( Determinant& bra, Determinant& ket,
 }
 
 
-int genIdx( int& a, int& b, int& c, size_t& norbs ) {
+int genIdx( const int& a, const int& b, const int& c, const size_t& norbs ) {
   return a*norbs*norbs+b*norbs+c;
 } 
 
@@ -669,13 +669,35 @@ void popSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
   return;
 }
 
+void SHCIrdm::popSpatial3RDM( vector<int>& cs, vector<int>& ds, CItype value,
+		   size_t& norbs, MatrixXx& s3RDM ) {
+  // d2->c0    d1->c1    d2->c0
+  int cI[] = {0,1,2}; int dI[] = {0,1,2}; 
+  int ctr = 0;
+  vector<double> pars (6);
+  pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
+  double par;
+
+  do {
+    do {
+      par = pars[ctr/6]*pars[ctr%6];
+      ctr++;
+      if (cs[cI[0]]%2==ds[dI[2]]%2 && cs[cI[1]]%2==ds[dI[1]]%2 && 
+	  cs[cI[2]]%2==ds[dI[0]]%2) {
+	s3RDM( genIdx(cs[cI[0]]/2,cs[cI[1]]/2,cs[cI[2]]/2, norbs/2),
+	       genIdx(ds[dI[0]]/2,ds[dI[1]]/2,ds[dI[2]]/2, norbs/2) ) += par*value;
+      }
+    } while ( next_permutation( dI,dI+3 ) );
+  } while ( next_permutation( cI, cI+3 ) );
+  return;
+}
 
 void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			    MatrixXx& ciket, int nelec, schedule& schd, int root,
 			    MatrixXx & threeRDM, MatrixXx& s3RDM ) {
   /*
      TODO optimize speed and memory
-     TODO make spin 3RDM optional
+     TODO Add second instance of pop*RDM functions that switches cs as ds
   */
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -699,7 +721,10 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       if ( dist == 3 ) {
 	double sgn = 1.0;
         Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
-	popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	if ( schd.DoSpinRDM )
+	  popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+
+	popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);       
       }
 
       else if ( dist == 2 ) {
@@ -722,7 +747,11 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	  Dets[k].parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD	  
 	  
 	  // TODO Make spinRDM optional
-	  popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	  //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);     
+	  if ( schd.DoSpinRDM )
+	    popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+
+	  popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);         
 	}
       }
     
@@ -747,7 +776,11 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    double sgn = 1.0;
 	    Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
 
-	    popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	    //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	    if ( schd.DoSpinRDM )
+	      popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+
+	    popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);       
 	  }
 	}
       }
@@ -765,15 +798,18 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    for ( int z=0; z < y; z++ ) {
 	      cs[2]=closed[z]; ds[0]=closed[z];	      
 
-	      popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
-
+	      //popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	      if ( schd.DoSpinRDM )
+		popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+	      popSpatial3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);       
 	    }	
 	  }
 	}
       }
     }
   }
-
+  // TODO
+  /*
   for ( int c0=0; c0 < nSpatOrbs; c0++ )
     for ( int c1=0; c1 < nSpatOrbs; c1++ )
       for ( int c2=0; c2 < nSpatOrbs; c2++ )
@@ -791,6 +827,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		    s3RDM(genIdx(c0,c1,c2,nSOrbs),genIdx(d0,d1,d2,nSOrbs)) +=
 			  threeRDM(genIdx(c0p,c1p,c2p,norbs),genIdx(d0p,d1p,d2p,norbs));
 		  }
+  */
 }
 
 

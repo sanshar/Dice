@@ -64,6 +64,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	schd.pointGroup = "c1";
 	schd.spin = 0;
 	schd.irrep = 1;
+	schd.threeRDM = false;
+	schd.fourRDM = false;
 	while (dump.good()) {
 
 		std::string
@@ -186,6 +188,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 			schd.spin = atoi(tok[1].c_str());
 		else if ( boost::iequals(ArgName, "irrep") )
 			schd.irrep = atoi(tok[1].c_str());
+		else if ( boost::iequals(ArgName, "threeRDM") )
+		  schd.threeRDM = true;
+		else if ( boost::iequals(ArgName, "fourRDM") )
+		  schd.fourRDM = true;
+		
 		else if (boost::iequals(ArgName, "schedule")) {
 
 			std::getline(dump, Line);

@@ -59,7 +59,9 @@ private:
 		& outputlevel                             \
 		& pointGroup                              \
 		& spin                                    \
-		& irrep;
+		& irrep                                   \
+		& threeRDM                                \
+		& fourRDM;  
 	}
 
 public:
@@ -100,6 +102,8 @@ public:
 	string pointGroup;
 	int spin;
 	int irrep;
+        bool threeRDM;
+        bool fourRDM;
 };
 
 #endif
