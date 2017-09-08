@@ -79,7 +79,7 @@ namespace SHCIrdm {
 		       size_t& norbs, MatrixXx& s3RDM );
 
   void popSpatial4RDM( vector<int>& cs, vector<int>& ds, CItype value,
-		       size_t& norbs, MatrixXx& s4RDM );
+		       int& nSOs, MatrixXx& s4RDM );
 
   void Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 		     MatrixXx& ciket, int nelec, schedule& schd, int root, 

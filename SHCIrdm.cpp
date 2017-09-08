@@ -835,7 +835,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 *** 4-RDM Methods
  */
 
-int gen4Idx(int& a, int& b, int& c, int& d, int& norbs) {
+int gen4Idx(const int& a, const int& b, const int& c, const int& d, int& norbs) {
   return a*norbs*norbs*norbs+b*norbs*norbs+c*norbs+d;
 }
 
@@ -851,7 +851,32 @@ void popSpin4RDM( vector<int>& cs, vector<int>& ds, CItype value, int& norbs,
     do {
       par = pars[ctr/24]*pars[ctr%24];
       fourRDM( gen4Idx(cs[cI[0]],cs[cI[1]],cs[cI[2]],cs[cI[3]], norbs),
-		gen4Idx(ds[dI[0]],ds[dI[1]],ds[dI[2]],ds[dI[3]], norbs) ) += par*value;
+		gen4Idx(ds[dI[0]],ds[dI[1]],
+			ds[dI[2]],ds[dI[3]], norbs) ) += par*value;
+      ctr++;
+    } while ( next_permutation( dI,dI+4 ) );
+  } while ( next_permutation( cI, cI+4 ) );
+  return;
+}
+
+void SHCIrdm::popSpatial4RDM( vector<int>& cs, vector<int>& ds, CItype value, 
+			      int& nSOs, MatrixXx& s4RDM ){
+
+  int cI[] = {0,1,2,3}; int dI[] = {0,1,2,3}; 
+  int ctr = 0;
+  double pars[] = {1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1};
+  double par= 1.0;
+
+  do {
+    do {
+      par = pars[ctr/24]*pars[ctr%24];
+      if (cs[cI[0]]%2==ds[dI[3]]%2 && cs[cI[1]]%2==ds[dI[2]]%2 && 
+	  cs[cI[2]]%2==ds[dI[1]]%2 && cs[cI[3]]%2==ds[dI[0]]%2 ) {
+	s4RDM( gen4Idx(cs[cI[0]]/2,cs[cI[1]]/2,
+			 cs[cI[2]]/2,cs[cI[3]]/2, nSOs),
+		 gen4Idx(ds[dI[0]]/2,ds[dI[1]]/2,
+			 ds[dI[2]]/2,ds[dI[3]]/2, nSOs) ) += par*value;
+      }
       ctr++;
     } while ( next_permutation( dI,dI+4 ) );
   } while ( next_permutation( cI, cI+4 ) );
@@ -886,7 +911,11 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       if ( dist == 4 ) {
 	double sgn = 1.0;
 	Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
-	popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	if ( schd.DoSpinRDM )
+	  popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+
+	popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
       }
 
       else if ( dist == 3 ) {
@@ -905,7 +934,11 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
 	  double sgn = 1.0;
 	  Dets[k].parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
-	  popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	  //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	  if ( schd.DoSpinRDM )
+	    popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+
+	  popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
 	}
       }
       
@@ -929,7 +962,11 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
 	    double sgn = 1.0;
 	    Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
-	    popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	    //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	    if ( schd.DoSpinRDM )
+	      popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	    
+	    popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
 	  }
 	}
 
@@ -959,7 +996,11 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 
 	      double sgn = 1.0;
 	      Dets[k].parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
-	      popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	      //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+	      if ( schd.DoSpinRDM )
+		popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+
+	      popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
 	    }
 	  }
 	}
@@ -983,7 +1024,11 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	      for (int z=0; z<y; z++ ){
 		cs[3]=closed[z]; ds[0]=closed[z];
 
-		popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+		//popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);	    
+		if ( schd.DoSpinRDM )
+		  popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+
+		popSpatial4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
 	      }
 	    }
 	  }
@@ -991,6 +1036,8 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
       }
     }
   }
+  // TODO
+  /*
   //cout << "Populating spatial 4-RDM" << endl; // TODO
   // Pop. Spatial 4RDM
   for ( int c0=0; c0 < nSOs; c0++ )
@@ -1015,5 +1062,6 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 			    fourRDM(gen4Idx(c0p,c1p,c2p,c3p,norbs),
 				    gen4Idx(d0p,d1p,d2p,d3p,norbs));
 			}
+  */
   return;
 }
