@@ -396,7 +396,15 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       di.setocc(open[a], true); 
       di.setocc(closed[i],false);
 
-      if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      //if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      if (schd.enforceSenioExc){
+        if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+              di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+      } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+        continue;
+      } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+        continue;
+      }
 
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	dets.push_back(di);
@@ -447,7 +455,16 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
 	di.setocc(closed[i],false); 
 	di.setocc(closed[j], false);
 
-	if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+	//if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+        if (schd.enforceSenioExc){
+          if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+                di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+        } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+          continue;
+        } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+          continue;
+        }
+
 	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	  dets.push_back(di);
 

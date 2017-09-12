@@ -40,6 +40,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include "SOChelper.h"
 #include "SHCIshm.h"
 #include "LCC.h"
+#include <numeric>
 
 using namespace Eigen;
 using namespace boost;
@@ -213,6 +214,7 @@ int main(int argc, char* argv[]) {
       }
     }
   }
+  schd.HF=Dets[0];
 
   if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
