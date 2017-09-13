@@ -763,7 +763,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	cs.push_back(0); cs.push_back(0);
 	ds.push_back(0); ds.push_back(0);
 	ds[2] = ds[0];
-	
+
 	for ( int x=0; x<nelec; x++ ) {
 	  cs[1] = closed[x]; ds[1] = closed[x];
 	  if ( closed[x] == cs[0] || closed[x] == ds[2] ) continue;
@@ -771,7 +771,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	    cs[2] = closed[y]; ds[0] = closed[y];
 	    if ( closed[y] == ds[1] || closed[y] == ds[2] ) continue;
 	    if ( closed[y] == cs[0] || closed[y] == cs[1] ) continue; // TODO CHECK W/ SS
-
+	    
 	    // Gamma = c0 c1 c2 d0 d1 d2
 	    double sgn = 1.0;
 	    Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
@@ -801,6 +801,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	      //popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
 	      if ( schd.DoSpinRDM )
 		popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);       
+
 	      popSpatial3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);       
 	    }	
 	  }
