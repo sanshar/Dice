@@ -39,7 +39,9 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
 #include "SHCIshm.h"
+#ifndef DFT
 #include "LCC.h"
+#endif
 #include <numeric>
 
 using namespace Eigen;
