@@ -1201,6 +1201,10 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
   boost::mpi::communicator world;
 #endif
 
+#ifdef DFT
+  return;
+#endif
+
   if (schd.outputlevel>0) pout << format("#Begin writing variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
@@ -1250,6 +1254,10 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
   boost::mpi::communicator world;
 #endif
 
+#ifdef DFT
+  return;
+#endif
+
   if (schd.outputlevel>0) pout << format("#Begin reading variational wf %29.2f\n")
     % (getTime()-startofCalc);
 
@@ -1297,6 +1305,10 @@ void SHCIbasics::writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<D
   
 #ifndef SERIAL
   boost::mpi::communicator world;
+#endif
+
+#ifdef DFT
+  return;
 #endif
 
   if (schd.outputlevel>0) pout << format("#Begin writing variational wf %29.2f\n")
@@ -1350,6 +1362,10 @@ void SHCIbasics::readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<D
 
 #ifndef SERIAL
   boost::mpi::communicator world;
+#endif
+
+#ifdef DFT
+  return;
 #endif
 
   if (schd.outputlevel>0) pout << format("#Begin reading variational wf %29.2f\n")

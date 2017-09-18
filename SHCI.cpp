@@ -380,6 +380,9 @@ int main(int argc, char* argv[]) {
       ePT += E0[root];
       pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
       if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
+#ifdef DFT
+      exit(0);
+#endif
     }
     fclose(f);
 
