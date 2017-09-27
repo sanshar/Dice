@@ -88,12 +88,12 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 int main(int argc, char* argv[]) {
 
-  std::system("rm -rf /dev/shm/* 2> rm.log");
-
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+
+  std::system("rm -rf /dev/shm* 2> shm.log");
   initSHM();
 
   license();
@@ -383,10 +383,6 @@ int main(int argc, char* argv[]) {
       ePT += E0[root];
       pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
       if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
-#ifdef DFT
-      std::system("rm -rf /dev/shm/* 2> rm.log");
-      exit(0);
-#endif
     }
     fclose(f);
 
@@ -564,6 +560,7 @@ int main(int argc, char* argv[]) {
   world.barrier();
 #endif
 
-  std::system("rm -rf /dev/shm/* 2> rm.log");
+  std::system("rm -rf /dev/shm* 2> shm.log");
+
   return 0;
 }
