@@ -43,6 +43,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include "LCC.h"
 #endif
 #include <numeric>
+#include <cstdlib>
 
 using namespace Eigen;
 using namespace boost;
@@ -86,6 +87,8 @@ void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd
 
 
 int main(int argc, char* argv[]) {
+
+  std::system("rm -rf /dev/shm/* 2> rm.log");
 
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
@@ -381,6 +384,7 @@ int main(int argc, char* argv[]) {
       pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
       if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
 #ifdef DFT
+      std::system("rm -rf /dev/shm/* 2> rm.log");
       exit(0);
 #endif
     }
@@ -560,5 +564,6 @@ int main(int argc, char* argv[]) {
   world.barrier();
 #endif
 
+  std::system("rm -rf /dev/shm/* 2> rm.log");
   return 0;
 }
