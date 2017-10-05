@@ -379,8 +379,17 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
       for (int n2=0; n2<n1; n2++) {
 	int orb1 = closed[n1], orb2 = closed[n2];
 	if (schd.DoSpinRDM)
+#ifdef Complex
 	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += conj(coeff)*coeff;
+#else
+	  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += coeff*coeff;
+#endif
+
+#ifdef Complex
 	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff)*coeff, nSpatOrbs);
+#else
+	populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, coeff*coeff, nSpatOrbs);
+#endif
       }
     }
     

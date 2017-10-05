@@ -75,6 +75,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.extrapolationFactor = 2.0/3.0;
   schd.enforceSeniority = false;
   schd.maxSeniority = 10000;
+  schd.enforceExcitation = false;
+  schd.maxExcitation = 10000;
+  schd.enforceSenioExc = false;
   schd.ncore = 0;
   //the ridiculously large number of active spacce orbitals
   schd.nact = 1000000;
@@ -169,6 +172,15 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       else
 	schd.maxSeniority = atoi(tok[1].c_str());
     }
+    else if (boost::iequals(ArgName, "maxexcitation")) {
+      schd.enforceExcitation = true;
+      if (tok.size() == 1) 
+	schd.maxExcitation = 0;
+      else
+	schd.maxExcitation = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "SenioAndExc"))
+      schd.enforceSenioExc = true;
     else if (boost::iequals(ArgName, "dogtensor"))
       schd.doGtensor=true;
     else if (boost::iequals(ArgName, "targetError"))

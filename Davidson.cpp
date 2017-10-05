@@ -524,8 +524,13 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
   for (int i=0; i<proj.size(); i++) {
     CItype dotProduct = 0.0, norm=0.0;
     for (int j=0; j<b.rows(); j++) {
+#ifdef Complex
       dotProduct += conj(proj[i][j])*b(j,0);
       norm += conj(proj[i][j])*proj[i][j];
+#else
+      dotProduct += proj[i][j]*b(j,0);
+      norm += proj[i][j]*proj[i][j];
+#endif
     }
     for (int j=0; j<b.rows(); j++) 
       b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
@@ -553,8 +558,13 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     for (int i=0; i<proj.size(); i++) {
       CItype dotProduct = 0.0, norm=0.0;
       for (int j=0; j<b.rows(); j++) {
+#ifdef Complex
 	dotProduct += conj(proj[i][j])*r(j,0);
 	norm += conj(proj[i][j])*proj[i][j];
+#else
+	dotProduct += proj[i][j]*r(j,0);
+	norm += proj[i][j]*proj[i][j];
+#endif
       }
       for (int j=0; j<r.rows(); j++) 
 	r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;

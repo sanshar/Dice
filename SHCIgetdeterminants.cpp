@@ -396,7 +396,15 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
       di.setocc(open[a], true); 
       di.setocc(closed[i],false);
 
-      if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      //if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      if (schd.enforceSenioExc){
+        if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+              di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+      } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+        continue;
+      } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+        continue;
+      }
 
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	dets.push_back(di);
@@ -447,7 +455,16 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, doubl
 	di.setocc(closed[i],false); 
 	di.setocc(closed[j], false);
 
-	if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+	//if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+        if (schd.enforceSenioExc){
+          if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+                di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+        } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+          continue;
+        } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+          continue;
+        }
+
 	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
 	  dets.push_back(di);
 
@@ -547,7 +564,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
 #ifndef Complex
 	numerator2.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-	numerator2.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
+	numerator2.push_back( (integrals[index]*integrals[index]*1.0*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	energy.push_back(E);
@@ -645,7 +662,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 #ifndef Complex
 	numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-	numerator2A.push_back( pow( abs(integrals[index]*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+	numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
 	//numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
 	//numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));

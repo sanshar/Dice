@@ -14,6 +14,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <vector>
 #include <list>
 #include <boost/serialization/serialization.hpp>
+#include "Determinants.h"
 
 using namespace std;
 
@@ -70,6 +71,10 @@ private:
       & extrapolationFactor                     \
       & enforceSeniority                        \
       & maxSeniority                            \
+      & enforceExcitation                       \
+      & maxExcitation                           \
+      & HF                                      \
+      & enforceSenioExc                         \
       & ncore                                   \
       & nact                                    \
       & doLCC ;
@@ -121,6 +126,10 @@ public:
   double extrapolationFactor;
   bool enforceSeniority;
   int maxSeniority;
+  bool enforceExcitation;
+  int maxExcitation;
+  Determinant HF;
+  bool enforceSenioExc;
   int ncore;
   int nact;
   bool doLCC;
