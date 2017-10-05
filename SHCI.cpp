@@ -39,9 +39,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SOChelper.h"
 #include "SHCIshm.h"
-#ifndef DFT
 #include "LCC.h"
-#endif
 #include <numeric>
 #include <cstdlib>
 
@@ -93,7 +91,6 @@ int main(int argc, char* argv[]) {
   boost::mpi::communicator world;
 #endif
 
-  std::system("rm -rf /dev/shm* 2> shm.log");
   initSHM();
 
   license();
@@ -565,7 +562,7 @@ int main(int argc, char* argv[]) {
   world.barrier();
 #endif
 
-  std::system("rm -rf /dev/shm* 2> shm.log");
+  //std::system("rm -rf /dev/shm*");
 
   return 0;
 }
