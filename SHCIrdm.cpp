@@ -110,13 +110,13 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	DetI    = AlphaMajorToDet [i][ii];
 
       
-      if (std::abs(DetI)%nprocs != proc ) 
+      if ((std::abs(DetI)-1)%nprocs != proc ) 
 	continue;
       
       vector<int> closed(nelec, 0);
       vector<int> open(norbs-nelec,0);
-      Dets[DetI].getOpenClosed(open, closed);
-      Determinant di = Dets[DetI];
+      Dets[abs(DetI)-1].getOpenClosed(open, closed);
+      Determinant di = Dets[abs(DetI)-1];
 
 
       int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
@@ -132,7 +132,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	  int DetJ = BetaMajorToDet[Bstring][index];
 
 	  if (std::abs(DetJ) >=  std::abs(DetI)) continue;
-	  Determinant dj = Dets[DetJ];
+	  Determinant dj = Dets[abs(DetJ)-1];
 	  size_t orbDiff;
 	  getOrbDiff(dj, di, orbDiff);
 	  int d0 = orbDiff%norbs, c0= (orbDiff/norbs)%norbs;
@@ -144,8 +144,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	    di.parity(min(d0,c0), max(d0,c0),sgn);
 	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0)))
 	      sgn *=-1.;
-	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
-	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
+	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	  }
 
 	}
@@ -172,7 +172,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
 	    //if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
 	    if (std::abs(DetJ) >=  std::abs(DetI)) continue;
-	    Determinant dj = Dets[DetJ];
+	    Determinant dj = Dets[abs(DetJ)-1];
 	    size_t orbDiff;
 	    getOrbDiff(dj, di, orbDiff);
 	    //CItype hij = Hij(Dets[std::abs(DetJ)], Dets[std::abs(DetI)], I1, I2, coreE, orbDiff);
@@ -182,8 +182,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	    double sgn = 1.0;
 	    
 	    di.parity(d1,d0,c1,c0,sgn);
-	    populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
-	    populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	    populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
+	    populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	  }
 	}
       }
@@ -202,7 +202,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	if (index != -1 ) {
 	  int DetJ = AlphaMajorToDet[Astring][index];
 	  if (std::abs(DetJ) >= std::abs(DetI)) continue;
-	  Determinant dj = Dets[DetJ];
+	  Determinant dj = Dets[abs(DetJ)-1];
 
 	  size_t orbDiff;
 	  getOrbDiff(dj, di, orbDiff);
@@ -216,8 +216,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	    di.parity(min(d0,c0), max(d0,c0),sgn);
 	    if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0)))
 	      sgn *=-1.;
-	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
-	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	    populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
+	    populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	  }
 
 	}
@@ -230,7 +230,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	//if (std::abs(DetJ) < StartIndex) continue;
 	//if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
 	if (std::abs(DetJ) >= std::abs(DetI)) continue;
-	Determinant dj = Dets[DetJ];
+	Determinant dj = Dets[abs(DetJ)-1];
 
 	if (dj.ExcitationDistance(di) == 2 ) {
 	  size_t orbDiff;
@@ -241,8 +241,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	  double sgn = 1.0;
 	  
 	  di.parity(d1,d0,c1,c0,sgn);
-	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
-	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
+	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	}
       }
       
@@ -253,7 +253,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	//if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
 	if (std::abs(DetJ) >= std::abs(DetI)) continue;
 
-	Determinant dj = Dets[DetJ];
+	Determinant dj = Dets[abs(DetJ)-1];
 	if (di.ExcitationDistance(dj) == 2) {
 	  size_t orbDiff;
 	  getOrbDiff(dj, di, orbDiff);
@@ -263,8 +263,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	  double sgn = 1.0;
 	  
 	  di.parity(d1,d0,c1,c0,sgn);
-	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[DetJ])*ciket[DetI], nSpatOrbs);
-	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[DetJ])*cibra[DetI], nSpatOrbs);
+	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
+	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	}
       }
       

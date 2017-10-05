@@ -743,7 +743,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   
   size_t norbs = 2.*I2.Direct.rows();
   int Norbs = norbs;
-  vector<double> E0(nroots,SHMDets[0].Energy(I1, I2, coreE));
+
+  CItype e0 = SHMDets[0].Energy(I1, I2, coreE);
+  size_t orbDiff;
+  if (Determinant::Trev != 0) updateHijForTReversal(e0, SHMDets[0], SHMDets[0], I1, I2, coreE, orbDiff);
+  vector<double> E0(nroots,abs(e0));
 
 
   //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
@@ -947,7 +951,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     
     
 #endif
-    
     vector<MatrixXx> X0; X0.resize(ci.size());
     vector<Determinant>& newDets = *uniqueDEH.Det;
 
@@ -1039,10 +1042,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     //pout << "nbatches : "<<sparseHam.Nbatches<<endl;
     //cout <<commrank<<"  "<< sparseHam.Helements[0][0]<<endl;
     int numIter = 0;
+
     if (schd.DavidsonType == DIRECT)
-      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, true);
+      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
     else
-      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, false);
+      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
 
     if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
 

@@ -25,7 +25,6 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 		    boost::interprocess::shared_memory_object& SHMsegment,
 		    boost::interprocess::mapped_region& SHMregion) {
 
-  boost::interprocess::shared_memory_object::remove(SHMname.c_str());
   size_t totalMemory = 0;
   int comm_rank=0, comm_size=1;
 #ifndef SERIAL
@@ -73,6 +72,8 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
   }
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+  boost::interprocess::shared_memory_object::remove(SHMname.c_str());
+
 }
 
 

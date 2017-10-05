@@ -29,7 +29,6 @@ std::complex<double> sumComplex(const std::complex<double>& a, const std::comple
 
 
 void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &simgacol){
-  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
   size_t totalMemory = 0, xrows=0;
   int comm_rank=0, comm_size=1;
 #ifndef SERIAL
@@ -55,6 +54,8 @@ void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &simgacol){
 #endif
   bcol = static_cast<CItype*>(regionDavidson.get_address());
   simgacol = bcol + xrows;
+  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+  boost::interprocess::shared_memory_object::remove(shciDavidson.c_str());
 }
 
 void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
@@ -245,7 +246,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
 
       if (error < tol || numIter >800*x0.size()) {
-	if (numIter >800*x0.size()) {
+	if (numIter >2000*x0.size()) {
 	  cout << "Davidson calculation Didnt converge"<<endl;
 	  exit(0);
 	  continueOrReturn = 2;

@@ -186,6 +186,10 @@ int main(int argc, char* argv[]) {
 #endif
   }
 #endif
+  
+  //unlink the integral shared memory
+  boost::interprocess::shared_memory_object::remove(shciint2.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
 
   //have the dets, ci coefficient and diagnoal on all processors
@@ -497,7 +501,8 @@ int main(int argc, char* argv[]) {
 	SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
 	if (commrank == 0) {
 	  std::vector<size_t> indices(DetsSize);
-	  std::iota(indices.begin(), indices.end(), 0);
+	  for (int i=0; i<DetsSize;i++) indices[i] = i;
+
 	  sort(indices.begin(), indices.end(),
 	       [&ci](size_t i1, size_t i2) {return abs(ci[0](i1,0)) > abs(ci[0](i2,0));});
 

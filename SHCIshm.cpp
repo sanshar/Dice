@@ -13,8 +13,10 @@ using namespace std;
 
 boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
+string shciint2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
+string shciint2shm;
 boost::interprocess::shared_memory_object hHelpersSegment;
 boost::interprocess::mapped_region regionHelpers;
 string shciHelper;
@@ -90,8 +92,8 @@ void initSHM() {
 #endif
 
   //set up shared memory files to store the integrals
-  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciSortedDets = "SHCISortedDetsshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
