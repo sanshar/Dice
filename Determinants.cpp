@@ -67,6 +67,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
     Determinant detcpy = dk;
 
     detcpy.flipAlphaBeta();
+    if (!detcpy.connected(dj)) return;
     double parity = dk.parityOfFlipAlphaBeta();
     CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
     hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
@@ -76,6 +77,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
     Determinant detcpy = dj;
 
     detcpy.flipAlphaBeta();
+    if (!detcpy.connected(dk)) return;
     double parity = dj.parityOfFlipAlphaBeta();
     CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
     hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
@@ -85,6 +87,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
     Determinant detcpyk = dk;
 
     detcpyk.flipAlphaBeta();
+    if (!detcpyk.connected(dj)) return;
     double parityk = dk.parityOfFlipAlphaBeta();
     CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
     CItype hijCopy2, hijCopy3;
@@ -311,7 +314,7 @@ void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbDiff) {
 }
 
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
-  int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
+  int cre[200],des[200],ncre=0,ndes=0; long u,b,k,one=1;
   cre[0]=-1;cre[1]=-1;des[0]=-1;des[1]=-1;
 
   for (int i=0;i<Determinant::EffDetLen;i++) {
