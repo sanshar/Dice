@@ -19,6 +19,84 @@
 using namespace std;
 using namespace Eigen;
 
+//with treversal symmetry dj and dk will find each other multiple times
+//we prune this possibility as follows
+// ->  we only look for connection is dj is positive (starndard form)
+// -> even it is positive there still might be two connections to dk
+//     -> so this updates hij
+void getHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
+  oneInt& I1,
+  twoInt& I2,
+  double& coreE,
+  size_t& orbDiff,
+  int plusORminus) {
+	if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
+	  dk.hasUnpairedElectrons()) {
+		Determinant detcpy = dk;
+		detcpy.flipAlphaBeta();
+		double parity = dk.parityOfFlipAlphaBeta();
+		CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
+		hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+	}
+	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
+	  !dk.hasUnpairedElectrons()) {
+		Determinant detcpy = dj;
+		detcpy.flipAlphaBeta();
+		double parity = dj.parityOfFlipAlphaBeta();
+		CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
+		hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+	}
+	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
+	  && dk.hasUnpairedElectrons()) {
+		Determinant detcpyk = dk;
+		detcpyk.flipAlphaBeta();
+		double parityk = dk.parityOfFlipAlphaBeta();
+		CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
+		hij = Determinant::Trev*parityk*hijCopy1;
+
+	}
+}
+
+void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
+  oneInt& I1,
+  twoInt& I2,
+  double& coreE,
+  size_t& orbDiff) {
+	if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
+	  dk.hasUnpairedElectrons()) {
+		Determinant detcpy = dk;
+
+		detcpy.flipAlphaBeta();
+		if (!detcpy.connected(dj)) return;
+		double parity = dk.parityOfFlipAlphaBeta();
+		CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
+		hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+	}
+	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
+	  !dk.hasUnpairedElectrons()) {
+		Determinant detcpy = dj;
+
+		detcpy.flipAlphaBeta();
+		if (!detcpy.connected(dk)) return;
+		double parity = dj.parityOfFlipAlphaBeta();
+		CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
+		hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+	}
+	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
+	  && dk.hasUnpairedElectrons()) {
+		Determinant detcpyk = dk;
+
+		detcpyk.flipAlphaBeta();
+		if (!detcpyk.connected(dj)) return;
+		double parityk = dk.parityOfFlipAlphaBeta();
+		CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
+		CItype hijCopy2, hijCopy3;
+		hij = hij + Determinant::Trev*parityk*hijCopy1;
+
+	}
+}
+
+
 //Assumes that the spin of i and a orbitals is the same
 double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
   int i, int A, double Energyd) {
@@ -152,34 +230,34 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
 // depopulate determinants.
 void Determinant::parity(int& c0, int& c1, int& c2, int& d0, int& d1, int& d2,
   double& sgn) {
-  parity(min(d2, c0), max(d2,c0), sgn);
-  setocc(d2,false); setocc(c0,true);
-  parity(min(d1, c1), max(d1,c1), sgn);
-  setocc(d1,false); setocc(c1,true);
-  parity(min(d0, c2), max(d0,c2), sgn);
-  setocc(c1,false); setocc(d1,true);
-  setocc(c0,false); setocc(d2,true); 
-  return;
+	parity(min(d2, c0), max(d2,c0), sgn);
+	setocc(d2,false); setocc(c0,true);
+	parity(min(d1, c1), max(d1,c1), sgn);
+	setocc(d1,false); setocc(c1,true);
+	parity(min(d0, c2), max(d0,c2), sgn);
+	setocc(c1,false); setocc(d1,true);
+	setocc(c0,false); setocc(d2,true);
+	return;
 }
 
 // Gamma = c0 c1 c2 c3 d0 d1 d2 d3
 // Do NOT use with matching c and d pairs.
 void Determinant::parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1,
-			 int& d2, int& d3,  double& sgn) {
-  parity(min(d3, c0), max(d3,c0), sgn);
-  setocc(d3,false); setocc(c0,true);
+  int& d2, int& d3,  double& sgn) {
+	parity(min(d3, c0), max(d3,c0), sgn);
+	setocc(d3,false); setocc(c0,true);
 
-  parity(min(d2, c1), max(d2,c1), sgn);
-  setocc(d2,false); setocc(c1,true);
+	parity(min(d2, c1), max(d2,c1), sgn);
+	setocc(d2,false); setocc(c1,true);
 
-  parity(min(d1, c2), max(d1,c2), sgn);
-  setocc(d1,false); setocc(c2,true);
-  parity(min(d0,c3),max(d0,c3), sgn);
+	parity(min(d1, c2), max(d1,c2), sgn);
+	setocc(d1,false); setocc(c2,true);
+	parity(min(d0,c3),max(d0,c3), sgn);
 
-  setocc(c2,false); setocc(d1,true);
-  setocc(c1,false); setocc(d2,true);
-  setocc(c0,false); setocc(d3,true); 
-  return;
+	setocc(c2,false); setocc(d1,true);
+	setocc(c1,false); setocc(d2,true);
+	setocc(c0,false); setocc(d3,true);
+	return;
 }
 
 CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
@@ -225,10 +303,12 @@ CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
 		}
 
 	}
-	return energy*sgn;
+	energy *= sgn;
+	return energy;
 }
 
-CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
+
+void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbDiff) {
 	int cre[2],des[2],ncre=0,ndes=0; long u,b,k,one=1;
 	cre[0]=-1; cre[1]=-1; des[0]=-1; des[1]=-1;
 
@@ -252,6 +332,49 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
 	}
 
 	if (ncre == 0) {
+		orbDiff = 0;
+	}
+	else if (ncre ==1 ) {
+		size_t c0=cre[0], N=bra.norbs, d0 = des[0];
+		orbDiff = c0*N+d0;
+	}
+	else if (ncre == 2) {
+		size_t c0=cre[0], c1=cre[1], d1=des[1],N=bra.norbs, d0 = des[0];
+		orbDiff = c1*N*N*N+d1*N*N+c0*N+d0;
+	}
+	else {
+		cout << "Different greater than 2."<<endl;
+		exit(0);
+	}
+
+}
+
+CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
+	int cre[200],des[200],ncre=0,ndes=0; long u,b,k,one=1;
+	cre[0]=-1; cre[1]=-1; des[0]=-1; des[1]=-1;
+
+	for (int i=0; i<Determinant::EffDetLen; i++) {
+		u = bra.repr[i] ^ ket.repr[i];
+		b = u & bra.repr[i]; //the cre bits
+		k = u & ket.repr[i]; //the des bits
+
+		while(b != 0) {
+			int pos = __builtin_ffsl(b);
+			cre[ncre] = pos-1+i*64;
+			ncre++;
+			b &= ~(one<<(pos-1));
+		}
+		while(k != 0) {
+			int pos = __builtin_ffsl(k);
+			des[ndes] = pos-1+i*64;
+			ndes++;
+			k &= ~(one<<(pos-1));
+		}
+	}
+
+	if (ncre == 0) {
+		cout << bra<<endl;
+		cout << ket<<endl;
 		cout <<"Use the function for energy"<<endl;
 		exit(0);
 	}
@@ -268,7 +391,7 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
 		return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
 	}
 	else {
-		cout << "Should not be here"<<endl;
+		//cout << "Should not be here"<<endl;
 		return 0.;
 	}
 }

@@ -18,10 +18,10 @@ def run(args):
     calc_e = struct.unpack('d', file1.read(8))[0]
     given_e = struct.unpack('d', file2.read(8))[0]
     if abs(given_e-calc_e) > tol:
-      print given_e,"-", calc_e, " > ", tol
-      print "FAILED ...."
+      print "\t",given_e,"-", calc_e, " > ", tol
+      print "\t FAILED Energy Test...."
     else:
-      print "PASSED ...."
+      print "\t PASSED Energy Test...."
     index+=1
 
 if __name__=="__main__":

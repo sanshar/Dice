@@ -39,6 +39,784 @@ using namespace std;
 using namespace Eigen;
 using namespace boost;
 
+
+void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01,
+							MatrixXx&ci2, double& E02, oneInt& I1, twoInt& I2,
+							twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+							schedule& schd, double coreE, int nelec, int root,
+							CItype& EPT1, CItype& EPT2, CItype& EPT12,
+							std::vector<MatrixXx>& spinRDM) {
+
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+  int norbs = Determinant::norbs;
+  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+
+  double energyEN = 0.0;
+
+
+  std::vector<StitchDEH> uniqueDEH(num_thrds);
+  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetBeforeMPI(commsize, std::vector<std::vector<vector<Determinant> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<Determinant> > > > hashedDetAfterMPI(commsize, std::vector<std::vector<vector<Determinant> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumBeforeMPI(commsize, std::vector<std::vector<vector<CItype> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNumAfterMPI(commsize, std::vector<std::vector<vector<CItype> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNum2BeforeMPI(commsize, std::vector<std::vector<vector<CItype> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<CItype> > > > hashedNum2AfterMPI(commsize, std::vector<std::vector<vector<CItype> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyBeforeMPI(commsize, std::vector<std::vector<vector<double> > >(num_thrds));
+  std::vector<std::vector< std::vector<vector<double> > > > hashedEnergyAfterMPI(commsize, std::vector<std::vector<vector<double> > >(num_thrds));
+  CItype totalPT1 = 0.0, totalPT2=0., totalPT12=0.;
+  int ntries = 1;
+
+
+    for (int i=0; i<Dets.size(); i++) {
+      if (i%(omp_get_num_threads()*commsize) != commrank*omp_get_num_threads()+omp_get_thread_num()) {continue;}
+      SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Dets[i], i, abs(schd.epsilon2/ci1(i,0)), ci1(i,0),
+						      abs(schd.epsilon2/ci2(i,0)), ci2(i,0),
+						      I1, I2, I2HB, irrep, coreE,
+						      *uniqueDEH[omp_get_thread_num()].Det,
+						      *uniqueDEH[omp_get_thread_num()].Num,
+						      *uniqueDEH[omp_get_thread_num()].Num2,
+						      *uniqueDEH[omp_get_thread_num()].Energy,
+						      schd, nelec);
+    }
+
+    uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+    uniqueDEH[omp_get_thread_num()].RemoveDetsPresentIn(SortedDets);
+
+    if(commsize >1 || num_thrds >1) {
+      StitchDEH uniqueDEH_afterMPI;
+      if (schd.DoRDM || schd.doResponse) uniqueDEH_afterMPI.extra_info = true;
+
+
+      for (int proc=0; proc<commsize; proc++) {
+	hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedNum2BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+      }
+
+      if (omp_get_thread_num()==0) {
+	ntries = uniqueDEH[omp_get_thread_num()].Det->size()*DetLen*2*omp_get_num_threads()/268435400+1;
+	if (commsize == 1)
+	  ntries = 1;
+#ifndef SERIAL
+	mpi::broadcast(world, ntries, 0);
+#endif
+      }
+
+
+      size_t batchsize = uniqueDEH[omp_get_thread_num()].Det->size()/ntries;
+      //ntries = 1;
+      for (int tries = 0; tries<ntries; tries++) {
+
+        size_t start = (ntries-1-tries)*batchsize;
+        size_t end   = tries==0 ? uniqueDEH[omp_get_thread_num()].Det->size() : (ntries-tries)*batchsize;
+	for (size_t j=start; j<end; j++) {
+	  size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
+	  size_t procThrd = lOrder%(commsize*num_thrds);
+	  int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
+	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
+	  hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
+	  hashedNum2BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num2->at(j));
+	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
+	}
+
+	uniqueDEH[omp_get_thread_num()].resize(start);
+
+
+
+#ifndef SERIAL
+	  mpi::all_to_all(world, hashedDetBeforeMPI, hashedDetAfterMPI);
+	  mpi::all_to_all(world, hashedNumBeforeMPI, hashedNumAfterMPI);
+	  mpi::all_to_all(world, hashedNum2BeforeMPI, hashedNum2AfterMPI);
+	  mpi::all_to_all(world, hashedEnergyBeforeMPI, hashedEnergyAfterMPI);
+#else
+	  hashedDetAfterMPI = hashedDetBeforeMPI;
+	  hashedNumAfterMPI = hashedNumBeforeMPI;
+	  hashedNum2AfterMPI = hashedNum2BeforeMPI;
+	  //hashedpresentAfterMPI = hashedpresentBeforeMPI;
+	  hashedEnergyAfterMPI = hashedEnergyBeforeMPI;
+#endif
+
+
+
+	for (int proc=0; proc<commsize; proc++) {
+	  for (int thrd=0; thrd<num_thrds; thrd++) {
+	    hashedDetBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedNumBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedNum2BeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedEnergyBeforeMPI[proc][thrd][omp_get_thread_num()].clear();
+	  }
+	}
+
+
+
+	for (int proc=0; proc<commsize; proc++) {
+	  for (int thrd=0; thrd<num_thrds; thrd++) {
+
+	    for (int j=0; j<hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].size(); j++) {
+	      uniqueDEH_afterMPI.Det->push_back(hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	      uniqueDEH_afterMPI.Num->push_back(hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	      uniqueDEH_afterMPI.Num2->push_back(hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	      uniqueDEH_afterMPI.Energy->push_back(hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].at(j));
+	    }
+	    hashedDetAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedNumAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedNum2AfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	    hashedEnergyAfterMPI[proc][thrd][omp_get_thread_num()].clear();
+	  }
+	}
+      }
+
+
+      *uniqueDEH[omp_get_thread_num()].Det = *uniqueDEH_afterMPI.Det;
+      *uniqueDEH[omp_get_thread_num()].Num = *uniqueDEH_afterMPI.Num;
+      *uniqueDEH[omp_get_thread_num()].Num2 = *uniqueDEH_afterMPI.Num2;
+      *uniqueDEH[omp_get_thread_num()].Energy = *uniqueDEH_afterMPI.Energy;
+      uniqueDEH_afterMPI.clear();
+      uniqueDEH[omp_get_thread_num()].MergeSortAndRemoveDuplicates();
+
+
+    }
+
+    vector<Determinant>& hasHEDDets = *uniqueDEH[omp_get_thread_num()].Det;
+    vector<CItype>& hasHEDNumerator = *uniqueDEH[omp_get_thread_num()].Num;
+    vector<CItype>& hasHEDNumerator2 = *uniqueDEH[omp_get_thread_num()].Num2;
+    vector<double>& hasHEDEnergy = *uniqueDEH[omp_get_thread_num()].Energy;
+
+    CItype PTEnergy1 = 0.0, PTEnergy2 = 0.0, PTEnergy12 = 0.0;
+
+    for (size_t i=0; i<hasHEDDets.size();i++) {
+      PTEnergy1 += pow(abs(hasHEDNumerator[i]),2)/(E01-hasHEDEnergy[i]);
+      PTEnergy12 += 0.5*(conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E01-hasHEDEnergy[i])+conj(hasHEDNumerator[i])*hasHEDNumerator2[i]/(E02-hasHEDEnergy[i]));
+      PTEnergy2 += pow(abs(hasHEDNumerator2[i]),2)/(E02-hasHEDEnergy[i]);
+    }
+
+      totalPT1 += PTEnergy1;
+      totalPT12 += PTEnergy12;
+      totalPT2 += PTEnergy2;
+
+  
+
+  EPT1=0.0;EPT2=0.0;EPT12=0.0;
+#ifndef SERIAL
+  mpi::all_reduce(world, totalPT1, EPT1, std::plus<CItype>());
+  mpi::all_reduce(world, totalPT2, EPT2, std::plus<CItype>());
+  mpi::all_reduce(world, totalPT12, EPT12, std::plus<CItype>());
+#else
+  EPT1 = totalPT1;
+  EPT2 = totalPT2;
+  EPT12 = totalPT12;
+#endif
+
+  if (schd.doGtensor) {//DON'T PERFORM doGtensor
+
+    if (commrank != 0) {
+      spinRDM[0].setZero(spinRDM[0].rows(), spinRDM[0].cols());
+      spinRDM[1].setZero(spinRDM[1].rows(), spinRDM[1].cols());
+      spinRDM[2].setZero(spinRDM[2].rows(), spinRDM[2].cols());
+    }
+
+    vector< vector<MatrixXx> > spinRDM_thrd(num_thrds, vector<MatrixXx>(3));
+#pragma omp parallel
+    {
+      for (int thrd=0; thrd<num_thrds; thrd++) {
+	if (thrd != omp_get_thread_num()) continue;
+
+	spinRDM_thrd[thrd][0].setZero(spinRDM[0].rows(), spinRDM[0].cols());
+	spinRDM_thrd[thrd][1].setZero(spinRDM[1].rows(), spinRDM[1].cols());
+	spinRDM_thrd[thrd][2].setZero(spinRDM[2].rows(), spinRDM[2].cols());
+
+	vector<Determinant>& hasHEDDets = *uniqueDEH[thrd].Det;
+	vector<CItype>& hasHEDNumerator = *uniqueDEH[thrd].Num;
+	vector<CItype>& hasHEDNumerator2 = *uniqueDEH[thrd].Num2;
+	vector<double>& hasHEDEnergy = *uniqueDEH[thrd].Energy;
+
+
+	for (int x=0; x<Dets.size(); x++) {
+	  Determinant& d = Dets[x];
+
+	  vector<int> closed(nelec,0);
+	  vector<int> open(norbs-nelec,0);
+	  d.getOpenClosed(open, closed);
+	  int nclosed = nelec;
+	  int nopen = norbs-nclosed;
+
+
+	  for (int ia=0; ia<nopen*nclosed; ia++){
+	    int i=ia/nopen, a=ia%nopen;
+
+	    Determinant di = d;
+	    di.setocc(open[a], true); di.setocc(closed[i],false);
+
+
+	    auto lower = std::lower_bound(hasHEDDets.begin(), hasHEDDets.end(), di);
+	    //map<Determinant, int>::iterator it = SortedDets.find(di);
+	    if (di == *lower ) {
+	      double sgn = 1.0;
+	      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+	      int y = distance(hasHEDDets.begin(), lower);
+	      //states "a" and "b"
+	      //"0" order and "1" order corrections
+	      //in all 4 states "0a" "1a"  "0b"  "1b"
+	      CItype complex1 = 1.0*( conj(hasHEDNumerator[y])*ci1(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0a>
+	      CItype complex2 = 1.0*( conj(hasHEDNumerator2[y])*ci2(x,0)/(E02-hasHEDEnergy[y])*sgn); //<1b|v|0b>
+	      CItype complex12= 1.0*( conj(hasHEDNumerator[y])*ci2(x,0)/(E01-hasHEDEnergy[y])*sgn); //<1a|v|0b>
+	      CItype complex12b= 1.0*( conj(ci1(x,0))*hasHEDNumerator2[y]/(E02-hasHEDEnergy[y])*sgn);//<0a|v|1b>
+
+	      spinRDM_thrd[thrd][0](open[a], closed[i]) += complex1;
+	      spinRDM_thrd[thrd][1](open[a], closed[i]) += complex2;
+	      spinRDM_thrd[thrd][2](open[a], closed[i]) += complex12;
+
+	      spinRDM_thrd[thrd][0](closed[i], open[a]) += conj(complex1);
+	      spinRDM_thrd[thrd][1](closed[i], open[a]) += conj(complex2);
+	      spinRDM_thrd[thrd][2](closed[i], open[a]) += complex12b;
+
+	      /*
+	      spinRDM[0](open[a], closed[i]) += complex1;
+	      spinRDM[1](open[a], closed[i]) += complex2;
+	      spinRDM[2](open[a], closed[i]) += complex12;
+
+	      spinRDM[0](closed[i], open[a]) += conj(complex1);
+	      spinRDM[1](closed[i], open[a]) += conj(complex2);
+	      spinRDM[2](closed[i], open[a]) += complex12b;
+	      */
+	    }
+	  }
+	}
+
+
+      }
+    }
+
+    for (int thrd=0; thrd<num_thrds; thrd++) {
+    spinRDM[0] += spinRDM_thrd[thrd][0];
+    spinRDM[1] += spinRDM_thrd[thrd][1];
+    spinRDM[2] += spinRDM_thrd[thrd][2];
+    }
+
+#ifndef SERIAL
+#ifndef Complex
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[0](0,0), spinRDM[0].rows()*spinRDM[0].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[1](0,0), spinRDM[1].rows()*spinRDM[1].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[2](0,0), spinRDM[2].rows()*spinRDM[2].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), std::plus<double>());
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), std::plus<double>());
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<double* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), std::plus<double>());
+#else
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[0](0,0), 2*spinRDM[0].rows()*spinRDM[0].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[1](0,0), 2*spinRDM[1].rows()*spinRDM[1].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &spinRDM[2](0,0), 2*spinRDM[2].rows()*spinRDM[2].cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[0](0,0)), spinRDM[0].rows()*spinRDM[0].cols(), sumComplex);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[1](0,0)), spinRDM[1].rows()*spinRDM[1].cols(), sumComplex);
+    //boost::mpi::all_reduce(world, boost::mpi::inplace_t<std::complex<double>* >(&spinRDM[2](0,0)), spinRDM[2].rows()*spinRDM[2].cols(), sumComplex);
+#endif
+#endif
+  }
+}
+
+
+
+void SHCImakeHamiltonian::MakeHfromHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+				 std::map<HalfDet, std::vector<int> >& AlphaNm1,
+				 std::vector<Determinant>& Dets,
+				 int StartIndex,
+				 std::vector<std::vector<int> >&connections,
+				 std::vector<std::vector<CItype> >& Helements,
+				 int Norbs,
+				 oneInt& I1,
+				 twoInt& I2,
+				 double& coreE,
+				 std::vector<std::vector<size_t> >& orbDifference,
+				 bool DoRDM) {
+
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+  int nprocs= commsize, proc = commrank;
+
+  size_t norbs = Norbs;
+
+  for (size_t k=StartIndex; k<connections.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
+  }
+  
+
+  std::map<HalfDet, std::vector<int> >::iterator ita = BetaN.begin();
+  int index = 0;
+  for (; ita!=BetaN.end(); ita++) {
+    std::vector<int>& detIndex = ita->second;
+    int localStart = detIndex.size();
+    for (int j=0; j<detIndex.size(); j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+
+    for (int k=localStart; k<detIndex.size(); k++) {
+      if (detIndex[k]%(nprocs) != proc) continue;
+
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	  if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	  
+	  if (abs(hij) <1.e-10) continue;
+	  Helements[K].push_back(hij);
+	  connections[K].push_back(J);
+	  
+	  if (DoRDM)
+	    orbDifference[K].push_back(orbDiff);
+	}
+      }
+    }
+  }
+
+  ita = AlphaNm1.begin();
+  index = 0;
+  for (; ita!=AlphaNm1.end(); ita++) {
+    std::vector<int>& detIndex = ita->second;
+    int localStart = detIndex.size();
+    for (int j=0; j<detIndex.size(); j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+
+    for (int k=localStart; k<detIndex.size(); k++) {
+      if (detIndex[k]%(nprocs) != proc) continue;
+
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	    
+	    if (abs(hij) <1.e-10) continue;
+	    connections[K].push_back(J);
+	    Helements[K].push_back(hij);
+	    
+	    if (DoRDM)
+	      orbDifference[K].push_back(orbDiff);
+	  }
+	}
+      }
+    }
+    
+  }
+  
+}
+
+
+void SHCImakeHamiltonian::PopulateHelperLists(std::map<HalfDet, std::vector<int> >& BetaN,
+				    std::map<HalfDet, std::vector<int> >& AlphaNm1,
+				    std::vector<Determinant>& Dets,
+				    int StartIndex)
+{
+  for (int i=StartIndex; i<Dets.size(); i++) {
+    HalfDet da = Dets[i].getAlpha(), db = Dets[i].getBeta();
+    
+    
+    BetaN[db].push_back(i);
+
+    int norbs = 64*DetLen;
+    std::vector<int> closeda(norbs/2);//, closedb(norbs);
+    int ncloseda = da.getClosed(closeda);
+    //int nclosedb = db.getClosed(closedb);
+    for (int j=0; j<ncloseda; j++) {
+      da.setocc(closeda[j], false);
+      AlphaNm1[da].push_back(i);
+      da.setocc(closeda[j], true);
+    }
+
+    //When Treversal symmetry is used
+    if (Determinant::Trev!=0 && Dets[i].hasUnpairedElectrons()) {
+      BetaN[da].push_back(i);
+
+      std::vector<int> closedb(norbs/2);//, closedb(norbs);
+      int nclosedb = db.getClosed(closedb);
+      for (int j=0; j<nclosedb; j++) {
+	db.setocc(closedb[j], false);
+	AlphaNm1[db].push_back(i);
+	db.setocc(closedb[j], true);
+      }
+    }
+  }
+}
+
+void SHCImakeHamiltonian::MakeHfromHelpers(int* &BetaVecLen, vector<int*> &BetaVec,
+					   int* &AlphaVecLen, vector<int*> &AlphaVec,
+					   Determinant *Dets,
+					   int StartIndex,
+					   std::vector<std::vector<int> >&connections,
+					   std::vector<std::vector<CItype> >& Helements,
+					   int Norbs,
+					   oneInt& I1,
+					   twoInt& I2,
+					   double& coreE,
+					   std::vector<std::vector<size_t> >& orbDifference,
+					   bool DoRDM) {
+  
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  size_t norbs = Norbs;
+
+  for (size_t k=StartIndex; k<connections.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements[k].push_back(hij);
+    if (DoRDM) orbDifference[k].push_back(0);
+  }
+
+
+  int index = 0;
+  for (int i=0;i<BetaVec.size(); i++) {
+    int* detIndex = BetaVec[i];
+    int localStart = BetaVecLen[i];
+    for (int j=0; j<BetaVecLen[i]; j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+
+    for (int k=localStart; k<BetaVecLen[i]; k++) {
+      
+      if (detIndex[k]%(nprocs) != proc) continue;
+      
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	size_t orbDiff;
+	CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	
+	if (abs(hij) <1.e-10) continue;
+	Helements[K].push_back(hij);
+	connections[K].push_back(J);
+	
+	if (DoRDM)
+	  orbDifference[K].push_back(orbDiff);
+      }
+    }
+    
+    index++;
+  }
+
+
+  index = 0;
+  for (int i=0;i<AlphaVec.size(); i++) {
+    int* detIndex = AlphaVec[i];
+    int localStart = AlphaVecLen[i];
+    for (int j=0; j<AlphaVecLen[i]; j++)
+      if (detIndex[j] >= StartIndex) {
+	localStart = j; break;
+      }
+    
+    for (int k=localStart; k<AlphaVecLen[i]; k++) {
+      if (detIndex[k]%(nprocs) != proc) continue;
+
+      for(int j=0; j<k; j++) {
+	size_t J = detIndex[j];size_t K = detIndex[k];
+	if (Dets[J].connected(Dets[K]) ||  (Determinant::Trev!=0 && Dets[J].connectedToFlipAlphaBeta(Dets[K]))) {
+	  if (find(connections[K].begin(), connections[K].end(), J) == connections[K].end()){
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[J], Dets[K], I1, I2, coreE, orbDiff);
+	    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[J], Dets[K], I1, I2, coreE);
+	    
+	    if (abs(hij) <1.e-10) continue;
+	    connections[K].push_back(J);
+	    Helements[K].push_back(hij);
+	    
+	    if (DoRDM)
+	      orbDifference[K].push_back(orbDiff);
+	  }
+	}
+      }
+    }
+    index++;
+  }
+  
+}
+
+void SHCImakeHamiltonian::MakeHfromHelpers2(vector<vector<int> >& AlphaMajorToBeta,
+					    vector<vector<int> >& AlphaMajorToDet,
+					    vector<vector<int> >& BetaMajorToAlpha,
+					    vector<vector<int> >& BetaMajorToDet,
+					    vector<vector<int> >& SinglesFromAlpha,
+					    vector<vector<int> >& SinglesFromBeta,
+					    std::vector<Determinant>& Dets,
+					    int StartIndex, 
+					    std::vector<std::vector<int> >&connections,
+					    std::vector<std::vector<CItype> >& Helements,
+					    int Norbs,
+					    oneInt& I1,
+					    twoInt& I2,
+					    double& coreE,
+					    std::vector<std::vector<size_t> >& orbDifference,
+					    bool DoRDM) {
+
+
+  int proc=0, nprocs=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  size_t norbs = Norbs;
+
+  //diagonal element
+  for (size_t k=StartIndex; k<Dets.size(); k++) {
+    if (k%(nprocs) != proc) continue;
+    connections.push_back(vector<int>(1,k));
+    //connections[k].push_back(k);
+    CItype hij = Dets[k].Energy(I1, I2, coreE);
+    if (Determinant::Trev != 0) updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE);
+    Helements.push_back(vector<CItype>(1, hij));
+    //Helements[k].push_back(hij);
+    if (DoRDM) orbDifference.push_back(vector<size_t>(1,0));
+  }
+
+  //alpha-beta excitation
+  for (int i=0; i<AlphaMajorToBeta.size(); i++) {
+    for (int ii=0; ii<AlphaMajorToBeta[i].size(); ii++) {
+      if (AlphaMajorToDet[i][ii] < StartIndex || AlphaMajorToDet[i][ii]%nprocs != proc) continue;
+      int Astring = i, Bstring = AlphaMajorToBeta[i][ii], DetI = AlphaMajorToDet[i][ii];
+
+      //singles from Astring
+      for (int j=0; j<SinglesFromAlpha[Astring].size(); j++) {
+	int Asingle = SinglesFromAlpha[Astring][j];
+
+
+	int index = binarySearch(&BetaMajorToAlpha[Bstring][0], 0, BetaMajorToAlpha[Bstring].size()-1, Asingle);
+	if (index != -1 ) {
+	  int DetJ = BetaMajorToDet[Bstring][index];
+
+	  if (DetJ < DetI) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	    if (abs(hij) >1.e-10) {
+	      connections[DetI/nprocs].push_back(DetJ);
+	      Helements[DetI/nprocs].push_back(hij);
+	      if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
+	    }
+	  }
+	}
+
+	int SearchStartIndex = 0;
+	for (int k=0; k<SinglesFromBeta[Bstring].size(); k++) {
+	  int& Bsingle = SinglesFromBeta[Bstring][k];
+
+	  if (SearchStartIndex >= AlphaMajorToBeta[Asingle].size()) break;
+
+	  int index=SearchStartIndex;
+	  for (; index <AlphaMajorToBeta[Asingle].size(); index++)
+	    if (AlphaMajorToBeta[Asingle][index] >= Bsingle) break;
+	  SearchStartIndex = index;
+	  if (index <AlphaMajorToBeta[Asingle].size() && AlphaMajorToBeta[Asingle][index] == Bsingle) {
+	    int DetJ = AlphaMajorToDet[Asingle][index];
+
+	    //int index = binarySearch(&AlphaMajorToBeta[Asingle][0], SearchStartIndex, AlphaMajorToBeta[Asingle].size()-1, Bsingle);
+	    //if (index != -1 ) {
+	    //SearchStartIndex = index;
+	    //int DetJ = AlphaMajorToDet[Asingle][index];
+
+
+	    //auto itb = lower_bound(AlphaMajorToBeta[Asingle].begin()+SearchStartIndex, AlphaMajorToBeta[Asingle].end(), Bsingle);
+	    //if (itb != AlphaMajorToBeta[Asingle].end() && *itb == Bsingle) {
+	    //int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+
+	    if (DetJ < DetI) { //single beta, single alpha
+	      size_t orbDiff;
+	      CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	      if (abs(hij) >1.e-10) {
+		connections[DetI/nprocs].push_back(DetJ);
+		Helements[DetI/nprocs].push_back(hij);
+		if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
+	      }
+	    } //DetJ <Det I
+	  } //*itb == Bsingle
+	} //k 0->SinglesFromBeta
+      } //j singles fromAlpha
+
+
+      //singles from Bstring
+      for (int j=0; j<SinglesFromBeta[Bstring].size(); j++) {
+	int Bsingle = SinglesFromBeta[Bstring][j];
+
+	int index = binarySearch(&AlphaMajorToBeta[Astring][0], 0, AlphaMajorToBeta[Astring].size()-1, Bsingle);
+	if (index != -1 ) {
+	  int DetJ = AlphaMajorToDet[Astring][index];
+	  //auto itb = lower_bound(AlphaMajorToBeta[Astring].begin(), AlphaMajorToBeta[Astring].end(), Bsingle);
+	  //if (itb != AlphaMajorToBeta[Astring].end() && *itb == Bsingle) {
+	  //int DetJ = AlphaMajorToDet[Astring][itb-AlphaMajorToBeta[Astring].begin()];
+
+	  if (DetJ < DetI) {
+	    size_t orbDiff;
+	    CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	    if (abs(hij) <1.e-10) continue;
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
+	  }
+	}
+      }
+
+
+      //double beta excitation
+      for (int j=0; j<AlphaMajorToBeta[i].size(); j++) {
+	int DetJ = AlphaMajorToDet[i][j];
+
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  if (abs(hij) >1.e-10) {
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
+	  }
+	}
+      }
+
+      //double Alpha excitation
+      for (int j=0; j<BetaMajorToAlpha[Bstring].size(); j++) {
+	int DetJ = BetaMajorToDet[Bstring][j];
+
+	if (DetJ < DetI && Dets[DetJ].ExcitationDistance(Dets[DetI]) == 2) {
+	  size_t orbDiff;
+	  CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+	  if (abs(hij) >1.e-10) {
+	    connections[DetI/nprocs].push_back(DetJ);
+	    Helements[DetI/nprocs].push_back(hij);
+	    if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
+	  }
+	}
+      }
+
+    }
+  }
+}
+
+
+void SHCImakeHamiltonian::MakeSHMHelpers(std::map<HalfDet, std::vector<int> >& BetaN,
+		    std::map<HalfDet, std::vector<int> >& AlphaN,
+		    int* &betaVecLenSHM, vector<int*>& betaVecSHM,
+		    int* &alphaVecLenSHM, vector<int*>& alphaVecSHM) {
+  int comm_rank=0, comm_size=1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#endif
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+
+  size_t totalMemory = 0, nBeta=0, nAlpha=0;
+  vector<int> betaveclen(BetaN.size(),0), alphaveclen(AlphaN.size(),0);
+  if (comm_rank == 0) {
+    //Now put it on shared memory
+    auto ita = BetaN.begin();
+    for (; ita != BetaN.end(); ita++) {
+      betaveclen[nBeta] = ita->second.size();
+      nBeta++;
+      totalMemory += sizeof(int); //write how many elements in the vector
+      totalMemory += sizeof(int)*ita->second.size(); //memory to store the vector      
+    }
+    
+    
+    ita = AlphaN.begin();
+    for (; ita != AlphaN.end(); ita++) {
+      alphaveclen[nAlpha] = ita->second.size();
+      nAlpha++;
+      totalMemory += sizeof(int); //write how many elements in the vector
+      totalMemory += sizeof(int)*ita->second.size(); //memory to store the vector
+    }
+  }
+#ifndef SERIAL
+  MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nBeta, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nAlpha, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  if (comm_rank != 0) {betaveclen.resize(nBeta); alphaveclen.resize(nAlpha);}
+  MPI_Bcast(&betaveclen[0], nBeta, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&alphaveclen[0], nAlpha, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  hHelpersSegment.truncate(totalMemory);
+  regionHelpers = boost::interprocess::mapped_region{hHelpersSegment, boost::interprocess::read_write};
+  memset(regionHelpers.get_address(), 0., totalMemory);
+
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  betaVecLenSHM = static_cast<int*>(regionHelpers.get_address());
+  betaVecSHM.resize(nBeta);
+  size_t counter = 0;
+  for (int i=0; i<nBeta; i++) {
+    betaVecSHM[i] = static_cast<int*>(betaVecLenSHM+nBeta+counter);
+    betaVecLenSHM[i] = betaveclen[i];
+    counter += betaveclen[i];
+  }
+
+  int* beginAlpha = betaVecSHM[0]+counter;
+  alphaVecLenSHM = static_cast<int*>(beginAlpha);
+  alphaVecSHM.resize(nAlpha);
+  counter = 0;
+  for (int i=0; i<nAlpha; i++) {
+    alphaVecSHM[i] = static_cast<int*>(beginAlpha+nAlpha+counter);
+    alphaVecLenSHM[i] = alphaveclen[i];
+    counter += alphaveclen[i];
+  }
+
+ 
+  //now fill the memory
+  if (comm_rank == 0) {
+    size_t nBeta=0, nAlpha=0;
+    auto ita = BetaN.begin();
+    for (; ita != BetaN.end(); ita++) {
+      for (int j=0; j<ita->second.size(); j++) {
+	betaVecSHM[nBeta][j] = ita->second[j];
+      }
+      nBeta++;
+    }
+    
+    
+    ita = AlphaN.begin();
+    for (; ita != AlphaN.end(); ita++) {
+      for (int j=0; j<ita->second.size(); j++) 
+	alphaVecSHM[nAlpha][j] = ita->second[j];
+      nAlpha++;
+    }
+    
+  }
+
+  long intdim = totalMemory;
+  long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
+  long maxIter = intdim/maxint;
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+  char* shrdMem = static_cast<char*>(regionHelpers.get_address());
+  for (int i=0; i<maxIter; i++) {
+    MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    MPI_Barrier(MPI_COMM_WORLD);
+  }
+  MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0);
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+}
+
+
 void SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 									     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 

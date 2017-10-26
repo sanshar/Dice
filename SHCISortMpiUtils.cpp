@@ -46,6 +46,28 @@ using namespace boost;
 
 namespace SHCISortMpiUtils {
 
+
+  int binarySearch(int* arr, int l, int r, int x)
+  {
+    if (r >= l)
+      {
+        int mid = l + (r - l)/2;
+ 
+        // If the element is present at the middle itself
+        if (arr[mid] == x)  return mid;
+ 
+        // If element is smaller than mid, then it can only be present
+        // in left subarray
+        if (arr[mid] > x) return binarySearch(arr, l, mid-1, x);
+ 
+        // Else the element can only be present in right subarray
+        return binarySearch(arr, mid+1, r, x);
+      }
+ 
+    // We reach here when element is not present in array
+    return -1;
+  }
+
   void RemoveDuplicates(std::vector<Determinant>& Det,
 			std::vector<double>& Num1, std::vector<double>& Num2,
 			std::vector<double>& Energy, std::vector<char>& present) {
@@ -72,6 +94,7 @@ namespace SHCISortMpiUtils {
     present.resize(uniqueSize+1);
   }
 
+  /*
   void RemoveDetsPresentIn(std::vector<Determinant>& SortedDets, std::vector<Determinant>& Det,
 			   std::vector<double>& Num1, std::vector<double>& Num2,
 			   std::vector<double>& Energy, std::vector<char>& present) {
@@ -107,7 +130,7 @@ namespace SHCISortMpiUtils {
     Num2.resize(uniqueSize); Energy.resize(uniqueSize);
     present.resize(uniqueSize);
   }
-
+  */
   void RemoveDuplicates(vector<Determinant>& Det) {
     if (Det.size() <= 1) return;
     std::vector<Determinant>& Detcopy = Det;
@@ -274,6 +297,63 @@ namespace SHCISortMpiUtils {
   }
 
   void mergesort(Determinant *a, long low, long high, long* x, Determinant* c, long* cx)
+  {
+    long mid;
+    if (low < high)
+      {
+	mid=(low+high)/2;
+	mergesort(a,low,mid, x, c, cx);
+	mergesort(a,mid+1,high, x, c, cx);
+	merge(a,low,high,mid, x, c, cx);
+      }
+    return;
+  }
+
+  void merge(int *a, long low, long high, long mid, int* x, int* c, int* cx)
+  {
+    long i, j, k;
+    i = low;
+    k = low;
+    j = mid + 1;
+    while (i <= mid && j <= high)
+      {
+	if (a[i] < a[j])
+	  {
+	    c[k] = a[i];
+	    cx[k] = x[i];
+	    k++;
+	    i++;
+	  }
+	else
+	  {
+	    c[k] = a[j];
+	    cx[k] = x[j];
+	    k++;
+	    j++;
+	  }
+      }
+    while (i <= mid)
+      {
+	c[k] = a[i];
+	cx[k] = x[i];
+	k++;
+	i++;
+      }
+    while (j <= high)
+      {
+	c[k] = a[j];
+	cx[k] = x[j];
+	k++;
+	j++;
+      }
+    for (i = low; i < k; i++)
+      {
+	a[i] =  c[i];
+	x[i] = cx[i];
+      }
+  }
+
+  void mergesort(int *a, long low, long high, int* x, int* c, int* cx)
   {
     long mid;
     if (low < high)
@@ -531,7 +611,8 @@ namespace SHCISortMpiUtils {
 	    Num2->operator[](uniqueSize) += Num2->at(i);
 	  if (present->size() != 0)
 	    present->operator[](uniqueSize) = present->at(i);
-	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10) {
+	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10 && 
+	      abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10*abs(Energy->at(i)) ) {
 	    cout << uniqueSize<<"  "<<i<<"  "<<endl;
 	    cout << Detcopy[i]<<endl;
 	    cout << Energy->at(uniqueSize)<<"  "<<Energy->at(i)<<"  "<<Detcopy[i-1]<<endl;
@@ -609,8 +690,8 @@ namespace SHCISortMpiUtils {
     std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
     //}
 
-    size_t uniqueSize = 0;
-    for (size_t i=0; i<Detcopy.size();) {
+    size_t uniqueSize = 0, i=0;
+    while (i <Detcopy.size() && vec_it != SortedDets.end()) {
       if (Detcopy[i] < *vec_it) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
@@ -625,9 +706,55 @@ namespace SHCISortMpiUtils {
 	}
 	i++; uniqueSize++;
       }
-      else if (*vec_it < Detcopy[i] && vec_it != SortedDets.end())
+      else if (*vec_it < Detcopy[i])
 	vec_it ++;
-      else if (*vec_it < Detcopy[i] && vec_it == SortedDets.end()) {
+      else {
+	vec_it++; i++;
+      }
+    }
+
+    while (i <Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      Num->operator[](uniqueSize) = Numcopy[i];
+      if (Num2->size() != 0)
+	Num2->operator[](uniqueSize) = Num2copy[i];
+      if (present->size() != 0)
+	present->operator[](uniqueSize) = presentcopy[i];
+      Energy->operator[](uniqueSize) = Ecopy[i];
+      if (extra_info) {
+	var_indices->operator[](uniqueSize) = Vcopy[i];
+	orbDifference->operator[](uniqueSize) = Ocopy[i];
+      }
+      i++; uniqueSize++;
+    }
+
+    Det->resize(uniqueSize); Num->resize(uniqueSize);
+    if (Num2->size() != 0)
+      Num2->resize(uniqueSize);
+    if (present->size() != 0)
+      present->resize(uniqueSize);//operator[](uniqueSize) = presentcopy->at(i);
+    Energy->resize(uniqueSize);
+    if (extra_info) {
+      var_indices->resize(uniqueSize); orbDifference->resize(uniqueSize);
+    }
+  }
+
+
+  void StitchDEH::RemoveDetsPresentIn(Determinant *SortedDets, int DetsSize) {
+    int vecid = 0;
+    std::vector<Determinant>& Detcopy = *Det;
+    std::vector<CItype>& Numcopy = *Num;
+    std::vector<CItype>& Num2copy = *Num2;
+    std::vector<char>& presentcopy = *present;
+    std::vector<double>& Ecopy = *Energy;
+    //if (extra_info) {
+    std::vector<std::vector<int> >& Vcopy = *var_indices;
+    std::vector<std::vector<size_t> >& Ocopy = *orbDifference;
+    //}
+
+    size_t uniqueSize = 0, i=0;
+    while (i<Detcopy.size() && vecid <DetsSize) {
+      if (Detcopy[i] < SortedDets[vecid]) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	Num->operator[](uniqueSize) = Numcopy[i];
 	if (Num2->size() != 0)
@@ -641,10 +768,28 @@ namespace SHCISortMpiUtils {
 	}
 	i++; uniqueSize++;
       }
+      else if (SortedDets[vecid] < Detcopy[i])
+	vecid++;
       else {
-	vec_it++; i++;
+	vecid++; i++;
       }
     }
+
+    while (i< Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      Num->operator[](uniqueSize) = Numcopy[i];
+      if (Num2->size() != 0)
+	Num2->operator[](uniqueSize) = Num2copy[i];
+      if (present->size() != 0)
+	present->operator[](uniqueSize) = presentcopy[i];
+      Energy->operator[](uniqueSize) = Ecopy[i];
+      if (extra_info) {
+	var_indices->operator[](uniqueSize) = Vcopy[i];
+	orbDifference->operator[](uniqueSize) = Ocopy[i];
+      }
+      i++; uniqueSize++;
+    }
+
     Det->resize(uniqueSize); Num->resize(uniqueSize);
     if (Num2->size() != 0)
       Num2->resize(uniqueSize);
@@ -654,6 +799,56 @@ namespace SHCISortMpiUtils {
     if (extra_info) {
       var_indices->resize(uniqueSize); orbDifference->resize(uniqueSize);
     }
+  }
+
+
+  void StitchDEH::RemoveOnlyDetsPresentIn(Determinant *SortedDets, int DetsSize) {
+    int vecid = 0, i=0;
+    std::vector<Determinant>& Detcopy = *Det;
+
+    size_t uniqueSize = 0;
+    while (i <Detcopy.size() && vecid < DetsSize) {
+      if (Detcopy[i] < SortedDets[vecid]) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	i++; uniqueSize++;
+      }
+      else if (SortedDets[vecid] < Detcopy[i])
+	vecid++;
+      else {
+	vecid++; i++;
+      }
+    }
+
+    while (i <Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      i++; uniqueSize++;
+    }
+
+    Det->resize(uniqueSize); 
+  }
+
+
+  void StitchDEH::RemoveOnlyDetsPresentIn(std::vector<Determinant>& SortedDets) {
+    vector<Determinant>::iterator vec_it = SortedDets.begin();
+    std::vector<Determinant>& Detcopy = *Det;
+
+    size_t uniqueSize = 0;
+    for (size_t i=0; i<Detcopy.size();) {
+      if (Detcopy[i] < *vec_it) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	i++; uniqueSize++;
+      }
+      else if (*vec_it < Detcopy[i] && vec_it != SortedDets.end())
+	vec_it ++;
+      else if (*vec_it < Detcopy[i] && vec_it == SortedDets.end()) {
+	Det->operator[](uniqueSize) = Detcopy[i];
+	i++; uniqueSize++;
+      }
+      else {
+	vec_it++; i++;
+      }
+    }
+    Det->resize(uniqueSize);
   }
 
   void StitchDEH::RemoveDuplicates() {
@@ -756,6 +951,7 @@ namespace SHCISortMpiUtils {
     present->resize(s);
     Energy->resize(s);
   }
+
 
   void StitchDEH::merge(const StitchDEH& s) {
     // Merges with disjoint set

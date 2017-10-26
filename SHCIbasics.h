@@ -21,6 +21,11 @@ You should have received a copy of the GNU General Public License along with thi
 
 using namespace std;
 using namespace Eigen;
+namespace SHCImakeHamiltonian {
+  struct HamHelpers2;
+  struct SparseHam;
+};
+
 class Determinant;
 class HalfDet;
 class oneInt;
@@ -30,14 +35,37 @@ class twoIntHeatBathSHM;
 class schedule;
 
 namespace SHCIbasics {
-  void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			      MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+
+  void writeHelperIntermediate( std::map<HalfDet, int >& BetaN,
+				std::map<HalfDet, int >& AlphaN,
+				std::map<HalfDet, vector<int> >& BetaNm1,
+				std::map<HalfDet, vector<int> >& AlphaNm1, 
+				schedule& schd, int iter);
+  
+  void readHelperIntermediate(std::map<HalfDet, int >& BetaN,
+			      std::map<HalfDet, int >& AlphaN,
+			      std::map<HalfDet, vector<int> >& BetaNm1,
+			      std::map<HalfDet, vector<int> >& AlphaNm1, 
+			      schedule& schd, int iter);
+  
+  void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
+			     SHCImakeHamiltonian::SparseHam& sparseHam,
+			     vector<double>& E0, bool& converged, schedule& schd,
+			     SHCImakeHamiltonian::HamHelpers2& helper2);
+
+  void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
+			     SHCImakeHamiltonian::SparseHam& sparseHam,
+			     vector<double>& E0, bool converged, schedule& schd,
+			     SHCImakeHamiltonian::HamHelpers2& helper2);
+
+  void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
+			      vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			      vector<vector<CItype> >& Helements,
 			      vector<double>& E0, bool converged, schedule& schd,
 			      std::map<HalfDet, std::vector<int> >& BetaN,
 			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
-  void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<Determinant>& SortedDets,
-			     MatrixXx& diag, vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+  void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
+			     vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
 			     vector<vector<CItype> >& Helements,
 			     vector<double>& E0, bool& converged, schedule& schd,
 			     std::map<HalfDet, std::vector<int> >& BetaN,
@@ -46,7 +74,11 @@ namespace SHCIbasics {
 			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
 			       bool DoRDM=false);
 
-  double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(vector<Determinant>& Dets, MatrixXx& ci
+  vector<double> DoVariationalDirect(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
+				     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
+				     bool DoRDM=false);
+
+  double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *ci, int DetsSize
 								 , double& E0, oneInt& I1, twoInt& I2,
 								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
 								 schedule& schd, double coreE,
@@ -65,7 +97,7 @@ namespace SHCIbasics {
   void DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
 					   twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) ;
 
-  double DoPerturbativeDeterministic(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
+  double DoPerturbativeDeterministic(Determinant* Dets, CItype *ci, int DetsSize, double& E0, oneInt& I1, twoInt& I2,
 				     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE,
 				     int nelec, int root, vector<MatrixXx>& vdVector, double& Psi1Norm,
 				     bool appendPsi1ToPsi0=false) ;

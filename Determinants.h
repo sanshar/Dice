@@ -23,11 +23,18 @@ class oneInt;
 class twoInt;
 
 using namespace std;
-inline int BitCount (long& u)
-{
-  if (u==0) return 0;
-  unsigned int u2=u>>32, u1=u;
 
+inline int BitCount (long x)
+{
+  x = (x & 0x5555555555555555ULL) + ((x >> 1) & 0x5555555555555555ULL);
+  x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
+  x = (x & 0x0F0F0F0F0F0F0F0FULL) + ((x >> 4) & 0x0F0F0F0F0F0F0F0FULL);
+  return (x * 0x0101010101010101ULL) >> 56;
+
+  //unsigned int u2=u>>32, u1=u;
+
+  //return __builtin_popcount(u2)+__builtin_popcount(u);
+  /*
   u1 = u1
     - ((u1 >> 1) & 033333333333)
     - ((u1 >> 2) & 011111111111);
@@ -41,6 +48,7 @@ inline int BitCount (long& u)
 	   & 030707070707) % 63) +
     (((u2 + (u2 >> 3))
       & 030707070707) % 63);
+  */
 }
 
 
@@ -76,6 +84,14 @@ class HalfDet {
     return true;
   }
 
+  int ExcitationDistance(const HalfDet& d) const {
+    int ndiff = 0; 
+    for (int i=0; i<DetLen/2; i++) {
+      ndiff += BitCount(repr[i] ^ d.repr[i]);
+    }
+    return ndiff/2;
+  }
+
   //set the occupation of the ith orbital
   void setocc(int i, bool occ) {
     //assert(i< norbs);
@@ -100,6 +116,16 @@ class HalfDet {
     int cindex = 0;
     for (int i=0; i<32*DetLen; i++) {
       if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+    }
+    return cindex;
+  }
+
+  int getOpenClosed(vector<int>& open, vector<int>& closed){
+    int cindex = 0;
+    int oindex = 0;
+    for (int i=0; i<32*DetLen; i++) {
+      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+      else {open.at(oindex) = i; oindex++;}
     }
     return cindex;
   }
@@ -135,6 +161,7 @@ class Determinant {
   // 0th position of 0th long is the first position
   // 63rd position of the last long is the last position
   long repr[DetLen];
+  static char Trev;
   static int norbs;
   static int EffDetLen;
   static Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> LexicalOrder;
@@ -209,10 +236,65 @@ class Determinant {
     return getLexicalOrder();
   }
 
+  bool isStandard() {
+    if (!hasUnpairedElectrons()) return true;
+    
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    for (int i=EffDetLen-1; i>=0 ; i--) {
+      if (repr[i] < (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return false;
+      else if (repr[i] > (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return true;
+    }
+    cout << "Error finding standard for determinant "<<*this<<endl;
+    cout << hasUnpairedElectrons()<<endl;
+    exit(0);
+  }
+
+  bool hasUnpairedElectrons() {
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    for (int i=EffDetLen-1; i>=0 ; i--) {
+      if ( ((repr[i]&even)<<1) != (repr[i]&odd)) return true;
+    }
+    return false;
+  }
+
+  int numUnpairedElectrons() {
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    int unpairedElecs = 0;
+    for (int i=EffDetLen-1; i>=0 ; i--) {
+      unsigned long unpaired = ( ((repr[i]&even)<<1) ^ (repr[i]&odd));
+      unpairedElecs += BitCount(unpaired);
+    }
+    return unpairedElecs;
+  }
+
+
+  void flipAlphaBeta() {
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    for (int i=0; i<EffDetLen; i++) 
+      repr[i] = ((repr[i]&even)<<1) + ((repr[i]&odd)>>1);
+  }
+
+  double parityOfFlipAlphaBeta() {
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA; long temp=0;
+    int numpaired=0;
+    for (int i=0; i<EffDetLen; i++) {
+      temp = ((repr[i]&even)<<1)&repr[i];
+      numpaired += BitCount( temp);
+    }
+    double parity1= numpaired%2 == 0 ? 1.0 : -1.0; 
+    if (Nbeta()%2==0) return parity1;
+    else return -1.*parity1;
+  }
+
+  void makeStandard() {
+    if (!isStandard())
+      flipAlphaBeta();
+  }
+
   bool connected1Alpha1Beta(const Determinant& d) const {
     int ndiffAlpha = 0, ndiffBeta = 0; long u;
-    //ulong even = 12297829382473034410, odd = 6148914691236517205;
-    ulong even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    //unsigned long even = 12297829382473034410, odd = 6148914691236517205;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     for (int i=0; i<EffDetLen; i++) {
       u = (repr[i] ^ d.repr[i])&even;
       ndiffAlpha += BitCount(u);
@@ -223,6 +305,15 @@ class Determinant {
     if (ndiffAlpha == 2 && ndiffBeta == 2) return true;
 
     return false;
+
+  }
+
+  int Noccupied() const {
+    int nelec = 0;
+    for (int i=0; i<EffDetLen; i++) {
+      nelec += BitCount(repr[i]);
+    }
+    return nelec;
 
   }
 
@@ -251,20 +342,35 @@ class Determinant {
     int ndiff = 0; long u;
 
     for (int i=0; i<EffDetLen; i++) {
-      u = repr[i] ^ d.repr[i];
-      ndiff += BitCount(u);
-      if (ndiff > 4) return false;
+      ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
-    return true;
+    return ndiff<=4;
+      //return true;
+  }
+
+  //Is the excitation between *this and d less than equal to 2.
+  bool connectedToFlipAlphaBeta(const Determinant& d) const {
+    int ndiff = 0; long u;
+    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+
+    for (int i=0; i<EffDetLen; i++) {
+      u = repr[i] ^ ( ( (d.repr[i]&even)<<1) + ((d.repr[i]&odd)>>1));
+      ndiff += BitCount(u);
+      //if (ndiff > 4) return false;
+    }
+    return ndiff<=4;
+      //return true;
+    //Determinant dcopy = d;
+    //dcopy.flipAlphaBeta();
+    //return connected(dcopy);
   }
 
   //Get the number of electrons that need to be excited to get determinant d from *this determinant
   //e.g. single excitation will return 1
   int ExcitationDistance(const Determinant& d) const {
-    int ndiff = 0; long u;
+    int ndiff = 0; 
     for (int i=0; i<EffDetLen; i++) {
-      u = repr[i] ^ d.repr[i];
-      ndiff += BitCount(u);
+      ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
     return ndiff/2;
   }
@@ -395,5 +501,18 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
 
 CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
+
+void updateHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
+			   oneInt& I1,
+			   twoInt& I2, 
+			   double& coreE,
+			   size_t& orbDiff);
+void getHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
+			oneInt& I1,
+			twoInt& I2, 
+			double& coreE,
+			size_t& orbDiff);
+
+void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbdiff);
 
 #endif

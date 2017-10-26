@@ -173,7 +173,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 
 }
 
-
+//GTENSOR IS NOT WORKING NOW
 void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<double>& E0, int norbs, int nelec) {
 
   if (abs(E0[0] - E0[1])*219470. > 10.0) {
@@ -233,19 +233,20 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vecto
 	}
       Helements[i].push_back(energy);
     }
-
-    SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusS, nelec);
+    
+    //****FIX THIS
+    //SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusS, nelec);
 
     MatrixXx Hc = MatrixXx::Zero(Dets.size(), 1);
-    Hmult2 H(connections, Helements);
-    H(ci[0], Hc);
+    //Hmult2 H(connections, Helements);
+    //H(ci[0], Hc);
 
     Intermediate[a](0,0) = (ci[0].adjoint()*Hc)(0,0);
     Intermediate[a](1,0) = (ci[1].adjoint()*Hc)(0,0);
     Intermediate[a](0,1) = conj(Intermediate[a](1,0));
 
     Hc *= 0.0;
-    H(ci[1], Hc);
+    //H(ci[1], Hc);
     Intermediate[a](1,1) = (ci[1].adjoint()*Hc)(0,0);
   }
 
@@ -311,7 +312,7 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
 			     vector<Determinant>::iterator& beginSp,
 			     vector<Determinant>::iterator& beginSm) {
 
-  Hmult2 H(connections, Helements);
+  //Hmult2 H(connections, Helements);
 
   int orbM = 0;
   vector<CItype> RME (3,0.0);
@@ -354,7 +355,7 @@ void SOChelper::calculateMatrixElements(int spin1, int spin2, int Sz, int rowInd
 	getSminus(c1, c1extended, Dets, beginS0, beginSp, beginSm, norbs);
       }
 
-      H(c2extended, Hc2);
+      //H(c2extended, Hc2);
       CItype element = (c1extended.adjoint()*Hc2)(0,0)/c2extended.norm()/c1extended.norm();
       RME[ (Mop+2)/2] = element/cg;
       break;
@@ -383,7 +384,7 @@ void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, 
 						  vector<Determinant>::iterator& beginSp,
 						  vector<Determinant>::iterator& beginSm) {
 
-  Hmult2 H(connections, Helements);
+  //  Hmult2 H(connections, Helements);
 
   int orbM = 0;
   vector<CItype> RME (3,0.0);
@@ -426,7 +427,7 @@ void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, 
 	getSminus(c1, c1extended, Dets, beginS0, beginSp, beginSm, norbs);
       }
 
-      H(c2extended, Hc2);
+      //H(c2extended, Hc2);
       CItype element = (c1extended.adjoint()*Hc2)(0,0)/c2extended.norm()/c1extended.norm();
       RME[ (Mop+2)/2] = element/cg;
       break;

@@ -14,6 +14,10 @@ You should have received a copy of the GNU General Public License along with thi
 #include <ctime>
 #include <sys/time.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <string>
+#ifndef SERIAL
+#include "mpi.h"
+#endif
 
 typedef unsigned short ushort;
 const int DetLen = 6;
@@ -30,7 +34,35 @@ double getTime();
 
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
+extern std::string shciint2;
+
 extern boost::interprocess::shared_memory_object int2SHMSegment;
 extern boost::interprocess::mapped_region regionInt2SHM;
+extern std::string shciint2shm;
 
+extern boost::interprocess::shared_memory_object hHelpersSegment;
+extern boost::interprocess::mapped_region regionHelpers;
+extern std::string shciHelper;
+
+extern boost::interprocess::shared_memory_object DetsCISegment;
+extern boost::interprocess::mapped_region regionDetsCI;
+extern std::string shciDetsCI;
+
+extern boost::interprocess::shared_memory_object SortedDetsSegment;
+extern boost::interprocess::mapped_region regionSortedDets;
+extern std::string shciSortedDets;
+
+extern boost::interprocess::shared_memory_object DavidsonSegment;
+extern boost::interprocess::mapped_region regionDavidson;
+extern std::string shciDavidson;
+
+extern boost::interprocess::shared_memory_object cMaxSegment;
+extern boost::interprocess::mapped_region regioncMax;
+extern std::string shcicMax;
+
+#ifndef SERIAL
+extern MPI_Comm shmcomm, localcomm;
+#endif
+extern int commrank, shmrank, localrank;
+extern int commsize, shmsize, localsize;
 #endif

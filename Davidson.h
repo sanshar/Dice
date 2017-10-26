@@ -18,14 +18,17 @@ You should have received a copy of the GNU General Public License along with thi
 #include "global.h"
 
 class Hmult2;
+class HmultDirect;
 using namespace Eigen;
 using namespace std;
 
 
 
 void precondition(MatrixXx& r, MatrixXx& diag, double& e);
-vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, bool print);
+vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print);
+vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print);
+
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
-double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<MatrixXx>& p, double tol, bool print);
+double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
 
 #endif

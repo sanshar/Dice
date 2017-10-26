@@ -22,6 +22,7 @@ using namespace std;
 using namespace boost;
 
 void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd) {
+
 	cout << "**************************************************************"<<endl;
 	cout << "Input file  :"<<endl;
 	cout << "**************************************************************"<<endl;
@@ -30,21 +31,28 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	int maxiter = -1;
 	vector<int> sweep_iter;
 	vector<double> sweep_epsilon;
-	schd.nblocks = 1;
-	schd.restart = false;
-	schd.fullrestart = false;
+	int nocc = -1;
+
 	schd.davidsonTol = 5.e-5;
+	schd.davidsonTolLoose = 5.e-5;
+	schd.RdmType = RELAXED;
+	schd.DavidsonType = MEMORY;
 	schd.epsilon2 = 1.e-8;
 	schd.epsilon2Large = 1000.0;
-	schd.dE = 1.e-8;
-	schd.stochastic = true;
 	schd.SampleN = -1;
+
+	schd.onlyperturbative = false;
+	schd.restart = false;
+	schd.fullrestart = false;
+	schd.dE = 1.e-8;
+
+
+	schd.stochastic = true;
+	schd.nblocks = 1;
 	schd.excitation = 1000;
 	schd.nvirt = 1e6;
-	schd.onlyperturbative = false;
 	schd.singleList = true;
-	int nocc = -1;;
-	schd.io = false;
+	schd.io = true;
 	schd.nroots = 1;
 	schd.nPTiter = 1000000;
 	schd.DoRDM = false;
@@ -60,12 +68,28 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	schd.socmultiplier = 1.0;
 	schd.targetError = 1.e-4;
 	schd.num_thrds = 1;
+	schd.Trev = 0;
+	schd.algorithm = 0;
 	schd.outputlevel = 0;
+	schd.printBestDeterminants = 0;
+	schd.extrapolate = false;
+	schd.extrapolationFactor = 2.0/3.0;
+	schd.enforceSeniority = false;
+	schd.maxSeniority = 10000;
+	schd.enforceExcitation = false;
+	schd.maxExcitation = 10000;
+	schd.enforceSenioExc = false;
+	schd.ncore = 0;
+	//the ridiculously large number of active spacce orbitals
+	schd.nact = 1000000;
+	schd.doLCC = false;
+
 	schd.pointGroup = "c1";
 	schd.spin = 0;
 	schd.irrep = 1;
 	schd.DoThreeRDM = false;
 	schd.DoFourRDM = false;
+
 	while (dump.good()) {
 
 		std::string
@@ -101,10 +125,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 					cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
 					for (int t=0; t<tok.size(); t++)
 						cout << tok[t]<<"  ";
-
 					exit(0);
 				}
-				cout << "#";
+
 				for (int i=0; i<tok.size(); i++) {
 					occupied[index][i] = atoi(tok[i].c_str());
 					cout << occupied[index][i]<<" ";
@@ -116,18 +139,55 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 				index++;
 			}
 		}
+		else if (boost::iequals(ArgName, "nact"))
+			schd.nact = atoi(tok[1].c_str());
+		else if (boost::iequals(ArgName, "ncore"))
+			schd.ncore = atoi(tok[1].c_str());
 		else if (boost::iequals(ArgName, "noio"))
 			schd.io=false;
+		else if (boost::iequals(ArgName, "dolcc"))
+			schd.doLCC=true;
+		else if (boost::iequals(ArgName, "io"))
+			schd.io=true;
+		else if (boost::iequals(ArgName, "directdavidson"))
+			schd.DavidsonType = DIRECT;
+		else if (boost::iequals(ArgName, "diskdavidson"))
+			schd.DavidsonType = DISK;
+		else if (boost::iequals(ArgName, "relaxedRDM"))
+			schd.RdmType = UNRELAXED;
 		else if (boost::iequals(ArgName, "num_thrds"))
 			schd.num_thrds = atoi(tok[1].c_str());
 		else if (boost::iequals(ArgName, "outputlevel"))
 			schd.outputlevel = atoi(tok[1].c_str());
+		else if (boost::iequals(ArgName, "extrapolate")) {
+			schd.extrapolate = true;
+			if (tok.size() == 2)
+				schd.extrapolationFactor = atoi(tok[1].c_str());
+		}
 		else if (boost::iequals(ArgName, "dosoc"))
 			schd.doSOC=true;
+		else if (boost::iequals(ArgName, "algorithm"))
+			schd.algorithm=atoi(tok[1].c_str());
 		else if (boost::iequals(ArgName, "doresponse"))  {
 			schd.doResponse=true;
 			schd.responseFile = tok[1];
 		}
+		else if (boost::iequals(ArgName, "maxseniority")) {
+			schd.enforceSeniority = true;
+			if (tok.size() == 1)
+				schd.maxSeniority = 0;
+			else
+				schd.maxSeniority = atoi(tok[1].c_str());
+		}
+		else if (boost::iequals(ArgName, "maxexcitation")) {
+			schd.enforceExcitation = true;
+			if (tok.size() == 1)
+				schd.maxExcitation = 0;
+			else
+				schd.maxExcitation = atoi(tok[1].c_str());
+		}
+		else if (boost::iequals(ArgName, "SenioAndExc"))
+			schd.enforceSenioExc = true;
 		else if (boost::iequals(ArgName, "dogtensor"))
 			schd.doGtensor=true;
 		else if (boost::iequals(ArgName, "targetError"))
@@ -150,8 +210,17 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 			schd.epsilon2Large = atof(tok[1].c_str());
 		else if (boost::iequals(ArgName, "onlyperturbative"))
 			schd.onlyperturbative = true;
+		else if (boost::iequals(ArgName, "printbestdeterminants"))
+			schd.printBestDeterminants = atoi(tok[1].c_str());
 		else if (boost::iequals(ArgName, "dordm"))
 			schd.DoRDM = true;
+		else if (boost::iequals(ArgName, "Treversal")) {
+			schd.Trev = atoi(tok[1].c_str());
+			if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {
+				cout << "Treversal should be either 0, 1, or -1."<<endl;
+				exit(0);
+			}
+		}
 		else if (boost::iequals(ArgName, "dospinrdm")) {
 			schd.DoRDM = true;
 			schd.DoSpinRDM = true;
@@ -164,6 +233,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 			schd.nblocks = atof(tok[1].c_str());
 		else if (boost::iequals(ArgName, "davidsonTol"))
 			schd.davidsonTol = atof(tok[1].c_str());
+		else if (boost::iequals(ArgName, "davidsonTolLoose"))
+			schd.davidsonTolLoose = atof(tok[1].c_str());
 		else if (boost::iequals(ArgName, "excitation"))
 			schd.excitation = atof(tok[1].c_str());
 		else if (boost::iequals(ArgName, "sampleN"))
@@ -189,14 +260,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 		else if ( boost::iequals(ArgName, "irrep") )
 			schd.irrep = atoi(tok[1].c_str());
 		else if ( boost::iequals(ArgName, "DoThreeRDM") )
-		  schd.DoThreeRDM = true;
+			schd.DoThreeRDM = true;
 		else if ( boost::iequals(ArgName, "DoFourRDM") )
-		  schd.DoFourRDM = true;
-		
+			schd.DoFourRDM = true;
 		else if (boost::iequals(ArgName, "schedule")) {
 
 			std::getline(dump, Line);
-			cout << "#"<<Line<<endl;
+			cout <<Line<<endl;
 			vector<string> schd_tok;
 			boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
 			while(!boost::iequals(schd_tok[0], "END")) {
@@ -225,6 +295,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 		cout << "nocc keyword has to be included."<<endl;
 		exit(0);
 	}
+#ifndef Complex
+	if (schd.DavidsonType == DIRECT)
+		schd.davidsonTolLoose = 3.e-2;
+#else
+	schd.davidsonTolLoose = 1.e-5;
+#endif
+
 	for (int i=1; i<sweep_iter.size(); i++)
 		for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)
 			schd.epsilon1.push_back(sweep_epsilon[i-1]);

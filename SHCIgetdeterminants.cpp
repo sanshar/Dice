@@ -43,21 +43,31 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
-    if (abs(integral) > epsilon ) {
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
+
+
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator.push_back(integral*ci1);
       energy.push_back(E);
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -70,12 +80,12 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(Determinant& d, double 
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -152,8 +162,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(Determinant 
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
@@ -245,8 +255,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Determinant det,
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
@@ -299,30 +309,27 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
+    if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
 
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-
+    
     if (closed[i]%2 != open[a]%2) {
-      double sgn = 1.0;
-      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-      integral = int1(open[a], closed[i])*sgn;
+      integral = int1(open[a], closed[i])*schd.socmultiplier;
     }
 
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2])
-      integral *= schd.socmultiplier; //make it 100 times so SOC gets preference
-
-
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
+      //if (Determinant::Trev != 0) di.makeStandard();
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
 
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -332,22 +339,145 @@ void SHCIgetdeterminants::getDeterminantsVariational(Determinant& d, double epsi
     int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
+
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+
+      if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) 
+	continue;
 
       if (!(d.getocc(a) || d.getocc(b))) {
 	dets.push_back(d);
 	Determinant& di = *dets.rbegin();
 	di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+	//if (Determinant::Trev != 0) di.makeStandard();
       }
+    }
+  }
+  return;
+}
+
+
+void SHCIgetdeterminants::getDeterminantsVariationalApprox(Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE, double E0, std::vector<Determinant>& dets, schedule& schd, int Nmc, int nelec, Determinant* SortedDets, int SortedDetsSize) {
+
+  //Make the int represenation of open and closed orbitals of determinant
+  //this helps to speed up the energy calculation
+  int norbs = d.norbs;
+  vector<int> closed(nelec,0);
+  vector<int> open(norbs-nelec,0);
+  d.getOpenClosed(open, closed);
+  int nclosed = nelec;
+  int nopen = norbs-nclosed;
+  int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
+
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+
+    if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+
+    CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+
+    if (fabs(integral) >epsilon) 
+      if (closed[i]%2 == open[a]%2) 
+	integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+
+    //if (fabs(integral/(E0-Energyd)) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
+      Determinant di = d;
+      di.setocc(open[a], true); 
+      di.setocc(closed[i],false);
+
+      //if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      if (schd.enforceSenioExc){
+        if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+              di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+      } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+        continue;
+      } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+        continue;
+      }
+
+      if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
+	dets.push_back(di);
+#ifdef Complex
+      Determinant detcpy = di;
+      detcpy.flipAlphaBeta();
+      if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy))
+	dets.push_back(detcpy);
+#endif
+    }
+  }
+
+  if (fabs(int2.maxEntry) <epsilon) return;
+
+
+  for (int ij=0; ij<nclosed*nclosed; ij++) {
+
+    int i=ij/nclosed, j = ij%nclosed;
+    if (i<=j) continue;
+    int I = closed[i]/2, J = closed[j]/2;
+    int X = max(I, J), Y = min(I, J);
+
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
+
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+
+
+    for (size_t index=start; index<end; index++) {
+
+      if (fabs(integrals[index]) <epsilon) break;
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, 
+      //i, a, 
+      //j, b, Energyd);
+      //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
+
+      if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) 
+	continue;
+
+      if (!(d.getocc(a) || d.getocc(b))) {
+	Determinant di = d;
+	di.setocc(a, true); 
+	di.setocc(b, true);
+	di.setocc(closed[i],false); 
+	di.setocc(closed[j], false);
+
+	//if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+        if (schd.enforceSenioExc){
+          if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+                di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+        } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+          continue;
+        } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+          continue;
+        }
+
+	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di))
+	  dets.push_back(di);
+
+#ifdef Complex
+	Determinant detcpy = di;
+	detcpy.flipAlphaBeta();
+	if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy))
+	  dets.push_back(detcpy);
+#endif
+
+	//if (Determinant::Trev != 0) di.makeStandard();
+      }
+
     }
   }
   return;
@@ -381,11 +511,15 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator1.push_back(integral*ci1);
 #ifndef Complex
@@ -397,7 +531,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -410,12 +544,12 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -430,7 +564,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(Determinant& d, double epsil
 #ifndef Complex
 	numerator2.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-	numerator2.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
+	numerator2.push_back( (integrals[index]*integrals[index]*1.0*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
 	double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
 	energy.push_back(E);
@@ -460,24 +594,33 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
 
 
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d); Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
+#ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
 
       numerator1A.push_back(integral*ci1);
 #ifndef Complex
       numerator2A.push_back( integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-      numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
+      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+      //numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
 #endif
-      if (abs(integral) >epsilonLarge)
+      if (fabs(integral) >epsilonLarge)
 	present.push_back(true);
       else
 	present.push_back(false);
@@ -486,7 +629,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
     }
   }
 
-  if (abs(int2.maxEntry) <epsilon) return;
+  if (fabs(int2.maxEntry) <epsilon) return;
 
   //#pragma omp parallel for schedule(dynamic)
   for (int ij=0; ij<nclosed*nclosed; ij++) {
@@ -499,12 +642,12 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
     int pairIndex = X*(X+1)/2+Y;
     size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t end = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    double* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    int* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+    float* integrals = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
 
     for (size_t index=start; index<end; index++) {
-      if (abs(integrals[index]) <epsilon) break;
+      if (fabs(integrals[index]) <epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
 
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -519,12 +662,13 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Determinant& d, doub
 #ifndef Complex
 	numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-	numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
+	numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+	//numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
-	//numerator2A.push_back( abs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
+	//numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
 
 
-	if (abs(integrals[index]) >epsilonLarge)
+	if (fabs(integrals[index]) >epsilonLarge)
 	  present.push_back(true);
 	else
 	  present.push_back(false);

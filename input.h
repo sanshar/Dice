@@ -14,8 +14,12 @@
 #include <vector>
 #include <list>
 #include <boost/serialization/serialization.hpp>
+#include "Determinants.h"
 
 using namespace std;
+
+enum davidsonType {DIRECT, DISK, MEMORY};
+enum rdmType {RELAXED, UNRELAXED};
 
 struct schedule {
 private:
@@ -23,22 +27,25 @@ private:
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
-		ar & davidsonTol        \
-		& epsilon2        \
+		ar & davidsonTol                            \
+		& davidsonTolLoose                        \
+		& RdmType                                 \
+		& DavidsonType                            \
+		& epsilon2                                \
 		& epsilon2Large                           \
-		& SampleN         \
-		& epsilon1        \
-		& onlyperturbative      \
-		& restart         \
-		& fullrestart       \
-		& dE          \
-		& eps         \
-		& prefix          \
-		& stochastic        \
-		& nblocks         \
-		& excitation        \
-		& nvirt         \
-		& singleList        \
+		& SampleN                                 \
+		& epsilon1                                \
+		& onlyperturbative                        \
+		& restart                                 \
+		& fullrestart                             \
+		& dE                                      \
+		& eps                                     \
+		& prefix                                  \
+		& stochastic                              \
+		& nblocks                                 \
+		& excitation                              \
+		& nvirt                                   \
+		& singleList                              \
 		& io                                      \
 		& nroots                                  \
 		& nPTiter                                 \
@@ -56,16 +63,33 @@ private:
 		& socmultiplier                           \
 		& targetError                             \
 		& num_thrds                               \
+		& Trev                                    \
+		& algorithm                               \
 		& outputlevel                             \
+		& printBestDeterminants                   \
+		& extrapolate                             \
+		& extrapolationFactor                     \
+		& enforceSeniority                        \
+		& maxSeniority                            \
+		& enforceExcitation                       \
+		& maxExcitation                           \
+		& HF                                      \
+		& enforceSenioExc                         \
+		& ncore                                   \
+		& nact                                    \
+		& doLCC                                   \
 		& pointGroup                              \
 		& spin                                    \
 		& irrep                                   \
-		& DoThreeRDM                                \
-		& DoFourRDM;  
+		& DoThreeRDM                              \
+		& DoFourRDM;
 	}
 
 public:
 	double davidsonTol;
+	double davidsonTolLoose;
+	rdmType RdmType;
+	davidsonType DavidsonType;
 	double epsilon2;
 	double epsilon2Large;
 	int SampleN;
@@ -98,12 +122,26 @@ public:
 	double socmultiplier;
 	double targetError;
 	int num_thrds;
+	char Trev;
+	int algorithm;
 	int outputlevel;
+	int printBestDeterminants;
+	bool extrapolate;
+	double extrapolationFactor;
+	bool enforceSeniority;
+	int maxSeniority;
+	bool enforceExcitation;
+	int maxExcitation;
+	Determinant HF;
+	bool enforceSenioExc;
+	int ncore;
+	int nact;
+	bool doLCC;
 	string pointGroup;
 	int spin;
 	int irrep;
-        bool DoThreeRDM;
-        bool DoFourRDM;
+	bool DoThreeRDM;
+	bool DoFourRDM;
 };
 
 #endif
