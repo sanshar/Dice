@@ -265,7 +265,11 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+#ifdef Complex
       pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;
+#else
+      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
+#endif
       //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
@@ -562,7 +566,7 @@ int main(int argc, char* argv[]) {
   world.barrier();
 #endif
 
-  //std::system("rm -rf /dev/shm*");
+  std::system("rm -rf /dev/shm* 2>/dev/null");
 
   return 0;
 }
