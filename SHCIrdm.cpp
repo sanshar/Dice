@@ -1,4 +1,4 @@
-commrank /*
+/*
             Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
             Copyright (c) 2017, Sandeep Sharma
 
@@ -8,7 +8,7 @@ commrank /*
             This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
             You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
-          */
+*/
 
 #include "Determinants.h"
 #include "SHCIbasics.h"
@@ -878,7 +878,7 @@ void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	boost::mpi::communicator world;
 #endif
 	int num_thrds = omp_get_max_threads();
-	int nprocs = mpigetsize(), proc = commrank;
+	int nprocs = commsize, proc = commrank;
 
 	size_t norbs = Dets[0].norbs;
 	int nSpatOrbs = norbs/2; size_t nSOrbs = norbs/2;
@@ -1071,7 +1071,7 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	boost::mpi::communicator world;
 #endif
 	int num_thrds = omp_get_max_threads();
-	int nprocs = mpigetsize(), proc = commrank;
+	int nprocs = commsize, proc = commrank;
 
 	int norbs = Dets[0].norbs;
 	int nSOs = norbs/2; // Number of spatial orbitals

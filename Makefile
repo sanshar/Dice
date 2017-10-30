@@ -1,10 +1,10 @@
 USE_MPI = yes
-USE_INTEL = no
-EIGEN=/home/james/Documents/Apps/eigen
-BOOST=/home/james/Documents/Apps/boost_1_57_0
+USE_INTEL = yes
+#EIGEN=/home/james/Documents/Apps/eigen
+#BOOST=/home/james/Documents/Apps/boost_1_57_0
 
-#EIGEN=/projects/jasm3285/eigen
-#BOOST=/projects/jasm3285/boost_1_57_0
+EIGEN=/projects/jasm3285/eigen
+BOOST=/projects/jasm3285/boost_1_57_0
 #EIGEN=/projects/sash2458/apps/eigen/
 #BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen
@@ -12,7 +12,7 @@ BOOST=/home/james/Documents/Apps/boost_1_57_0
 
 #FLAGS = -std=c++11 -g  -I${EIGEN} -I${BOOST} #-DComplex
 FLAGS = -std=c++11 -g -w -O3  -I${EIGEN} -I${BOOST} #-DComplex
-DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
+DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} -DComplex
 
 ifeq ($(USE_INTEL), yes)
 	FLAGS += -qopenmp
