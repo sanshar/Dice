@@ -582,71 +582,71 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
   vector<vector<size_t> >& orbDifference, int nelec,
   schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
 
-	size_t norbs = Dets[0].norbs;
-	int nSpatOrbs = norbs/2;
-
-
-	for (int i=0; i<DetsSize; i++) {
-		if (i%commsize != commrank) continue;
-
-		vector<int> closed(nelec, 0);
-		vector<int> open(norbs-nelec,0);
-		Dets[i].getOpenClosed(open, closed);
-
-		//<Di| Gamma |Di>
-		for (int n1=0; n1<nelec; n1++) {
-			for (int n2=0; n2<n1; n2++) {
-				int orb1 = closed[n1], orb2 = closed[n2];
+  size_t norbs = Dets[0].norbs;
+  int nSpatOrbs = norbs/2;
+  
+  
+  for (int i=0; i<DetsSize; i++) {
+    if (i%commsize != commrank) continue;
+    
+    vector<int> closed(nelec, 0);
+    vector<int> open(norbs-nelec,0);
+    Dets[i].getOpenClosed(open, closed);
+    
+    //<Di| Gamma |Di>
+    for (int n1=0; n1<nelec; n1++) {
+      for (int n2=0; n2<n1; n2++) {
+	int orb1 = closed[n1], orb2 = closed[n2];
 				if (schd.DoSpinRDM)
-					twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra[i])*ciket[i];
+				  twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra[i])*ciket[i];
 				populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra[i])*ciket[i], nSpatOrbs);
-			}
-		}
+      }
+    }
 
-		for (int j=1; j<connections[i/commsize].size(); j++) {
-			//if (i == connections[i/commsize][j]) continue;
-			int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs;
-
-			if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
-				for (int n1=0; n1<nelec; n1++) {
-					double sgn = 1.0;
-					int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
-					if (closed[n1] == d0) continue;
-					if (closed[n1] == c0) continue;  // TODO REMOVE
-					Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
-					if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-					if (schd.DoSpinRDM) {
-						twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-						twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
-					}
-
-					populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-					populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-
-				}
-			}
-			else {
-				int d1=(orbDifference[i/commsize][j]/norbs/norbs)%norbs, c1=(orbDifference[i/commsize][j]/norbs/norbs/norbs)%norbs;
-				double sgn = 1.0;
-
-				Dets[i].parity(d1,d0,c1,c0,sgn);
-				if (schd.DoSpinRDM) {
-					twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-					twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
-				}
-
-				populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-				populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-
-			}
-		}
-
+    for (int j=1; j<connections[i/commsize].size(); j++) {
+      //if (i == connections[i/commsize][j]) continue;
+      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs;
+      
+      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
+	for (int n1=0; n1<nelec; n1++) {
+	  double sgn = 1.0;
+	  int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
+	  if (closed[n1] == d0) continue;
+	  if (closed[n1] == c0) continue;  // TODO REMOVE
+	  Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
+	  if (!( (closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
+	  if (schd.DoSpinRDM) {
+	    twoRDM(a*(a+1)/2+b, I*(I+1)/2+J) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	    twoRDM(I*(I+1)/2+J, a*(a+1)/2+b) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
+	  }
+	  
+	  populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
+	  populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
+	  
 	}
-
+      }
+      else {
+	int d1=(orbDifference[i/commsize][j]/norbs/norbs)%norbs, c1=(orbDifference[i/commsize][j]/norbs/norbs/norbs)%norbs;
+	double sgn = 1.0;
+	
+	Dets[i].parity(d1,d0,c1,c0,sgn);
+	if (schd.DoSpinRDM) {
+	  twoRDM(c1*(c1+1)/2+c0, d1*(d1+1)/2+d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	  twoRDM(d1*(d1+1)/2+d0, c1*(c1+1)/2+c0) += sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i];
+	}
+	
+	populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
+	populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
+	
+      }
+    }
+    
+  }
+  
 #ifndef SERIAL
-	if (schd.DoSpinRDM)
-		MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  if (schd.DoSpinRDM)
+    MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 }
 
@@ -846,164 +846,144 @@ void popSpin3RDM( vector<int>& cs, vector<int>& ds, CItype value,
 
 void SHCIrdm::popSpatial3RDM( vector<int>& cs, vector<int>& ds, CItype value,
   size_t& norbs, MatrixXx& s3RDM ) {
-	// d2->c0    d1->c1    d2->c0
-	int cI[] = {0,1,2}; int dI[] = {0,1,2};
-	int ctr = 0;
-	vector<double> pars (6);
-	pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
-	double par;
-
-	do {
-		do {
-			par = pars[ctr/6]*pars[ctr%6];
-			ctr++;
-			if (cs[cI[0]]%2==ds[dI[2]]%2 && cs[cI[1]]%2==ds[dI[1]]%2 &&
-			  cs[cI[2]]%2==ds[dI[0]]%2) {
-				s3RDM( genIdx(cs[cI[0]]/2,cs[cI[1]]/2,cs[cI[2]]/2, norbs/2),
-				  genIdx(ds[dI[0]]/2,ds[dI[1]]/2,ds[dI[2]]/2, norbs/2) ) += par*value;
-			}
-		} while ( next_permutation( dI,dI+3 ) );
-	} while ( next_permutation( cI, cI+3 ) );
-	return;
+  // d2->c0    d1->c1    d2->c0
+  int cI[] = {0,1,2}; int dI[] = {0,1,2};
+  int ctr = 0;
+  vector<double> pars (6);
+  pars[0]=1.; pars[1]=-1.; pars[2]=-1.; pars[3]=1.; pars[4]=1.; pars[5]=-1.;
+  double par;
+  
+  do {
+    do {
+      par = pars[ctr/6]*pars[ctr%6];
+      ctr++;
+      if (cs[cI[0]]%2==ds[dI[2]]%2 && cs[cI[1]]%2==ds[dI[1]]%2 &&
+	  cs[cI[2]]%2==ds[dI[0]]%2) {
+	s3RDM( genIdx(cs[cI[0]]/2,cs[cI[1]]/2,cs[cI[2]]/2, norbs/2),
+	       genIdx(ds[dI[0]]/2,ds[dI[1]]/2,ds[dI[2]]/2, norbs/2) ) += par*value;
+      }
+    } while ( next_permutation( dI,dI+3 ) );
+  } while ( next_permutation( cI, cI+3 ) );
+  return;
 }
 
-void SHCIrdm::Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-  MatrixXx& ciket, int nelec, schedule& schd, int root,
+void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
+  CItype* ciket, int nelec, schedule& schd, int root,
   MatrixXx & threeRDM, MatrixXx& s3RDM ) {
-	/*
-	   TODO optimize speed and memory
-	   TODO Add second instance of pop*RDM functions that switches cs as ds
-	 */
+  /*
+    TODO optimize speed and memory
+    TODO Add second instance of pop*RDM functions that switches cs as ds
+  */
 #ifndef SERIAL
-	boost::mpi::communicator world;
+  boost::mpi::communicator world;
 #endif
-	int num_thrds = omp_get_max_threads();
-	int nprocs = commsize, proc = commrank;
-
-	size_t norbs = Dets[0].norbs;
-	int nSpatOrbs = norbs/2; size_t nSOrbs = norbs/2;
-	int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
-
-	for (int b=0; b < Dets.size(); b++ ) {
-		for (int k=0; k < Dets.size(); k++ ) {
-
-			int dist = Dets[b].ExcitationDistance( Dets[k] );
-			if ( dist > 3 ) { continue; }
-			vector<int> cs (0), ds(0);
-			getUniqueIndices( Dets[b], Dets[k], cs, ds );
-			//double sgn = 1.0;
-
-			if ( dist == 3 ) {
-				double sgn = 1.0;
-				Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
-				if ( schd.DoSpinRDM )
-					popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-
-				popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);
-			}
-
-			else if ( dist == 2 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-
-				// Initialize the final spot in operator arrays and move d ops toward
-				// ket so inner two c/d operators are paired
-				cs.push_back(0); ds.push_back(0);
-				ds[2] = ds[1]; ds[1] = ds[0];
-
-				for ( int x=0; x < nelec; x++ ) {
-					cs[2]=closed[x]; ds[0]=closed[x];
-					if ( closed[x] == ds[1] || closed[x] == ds[2] ) continue;
-					if ( closed[x] == cs[0] || closed[x] == cs[1] ) continue;  // TODO CHECK W/ SS
-
-					// Gamma = c0 c1 c2 d0 d1 d2
-					double sgn = 1.0;
-					Dets[k].parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD
-
-					// TODO Make spinRDM optional
-					//popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-					if ( schd.DoSpinRDM )
-						popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-
-					popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);
-				}
-			}
-
-
-			else if ( dist == 1 ) {
-				vector<int> closed(nelec,0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open,closed);
-				cs.push_back(0); cs.push_back(0);
-				ds.push_back(0); ds.push_back(0);
-				ds[2] = ds[0];
-
-				for ( int x=0; x<nelec; x++ ) {
-					cs[1] = closed[x]; ds[1] = closed[x];
-					if ( closed[x] == cs[0] || closed[x] == ds[2] ) continue;
-					for ( int y=0; y<x; y++ ) {
-						cs[2] = closed[y]; ds[0] = closed[y];
-						if ( closed[y] == ds[1] || closed[y] == ds[2] ) continue;
-						if ( closed[y] == cs[0] || closed[y] == cs[1] ) continue;  // TODO CHECK W/ SS
-
-						// Gamma = c0 c1 c2 d0 d1 d2
-						double sgn = 1.0;
-						Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
-
-						//popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-						if ( schd.DoSpinRDM )
-							popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-
-						popSpatial3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);
-					}
-				}
-			}
-
-			else if ( dist == 0 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-				cs.push_back(0); cs.push_back(0); cs.push_back(0);
-				ds.push_back(0); ds.push_back(0); ds.push_back(0);
-				for ( int x=0; x < nelec; x++ ) {
-					cs[0]=closed[x]; ds[2]=closed[x];
-					for ( int y=0; y < x; y++ ) {
-						cs[1]=closed[y]; ds[1]=closed[y];
-						for ( int z=0; z < y; z++ ) {
-							cs[2]=closed[z]; ds[0]=closed[z];
-
-							//popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-							if ( schd.DoSpinRDM )
-								popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
-
-							popSpatial3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,s3RDM);
-						}
-					}
-				}
-			}
-		}
+  int num_thrds = omp_get_max_threads();
+  int nprocs = commsize, proc = commrank;
+  
+  size_t norbs = Dets[0].norbs;
+  int nSpatOrbs = norbs/2; size_t nSOrbs = norbs/2;
+  int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
+  
+  for (int b=0; b < DetsSize; b++ ) {
+    for (int k=0; k < DetsSize; k++ ) {
+      
+      int dist = Dets[b].ExcitationDistance( Dets[k] );
+      if ( dist > 3 ) { continue; }
+      vector<int> cs (0), ds(0);
+      getUniqueIndices( Dets[b], Dets[k], cs, ds );
+      //double sgn = 1.0;
+      
+      if ( dist == 3 ) {
+	double sgn = 1.0;
+	Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
+	if ( schd.DoSpinRDM )
+	  popSpin3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,threeRDM);
+	
+	popSpatial3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,s3RDM);
+      }
+      
+      else if ( dist == 2 ) {
+	vector<int> closed(nelec, 0);
+	vector<int> open(norbs-nelec,0);
+	Dets[k].getOpenClosed(open, closed);
+	
+	// Initialize the final spot in operator arrays and move d ops toward
+	// ket so inner two c/d operators are paired
+	cs.push_back(0); ds.push_back(0);
+	ds[2] = ds[1]; ds[1] = ds[0];
+	
+	for ( int x=0; x < nelec; x++ ) {
+	  cs[2]=closed[x]; ds[0]=closed[x];
+	  if ( closed[x] == ds[1] || closed[x] == ds[2] ) continue;
+	  if ( closed[x] == cs[0] || closed[x] == cs[1] ) continue;  // TODO CHECK W/ SS
+	  
+	  // Gamma = c0 c1 c2 d0 d1 d2
+	  double sgn = 1.0;
+	  Dets[k].parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD
+	  
+	  // TODO Make spinRDM optional
+	  //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
+	  if ( schd.DoSpinRDM )
+	    popSpin3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,threeRDM);
+	  
+	  popSpatial3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,s3RDM);
 	}
-	// TODO
-	/*
-	   for ( int c0=0; c0 < nSpatOrbs; c0++ )
-	   for ( int c1=0; c1 < nSpatOrbs; c1++ )
-	    for ( int c2=0; c2 < nSpatOrbs; c2++ )
-	   for ( int d0=0; d0 < nSpatOrbs; d0++ )
-	   for ( int d1=0; d1 < nSpatOrbs; d1++ )
-	    for ( int d2=0; d2 < nSpatOrbs; d2++ )
-	      for ( int i=0; i < 2; i++ )
-	   for ( int j=0; j < 2; j++ )
-	    for ( int k=0; k < 2; k++ ) {
+      }
+      
 
-	      int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k;
-	      int d0p=2*d0+k, d1p=2*d1+j, d2p=2*d2+i;
-
-	      // Gamma = i j k l m n
-	      s3RDM(genIdx(c0,c1,c2,nSOrbs),genIdx(d0,d1,d2,nSOrbs)) +=
-	      threeRDM(genIdx(c0p,c1p,c2p,norbs),genIdx(d0p,d1p,d2p,norbs));
+      else if ( dist == 1 ) {
+	vector<int> closed(nelec,0);
+	vector<int> open(norbs-nelec,0);
+	Dets[k].getOpenClosed(open,closed);
+	cs.push_back(0); cs.push_back(0);
+	ds.push_back(0); ds.push_back(0);
+	ds[2] = ds[0];
+	
+	for ( int x=0; x<nelec; x++ ) {
+	  cs[1] = closed[x]; ds[1] = closed[x];
+	  if ( closed[x] == cs[0] || closed[x] == ds[2] ) continue;
+	  for ( int y=0; y<x; y++ ) {
+	    cs[2] = closed[y]; ds[0] = closed[y];
+	    if ( closed[y] == ds[1] || closed[y] == ds[2] ) continue;
+	    if ( closed[y] == cs[0] || closed[y] == cs[1] ) continue;  // TODO CHECK W/ SS
+	    
+	    // Gamma = c0 c1 c2 d0 d1 d2
+	    double sgn = 1.0;
+	    Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
+	    
+	    //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
+	    if ( schd.DoSpinRDM )
+	      popSpin3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,threeRDM);
+	    
+	    popSpatial3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,s3RDM);
+	  }
+	}
+      }
+      
+      else if ( dist == 0 ) {
+	vector<int> closed(nelec, 0);
+	vector<int> open(norbs-nelec,0);
+	Dets[k].getOpenClosed(open, closed);
+	cs.push_back(0); cs.push_back(0); cs.push_back(0);
+	ds.push_back(0); ds.push_back(0); ds.push_back(0);
+	for ( int x=0; x < nelec; x++ ) {
+	  cs[0]=closed[x]; ds[2]=closed[x];
+	  for ( int y=0; y < x; y++ ) {
+	    cs[1]=closed[y]; ds[1]=closed[y];
+	    for ( int z=0; z < y; z++ ) {
+	      cs[2]=closed[z]; ds[0]=closed[z];
+	      
+	      //popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
+	      if ( schd.DoSpinRDM )
+		popSpin3RDM(cs,ds,conj(cibra[b])*ciket[k],norbs,threeRDM);
+	      
+	      popSpatial3RDM(cs,ds,conj(cibra[b])*ciket[k],norbs,s3RDM);
 	    }
-	 */
+	  }
+	}
+      }
+    }
+  }
 }
 
 
@@ -1059,13 +1039,12 @@ void SHCIrdm::popSpatial4RDM( vector<int>& cs, vector<int>& ds, CItype value,
 	return;
 }
 
-void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-  MatrixXx& ciket, int nelec, schedule& schd,
-  int root, MatrixXx& fourRDM, MatrixXx& s4RDM ){
+void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
+  CItype* ciket, int nelec, schedule& schd, int root, MatrixXx& fourRDM, 
+  MatrixXx& s4RDM ){
 
 	/*
 	   TODO optimize speed and memory
-	   TODO make spin 4RDM optional
 	 */
 #ifndef SERIAL
 	boost::mpi::communicator world;
@@ -1076,168 +1055,141 @@ void SHCIrdm::Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
 	int norbs = Dets[0].norbs;
 	int nSOs = norbs/2; // Number of spatial orbitals
 
-	for (int b=0; b<Dets.size(); b++) {
-		for (int k=0; k<Dets.size(); k++) {
-
-			int dist = Dets[b].ExcitationDistance( Dets[k] );
-			if ( dist > 4 ) { continue; }
-			vector<int> cs (0), ds(0);
-			getUniqueIndices( Dets[b], Dets[k], cs, ds );
-
-			if ( dist == 4 ) {
-				double sgn = 1.0;
-				Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
-				//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-				if ( schd.DoSpinRDM )
-					popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-
-				popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
-			}
-
-			else if ( dist == 3 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-				cs.push_back(0); ds.push_back(0);
-				ds[3]=ds[2]; ds[2]=ds[1]; ds[1]=ds[0]; //Keep notation
-
-				for ( int w=0; w<nelec; w++) {
-					cs[3]=closed[w]; ds[0]=closed[w];
-					if ( closed[w]==cs[0] || closed[w]==cs[1] || closed[w]==cs[2] ||
-					  closed[w]==ds[3] || closed[w]==ds[2] || closed[w]==ds[1] ) {
-						continue;
-					}
-
-					double sgn = 1.0;
-					Dets[k].parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
-					//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-					if ( schd.DoSpinRDM )
-						popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-
-					popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
-				}
-			}
-
-			else if ( dist == 2 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-				ds[3]=ds[1]; ds[2]=ds[0]; //Keep notation
-
-				for (int w=0; w<nelec; w++) {
-					cs[2]=closed[w]; ds[1]=closed[w];
-					if (closed[w]==cs[0] || closed[w]==cs[1]) continue;
-					if (closed[w]==ds[3] || closed[w]==ds[2]) continue;
-
-					for (int x=0; x<w; x++) {
-						cs[3]=closed[x]; ds[0]=closed[x];
-						if (closed[x]==cs[0] || closed[x]==cs[1]) continue;
-						if (closed[x]==ds[3] || closed[x]==ds[2]) continue;
-
-						double sgn = 1.0;
-						Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
-						//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-						if ( schd.DoSpinRDM )
-							popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-
-						popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
-					}
-				}
-
-			}
-
-			else if ( dist == 1 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-
-				ds[3]=ds[0]; //Keep notation
-
-				for (int w=0; w<nelec; w++) {
-					cs[1]=closed[w]; ds[2]=closed[w];
-					if (closed[w]==cs[0] || closed[w]==ds[3]) continue;
-
-					for (int x=0; x<w; x++) {
-						cs[2]=closed[x]; ds[1]=closed[x];
-						if (closed[x]==cs[0] || closed[x]==ds[3]) continue;
-
-						for (int y=0; y<x; y++) {
-							cs[3]=closed[y]; ds[0]=closed[y];
-							if (closed[y]==cs[0] || closed[y]==ds[3]) continue;
-
-							double sgn = 1.0;
-							Dets[k].parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
-							//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-							if ( schd.DoSpinRDM )
-								popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-
-							popSpatial4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
-						}
-					}
-				}
-			}
-
-			else if ( dist == 0 ) {
-				vector<int> closed(nelec, 0);
-				vector<int> open(norbs-nelec,0);
-				Dets[k].getOpenClosed(open, closed);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-				cs.push_back(0); ds.push_back(0);
-
-				for (int w=0; w<nelec; w++) {
-					cs[0]=closed[w]; ds[3]=closed[w];
-					for (int x=0; x<w; x++) {
-						cs[1]=closed[x]; ds[2]=closed[x];
-						for (int y=0; y<x; y++) {
-							cs[2]=closed[y]; ds[1]=closed[y];
-							for (int z=0; z<y; z++ ) {
-								cs[3]=closed[z]; ds[0]=closed[z];
-
-								//popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-								if ( schd.DoSpinRDM )
-									popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
-
-								popSpatial4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),nSOs,s4RDM);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	// TODO
-	/*
-	   //cout << "Populating spatial 4-RDM" << endl; // TODO
-	   // Pop. Spatial 4RDM
-	   for ( int c0=0; c0 < nSOs; c0++ )
-	   for ( int c1=0; c1 < nSOs; c1++ )
-	    for ( int c2=0; c2 < nSOs; c2++ )
-	   for ( int c3=0; c3 < nSOs; c3++ )
-	   for ( int d0=0; d0 < nSOs; d0++ )
-	    for ( int d1=0; d1 < nSOs; d1++ )
-	      for ( int d2=0; d2 < nSOs; d2++ )
-	   for ( int d3=0; d3 < nSOs; d3++ )
-	    for ( int i=0; i < 2; i++ )
-	      for ( int j=0; j < 2; j++ )
-	        for ( int k=0; k < 2; k++ )
-	    for ( int l=0; l < 2; l++ ) {
-
-	      int c0p=2*c0+i, c1p=2*c1+j, c2p=2*c2+k, c3p=2*c3+l;
-	      int d0p=2*d0+l, d1p=2*d1+k, d2p=2*d2+j, d3p=2*d3+i;
-
-	      // Gamma = c0 c1 c2 c3 d0 d1 d2 d3
-	      s4RDM(gen4Idx(c0,c1,c2,c3,nSOs),
-	      gen4Idx(d0,d1,d2,d3,nSOs)) +=
-	        fourRDM(gen4Idx(c0p,c1p,c2p,c3p,norbs),
-	          gen4Idx(d0p,d1p,d2p,d3p,norbs));
+	for (int b=0; b<DetsSize; b++) {
+	  for (int k=0; k<DetsSize; k++) {
+	    
+	    int dist = Dets[b].ExcitationDistance( Dets[k] );
+	    if ( dist > 4 ) { continue; }
+	    vector<int> cs (0), ds(0);
+	    getUniqueIndices( Dets[b], Dets[k], cs, ds );
+	    
+	    if ( dist == 4 ) {
+	      double sgn = 1.0;
+	      Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
+	      //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+	      if ( schd.DoSpinRDM )
+		popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
+	      
+	      popSpatial4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],nSOs,s4RDM);
 	    }
-	 */
-	return;
+	    
+	    else if ( dist == 3 ) {
+	      vector<int> closed(nelec, 0);
+	      vector<int> open(norbs-nelec,0);
+	      Dets[k].getOpenClosed(open, closed);
+	      cs.push_back(0); ds.push_back(0);
+	      ds[3]=ds[2]; ds[2]=ds[1]; ds[1]=ds[0]; //Keep notation
+	      
+	      for ( int w=0; w<nelec; w++) {
+		cs[3]=closed[w]; ds[0]=closed[w];
+		if ( closed[w]==cs[0] || closed[w]==cs[1] || closed[w]==cs[2] ||
+		     closed[w]==ds[3] || closed[w]==ds[2] || closed[w]==ds[1] ) {
+		  continue;
+		}
+		
+		double sgn = 1.0;
+		Dets[k].parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
+		//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		if ( schd.DoSpinRDM )
+		  popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
+		
+		popSpatial4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],nSOs,s4RDM);
+	      }
+	    }
+	    
+	    else if ( dist == 2 ) {
+	      vector<int> closed(nelec, 0);
+	      vector<int> open(norbs-nelec,0);
+	      Dets[k].getOpenClosed(open, closed);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      ds[3]=ds[1]; ds[2]=ds[0]; //Keep notation
+	      
+	      for (int w=0; w<nelec; w++) {
+		cs[2]=closed[w]; ds[1]=closed[w];
+		if (closed[w]==cs[0] || closed[w]==cs[1]) continue;
+		if (closed[w]==ds[3] || closed[w]==ds[2]) continue;
+		
+		for (int x=0; x<w; x++) {
+		  cs[3]=closed[x]; ds[0]=closed[x];
+		  if (closed[x]==cs[0] || closed[x]==cs[1]) continue;
+		  if (closed[x]==ds[3] || closed[x]==ds[2]) continue;
+		  
+		  double sgn = 1.0;
+		  Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
+		  //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		  if ( schd.DoSpinRDM )
+		    popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
+		  
+		  popSpatial4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],nSOs,s4RDM);
+					}
+	      }
+	      
+	    }
+	    
+	    else if ( dist == 1 ) {
+	      vector<int> closed(nelec, 0);
+	      vector<int> open(norbs-nelec,0);
+	      Dets[k].getOpenClosed(open, closed);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      
+	      ds[3]=ds[0]; //Keep notation
+	      
+	      for (int w=0; w<nelec; w++) {
+		cs[1]=closed[w]; ds[2]=closed[w];
+		if (closed[w]==cs[0] || closed[w]==ds[3]) continue;
+		
+		for (int x=0; x<w; x++) {
+		  cs[2]=closed[x]; ds[1]=closed[x];
+		  if (closed[x]==cs[0] || closed[x]==ds[3]) continue;
+		  
+		  for (int y=0; y<x; y++) {
+		    cs[3]=closed[y]; ds[0]=closed[y];
+		    if (closed[y]==cs[0] || closed[y]==ds[3]) continue;
+		    
+		    double sgn = 1.0;
+		    Dets[k].parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
+		    //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		    if ( schd.DoSpinRDM )
+		      popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
+		    
+		    popSpatial4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],nSOs,s4RDM);
+		  }
+		}
+	      }
+	    }
+	    
+	    else if ( dist == 0 ) {
+	      vector<int> closed(nelec, 0);
+	      vector<int> open(norbs-nelec,0);
+	      Dets[k].getOpenClosed(open, closed);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      cs.push_back(0); ds.push_back(0);
+	      
+	      for (int w=0; w<nelec; w++) {
+		cs[0]=closed[w]; ds[3]=closed[w];
+		for (int x=0; x<w; x++) {
+		  cs[1]=closed[x]; ds[2]=closed[x];
+		  for (int y=0; y<x; y++) {
+		    cs[2]=closed[y]; ds[1]=closed[y];
+		    for (int z=0; z<y; z++ ) {
+		      cs[3]=closed[z]; ds[0]=closed[z];
+		      
+		      //popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		      if ( schd.DoSpinRDM )
+			popSpin4RDM(cs,ds,conj(cibra[b])*ciket[k],norbs,fourRDM);
+		      
+		      popSpatial4RDM(cs,ds,conj(cibra[b])*ciket[k],nSOs,s4RDM);
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+  return;
 }

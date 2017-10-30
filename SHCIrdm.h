@@ -97,12 +97,12 @@ namespace SHCIrdm {
   void popSpatial4RDM( vector<int>& cs, vector<int>& ds, CItype value,
 		       int& nSOs, MatrixXx& s4RDM );
 
-  void Evaluate3RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-		     MatrixXx& ciket, int nelec, schedule& schd, int root, 
+  void Evaluate3RDM( Determinant* Dets, int DetsSize, CItype* cibra,
+		     CItype* ciket, int nelec, schedule& schd, int root, 
 		     MatrixXx& threeRDM, MatrixXx& s3RDM );
 
-  void Evaluate4RDM( vector<Determinant>& Dets, MatrixXx& cibra,
-		     MatrixXx& ciket, int nelec, schedule& schd, int root, 
+  void Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
+		     CItype* ciket, int nelec, schedule& schd, int root, 
 		     MatrixXx& fourRDM, MatrixXx& s4RDM );
 };
 

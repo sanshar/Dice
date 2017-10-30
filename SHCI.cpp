@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
 	pout << "**************************************************************\n";
 	pout << "SELECTING REFERENCE DETERMINANT(S)\n";
 	pout << "**************************************************************\n";
-	pout << Dets[0] << " Give HF Energy: " << Dets.at(0).Energy(I1,I2,coreE) << "\n\n";
+	pout << Dets[0] << " Given HF Energy: " << Dets.at(0).Energy(I1,I2,coreE) << "\n\n";
 
 // #ifndef Complex
 	symmetry molSym ( schd.pointGroup );
@@ -362,23 +362,27 @@ int main(int argc, char* argv[]) {
 
 		// TODO Find permanent home for 3RDM
 		if ( schd.DoThreeRDM ) {
-			if (commrank==0) cout << "Calculating 3-RDM..." << endl;
-			MatrixXx s3RDM, threeRDM;
+		  if (commrank==0) cout << "Calculating 3-RDM..." << endl;
+		  MatrixXx s3RDM, threeRDM;
+		  CItype *ciroot;
+		  SHMVecFromMatrix(ci[0],ciroot,shcicMax, cMaxSegment, regioncMax);
 
-			threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
-			s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
-			SHCIrdm::Evaluate3RDM(Dets,ci[0],ci[0],nelec,schd,0,threeRDM,s3RDM);
-			SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
+		  threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
+		  s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
+		  SHCIrdm::Evaluate3RDM(SHMDets,DetsSize,ciroot,ciroot,nelec,schd,0,threeRDM,s3RDM);
+		  SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
 		}
 
 		if ( schd.DoFourRDM ) {
-			if (commrank==0) cout << "Calculating 4-RDM..." << endl;
-			MatrixXx s4RDM, fourRDM;
+		  if (commrank==0) cout << "Calculating 4-RDM..." << endl;
+		  MatrixXx s4RDM, fourRDM;
+		  CItype *ciroot;
+		  SHMVecFromMatrix(ci[0],ciroot,shcicMax, cMaxSegment, regioncMax);
 
-			fourRDM.setZero(norbs*norbs*norbs*norbs,norbs*norbs*norbs*norbs);
-			s4RDM.setZero(norbs*norbs*norbs*norbs/16,norbs*norbs*norbs*norbs/16);
-			SHCIrdm::Evaluate4RDM(Dets,ci[0],ci[0],nelec,schd,0,fourRDM,s4RDM);
-			SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
+		  fourRDM.setZero(norbs*norbs*norbs*norbs,norbs*norbs*norbs*norbs);
+		  s4RDM.setZero(norbs*norbs*norbs*norbs/16,norbs*norbs*norbs*norbs/16);
+		  SHCIrdm::Evaluate4RDM(SHMDets,DetsSize,ciroot,ciroot,nelec,schd,0,fourRDM,s4RDM);
+		  SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
 		}
 
 		if (schd.doSOC && !schd.stochastic) { //deterministic SOC calculation
