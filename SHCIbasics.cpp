@@ -1108,6 +1108,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	//exit(0);
 	//}
 	pout <<"Calculating RDM"<<endl;
+	int trev = Determinant::Trev;
+	Determinant::Trev = 0;
 	for (int i=0; i<schd.nroots; i++) {
 	  CItype *SHMci;
 	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
@@ -1117,14 +1119,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
 
-	  if (Determinant::Trev != 0 || schd.DavidsonType == DIRECT) {
-	    Determinant::Trev = 0;
+	  if ((trev != 0 || schd.DavidsonType == DIRECT)) {
 	    //now that we have unpacked Trev list, we can forget about t-reversal symmetry
 	    if (proc == 0) {
 	      helper2.clear();
 	      helper2.PopulateHelpers(SHMDets, DetsSize, 0);
-	    }	
-	    helper2.MakeSHMHelpers();
+	    }
+	    if (i == 0)
+	      helper2.MakeSHMHelpers();
 	    SHCIrdm::makeRDM(helper2.AlphaMajorToBetaLen, 
 			     helper2.AlphaMajorToBetaSM ,
 			     helper2.AlphaMajorToDetSM  ,
