@@ -1,11 +1,10 @@
 /*                                                                           
-Developed by Sandeep Sharma and Garnet K.-L. Chan, 2012                      
-Copyright (c) 2012, Garnet K.-L. Chan                                        
-                                                                             
-This program is integrated in Molpro with the permission of 
-Sandeep Sharma, Garnet K.-L. Chan and Roberto Olivares-Amaya
+  Developed by Sandeep Sharma and Garnet K.-L. Chan, 2012
+  Copyright (c) 2012, Garnet K.-L. Chan
+  
+  This program is integrated in Molpro with the permission of
+  Sandeep Sharma, Garnet K.-L. Chan and Roberto Olivares-Amaya
 */
-
 #ifndef NEW_ANGLIB_H
 #define NEW_ANGLIB_H
 
