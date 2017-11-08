@@ -114,7 +114,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   int niter;
   //if some vector has zero norm then randomise it
   if (commrank == 0) {
-    for (int i=0; i<nroots; i++)  {
+    for (int i=0; i<nroots; i++) {
       b.col(i) = 1.*x0[i];
       if (x0[i].norm() < 1.e-10) {
         b.col(i).setRandom();
@@ -136,8 +136,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         b.col(i) -= overlap*b.col(j);
       }
       b.col(i) = b.col(i)/b.col(i).norm();
-    }
-  }
+    } // i
+  } // commrank=0
 
   MatrixXx sigma;
   if (commrank == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
@@ -154,14 +154,13 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
     //0->continue with the loop, 1 -> continue clause, 2 -> return
     int continueOrReturn = 0;
 #ifndef SERIAL
-  MPI_Bcast(&bsize, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(&sigmaSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&bsize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&sigmaSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
+
     for (int i=sigmaSize; i<bsize; i++) {
       if (commrank==0) {
-        for (int k=0; k<brows; k++) {
-          bcol[k] = b(k,i);
-        }
+        for (int k=0; k<brows; k++) bcol[k] = b(k,i);
       }
       for (int k=0; k<brows; k++) sigmacol[k] = 0.0;
 
@@ -176,7 +175,6 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
       H(bcol, sigmacol);
       sigmaSize++;
 
@@ -195,20 +193,18 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         else
           MPI_Reduce(sigmacol, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 #endif
-      }
+      } // localrank=0
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
       if (commrank==0) {
-        for (int k=0; k<brows; k++) {
-          sigma(k,i) = sigmacol[k];
-        }
+        for (int k=0; k<brows; k++) sigma(k,i) = sigmacol[k];
       }
 
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-    }
+    } // i
 
 
     if (commrank == 0) {
@@ -284,31 +280,31 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
           goto label1;
           //return eroots;
         }
-      }
-    }
+      } // cvg
+    } // commrank=0
 
-  label1:
+    label1:
 #ifndef SERIAL
-    MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
-    if (continueOrReturn == 2) return eroots;
+      if (continueOrReturn == 2) return eroots;
 
-    if (commrank == 0) {
-      precondition(r,diag,ei);
-      for (int i=0; i<bsize; i++)
-        r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
+      if (commrank == 0) {
+        precondition(r,diag,ei);
+        for (int i=0; i<bsize; i++)
+          r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
 
-      if (bsize < maxCopies) {
-        b.col(bsize) = r/r.norm();
-        bsize++;
-      } else {
-        bsize = nroots+3;
-        sigmaSize = nroots+2;
-        b.col(bsize-1) = r/r.norm();
-      }
-    }
-  }
+        if (bsize < maxCopies) {
+          b.col(bsize) = r/r.norm();
+          bsize++;
+        } else {
+          bsize = nroots+3;
+          sigmaSize = nroots+2;
+          b.col(bsize-1) = r/r.norm();
+        }
+      } // commrank=0
+  } // while
 } // end davidson
 
 
@@ -363,12 +359,11 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
         b.col(i) -= overlap*b.col(j);
       }
       b.col(i) = b.col(i)/b.col(i).norm();
-    }
-  }
+    } // i
+  } // commrank=0
 
   MatrixXx sigma;
   if (commrank == 0) sigma = MatrixXx::Zero(x0[0].rows(), maxCopies);
-
 
   int sigmaSize=0, bsize = x0.size();
   MatrixXx r;
@@ -388,12 +383,9 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
     for (int i=sigmaSize; i<bsize; i++) {
       if (commrank==0) {
-        for (int k=0; k<brows; k++) {
-          bcol[k] = b(k,i);
-        }
+        for (int k=0; k<brows; k++) bcol[k] = b(k,i);
       }
       for (int k=0; k<brows; k++) sigmacol[k] = 0.0;
-      
 
       //by default the MatrixXx is column major,
       //so all elements of bcol are contiguous
@@ -424,18 +416,18 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
         else
           MPI_Reduce(sigmacol, sigmacol,  2*brows, MPI_DOUBLE, MPI_SUM, 0, shmcomm);
 #endif
-      }
+      } // localrank=0
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
       if (commrank==0) {
-        for (int k=0; k<brows; k++){
-          sigma(k,i) = sigmacol[k];
-        }
+        for (int k=0; k<brows; k++) sigma(k,i) = sigmacol[k];
       }
+
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-    }
+    } // i
 
 
     if (commrank == 0) {
@@ -511,31 +503,31 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
           goto label1;
           //return eroots;
         }
-      }
-    }
+      } // cvg
+    } // commrank=0
 
-  label1:
+    label1:
 #ifndef SERIAL
-    MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&continueOrReturn, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&numIter         , 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
-    if (continueOrReturn == 2) return eroots;
+      if (continueOrReturn == 2) return eroots;
 
-    if (commrank == 0) {
-      precondition(r,diag,ei);
-      for (int i=0; i<bsize; i++)
-        r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
+      if (commrank == 0) {
+        precondition(r,diag,ei);
+        for (int i=0; i<bsize; i++)
+          r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
 
-      if (bsize < maxCopies) {
-        b.col(bsize) = r/r.norm();
-        bsize++;
-      } else {
-        bsize = min(nroots+3, maxCopies);
-        sigmaSize = bsize-1;
-        b.col(bsize-1) = r/r.norm();
-      }
-    }
-  }
+        if (bsize < maxCopies) {
+          b.col(bsize) = r/r.norm();
+          bsize++;
+        } else {
+          bsize = min(nroots+3, maxCopies);
+          sigmaSize = bsize-1;
+          b.col(bsize-1) = r/r.norm();
+        }
+      } // commrank=0
+  } // while
 } // end davidsonDirect
 
 
@@ -569,8 +561,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
   MatrixXx r = 1.*b, p = 1.*b;
   double rsold = r.squaredNorm();
 
-  if (fabs(r.norm()) < tol) 
-    return 0.0;
+  if (fabs(r.norm()) < tol) return 0.0;
 
   int iter = 0;
   while (true) {
@@ -616,6 +607,6 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     p = r +(rsnew/rsold)*p;
     rsold = rsnew;
     iter++;
-  }
+  } // while
 } // end LinearSolver
 

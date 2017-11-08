@@ -316,7 +316,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
         }
         index += 1;
       }
-    }
+    } // while
 
     if (norbs == -1 || nelec == -1) {
       std::cout << "could not read the norbs or nelec"<<std::endl;
@@ -378,7 +378,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       } else {
         I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
       }
-    }
+    } // while
 
     //exit(0);
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory,myfn);
@@ -492,7 +492,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   if (commrank == 0) {
     startingIndicesSameSpin[0] = 0;
     size_t index = 0, pairIter = 1;
-    for (int i=0; i<norbs; i++) {
+    for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
         std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.find( std::pair<short,short>(i,j));
 
@@ -506,13 +506,12 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
         }
         startingIndicesSameSpin[pairIter] = index;
         pairIter++;
-      }
     }
     I2.sameSpin.clear();
 
     startingIndicesOppositeSpin[0] = 0;
     index = 0; pairIter = 1;
-    for (int i=0; i<norbs; i++) {
+    for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
         std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<short,short>(i,j));
 
@@ -526,7 +525,6 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
         }
         startingIndicesOppositeSpin[pairIter] = index;
         pairIter++;
-      }
     }
     I2.oppositeSpin.clear();
   } // commrank=0

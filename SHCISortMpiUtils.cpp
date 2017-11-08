@@ -1043,7 +1043,7 @@ namespace SHCISortMpiUtils {
       k++;l++;
     }
 
-  } // end merge
+  } // merge
 
 
 

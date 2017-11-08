@@ -169,7 +169,7 @@ double LCC::doLCC(
       }
     }
   }
-  // end of Communications
+  // communications end here
 
   // This is Vpsi0
   vector<Determinant>& Vpsi0Dets   = *uniqueDEH.Det;

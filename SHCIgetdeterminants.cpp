@@ -90,7 +90,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 #endif
       energy.push_back(E);
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
@@ -108,7 +108,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -129,8 +129,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
         double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
       }
-    }
-  }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsDeterministicPT
 
@@ -189,7 +189,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
       orbDiff = A*N+I; // a = creation, i = annihilation
       orbDifference.push_back(orbDiff);
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
@@ -207,7 +207,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -234,9 +234,9 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
         orbDiff = A*N*N*N+I*N*N+B*N+J;  //i>j and a>b??
         orbDifference.push_back(orbDiff);
 
-      } // if a and b unoccupied
-    } // iterate over heatbath integrals
-  } // i and j
+      }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets
 
@@ -295,7 +295,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
       if (closed[i]%2 != open[a]%2) E = di.Energy(int1, int2, coreE);
       energy.push_back(E);
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
@@ -313,7 +313,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon1 && fabs(integrals[index]) < epsilon2) break;
@@ -337,9 +337,9 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
         double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
 
-      } // if a and b unoccupied
-    } // iterate over heatbath integrals
-  } // i and j
+      }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC 
 
@@ -391,7 +391,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       di.setocc(open[a], true); di.setocc(closed[i],false);
       //if (Determinant::Trev != 0) di.makeStandard();
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   if (fabs(int2.maxEntry) < epsilon) return;
@@ -410,7 +410,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -424,8 +424,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
         //if (Determinant::Trev != 0) di.makeStandard();
       }
-    }
-  }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsVariational 
 
@@ -491,7 +491,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy)) dets.push_back(detcpy);
 #endif
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   if (fabs(int2.maxEntry) < epsilon) return;
@@ -510,7 +510,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -543,8 +543,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
 
         //if (Determinant::Trev != 0) di.makeStandard();
       }
-    }
-  }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsVariationalApprox 
 
@@ -603,7 +603,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
 #endif
       energy.push_back(E);
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
@@ -621,7 +621,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -647,8 +647,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
         double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
       }
-    }
-  }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsStochastic
 
@@ -715,7 +715,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
       if (fabs(integral) > epsilonLarge) present.push_back(true);
       else present.push_back(false);
     }
-  }
+  } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
@@ -733,7 +733,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-    // for all excitations
+    // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (fabs(integrals[index]) < epsilon) break;
@@ -765,7 +765,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
         if (fabs(integrals[index]) > epsilonLarge) present.push_back(true);
         else present.push_back(false);
       }
-    }
-  }
+    } // heatbath integrals
+  } // ij
   return;
 } // end SHCIgetdeterminants::getDeterminantsStochastic2Epsilon 
+
