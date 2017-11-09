@@ -25,14 +25,30 @@ Features
 
 * Active space orbital optimization with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. When combined with `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ *Dice* can also calculate excited states using state averaging.
 
+* Spin orbit coupling.
+
 
 
 
 License and how to cite
 -----------------------
-*Dice* is distributed under the GNU GPL license which is reproduced on the top of every source file. We would appreciate if you cite the following paper in publications resulting from the use of *Dice*.
+*Dice* is distributed under the GNU GPL license which is reproduced on the top of every source file. We would appreciate if you cite the following papers in publications resulting from the use of *Dice*.
 
+If you use any part of the software package, please cite:
 
 * S. Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, `"Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory." <http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce>`_ *Journal* *of* *Chemical* *Theory* *and* *Computations*, **2017**, 13, 1595.
 
 * A. A. Holmes, N. M. Tubman, C. J. Umrigar, `"Heat-Bath Configuration Interaction: An Efficient Selected Configuration Interaction Algorithm Inspired by Heat-Bath Sampling." <http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00407>`_ *Journal* *of* *Chemical* *Theory* *and* *Computations*, **2016**, 12, 3674.
+
+
+If you use Dice to calculate excited states, please cite:
+
+*  A. A. Holmes, C. J. Umrigar, S. Sharma, `“Excited states using semistochastic heat-bath configuration interaction” <http://aip.scitation.org/doi/pdf/10.1063/1.4998614>`_ *Journal* *of* *Chemical* *Physics*, **2017**, 147, 164111.
+
+If you use Dice to perform relativistic calculations such as S.O.C., please cite:
+
+*  B. Mussard, S. Sharma, `“One-step treatment of spin-orbit coupling and electron correlation in large active spaces" <https://arxiv.org/abs/1710.00259>`_ *Journal* *of* *Chemical* *Theory* *and* *Computations*, **2017**, (under review).
+
+If you use Dice in conjunction with `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_, please cite:
+
+* J. E. T. Smith, B. Mussard, A. A. Holmes, S. Sharma, `"Cheap and Near Exact CASSCF with Large Active Space" <http://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00900>`_ *Journal* *of* *Chemical* *Theory* and *Computation*, **2017**.

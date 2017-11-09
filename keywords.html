@@ -1,192 +1,294 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Keywords &mdash; Dice 0.9 documentation</title>
-    
-    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.9',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="Dice 0.9 documentation" href="index.html" />
-    <link rel="next" title="Benchmarking" href="benchmarking.html" />
-    <link rel="prev" title="Using in CASSCF" href="usingincasscf.html" /> 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="benchmarking.html" title="Benchmarking"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="usingincasscf.html" title="Using in CASSCF"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Keywords</a><ul>
-<li><a class="reference internal" href="#basic-keywords">Basic Keywords</a><ul>
-<li><a class="reference internal" href="#reference-determinant">Reference Determinant</a></li>
-<li><a class="reference internal" href="#variational">Variational</a></li>
-<li><a class="reference internal" href="#perturbative">Perturbative</a></li>
-<li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Keywords &mdash; Dice 0.1 documentation</title>
+  
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="usingincasscf.html"
-                        title="previous chapter">Using in CASSCF</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="benchmarking.html"
-                        title="next chapter">Benchmarking</a></p>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/keywords.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
+        <link rel="next" title="Benchmarking" href="benchmarking.html"/>
+        <link rel="prev" title="Using in CASSCF" href="usingincasscf.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Dice
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Keywords</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-keywords">Basic Keywords</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#reference-determinant">Reference Determinant</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#variational">Variational</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#perturbative">Perturbative</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reduced-density-matrices-rdms">Reduced Density Matrices (RDMs)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking</a></li>
+</ul>
+
+            
+          
         </div>
       </div>
+    </nav>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Dice</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Keywords</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/keywords.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="keywords">
 <span id="dice-keywords"></span><h1>Keywords<a class="headerlink" href="#keywords" title="Permalink to this headline">¶</a></h1>
-<p>The keywords are listed below can be added to the input script after the occupation of the orbitals is specified. To use a keyword, write the keyword followed by the type of value specified in parentheses e.g. to use davidsonTol write &#8220;davidsonTol 5e-5&#8221; in your input script. If no type of value is given in parentheses simply use th keyword itself to toggle the desired behavior, e.g. &#8220;DoRDM&#8221; in your input file will turn on the DoRDM behavior described below.</p>
+<p>The keywords are listed below can be added to the input script after the occupation of the orbitals is specified. To use a keyword, write the keyword followed by the type of value specified in parentheses e.g. to use davidsonTol write “davidsonTol 5e-5” in your input script. If no type of value is given in parentheses simply use th keyword itself to toggle the desired behavior, e.g. “DoRDM” in your input file will turn on the DoRDM behavior described below.</p>
 <div class="section" id="basic-keywords">
 <h2>Basic Keywords<a class="headerlink" href="#basic-keywords" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="reference-determinant">
 <h3>Reference Determinant<a class="headerlink" href="#reference-determinant" title="Permalink to this headline">¶</a></h3>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>nroots</dt>
-<dd><p class="first last">(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</p>
-</dd>
+<dd>(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="general">
+<h3>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>Trev</dt>
+<dd>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>doSOC</dt>
+<dd>(Boolean) Include spin-orbit coupling in hamiltonian. Default is false.</dd>
 </dl>
 </li>
 </ul>
 </div>
 <div class="section" id="variational">
 <h3>Variational<a class="headerlink" href="#variational" title="Permalink to this headline">¶</a></h3>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>davidsonTol</dt>
-<dd><p class="first last">(Double) Tolerance for the Davidson step. The default is 5e−5.</p>
-</dd>
+<dd>(Double) Tolerance for the final Davidson step. The default is 5e−5.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>davidsonTolLoose</dt>
+<dd>(Double) Tolerance for the Davidson steps leading up to final step. The default is 5e-5.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>davidsonType</dt>
+<dd>(String) Sets where the information is stored during the Davidson algorithm. Default is MEMORY, but it can be set to DISK for large systems.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>dE</dt>
-<dd><p class="first last">(Double) This is the energy convergence tolerance for the variational portion of the calculation.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>DoRDM</dt>
-<dd><p class="first last">If true, the program will save the spatial reduced density matrix as a text file. Default is False.</p>
-</dd>
+<dd>(Double) This is the energy convergence tolerance for the variational portion of the calculation.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>epsilon1</dt>
-<dd><p class="first last">(Array of doubles) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</p>
-</dd>
+<dd>(Array of doubles) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</dd>
 </dl>
 </li>
 </ul>
 </div>
 <div class="section" id="perturbative">
 <h3>Perturbative<a class="headerlink" href="#perturbative" title="Permalink to this headline">¶</a></h3>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>epsilon2</dt>
-<dd><p class="first last">(Double) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</p>
-</dd>
+<dd>(Double) Lower limit for accepted value of <span class="math">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>epsilon2Large</dt>
-<dd><p class="first last">(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifies the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</p>
-</dd>
+<dd>(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifies the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>SampleN</dt>
-<dd><p class="first last">(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</p>
-</dd>
+<dd>(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>stochastic</dt>
-<dd><p class="first last">The default is true and this keyword should not be included in input file. True means that the the perturbative component will be calculated stochastically or semi-stochastically if epsilon2Large is used. To switch to deterministic write &#8220;deterministic&#8221; in input file.</p>
-</dd>
+<dd>The default is true and this keyword should not be included in input file. True means that the the perturbative component will be calculated stochastically or semi-stochastically if epsilon2Large is used. To switch to deterministic write “deterministic” in input file.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>targetError</dt>
-<dd><p class="first last">(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math">\(10^4\)</span>.</p>
-</dd>
+<dd>(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math">\(10^4\)</span>.</dd>
+</dl>
+</li>
+<li>extrapolate
+(bool) Extrapolate the perturbative correction to the FCI limit (where all determinants are included in the variational space).</li>
+</ul>
+</div>
+<div class="section" id="reduced-density-matrices-rdms">
+<h3>Reduced Density Matrices (RDMs)<a class="headerlink" href="#reduced-density-matrices-rdms" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>DoRDM</dt>
+<dd>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>RDMtype</dt>
+<dd>(String) Controls whether or not Dice includes perturbative correction in the two body reduced density matrix. Default is RELAXED, which includes the correction. The alternative is UNRELAXED.</dd>
 </dl>
 </li>
 </ul>
 </div>
 <div class="section" id="miscellaneous">
 <h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
-<ul>
+<ul class="simple">
 <li><dl class="first docutils">
 <dt>prefix</dt>
-<dd><p class="first last">(String) Path to scratch directory. Default is &#8221;.&#8221;. To set your own path, simply write the absolute path in the input file without quotations.</p>
-</dd>
+<dd>(String) Path to scratch directory. Default is “.”. To set your own path, simply write the absolute path in the input file without quotations.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt>io</dt>
-<dd><p class="first last">Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write &#8220;noio&#8221; in input script.</p>
-</dd>
+<dd>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</dd>
 </dl>
 </li>
 </ul>
@@ -195,29 +297,76 @@
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="benchmarking.html" class="btn btn-neutral float-right" title="Benchmarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="usingincasscf.html" class="btn btn-neutral" title="Using in CASSCF" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Sandeep Sharma.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="benchmarking.html" title="Benchmarking"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="usingincasscf.html" title="Using in CASSCF"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &copy; Copyright 2017, Sandeep Sharma.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
-    </div>
-  </body>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>

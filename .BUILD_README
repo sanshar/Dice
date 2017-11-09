@@ -1,0 +1,40 @@
+-------------------
+Directory Structure
+-------------------
+"./_downloads"
+  Contains compressed Dice repositories.
+
+"./_images"
+  Contains images, like logos, used throughout the website.
+
+"./_sources"
+  Contains restructured text (.rst) files that sphinx will use to generate html
+  files (see below for more details).
+
+"./_static"
+  Contains mostly formatting files for read the docs theme, don't change them.
+
+----------------------
+Dependencies for Build
+----------------------
+* Sphinx
+  ** Linux:
+    $ sudo apt-get install python-sphinx
+    or
+    $ pip install sphinx
+  ** Mac OSx:
+    $ brew install sphinx
+    or
+    $ pip install sphinx
+
+* sphinx read the docs theme
+  ** Linux/Mac:
+    $ pip install sphinx_rtd_theme
+
+---------------------
+Building Using Sphinx
+---------------------
+$ sphinx-build -b html _sources/ .
+
+This command uses the restructured text files in "./_sources" to create html
+files that are stored in the current (".") directory.

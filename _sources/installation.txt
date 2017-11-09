@@ -2,9 +2,13 @@ Installation
 ************
 Source Code
 -----------
-* Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
+* Download the latest version of Dice: :download:`Dice.tar.gz <../_downloads/dice.tar.gz>`
 
-* Download the latest version of Dice: :download:`Dice.tar.gz <images/Dice.tar.gz>`
+* Download Dice from July, 2017: :download:`dice_07_2017.tar.gz <../_downloads/dice_07_2017.tar.gz>`
+
+Connecting Module for PySCF
+---------------------------
+* Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
 
 Compile
 -------
@@ -30,4 +34,4 @@ Once compiling is complete you should test the code using the "/path_to/Dice/tes
 
 .. note::
 
-  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.
+  If your system has limited memory or slow processing power, you may wish to comment out some of the bigger test in runTests.sh.

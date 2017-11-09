@@ -1,95 +1,173 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="c++">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Getting Started &mdash; Dice 0.9 documentation</title>
-    
-    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.9',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="Dice 0.9 documentation" href="index.html" />
-    <link rel="next" title="Using in CASSCF" href="usingincasscf.html" />
-    <link rel="prev" title="Installation" href="installation.html" /> 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="usingincasscf.html" title="Using in CASSCF"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="installation.html" title="Installation"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Getting Started</a><ul>
-<li><a class="reference internal" href="#structure-of-the-input">Structure of the Input</a><ul>
-<li><a class="reference internal" href="#header">Header</a></li>
-<li><a class="reference internal" href="#variational-section">Variational Section</a></li>
-<li><a class="reference internal" href="#perturbative-section">Perturbative Section</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
-</ul>
-</li>
-</ul>
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Getting Started &mdash; Dice 0.1 documentation</title>
+  
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="installation.html"
-                        title="previous chapter">Installation</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="usingincasscf.html"
-                        title="next chapter">Using in CASSCF</a></p>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/gettingstarted.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
+        <link rel="next" title="Using in CASSCF" href="usingincasscf.html"/>
+        <link rel="prev" title="Installation" href="installation.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Dice
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#structure-of-the-input">Structure of the Input</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#header">Header</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#variational-section">Variational Section</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#perturbative-section">Perturbative Section</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a></li>
+<li class="toctree-l1"><a class="reference internal" href="keywords.html">Keywords</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking</a></li>
+</ul>
+
+            
+          
         </div>
       </div>
+    </nav>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Dice</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Getting Started</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/gettingstarted.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
@@ -106,27 +184,22 @@
 </div>
 <div class="section" id="perturbative-section">
 <h3>Perturbative Section<a class="headerlink" href="#perturbative-section" title="Permalink to this headline">¶</a></h3>
-<p><em>Dice</em> can calculate the second order perturbative contribution to the energy in three ways all of which involve the use of the <span class="math">\(epsilon_2\)</span> keyword. This parameter controls how much of the determinant space will be included in the perturbative calculation</p>
-<ol class="arabic">
-<li><p class="first">Deterministic: All determinants connected to the variational space with <span class="math">\(|H_{ai}c_i| &gt; \epsilon_2\)</span> are included in the following summation where <span class="math">\(\Delta E^{(2)}\)</span> is the second order perturbative correction to the energy, <span class="math">\(H_{ai}\)</span> is the Hamiltonian matrix element connecting determinants i and a, <span class="math">\(c_i\)</span> is the coefficient of the i <span class="math">\(^{th}\)</span> determinant, and <span class="math">\(E^{(0)}\)</span> is the eigenvalue of the zeroth-order Hamiltonian.</p>
-<blockquote>
-<div><div class="math" id="equation-e_det_pt">
-<span class="eqno">(1)</span>\[\Delta E^{(2)} \approx \sum_a \frac{\big(\sum_i^{\epsilon_2} H_{ai} c_i \big)^2}{E^{(0)}-H_{aa}}\]</div>
-</div></blockquote>
-</li>
-<li><p class="first">Stochastic: A small number of determinants in the variational space (determined by the SampleN parameter, see <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> for more details) are stochastically selected and used evaluate equation <a href="#equation-e_stoc_pt">(2)</a> where <span class="math">\(N_d\)</span> is the total number of determinants sampled, <span class="math">\(N_d^{diff}\)</span> is the number of unique determinants sampled, <span class="math">\(\omega_i\)</span> is the number of times determinant i was selected in this sample, and <span class="math">\(p_i = \frac{|c_i|}{\sum_i |c_i|}\)</span> or the probability of selecting determinant i. Stochastic evaluation of the energy correction enables the use of much smaller <span class="math">\(\epsilon_2\)</span> values for large systems, while retaining the sub mHa accuracy of the deterministic variant.</p>
-<blockquote>
-<div><div class="math" id="equation-e_stoc_pt">
-<span class="eqno">(2)</span>\[\Delta E^{(2)} \approx \frac{1}{N_d(N_d-1)} \Bigg \langle \sum_a \frac{1}{E^{(0)}-H_{aa}} \Bigg[ \bigg(\sum_i^{N_d^{diff}} \frac{\omega_i H_{ai} c_i}{p_i}\bigg)^2 + \sum_i^{N_d^{diff}} \bigg(\frac{\omega_i (N_d-1)}{p_i} - \frac{\omega_i^2}{p_i^2}\bigg) c_i^2 H_{ai}^2 \Bigg] \Bigg \rangle\]</div>
-</div></blockquote>
-</li>
-<li><p class="first">Semistochastic: In this variant of the peturbative calculation, <em>Dice</em> both eq. <a href="#equation-e_det_pt">(1)</a> and <a href="#equation-e_stoc_pt">(2)</a>. A new keyword called <span class="math">\(\epsilon_{2Large}\)</span> is needed to distinguish which determinants will be treated stochastically and which will not. <em>Dice</em> calculates the energy correction using <a href="#equation-e_stoc_pt">(2)</a> for both <span class="math">\(\epsilon_2\)</span> and <span class="math">\(\epsilon_{2Large}\)</span> and using <a href="#equation-e_det_pt">(1)</a> for <span class="math">\(\epsilon_{2Large}\)</span>. We then subtract the less strict stochastic correction (<span class="math">\(E_2^S[\epsilon_2^d]\)</span>) from the strict stochastic correction (<span class="math">\(\Delta E_2^S[\epsilon_2]\)</span>) to reduce the stochastic noise before adding the deterministic contribution (<span class="math">\(\Delta E_2^D[\epsilon_2^d]\)</span>).</p>
-<blockquote>
-<div><div class="math" id="equation-e_semi_pt">
-<span class="eqno">(3)</span>\[\Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]\]</div>
-</div></blockquote>
-</li>
+<p><em>Dice</em> can calculate the second order perturbative contribution to the energy in three ways all of which involve the use of the <span class="math">\(\epsilon_2\)</span> keyword. This parameter controls how much of the determinant space will be included in the perturbative calculation</p>
+<ol class="arabic simple">
+<li>Deterministic: All determinants connected to the variational space with <span class="math">\(|H_{ai}c_i| &gt; \epsilon_2\)</span> are included in the following summation where <span class="math">\(\Delta E^{(2)}\)</span> is the second order perturbative correction to the energy, <span class="math">\(H_{ai}\)</span> is the Hamiltonian matrix element connecting determinants i and a, <span class="math">\(c_i\)</span> is the coefficient of the i <span class="math">\(^{th}\)</span> determinant, and <span class="math">\(E^{(0)}\)</span> is the eigenvalue of the zeroth-order Hamiltonian.</li>
 </ol>
+<div class="math">
+\[\Delta E^{(2)} \approx \sum_a \frac{\big(\sum_i^{\epsilon_2} H_{ai} c_i \big)^2}{E^{(0)}-H_{aa}}\]</div>
+<ol class="arabic simple" start="2">
+<li>Stochastic: A small number of determinants in the variational space (determined by the SampleN parameter, see <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> for more details) are stochastically selected and used to evaluate the equation above where <span class="math">\(N_d\)</span> is the total number of determinants sampled, <span class="math">\(N_d^{diff}\)</span> is the number of unique determinants sampled, <span class="math">\(\omega_i\)</span> is the number of times determinant i was selected in this sample, and <span class="math">\(p_i = \frac{|c_i|}{\sum_i |c_i|}\)</span> or the probability of selecting determinant i. Stochastic evaluation of the energy correction enables the use of much smaller <span class="math">\(\epsilon_2\)</span> values for large systems, while retaining the sub mHa accuracy of the deterministic variant.</li>
+</ol>
+<div class="math">
+\[\Delta E^{(2)} \approx \frac{1}{N_d(N_d-1)} \Bigg \langle \sum_a \frac{1}{E^{(0)}-H_{aa}} \Bigg[ \bigg(\sum_i^{N_d^{diff}} \frac{\omega_i H_{ai} c_i}{p_i}\bigg)^2 + \sum_i^{N_d^{diff}} \bigg(\frac{\omega_i (N_d-1)}{p_i} - \frac{\omega_i^2}{p_i^2}\bigg) c_i^2 H_{ai}^2 \Bigg] \Bigg \rangle\]</div>
+<ol class="arabic simple" start="3">
+<li>Semistochastic: In this variant of the perturbative calculation, <em>Dice</em> calculates the correction using both equations above. A new keyword called <span class="math">\(\epsilon_{2Large}\)</span> is needed to distinguish which determinants will be treated stochastically and which will not. <em>Dice</em> calculates the energy correction using the second equation for both <span class="math">\(\epsilon_2\)</span> and <span class="math">\(\epsilon_{2Large}\)</span> and using the first equation with <span class="math">\(\epsilon_{2Large}\)</span>. We then subtract the less strict stochastic correction (<span class="math">\(E_2^S[\epsilon_2^d]\)</span>) from the strict stochastic correction (<span class="math">\(\Delta E_2^S[\epsilon_2]\)</span>) to reduce the stochastic noise before adding the deterministic contribution (<span class="math">\(\Delta E_2^D[\epsilon_2^d]\)</span>).</li>
+</ol>
+<div class="math">
+\[\Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]\]</div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> page.</p>
@@ -155,26 +228,25 @@ sampleN 200
 </div>
 <div class="section" id="using-shci-as-a-stand-alone-program">
 <h2>Using SHCI as a stand-alone program<a class="headerlink" href="#using-shci-as-a-stand-alone-program" title="Permalink to this headline">¶</a></h2>
-<p>You can choose to use SHCI as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you&#8217;d like to use it as an active space solver in a CASSCF calculation see the <a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf"><span class="std std-ref">Interfacing with PySCF</span></a> page.</p>
+<p>You can choose to use SHCI as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you’d like to use it as an active space solver in a CASSCF calculation see the <a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf"><span class="std std-ref">Interfacing with PySCF</span></a> page.</p>
 <p>Once you have generated your FCIDUMP file, you must create an input file that contains all of the parameters that SHCI needs to run a calculation. An example input.dat file is shown below. For more input files see the test directory inside your main SHCI directory.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>nocc 8
-0 1  4 5  8 9  14 15
+<div class="highlight-none"><div class="highlight"><pre><span></span>nocc 12
+0 2 4 6 8 10 1 3 5 7 9 11
 end
-
-sampleN 200
-davidsontol 5.e-5
-dE 1.e-7
-DoRDM
+nroots 1
 
 schedule
-0 9e-4
-3 5e-4
+0     1e-10
 end
+davidsonTol 1e-10
+dE 1e-14
+DoRDM
 
-epsilon2 1.e-8
-deterministic
+epsilon2 1e-8
+sampleN 200
 noio
-maxiter 12
+prefix /rc_scratch/jasm3285/o2
+maxiter 6
 </pre></div>
 </div>
 <p>Once you have your input.dat and FCIDUMP file you can open a terminal and navigate to the directory with both files and use the following command:</p>
@@ -207,88 +279,148 @@ http://www.colorado.edu/lab/sharmagroup/
 Input file  :
 **************************************************************
 nocc 12
-#0 2 4 6 8 10 1 3 5 7 9 11
-epsilon2 1e-07
-sampleN 200
-davidsonTol 5e-05
-dE 1e-08
-DoRDM True
-schedule
-#0      0.01
-3       0.001
-end
-deterministic
-noio
-maxiter 9
+0 2 4 6 8 10 1 3 5 7 9 11
+nroots 1
 
+schedule
+0     1e-10
+end
+davidsonTol 1e-10
+dE 1e-14
+DoRDM
+
+epsilon2 1e-8
+sampleN 200
+noio
+prefix /rc_scratch/jasm3285/o2
+maxiter 6
 
 
 
 **************************************************************
 VARIATIONAL STEP
 **************************************************************
-Iter Root       Eps1   #Var. Det.               Energy     Time(s)
- 0    0    1.00e-02          27      -149.6693332442        0.01
- 1    0    1.00e-02          40      -149.6755619487        0.01
- 2    0    1.00e-02          47      -149.6762309265        0.01
- 3    0    1.00e-03         106      -149.6776013798        0.01
- 4    0    1.00e-03         106      -149.6776013798        0.01
+Iter Root       Eps1   #Var. Det.               Energy   #Davidson     Time(s)
+   0    0    1.00e-10          33      -149.5916823420         10        0.00
+   1    0    1.00e-10         108      -149.6068206155         12        0.01
+   2    0    1.00e-10         120      -149.6069803279         10        0.01
+   3    0    1.00e-10         120      -149.6069803279          1        0.01
+   4    0    1.00e-10         120      -149.6069803279          1        0.01
+
+Performing final tight davidson with tol: 1e-10
 
 Exiting variational iterations
 Calculating RDM
+-83.3274573156373  36.0439587498228
+E from 2RDM: -149.606980328729
 VARIATIONAL CALCULATION RESULT
 ------------------------------
 Root             Energy     Time(s)
-   0     -149.6776013798        0.07
+   0     -149.6069803287        0.72
 
 
 Printing most important determinants
  Det     weight  Determinant string
 State :0
-   0   9.27e-01  2 2 2 2 2   2 0 0
-   1   2.48e-01  2 2 2 2 2   0 2 0
-   2   2.12e-01  2 2 2 2 0   2 2 0
-   3   6.66e-02  2 2 2 a b   2 a b
-   4   6.66e-02  2 2 2 b a   2 b a
-   5   6.55e-02  2 2 2 0 2   2 0 2
+   0     6.78189482e-01  2 2 2 2 2   2 0 0
+   1     6.77706652e-01  2 2 2 2 2   0 2 0
+   2     1.53392072e-01  2 2 2 2 0   2 2 0
+   3     1.53270657e-01  2 2 0 2 2   2 2 0
+   4     5.24640738e-02  2 2 2 b a   2 b a
+   5     5.24640738e-02  2 2 2 a b   2 a b
+We cannot perform PT RDM with stochastic PT. Disabling RDM.
 
 **************************************************************
 PERTURBATION THEORY STEP
 **************************************************************
-Deterministic PT calculation converged
-epsilon2: 1e-07
-PTEnergy: -149.677601562499
-Time(s):  0.107640981674194
-Now calculating PT RDM
+Peforming semistochastiPT for state: 0
+
+  Iter      EPTcurrent  State         EPTavg      Error     Time(s)
+     1   -149.60698033      0  -149.60698033         --        0.75
+     2   -149.60698033      0  -149.60698033         --        0.75
+     3   -149.60698033      0  -149.60698033         --        0.75
+     4   -149.60698033      0  -149.60698033         --        0.75
+     5   -149.60698033      0  -149.60698033   0.00e+00        0.75
+Semistochastic PT calculation converged
+epsilon2: 1e-08
+PTEnergy: -149.606980328729 +/- 0.00e+00
+Time(s):  0.754081964492798
 </pre></div>
 </div>
 </div>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="usingincasscf.html" class="btn btn-neutral float-right" title="Using in CASSCF" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Sandeep Sharma.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="usingincasscf.html" title="Using in CASSCF"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="installation.html" title="Installation"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &copy; Copyright 2017, Sandeep Sharma.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.3.
-    </div>
-  </body>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>

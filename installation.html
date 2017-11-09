@@ -1,102 +1,184 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation &mdash; Dice 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
     
-    <title>Installation &mdash; Dice 0.9 documentation</title>
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
+        <link rel="next" title="Getting Started" href="gettingstarted.html"/>
+        <link rel="prev" title="Overview" href="overview.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
     
-    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '0.9',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="Dice 0.9 documentation" href="index.html" />
-    <link rel="next" title="Getting Started" href="gettingstarted.html" />
-    <link rel="prev" title="Overview" href="overview.html" /> 
-  </head>
-  <body role="document">
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="gettingstarted.html" title="Getting Started"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="overview.html" title="Overview"
-             accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-  <h3><a href="index.html">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Installation</a><ul>
-<li><a class="reference internal" href="#source-code">Source Code</a></li>
-<li><a class="reference internal" href="#compile">Compile</a></li>
-<li><a class="reference internal" href="#testing">Testing</a></li>
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Dice
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#source-code">Source Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#connecting-module-for-pyscf">Connecting Module for PySCF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compile">Compile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing">Testing</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a></li>
+<li class="toctree-l1"><a class="reference internal" href="keywords.html">Keywords</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmarking.html">Benchmarking</a></li>
 </ul>
 
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="overview.html"
-                        title="previous chapter">Overview</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="gettingstarted.html"
-                        title="next chapter">Getting Started</a></p>
-  <div role="note" aria-label="source link">
-    <h3>This Page</h3>
-    <ul class="this-page-menu">
-      <li><a href="_sources/installation.txt"
-            rel="nofollow">Show Source</a></li>
-    </ul>
-   </div>
-<div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
-    </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+            
+          
         </div>
       </div>
+    </nav>
 
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Dice</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Installation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/installation.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="source-code">
 <h2>Source Code<a class="headerlink" href="#source-code" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
+<li>Download the latest version of Dice: <a class="reference download internal" href="_downloads/dice.tar.gz" download=""><code class="xref download docutils literal"><span class="pre">Dice.tar.gz</span></code></a></li>
+<li>Download Dice from July, 2017: <a class="reference download internal" href="_downloads/dice_07_2017.tar.gz" download=""><code class="xref download docutils literal"><span class="pre">dice_07_2017.tar.gz</span></code></a></li>
+</ul>
+</div>
+<div class="section" id="connecting-module-for-pyscf">
+<h2>Connecting Module for PySCF<a class="headerlink" href="#connecting-module-for-pyscf" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
 <li>Available with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> package.</li>
-<li>Download the latest version of Dice: <a class="reference download internal" href="_downloads/Dice.tar.gz" download=""><code class="xref download docutils literal"><span class="pre">Dice.tar.gz</span></code></a></li>
 </ul>
 </div>
 <div class="section" id="compile">
@@ -107,48 +189,95 @@
 <li>Intel icpc 14.0.1 or newer required.</li>
 </ul>
 <p>Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span>USE_MPI = yes
-USE_INTEL = yes
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">USE_MPI</span> <span class="o">=</span> <span class="n">yes</span>
+<span class="n">USE_INTEL</span> <span class="o">=</span> <span class="n">yes</span>
 
-FLAGS = -std=c++11 -g -O3 -I/path_to/eigen -I/home/path_to/boost_1_57_0/
-DFLAGS = -std=c++11 -g -O3 -I/path_to/apps/eigen -I/path_to/boost_1_57_0/ -DComplex
+<span class="n">FLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">O3</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span>
+<span class="n">DFLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">O3</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">apps</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span> <span class="o">-</span><span class="n">DComplex</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="testing">
 <h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
-<p>Once compiling is complete you should test the code using the &#8220;/path_to/Dice/tests/runTests.sh&#8221; script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.</p>
+<p>Once compiling is complete you should test the code using the “/path_to/Dice/tests/runTests.sh” script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the runTests.sh script because they require a large amount of processing power and memory.</p>
+<p class="last">If your system has limited memory or slow processing power, you may wish to comment out some of the bigger test in runTests.sh.</p>
 </div>
 </div>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="gettingstarted.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="overview.html" class="btn btn-neutral" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Sandeep Sharma.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="related" role="navigation" aria-label="related navigation">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             >index</a></li>
-        <li class="right" >
-          <a href="gettingstarted.html" title="Getting Started"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="overview.html" title="Overview"
-             >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Dice 0.9 documentation</a> &raquo;</li> 
-      </ul>
-    </div>
-    <div class="footer" role="contentinfo">
-        &copy; Copyright 2017, Sandeep Sharma.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
-    </div>
-  </body>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
 </html>
