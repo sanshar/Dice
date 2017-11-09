@@ -30,20 +30,19 @@ using namespace std;
 using namespace Eigen;
 
 namespace LCC {
-  double doLCC(Determinant *Dets, CItype *ci, int DetsSize, double& E0, 
-	       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, 
-	       vector<int>& irrep, schedule& schd, double coreE, 
-	       int nelec, int root);
+  double doLCC(
+          Determinant *Dets, CItype *ci,
+          int DetsSize, double& E0, 
+          oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, 
+          vector<int>& irrep, schedule& schd, double coreE, 
+          int nelec, int root);
 
-  void getDeterminantsLCC(Determinant& d, double epsilon, CItype ci1, 
-			  CItype ci2, oneInt& int1, twoInt& int2, 
-			  twoIntHeatBathSHM& I2hb, vector<int>& irreps, 
-			  double coreE, double E0, 
-			  std::vector<Determinant>& dets, 
-			  std::vector<CItype>& numerator, 
-			  std::vector<double>& energy, 
-			  schedule& schd, int Nmc, int nelec) ;
-
+  void getDeterminantsLCC(
+          Determinant& d, double epsilon, CItype ci1, CItype ci2,
+          oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
+          vector<int>& irreps, double coreE, double E0, 
+          std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, 
+          schedule& schd, int Nmc, int nelec) ;
 };
 
 #endif

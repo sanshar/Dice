@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Determinants.h"
@@ -43,13 +43,44 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
         std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   *
-   * (what is numerator, energy,...)
-   * (note that epsilon=epsilon/ci)
-   *
-   */
+    /*!
+    BM_description
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i (unused)
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        std::vector<CItype>& numerator:
+            The determinants' numerator
+        std::vector<double>& energy:
+            The determinants' energy
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -144,12 +175,47 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
         std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy,
         std::vector<int>& var_indices, std::vector<size_t>& orbDifference, schedule& schd, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * Similar to SHCIgetdeterminants::getDeterminantsDeterministicPT,
-   * but also keeps track of the reference dets each connected det came from
-   *
-   * AAH, 30 Jan 2017
-   */
+    /*!
+    Similar to SHCIgetdeterminants::getDeterminantsDeterministicPT,
+    but also keeps track of the reference dets each connected det came from
+
+    :Inputs:
+
+        Determinant det:
+            The reference |D_i>
+        int det_ind:
+            BM_description
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        std::vector<CItype>& numerator:
+            The determinants' numerator
+        std::vector<double>& energy:
+            The determinants' energy
+        std::vector<int>& var_indices:
+            BM_description
+        std::vector<size_t>& orbDifference:
+            The determinants' orbital differences
+        schedule& schd:
+            The schedule
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -250,9 +316,47 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
         std::vector<Determinant>& dets, std::vector<CItype>& numerator1, std::vector<CItype>& numerator2, std::vector<double>& energy,
         schedule& schd, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    Similar to SHCIgetdeterminants::getDeterminantsDeterministicPT,
+    but with SOC modifications
+
+    :Inputs:
+
+        Determinant det:
+            The reference |D_i>
+        int det_ind:
+            BM_description
+        double epsilon1:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        double epsilon2:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        std::vector<CItype>& numerator1:
+            The determinants' numerator
+        std::vector<CItype>& numerator2:
+            The determinants' numerator
+        std::vector<double>& energy:
+            The determinants' energy
+        schedule& schd:
+            The schedule
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -341,7 +445,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
     } // heatbath integrals
   } // ij
   return;
-} // end SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC 
+} // end SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC
 
 
 
@@ -353,13 +457,41 @@ void SHCIgetdeterminants::getDeterminantsVariational(
         std::vector<Determinant>& dets,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   *
-   * Make the int represenation of open and closed orbitals of determinant
-   * this helps to speed up the energy calculation
-   *
-   */
+    /*!
+    Make the int represenation of open and closed orbitals of determinant
+    this helps to speed up the energy calculation
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -379,7 +511,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-    
+
     if (closed[i]%2 != open[a]%2) {
       integral = int1(open[a], closed[i])*schd.socmultiplier;
     }
@@ -427,7 +559,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
     } // heatbath integrals
   } // ij
   return;
-} // end SHCIgetdeterminants::getDeterminantsVariational 
+} // end SHCIgetdeterminants::getDeterminantsVariational
 
 
 
@@ -440,13 +572,45 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
         schedule& schd, int Nmc, int nelec,
         Determinant* SortedDets, int SortedDetsSize) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   *
-   * Make the int represenation of open and closed orbitals of determinant
-   * this helps to speed up the energy calculation
-   *
-   */
+    /*!
+    Make the int represenation of open and closed orbitals of determinant
+    this helps to speed up the energy calculation
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+        Determinant* SortedDets:
+            The sorted list of determinants
+        int SortedDetsSize:
+            The number of unique determinants
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -464,8 +628,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
-    if (fabs(integral) > epsilon) 
-      if (closed[i]%2 == open[a]%2) 
+    if (fabs(integral) > epsilon)
+      if (closed[i]%2 == open[a]%2)
         integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // generate determinant if integral is above the criterion
@@ -546,7 +710,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
     } // heatbath integrals
   } // ij
   return;
-} // end SHCIgetdeterminants::getDeterminantsVariationalApprox 
+} // end SHCIgetdeterminants::getDeterminantsVariationalApprox
 
 
 
@@ -558,9 +722,46 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
         std::vector<Determinant>& dets, std::vector<CItype>& numerator1, vector<double>& numerator2, std::vector<double>& energy,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    BM_description
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        std::vector<CItype>& numerator1:
+            The determinants' numerator
+        vector<double>& numerator2:
+            The determinants' numerator
+        std::vector<double>& energy:
+            The determinants' energy
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -662,9 +863,50 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
         std::vector<Determinant>& dets, std::vector<CItype>& numerator1A, vector<CItype>& numerator2A, vector<char>& present, std::vector<double>& energy,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    BM_description
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        double epsilonLarge:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        std::vector<CItype>& numerator1A:
+            The determinants' numerator
+        vector<CItype>& numerator2A:
+            The determinants' numerator
+        vector<char>& present:
+            BM_description
+        std::vector<double>& energy:
+            The determinants' energy
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+    */
 //-----------------------------------------------------------------------------
 
   // initialize variables
@@ -744,7 +986,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-                
+
         // sgn
         double sgn = 1.0;
         di.parity(a, b, closed[i], closed[j], sgn);
@@ -768,5 +1010,5 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     } // heatbath integrals
   } // ij
   return;
-} // end SHCIgetdeterminants::getDeterminantsStochastic2Epsilon 
+} // end SHCIgetdeterminants::getDeterminantsStochastic2Epsilon
 

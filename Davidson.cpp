@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Davidson.h"
@@ -35,11 +35,20 @@ std::complex<double> sumComplex(const std::complex<double>& a, const std::comple
 
 
 //=============================================================================
-void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &simgacol){
+void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &sigmacol){
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    Segment in shared memory
+
+    :Inputs:
+
+        vector<MatrixXx>& x0:
+            BM_description
+        CItype* &bcol:
+            BM_description
+        CItype* &sigmacol:
+           BM_description
+    */
 //-----------------------------------------------------------------------------
   size_t totalMemory = 0, xrows=0;
   int comm_rank=0, comm_size=1;
@@ -65,7 +74,7 @@ void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &simgacol){
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
   bcol = static_cast<CItype*>(regionDavidson.get_address());
-  simgacol = bcol + xrows;
+  sigmacol = bcol + xrows;
   boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
   boost::interprocess::shared_memory_object::remove(shciDavidson.c_str());
 } // end AllocateSHM
@@ -75,9 +84,18 @@ void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &simgacol){
 //=============================================================================
 void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    Properly precondition the matrix "r"
+
+    :Inputs:
+
+        MatrixXx& r:
+            Input/Ouput matrix to be preconditionned (output)
+        MatrixXx& diag:
+            Diagonal vector
+        double& e:
+            Threshold and shift
+    */
 //-----------------------------------------------------------------------------
   for (int i=0; i<r.rows(); i++) {
     if (abs(e-diag(i,0)) > 1e-12)
@@ -92,9 +110,31 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 //=============================================================================
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   */
+    /*!
+    BM_description
+
+    :Inputs:
+
+        Hmult2& H:
+            BM_description
+        vector<MatrixXx>& x0:
+            BM_description
+        MatrixXx& diag:
+            BM_description
+        int maxCopies:
+            BM_description
+        double tol:
+            BM_description
+        int& numIter:
+            BM_description
+        bool print:
+            BM_description
+
+    :Returns:
+
+        std::vector<double> eroots:
+            BM_description
+    */
 //-----------------------------------------------------------------------------
   std::vector<double> eroots;
 
@@ -312,12 +352,31 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 //=============================================================================
 vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   *
-   * davidson, implemented very similarly to as implementeded in Block
-   *
-   */
+    /*!
+    Davidson, implemented very similarly to as implementeded in Block
+
+    :Inputs:
+
+        HmultDirect& Hdirect:
+            BM_description
+        vector<MatrixXx>& x0:
+            BM_description
+        MatrixXx& diag:
+            BM_description
+        int maxCopies:
+            BM_description
+        double tol:
+            BM_description
+        int& numIter:
+            BM_description
+        bool print:
+            BM_description
+
+    :Returns:
+
+        type name:
+            BM_description
+    */
 //-----------------------------------------------------------------------------
   std::vector<double> eroots;
 
@@ -535,12 +594,27 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 //=============================================================================
 double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
 //-----------------------------------------------------------------------------
-  /*!
-   * BM
-   *
-   * (H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
-   *
-   */
+    /*!
+    Solve (H0-E0)*x0 = b
+    where "proj" is used to keep the solution orthogonal
+
+    :Inputs:
+
+        Hmult2& H:
+            The matrix H0
+        double E0:
+            The energy E0
+        MatrixXx& x0:
+            The unknown vector x0 (output)
+        MatrixXx& b:
+            The right vector b
+        vector<CItype*>& proj:
+            Projector to keep the solution orthogonal
+        double tol:
+            Tolerance
+        bool print:
+            Triggers printing out of messages
+    */
 //-----------------------------------------------------------------------------
   for (int i=0; i<proj.size(); i++) {
     CItype dotProduct = 0.0, norm=0.0;
@@ -553,7 +627,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
       norm += proj[i][j]*proj[i][j];
 #endif
     }
-    for (int j=0; j<b.rows(); j++) 
+    for (int j=0; j<b.rows(); j++)
       b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
   }
 
@@ -565,7 +639,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 
   int iter = 0;
   while (true) {
-    MatrixXx Ap = 0.*p; 
+    MatrixXx Ap = 0.*p;
     H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
 #ifndef SERIAL
     MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -586,7 +660,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
         norm += proj[i][j]*proj[i][j];
 #endif
       }
-      for (int j=0; j<r.rows(); j++) 
+      for (int j=0; j<r.rows(); j++)
         r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
     }
 
@@ -598,7 +672,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     if (true)
       pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) {
-      p.setZero(p.rows(),1); 
+      p.setZero(p.rows(),1);
       H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
       p -=b;
       return abs(ept);

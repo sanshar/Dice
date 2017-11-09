@@ -102,7 +102,7 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, int OrbA, t
 }
 
 
-void getOneExcitation(closed, open, I2, I1, norbs)
+void getOneExcitation(closed, open, I2, I1, norbs){
     nclosed = size(closed)[1]
 
     pgen = 1.0
@@ -116,10 +116,10 @@ void getOneExcitation(closed, open, I2, I1, norbs)
     pgen *= awts[locate(a,aints)]/cumA
 
     return i,a,pgen
-end
+}
 
 
-function getTwoExcitation(closed, open, I2, norbs)
+function getTwoExcitation(closed, open, I2, norbs){
     #first decide same spin or opposite spin
     pgen = 1.0
     sameSpinThresh = 0.1
@@ -180,10 +180,10 @@ function getTwoExcitation(closed, open, I2, norbs)
 
       return i,j,a,b, pgen*pgenij*pgenab
     end
-end
+}
 
 
-function getTwoExcitation_test(closed, open, I2, norbs)
+function getTwoExcitation_test(closed, open, I2, norbs){
     #first decide same spin or opposite spin
     pgen = 1.0
     nclosed = size(closed)[1]
@@ -217,6 +217,5 @@ function getTwoExcitation_test(closed, open, I2, norbs)
 
     return i,j,a,b, pgen*pgenij*pgenab
 
-end
+}
 
-end
