@@ -4,6 +4,34 @@ Structure of the Input
 ----------------------
 The input is broken up into three main sections: first, the header specifies how many electrons should be included in the active space and which orbitals they occupy in the Hatree Fock (HF) determinant; second, the schedule and settings for the variational part of the calculation; finally, the settings for the perturbative calculation.
 
+Sample Input
+++++++++++++
+.. code-block:: none
+
+	#reference determinant
+	nocc 8
+	0 1  4 5  8 9  14 15
+	0 1  4 5  8 9  14 17
+	end
+	nroots 2  #eg nroots don't have to be the same as number of reference determinants
+
+	#var keywords
+	schedule
+	0 9e-4
+	3 5e-4
+	end
+	maxiter 12
+
+	#PT keywords
+	deterministic
+	epsilon2 1.e-8
+	sampleN 200
+
+.. note::
+
+	Although we have presented the input separated into three distinct sections, you do *not* have to write the keywords in any particular order, **but is is highly recommended** for clarity. For more details about the keywords used or other keywords please see the :ref:`dice-keywords` page.
+
+
 Header
 ++++++
 In the first part of the input file, between lines 1 and 4, we establish the number of electrons in the active space (8 in this case) and then we specify which orbitals each of those eight electrons is in. The header can include more than one reference determinant as shown below in a minimal input file.
@@ -35,39 +63,12 @@ Perturbative Section
 
     \Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]
 
-.. note::
 
-	Although we have presented the input separated into three distinct sections, you do *not* have to write the keywords in any particular order, **but is is highly recommended** for clarity. For more details about the keywords used or other keywords please see the :ref:`dice-keywords` page.
-
-.. code-block:: none
-
-	#reference determinant
-	nocc 8
-	0 1  4 5  8 9  14 15
-	0 1  4 5  8 9  14 17
-	end
-	nroots 2  #eg nroots don't have to be the same as number of reference determinants
-
-	#var keywords
-	schedule
-	0 9e-4
-	3 5e-4
-	end
-	maxiter 12
-
-	#PT keywords
-	deterministic
-	epsilon2 1.e-8
-	sampleN 200
-
-
-
-
-Using SHCI as a stand-alone program
+Using Dice as a stand-alone program
 -----------------------------------
-You can choose to use SHCI as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you'd like to use it as an active space solver in a CASSCF calculation see the :ref:`interfacing-with-pyscf` page.
+You can choose to use Dice as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you'd like to use it as an active space solver in a CASSCF calculation see the :ref:`interfacing-with-pyscf` page.
 
-Once you have generated your FCIDUMP file, you must create an input file that contains all of the parameters that SHCI needs to run a calculation. An example input.dat file is shown below. For more input files see the test directory inside your main SHCI directory.
+Once you have generated your FCIDUMP file, you must create an input file that contains all of the parameters that Dice needs to run a calculation. An example input.dat file is shown below. For more input files see the test directory inside your main Dice directory.
 
 .. code-block:: none
 

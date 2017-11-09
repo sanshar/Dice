@@ -2,9 +2,9 @@ Installation
 ************
 Source Code
 -----------
-* Download the latest version of Dice: :download:`Dice.tar.gz <../_downloads/dice.tar.gz>`
+* Download the latest version of Dice (1.0): :download:`dice_1_0.tar.gz <../_downloads/dice_1_0.tar.gz>`
 
-* Download Dice from July, 2017: :download:`dice_07_2017.tar.gz <../_downloads/dice_07_2017.tar.gz>`
+* Download Dice from July, 2017 (0.9): :download:`dice_0_9.tar.gz <../_downloads/dice_0_9.tar.gz>`
 
 Connecting Module for PySCF
 ---------------------------
@@ -12,12 +12,12 @@ Connecting Module for PySCF
 
 Compile
 -------
-SHCI requires `Boost <http://www.boost.org/>`_ and `Eigen <http://eigen.tuxfamily.org/dox/>`_ libraries. When compiling the Boost library make sure that you use the same compiler as you do for SHCI. Eigen consists of header files and does not have to be compiled. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.
+Dice requires `Boost <http://www.boost.org/>`_ and `Eigen <http://eigen.tuxfamily.org/dox/>`_ libraries. When compiling the Boost library make sure that you use the same compiler as you do for Dice. Eigen consists of header files and does not have to be compiled. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.
 
 * GNU g++ 4.8 or newer required.
 * Intel icpc 14.0.1 or newer required.
 
-Before you can compile SHCI you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:
+Before you can compile Dice you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:
 
 ::
 
@@ -30,8 +30,8 @@ Before you can compile SHCI you must edit the Makefile in the main directory and
 
 Testing
 -------
-Once compiling is complete you should test the code using the "/path_to/Dice/tests/runTests.sh" script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.
+Once compiling is complete you should test the code using the "/path_to/Dice/tests/runAllTests.sh" script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.
 
 .. note::
 
-  If your system has limited memory or slow processing power, you may wish to comment out some of the bigger test in runTests.sh.
+  If your system has limited memory or slow processing power, you may wish to run ./runSmallTests.sh instead.

@@ -97,7 +97,8 @@
 <li class="toctree-l1"><a class="reference internal" href="keywords.html">Keywords</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Benchmarking</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#platform">Platform</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#sample-calculations">Sample Calculations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sample-calculation-settings">Sample Calculation Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sample-calculation-results">Sample Calculation Results</a></li>
 </ul>
 </li>
 </ul>
@@ -196,27 +197,23 @@
 </tbody>
 </table>
 </div>
-<div class="section" id="sample-calculations">
-<h2>Sample Calculations<a class="headerlink" href="#sample-calculations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="sample-calculation-settings">
+<h2>Sample Calculation Settings<a class="headerlink" href="#sample-calculation-settings" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
-<col width="12%" />
-<col width="5%" />
-<col width="16%" />
-<col width="18%" />
-<col width="11%" />
-<col width="17%" />
 <col width="16%" />
 <col width="7%" />
+<col width="21%" />
+<col width="24%" />
+<col width="24%" />
+<col width="9%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Molecule</th>
 <th class="head">Basis</th>
 <th class="head">Sym.</th>
 <th class="head"><span class="math">\(\epsilon_1\)</span></th>
-<th class="head"><span class="math">\(N_v\)</span></th>
-<th class="head">Total Energy (ha)</th>
-<th class="head">Total Time (sec)</th>
+<th class="head"><span class="math">\(\epsilon_2\)</span></th>
 <th class="head">Nodes</th>
 </tr>
 </thead>
@@ -225,76 +222,121 @@
 <td>QZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>403071</td>
-<td>-75.8018(4)</td>
-<td>46</td>
+<td><span class="math">\(1*10^{-8}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-odd"><td><span class="math">\(N_2\)</span></td>
 <td>QZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>499644</td>
-<td>-109.4055(9)</td>
-<td>54</td>
+<td><span class="math">\(1*10^{-8}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-even"><td><span class="math">\(NO\)</span></td>
 <td>QZ</td>
 <td><span class="math">\(^2B_{1}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>606381</td>
-<td>-129.7548(9)</td>
-<td>116</td>
+<td><span class="math">\(1*10^{-8}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-odd"><td><span class="math">\(O_2\)</span></td>
 <td>QZ</td>
 <td><span class="math">\(^3A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>770069</td>
-<td>-150.1748(9)</td>
-<td>95</td>
+<td><span class="math">\(1*10^{-8}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-even"><td><span class="math">\(F_2\)</span></td>
 <td>QZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>1053491</td>
-<td>-199.3590(9)</td>
-<td>151</td>
+<td><span class="math">\(1*10^{-8}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-odd"><td><span class="math">\(Cr_2\)</span></td>
 <td>DZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>3114163</td>
-<td>-2099.48754(3)</td>
-<td>741</td>
+<td><span class="math">\(5*10^{-6}\)</span></td>
 <td>1</td>
 </tr>
 <tr class="row-even"><td><span class="math">\(Cr_2\)</span></td>
 <td>TZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>6268840</td>
-<td>-2099.5283(1)</td>
-<td>1076</td>
+<td><span class="math">\(5*10^{-6}\)</span></td>
 <td>4</td>
 </tr>
 <tr class="row-odd"><td><span class="math">\(Cr_2\)</span></td>
 <td>QZ</td>
 <td><span class="math">\(^1A_{1g}\)</span></td>
 <td><span class="math">\(8*10^{-5}\)</span></td>
-<td>9516339</td>
-<td>-2099.55670(7)</td>
-<td>3385</td>
+<td><span class="math">\(5*10^{-6}\)</span></td>
 <td>4</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="sample-calculation-results">
+<h2>Sample Calculation Results<a class="headerlink" href="#sample-calculation-results" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="20%" />
+<col width="30%" />
+<col width="29%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Molecule</th>
+<th class="head"><span class="math">\(N_v\)</span></th>
+<th class="head">Total Energy (Ha)</th>
+<th class="head">Total Time (sec)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><span class="math">\(C_2\)</span></td>
+<td>403071</td>
+<td>-75.8018(4)</td>
+<td>46</td>
+</tr>
+<tr class="row-odd"><td><span class="math">\(N_2\)</span></td>
+<td>499644</td>
+<td>-109.4055(9)</td>
+<td>54</td>
+</tr>
+<tr class="row-even"><td><span class="math">\(NO\)</span></td>
+<td>606381</td>
+<td>-129.7548(9)</td>
+<td>116</td>
+</tr>
+<tr class="row-odd"><td><span class="math">\(O_2\)</span></td>
+<td>770069</td>
+<td>-150.1748(9)</td>
+<td>95</td>
+</tr>
+<tr class="row-even"><td><span class="math">\(F_2\)</span></td>
+<td>1053491</td>
+<td>-199.3590(9)</td>
+<td>151</td>
+</tr>
+<tr class="row-odd"><td><span class="math">\(Cr_2\)</span></td>
+<td>3114163</td>
+<td>-2099.48754(3)</td>
+<td>741</td>
+</tr>
+<tr class="row-even"><td><span class="math">\(Cr_2\)</span></td>
+<td>6268840</td>
+<td>-2099.5283(1)</td>
+<td>1076</td>
+</tr>
+<tr class="row-odd"><td><span class="math">\(Cr_2\)</span></td>
+<td>9516339</td>
+<td>-2099.55670(7)</td>
+<td>3385</td>
+</tr>
+</tbody>
+</table>
+<p>From: S. Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce">“Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory.”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, 13, 1595.</p>
 </div>
 </div>
 

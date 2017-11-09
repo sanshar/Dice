@@ -101,7 +101,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#general">General</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#variational">Variational</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#perturbative">Perturbative</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#reduced-density-matrices-rdms">Reduced Density Matrices (RDMs)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
 </ul>
 </li>
@@ -190,7 +189,7 @@
 <h3>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><dl class="first docutils">
-<dt>Trev</dt>
+<dt>Treversal</dt>
 <dd>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</dd>
 </dl>
 </li>
@@ -215,13 +214,13 @@
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>davidsonType</dt>
-<dd>(String) Sets where the information is stored during the Davidson algorithm. Default is MEMORY, but it can be set to DISK for large systems.</dd>
+<dt>dE</dt>
+<dd>(Double) This is the energy convergence tolerance for the variational portion of the calculation.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>dE</dt>
-<dd>(Double) This is the energy convergence tolerance for the variational portion of the calculation.</dd>
+<dt>DoRDM</dt>
+<dd>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
@@ -259,23 +258,6 @@
 <dd>(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math">\(10^4\)</span>.</dd>
 </dl>
 </li>
-<li>extrapolate
-(bool) Extrapolate the perturbative correction to the FCI limit (where all determinants are included in the variational space).</li>
-</ul>
-</div>
-<div class="section" id="reduced-density-matrices-rdms">
-<h3>Reduced Density Matrices (RDMs)<a class="headerlink" href="#reduced-density-matrices-rdms" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
-<li><dl class="first docutils">
-<dt>DoRDM</dt>
-<dd>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>RDMtype</dt>
-<dd>(String) Controls whether or not Dice includes perturbative correction in the two body reduced density matrix. Default is RELAXED, which includes the correction. The alternative is UNRELAXED.</dd>
-</dl>
-</li>
 </ul>
 </div>
 <div class="section" id="miscellaneous">
@@ -287,7 +269,7 @@
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>io</dt>
+<dt>noio</dt>
 <dd>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</dd>
 </dl>
 </li>

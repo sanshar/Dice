@@ -95,12 +95,13 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#structure-of-the-input">Structure of the Input</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sample-input">Sample Input</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#header">Header</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#variational-section">Variational Section</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#perturbative-section">Perturbative Section</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#using-shci-as-a-stand-alone-program">Using SHCI as a stand-alone program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-dice-as-a-stand-alone-program">Using Dice as a stand-alone program</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usingincasscf.html">Using in CASSCF</a></li>
@@ -174,6 +175,33 @@
 <div class="section" id="structure-of-the-input">
 <h2>Structure of the Input<a class="headerlink" href="#structure-of-the-input" title="Permalink to this headline">¶</a></h2>
 <p>The input is broken up into three main sections: first, the header specifies how many electrons should be included in the active space and which orbitals they occupy in the Hatree Fock (HF) determinant; second, the schedule and settings for the variational part of the calculation; finally, the settings for the perturbative calculation.</p>
+<div class="section" id="sample-input">
+<h3>Sample Input<a class="headerlink" href="#sample-input" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-none"><div class="highlight"><pre><span></span>#reference determinant
+nocc 8
+0 1  4 5  8 9  14 15
+0 1  4 5  8 9  14 17
+end
+nroots 2  #eg nroots don&#39;t have to be the same as number of reference determinants
+
+#var keywords
+schedule
+0 9e-4
+3 5e-4
+end
+maxiter 12
+
+#PT keywords
+deterministic
+epsilon2 1.e-8
+sampleN 200
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> page.</p>
+</div>
+</div>
 <div class="section" id="header">
 <h3>Header<a class="headerlink" href="#header" title="Permalink to this headline">¶</a></h3>
 <p>In the first part of the input file, between lines 1 and 4, we establish the number of electrons in the active space (8 in this case) and then we specify which orbitals each of those eight electrons is in. The header can include more than one reference determinant as shown below in a minimal input file.</p>
@@ -200,36 +228,12 @@
 </ol>
 <div class="math">
 \[\Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]\]</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> page.</p>
-</div>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#reference determinant
-nocc 8
-0 1  4 5  8 9  14 15
-0 1  4 5  8 9  14 17
-end
-nroots 2  #eg nroots don&#39;t have to be the same as number of reference determinants
-
-#var keywords
-schedule
-0 9e-4
-3 5e-4
-end
-maxiter 12
-
-#PT keywords
-deterministic
-epsilon2 1.e-8
-sampleN 200
-</pre></div>
 </div>
 </div>
-</div>
-<div class="section" id="using-shci-as-a-stand-alone-program">
-<h2>Using SHCI as a stand-alone program<a class="headerlink" href="#using-shci-as-a-stand-alone-program" title="Permalink to this headline">¶</a></h2>
-<p>You can choose to use SHCI as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you’d like to use it as an active space solver in a CASSCF calculation see the <a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf"><span class="std std-ref">Interfacing with PySCF</span></a> page.</p>
-<p>Once you have generated your FCIDUMP file, you must create an input file that contains all of the parameters that SHCI needs to run a calculation. An example input.dat file is shown below. For more input files see the test directory inside your main SHCI directory.</p>
+<div class="section" id="using-dice-as-a-stand-alone-program">
+<h2>Using Dice as a stand-alone program<a class="headerlink" href="#using-dice-as-a-stand-alone-program" title="Permalink to this headline">¶</a></h2>
+<p>You can choose to use Dice as a wavefunction solver without interfacing it with other programs. This will require a two-body integral file in the FCIDUMP format, which can be generated using whatever electronic structure package you prefer. If you’d like to use it as an active space solver in a CASSCF calculation see the <a class="reference internal" href="usingincasscf.html#interfacing-with-pyscf"><span class="std std-ref">Interfacing with PySCF</span></a> page.</p>
+<p>Once you have generated your FCIDUMP file, you must create an input file that contains all of the parameters that Dice needs to run a calculation. An example input.dat file is shown below. For more input files see the test directory inside your main Dice directory.</p>
 <div class="highlight-none"><div class="highlight"><pre><span></span>nocc 12
 0 2 4 6 8 10 1 3 5 7 9 11
 end
