@@ -1,13 +1,20 @@
 /*
-Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
-Copyright (c) 2017, Sandeep Sharma
-
-This file is part of DICE.
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
+  This file is part of DICE.
+  
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation, 
+  either version 3 of the License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+  See the GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
+  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "math.h"
 
@@ -95,7 +102,7 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, int OrbA, t
 }
 
 
-void getOneExcitation(closed, open, I2, I1, norbs)
+void getOneExcitation(closed, open, I2, I1, norbs){
     nclosed = size(closed)[1]
 
     pgen = 1.0
@@ -109,10 +116,10 @@ void getOneExcitation(closed, open, I2, I1, norbs)
     pgen *= awts[locate(a,aints)]/cumA
 
     return i,a,pgen
-end
+}
 
 
-function getTwoExcitation(closed, open, I2, norbs)
+function getTwoExcitation(closed, open, I2, norbs){
     #first decide same spin or opposite spin
     pgen = 1.0
     sameSpinThresh = 0.1
@@ -173,10 +180,10 @@ function getTwoExcitation(closed, open, I2, norbs)
 
       return i,j,a,b, pgen*pgenij*pgenab
     end
-end
+}
 
 
-function getTwoExcitation_test(closed, open, I2, norbs)
+function getTwoExcitation_test(closed, open, I2, norbs){
     #first decide same spin or opposite spin
     pgen = 1.0
     nclosed = size(closed)[1]
@@ -210,6 +217,5 @@ function getTwoExcitation_test(closed, open, I2, norbs)
 
     return i,j,a,b, pgen*pgenij*pgenab
 
-end
+}
 
-end

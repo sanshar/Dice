@@ -6,7 +6,7 @@ BOOST=/projects/sash2458/apps/boost_1_57_0/
 #BOOST=/home/mussard/softwares/boost_1_64_0
 
 #FLAGS = -std=c++11 -g  -I${EIGEN} -I${BOOST} #-DComplex
-FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} #-DComplex
+FLAGS = -std=c++11 -g  -O3 -I${EIGEN} -I${BOOST} #-DComplex
 DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
 
 ifeq ($(USE_INTEL), yes) 
@@ -90,5 +90,5 @@ GTensorFT2	: $(OBJ_gtensorft2)
 	$(CXX)   $(DFLAGS) $(OPT) -o  GTensorFT2 $(OBJ_gtensorft2) $(LFLAGS)
 
 clean :
-	find . -name "*.o"|xargs rm 2>/dev/null;rm CIST Dice ZDice2 QDPTSOC GTensorFT forcyrus >/dev/null 2>&1
+	find . -name "*.o"|xargs rm 2>/dev/null;rm -f CIST Dice ZDice2 QDPTSOC GTensorFT forcyrus >/dev/null 2>&1
 
