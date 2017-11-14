@@ -30,7 +30,7 @@ using namespace std;
 using namespace Eigen;
 
 namespace LCC {
-  double doLCC(
+  void doLCC(
           Determinant *Dets, CItype *ci,
           int DetsSize, double& E0, 
           oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, 
@@ -42,7 +42,16 @@ namespace LCC {
           oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
           vector<int>& irreps, double coreE, double E0, 
           std::vector<Determinant>& dets, std::vector<CItype>& numerator, std::vector<double>& energy, 
-          schedule& schd, int Nmc, int nelec) ;
+          schedule& schd, int Nmc, int nelec,
+          int class_cor, int class_act, int class_vir) ;
+
+  void get_landscape(int i,int a,
+          int* d_cor,int* d_act,int* d_vir,
+          schedule schd);
+
+  void get_landscape(int i,int j,int a,int b,
+          int* d_cor,int* d_act,int* d_vir,
+          schedule schd);
 };
 
 #endif
