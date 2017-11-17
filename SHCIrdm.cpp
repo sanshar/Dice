@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Determinants.h"
@@ -63,23 +63,60 @@ namespace localConj {
 };
 
 
-
-void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen, 
+//=============================================================================
+//TODO Ask Sandeep about this.
+void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 		      vector<int* > &AlphaMajorToBeta   ,
 		      vector<int* > &AlphaMajorToDet    ,
-		      int*          &BetaMajorToAlphaLen, 
+		      int*          &BetaMajorToAlphaLen,
 		      vector<int* > &BetaMajorToAlpha   ,
 		      vector<int* > &BetaMajorToDet     ,
-		      int*          &SinglesFromAlphaLen, 
+		      int*          &SinglesFromAlphaLen,
 		      vector<int* > &SinglesFromAlpha   ,
-		      int*          &SinglesFromBetaLen , 
+		      int*          &SinglesFromBetaLen ,
 		      vector<int* > &SinglesFromBeta    ,
 		      Determinant* Dets,
 		      int DetsSize,
-		      int Norbs, int nelec, CItype* cibra, 
+		      int Norbs, int nelec, CItype* cibra,
 		      CItype* ciket,
 		      MatrixXx& s2RDM) {
+  /*!
 
+  Efficient creation of 2RDM using MPI.
+
+  :Arguments:
+
+      int* & AlphaMajorToBetaLen:
+
+      vector<int* > & AlphaMajorToBeta   :
+
+      vector<int* > & AlphaMajorToDet    :
+
+      int*          & BetaMajorToAlphaLen:
+
+      vector<int* > & BetaMajorToAlpha   :
+
+      vector<int* > & BetaMajorToDet     :
+
+      int*          & SinglesFromAlphaLen:
+
+      vector<int* > & SinglesFromAlpha   :
+
+      int*          & SinglesFromBetaLen :
+
+      vector<int* > & SinglesFromBeta    :
+
+      Determinant* Dets:
+
+      int DetsSize:
+
+      int Norbs, int nelec, CItype* cibra:
+
+      CItype* ciket:
+
+      MatrixXx& s2RDM:
+
+  */
 
   int proc=commrank, nprocs=commsize;
 
@@ -105,20 +142,20 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
       }
     }
   }
-    
+
   //alpha-beta excitation
   for (int i=0; i<AlphaMajorToBeta.size(); i++) {
-    
+
     for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
-      
-      int Astring = i, 
-	Bstring = AlphaMajorToBeta[i][ii], 
+
+      int Astring = i,
+	Bstring = AlphaMajorToBeta[i][ii],
 	DetI    = AlphaMajorToDet [i][ii];
 
-      
-      if ((std::abs(DetI)-1)%nprocs != proc ) 
+
+      if ((std::abs(DetI)-1)%nprocs != proc )
 	continue;
-      
+
       vector<int> closed(nelec, 0);
       vector<int> open(norbs-nelec,0);
       Dets[abs(DetI)-1].getOpenClosed(open, closed);
@@ -129,10 +166,10 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
       //singles from Astring
       for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
 	int Asingle = SinglesFromAlpha[Astring][j];
-	
-	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] , 
-				   0                             , 
-				   BetaMajorToAlphaLen[Bstring]-1, 
+
+	int index = binarySearch ( &BetaMajorToAlpha[Bstring][0] ,
+				   0                             ,
+				   BetaMajorToAlphaLen[Bstring]-1,
 				   Asingle                       );
 	if (index != -1 ) {
 	  int DetJ = BetaMajorToDet[Bstring][index];
@@ -156,25 +193,25 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 
 	}
       }
-	
+
       //single Alpha and single Beta
       for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
 	int Asingle = SinglesFromAlpha[Astring][j];
-	
+
 	int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
 	  SinglesFromBLen  = SinglesFromBetaLen[Bstring];
 	int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
 	for (int k=0; k<SinglesFromBLen; k++) {
 	  int& Bsingle = SinglesFromBeta[Bstring][k];
-	  
+
 	  if (SearchStartIndex >= AlphaToBetaLen) break;
-	  
+
 	  int index=SearchStartIndex;
 	  for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
-	  
+
 	  SearchStartIndex = index;
 	  if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
-	    
+
 	    int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
 	    //if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) < max(offSet, StartIndex)) continue;
 	    if (std::abs(DetJ) >=  std::abs(DetI)) continue;
@@ -186,25 +223,25 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	    int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
 	    int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
 	    double sgn = 1.0;
-	    
+
 	    di.parity(d1,d0,c1,c0,sgn);
 	    populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
 	    populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	  }
 	}
       }
-      
+
 	//singles from Bstring
       int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring]-1];
       for (int j=0; j< SinglesFromBetaLen[Bstring]; j++) {
 	int Bsingle =  SinglesFromBeta   [Bstring][j];
-	
+
 	//if (Bsingle > maxAtoB) break;
-	int index = binarySearch( &AlphaMajorToBeta[Astring][0] , 
-				  0                             , 
-				  AlphaMajorToBetaLen[Astring]-1, 
+	int index = binarySearch( &AlphaMajorToBeta[Astring][0] ,
+				  0                             ,
+				  AlphaMajorToBetaLen[Astring]-1,
 				  Bsingle                        );
-	
+
 	if (index != -1 ) {
 	  int DetJ = AlphaMajorToDet[Astring][index];
 	  if (std::abs(DetJ) >= std::abs(DetI)) continue;
@@ -228,8 +265,8 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 
 	}
       }
-      
-      
+
+
       //double beta excitation
       for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
 	int DetJ     = AlphaMajorToDet    [i][j];
@@ -245,13 +282,13 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	  int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
 	  int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
 	  double sgn = 1.0;
-	  
+
 	  di.parity(d1,d0,c1,c0,sgn);
 	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
 	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	}
       }
-      
+
       //double Alpha excitation
       for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
 	int DetJ      = BetaMajorToDet     [Bstring][j];
@@ -267,24 +304,43 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 	  int d0=orbDiff%norbs, c0=(orbDiff/norbs)%norbs ;
 	  int d1=(orbDiff/norbs/norbs)%norbs, c1=(orbDiff/norbs/norbs/norbs)%norbs ;
 	  double sgn = 1.0;
-	  
+
 	  di.parity(d1,d0,c1,c0,sgn);
 	  populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[abs(DetJ)-1])*ciket[abs(DetI)-1], nSpatOrbs);
 	  populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[abs(DetJ)-1])*cibra[abs(DetI)-1], nSpatOrbs);
 	}
       }
-      
+
     }
   }
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-  
+
 }
 
 
-void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root) {
+
+//=============================================================================
+void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
+  int root) {
+    /*!
+
+    Loads the spatial 2RDM and the spinRDM (if the DoSpinRDM keyword was used).
+
+    :Arguments:
+
+        schedule& schd:
+            Schedule object that stores Dice parameters.
+        MatrixXx& s2RDM:
+            Spatial 2RDM, *changed in this function*.
+        MatrixXx& twoRDM:
+            Spin 2RDM, *changed in this function*.
+        int root:
+            Index of wavefunction to load.
+
+    */
   int norbs = twoRDM.rows();
   int nSpatOrbs = pow(s2RDM.rows(),0.5);
   if (schd.DoSpinRDM ){
@@ -313,7 +369,26 @@ void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 }
 
-void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root) {
+
+
+//=============================================================================
+void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
+  int root) {
+  /*!
+  Saves the spatial 2RDM and the spinRDM (if the DoSpinRDM keyword was used). The spatial RDM is saves as "%s/spatialRDM.%d.%d.txt" where %s is the user determined prefix and %d is the root.
+
+  :Arguments:
+
+      schedule& schd:
+          Schedule object that stores Dice parameters.
+      MatrixXx& s2RDM:
+          Spatial 2RDM.
+      MatrixXx& twoRDM:
+          Spin 2RDM.
+      int root:
+          Index of wavefunction to save.
+
+  */
   int nSpatOrbs = pow(s2RDM.rows(),0.5);
   if(commrank == 0) {
     char file [5000];
@@ -355,12 +430,51 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
 
 
 
-
+//=============================================================================
 void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
 							 oneInt& I1, twoInt& I2, schedule& schd,
 							 double coreE, int nelec, int norbs,
 							 StitchDEH& uniqueDEH, int root,
 							 double& Psi1Norm, MatrixXx& s2RDM, MatrixXx& twoRDM) {
+
+  /*!
+
+  Update variational 2RDMs with perturbative contributions.
+
+  :Arguments:
+
+      Determinant *Dets:
+          Pointer to determinants in wavefunction.
+      int DetsSize:
+          Number of determinants in wavefunction.
+      CItype *ci:
+          Pointer to ci coefficients for wavefunction.
+      double& E0:
+          Variational energy.
+      oneInt& I1:
+         One body integrals.
+      twoInt& I2:
+         Two body integrals.
+      schedule& schd:
+          Schedule that holds the parameters used throughout Dice.
+      double coreE:
+          Core energy.
+      int nelec:
+          Number of electrons.
+      int norbs:
+          Number of orbitals in active space.
+      StitchDEH& uniqueDEH:
+          TODO
+      int root:
+          Index of the wavefunction to save.
+      double& Psi1Norm:
+          Normalization constant for :math:`\Psi_1`. TODO
+      MatrixXx& s2RDM:
+          Spatial 2RDM.
+      MatrixXx& twoRDM:
+          Spin 2RDM.
+
+  */
 
   s2RDM *= (1.-Psi1Norm);
 
@@ -373,12 +487,12 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
   vector<vector<size_t> >& uniqueOrbDiff = *uniqueDEH.orbDifference;
 
 
-  for (size_t i=0; i<uniqueDets.size();i++) 
+  for (size_t i=0; i<uniqueDets.size();i++)
   {
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     uniqueDets[i].getOpenClosed(open, closed);
-    
+
     CItype coeff = uniqueNumerator[i]/(E0-uniqueEnergy[i]);
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
@@ -398,13 +512,13 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
 #endif
       }
     }
-    
+
   }
 
   for (size_t k=0; k<uniqueDets.size();k++) {
     for (size_t i=0; i<uniqueVarIndices[k].size(); i++){
       int d0=uniqueOrbDiff[k][i]%norbs, c0=(uniqueOrbDiff[k][i]/norbs)%norbs;
-      
+
       if (uniqueOrbDiff[k][i]/norbs/norbs == 0) { // single excitation
 	vector<int> closed(nelec, 0);
 	vector<int> open(norbs-nelec,0);
@@ -432,12 +546,12 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
 	int P = max(c1,c0), Q = min(c1,c0), R = max(d1,d0), S = min(d1,d0);
 	if (P != c0)  sgn *= -1;
 	if (Q != d0)  sgn *= -1;
-	
+
 	if (schd.DoSpinRDM) {
 	  twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) += 1.0*sgn*uniqueNumerator[k]*ci[uniqueVarIndices[k][i]]/(E0-uniqueEnergy[k]);
 	  twoRDM(R*(R+1)/2+S, P*(P+1)/2+Q) += 1.0*sgn*uniqueNumerator[k]*ci[uniqueVarIndices[k][i]]/(E0-uniqueEnergy[k]);
 	}
-	
+
 	populateSpatialRDM(P, Q, R, S, s2RDM, 1.0*sgn*uniqueNumerator[k]*ci[uniqueVarIndices[k][i]]/(E0-uniqueEnergy[k]), nSpatOrbs);
 	populateSpatialRDM(R, S, P, Q, s2RDM, 1.0*sgn*uniqueNumerator[k]*ci[uniqueVarIndices[k][i]]/(E0-uniqueEnergy[k]), nSpatOrbs);
       }// If
@@ -445,16 +559,18 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
   } // k in PT dets
 
 
-  
+
 #ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-  
+
 }
 
 
+
+//=============================================================================
 void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM,
 				 CItype value, int& nSpatOrbs) {
   //we assume i != j  and  k != l
@@ -471,11 +587,42 @@ void SHCIrdm::populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM
 
 }
 
-void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize,
-			  CItype *cibra, CItype *ciket,
-			  vector<vector<size_t> >& orbDifference, int nelec,
-			  schedule& schd, int root, MatrixXx& twoRDM, MatrixXx& s2RDM) {
 
+
+//=============================================================================
+void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets,
+  int DetsSize, CItype *cibra, CItype *ciket,
+  vector<vector<size_t> >& orbDifference, int nelec, schedule& schd, int root,
+  MatrixXx& twoRDM, MatrixXx& s2RDM) {
+  /*!
+
+  Calculates the spatial (and spin if specified) 2RDMs based on the ci coefficient in cibra and ciket.
+
+  :Arguments:
+
+      vector<vector<int> >& connections:
+          Linked list showing determinants that are connected to each other.
+      Determinant *Dets:
+          Pointer to determinants in wavefunction.
+      int DetsSize:
+          Number of determinants in wavefunction.
+      CItype *cibr:
+          Pointer to the ci coefficients for the bra.
+      CItype *ciket:
+          Pointer to the ci coefficients for the ket.
+      vector<vector<size_t> >& orbDifference:
+          Linked list that stores the orbital difference between determinants.
+      int nelec:
+          Number of electrons.
+      schedule& schd:
+          Schedule that holds the parameters used throughout Dice.
+      int root:
+          Index of the wavefunction to save.
+      MatrixXx& s2RDM:
+          Spatial 2RDM.
+      MatrixXx& twoRDM:
+          Spin 2RDM.
+   */
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
@@ -545,10 +692,38 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, 
 }
 
 
-void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets,
-			     MatrixXx& cibra, MatrixXx& ciket,
-			     vector<vector<size_t> >& orbDifference, int nelec,
-			     schedule& schd, int root, MatrixXx& s1RDM) {
+
+//=============================================================================
+void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
+  vector<Determinant>& Dets, MatrixXx& cibra, MatrixXx& ciket,
+  vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
+  int root, MatrixXx& s1RDM) {
+  /*!
+  Calculates *just* the spatial 1RDM using cibra and ciket.
+
+  :Arguments:
+
+      vector<vector<int> >& connections:
+          Linked list showing determinants that are connected to each other.
+      vector<Determinant>& Dets:
+          Pointer to determinants in wavefunction.
+      MatrixXx& cibra:
+          Pointer to the ci coefficients for the bra.
+      MatrixXx& ciket:
+          Pointer to the ci coefficients for the ket.
+      vector<vector<size_t> >& orbDifference:
+          Linked list that stores the orbital difference between determinants.
+      int nelec:
+          Number of electrons.
+      schedule& schd:
+          Schedule that holds the parameters used throughout Dice.
+      int root:
+          Index of the wavefunction to save.
+      MatrixXx& s1RDM:
+          Spatial 1RDM.
+
+  */
+
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
@@ -556,9 +731,6 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
   int nSpatOrbs = norbs/2;
 
 
-
-
-  //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<Dets.size(); i++) {
     if (i%commsize != commrank) continue;
 
@@ -589,8 +761,28 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections, vector<Determina
 
 
 
-double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
-				       double coreE, MatrixXx& twoRDM) {
+//=============================================================================
+double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1,
+  twoInt& I2, double coreE, MatrixXx& twoRDM) {
+  /*!
+  Compute the energy of wavefunction from spin 2RDM.
+
+  :Arguments:
+
+      int norbs:
+          Number of orbitals in the active space.
+      int nelec:
+          Number of electrons in the active space.
+      oneInt& I1:
+         One body integrals.
+      twoInt& I2:
+         Two body integrals.
+      double coreE:
+          Core energy.
+      MatrixXx& twoRDM:
+          Spin 2RDM.
+
+  */
 
   //RDM(i,j,k,l) = a_i^\dag a_j^\dag a_l a_k
   //also i>=j and k>=l
@@ -652,8 +844,29 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1, twoIn
 }
 
 
-double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
-					  double coreE, MatrixXx& twoRDM) {
+
+//=============================================================================
+double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1,
+  twoInt& I2, double coreE, MatrixXx& twoRDM) {
+
+  /*!
+  Computes the energy of the wavefunction by contracting the one and two body integrals with the spatial 1/2-RDMs.
+
+  :Arguments:
+
+      int norbs:
+          Number of orbitals in the active space.
+      int nelec:
+          Number of electrons in the active space.
+      oneInt& I1:
+         One body integrals.
+      twoInt& I2:
+         Two body integrals.
+      double coreE:
+          Core energy.
+      MatrixXx& twoRDM:
+          Spatial 2RDM. TODO make the name of this input consistent.
+  */
 
   double energy = coreE;
   double onebody = 0.0;
