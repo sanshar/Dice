@@ -106,11 +106,11 @@ void getOneExcitation(closed, open, I2, I1, norbs){
     nclosed = size(closed)[1]
 
     pgen = 1.0
-    #pic i randomly and update pgen
+    //pic i randomly and update pgen
 
     i, pgen = StatsBase.sample(closed,1)[1], pgen/nclosed
 
-    #make the cumulative list for a (i|a) and pick  a
+    //make the cumulative list for a (i|a) and pick  a
     aints, awts, cumA = MakeCumulativeArray(open, i, I1, mod(i,2))
     a = StatsBase.sample(aints, StatsBase.WeightVec(awts))[1]
     pgen *= awts[locate(a,aints)]/cumA
@@ -120,7 +120,7 @@ void getOneExcitation(closed, open, I2, I1, norbs){
 
 
 function getTwoExcitation(closed, open, I2, norbs){
-    #first decide same spin or opposite spin
+    //first decide same spin or opposite spin
     pgen = 1.0
     sameSpinThresh = 0.1
     sameSpin, pgen = false, 1.0-sameSpinThresh
@@ -132,25 +132,25 @@ function getTwoExcitation(closed, open, I2, norbs){
     nclosed = size(closed)[1]
     nopen = size(open)[1]
 
-    #pick i randomly and update pgen
+    //pick i randomly and update pgen
     i = StatsBase.sample(closed,1)[1]
     spinj = mod(i,2) #the same spin as i
     if (!sameSpin) spinj = mod(i+1,2) end #not the same spin as i
 
-    #make the cumulative list for j (ii|jj) and pick  j
+    //make the cumulative list for j (ii|jj) and pick  j
     jints, jwts, cumJ = MakeCumulativeArray(closed, i, I2, spinj)
     j = StatsBase.sample(jints, StatsBase.WeightVec(jwts))[1]
     pgenij = (1.0/nclosed)*jwts[locate(j,jints)]/cumJ
 
-    #now correct the pgen for what it would have been ifyou have picked j first
-    # and i second
-    #correct the pgen
+    //now correct the pgen for what it would have been ifyou have picked j first
+    // and i second
+    //correct the pgen
     iints_givenJ, iwts_givenJ, cumI_givenJ = MakeCumulativeArray(closed, j, I2, mod(i,2))
     pgenij += (1.0/nclosed)*(iwts_givenJ[locate(i,iints_givenJ)]/cumI_givenJ)
 
 
     pgenab = 1.0
-    #make the cumulative list for a and pick a
+    //make the cumulative list for a and pick a
     aints, awts, cumA = Int64[], Float64[], Float64
     if (sameSpin)
         aints, awts, cumA = MakeCumulativeArray(open, i, j, I2, mod(i,2))
@@ -164,7 +164,7 @@ function getTwoExcitation(closed, open, I2, norbs){
 
 
     if (sameSpin)
-        #make the cumulative list for b and pick b
+        //make the cumulative list for b and pick b
         bints, bwts, cumB = MakeCumulativeArray(open, i, j, a, I2)
         b = StatsBase.sample(bints, StatsBase.WeightVec(bwts), 1)[1]
         pgenab *= bwts[locate(b,bints)]/cumB
@@ -173,7 +173,7 @@ function getTwoExcitation(closed, open, I2, norbs){
         pgenab += (awts[locate(b,aints)]/cumA)*(awts_givenbij[locate(a, aints_givenbij)]/cumA_givenbij)
       return i,j,a,b, pgen*pgenij*pgenab
     else
-      #make the cumulative list for b and pick b
+      //make the cumulative list for b and pick b
       bints, bwts, cumB = MakeCumulativeArray(open, j, I2, mod(j,2))
       b = StatsBase.sample(bints, StatsBase.WeightVec(bwts), 1)[1]
       pgenab *= bwts[locate(b,bints)]/cumB
@@ -184,15 +184,15 @@ function getTwoExcitation(closed, open, I2, norbs){
 
 
 function getTwoExcitation_test(closed, open, I2, norbs){
-    #first decide same spin or opposite spin
+    //first decide same spin or opposite spin
     pgen = 1.0
     nclosed = size(closed)[1]
     nopen = size(open)[1]
 
-    #pick i randomly and update pgen
-    #pgenij = 2.0/nclosed/(nclosed-1)
-    #ij = StatsBase.sample(closed, 2, replace=false)
-    #i,j=ij[1],ij[2]
+    //pick i randomly and update pgen
+    //pgenij = 2.0/nclosed/(nclosed-1)
+    //ij = StatsBase.sample(closed, 2, replace=false)
+    //i,j=ij[1],ij[2]
 
     i = StatsBase.sample(closed,1)[1]
     jints, jwts, cumJ = MakeCumulativeArray(closed, i, I2, mod(i,2))
@@ -200,7 +200,7 @@ function getTwoExcitation_test(closed, open, I2, norbs){
     pgenij = (2.0/nclosed)*(1./length(jints))
 
     abints, abwts, cumJ = MakeCumulativeArray(open, i, j, I2, mod(i,2))
-    #abwts = ones(length(abints))
+    //abwts = ones(length(abints))
     cumJ = sum(abwts)
 
     #=

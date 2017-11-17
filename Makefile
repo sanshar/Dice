@@ -15,7 +15,7 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = icpc
 		CC = icpc

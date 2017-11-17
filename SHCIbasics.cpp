@@ -52,8 +52,9 @@ using namespace boost;
 using namespace SHCISortMpiUtils;
 
 
-double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *ci, int DetsSize, double& E0, oneInt& I1, twoInt& I2,
-									  twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
+double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
+        Determinant *Dets, CItype *ci, int DetsSize, double& E0, oneInt& I1, twoInt& I2,
+        twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) {
 
   if (schd.nPTiter == 0) return 0;
   pout << "Peforming semistochastiPT for state: "<<root<<endl;
@@ -64,15 +65,18 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   double Psi1Norm;
   double EptLarge = 0.0;
   if (schd.epsilon2 < 999)
-    EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB, irrep, schd, coreE, nelec, root,  vdVector, Psi1Norm);
-
+    EptLarge = DoPerturbativeDeterministic(
+            Dets, ci, DetsSize,
+            E0, I1, I2, I2HB,
+            irrep, schd, coreE, nelec, root,
+            vdVector, Psi1Norm);
 
   schd.epsilon2 = epsilon2;
 
   int norbs = Determinant::norbs;
   Determinant* SortedDets;
   std::vector<Determinant> SortedDetsvec;
-  if (commrank == 0 ) {  
+  if (commrank == 0 ) {
     for (int i=0; i<DetsSize; i++)
       SortedDetsvec.push_back(Dets[i]);
     std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
@@ -121,7 +125,10 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     
     if (commrank == 0) {
       std::fill(allSample.begin(), allSample.end(), -1);
-      AllDistinctSample = SHCIsampledeterminants::sample_N2_alias(ci, DetsSize, cumulative, allSample, allwts, alias, prob);
+      AllDistinctSample = SHCIsampledeterminants::sample_N2_alias(
+              ci, DetsSize,
+              cumulative, allSample,
+              allwts, alias, prob);
     }
 
 #ifndef SERIAL
@@ -146,236 +153,247 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     
     for (int i=0; i<distinctSample; i++) {
       int I = Sample1[i];
-      SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(Dets[I], schd.epsilon2/abs(ci[I]),
-							     schd.epsilon2Large/abs(ci[I]), wts1[i],
-							     ci[I], I1, I2, I2HB, irrep, coreE, E0,
-							     *uniqueDEH.Det,
-							     *uniqueDEH.Num,
-							     *uniqueDEH.Num2,
-							     *uniqueDEH.present,
-							     *uniqueDEH.Energy,
-							     schd, Nmc, nelec);
-      }
+      SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
+              Dets[I], schd.epsilon2/abs(ci[I]),
+              schd.epsilon2Large/abs(ci[I]), wts1[i],
+              ci[I], I1, I2, I2HB, irrep, coreE, E0,
+              *uniqueDEH.Det,
+              *uniqueDEH.Num,
+              *uniqueDEH.Num2,
+              *uniqueDEH.present,
+              *uniqueDEH.Energy,
+              schd, Nmc, nelec);
+    }
     
-      if(commsize >1 ) {
+    if(commsize >1 ) {
 
-	boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH.Det;
-	boost::shared_ptr<vector<CItype> >& Num = uniqueDEH.Num;
-	boost::shared_ptr<vector<CItype> >& Num2 = uniqueDEH.Num2;
-	boost::shared_ptr<vector<double> >& Energy = uniqueDEH.Energy;
-	boost::shared_ptr<vector<char> >& present = uniqueDEH.present;
-	
-	std::vector<size_t> hashValues(Det->size());
-	
-	std::vector<size_t> all_to_all_cumulative(size,0);
-	for (int i=0; i<Det->size(); i++) {
-	  hashValues[i] = Det->at(i).getHash();
-	  all_to_all[rank*size+hashValues[i]%size]++; 
-	}
-	for (int i=0; i<size; i++)
-	  all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
-	
-	size_t dsize = Det->size() == 0 ? 1 : Det->size();
-	vector<Determinant> atoaDets(dsize);
-	vector<CItype> atoaNum(dsize);
-	vector<CItype> atoaNum2(dsize);
-	vector<double> atoaE(dsize);
-	vector<char> atoaPresent(dsize);
-	
-	#ifndef SERIAL
-	vector<size_t> all_to_allCopy = all_to_all;
-	MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-#endif	
-	vector<size_t> counter(size, 0);
-	for (int i=0; i<Det->size(); i++) {
-	  int toProc = hashValues[i]%size;
-	  size_t index = toProc==0 ? counter[0] : counter[toProc] + all_to_all_cumulative[toProc-1];
-	  
-	  atoaDets[index ] = Det->at(i);
-	  atoaNum[index] = Num->at(i);
-	  atoaNum2[index] = Num2->at(i);
-	  atoaE[index] = Energy->at(i);
-	  atoaPresent[index] = present->at(i);
-	  
-	  counter[toProc]++;
-	}
-	
-	
-	
-	
-	vector<int> sendcts(size,0), senddisp(size,0), recvcts(size,0), recvdisp(size,0);
-	vector<int> sendctsDets(size,0), senddispDets(size,0), recvctsDets(size,0), recvdispDets(size,0);
-	vector<int> sendctsPresent(size,0), senddispPresent(size,0), recvctsPresent(size,0), recvdispPresent(size,0);
-	
-	size_t recvSize = 0;
-	for (int i=0; i<size; i++) {
-	  sendcts[i] = all_to_all[rank*size+i]* sizeof(CItype)/sizeof(double);
-	  senddisp[i] = i==0? 0 : senddisp[i-1]+sendcts[i-1];
-	  recvcts[i] = all_to_all[i*size+rank]*sizeof(CItype)/sizeof(double);
-	  recvdisp[i] = i==0? 0 : recvdisp[i-1]+recvcts[i-1];
-	  
-	  sendctsDets[i] = all_to_all[rank*size+i]* sizeof(Determinant)/sizeof(double);
-	  senddispDets[i] = i==0? 0 : senddispDets[i-1]+sendctsDets[i-1];
-	  recvctsDets[i] = all_to_all[i*size+rank]*sizeof(Determinant)/sizeof(double);
-	  recvdispDets[i] = i==0? 0 : recvdispDets[i-1]+recvctsDets[i-1];
-	  
-	  sendctsPresent[i] = all_to_all[rank*size+i];
-	  senddispPresent[i] = i==0? 0 : senddispPresent[i-1]+sendctsPresent[i-1];
-	  recvctsPresent[i] = all_to_all[i*size+rank];
-	  recvdispPresent[i] = i==0? 0 : recvdispPresent[i-1]+recvctsPresent[i-1];
-	  
-	  recvSize += all_to_all[i*size+rank];
-	}
-	
-	recvSize =  recvSize == 0 ? 1 : recvSize;
-	Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
-	Num2->resize(recvSize), present->resize(recvSize);
-	
-  #ifndef SERIAL
-	MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
-	MPI_Alltoallv(&atoaNum2.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num2->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
-	MPI_Alltoallv(&atoaE.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_DOUBLE, &Energy->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_DOUBLE, MPI_COMM_WORLD);
-	MPI_Alltoallv(&atoaPresent.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_CHAR, &present->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_CHAR, MPI_COMM_WORLD);
-	MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
-  #endif
+      boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH.Det;
+      boost::shared_ptr<vector<CItype> >& Num = uniqueDEH.Num;
+      boost::shared_ptr<vector<CItype> >& Num2 = uniqueDEH.Num2;
+      boost::shared_ptr<vector<double> >& Energy = uniqueDEH.Energy;
+      boost::shared_ptr<vector<char> >& present = uniqueDEH.present;
+      
+      std::vector<size_t> hashValues(Det->size());
+      
+      std::vector<size_t> all_to_all_cumulative(size,0);
+      for (int i=0; i<Det->size(); i++) {
+        hashValues[i] = Det->at(i).getHash();
+        all_to_all[rank*size+hashValues[i]%size]++; 
       }
-      uniqueDEH.MergeSort();
+      for (int i=0; i<size; i++)
+        all_to_all_cumulative[i] = i == 0 ?
+            all_to_all[rank*size+i] : all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
       
-      
-      double energyEN = 0.0, energyENLargeEps = 0.0;
-      
-      vector<Determinant>& Psi1 = *uniqueDEH.Det;
-      vector<CItype>& numerator1A = *uniqueDEH.Num;
-      vector<CItype>& numerator2A = *uniqueDEH.Num2;
-      vector<char>& present = *uniqueDEH.present;
-      vector<double>& det_energy = *uniqueDEH.Energy;
-      
-      CItype currentNum1A=0.; CItype currentNum2A=0.;
-      CItype currentNum1B=0.; CItype currentNum2B=0.;
-      size_t vec_it = 0, i=0;
-      
-      while (i <Psi1.size() && vec_it < DetsSize) {
-	if (Psi1[i] < SortedDets[vec_it]) {
-	  currentNum1A += numerator1A[i];
-	  currentNum2A += numerator2A[i];
-	  if (present[i]) {
-	    currentNum1B += numerator1A[i];
-	    currentNum2B += numerator2A[i];
-	  }
-	  
-	  if ( i == Psi1.size()-1) {
-#ifndef Complex
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	  }
-	  else if (!(Psi1[i] == Psi1[i+1])) {
-#ifndef Complex
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	    energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	    energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	    currentNum1A = 0.;
-	    currentNum2A = 0.;
-	    currentNum1B = 0.;
-	    currentNum2B = 0.;
-	  }
-	  i++;
-	}
-	else if (SortedDets[vec_it] <Psi1[i] && vec_it != DetsSize)
-	  vec_it++;
-	else {
-	  if (i == Psi1.size()-1 || Psi1[i] == Psi1[i+1])
-	    i++;
-	  else {
-	    vec_it++; i++;
-	  }
-	}
-
-      }
-      
-      while (i <Psi1.size()) {
-	currentNum1A += numerator1A[i];
-	currentNum2A += numerator2A[i];
-	if (present[i]) {
-	  currentNum1B += numerator1A[i];
-	  currentNum2B += numerator2A[i];
-	}
-	
-	if ( i == Psi1.size()-1) {
-#ifndef Complex
-	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	}
-	else if (!(Psi1[i] == Psi1[i+1])) {
-#ifndef Complex
-	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
-#else
-	  energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
-	  energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
-#endif
-	  currentNum1A = 0.;
-	  currentNum2A = 0.;
-	  currentNum1B = 0.;
-	  currentNum2B = 0.;
-	}
-	i++;
-      }
-
-      totalPT=0; totalPTLargeEps=0;
-      
-      totalPT += energyEN;
-      totalPTLargeEps += energyENLargeEps;
-      
-      
-      double finalE = 0., finalELargeEps=0;
-#ifndef SERIAL
-      MPI_Allreduce(&totalPT, &finalE, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      MPI_Allreduce(&totalPTLargeEps, &finalELargeEps, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#else
-      finalE = totalPT;
-      finalELargeEps = totalPTLargeEps;
-#endif
-
-      if (commrank == 0 ) {
-	currentIter++;
-	AvgenergyEN += -finalE+finalELargeEps+EptLarge;
-	AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
-	stddev = currentIter < 5 ? 1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
-	if (currentIter < 5)
-	  std::cout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
-	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
-	else
-	  std::cout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
-	    %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root) %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
-	pout << endl;
-      }
+      size_t dsize = Det->size() == 0 ? 1 : Det->size();
+      vector<Determinant> atoaDets(dsize);
+      vector<CItype> atoaNum(dsize);
+      vector<CItype> atoaNum2(dsize);
+      vector<double> atoaE(dsize);
+      vector<char> atoaPresent(dsize);
       
 #ifndef SERIAL
-      MPI_Bcast(&currentIter, 1, MPI_INT, 0, MPI_COMM_WORLD);
-      MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      MPI_Bcast(&AvgenergyEN, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      vector<size_t> all_to_allCopy = all_to_all;
+      MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif      
+      vector<size_t> counter(size, 0);
+      for (int i=0; i<Det->size(); i++) {
+        int toProc = hashValues[i]%size;
+        size_t index = toProc==0 ? counter[0] : counter[toProc] + all_to_all_cumulative[toProc-1];
+        
+        atoaDets[index ] = Det->at(i);
+        atoaNum[index] = Num->at(i);
+        atoaNum2[index] = Num2->at(i);
+        atoaE[index] = Energy->at(i);
+        atoaPresent[index] = present->at(i);
+        
+        counter[toProc]++;
+      }
+      
+      
+      vector<int> sendcts(size,0), senddisp(size,0), recvcts(size,0), recvdisp(size,0);
+      vector<int> sendctsDets(size,0), senddispDets(size,0), recvctsDets(size,0), recvdispDets(size,0);
+      vector<int> sendctsPresent(size,0), senddispPresent(size,0), recvctsPresent(size,0), recvdispPresent(size,0);
+      
+      size_t recvSize = 0;
+      for (int i=0; i<size; i++) {
+        sendcts[i] = all_to_all[rank*size+i]* sizeof(CItype)/sizeof(double);
+        senddisp[i] = i==0? 0 : senddisp[i-1]+sendcts[i-1];
+        recvcts[i] = all_to_all[i*size+rank]*sizeof(CItype)/sizeof(double);
+        recvdisp[i] = i==0? 0 : recvdisp[i-1]+recvcts[i-1];
+        
+        sendctsDets[i] = all_to_all[rank*size+i]* sizeof(Determinant)/sizeof(double);
+        senddispDets[i] = i==0? 0 : senddispDets[i-1]+sendctsDets[i-1];
+        recvctsDets[i] = all_to_all[i*size+rank]*sizeof(Determinant)/sizeof(double);
+        recvdispDets[i] = i==0? 0 : recvdispDets[i-1]+recvctsDets[i-1];
+        
+        sendctsPresent[i] = all_to_all[rank*size+i];
+        senddispPresent[i] = i==0? 0 : senddispPresent[i-1]+sendctsPresent[i-1];
+        recvctsPresent[i] = all_to_all[i*size+rank];
+        recvdispPresent[i] = i==0? 0 : recvdispPresent[i-1]+recvctsPresent[i-1];
+        
+        recvSize += all_to_all[i*size+rank];
+      }
+
+      recvSize =  recvSize == 0 ? 1 : recvSize;
+      Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
+      Num2->resize(recvSize), present->resize(recvSize);
+
+#ifndef SERIAL
+      MPI_Alltoallv(
+              &atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE,
+              &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      MPI_Alltoallv(
+              &atoaNum2.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE,
+              &Num2->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      MPI_Alltoallv(
+              &atoaE.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_DOUBLE,
+              &Energy->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_DOUBLE, MPI_COMM_WORLD);
+      MPI_Alltoallv(
+              &atoaPresent.at(0), &sendctsPresent[0], &senddispPresent[0], MPI_CHAR,
+              &present->at(0), &recvctsPresent[0], &recvdispPresent[0], MPI_CHAR, MPI_COMM_WORLD);
+      MPI_Alltoallv(
+              &atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE,
+              &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
+#endif
+    }
+    uniqueDEH.MergeSort();
+      
+      
+    double energyEN = 0.0, energyENLargeEps = 0.0;
+      
+    vector<Determinant>& Psi1 = *uniqueDEH.Det;
+    vector<CItype>& numerator1A = *uniqueDEH.Num;
+    vector<CItype>& numerator2A = *uniqueDEH.Num2;
+    vector<char>& present = *uniqueDEH.present;
+    vector<double>& det_energy = *uniqueDEH.Energy;
+    
+    CItype currentNum1A=0.; CItype currentNum2A=0.;
+    CItype currentNum1B=0.; CItype currentNum2B=0.;
+    size_t vec_it = 0, i=0;
+      
+    while (i <Psi1.size() && vec_it < DetsSize){
+      if (Psi1[i] < SortedDets[vec_it]) {
+        currentNum1A += numerator1A[i];
+        currentNum2A += numerator2A[i];
+        if (present[i]) {
+          currentNum1B += numerator1A[i];
+          currentNum2B += numerator2A[i];
+        }
+        
+        if ( i == Psi1.size()-1) {
+#ifndef Complex
+          energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+          energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+          energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+          energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+        } else if (!(Psi1[i] == Psi1[i+1])) {
+#ifndef Complex
+          energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+          energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+          energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+          energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+          currentNum1A = 0.;
+          currentNum2A = 0.;
+          currentNum1B = 0.;
+          currentNum2B = 0.;
+        }
+        i++;
+      } else if (SortedDets[vec_it] <Psi1[i] && vec_it != DetsSize) {
+        vec_it++;
+      } else {
+        if (i == Psi1.size()-1 || Psi1[i] == Psi1[i+1]){
+          i++;
+        } else {
+          vec_it++; i++;
+        }
+      }
+
+    }
+      
+    while (i <Psi1.size()) {
+      currentNum1A += numerator1A[i];
+      currentNum2A += numerator2A[i];
+      if (present[i]) {
+        currentNum1B += numerator1A[i];
+        currentNum2B += numerator2A[i];
+      }
+      
+      if ( i == Psi1.size()-1) {
+#ifndef Complex
+        energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+        energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+        energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+        energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+      } else if (!(Psi1[i] == Psi1[i+1])) {
+#ifndef Complex
+        energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A)/(det_energy[i] - E0);
+        energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B)/(det_energy[i] - E0);
+#else
+        energyEN += (pow(abs(currentNum1A),2)*Nmc/(Nmc-1) - currentNum2A.real())/(det_energy[i] - E0);
+        energyENLargeEps += (pow(abs(currentNum1B),2)*Nmc/(Nmc-1) - currentNum2B.real())/(det_energy[i] - E0);
+#endif
+        currentNum1A = 0.;
+        currentNum2A = 0.;
+        currentNum1B = 0.;
+        currentNum2B = 0.;
+      }
+      i++;
+    }
+
+    totalPT=0; totalPTLargeEps=0;
+      
+    totalPT += energyEN;
+    totalPTLargeEps += energyENLargeEps;
+      
+      
+    double finalE = 0., finalELargeEps=0;
+#ifndef SERIAL
+    MPI_Allreduce(&totalPT, &finalE, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&totalPTLargeEps, &finalELargeEps, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+    finalE = totalPT;
+    finalELargeEps = totalPTLargeEps;
+#endif
+
+    if (commrank == 0 ) {
+      currentIter++;
+      AvgenergyEN += -finalE+finalELargeEps+EptLarge;
+      AvgenergyEN2 += pow(-finalE+finalELargeEps+EptLarge,2);
+      stddev = currentIter < 5 ?
+          1e4 : pow( (currentIter*AvgenergyEN2 - pow(AvgenergyEN,2))/currentIter/(currentIter-1)/currentIter, 0.5);
+      if (currentIter < 5)
+        std::cout << format("%6i  %14.8f  %5i %14.8f %10s  %10.2f")
+            %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root)
+            %(E0+AvgenergyEN/currentIter) %"--" %(getTime()-startofCalc) ;
+      else
+        std::cout << format("%6i  %14.8f  %5i %14.8f %10.2e  %10.2f")
+            %(currentIter) % (E0-finalE+finalELargeEps+EptLarge) %(root)
+            %(E0+AvgenergyEN/currentIter) %stddev %(getTime()-startofCalc) ;
+      pout << endl;
+    }
+      
+#ifndef SERIAL
+    MPI_Bcast(&currentIter, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&AvgenergyEN, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
       
-      uniqueDEH.clear();
-      if (stddev < schd.targetError) {
-	AvgenergyEN /= currentIter;
-	//pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
-	pout << "Semistochastic PT calculation converged"<<endl; 
-	pout << "epsilon2: "<<schd.epsilon2<<endl<<"PTEnergy: "<<E0+AvgenergyEN<<" +/- "<<format("%8.2e") %(stddev)<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
-
-	break;
-      }
+    uniqueDEH.clear();
+    if (stddev < schd.targetError) {
+      AvgenergyEN /= currentIter;
+      //pout << "Standard Error : "<<stddev<<" less than "<<schd.targetError<<endl;
+      pout << "Semistochastic PT calculation converged"<<endl; 
+      pout << "epsilon2: "<<schd.epsilon2<<endl
+           <<"PTEnergy: "<<E0+AvgenergyEN<<" +/- "
+           <<format("%8.2e") %(stddev)<<endl<<"Time(s):  "<<getTime()-startofCalc<<endl;
+      break;
+    }
   }
   return AvgenergyEN;
 }
@@ -524,7 +542,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       orbDifference->resize(recvSize);
     }
     
-    #ifndef SERIAL
+#ifndef SERIAL
     MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
     MPI_Alltoallv(&atoaE.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_DOUBLE, &Energy->at(0), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
     MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
@@ -533,7 +551,7 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
       MPI_Alltoallv(&atoaVarIndices.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_INT, &(var_indices->at(0)), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_INT, MPI_COMM_WORLD);
       MPI_Alltoallv(&atoaOrbDiff.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_DOUBLE, &(orbDifference->at(0)), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
     }
-    #endif
+#endif
     uniqueDEH.Num2->clear();
     
   }
@@ -964,15 +982,15 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (proc == 0) {
       X0 = vector<MatrixXx>(ci.size(), MatrixXx(DetsSize+newDets.size(), 1));
       for (int i=0; i<ci.size(); i++) {
-	X0[i].setZero(DetsSize+newDets.size(),1);
-	X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i];
+        X0[i].setZero(DetsSize+newDets.size(),1);
+        X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i];
       }
 
       Dets.resize(DetsSize+newDets.size());
       for (int i=0; i<DetsSize; i++)
-	Dets[i] = SHMDets[i];
+        Dets[i] = SHMDets[i];
       for (int i=0; i<newDets.size(); i++)
-	Dets[i+DetsSize] = newDets[i];
+        Dets[i+DetsSize] = newDets[i];
 
       DetsSize = Dets.size();
     }
@@ -1031,11 +1049,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       MatrixXx diagbkp = diag;
       diag =MatrixXx::Zero(DetsSize,1);
       for (int k=0; k<diagbkp.rows(); k++)
-	diag(k,0) = diagbkp(k,0);
+        diag(k,0) = diagbkp(k,0);
 
       for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
-	CItype hij = SHMDets[k].Energy(I1, I2, coreE);
-	diag(k,0) = hij;
+        CItype hij = SHMDets[k].Energy(I1, I2, coreE);
+        diag(k,0) = hij;
       }
     }  
     
@@ -1069,13 +1087,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     for (int i=1; i<E0.size(); i++)
       pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") 
-	%(iter) %(i) % schd.epsilon1[iter] % DetsSize % (E0[i]+coreEbkp) % (numIter) %(getTime()-startofCalc);
+        %(iter) %(i) % schd.epsilon1[iter] % DetsSize % (E0[i]+coreEbkp) % (numIter) %(getTime()-startofCalc);
     if (E0.size() >1) pout <<endl;
 
     if (proc == 0) {
       for (int i=0; i<E0.size(); i++) {
-	ci[i].resize(DetsSize,1); ci[i] = 1.0*X0[i];
-	X0[i].resize(0,0);
+        ci[i].resize(DetsSize,1); ci[i] = 1.0*X0[i];
+        X0[i].resize(0,0);
       }
     }
 
@@ -1084,19 +1102,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       pout << endl<<"Performing final tight davidson with tol: "<<schd.davidsonTol<<endl;
 
       if (schd.DavidsonType == DIRECT)
-	E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
+        E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
       else
-	E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
+        E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif
       pout <<endl<<"Exiting variational iterations"<<endl;
       if (commrank == 0) {
-	Dets.resize(DetsSize);
-	for (int i=0; i<DetsSize; i++) {
-	  Dets[i] = SHMDets[i];	
-	}
+        Dets.resize(DetsSize);
+        for (int i=0; i<DetsSize; i++)
+          Dets[i] = SHMDets[i];	
       }
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
