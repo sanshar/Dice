@@ -1,13 +1,13 @@
 /*
-            Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
-            Copyright (c) 2017, Sandeep Sharma
+  Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
+  This file is part of DICE.
+  This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-            This file is part of DICE.
-            This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-            This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-            You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "Determinants.h"
@@ -891,9 +891,8 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
       if ( dist > 3 ) { continue; }
       vector<int> cs (0), ds(0);
       getUniqueIndices( Dets[b], Dets[k], cs, ds );
-      //double sgn = 1.0;
       
-      if ( dist == 3 ) {
+      /*if ( dist == 3 ) {
 	double sgn = 1.0;
 	Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
 	if ( schd.DoSpinRDM )
@@ -901,8 +900,9 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	
 	popSpatial3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,s3RDM);
       }
-      
-      else if ( dist == 2 ) {
+      */
+      //else
+      if ( dist == 2 ) {
 	vector<int> closed(nelec, 0);
 	vector<int> open(norbs-nelec,0);
 	Dets[k].getOpenClosed(open, closed);

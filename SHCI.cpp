@@ -361,6 +361,12 @@ int main(int argc, char* argv[]) {
 		pout << "**************************************************************"<<endl;
 
 		// TODO Find permanent home for 3RDM
+		if ( schd.DoOneRDM ) {
+		  if (commrank==0) cout << "Calculating 1-RDM..." << endl;
+		  MatrixXx s1RDM;
+		  CItype * ciroot;
+		}
+
 		if ( schd.DoThreeRDM ) {
 		  if (commrank==0) cout << "Calculating 3-RDM..." << endl;
 		  MatrixXx s3RDM, threeRDM;
