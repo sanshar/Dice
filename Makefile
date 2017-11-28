@@ -1,7 +1,9 @@
 USE_MPI = yes
 USE_INTEL = yes
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
+EIGEN=/projects/jasm3285/eigen/
+BOOST=/projects/jasm3285/boost_1_57_0
+#EIGEN=/projects/sash2458/apps/eigen/
+#BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen
 #BOOST=/home/mussard/softwares/boost_1_64_0
 
@@ -15,7 +17,7 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = icpc
 		CC = icpc

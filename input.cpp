@@ -89,6 +89,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   //the ridiculously large number of active spacce orbitals
   schd.nact = 1000000;
   schd.doLCC = false;
+  schd.DoOneRDM = false;
+  schd.DoSpinOneRDM = false;
 
   while (dump.good()) {
 
@@ -214,6 +216,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.printBestDeterminants = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
+    else if (boost::iequals(ArgName, "DoOneRDM"))
+      schd.DoOneRDM = true;
+    else if (boost::iequals(ArgName, "DoSpinOneRDM"))
+      schd.DoSpinOneRDM = true;
     else if (boost::iequals(ArgName, "Treversal")) {
       schd.Trev = atoi(tok[1].c_str());
       if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {

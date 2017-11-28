@@ -320,6 +320,63 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
 
 }
 
+//=============================================================================
+void SHCIrdm::save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, 
+		       int root) {
+  /*!
+    
+    Writes the spatial 1RDM to text.
+
+    :Arguments:
+
+        schedule& schd:
+	    Schedule object that stores Dice parameters.
+	MatrixXx& s1RDM:
+	    Spatial 1RDM.
+	MatrixXx& oneRDM:
+	    Spin 1RDM.
+	int root:
+	    Index of wavefunction to save.
+  */
+
+  int nSpatOrbs = s1RDM.rows();
+  int norbs = oneRDM.rows();
+
+  if (commrank==0) {
+    char file [5000];
+    sprintf(file, "%s/spatial1RDM.%d.%d.txt", schd.prefix[0].c_str(), root, 
+	    root);
+    std::ofstream ofs(file, std::ios::out);
+    ofs << nSpatOrbs << endl;
+    
+    for (int n1=0; n1<nSpatOrbs; n1++) {
+      for (int n2=0; n2<nSpatOrbs; n2++) {
+	if (fabs(s1RDM(n1,n2)) > 1.e-6) {
+	    ofs << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % s1RDM(n1,n2));    
+	}
+      }
+    }
+    ofs.close();  
+    
+    if (schd.DoSpinOneRDM) {
+      char file [5000];
+      sprintf(file, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root, 
+	      root);
+      std::ofstream ofs(file, std::ios::out);
+      ofs << norbs << endl;
+      
+      for (int n1=0; n1<norbs; n1++) {
+	for (int n2=0; n2<norbs; n2++) {
+	  if (fabs(oneRDM(n1,n2)) > 1.e-6) {
+	    ofs << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % oneRDM(n1,n2));    
+	  }
+	}
+      }
+      ofs.close();  
+    } // end if for spin rdm 
+  }// end if commrank
+}
+
 
 
 //=============================================================================
@@ -695,9 +752,11 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets,
 
 //=============================================================================
 void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
-  vector<Determinant>& Dets, MatrixXx& cibra, MatrixXx& ciket,
-  vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
-  int root, MatrixXx& s1RDM) {
+			     Determinant *Dets, int DetsSize, CItype *cibra, 
+			     CItype *ciket, 
+			     vector<vector<size_t> >& orbDifference, 
+			     int nelec, schedule& schd, int root,
+			     MatrixXx& oneRDM, MatrixXx& s1RDM) {
   /*!
   Calculates *just* the spatial 1RDM using cibra and ciket.
 
@@ -705,11 +764,13 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
 
       vector<vector<int> >& connections:
           Linked list showing determinants that are connected to each other.
-      vector<Determinant>& Dets:
+      Determinant * Dets:
           Pointer to determinants in wavefunction.
-      MatrixXx& cibra:
+      int DetsSize  :
+          Number of determinants.
+      CItype *cibra:
           Pointer to the ci coefficients for the bra.
-      MatrixXx& ciket:
+      CItype *ciket:
           Pointer to the ci coefficients for the ket.
       vector<vector<size_t> >& orbDifference:
           Linked list that stores the orbital difference between determinants.
@@ -719,6 +780,8 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
           Schedule that holds the parameters used throughout Dice.
       int root:
           Index of the wavefunction to save.
+      MatrixXx& oneRDM:
+          Spin 1RDM.
       MatrixXx& s1RDM:
           Spatial 1RDM.
 
@@ -727,11 +790,11 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
-
-  for (int i=0; i<Dets.size(); i++) {
+  for (int i=0; i<DetsSize; i++) {
     if (i%commsize != commrank) continue;
 
     vector<int> closed(nelec, 0);
@@ -741,7 +804,10 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
       int orb1 = closed[n1];
-      s1RDM(orb1, orb1) += localConj::conj(cibra(i,0))*ciket(i,0);
+      if (schd.DoSpinOneRDM) { 
+	oneRDM(orb1,orb1) += localConj::conj(cibra[i])*ciket[i];
+      }
+      s1RDM(orb1/2, orb1/2) += localConj::conj(cibra[i])*ciket[i];
     }
 
     for (int j=1; j<connections[i/commsize].size(); j++) {
@@ -749,7 +815,12 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
       if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
 	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-	s1RDM(c0, d0)+= sgn*localConj::conj(cibra(connections[i/commsize][j],0))*ciket(i,0);
+	if (schd.DoSpinOneRDM) {
+	  oneRDM(c0,d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	  oneRDM(d0,c0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	}
+	s1RDM(c0/2, d0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];	
+	s1RDM(d0/2, c0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
       }
     }
   }
@@ -757,6 +828,24 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0,0), s1RDM.rows()*s1RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
+
+  /*// Testing TODO
+  double test_elec = 0;
+  for (int i=0; i<nSpatOrbs; i++) {
+    test_elec += s1RDM(i,i);
+  }
+  cout << "Test electrons: " << test_elec << endl;
+
+
+  MatrixXx test_1RDM = MatrixXx::Zero(nSpatOrbs,nSpatOrbs);
+  for (int r=0; r<norbs; r++) 
+    for (int c=0; c<norbs; c++) {
+      test_1RDM(r/2,c/2) += oneRDM(r,c);
+    }
+
+  test_1RDM -= s1RDM;
+  cout << "Norm of difference in 1RDM: " << test_1RDM.norm() << endl; 
+  */
 }
 
 

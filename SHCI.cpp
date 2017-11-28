@@ -463,6 +463,8 @@ int main(int argc, char* argv[]) {
     SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
 			 sparseHam.orbDifference, nelec, schd, 0, twoRDM, s2RDM);
 
+    // Add DoOneRDM Block
+
     if (commrank == 0) {
       MatrixXx s2RDMdisk, twoRDMdisk;
       SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);

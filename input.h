@@ -84,7 +84,9 @@ private:
       & enforceSenioExc                         \
       & ncore                                   \
       & nact                                    \
-      & doLCC ;
+      & doLCC                                   \
+      & DoSpinOneRDM                            \
+      & DoOneRDM;
 
   }
 
@@ -140,6 +142,8 @@ public:
   int ncore;
   int nact;
   bool doLCC;
+  bool DoOneRDM;
+  bool DoSpinOneRDM;
 };
 
 #endif

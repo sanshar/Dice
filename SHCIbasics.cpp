@@ -1126,6 +1126,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);    
       }
 
+      if (schd.DoOneRDM) {
+	for (int i=0; i<schd.nroots; i++) {
+	  MatrixXx s1RDM, oneRDM;
+	  oneRDM = MatrixXx::Zero(norbs,norbs);
+	  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
+	  CItype *SHMci;
+	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+	  SHCIrdm::EvaluateOneRDM(sparseHam.connections,SHMDets,DetsSize, SHMci,
+				  SHMci, sparseHam.orbDifference, nelec, schd,i,
+				  oneRDM, s1RDM);
+	  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+	}
+      }
+
       if (DoRDM || schd.doResponse) {
 	//if (schd.DavidsonType == DIRECT) {
 	//pout << "RDM not implemented with direct davidson."<<endl;

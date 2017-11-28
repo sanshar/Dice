@@ -56,6 +56,7 @@ namespace SHCIrdm {
 	       CItype* ciket,
 	       MatrixXx& s2RDM);
 
+  void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root);
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 
@@ -63,9 +64,11 @@ namespace SHCIrdm {
 		   CItype *ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
 		   int root, MatrixXx& s2RDM, MatrixXx& twoRDM);
 
-  void EvaluateOneRDM(vector<vector<int> >& connections, vector<Determinant>& Dets, MatrixXx& cibra,
-		      MatrixXx& ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
-		      int root, MatrixXx& s1RDM);
+  void EvaluateOneRDM(vector<vector<int> >& connections, Determinant *Dets, 
+		      int DetsSize, CItype * cibra, 
+		      CItype * ciket, vector<vector<size_t> >& orbDifference,
+		      int nelec, schedule& schd, int root, MatrixXx& oneRDM,
+		      MatrixXx& s1RDM);
 
  void UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
 						  oneInt& I1, twoInt& I2, schedule& schd,
