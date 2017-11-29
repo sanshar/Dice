@@ -101,7 +101,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#general">General</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#variational">Variational</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#perturbative">Perturbative</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
 </ul>
 </li>
 </ul>
@@ -189,13 +188,33 @@
 <h3>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><dl class="first docutils">
-<dt>Treversal</dt>
-<dd>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</dd>
+<dt>doSOC</dt>
+<dd>(Boolean) Include spin-orbit coupling in hamiltonian. Default is false.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
-<dt>doSOC</dt>
-<dd>(Boolean) Include spin-orbit coupling in hamiltonian. Default is false.</dd>
+<dt>fullrestart</dt>
+<dd>(String) Restarts the calculation using determinants from a previous calculation as the starting determinants for a <em>new</em> calculation. This keyword will cause the hamiltonian to be recalculated.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>noio</dt>
+<dd>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>prefix</dt>
+<dd>(String) Path to scratch directory. Default is “.”. To set your own path, simply write the absolute path in the input file without quotations.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>restart</dt>
+<dd>(string) Restarts the calculation, reading in wavefunction and hamiltonian from a previous calculation.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Treversal</dt>
+<dd>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</dd>
 </dl>
 </li>
 </ul>
@@ -221,6 +240,16 @@
 <li><dl class="first docutils">
 <dt>DoRDM</dt>
 <dd>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>DoOneRDM</dt>
+<dd>(String) If included, Dice will write the spatial 1RDM to a text file in the directory specified with the keyword prefix.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>DoSpinOneRDM</dt>
+<dd>(String) <em>Must be used in conjunction with DoOneRDM.</em> If included, Dice will write the spin 1RDM to a text file in the directory specified with the keyword prefix.</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
@@ -256,21 +285,6 @@
 <li><dl class="first docutils">
 <dt>targetError</dt>
 <dd>(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math">\(10^4\)</span>.</dd>
-</dl>
-</li>
-</ul>
-</div>
-<div class="section" id="miscellaneous">
-<h3>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
-<li><dl class="first docutils">
-<dt>prefix</dt>
-<dd>(String) Path to scratch directory. Default is “.”. To set your own path, simply write the absolute path in the input file without quotations.</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>noio</dt>
-<dd>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</dd>
 </dl>
 </li>
 </ul>
