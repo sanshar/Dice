@@ -164,7 +164,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "extrapolate")) {
       schd.extrapolate = true;
       if (tok.size() == 2)
-	schd.extrapolationFactor = atoi(tok[1].c_str());
+	schd.extrapolationFactor = atof(tok[1].c_str());
     }
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
