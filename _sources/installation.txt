@@ -38,4 +38,4 @@ Once compiling is complete you should test the code using the "/path_to/Dice/tes
 
 .. note::
 
-  If you compiled the serial version of Dice, replace the line :code:`MPICOMMAND="mpirun -np 28"` with :code:`MPICOMMAND=""`.
+  If you compiled the serial version of Dice, replace the line :code:`MPICOMMAND="mpirun -np 28"` with :code:`MPICOMMAND=""` in the "runTests.sh" and "runSmallTests.sh" files.
