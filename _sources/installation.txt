@@ -35,3 +35,7 @@ Once compiling is complete you should test the code using the "/path_to/Dice/tes
 .. note::
 
   If your system has limited memory or slow processing power, you may wish to run ./runSmallTests.sh instead.
+
+.. note::
+
+  If you compiled the serial version of Dice, replace the line :code:`MPICOMMAND="mpirun -np 28"` with :code:`MPICOMMAND=""`.
