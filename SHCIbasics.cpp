@@ -658,7 +658,9 @@ double SHCIbasics::DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, in
 
 void unpackTrevState(vector<Determinant>& Dets, int &DetsSize, vector<MatrixXx>& ci, SparseHam& sparseHam, bool DoRDM, oneInt& I1, twoInt& I2, double& coreE) {
 
+#ifndef SERIAL
   boost::mpi::communicator world;
+#endif
   int oldLen = Dets.size();
   vector<int> partnerLocation(oldLen,-1);
   if(commrank == 0) {
@@ -694,8 +696,8 @@ void unpackTrevState(vector<Determinant>& Dets, int &DetsSize, vector<MatrixXx>&
       }
     }
   }
-#ifndef SERIAL
   DetsSize = Dets.size();
+#ifndef SERIAL
   MPI_Bcast(&DetsSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(&oldLen, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
@@ -717,9 +719,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   boost::mpi::communicator world;
-
 #endif
 
+  //Put determinants on the shared memory
   Determinant* SHMDets, *SortedDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   if (proc != 0) Dets.resize(0);
@@ -730,8 +732,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   }
   int SortedDetsSize = SortedDetsvec.size(), DetsSize = Dets.size();
   SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
-
-
   Dets.clear();
   SortedDetsvec.clear();
 #ifndef SERIAL
@@ -740,6 +740,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
 
 
+  //sometimes coreenergy is huge and it kills the stability of davidson solver
+  //so make it zero and just add it to the converged energy
   double coreEbkp = coreE;
   coreE = 0.0;
 
@@ -750,6 +752,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   if (schd.outputlevel > 0 && commrank == 0) Time::print_time("start variation");
 
 
+  //initialize the sparse Hamiltonian and helpers
   int nroots = ci.size();
   SHCImakeHamiltonian::HamHelpers2 helper2;
   SHCImakeHamiltonian::SparseHam sparseHam;
@@ -775,30 +778,19 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   vector<double> E0(nroots,abs(e0));
 
 
-  //if I1[1].store.size() is not zero then soc integrals is active so populate AlphaN
+  //make helpers and then put them on the shared memory
   if (proc == 0) {
     helper2.PopulateHelpers(SHMDets, DetsSize, 0);
   }	
   helper2.MakeSHMHelpers();
 
-  if (schd.outputlevel > 1 && commrank == 0) {
-    std::setlocale(LC_NUMERIC, "");
-    printf("AlphaN size: %'zu\nBetaN size: %'zu\n", helper2.AlphaN.size(), helper2.BetaN.size());
-    unsigned long long singleAlphaSize = 0, singleBetaSize = 0;
-    for (const auto& singles : helper2.SinglesFromAlpha) singleAlphaSize += singles.size();
-    for (const auto& singles : helper2.SinglesFromBeta) singleBetaSize += singles.size();
-    printf("SinglesFromAlpha size: %'llu\nSinglesFromBeta size: %'llu\n", singleAlphaSize, singleBetaSize);
-    fflush(stdout);
-  }
-
-  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
-
+  //if it is not direct Hamiltonian then generate it
   if (schd.DavidsonType != DIRECT) {
     sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("hamiltonian generated");
   }
 
 
+  //update the Hamiltonian with SOC terms
 #ifdef Complex
   SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize, SortedDets, sparseHam.connections, 
 					    sparseHam.orbDifference, 
@@ -818,10 +810,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     bool converged;
     readVariationalResult(iterstart, ci, Dets, sparseHam, E0, converged, schd, helper2);
 
+    //after reading restart put dets on shared memory
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, 
 		   DetsCISegment, regionDetsCI);
-
     DetsSize = Dets.size(); SortedDetsSize = DetsSize;
+
+    //put sorted dets on shared memory as well
     SHMVecFromVecs(Dets, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
 #ifndef SERIAL
     mpi::broadcast(world, SortedDetsSize, 0);
@@ -834,8 +828,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #endif
     Dets.clear();
 
-    helper2.MakeSHMHelpers();
 
+    //Make helpers and make sparse hamiltonian if full restart and not direct
+    helper2.MakeSHMHelpers();
     if (!(schd.DavidsonType == DIRECT || (!schd.fullrestart && converged && iterstart>= schd.epsilon1.size()-1))  ) {
       sparseHam.clear();
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
@@ -849,6 +844,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     else iterstart = 0;
     
 
+    //if the calculation is converged then exit
     if (converged && iterstart >= schd.epsilon1.size()) {
       for (int i=0; i<E0.size(); i++) 
 	E0[i] += coreEbkp;
@@ -858,7 +854,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       for (int i=0; i<DetsSize; i++)
 	Dets[i] = SHMDets[i];
 
-#ifdef SERIAL
+#ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
       mpi::broadcast(world, E0, 0);
 #endif
@@ -917,6 +913,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	uniqueDEH.Det->at(i).makeStandard();
     }
 
+
+    //*********
+    //Remove duplicates and put all the dets on all the nodes
+
     sort( uniqueDEH.Det->begin(), uniqueDEH.Det->end() );
     uniqueDEH.Det->erase( unique( uniqueDEH.Det->begin(), uniqueDEH.Det->end() ), uniqueDEH.Det->end() );
 
@@ -973,18 +973,21 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	}
       }
     }
-    
+    //*************
     
 #endif
+
+    //**********
+    //Resize X0 and dets and sorteddets
     vector<MatrixXx> X0; X0.resize(ci.size());
     vector<Determinant>& newDets = *uniqueDEH.Det;
-
     if (proc == 0) {
       X0 = vector<MatrixXx>(ci.size(), MatrixXx(DetsSize+newDets.size(), 1));
       for (int i=0; i<ci.size(); i++) {
         X0[i].setZero(DetsSize+newDets.size(),1);
         X0[i].block(0,0,ci[i].rows(),1) = 1.*ci[i];
       }
+
 
       Dets.resize(DetsSize+newDets.size());
       for (int i=0; i<DetsSize; i++)
@@ -1001,38 +1004,28 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
-    if (commrank == 0 && schd.DavidsonType == DIRECT) 
-      printf("New size of determinant space %8i\n", DetsSize);
+    //************
 
-    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("new dets found");
-    
+    //*************
+    //make Helpers and Hamiltonian
     if (proc == 0) {
       helper2.PopulateHelpers(SHMDets, DetsSize,SortedDetsSize);
     }	
     helper2.MakeSHMHelpers();
-
-    if (schd.outputlevel > 1 && commrank == 0) {
-      printf("AlphaN size: %'zu\nBetaN size: %'zu\n", helper2.AlphaN.size(), helper2.BetaN.size());
-      unsigned long long singleAlphaSize = 0, singleBetaSize = 0;
-      for (const auto& singles : helper2.SinglesFromAlpha) singleAlphaSize += singles.size();
-      for (const auto& singles : helper2.SinglesFromBeta) singleBetaSize += singles.size();
-      printf("SinglesFromAlpha size: %'llu\nSinglesFromBeta size: %'llu\n", singleAlphaSize, singleBetaSize);
-      fflush(stdout);
-    }
-
-    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("helper strings generated");
-
     if (schd.DavidsonType != DIRECT ) {
       sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
-      if (schd.outputlevel > 0 && commrank == 0) Time::print_time("hamiltonian generated");
     }
-    SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
-    
+    //************
+
+    //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous
+    //iterations
+    SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);    
     if (localrank == 0) 
       std::sort(SortedDets, SortedDets+DetsSize);
 #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
+
 
 #ifdef Complex
       SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
@@ -1044,36 +1037,37 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
   mpi::broadcast(world, SortedDetsSize, 0);
 #endif
+
+  //Make the diagonal elements so that preconditioner can be applied in davidson
+  if (proc == 0) {
+    MatrixXx diagbkp = diag;
+    diag =MatrixXx::Zero(DetsSize,1);
+    for (int k=0; k<diagbkp.rows(); k++)
+      diag(k,0) = diagbkp(k,0);
+    
+    for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
+      CItype hij = SHMDets[k].Energy(I1, I2, coreE);
+      diag(k,0) = hij;
+    }
+  }  
   
-    if (proc == 0) {
-      MatrixXx diagbkp = diag;
-      diag =MatrixXx::Zero(DetsSize,1);
-      for (int k=0; k<diagbkp.rows(); k++)
-        diag(k,0) = diagbkp(k,0);
 
-      for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
-        CItype hij = SHMDets[k].Energy(I1, I2, coreE);
-        diag(k,0) = hij;
-      }
-    }  
-    
-    
-    double prevE0 = E0[0];
-    if (iter == 0) prevE0 = -10.0;
-    Hmult2 H(sparseHam);
-    HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
-			I1, I2, coreE, diag); 
-    if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
-    //pout << "nbatches : "<<sparseHam.Nbatches<<endl;
-    //cout <<commrank<<"  "<< sparseHam.Helements[0][0]<<endl;
-    int numIter = 0;
-
-    if (schd.DavidsonType == DIRECT)
-      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
-    else
-      E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
-
-    if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
+  //Hmult has a operator() that lets you multiply a vector with H to generate and output
+  double prevE0 = E0[0];
+  if (iter == 0) prevE0 = -10.0;
+  Hmult2 H(sparseHam);
+  HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
+		      I1, I2, coreE, diag); 
+  if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
+  int numIter = 0;
+  
+  //do the davidson calculation
+  if (schd.DavidsonType == DIRECT)
+    E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
+  else
+    E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
+  
+  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
 
 
 #ifndef SERIAL
@@ -1090,6 +1084,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
         %(iter) %(i) % schd.epsilon1[iter] % DetsSize % (E0[i]+coreEbkp) % (numIter) %(getTime()-startofCalc);
     if (E0.size() >1) pout <<endl;
 
+    //update the civector
     if (proc == 0) {
       for (int i=0; i<E0.size(); i++) {
         ci[i].resize(DetsSize,1); ci[i] = 1.0*X0[i];
@@ -1098,6 +1093,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }
 
 
+    //the variational step has converged
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
       pout << endl<<"Performing final tight davidson with tol: "<<schd.davidsonTol<<endl;
 

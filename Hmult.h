@@ -141,6 +141,9 @@ struct Hmult2 {
       }
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
+#else
+      for (int j=0; j<numDets; j++)
+	y[j] = ytemp[j];
 #endif
       
     } // ndets
