@@ -358,22 +358,20 @@ void SHCIrdm::save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM,
     }
     ofs.close();  
     
-    if (schd.DoSpinOneRDM) {
-      char file [5000];
-      sprintf(file, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root, 
-	      root);
-      std::ofstream ofs(file, std::ios::out);
-      ofs << norbs << endl;
-      
-      for (int n1=0; n1<norbs; n1++) {
-	for (int n2=0; n2<norbs; n2++) {
-	  if (fabs(oneRDM(n1,n2)) > 1.e-6) {
-	    ofs << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % oneRDM(n1,n2));    
-	  }
+    char file2 [5000];
+    sprintf(file2, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root, 
+	    root);
+    std::ofstream ofs2(file2, std::ios::out);
+    ofs2 << norbs << endl;
+    
+    for (int n1=0; n1<norbs; n1++) {
+      for (int n2=0; n2<norbs; n2++) {
+	if (fabs(oneRDM(n1,n2)) > 1.e-6) {
+	  ofs2 << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % oneRDM(n1,n2));    
 	}
       }
-      ofs.close();  
-    } // end if for spin rdm 
+    }
+    ofs2.close();  
   }// end if commrank
 }
 
@@ -800,36 +798,41 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
+    cout << "In evaluate1RDM" << endl;
 
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
       int orb1 = closed[n1];
-      if (schd.DoSpinOneRDM) { 
-	oneRDM(orb1,orb1) += localConj::conj(cibra[i])*ciket[i];
-      }
+      oneRDM(orb1,orb1) += localConj::conj(cibra[i])*ciket[i];
       s1RDM(orb1/2, orb1/2) += localConj::conj(cibra[i])*ciket[i];
     }
+    cout << "Made it past the dist==0 " << endl; 
 
+    cout << connections[i/commsize].size() << endl;
+    cout << orbDifference[i/commsize][0] << endl;
+    
     for (int j=1; j<connections[i/commsize].size(); j++) {
+      cout << orbDifference[i/commsize][j] << endl;
       int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
       if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
 	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-	if (schd.DoSpinOneRDM) {
-	  oneRDM(c0,d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-	  oneRDM(d0,c0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-	}
+
+	oneRDM(c0,d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+	oneRDM(d0,c0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+
 	s1RDM(c0/2, d0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];	
 	s1RDM(d0/2, c0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
       }
     }
+    cout << "Made it to all reduce" << endl;
   }
-
+  
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0,0), s1RDM.rows()*s1RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
-  /*// Testing TODO
+  /*
+  // Testing TODO
   double test_elec = 0;
   for (int i=0; i<nSpatOrbs; i++) {
     test_elec += s1RDM(i,i);

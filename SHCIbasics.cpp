@@ -1123,6 +1123,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
       }
 
       if (schd.DoOneRDM) {
+	pout <<"Calculating 1RDM"<<endl;
 	for (int i=0; i<schd.nroots; i++) {
 	  MatrixXx s1RDM, oneRDM;
 	  oneRDM = MatrixXx::Zero(norbs,norbs);
@@ -1141,7 +1142,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	//pout << "RDM not implemented with direct davidson."<<endl;
 	//exit(0);
 	//}
-	pout <<"Calculating RDM"<<endl;
+	pout <<"Calculating 2RDM"<<endl;
 	int trev = Determinant::Trev;
 	Determinant::Trev = 0;
 	for (int i=0; i<schd.nroots; i++) {
