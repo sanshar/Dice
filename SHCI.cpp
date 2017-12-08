@@ -427,7 +427,6 @@ int main(int argc, char* argv[]) {
   }
 
 
-
   //THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
   if ((schd.doResponse || schd.DoRDM) && 
       schd.RdmType == RELAXED &&

@@ -786,7 +786,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   //if it is not direct Hamiltonian then generate it
   if (schd.DavidsonType != DIRECT) {
-    sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
+    sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM || schd.DoOneRDM);
   }
 
 
@@ -833,7 +833,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     helper2.MakeSHMHelpers();
     if (!(schd.DavidsonType == DIRECT || (!schd.fullrestart && converged && iterstart>= schd.epsilon1.size()-1))  ) {
       sparseHam.clear();
-      sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
+      sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM||schd.DoOneRDM);
     }
 
     for (int i=0; i<E0.size(); i++)
@@ -1013,7 +1013,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     }	
     helper2.MakeSHMHelpers();
     if (schd.DavidsonType != DIRECT ) {
-      sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM);
+      sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM || schd.DoOneRDM);
     }
     //************
 
@@ -1136,7 +1136,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
 	}
       }
-
+      
+      
       if (DoRDM || schd.doResponse) {
 	//if (schd.DavidsonType == DIRECT) {
 	//pout << "RDM not implemented with direct davidson."<<endl;

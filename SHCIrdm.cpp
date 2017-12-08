@@ -798,7 +798,6 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
-    cout << "In evaluate1RDM" << endl;
 
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
@@ -806,13 +805,8 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
       oneRDM(orb1,orb1) += localConj::conj(cibra[i])*ciket[i];
       s1RDM(orb1/2, orb1/2) += localConj::conj(cibra[i])*ciket[i];
     }
-    cout << "Made it past the dist==0 " << endl; 
-
-    cout << connections[i/commsize].size() << endl;
-    cout << orbDifference[i/commsize][0] << endl;
     
     for (int j=1; j<connections[i/commsize].size(); j++) {
-      cout << orbDifference[i/commsize][j] << endl;
       int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
       if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
@@ -825,7 +819,6 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
 	s1RDM(d0/2, c0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
       }
     }
-    cout << "Made it to all reduce" << endl;
   }
   
 #ifndef SERIAL
