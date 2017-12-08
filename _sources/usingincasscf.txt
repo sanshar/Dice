@@ -4,12 +4,12 @@ Using in CASSCF
 
 Interfacing with PySCF
 ----------------------
-SHCI can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ is successfully installed (see `Installing PySCF <https://github.com/sunqm/pyscf/blob/master/README.md#installation>`_), you can call Dice from within a python input script. After you compile Dice, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.
+Dice can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ is successfully installed (see `Installing PySCF <https://github.com/sunqm/pyscf/blob/master/README.md#installation>`_), you can call Dice from within a python input script. After you compile Dice, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.
 
 .. code-block:: bash
 
-	SHCIEXE = '/path_to/SHCI/SHCI'
-	SHCIQDPTEXE = '/path_to/SHCI/QDPTSOC'
+	SHCIEXE = '/path_to/Dice/Dice'
+	SHCIQDPTEXE = '/path_to/Dice/QDPTSOC'
 
 
 Once this is completed you can run call SHCI from within `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_. An example input is shown below:
