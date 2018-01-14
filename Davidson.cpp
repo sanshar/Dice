@@ -518,9 +518,13 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
 
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
-double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
+//if E0 is real, solve using CG
+//else solve (H0-E0)^{\dagger}(H0-E0)*x0 = (H0-E0)^{\dagger}*b using CG 
+double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
 
-  for (int i=0; i<proj.size(); i++) {
+#ifndef Complex
+
+    for (int i=0; i<proj.size(); i++) {
     CItype dotProduct = 0.0, norm=0.0;
     for (int j=0; j<b.rows(); j++) {
       dotProduct += conj(proj[i][j])*b(j,0);
@@ -578,5 +582,86 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     iter++;
   }
 
+#else
+  //calculate bNew = (H0-E0)^{\dagger}*b
+  MatrixXx bNew = 0.*b;
+  H(&b(0,0), &bNew(0,0));
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &bNew(0,0), bNew.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  bNew = bNew - conj(E0)*b;
 
+    for (int i=0; i<proj.size(); i++) {
+    CItype dotProduct = 0.0, norm=0.0;
+    for (int j=0; j<bNew.rows(); j++) {
+      dotProduct += conj(proj[i][j])*bNew(j,0);
+      norm += conj(proj[i][j])*proj[i][j];
+    }
+    for (int j=0; j<bNew.rows(); j++) 
+      bNew(j,0) = bNew(j,0) - dotProduct*proj[i][j]/norm;
+  }
+
+  x0.setZero(bNew.rows(),1);
+  MatrixXx r = 1.*bNew, p = 1.*bNew;
+  double rsold = r.squaredNorm();
+
+  if (fabs(r.norm()) < tol) 
+    return 0.0;
+
+  int iter = 0;
+  while (true) {
+    //calculating (H0^2 + |E|^2 - (E+E*)H0)*p
+    MatrixXx Ap = 0.*p, AAp=0.*p;
+    H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    H(&Ap(0,0), &AAp(0,0)); ///REPLACE THIS WITH SOMETHING
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &AAp(0,0), AAp.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    //testing
+    //if(iter==0 || iter==1){
+    //    pout << "b(0,0)  bNew(0,0)  p(0,0)  Ap(0,0)  AAp(0,0) " << endl;
+    //    for (int j=0; j<bNew.rows(); j++) {
+    //    pout << b(j,0) << "  " << bNew(j,0) << "  " << p(j,0) << "  " << Ap(j,0) << "  " << AAp(j,0) <<  endl;
+    //    }
+    //}
+    AAp = AAp + conj(E0)*E0*p - (E0+conj(E0))*Ap; //AAp=(H0^2 + |E|^2 - (E+E*)H0)*p
+    CItype alpha = rsold/(p.adjoint()*AAp)(0,0);
+    x0 += alpha*p;
+    r -= alpha*AAp;
+
+    for (int i=0; i<proj.size(); i++) {
+      CItype dotProduct = 0.0, norm=0.0;
+      for (int j=0; j<bNew.rows(); j++) {
+	dotProduct += conj(proj[i][j])*r(j,0);
+	norm += conj(proj[i][j])*proj[i][j];
+      }
+      for (int j=0; j<r.rows(); j++) 
+	r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
+    }
+
+      //r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
+      //r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
+
+    double rsnew = r.squaredNorm();
+    CItype ept = -(x0.adjoint()*r + x0.adjoint()*bNew)(0,0);
+    if (print)
+      pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
+    if (r.norm() < tol || iter > 100) {
+      p.setZero(p.rows(),1); 
+      //H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
+      //p -=b; //not sure what this is for
+      return abs(ept);
+    }
+
+    p = r +(rsnew/rsold)*p;
+    rsold = rsnew;
+    iter++;
+  }
+
+#endif
 }
+
+

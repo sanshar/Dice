@@ -1045,6 +1045,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
+     for (int i=0; i<E0.size(); i++) {
+       E0[i] += coreEbkp;
+     }
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
 
       unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||schd.doResponse, I1, I2, coreE);
@@ -1133,7 +1136,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   pout << "------------------------------"<<endl;
   pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %("Time(s)");
   for (int i=0; i<E0.size(); i++) {
-    E0[i] += coreEbkp;
     pout << format("%4i  %18.10f  %10.2f\n") 
       %(i) % (E0[i]) % (getTime()-startofCalc);
   }

@@ -72,8 +72,8 @@ void license() {
   pout << endl;
 }
 
-double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
-        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0) ; 
+CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) ; 
 
 
 int main(int argc, char* argv[]) {
@@ -113,12 +113,15 @@ int main(int argc, char* argv[]) {
   std::ifstream ifs(file, std::ios::binary);
   boost::archive::binary_iarchive load(ifs);
   //Dets has deteminants with nonzero psi0 overlap, ci has the corresponding coeffs
-  int iter; std::vector<Determinant> Dets; std::vector<MatrixXx> ci; std::vector<double> E0;
+  int iter; std::vector<Determinant> Dets; std::vector<MatrixXd> ciReal; std::vector<double> E0;
   load >> iter >> Dets;
-  load >> ci;
+  load >> ciReal;
+  pout << "loaded ciReal" << endl;
   load >> E0;
   ifs.close();
-
+  
+  MatrixXx ci = ciReal[0];
+  ciReal.clear(); 
 
   //to store dets in psi0 less one electron, to construct H0 on N-1 electron space 
   //calc only in 0 proc
@@ -154,8 +157,8 @@ int main(int argc, char* argv[]) {
   Dets.clear();
   SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
   DetsNm1.clear();
-  SHMVecFromMatrix(ci[0], SHMci, shcicMax, cMaxSegment, regioncMax);
-  ci.clear();
+  SHMVecFromMatrix(ci, SHMci, shcicMax, cMaxSegment, regioncMax);
+  //ci.clear(); need to fix this
 
 #ifndef SERIAL
   mpi::broadcast(world, DetsNm1Size, 0);
@@ -175,9 +178,15 @@ int main(int argc, char* argv[]) {
   Hmult2 H(sparseHam);
   t2 = MPI_Wtime();
 
-  double g_ij = calcGreensFunction(1, 1, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
-  t3 = MPI_Wtime();
-  pout << endl << "G_" << 1 << "_" << 1 << "  " << g_ij << endl; 
+  //calculate greens function
+  for(int i=0; i<200; i++){
+      std::complex<double> w (0.01*i, 0.001);
+      pout << "w " << w << endl;
+      CItype g_ij = calcGreensFunction(1, 1, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0], w);
+      t3 = MPI_Wtime();
+      pout << "g11  " << g_ij << endl << endl;
+      //pout << endl << "G_" << 1 << "_" << 1 << "  " << g_ij << endl;
+  }
   
   //for(int i=0; i<norbs; i++){
   //    for(int j=0; j<=i; j++){
@@ -195,12 +204,13 @@ int main(int argc, char* argv[]) {
 
 }
 
-//to calculate G_ij(w=0) = <psi0| a_i^(dag) 1/H0-E0 a_j |psi0>
+//to calculate G_ij(w) = <psi0| a_i^(dag) 1/(H0-E0-w) a_j |psi0>
+//w is a complex number
 //psi0 is the variational ground state, a_i, a_j are annihilation operators 
 //H0 is the Hamiltonian and E0 is the N electron variational ground state energy 
 //Dets has dets in psi0, ci has the corresponding coeffs
 //DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
-double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0) {
+CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) {
 
 #ifndef SERIAL
     boost::mpi::communicator world;
@@ -219,20 +229,27 @@ double calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
             ciNm1(n) = ci[k];
         }
     }
-     
+    
+
+
 #ifndef SERIAL
     world.barrier();
 #endif
     
     
-    //solve for x0 = 1/H0-E0 a_j |psi0>
+    //solve for x0 = 1/w+H0-E0 a_j |psi0>
     MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
     vector<CItype*> proj;
-    LinearSolver(HNm1, E0, x0, ciNm1, proj, 1.e-5, false);
+    LinearSolver(HNm1, E0+w, x0, ciNm1, proj, 1.e-5, false);
     
+    //testing
+    pout << "ciNm1   x0     DetsNm1 " << endl;
+    for(int k=0; k<DetsNm1Size; k++){
+        pout << ciNm1(k) << "  " << x0(k) << "   " << DetsNm1[k] << endl;
+    }
     
     //calc <psi0|a_i^(dag) x0
-    double overlap = 0.0;
+    CItype overlap = 0.0;
     if(commrank == 0){
         for(int k=0; k<DetsSize; k++){
             if(Dets[k].getocc(i)) {

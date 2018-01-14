@@ -106,7 +106,7 @@ namespace SHCImakeHamiltonian {
 
   void fixForTreversal(Determinant* Dets, int DetI, int DetJ, 
 		       oneInt& I1, twoInt& I2, 
-		       double& coreE, size_t& orbDiff, double& hij) ;
+		       double& coreE, size_t& orbDiff, CItype& hij) ;
 
   void regenerateH(std::vector<Determinant>& Dets,
 		   std::vector<std::vector<int> >&connections,
