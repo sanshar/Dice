@@ -175,7 +175,9 @@ void SHMVecFromMatrix(MatrixXx& vec, CItype* &SHMvec, std::string& SHMname,
     }
     
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
+#endif
   }
+#ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }

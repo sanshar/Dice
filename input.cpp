@@ -1,13 +1,20 @@
 /*
-Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
-Copyright (c) 2017, Sandeep Sharma
-
-This file is part of DICE.
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
+  This file is part of DICE.
+  
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation, 
+  either version 3 of the License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+  See the GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
+  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "global.h"
 #include "input.h"
@@ -70,6 +77,20 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.Trev = 0;
   schd.algorithm = 0;
   schd.outputlevel = 0;
+  schd.printBestDeterminants = 0;
+  schd.extrapolate = false;
+  schd.extrapolationFactor = 2.0/3.0;
+  schd.enforceSeniority = false;
+  schd.maxSeniority = 10000;
+  schd.enforceExcitation = false;
+  schd.maxExcitation = 10000;
+  schd.enforceSenioExc = false;
+  schd.ncore = 0;
+  //the ridiculously large number of active spacce orbitals
+  schd.nact = 1000000;
+  schd.doLCC = false;
+  schd.DoOneRDM = false;
+  schd.DoSpinOneRDM = false;
 
   while (dump.good()) {
 
@@ -120,8 +141,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	index++;
       }
     }
+    else if (boost::iequals(ArgName, "nact"))
+      schd.nact = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "ncore"))
+      schd.ncore = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "noio"))
       schd.io=false;
+    else if (boost::iequals(ArgName, "dolcc"))
+      schd.doLCC=true;
     else if (boost::iequals(ArgName, "io"))
       schd.io=true;
     else if (boost::iequals(ArgName, "directdavidson"))
@@ -134,6 +161,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.num_thrds = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "outputlevel"))
       schd.outputlevel = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "extrapolate")) {
+      schd.extrapolate = true;
+      if (tok.size() == 2)
+	schd.extrapolationFactor = atof(tok[1].c_str());
+    }
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
     else if (boost::iequals(ArgName, "algorithm"))
@@ -142,6 +174,22 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.doResponse=true;
       schd.responseFile = tok[1];
     }
+    else if (boost::iequals(ArgName, "maxseniority")) {
+      schd.enforceSeniority = true;
+      if (tok.size() == 1) 
+	schd.maxSeniority = 0;
+      else
+	schd.maxSeniority = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "maxexcitation")) {
+      schd.enforceExcitation = true;
+      if (tok.size() == 1) 
+	schd.maxExcitation = 0;
+      else
+	schd.maxExcitation = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "SenioAndExc"))
+      schd.enforceSenioExc = true;
     else if (boost::iequals(ArgName, "dogtensor"))
       schd.doGtensor=true;
     else if (boost::iequals(ArgName, "targetError"))
@@ -164,8 +212,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.epsilon2Large = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "onlyperturbative"))
       schd.onlyperturbative = true;
+    else if (boost::iequals(ArgName, "printbestdeterminants"))
+      schd.printBestDeterminants = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
+    else if (boost::iequals(ArgName, "DoOneRDM"))
+      schd.DoOneRDM = true;
+    else if (boost::iequals(ArgName, "DoSpinOneRDM"))
+      schd.DoSpinOneRDM = true;
     else if (boost::iequals(ArgName, "Treversal")) {
       schd.Trev = atoi(tok[1].c_str());
       if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {

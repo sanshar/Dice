@@ -1,13 +1,20 @@
 /*
-Developed by Sandeep Sharma with contributions from James E. Smith and Adam A. Homes, 2017
-Copyright (c) 2017, Sandeep Sharma
-
-This file is part of DICE.
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
+  This file is part of DICE.
+  
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation, 
+  either version 3 of the License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
+  See the GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
+  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Determinants.h"
 #include "SHCIbasics.h"
@@ -611,7 +618,8 @@ namespace SHCISortMpiUtils {
 	    Num2->operator[](uniqueSize) += Num2->at(i);
 	  if (present->size() != 0)
 	    present->operator[](uniqueSize) = present->at(i);
-	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10) {
+	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10 && 
+	      abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10*abs(Energy->at(i)) ) {
 	    cout << uniqueSize<<"  "<<i<<"  "<<endl;
 	    cout << Detcopy[i]<<endl;
 	    cout << Energy->at(uniqueSize)<<"  "<<Energy->at(i)<<"  "<<Detcopy[i-1]<<endl;
@@ -802,25 +810,27 @@ namespace SHCISortMpiUtils {
 
 
   void StitchDEH::RemoveOnlyDetsPresentIn(Determinant *SortedDets, int DetsSize) {
-    int vecid = 0;
+    int vecid = 0, i=0;
     std::vector<Determinant>& Detcopy = *Det;
 
     size_t uniqueSize = 0;
-    for (size_t i=0; i<Detcopy.size();) {
+    while (i <Detcopy.size() && vecid < DetsSize) {
       if (Detcopy[i] < SortedDets[vecid]) {
 	Det->operator[](uniqueSize) = Detcopy[i];
 	i++; uniqueSize++;
       }
-      else if (SortedDets[vecid] < Detcopy[i] && vecid != DetsSize)
+      else if (SortedDets[vecid] < Detcopy[i])
 	vecid++;
-      else if (SortedDets[vecid] < Detcopy[i] && vecid == DetsSize) {
-	Det->operator[](uniqueSize) = Detcopy[i];
-	i++; uniqueSize++;
-      }
       else {
 	vecid++; i++;
       }
     }
+
+    while (i <Detcopy.size()) {
+      Det->operator[](uniqueSize) = Detcopy[i];
+      i++; uniqueSize++;
+    }
+
     Det->resize(uniqueSize); 
   }
 
@@ -1033,7 +1043,7 @@ namespace SHCISortMpiUtils {
       k++;l++;
     }
 
-  } // end merge
+  } // merge
 
 
 

@@ -26,7 +26,6 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 		    boost::interprocess::shared_memory_object& SHMsegment,
 		    boost::interprocess::mapped_region& SHMregion) {
 
-  boost::interprocess::shared_memory_object::remove(SHMname.c_str());
   size_t totalMemory = 0;
   int comm_rank=0, comm_size=1;
 #ifndef SERIAL
@@ -71,9 +70,13 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
     }
     
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
+#endif
   }
+#ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+  boost::interprocess::shared_memory_object::remove(SHMname.c_str());
+
 }
 
 
@@ -128,10 +131,13 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
     }
     
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
+#endif
   }
+#ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
+
 
 
 

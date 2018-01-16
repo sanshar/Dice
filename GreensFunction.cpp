@@ -116,10 +116,9 @@ int main(int argc, char* argv[]) {
   int iter; std::vector<Determinant> Dets; std::vector<MatrixXd> ciReal; std::vector<double> E0;
   load >> iter >> Dets;
   load >> ciReal;
-  pout << "loaded ciReal" << endl;
   load >> E0;
   ifs.close();
-  
+   
   MatrixXx ci = ciReal[0];
   ciReal.clear(); 
 
