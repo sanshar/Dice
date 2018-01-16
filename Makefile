@@ -7,7 +7,7 @@ BOOST=/home/anma2640/projects/boost_1_66_0
 
 #FLAGS = -std=c++11 -g  -I${EIGEN} -I${BOOST} #-DComplex
 FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} #-DComplex
-DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
+DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex -DGreen 
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp

@@ -522,7 +522,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 //else solve (H0-E0)^{\dagger}(H0-E0)*x0 = (H0-E0)^{\dagger}*b using CG 
 double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
 
-#ifndef Complex
+#ifndef Green
 
     for (int i=0; i<proj.size(); i++) {
     CItype dotProduct = 0.0, norm=0.0;
@@ -546,7 +546,11 @@ double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CIty
     MatrixXx Ap = 0.*p;
     H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
 #ifndef SERIAL
+#ifndef Complex
     MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
 #endif
     Ap = Ap - E0*p; //H0-E0
     CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
