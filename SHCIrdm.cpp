@@ -386,7 +386,7 @@ void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 								for (int n5=0; n5 < nSpatOrbs; n5++) {
 									if ( abs( s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,
 									      n3*nSpatOrbs2+n4*nSpatOrbs+n5) ) > 1.e-12 ) {
-										ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%n0%n1%n2%n3%n4%n5%s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,n3*nSpatOrbs2+n4*nSpatOrbs+n5));
+										ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %20.14e\n")%n0%n1%n2%n3%n4%n5%s3RDM(n0*nSpatOrbs2+n1*nSpatOrbs+n2,n3*nSpatOrbs2+n4*nSpatOrbs+n5));
 									}
 								}
 			ofs.close();
@@ -402,7 +402,7 @@ void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 
 		{
 			char file [5000];
-			sprintf (file, "%s/%d-spatial3RDM.bkp", schd.prefix[0].c_str(), root );
+			sprintf (file, "spatial3RDM.%d.%d.bin", root, root);
 			std::ofstream ofs(file, std::ios::binary);
 			boost::archive::binary_oarchive save(ofs);
 			save << s3RDM;
@@ -432,7 +432,7 @@ void SHCIrdm::save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM,
 										for (int d3=0; d3 < n; d3++) {
 											if ( abs( s4RDM( n3*c0+n2*c1+n*c2+c3,
 											      n3*d0+n2*d1+n*d2+d3) ) > 1.e-12 ) {
-												ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %3d   %3d   %10.8g\n")%c0%c1%c2%c3%d0%d1%d2%d3%s4RDM( n3*c0+n2*c1+n*c2+c3, n3*d0+n2*d1+n*d2+d3 ) );
+												ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %3d   %3d   %20.14e\n")%c0%c1%c2%c3%d0%d1%d2%d3%s4RDM( n3*c0+n2*c1+n*c2+c3, n3*d0+n2*d1+n*d2+d3 ) );
 											}
 										}
 			ofs.close();
@@ -445,15 +445,15 @@ void SHCIrdm::save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM,
 		   boost::archive::binary_oarchive save(ofs);
 		   save << fourRDM;
 		   }
-
-		   {
-		   char file [5000];
-		   sprintf (file, "%s/%d-spatial4RDM.bkp", schd.prefix[0].c_str(), root );
-		   std::ofstream ofs(file, std::ios::binary);
-		   boost::archive::binary_oarchive save(ofs);
-		   save << s4RDM;
-		   }
 		 */
+
+		{
+		  char file [5000];
+		  sprintf (file, "spatial4RDM.%d.%d.bin", root, root);
+		  std::ofstream ofs(file, std::ios::binary);
+		  boost::archive::binary_oarchive save(ofs);
+		  save << s4RDM;
+		}
 	}
 }
 
