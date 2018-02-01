@@ -378,9 +378,11 @@ void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 	int nSpatOrbs2 = nSpatOrbs*nSpatOrbs;
 
 	if(commrank == 0) {
+
+        // TXT
 		{
 			char file[5000];
-			sprintf (file, "spatial3RDM.%d.%d.txt", root, root);
+			sprintf (file, "%s/spatial3RDM.%d.%d.txt", schd.prefix[0].c_str(), root, root);
 			std::ofstream ofs(file, std::ios::out);
 			ofs << nSpatOrbs << endl;
 
@@ -398,6 +400,7 @@ void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 			ofs.close();
 		}
 
+		/*
 		if ( true ) { // TODO change to schd.DoSpinRDM
 			char file [5000];
 			sprintf (file, "%s/%d-spin3RDM.bkp", schd.prefix[0].c_str(), root);
@@ -405,10 +408,12 @@ void SHCIrdm::save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM,
 			boost::archive::binary_oarchive save(ofs);
 			save << threeRDM;
 		}
+		*/
 
+        // BIN
 		{
 			char file [5000];
-			sprintf (file, "spatial3RDM.%d.%d.bin", root, root);
+			sprintf (file, "%s/spatial3RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
 			std::ofstream ofs(file, std::ios::binary);
 			boost::archive::binary_oarchive save(ofs);
 			save << s3RDM;
@@ -422,9 +427,11 @@ void SHCIrdm::save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM,
 	int n2 = n*n; int n3 = n2*n;
 
 	if(commrank == 0) {
+
+        // TXT
 		{
 			char file[5000];
-			sprintf (file, "spatial4RDM.%d.%d.txt", root, root);
+            sprintf (file, "%s/spatial4RDM.%d.%d.txt", schd.prefix[0].c_str(), root, root);
 			std::ofstream ofs(file, std::ios::out);
 			ofs << n << endl;
 
@@ -443,19 +450,21 @@ void SHCIrdm::save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM,
 										}
 			ofs.close();
 		}
-		/*
-		   if ( true ) { // TODO change to schd.DoSpinRDM
-		   char file [5000];
-		   sprintf (file, "%s/%d-spin4RDM.bkp", schd.prefix[0].c_str(), root);
-		   std::ofstream ofs( file, std::ios::binary );
-		   boost::archive::binary_oarchive save(ofs);
-		   save << fourRDM;
-		   }
-		 */
 
+		/*
+		if ( true ) { // TODO change to schd.DoSpinRDM
+		  char file [5000];
+		  sprintf (file, "%s/%d-spin4RDM.bkp", schd.prefix[0].c_str(), root);
+		  std::ofstream ofs( file, std::ios::binary );
+		  boost::archive::binary_oarchive save(ofs);
+		  save << fourRDM;
+		}
+		*/
+
+        // BIN
 		{
 		  char file [5000];
-		  sprintf (file, "spatial4RDM.%d.%d.bin", root, root);
+          sprintf (file, "%s/spatial4RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
 		  std::ofstream ofs(file, std::ios::binary);
 		  boost::archive::binary_oarchive save(ofs);
 		  save << s4RDM;
