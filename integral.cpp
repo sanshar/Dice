@@ -190,10 +190,12 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    // MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    mpi::broadcast(world, &I2.store[i*maxint], maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, MPI_DOUBLE, 0);
+  // MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, MPI_DOUBLE, 0);
+  mpi::broadcast(world, &I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, 0);
   world.barrier();
 
   mpi::broadcast(world, I2.maxEntry, 0);
@@ -228,7 +230,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
 
 #ifndef SERIAL
-  MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+  // MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+  mpi::broadcast(world, &Singles(0,0), Singles.rows()*Singles.cols(), 0);
 #endif
 
   I2.Singles.resize(0,0);
@@ -330,10 +333,12 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   world.barrier();
   char* shrdMem = static_cast<char*>(startAddress);
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    // MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    mpi::broadcast(world, shrdMem+i*maxint, maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
+  // MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
+  mpi::broadcast(world, shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, 0);
   world.barrier();
 #endif
 } // end twoIntHeatBathSHM::constructClass
@@ -591,6 +596,3 @@ int readNorbs(string fcidump) {
 #endif
   return norbs;
 } // end readNorbs
-
-
-
