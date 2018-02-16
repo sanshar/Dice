@@ -900,14 +900,17 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
   
   for (int b=0; b < DetsSize; b++ ) {
+    if( b%commsize != commrank ) { continue; }
+    Determinant DetsB = Dets[b]; // Necessary for MPI
+
     for (int k=0; k < DetsSize; k++ ) {
-      
-      int dist = Dets[b].ExcitationDistance( Dets[k] );
+      Determinant DetsK = Dets[k]; // Necessary for MPI
+      int dist = DetsB.ExcitationDistance( DetsK );
       if ( dist > 3 ) { continue; }
       vector<int> cs (0), ds(0);
-      getUniqueIndices( Dets[b], Dets[k], cs, ds );
-      
-      /*if ( dist == 3 ) {
+      getUniqueIndices( DetsB, DetsK, cs, ds );
+
+      if ( dist == 3 ) {
 	double sgn = 1.0;
 	Dets[k].parity( cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn );
 	if ( schd.DoSpinRDM )
@@ -915,12 +918,11 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	
 	popSpatial3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,s3RDM);
       }
-      */
-      //else
-      if ( dist == 2 ) {
+
+      else if ( dist == 2 ) {
 	vector<int> closed(nelec, 0);
 	vector<int> open(norbs-nelec,0);
-	Dets[k].getOpenClosed(open, closed);
+	DetsK.getOpenClosed(open, closed);
 	
 	// Initialize the final spot in operator arrays and move d ops toward
 	// ket so inner two c/d operators are paired
@@ -934,10 +936,8 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	  
 	  // Gamma = c0 c1 c2 d0 d1 d2
 	  double sgn = 1.0;
-	  Dets[k].parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD
+	  DetsK.parity( ds[2], ds[1], cs[0], cs[1], sgn ); // TOOD
 	  
-	  // TODO Make spinRDM optional
-	  //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
 	  if ( schd.DoSpinRDM )
 	    popSpin3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,threeRDM);
 	  
@@ -945,11 +945,11 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	}
       }
       
-
+      
       else if ( dist == 1 ) {
 	vector<int> closed(nelec,0);
 	vector<int> open(norbs-nelec,0);
-	Dets[k].getOpenClosed(open,closed);
+	DetsK.getOpenClosed(open,closed);
 	cs.push_back(0); cs.push_back(0);
 	ds.push_back(0); ds.push_back(0);
 	ds[2] = ds[0];
@@ -966,7 +966,6 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	    double sgn = 1.0;
 	    Dets[k].parity( min(cs[0],ds[2]), max(cs[0],ds[2]), sgn ); // TODO Update repop order
 	    
-	    //popSpin3RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
 	    if ( schd.DoSpinRDM )
 	      popSpin3RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,threeRDM);
 	    
@@ -974,11 +973,12 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	  }
 	}
       }
+
       
       else if ( dist == 0 ) {
 	vector<int> closed(nelec, 0);
 	vector<int> open(norbs-nelec,0);
-	Dets[k].getOpenClosed(open, closed);
+	DetsK.getOpenClosed(open, closed);
 	cs.push_back(0); cs.push_back(0); cs.push_back(0);
 	ds.push_back(0); ds.push_back(0); ds.push_back(0);
 	for ( int x=0; x < nelec; x++ ) {
@@ -988,7 +988,6 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
 	    for ( int z=0; z < y; z++ ) {
 	      cs[2]=closed[z]; ds[0]=closed[z];
 	      
-	      //popSpin3RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,threeRDM);
 	      if ( schd.DoSpinRDM )
 		popSpin3RDM(cs,ds,conj(cibra[b])*ciket[k],norbs,threeRDM);
 	      
@@ -999,6 +998,13 @@ void SHCIrdm::Evaluate3RDM( Determinant*  Dets, int DetsSize, CItype* cibra,
       }
     }
   }
+  
+#ifndef SERIAL
+  world.barrier();
+  if (schd.DoSpinRDM)
+    MPI_Allreduce(MPI_IN_PLACE, &threeRDM(0,0), threeRDM.rows()*threeRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s3RDM(0,0), s3RDM.rows()*s3RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 }
 
 
@@ -1071,16 +1077,19 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	int nSOs = norbs/2; // Number of spatial orbitals
 
 	for (int b=0; b<DetsSize; b++) {
+	  if( b%commsize != commrank ) { continue; }
+	  Determinant DetsB = Dets[b];
+
 	  for (int k=0; k<DetsSize; k++) {
-	    
-	    int dist = Dets[b].ExcitationDistance( Dets[k] );
+	    Determinant DetsK = Dets[k];
+	    int dist = DetsB.ExcitationDistance( DetsK );
 	    if ( dist > 4 ) { continue; }
 	    vector<int> cs (0), ds(0);
-	    getUniqueIndices( Dets[b], Dets[k], cs, ds );
+	    getUniqueIndices( Dets[b], DetsK, cs, ds );
 	    
 	    if ( dist == 4 ) {
 	      double sgn = 1.0;
-	      Dets[k].parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
+	      DetsK.parity(cs[0],cs[1],cs[2],cs[3],ds[0],ds[1],ds[2],ds[3],sgn);
 	      //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
 	      if ( schd.DoSpinRDM )
 		popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
@@ -1091,7 +1100,7 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	    else if ( dist == 3 ) {
 	      vector<int> closed(nelec, 0);
 	      vector<int> open(norbs-nelec,0);
-	      Dets[k].getOpenClosed(open, closed);
+	      DetsK.getOpenClosed(open, closed);
 	      cs.push_back(0); ds.push_back(0);
 	      ds[3]=ds[2]; ds[2]=ds[1]; ds[1]=ds[0]; //Keep notation
 	      
@@ -1103,8 +1112,8 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 		}
 		
 		double sgn = 1.0;
-		Dets[k].parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
-		//popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		DetsK.parity(cs[0],cs[1],cs[2],ds[1],ds[2],ds[3],sgn);
+
 		if ( schd.DoSpinRDM )
 		  popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
 		
@@ -1115,7 +1124,7 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	    else if ( dist == 2 ) {
 	      vector<int> closed(nelec, 0);
 	      vector<int> open(norbs-nelec,0);
-	      Dets[k].getOpenClosed(open, closed);
+	      DetsK.getOpenClosed(open, closed);
 	      cs.push_back(0); ds.push_back(0);
 	      cs.push_back(0); ds.push_back(0);
 	      ds[3]=ds[1]; ds[2]=ds[0]; //Keep notation
@@ -1131,8 +1140,8 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 		  if (closed[x]==ds[3] || closed[x]==ds[2]) continue;
 		  
 		  double sgn = 1.0;
-		  Dets[k].parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
-		  //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		  DetsK.parity(ds[3],ds[2],cs[0],cs[1],sgn); // SS notation
+
 		  if ( schd.DoSpinRDM )
 		    popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
 		  
@@ -1145,7 +1154,7 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	    else if ( dist == 1 ) {
 	      vector<int> closed(nelec, 0);
 	      vector<int> open(norbs-nelec,0);
-	      Dets[k].getOpenClosed(open, closed);
+	      DetsK.getOpenClosed(open, closed);
 	      cs.push_back(0); ds.push_back(0);
 	      cs.push_back(0); ds.push_back(0);
 	      cs.push_back(0); ds.push_back(0);
@@ -1165,8 +1174,8 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 		    if (closed[y]==cs[0] || closed[y]==ds[3]) continue;
 		    
 		    double sgn = 1.0;
-		    Dets[k].parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
-		    //popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
+		    DetsK.parity( min(ds[3],cs[0]), max(ds[3],cs[0]), sgn); // SS notation
+
 		    if ( schd.DoSpinRDM )
 		      popSpin4RDM(cs,ds,sgn*conj(cibra[b])*ciket[k],norbs,fourRDM);
 		    
@@ -1179,7 +1188,7 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	    else if ( dist == 0 ) {
 	      vector<int> closed(nelec, 0);
 	      vector<int> open(norbs-nelec,0);
-	      Dets[k].getOpenClosed(open, closed);
+	      DetsK.getOpenClosed(open, closed);
 	      cs.push_back(0); ds.push_back(0);
 	      cs.push_back(0); ds.push_back(0);
 	      cs.push_back(0); ds.push_back(0);
@@ -1194,7 +1203,6 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 		    for (int z=0; z<y; z++ ) {
 		      cs[3]=closed[z]; ds[0]=closed[z];
 		      
-		      //popSpin4RDM(cs,ds,conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
 		      if ( schd.DoSpinRDM )
 			popSpin4RDM(cs,ds,conj(cibra[b])*ciket[k],norbs,fourRDM);
 		      
@@ -1206,5 +1214,12 @@ void SHCIrdm::Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
 	    }
 	  }
 	}
+#ifndef SERIAL
+  world.barrier();
+  if (schd.DoSpinRDM)
+    MPI_Allreduce(MPI_IN_PLACE, &fourRDM(0,0), fourRDM.rows()*fourRDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s4RDM(0,0), s4RDM.rows()*s4RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
   return;
 }
