@@ -29,9 +29,11 @@ using namespace std;
 using namespace boost;
 
 void readInput(string input, std::vector<std::vector<int> >& occupied, schedule& schd) {
-  cout << "**************************************************************"<<endl;
-  cout << "Input file  :"<<endl;
-  cout << "**************************************************************"<<endl;
+  cout << endl;
+  cout << endl;
+  cout << "**************************************************************" << endl;
+  cout << "INPUT FILE" << endl;
+  cout << "**************************************************************" << endl;
 
   ifstream dump(input.c_str());
   int maxiter = -1;
@@ -103,7 +105,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       Line;
     std::getline(dump, Line);
     trim(Line);
-    cout <<Line<<endl;
+    cout << Line << endl;
 
     vector<string> tok;
     boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
@@ -128,17 +130,17 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 
         occupied.push_back(vector<int>(nocc));
         if (nocc != tok.size()) {
-          cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
+          cout << "nocc: " << nocc << " neq " << tok.size() << endl;
           for (int t=0; t<tok.size(); t++)
-            cout << tok[t]<<"  ";
+            cout << tok[t] << "  ";
           exit(0);
         }
 
         for (int i=0; i<tok.size(); i++) {
           occupied[index][i] = atoi(tok[i].c_str());
-          cout << occupied[index][i]<<" ";
+          cout << occupied[index][i] << " ";
         }
-        cout <<endl;
+        cout << endl;
         std::getline(dump, Line);
         trim(Line);
         boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
@@ -223,7 +225,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "Treversal")) {
       schd.Trev = atoi(tok[1].c_str());
       if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {
-        cout << "Treversal should be either 0, 1, or -1."<<endl;
+        cout << "Treversal should be either 0, 1, or -1." << endl;
         exit(0);
       }
     }
@@ -274,7 +276,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "schedule")) {
 
       std::getline(dump, Line);
-      cout <<Line<<endl;
+      cout << Line << endl;
       vector<string> schd_tok;
       boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       while(!boost::iequals(schd_tok[0], "END")) {
@@ -283,24 +285,24 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
           sweep_epsilon.push_back( atof(schd_tok[1].c_str()));
         }
         std::getline(dump, Line);
-        cout <<Line<<endl;
+        cout << Line << endl;
         boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
     }
     else if (boost::iequals(ArgName, "maxiter"))
       maxiter = atoi(tok[1].c_str());
     else {
-      cout << "cannot read option "<<ArgName<<endl;
+      cout << "cannot read option " << ArgName << endl;
       exit(0);
     }
   }
 
   if (maxiter < sweep_iter[sweep_iter.size()-1]) {
-    cout << "maxiter should be greater than last entry of sweep_iter"<<endl;
+    cout << "maxiter should be greater than last entry of sweep_iter" << endl;
     exit(0);
   }
   if (nocc == -1) {
-    cout << "nocc keyword has to be included."<<endl;
+    cout << "nocc keyword has to be included." << endl;
     exit(0);
   }
 #ifndef Complex
@@ -317,10 +319,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   for (int j=sweep_iter[sweep_iter.size()-1]; j<maxiter; j++)
     schd.epsilon1.push_back(sweep_epsilon[sweep_iter.size()-1]);
 
-
   if (schd.prefix.size() == 0)
     schd.prefix.push_back(".");
-  //cout << "**************************************************************"<<endl;
-  cout << endl;
-  cout <<endl;
+
+  //cout << "**************************************************************" << endl;
 }

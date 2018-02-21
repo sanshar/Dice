@@ -346,7 +346,7 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int roo
       char file [5000];
       sprintf (file, "%s/spatialRDM.%d.%d.txt", schd.prefix[0].c_str(), root, root );
       std::ofstream ofs(file, std::ios::out);
-      ofs << nSpatOrbs<<endl;
+      ofs << nSpatOrbs << endl;
       for (int n1=0; n1<nSpatOrbs; n1++)
       for (int n2=0; n2<nSpatOrbs; n2++)
         for (int n3=0; n3<nSpatOrbs; n3++)
@@ -766,11 +766,10 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec,
 #endif
   }
 
-  //if (commrank == 0)  cout << "One-body from 2RDM: " << onebody << endl;
-  //if (commrank == 0)  cout << "Two-body from 2RDM: " << twobody << endl;
-
   energy += onebody + twobody;
-  if (commrank == 0) cout << "E from 2RDM: " << energy << endl;
+  pout << format("E(one-body) from 2RDM: %18.10f")%(onebody) << endl;
+  pout << format("E(two-body) from 2RDM: %18.10f")%(twobody) << endl;
+  pout << format("E from 2RDM:           %18.10f")%(energy)  << endl;
   return energy;
 }
 
@@ -813,8 +812,9 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, tw
 #endif
 
   energy += onebody + twobody;
-  pout << onebody<<"  "<<twobody<<endl;
-  if (commrank == 0) cout << "E from 2RDM: " << energy << endl;
+  pout << format("E(one-body) from 2RDM: %18.10f")%(onebody) << endl;
+  pout << format("E(two-body) from 2RDM: %18.10f")%(twobody) << endl;
+  pout << format("E from 2RDM:           %18.10f")%(energy)  << endl;
   return energy;
 }
 
