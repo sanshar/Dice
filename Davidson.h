@@ -43,4 +43,8 @@ vector<double> davidsonDirect(
 //E0 can be complex, in which case a normailized system (H0-E0)^{\dagger}(H0-E0)*x0=(H0-E0)^{\dagger}*b is solved using cg
 double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
 
+//(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc 
+//solving using QR decomposition
+double LinearSolverQR(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
+
 #endif

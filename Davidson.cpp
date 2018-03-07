@@ -773,3 +773,139 @@ double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 }
 
 
+//=============================================================================
+double LinearSolverQR(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
+//-----------------------------------------------------------------------------
+    /*!
+    (H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
+    solve using QR
+    :Inputs:
+
+        Hmult2& H:
+            The matrix H0
+        double E0:
+            The energy E0
+        MatrixXx& x0:
+            The unknown vector x0 (output)
+        MatrixXx& b:
+            The right vector b
+        vector<CItype*>& proj:
+            Projector to keep the solution orthogonal
+        double tol:
+            Tolerance
+        bool print:
+            Triggers printing out of messages
+    */
+//-----------------------------------------------------------------------------
+
+#ifndef Green
+    for (int i=0; i<proj.size(); i++) {
+    CItype dotProduct = 0.0, norm=0.0;
+    for (int j=0; j<b.rows(); j++) {
+#ifdef Complex
+      dotProduct += conj(proj[i][j])*b(j,0);
+      norm += conj(proj[i][j])*proj[i][j];
+#else
+      dotProduct += proj[i][j]*b(j,0);
+      norm += proj[i][j]*proj[i][j];
+#endif
+    }
+    for (int j=0; j<b.rows(); j++)
+      b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
+  }
+
+  x0.setZero(b.rows(),1);
+  MatrixXx r = 1.*b, p = 1.*b;
+  double rsold = r.squaredNorm();
+
+  if (fabs(r.norm()) < tol) return 0.0;
+
+  int iter = 0;
+  while (true) {
+    MatrixXx Ap = 0.*p;
+    H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
+#ifndef SERIAL
+#ifndef Complex
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+#endif
+    Ap = Ap - E0*p; //H0-E0
+    CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
+    x0 += alpha*p;
+    r -= alpha*Ap;
+
+    for (int i=0; i<proj.size(); i++) {
+      CItype dotProduct = 0.0, norm=0.0;
+      for (int j=0; j<b.rows(); j++) {
+#ifdef Complex
+        dotProduct += conj(proj[i][j])*r(j,0);
+        norm += conj(proj[i][j])*proj[i][j];
+#else
+        dotProduct += proj[i][j]*r(j,0);
+        norm += proj[i][j]*proj[i][j];
+#endif
+      }
+      for (int j=0; j<r.rows(); j++)
+        r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
+    }
+
+    //r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
+    //r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
+
+    double rsnew = r.squaredNorm();
+    CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
+    if (true)
+      pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
+    if (r.norm() < tol || iter > 100) {
+      p.setZero(p.rows(),1);
+      H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
+      p -=b;
+      return abs(ept);
+    }
+
+    p = r +(rsnew/rsold)*p;
+    rsold = rsnew;
+    iter++;
+  }
+
+#else
+  for (int i=0; i<proj.size(); i++) {
+    CItype dotProduct = 0.0, norm=0.0;
+    for (int j=0; j<b.rows(); j++) {
+      dotProduct += conj(proj[i][j])*b(j,0);
+      norm += conj(proj[i][j])*proj[i][j];
+    }
+    for (int j=0; j<b.rows(); j++) 
+      b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
+  }
+  
+  //creating Ham matrix
+  MatrixXx HamMat = MatrixXx::Zero(b.size(), b.size());
+  MatrixXx BasisVec = 0.*b;
+  MatrixXx Hcol = 0.*b;
+  for(int i=0; i<b.size(); i++){
+      BasisVec(i,0)=1.0;
+      H(&b(0,0), &Hcol(0,0));
+      #ifndef SERIAL
+          MPI_Allreduce(MPI_IN_PLACE, &Hcol(0,0), Hcol.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+      #endif
+      HamMat.col(i)=Hcol;
+      HamMat(i,i)=HamMat(i,i)-E0;
+      BasisVec(i,0)=0.;
+      Hcol.setZero(b.rows(),1); 
+  }
+  
+  pout << " HamMat(i,i)  " << endl;
+  for(int i=0; i<b.size(); i++) pout << HamMat(i,i) << endl;
+
+
+  x0=HamMat.colPivHouseholderQr().solve(b); //change for mpi
+  return 0.0;
+
+
+#endif
+}
+
+
