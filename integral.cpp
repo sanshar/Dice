@@ -152,22 +152,26 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     while(!dump.eof()) {
       std::getline(dump, msg);
       trim(msg);
-      boost::split(tok, msg, is_any_of(", \t"), token_compress_on);
-      if (tok.size() != 5) continue;
+      boost::split(tok, msg, is_any_of(", \t()"), token_compress_on);
+      //if (tok.size() != 5) continue;
+      if (tok.size() != 6) continue;
 
-      double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
-
+      //double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
+      CItype integral = std::complex<double>(atof(tok[0].c_str()), atof(tok[1].c_str())); 
+      int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
       if(a==b&&b==c&&c==d&&d==0) {
-        coreE = integral;
+        coreE = integral.real();
       } else if (b==c&&c==d&&d==0) {
         continue;//orbital energy
       } else if (c==d&&d==0) {
-        I1(2*(a-1),2*(b-1)) = integral; //alpha,alpha
-        I1(2*(a-1)+1,2*(b-1)+1) = integral; //beta,beta
-        I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
-        I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
+        //I1(2*(a-1),2*(b-1)) = integral; //alpha,alpha
+        //I1(2*(a-1)+1,2*(b-1)+1) = integral; //beta,beta
+        //I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
+        //I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
+        I1(a,b) = integral;
       } else {
-        I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
+        //I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
+        I2(a,b,c,d) = integral;
       }
     } // while
 
@@ -178,8 +182,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
-        I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
-        I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
+        //I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
+        //I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
+        I2.Direct(i,j) = I2(i,i,j,j);
+        I2.Exchange(i,j) = I2(i,j,j,i);
     }
   } // commrank=0
 
