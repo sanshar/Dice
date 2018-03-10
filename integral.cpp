@@ -33,8 +33,8 @@
 
 using namespace boost;
 
-bool myfn(double i, double j) { return fabs(i)<fabs(j); }
-
+//bool myfn(double i, double j) { return fabs(i)<fabs(j); }
+bool myfn(complex<double> i, complex<double> j) { return abs(i)<abs(j); }
 
 
 //=============================================================================
@@ -140,8 +140,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   world.barrier();
 #endif
 
-  I2.store = static_cast<double*>(regionInt2.get_address());
-
+  //I2.store = static_cast<double*>(regionInt2.get_address());
+  I2.store = static_cast<CItype*>(regionInt2.get_address());
   if (commrank == 0) {
     I1.store.clear();
     I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
@@ -172,11 +172,12 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       } else {
         //I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
         I2(a,b,c,d) = integral;
+        I2(b,a,d,c) = integral;
       }
     } // while
 
     //exit(0);
-    I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory,myfn);
+    I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
 
@@ -245,10 +246,11 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   size_t nonZeroOppositeSpinIntegrals = 0;
 
   if (commrank == 0) {
-    std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.begin();
+    //conver to CItype
+    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.begin();
     for (;it1!= I2.sameSpin.end(); it1++) nonZeroSameSpinIntegrals += it1->second.size();
 
-    std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
+    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
     for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
     //total Memory required
@@ -296,7 +298,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     size_t index = 0, pairIter = 1;
     for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
-        std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.find( std::pair<short,short>(i,j));
+        //convert to CItype
+        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.find( std::pair<short,short>(i,j));
 
         if (it1 != I2.sameSpin.end()) {
           for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
@@ -315,7 +318,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     index = 0; pairIter = 1;
     for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
-        std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<short,short>(i,j));
+        //convert to CItype
+        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<short,short>(i,j));
 
         if (it1 != I2.oppositeSpin.end()) {
           for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {

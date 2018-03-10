@@ -32,7 +32,8 @@ using namespace Eigen;
 
 
 
-bool myfn(double i, double j);
+//bool myfn(double i, double j);
+bool myfn(complex<double> i, complex<double> j);
 
 
 
@@ -78,8 +79,9 @@ class twoInt {
   public:
     //double* store;
     CItype* store;
-    double maxEntry;
-    MatrixXd Direct, Exchange;
+    //double maxEntry;
+    CItype maxEntry;
+    Matrix<CItype, Dynamic, Dynamic> Direct, Exchange;
     //double zero ;
     CItype zero;
     size_t norbs;
@@ -88,19 +90,23 @@ class twoInt {
     //inline double& operator()(int i, int j, int k, int l) {
     inline CItype& operator()(int i, int j, int k, int l) {
       zero = complex<double>(0.0,0.0);
-      if (!((i%2 == j%2) && (k%2 == l%2))) return zero;
-      int I=i/2;int J=j/2;int K=k/2;int L=l/2;
-
-      if(!ksym) {
-        int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
-        int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
-        int A = max(IJ,KL), B = min(IJ,KL);
-        return store[A*(A+1)/2+B];
-      } else {
-        int IJ = I*norbs+J, KL = K*norbs+L;
-        int A = max(IJ,KL), B = min(IJ,KL);
-        return store[A*(A+1)/2+B];
-      }
+      //if (!((i%2 == j%2) && (k%2 == l%2))) return zero;
+      //int I=i/2;int J=j/2;int K=k/2;int L=l/2;
+//
+      //if(!ksym) {
+      //  int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+      //  int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+      //  int A = max(IJ,KL), B = min(IJ,KL);
+      //  return store[A*(A+1)/2+B];
+      //} else {
+      //  int IJ = I*norbs+J, KL = K*norbs+L;
+      //  int A = max(IJ,KL), B = min(IJ,KL);
+      //  return store[A*(A+1)/2+B];
+      //}
+      //For test run, I will store the two integral using <ij|kl> = <ji|lk>
+      //The any complex conjugated relate stuff will not be incorporated for now
+      int IJ = i*norbs+j, KL = k*norbs+l;
+      return store[IJ*norbs^2+KL];
     }
 };
 
@@ -151,10 +157,13 @@ class twoIntHeatBath {
  
       //Singles = MatrixXd::Zero(2*norbs, 2*norbs);
       Singles = MatrixXd::Zero(norbs, norbs);
-      for (int i=0; i<2*norbs; i++)
-        for (int a=0; a<2*norbs; a++) {
+      //for (int i=0; i<2*norbs; i++)
+      for (int i=0; i<norbs; i++)
+        //for (int a=0; a<2*norbs; a++) {
+        for (int a=0; a<norbs; a++) {
           Singles(i,a) = std::abs(I1(i,a));
-          for (int j=0; j<2*norbs; j++) {
+          //for (int j=0; j<2*norbs; j++) {
+          for (int j=0; j<norbs; j++) {
             //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
             if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i,j,j,a)))
               Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i,j,j,a));
