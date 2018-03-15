@@ -37,6 +37,29 @@ class Wfn {
 				   Eigen::VectorXd& grad)=0;
 };
 
+class CPSUniform: public Wfn {
+ public:
+  std::vector<CPS> cpsArray;
+
+  CPSUniform( std::vector<CPS>& pcpsArray) : cpsArray(pcpsArray) {};
+  
+  void OverlapWithGradient(Determinant&, 
+			   double& factor,
+			   Eigen::VectorXd& grad);
+
+  double Overlap(Determinant&);
+  void HamAndOvlp(Determinant& ,
+		  double& ovlp, double& ham,
+		  oneInt& I1, twoInt& I2, double& coreE);
+
+  void getVariables(Eigen::VectorXd& v);
+  long getNumVariables();
+  void updateVariables(Eigen::VectorXd& dv);
+  void incrementVariables(Eigen::VectorXd& dv);
+  void printVariables();
+
+};
+
 class CPSSlater : public Wfn {
  public:
   std::vector<CPS> cpsArray;
@@ -54,8 +77,10 @@ class CPSSlater : public Wfn {
 		  double& ovlp, double& ham,
 		  oneInt& I1, twoInt& I2, double& coreE);
 
+  void getVariables(Eigen::VectorXd& v);
   long getNumVariables();
   void updateVariables(Eigen::VectorXd& dv);
+  void incrementVariables(Eigen::VectorXd& dv);
   void printVariables();
 };
 #endif

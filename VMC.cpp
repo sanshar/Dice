@@ -16,11 +16,8 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include <ctime>
-#include <sys/time.h>
 #include <algorithm>
 #include <random>
-#include "time.h"
 #include <chrono>
 #include <stdlib.h>
 #include <stdio.h>
@@ -44,39 +41,11 @@
 #include "integral.h"
 #include "SHCIshm.h"
 #include "math.h"
+#include "diis.h"
 
 using namespace Eigen;
 using namespace boost;
 using namespace std;
-
-double getTime() {
-  struct timeval start;
-  gettimeofday(&start, NULL);
-  return start.tv_sec + 1.e-6*start.tv_usec;
-}
-double startofCalc = getTime();
-
-
-void license() {
-  if (commrank == 0) {
-  cout << endl;
-  cout << endl;
-  cout << "**************************************************************"<<endl;
-  cout << "Dice  Copyright (C) 2017  Sandeep Sharma"<<endl;
-  cout <<"This program is distributed in the hope that it will be useful,"<<endl;
-  cout <<"but WITHOUT ANY WARRANTY; without even the implied warranty of"<<endl;
-  cout <<"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<<endl;  
-  cout <<"See the GNU General Public License for more details."<<endl;
-  cout << endl<<endl;
-  cout << "Author:       Sandeep Sharma"<<endl;
-  cout << "Please visit our group page for up to date information on other projects"<<endl;
-  cout << "http://www.colorado.edu/lab/sharmagroup/"<<endl;
-  cout << "**************************************************************"<<endl;
-  cout << endl;
-  cout << endl;
-  }
-}
-
 
 
 int main(int argc, char* argv[]) {
@@ -85,9 +54,10 @@ int main(int argc, char* argv[]) {
   boost::mpi::environment env(argc, argv);
   boost::mpi::communicator world;
 #endif
+  double startofCalc = getTime();
 
-  license();
   initSHM();
+  license();
 
   twoInt I2; oneInt I1; 
   int norbs, nalpha, nbeta; 
@@ -95,6 +65,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nalpha, nbeta, norbs, coreE, irrep);
   
+  //Setup static variables
   Determinant::EffDetLen = (norbs*2)/64+1;
   Determinant::norbs    = norbs*2;
   HalfDet::norbs        = norbs;
@@ -102,17 +73,16 @@ int main(int argc, char* argv[]) {
   MoDeterminant::nalpha = nalpha;
   MoDeterminant::nbeta  = nbeta;
 
+  //Setup Slater Determinants
   MatrixXd Hforbs = MatrixXd::Zero(norbs, norbs);
   readHF(Hforbs);
-
   MatrixXd alpha(norbs, nalpha), beta(norbs, nbeta);
   alpha = Hforbs.block(0, 0, norbs, nalpha);
   beta  = Hforbs.block(0, 0, norbs, nbeta );
-
   MoDeterminant det(alpha, beta);
 
+  //Setup CPS wavefunctions
   std::vector<CPS> twoSiteCPS;
-  //aa
   for (int i=0; i<norbs; i++)
   for (int j=i; j<norbs; j++) {
     if (j == i)
@@ -135,23 +105,39 @@ int main(int argc, char* argv[]) {
     */
   }
 
-
+  //setup up wavefunction
   CPSSlater wave(twoSiteCPS, det);
 
-  Determinant initial;
-  for (int i=0; i<nalpha; i++) initial.setocc(2*i  , true);
-  for (int i=0; i<nbeta;  i++) initial.setocc(2*i+1, true);
 
-
-
-  for (int iter =0; iter<500; iter++) {
+  DIIS diis(7, wave.getNumVariables());
+  for (int iter =0; iter<100; iter++) {
     double E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
-    getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
-    cout << iter<<"  "<<E0<<"  "<<grad.norm()<<endl;
-    //wave.printVariables();
-    grad *= -0.005;
-    wave.updateVariables(grad);
+    double gradnorm;
+
+    if (true)
+    {
+      getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+      gradnorm = grad.norm();
+      grad *= -0.1;
+      VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
+      diis.update(vars, grad);
+      wave.updateVariables(vars);
+      //wave.incrementVariables(grad);
+    }
+    else
+    {
+      getGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+      gradnorm = grad.norm();
+      VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
+      diis.update(vars, grad);
+      //grad *= 0.1;
+      wave.updateVariables(vars);
+    }
+    if (commrank == 0)
+      std::cout << format("%6i   %14.8f  %14.8f  \n") %iter % E0 % gradnorm ;
+
+    
   }
 
   exit(0);

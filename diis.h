@@ -1,5 +1,5 @@
 /*
-  Developed by Sandeep Sharma
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
   
   This file is part of DICE.
@@ -16,33 +16,24 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef Global_HEADER_H
-#define Global_HEADER_H
-#include <boost/interprocess/managed_shared_memory.hpp>
+#ifndef DIIS_HEADER_H
+#define DIIS_HEADER_H
 
-#ifndef SERIAL
-#include "mpi.h"
-extern MPI_Comm shmcomm, localcomm;
-#endif
-extern int commrank, shmrank, localrank;
-extern int commsize, shmsize, localsize;
+#include <Eigen/Dense>
 
-#ifdef Complex
-#define MatrixXx MatrixXcd
-#define CItype std::complex<double>
-#else
-#define MatrixXx MatrixXd
-#define CItype double
-#endif
+class DIIS {
 
-const int DetLen = 6;
+  Eigen::MatrixXd prevVectors;
+  Eigen::MatrixXd errorVectors;
+  Eigen::MatrixXd diisMatrix;
+  int maxDim;
+  int vectorDim;
+  int iter;
 
-extern boost::interprocess::shared_memory_object int2Segment;
-extern boost::interprocess::mapped_region regionInt2;
-extern std::string shciint2;
-
-double getTime();
-void license();
+ public:
+  DIIS(int pmaxDim, int pvectorDim);
+  void update(Eigen::VectorXd& newVector, Eigen::VectorXd& grad);
+  
+};
 
 #endif
-

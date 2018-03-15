@@ -3,6 +3,9 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "Eigen/Dense"
 #include <string>
+#include <ctime>
+#include <sys/time.h>
+#include "time.h"
 #ifndef SERIAL
 #include "mpi.h"
 #endif
@@ -26,4 +29,32 @@ MPI_Comm shmcomm, localcomm;
 #endif
 int commrank, shmrank, localrank;
 int commsize, shmsize, localsize;
+
+double getTime() {
+  struct timeval start;
+  gettimeofday(&start, NULL);
+  return start.tv_sec + 1.e-6*start.tv_usec;
+}
+
+
+void license() {
+  if (commrank == 0) {
+  cout << endl;
+  cout << endl;
+  cout << "**************************************************************"<<endl;
+  cout << "Dice  Copyright (C) 2017  Sandeep Sharma"<<endl;
+  cout <<"This program is distributed in the hope that it will be useful,"<<endl;
+  cout <<"but WITHOUT ANY WARRANTY; without even the implied warranty of"<<endl;
+  cout <<"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<<endl;  
+  cout <<"See the GNU General Public License for more details."<<endl;
+  cout << endl<<endl;
+  cout << "Author:       Sandeep Sharma"<<endl;
+  cout << "Please visit our group page for up to date information on other projects"<<endl;
+  cout << "http://www.colorado.edu/lab/sharmagroup/"<<endl;
+  cout << "**************************************************************"<<endl;
+  cout << endl;
+  cout << endl;
+  }
+}
+
 

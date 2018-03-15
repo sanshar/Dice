@@ -30,6 +30,9 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
 void getGradient(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
 		 oneInt& I1, twoInt& I2, double& coreE,
 		 Eigen::VectorXd& grad);
+void getGradientUsingDavidson(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
+		 oneInt& I1, twoInt& I2, double& coreE,
+		 Eigen::VectorXd& grad);
 void comb(int N, int K, std::vector<std::vector<int> >& combinations);
 
 #endif
