@@ -121,9 +121,10 @@ class twoIntHeatBath {
     //for opposite spin you just have to store for a>b because the integral is (ia|jb) - (ib|ja)
     //now this class is made by just considering integrals that are smaller than threshhold
     //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > sameSpin;
-    std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > sameSpin;
+    //To work with relativistic, we don't have spins, thus, I rename it to integral
+    std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > integral;
     //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
-    std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > oppositeSpin;
+    //std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > oppositeSpin;
     MatrixXd Singles;
  
     double epsilon;
@@ -145,7 +146,7 @@ class twoIntHeatBath {
               //opposite spin
               //if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
               if (abs(I2(i,a,j,b)) > epsilon)
-                oppositeSpin[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i,a,j,b), make_pair(a,b)));
+                integral[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i,a,j,b), make_pair(a,b)));
                 //oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
               //samespin
               //if (a>=b && fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a)) > epsilon) {
@@ -176,12 +177,15 @@ class twoIntHeatBath {
 
 class twoIntHeatBathSHM {
   public:
-    float* sameSpinIntegrals;
-    float* oppositeSpinIntegrals;
-    size_t* startingIndicesSameSpin;
-    size_t* startingIndicesOppositeSpin;
-    short* sameSpinPairs;
-    short* oppositeSpinPairs;
+    //float* sameSpinIntegrals;
+    //float* oppositeSpinIntegrals;
+    //size_t* startingIndicesSameSpin;
+    //size_t* startingIndicesOppositeSpin;
+    //short* sameSpinPairs;
+    //short* oppositeSpinPairs;
+    float* integrals;
+    size_t* startingIndicesIntegrals;
+    short* pairs;
     double* singleExcitation;
     MatrixXd Singles;
  

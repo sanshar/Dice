@@ -234,34 +234,36 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 #endif
 
   Singles = I2.Singles;
-  if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
-
+  //if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
+  if (commrank != 0) Singles.resize(norbs, norbs);
 #ifndef SERIAL
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
 #endif
 
   I2.Singles.resize(0,0);
   size_t memRequired = 0;
-  size_t nonZeroSameSpinIntegrals = 0;
-  size_t nonZeroOppositeSpinIntegrals = 0;
+  //size_t nonZeroSameSpinIntegrals = 0;
+  //size_t nonZeroOppositeSpinIntegrals = 0;
+  size_t nonZeroIntegrals = 0;
 
   if (commrank == 0) {
     //conver to CItype
-    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.begin();
-    for (;it1!= I2.sameSpin.end(); it1++) nonZeroSameSpinIntegrals += it1->second.size();
+    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.begin();
+    for (;it1!= I2.integral.end(); it1++) nonZeroIntegrals += it1->second.size();
 
-    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
-    for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
+    //std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
+    //for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
-    //total Memory required
-    memRequired += nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
-    memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+    //total Memory required, have to think of it carefully
+    memRequired += nonZeroIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+    //memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
   }
 
 #ifndef SERIAL
   mpi::broadcast(world, memRequired, 0);
-  mpi::broadcast(world, nonZeroSameSpinIntegrals, 0);
-  mpi::broadcast(world, nonZeroOppositeSpinIntegrals, 0);
+  mpi::broadcast(world, nonZeroIntegrals, 0);
+  //mpi::broadcast(world, nonZeroSameSpinIntegrals, 0);
+  //mpi::broadcast(world, nonZeroOppositeSpinIntegrals, 0);
   world.barrier();
 #endif
 
@@ -274,65 +276,76 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 #endif
 
   char* startAddress = (char*)(regionInt2SHM.get_address());
-  sameSpinIntegrals           = (float*)(startAddress);
-  startingIndicesSameSpin     = (size_t*)(startAddress
-                              + nonZeroSameSpinIntegrals*sizeof(float));
-  sameSpinPairs               = (short*)(startAddress
-                              + nonZeroSameSpinIntegrals*sizeof(float)
-                              + (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  oppositeSpinIntegrals       = (float*)(startAddress
-                              + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
-                              + (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  startingIndicesOppositeSpin = (size_t*)(startAddress
-                              + nonZeroOppositeSpinIntegrals*sizeof(float)
-                              + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
-                              + (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  oppositeSpinPairs             = (short*)(startAddress
-                              + nonZeroOppositeSpinIntegrals*sizeof(float)
-                              + (norbs*(norbs+1)/2+1)*sizeof(size_t)
-                              + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
-                              + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  //sameSpinIntegrals           = (float*)(startAddress);
+  //startingIndicesSameSpin     = (size_t*)(startAddress
+  //                            + nonZeroSameSpinIntegrals*sizeof(float));
+  //sameSpinPairs               = (short*)(startAddress
+  //                            + nonZeroSameSpinIntegrals*sizeof(float)
+  //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  //oppositeSpinIntegrals       = (float*)(startAddress
+  //                            + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
+  //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  //startingIndicesOppositeSpin = (size_t*)(startAddress
+  //                            + nonZeroOppositeSpinIntegrals*sizeof(float)
+  //                            + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
+  //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  //oppositeSpinPairs             = (short*)(startAddress
+  //                            + nonZeroOppositeSpinIntegrals*sizeof(float)
+  //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t)
+  //                            + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
+  //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t));
+  integrals                     = (float*)(startAddress);
+  startingIndicesIntegrals      = (size_t*)(startAddress
+                                + nonZeroIntegrals*sizeof(std::complex<double>));
+  pairs                         = (short*)(startAddress
+                                + nonZeroIntegrals*sizeof(std::complex<double>)
+                                + (norbs*(norbs+1)/2+1)*sizeof(size_t));                            
 
   if (commrank == 0) {
-    startingIndicesSameSpin[0] = 0;
+    //startingIndicesSameSpin[0] = 0;
+    startingIndicesIntegrals[0] = 0;
     size_t index = 0, pairIter = 1;
     for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
         //convert to CItype
-        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.find( std::pair<short,short>(i,j));
+        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.find( std::pair<short,short>(i,j));
 
-        if (it1 != I2.sameSpin.end()) {
+        if (it1 != I2.integral.end()) {
           for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
-            sameSpinIntegrals[index] = it->first;
-            sameSpinPairs[2*index] = it->second.first;
-            sameSpinPairs[2*index+1] = it->second.second;
+            //sameSpinIntegrals[index] = it->first;
+            //sameSpinPairs[2*index] = it->second.first;
+            //sameSpinPairs[2*index+1] = it->second.second;
+            integrals[index] = it->first;
+            pairs[2*index] = it->second.first;
+            pairs[2*index+1] = it->second.second;
             index++;
           }
         }
-        startingIndicesSameSpin[pairIter] = index;
+        //startingIndicesSameSpin[pairIter] = index;
+        startingIndicesIntegrals[pairIter] = index;
         pairIter++;
     }
-    I2.sameSpin.clear();
+    I2.integral.clear();
 
-    startingIndicesOppositeSpin[0] = 0;
-    index = 0; pairIter = 1;
-    for (int i=0; i<norbs; i++)
-      for (int j=0; j<=i; j++) {
-        //convert to CItype
-        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<short,short>(i,j));
-
-        if (it1 != I2.oppositeSpin.end()) {
-          for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
-            oppositeSpinIntegrals[index] = it->first;
-            oppositeSpinPairs[2*index] = it->second.first;
-            oppositeSpinPairs[2*index+1] = it->second.second;
-            index++;
-          }
-        }
-        startingIndicesOppositeSpin[pairIter] = index;
-        pairIter++;
-    }
-    I2.oppositeSpin.clear();
+    //startingIndicesOppositeSpin[0] = 0;
+    //index = 0; pairIter = 1;
+    //for (int i=0; i<norbs; i++)
+    //  for (int j=0; j<=i; j++) {
+    //    //convert to CItype
+    //    std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.oppositeSpin.find( std::pair<short,short>(i,j));
+//
+    //    if (it1 != I2.oppositeSpin.end()) {
+    //      for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
+    //        oppositeSpinIntegrals[index] = it->first;
+    //        oppositeSpinPairs[2*index] = it->second.first;
+    //        oppositeSpinPairs[2*index+1] = it->second.second;
+    //        index++;
+    //      }
+    //    }
+    //    startingIndicesOppositeSpin[pairIter] = index;
+    //    pairIter++;
+    //}
+    //I2.oppositeSpin.clear();
   } // commrank=0
 
   long intdim = memRequired;
