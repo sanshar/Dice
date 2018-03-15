@@ -35,6 +35,8 @@ You should have received a copy of the GNU General Public License along with thi
 #include "communicate.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "SHCIshm.h"
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace Eigen;
 using namespace boost;
@@ -80,6 +82,49 @@ CItype calcGreensFunctionExact(int i, int j, Determinant* Dets, CItype* ci, int 
         Determinant* DetsNm1v, int DetsNm1vSize, std::vector<MatrixXd>& ciNm1, 
         std::vector<size_t>& idx, double E0, std::vector<double>& ENm1, CItype w) ; 
 
+class schedule{
+public:
+  bool exact;
+  std::vector<int> ij; //i and j in G(i,j,w)
+  std::vector<double> w; // w1Real, w2Real, wImag, dw (same for w1 and w2) -> (w1, w2) with dw spacing
+  //default constructor
+  schedule(){
+      exact=false;
+      ij.push_back(0);
+      ij.push_back(0);
+      w.push_back(-2.00);//w1R
+      w.push_back(2.00);//w2R
+      w.push_back(0.01);//wI
+      w.push_back(0.02);//dw
+  }
+  //read input
+  void readInput(std::string input){
+      std::ifstream dump(input.c_str());
+      while (dump.good()){
+          std::string Line;
+          std::getline(dump, Line);
+          trim(Line);
+          std::vector<string> tok;
+          boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);//break up an input line into pieces
+          std::string ArgName = *tok.begin();
+          if (!ArgName.empty() && (boost::iequals(tok[0].substr(0,1), "#"))) continue;
+          else if (ArgName.empty()) continue;
+          else if (boost::iequals(ArgName, "exact")) exact=true;
+          else if (boost::iequals(ArgName, "ij")){
+              ij[0]=std::atoi(tok[1].c_str());
+              ij[1]=std::atoi(tok[2].c_str());
+          }
+          else if (boost::iequals(ArgName, "w")){
+              w[0]=std::atof(tok[1].c_str());
+              w[1]=std::atof(tok[2].c_str());
+              w[2]=std::atof(tok[3].c_str());
+              w[3]=std::atof(tok[4].c_str());
+          }
+      
+      }
+  }
+} schd;
+
 int main(int argc, char* argv[]) {
 
 #ifndef SERIAL
@@ -93,12 +138,15 @@ int main(int argc, char* argv[]) {
   license();
 
   std::cout.precision(15);
+  //read input
+  std::string inputFile = "ginput.dat";
+  if (argc > 1) inputFile = std::string(argv[1]);
+  if (commrank == 0) schd.readInput(inputFile);
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
-  bool exact = false;
 
   //setup the lexical table for the determinants
   norbs *=2;
@@ -127,7 +175,7 @@ int main(int argc, char* argv[]) {
   
   double t1 = 0., t2 = 0., t3 = 0.;
   
-  if(exact){
+  if(schd.exact){
   //read dets and ci coeffs of the variational result psiNm1
   char fileNm1 [5000];
   sprintf (fileNm1, "%d-variationalNm1.bkp" , 0 );
@@ -174,18 +222,12 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, DetsNm1vSize, 0);
 #endif
   //calculate greens function
-  for(int i=0; i<200; i++){
-      std::complex<double> w (0.01*i, 0.01);
-      pout << "w " << w << endl;
-      CItype g_ij = calcGreensFunctionExact(0, 0, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
+  for(int i=0; i<(schd.w[1]-schd.w[0])/schd.w[3]; i++){
+      std::complex<double> w (schd.w[0]+schd.w[3]*i, schd.w[2]);
+      CItype g_ij = calcGreensFunctionExact(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
       t3 = MPI_Wtime();
-      pout << "g00  " << g_ij << endl << endl;
-      //pout << endl << "G_" << 1 << "_" << 1 << "  " << g_ij << endl;
+      pout << w << "   " << g_ij << endl;
   }
-  //    std::complex<double> w (0.01, 0.01);
-  //    pout << "w " << w << endl;
-  //    CItype g_ij = calcGreensFunctionExact(0, 0, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
-  //    pout << "g00  " << g_ij << endl << endl;
   
   }
 
@@ -247,22 +289,15 @@ int main(int argc, char* argv[]) {
   t2 = MPI_Wtime();
 
   //calculate greens function
-  pout << "w               g00"; 
-  for(int i=0; i<200; i++){
-      std::complex<double> w (-0.01*i, 0.01);
+  pout << "w               g00" << endl; 
+  for(int i=0; i<(schd.w[1]-schd.w[0])/schd.w[3]; i++){
+      std::complex<double> w (schd.w[0]+schd.w[3]*i, schd.w[2]);
       //pout << "w " << w << endl;
-      CItype g_ij = calcGreensFunction(0, 0, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0], w);
+      CItype g_ij = calcGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0], w);
       t3 = MPI_Wtime();
       pout << w << "  " << g_ij << endl;
-      //pout << endl << "G_" << 1 << "_" << 1 << "  " << g_ij << endl;
   }
   
-  //for(int i=0; i<norbs; i++){
-  //    for(int j=0; j<=i; j++){
-  //        double g_ij = calcGreensFunction(i, j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0]);
-  //        pout << endl << "G_" << i << "_" << j << "  " << g_ij << endl; 
-  //    }
-  //}
  
   //pout << "t_makefromhelpers " << t2 - t1 << endl;
   //pout << "t_calcgreens = " << t3 - t2 << endl;
@@ -335,7 +370,7 @@ CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
     mpi::broadcast(world, overlap, 0);
 #endif
     
-    return overlap;
+    return -overlap;
 
 }
 
