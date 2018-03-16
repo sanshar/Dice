@@ -190,9 +190,12 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 
 	for (int I = 0; I<nclosed; I++) {
 		if (I == i) continue;
-		E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
-		if ( (closed[I]%2) == (closed[i]%2) )
-			E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
+		//E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
+		E = E - I2.Direct(closed[I], closed[i]).real() + I2.Direct(closed[I], A).real();
+		//if ( (closed[I]%2) == (closed[i]%2) )
+		if ( closed[I] == closed[i] )
+			//E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
+			E = E + I2.Exchange(closed[I], closed[i]).real() - I2.Exchange(closed[I], A).real();
 	}
 	return E;
 }
@@ -246,21 +249,21 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 
 	for (int I = 0; I<nclosed; I++) {
 		if (I == i) continue;
-		E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
-		if ( (closed[I]%2) == (closed[i]%2) )
-			E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
+		E = E - (I2.Direct(closed[I], closed[i]) - I2.Direct(closed[I], A)).real();
+		//if ( (closed[I]%2) == (closed[i]%2) )
+		//	E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
 	}
 
 	for (int I=0; I<nclosed; I++) {
 		if (I == i || I == j) continue;
-		E = E - I2.Direct(closed[I]/2, closed[j]/2) + I2.Direct(closed[I]/2, B/2);
-		if ( (closed[I]%2) == (closed[j]%2) )
-			E = E + I2.Exchange(closed[I]/2,closed[j]/2)-I2.Exchange(closed[I]/2,B/2);
+		E = E - (I2.Direct(closed[I], closed[j]) - I2.Direct(closed[I], B)).real();
+		//if ( (closed[I]%2) == (closed[j]%2) )
+		//	E = E + I2.Exchange(closed[I]/2,closed[j]/2)-I2.Exchange(closed[I]/2,B/2);
 	}
 
-	E = E - I2.Direct(A/2, closed[j]/2) + I2.Direct(A/2, B/2);
-	if ( (closed[i]%2) == (closed[j]%2) )
-		E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
+	E = E - (I2.Direct(A/2, closed[j]/2) - I2.Direct(A/2, B/2)).real();
+	//if ( (closed[i]%2) == (closed[j]%2) )
+	//	E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
 
 
 	return E;
@@ -309,9 +312,11 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 #endif
 		for (int j=i+1; j<closed.size(); j++) {
 			int J = closed.at(j);
-			energy += I2.Direct(I/2,J/2);
+			//energy += I2.Direct(I/2,J/2);
+			energy += I2.Direct(I,J).real();
 			if ( (I%2) == (J%2) ) {
-				energy -= I2.Exchange(I/2, J/2);
+				//energy -= I2.Exchange(I/2, J/2);
+				energy -= I2.Exchange(I,J).real();
 			}
 		}
 	}

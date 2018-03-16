@@ -248,7 +248,7 @@ class Determinant {
       if (repr[i] < (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return false;
       else if (repr[i] > (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return true;
     }
-    cout << "Error finding standard for determinant "<<*this<<endl;
+    cout << "Error finding standard for determinant " <<*this<<endl;
     cout << hasUnpairedElectrons()<<endl;
     exit(0);
   }

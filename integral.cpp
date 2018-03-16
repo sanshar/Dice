@@ -178,8 +178,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
     //exit(0);
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
-    I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
-    I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
+    I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;
+    I2.Exchange = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Exchange *= 0.;
 
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
@@ -294,7 +294,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t)
   //                            + nonZeroSameSpinIntegrals*(sizeof(float)+2*sizeof(short))
   //                            + (norbs*(norbs+1)/2+1)*sizeof(size_t));
-  integrals                     = (float*)(startAddress);
+  integrals                     = (std::complex<double>*)(startAddress);
   startingIndicesIntegrals      = (size_t*)(startAddress
                                 + nonZeroIntegrals*sizeof(std::complex<double>));
   pairs                         = (short*)(startAddress
@@ -311,7 +311,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
         std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.find( std::pair<short,short>(i,j));
 
         if (it1 != I2.integral.end()) {
-          for (std::multimap<float, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
+          for (std::multimap<std::complex<double>, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
             //sameSpinIntegrals[index] = it->first;
             //sameSpinPairs[2*index] = it->second.first;
             //sameSpinPairs[2*index+1] = it->second.second;

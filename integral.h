@@ -183,7 +183,7 @@ class twoIntHeatBathSHM {
     //size_t* startingIndicesOppositeSpin;
     //short* sameSpinPairs;
     //short* oppositeSpinPairs;
-    float* integrals;
+    std::complex<double>* integrals;
     size_t* startingIndicesIntegrals;
     short* pairs;
     double* singleExcitation;
