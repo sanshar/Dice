@@ -43,6 +43,25 @@ class MoDeterminant {
   static int nbeta;
 
   MoDeterminant(Eigen::MatrixXd& a, Eigen::MatrixXd& b) : AlphaOrbitals(a), BetaOrbitals(b){};
+
+  double OverlapA(Determinant& d, int i, int a,
+		  Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+		  Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		  bool doparity = true);
+  double OverlapB(Determinant& d, int i, int a,
+		  Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+		  Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		  bool doparity = true);
+  double OverlapAA(Determinant& d, int i, int j, int a, int b,
+		   Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+  double OverlapBB(Determinant& d, int i, int j, int a, int b,
+		   Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+  double OverlapAB(Determinant& d, int i, int j, int a, int b,
+		   Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+  void getDetMatrix(Determinant& d, Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta);
   double Overlap(MoDeterminant& m);
 
   void HamAndOvlp(Determinant& d, 

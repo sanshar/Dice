@@ -60,9 +60,9 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
     for (int b=0; b<betaDets.size(); b++) {
       Determinant d;
       for (int i=0; i<alphaDets[a].size(); i++)
-	d.setocc(2*alphaDets[a][i], true);
+	d.setoccA(alphaDets[a][i], true);
       for (int i=0; i<betaDets[b].size(); i++)
-	d.setocc(2*betaDets[b][i]+1, true);
+	d.setoccB(betaDets[b][i]+1, true);
       allDets.push_back(d);
     }
 
@@ -82,7 +82,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
     for (int j=i+1; j<allDets.size(); j++) 
       if (allDets[i].connected(allDets[j])) {
 	size_t orbDiff = 0;
-	double Hamij = Hij(allDets[i], allDets[j], I1, I2, coreE, orbDiff);
+	double Hamij = Hij(allDets[i], allDets[j], I1, I2, coreE);
 	dovlpPsi_t[i] += Hamij*dovlpPsi[j];
 	dovlpPsi_t[j] += Hamij*dovlpPsi[i];
       }
@@ -123,9 +123,9 @@ void getGradientUsingDavidson(Wfn& w, double& E0, int& nalpha, int& nbeta, int& 
     for (int b=0; b<betaDets.size(); b++) {
       Determinant d;
       for (int i=0; i<alphaDets[a].size(); i++)
-	d.setocc(2*alphaDets[a][i], true);
+	d.setoccA(alphaDets[a][i], true);
       for (int i=0; i<betaDets[b].size(); i++)
-	d.setocc(2*betaDets[b][i]+1, true);
+	d.setoccB(betaDets[b][i], true);
       allDets.push_back(d);
     }
 
@@ -147,7 +147,7 @@ void getGradientUsingDavidson(Wfn& w, double& E0, int& nalpha, int& nbeta, int& 
     for (int j=i+1; j<allDets.size(); j++) 
       if (allDets[i].connected(allDets[j])) {
 	size_t orbDiff = 0;
-	double Hamij = Hij(allDets[i], allDets[j], I1, I2, coreE, orbDiff);
+	double Hamij = Hij(allDets[i], allDets[j], I1, I2, coreE);
 	dovlpPsi_t[i] += Hamij*dovlpPsi[j];
 	dovlpPsi_t[j] += Hamij*dovlpPsi[i];
       }
@@ -190,21 +190,20 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
     for (int b=0; b<betaDets.size(); b++) {
       Determinant d;
       for (int i=0; i<alphaDets[a].size(); i++)
-	d.setocc(2*alphaDets[a][i], true);
+	d.setoccA(alphaDets[a][i], true);
       for (int i=0; i<betaDets[b].size(); i++)
-	d.setocc(2*betaDets[b][i]+1, true);
+	d.setoccB(betaDets[b][i], true);
       allDets.push_back(d);
     }
 
   alphaDets.clear(); betaDets.clear();
-
+  
   double E, ovlp;
   for (int d=commrank; d<allDets.size(); d+=commsize) {
     double Eloc, ovlploc; 
     w.HamAndOvlp(allDets[d], ovlploc, Eloc, I1, I2, coreE);
     E += ovlploc*Eloc;
     ovlp += ovlploc*ovlploc;
-    
   }
   allDets.clear();
 

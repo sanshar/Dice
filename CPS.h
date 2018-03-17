@@ -42,6 +42,8 @@ class CPS {
       std::cout << "Cannot handle correlators of size greater than 5."<<std::endl;
       exit(0);
     }
+    std::sort(asites.begin(), asites.end());
+    std::sort(bsites.begin(), bsites.end());
     Variables.resize( pow(2,asites.size()+bsites.size()), iv);
   }
 

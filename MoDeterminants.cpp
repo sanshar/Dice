@@ -21,6 +21,97 @@ void MoDeterminant::HamAndOvlp(Determinant& d,
 
 }
 
+double MoDeterminant::OverlapA(Determinant& d, int i, int a, 
+			      Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+			      Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+			      bool doparity) {
+  double p = 1.0;
+  if (doparity) d.parityA(a, i, p);
+  int occ = d.getNalphaBefore(i);
+  return p*AlphaOrbitals.row(a)*alphainv.col(occ);
+}
+
+double MoDeterminant::OverlapB(Determinant& d, int i, int a, 
+			      Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+			      Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+			      bool doparity) {
+  double p = 1.0;
+  if (doparity) d.parityB(a, i, p);
+  int occ = d.getNbetaBefore(i);
+  return p*BetaOrbitals.row(a)*betainv.col(occ);
+}
+
+
+double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b, 
+				Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+
+  double p = 1.0;
+
+  double factor1 = 1.0, factor2 = 1.0, factor3 = 1.0, factor4 = 1.0;
+
+  factor1 = OverlapA(d, i, a, alpha, beta, alphainv, betainv, false);
+  factor2 = OverlapA(d, j, b, alpha, beta, alphainv, betainv, false);
+  factor3 = OverlapA(d, i, b, alpha, beta, alphainv, betainv, false);
+  factor4 = OverlapA(d, j, a, alpha, beta, alphainv, betainv, false);
+  d.parityA(a, i, p); d.setoccA(a, true); d.setoccA(i, false);
+  d.parityA(b, j, p); d.setoccA(a, false); d.setoccA(i, true);
+  return p*(factor1*factor2 - factor3*factor4);
+}
+
+
+double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b, 
+				Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+
+  double p = 1.0;
+
+  double factor1 = 1.0, factor2 = 1.0, factor3 = 1.0, factor4 = 1.0;
+
+  factor1 = OverlapB(d, i, a, alpha, beta, alphainv, betainv, false);
+  factor2 = OverlapB(d, j, b, alpha, beta, alphainv, betainv, false);
+  factor3 = OverlapB(d, i, b, alpha, beta, alphainv, betainv, false);
+  factor4 = OverlapB(d, j, a, alpha, beta, alphainv, betainv, false);
+  d.parityB(a, i, p); d.setoccB(a, true);  d.setoccB(i, false);
+  d.parityB(b, j, p); d.setoccB(a, false); d.setoccB(i, true);
+
+  return p*(factor1*factor2 - factor3*factor4);
+}
+
+double MoDeterminant::OverlapAB(Determinant& d, int i, int j, int a, int b, 
+				Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta,
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+
+  double p = 1.0;
+
+  double factor1 = 1.0, factor2 = 1.0, factor3 = 1.0, factor4 = 1.0;
+
+  factor1 = OverlapA(d, i, a, alpha, beta, alphainv, betainv);
+  factor2 = OverlapB(d, j, b, alpha, beta, alphainv, betainv);
+  return p*(factor1*factor2);
+}
+
+
+void MoDeterminant::getDetMatrix(Determinant& d, MatrixXd& DetAlpha, MatrixXd &DetBeta) {
+  std::vector<int> alpha, beta;
+  d.getAlphaBeta(alpha, beta);
+
+  DetAlpha = MatrixXd::Zero(nalpha, nalpha);
+  DetBeta  = MatrixXd::Zero(nbeta,  nbeta);
+  
+  //<psi1 | psi2> = det(phi1^dag phi2)
+  //in out case psi1 is a simple occupation number determ inant
+  for (int i=0; i<alpha.size(); i++)
+    for (int j=0; j<DetAlpha.cols(); j++) 
+      DetAlpha(i,j) = AlphaOrbitals(alpha[i], j);
+
+  
+  for (int i=0; i<beta.size(); i++)
+    for (int j=0; j<DetBeta.cols(); j++)
+      DetBeta(i,j) = BetaOrbitals(beta[i], j);
+
+  return;
+}
 
 double MoDeterminant::Overlap(vector<int>& alpha, vector<int>& beta) {
   MatrixXd DetAlpha = MatrixXd::Zero(nalpha, nalpha);
@@ -38,9 +129,6 @@ double MoDeterminant::Overlap(vector<int>& alpha, vector<int>& beta) {
       DetBeta(i,j) = BetaOrbitals(beta[i], j);
 
   double parity = 1.0;
-  for (int i=0; i<beta.size(); i++)
-    for (int j=0; j<alpha.size(); j++) 
-      if (alpha[j] > beta[i]) parity *= -1.0;
   return parity*DetAlpha.determinant()*DetBeta.determinant();
 }
 

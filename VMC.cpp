@@ -66,8 +66,8 @@ int main(int argc, char* argv[]) {
   readIntegrals("FCIDUMP", I2, I1, nalpha, nbeta, norbs, coreE, irrep);
   
   //Setup static variables
-  Determinant::EffDetLen = (norbs*2)/64+1;
-  Determinant::norbs    = norbs*2;
+  Determinant::EffDetLen = (norbs)/64+1;
+  Determinant::norbs    = norbs;
   HalfDet::norbs        = norbs;
   MoDeterminant::norbs  = norbs;
   MoDeterminant::nalpha = nalpha;
@@ -85,12 +85,6 @@ int main(int argc, char* argv[]) {
   std::vector<CPS> twoSiteCPS;
   for (int i=0; i<norbs; i++)
   for (int j=i; j<norbs; j++) {
-    if (j == i)
-    {
-      vector<int> asites(1,i), bsites(1,j);
-      twoSiteCPS.push_back(CPS(asites, bsites));
-    }
-    /*
     if (j >= i)
     {
       vector<int> asites(1,i), bsites(1,j);
@@ -102,7 +96,7 @@ int main(int argc, char* argv[]) {
       twoSiteCPS.push_back(CPS(asites, bsites));
       twoSiteCPS.push_back(CPS(bsites, asites));
     }
-    */
+
   }
 
   //setup up wavefunction
@@ -110,16 +104,16 @@ int main(int argc, char* argv[]) {
 
 
   DIIS diis(7, wave.getNumVariables());
-  for (int iter =0; iter<100; iter++) {
+  for (int iter =0; iter<50; iter++) {
     double E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
     double gradnorm;
 
-    if (true)
+    if (false)
     {
       getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
       gradnorm = grad.norm();
-      grad *= -0.1;
+      //grad *= -0.001;
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
       diis.update(vars, grad);
       wave.updateVariables(vars);
@@ -129,13 +123,13 @@ int main(int argc, char* argv[]) {
     {
       getGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
       gradnorm = grad.norm();
+      //grad *= 0.1;
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
       diis.update(vars, grad);
-      //grad *= 0.1;
       wave.updateVariables(vars);
     }
     if (commrank == 0)
-      std::cout << format("%6i   %14.8f  %14.8f  \n") %iter % E0 % gradnorm ;
+      std::cout << format("%6i   %14.8f  %14.8f  %8.2f\n") %iter % E0 % gradnorm %( (getTime()-startofCalc));
 
     
   }
