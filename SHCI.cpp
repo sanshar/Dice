@@ -310,11 +310,11 @@ int main(int argc, char* argv[]) {
       pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
 
     //dont do this here, if perturbation theory is switched on
-    if (schd.doGtensor)  {
-      SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
-      pout << "VARIATIONAL G-TENSOR"<<endl;
-      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-    }
+    //if (schd.doGtensor)  {
+    //  SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
+    //  pout << "VARIATIONAL G-TENSOR"<<endl;
+    //  SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+    //}
   }
 #endif
 
@@ -367,10 +367,10 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
 
-#ifdef Complex
-    SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-    return 0;
-#endif
+//#ifdef Complex
+//    SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+//    return 0;
+//#endif
   }
   else if (schd.doLCC) {
     for (int root = 0; root<schd.nroots; root++) {
