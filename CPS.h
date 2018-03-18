@@ -21,6 +21,10 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <iostream>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 class Determinant;
 
@@ -31,12 +35,20 @@ class Determinant;
 
 //Similarty for n site correlator one can have 2^n variables
 class CPS {
+private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & asites & bsites & Variables;
+  }
+
  public:
   //b+1 b+2 ...         0 1 2..
   std::vector<int> asites, bsites;
 
   std::vector<double> Variables; //2^{na+nb} number of variables
 
+  CPS () {};
  CPS(std::vector<int>& pasites, std::vector<int>& pbsites, double iv=1.0) : asites(pasites), bsites(pbsites) {
     if (asites.size()+bsites.size() > 5) {
       std::cout << "Cannot handle correlators of size greater than 5."<<std::endl;

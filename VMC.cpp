@@ -101,10 +101,11 @@ int main(int argc, char* argv[]) {
 
   //setup up wavefunction
   CPSSlater wave(twoSiteCPS, det);
-
+  if (false) 
+    wave.readWave();
 
   DIIS diis(7, wave.getNumVariables());
-  for (int iter =0; iter<50; iter++) {
+  for (int iter =0; iter<4; iter++) {
     double E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
     double gradnorm;
@@ -113,7 +114,7 @@ int main(int argc, char* argv[]) {
     {
       getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
       gradnorm = grad.norm();
-      //grad *= -0.001;
+      grad *= -0.001;
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
       diis.update(vars, grad);
       wave.updateVariables(vars);
@@ -122,11 +123,13 @@ int main(int argc, char* argv[]) {
     else
     {
       getGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+      cout << grad<<endl;
       gradnorm = grad.norm();
       //grad *= 0.1;
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
       diis.update(vars, grad);
       wave.updateVariables(vars);
+      wave.writeWave();
     }
     if (commrank == 0)
       std::cout << format("%6i   %14.8f  %14.8f  %8.2f\n") %iter % E0 % gradnorm %( (getTime()-startofCalc));

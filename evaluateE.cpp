@@ -62,7 +62,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
       for (int i=0; i<alphaDets[a].size(); i++)
 	d.setoccA(alphaDets[a][i], true);
       for (int i=0; i<betaDets[b].size(); i++)
-	d.setoccB(betaDets[b][i]+1, true);
+	d.setoccB(betaDets[b][i], true);
       allDets.push_back(d);
     }
 
@@ -217,3 +217,5 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
   
   return E/ovlp;
 }
+
+

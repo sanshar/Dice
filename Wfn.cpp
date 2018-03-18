@@ -20,6 +20,12 @@
 #include "integral.h"
 #include "CPS.h"
 #include "MoDeterminants.h"
+#ifndef SERIAL
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
+#endif
+
 using namespace Eigen;
 
 void CPSSlater::printVariables() {
@@ -30,7 +36,21 @@ void CPSSlater::printVariables() {
       numVars++;
     }
   }
+
+  for (int i=0; i<det.AlphaOrbitals.rows(); i++)
+    for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
+      cout <<"  "<<det.AlphaOrbitals(i,j);
+      numVars++;
+    }
+
+  for (int i=0; i<det.BetaOrbitals.rows(); i++)
+    for (int j=0; j<det.BetaOrbitals.cols(); j++) {
+      cout <<"  "<<det.BetaOrbitals(i,j);
+      numVars++;
+    }
+
   cout <<endl;
+
 }
 
 void CPSSlater::incrementVariables(Eigen::VectorXd& dv){
@@ -41,6 +61,34 @@ void CPSSlater::incrementVariables(Eigen::VectorXd& dv){
       numVars++;
     }
   }
+
+
+  for (int i=0; i<det.AlphaOrbitals.rows(); i++)
+    for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
+      det.AlphaOrbitals(i,j) += dv[numVars];
+      numVars++;
+    }
+
+  for (int i=0; i<det.BetaOrbitals.rows(); i++)
+    for (int j=0; j<det.BetaOrbitals.cols(); j++) {
+      det.BetaOrbitals(i,j) += dv[numVars];
+      numVars++;
+    }
+
+
+}
+
+void orthogonalise(MatrixXd& m) {
+
+  for (int i=0; i<m.cols(); i++) {
+    for (int j=0; j<i; j++) {
+      double ovlp = m.col(i).transpose()*m.col(j) ;
+      double norm = m.col(j).transpose()*m.col(j) ;
+      m.col(i) = m.col(i)- ovlp/norm*m.col(j);
+    }
+    m.col(i) =  m.col(i)/pow(m.col(i).transpose()*m.col(i), 0.5);
+  }
+
 }
 
 void CPSSlater::updateVariables(Eigen::VectorXd& v){
@@ -51,6 +99,23 @@ void CPSSlater::updateVariables(Eigen::VectorXd& v){
       numVars++;
     }
   }
+
+  /*
+  for (int i=0; i<det.AlphaOrbitals.rows(); i++)
+    for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
+      det.AlphaOrbitals(i,j) = v[numVars];
+      numVars++;
+    }
+
+  orthogonalise(det.AlphaOrbitals);
+
+  for (int i=0; i<det.BetaOrbitals.rows(); i++)
+    for (int j=0; j<det.BetaOrbitals.cols(); j++) {
+      det.BetaOrbitals(i,j) = v[numVars];
+      numVars++;
+    }
+  orthogonalise(det.BetaOrbitals);
+  */
 }
 
 void CPSSlater::getVariables(Eigen::VectorXd& v){
@@ -61,12 +126,26 @@ void CPSSlater::getVariables(Eigen::VectorXd& v){
       numVars++;
     }
   }
+
+
+  for (int i=0; i<det.AlphaOrbitals.rows(); i++)
+    for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
+      v[numVars] = det.AlphaOrbitals(i,j);
+      numVars++;
+    }
+
+  for (int i=0; i<det.BetaOrbitals.rows(); i++)
+    for (int j=0; j<det.BetaOrbitals.cols(); j++) {
+      v[numVars] = det.BetaOrbitals(i,j);
+      numVars++;
+    }
 }
 
 long CPSSlater::getNumVariables() {
   long numVars = 0;
   for (int i=0; i<cpsArray.size(); i++) 
     numVars += cpsArray[i].Variables.size();
+  numVars+=det.norbs*det.nalpha+det.norbs*det.nbeta;
   return numVars;
 }
 
@@ -76,11 +155,68 @@ void CPSSlater::OverlapWithGradient(Determinant& d,
   double ovlp = Overlap(d)*factor;
   long startIndex = 0;
 
+  //****
+  //MatrixXd alpha, beta;
+  //det.getDetMatrix(d, alpha, beta);
+  //MatrixXd alphainv = alpha.inverse(), betainv = beta.inverse();
+  //****
+
   for (int i=0; i<cpsArray.size(); i++) {
     cpsArray[i].OverlapWithGradient(d, grad, 
 				    ovlp, startIndex);
     startIndex += cpsArray[i].Variables.size();
   }
+  /*
+  int aindex = 0;
+  for (int i=0; i<Determinant::norbs; i++) {
+    if (d.getoccA(i)) {
+      for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
+	grad[startIndex] += ovlp*alphainv(j, aindex);
+      }
+      aindex++;
+    }
+    startIndex++;
+  }
+
+  int bindex = 0;
+  for (int i=0; i<Determinant::norbs; i++) {
+    if (d.getoccB(i)) {
+      for (int j=0; j<det.BetaOrbitals.cols(); j++) {
+	grad[startIndex] += ovlp*betainv(j, bindex);
+      }
+      bindex++;
+    }
+    startIndex++;
+  }
+  */
+}
+
+void CPSSlater::writeWave() {
+  if (commrank == 0) {
+    char file [5000];
+    //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+    sprintf (file, "wave.bkp");
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << *this;
+    ofs.close();
+  }
+}
+
+void CPSSlater::readWave() {
+  if (commrank == 0) {
+    char file [5000];
+    //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+    sprintf (file, "wave.bkp");
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    load >> *this;
+    ifs.close();
+  }
+#ifndef SERIAL
+  boost::mpi::communicator world;
+  boost::mpi::broadcast(world, *this, 0);
+#endif
 }
 
 double CPSSlater::Overlap(Determinant& d) {

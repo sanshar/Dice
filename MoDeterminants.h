@@ -20,6 +20,7 @@
 #define MoDeterminants_HEADER_H
 #include <Eigen/Dense>
 #include <vector>
+#include "iowrapper.h"
 
 class oneInt;
 class twoInt;
@@ -29,6 +30,14 @@ class Determinant;
 //Each column is are the coefficients of the particular MO
 //the number of rows is equal to the number of AO (should be orthogonal) 
 class MoDeterminant {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & AlphaOrbitals & BetaOrbitals;
+  }
+
+
   double Overlap(std::vector<int>& alpha, std::vector<int>& beta);
   void HamAndOvlp(std::vector<int>& alpha, std::vector<int>& beta, 
 		  double& ovlp, double& ham,

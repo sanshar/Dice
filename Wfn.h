@@ -22,6 +22,7 @@
 #include "MoDeterminants.h"
 #include "Determinants.h"
 #include "CPS.h"
+#include <boost/serialization/vector.hpp>
 
 class oneInt;
 class twoInt;
@@ -35,9 +36,17 @@ class Wfn {
   virtual void OverlapWithGradient(Determinant&, 
 				   double& factor,
 				   Eigen::VectorXd& grad)=0;
+  virtual void printVariables() =0;
+
 };
 
 class CPSUniform: public Wfn {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & cpsArray;
+  }
  public:
   std::vector<CPS> cpsArray;
 
@@ -61,6 +70,12 @@ class CPSUniform: public Wfn {
 };
 
 class CPSSlater : public Wfn {
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & cpsArray & det;
+  }
  public:
   std::vector<CPS> cpsArray;
   MoDeterminant det;
@@ -82,5 +97,7 @@ class CPSSlater : public Wfn {
   void updateVariables(Eigen::VectorXd& dv);
   void incrementVariables(Eigen::VectorXd& dv);
   void printVariables();
+  void writeWave();
+  void readWave();
 };
 #endif
