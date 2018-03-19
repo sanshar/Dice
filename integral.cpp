@@ -124,7 +124,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
 
   long npair = norbs*(norbs+1)/2;
-  if (I2.ksym) npair = norbs*norbs;
+  if (I2.ksym) npair = norbs*norbs; // Q:What if ksym is false?
   I2.norbs = norbs;
   size_t I2memory = npair*(npair+1)/2; //memory in bytes
 
@@ -144,7 +144,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   I2.store = static_cast<CItype*>(regionInt2.get_address());
   if (commrank == 0) {
     I1.store.clear();
-    I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
+    //I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
+    I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
     coreE = 0.0;
 
     vector<string> tok;
@@ -247,7 +248,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   size_t nonZeroIntegrals = 0;
 
   if (commrank == 0) {
-    //conver to CItype
+    //convert to CItype
     std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.begin();
     for (;it1!= I2.integral.end(); it1++) nonZeroIntegrals += it1->second.size();
 
@@ -255,7 +256,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     //for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
     //total Memory required, have to think of it carefully
-    memRequired += nonZeroIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+    memRequired += nonZeroIntegrals*(sizeof(std::complex<double>)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
     //memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
   }
 
