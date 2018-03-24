@@ -24,6 +24,8 @@ boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
 std::string shciint2;
 
+std::mt19937 generator;
+
 #ifndef SERIAL
 MPI_Comm shmcomm, localcomm;
 #endif

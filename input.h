@@ -19,7 +19,32 @@
 #ifndef INPUT_HEADER_H
 #define INPUT_HEADER_H
 #include <Eigen/Dense>
+#include <string>
+#include <map>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/map.hpp>
+
+class CPS;
 
 void readHF(Eigen::MatrixXd&);
 
+struct schedule {
+private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version)
+  {
+    ar & restart & deterministic
+      & tol & correlatorFiles;
+  }
+public:
+  bool restart;
+  bool deterministic;
+  double tol;
+  std::map<int, std::string> correlatorFiles;
+};
+
+void readInput(std::string input, schedule& schd);
+void readCorrelator(std::string input, int correlatorSize,
+		    std::vector<CPS>& correlators);
 #endif

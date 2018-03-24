@@ -35,6 +35,19 @@ DIIS::DIIS(int pmaxDim, int pvectorDim) : maxDim(pmaxDim), vectorDim(pvectorDim)
   }
 }
 
+void DIIS::init(int pmaxDim, int pvectorDim) {
+  maxDim = pmaxDim; vectorDim = pvectorDim;
+  
+  prevVectors  = MatrixXd::Zero(pvectorDim, pmaxDim);
+  errorVectors = MatrixXd::Zero(pvectorDim, pmaxDim);
+  diisMatrix   = MatrixXd::Zero(pmaxDim+1, pmaxDim+1);
+  iter = 0;
+  for (int i=0; i<maxDim; i++) {
+    diisMatrix(i, maxDim) = 1.0;
+    diisMatrix(maxDim, i) = 1.0;
+  }
+}
+
 
 void DIIS::update(VectorXd& newV, VectorXd& errorV) {
 

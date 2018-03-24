@@ -22,12 +22,147 @@
 #include <algorithm>
 #include "integral.h"
 #include "Determinants.h"
+#include "Walker.h"
+#include <boost/format.hpp>
+#include <iostream>
+
 #ifndef SERIAL
 #include "mpi.h"
 #endif
 
 using namespace std;
 using namespace Eigen;
+double calcTcorr(vector<double>& v) {
+  vector<double> w(v.size(), 1);
+  int n = w.size();
+  double norm, rk, f, neff;
+
+  double aver=0, var=0;
+  for (int i=0; i<w.size(); i++) {
+    aver += v[i]*w[i];
+    norm += w[i];
+  }
+  aver = aver/norm;
+
+  neff = 0.0;
+  for(int i=0;i<n;i++){
+    neff = neff+w[i]*w[i];
+  };
+  neff = norm*norm/neff;
+
+  for(int i=0;i<v.size();i++){
+    var = var+w[i]*(v[i]-aver)*(v[i]-aver);
+  };
+  var = var/norm;
+  var = var*neff/(neff-1.0);
+  
+  double c[1000];
+  int l = w.size()-1;
+  for(int i=1;i<l;i++){
+    c[i] = 0.0;
+    norm = 0.0;
+    for(int k=0;k<n-i;k++){
+      c[i] = c[i] + sqrt(w[k]*w[k+i])*(v[k]-aver)*(v[k+i]-aver);
+      norm = norm + sqrt(w[k]*w[k+i]);
+    };
+    c[i] = c[i]/norm/var;
+  };
+  rk = 1.0;
+  f  = 1.0;
+  for(int i=1;i<l;i++){
+    if(c[i]<0.0) f=0.0;
+    rk = rk+2.0*c[i]*f;
+  };
+
+  return rk;
+}
+
+void getStochasticGradientUsingDavidson(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+					oneInt& I1, twoInt& I2, double& coreE, 
+					VectorXd& grad, int niter, double targetError) 
+{
+  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
+			  generator);
+
+  //initialize the walker
+  Determinant d;
+  for (int i=0; i<nalpha; i++)
+    d.setoccA(i, true);
+  for (int j=0; j<nbeta; j++)
+    d.setoccB(j, true);
+  Walker walk(d);
+  walk.initUsingWave(w);
+  
+  int iter = 0;
+  double cumulative = 0., cumulative2 = 0., Eavg=0., stddev=1.e4;
+  double rk;
+  double ovlp= 0., ham=0.;
+  VectorXd localGrad = grad; localGrad.setZero();
+  double scale = 1.0;
+ 
+  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+  
+  std::vector<double> gradError(1000, 0);
+  while (iter <niter && stddev >targetError) {
+    grad += localGrad/ovlp;
+    
+    double locgradError = localGrad.squaredNorm();
+    if (iter <1000) gradError[iter] = locgradError;
+    
+    cumulative  += locgradError;
+    cumulative2 += locgradError*locgradError;
+    iter++;
+    
+    if (iter %1000 == 0) {
+      if (iter == 1000 && commrank == 0) rk = calcTcorr(gradError);
+      double cum = cumulative, cum2 = cumulative2;
+      int cumiter = iter*commsize;
+#ifndef SERIAL
+      MPI_Allreduce(&cumulative,  &cum,  1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(&cumulative2, &cum2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+      if (commrank == 0) {
+	stddev = pow(  (cum2*cumiter - cum*cum)*rk/cumiter/(cumiter-1)/cumiter, 0.5);
+	Eavg  = cum/cumiter;
+	//std::cout << boost::format("%6i   %14.8f  %14.8f %14.8f\n") %iter % Eavg % stddev % rk;
+      }
+#ifndef SERIAL
+      MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&rk    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+    }
+    
+    
+    //pick a random occupied orbital
+    int i = floor( random()*(nalpha+nbeta) );
+    if (i < nalpha) {
+      int a = floor(random()* (norbs-nalpha) );
+      double detfactor = walk.getDetFactorA(i, a, w);
+      if ( pow(detfactor, 2) > random() ) {
+	walk.updateA(i, a, w);
+	localGrad.setZero();
+	w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+      }
+      
+    }
+    else {
+      i = i - nalpha;
+      int a = floor( random()*(norbs-nbeta));
+      double detfactor = walk.getDetFactorB(i, a, w);
+      
+      if ( pow(detfactor, 2) > random() ) {
+	walk.updateB(i, a, w);
+	localGrad.setZero();
+	w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+      }
+      
+    }
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  grad /= (iter*commsize);
+}
 
 void comb(int N, int K, vector<vector<int> >& combinations)
 {
@@ -98,7 +233,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 
 
   for (int i=commrank; i<allDets.size(); i+=commsize) {
-    double factor = dovlpPsi_t[i]/ovlp;
+    double factor = dovlpPsi_t[i]/ovlp*w.Overlap(allDets[i]);;
     w.OverlapWithGradient(allDets[i], 
 			  factor, grad);
   }
@@ -111,7 +246,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 
 
 //<psi_t| (H0-E0)^-1 (H-E0) |psi>
-void getGradientUsingDavidson(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+void getGradientUsingDavidson(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 			      oneInt& I1, twoInt& I2, double& coreE,
 			      VectorXd& grad) {
 
@@ -131,51 +266,17 @@ void getGradientUsingDavidson(Wfn& w, double& E0, int& nalpha, int& nbeta, int& 
 
   alphaDets.clear(); betaDets.clear();
 
-  VectorXd dovlpPsi  =VectorXd::Zero(allDets.size());
-  VectorXd diag      =VectorXd::Zero(allDets.size());
-  VectorXd dovlpPsi_t=VectorXd::Zero(allDets.size());
-
-  for (int i=0; i<allDets.size(); i++) {
-    dovlpPsi[i] = w.Overlap(allDets[i]);
-  }
-
-  //MatrixXd Ham = MatrixXd::Zero(allDets.size(), allDets.size());
   for (int i=commrank; i<allDets.size(); i+=commsize) {
-    diag[i] = allDets[i].Energy(I1, I2, coreE);
-    dovlpPsi_t[i] += (diag[i]-E0)*dovlpPsi[i];
-    //Ham(i,i) = allDets[i].Energy(I1, I2, coreE) - E0;
-    for (int j=i+1; j<allDets.size(); j++) 
-      if (allDets[i].connected(allDets[j])) {
-	size_t orbDiff = 0;
-	double Hamij = Hij(allDets[i], allDets[j], I1, I2, coreE);
-	dovlpPsi_t[i] += Hamij*dovlpPsi[j];
-	dovlpPsi_t[j] += Hamij*dovlpPsi[i];
-      }
-  }
-
-  int size = allDets.size();
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(dovlpPsi_t[0]),     size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(diag[0])      ,     size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-  for (int i=0; i<allDets.size(); i++) 
-    dovlpPsi_t[i] /= (E0-diag[i]);
-
-
-  double ovlp = dovlpPsi.transpose()*dovlpPsi;
-
-
-  for (int i=commrank; i<allDets.size(); i+=commsize) {
-    double factor = dovlpPsi_t[i]/ovlp;
-    w.OverlapWithGradient(allDets[i], 
-			  factor, grad);
+    double overlap = w.Overlap(allDets[i]);
+    Walker walk(allDets[i]);walk.initUsingWave(w);
+    VectorXd gradlocal = grad; gradlocal.setZero();
+    double ovlp, ham, Epsi;
+    w.HamAndOvlpGradient(walk, ovlp, ham, grad, overlap, E0, I1, I2, coreE);
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  //exit(0);
 }
 
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
@@ -201,7 +302,9 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
   double E, ovlp;
   for (int d=commrank; d<allDets.size(); d+=commsize) {
     double Eloc, ovlploc; 
-    w.HamAndOvlp(allDets[d], ovlploc, Eloc, I1, I2, coreE);
+    Walker walk(allDets[d]);
+    walk.initUsingWave(w);
+    w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, coreE);
     E += ovlploc*Eloc;
     ovlp += ovlploc*ovlploc;
   }
@@ -216,6 +319,92 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
 
   
   return E/ovlp;
+}
+
+
+//<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
+double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
+			   oneInt& I1, twoInt& I2, double& coreE,
+			   int niter, double targetError) {
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
+			  generator);
+
+  //initialize the walker
+  Determinant d;
+  for (int i=0; i<nalpha; i++)
+    d.setoccA(i, true);
+  for (int j=0; j<nbeta; j++)
+    d.setoccB(j, true);
+  Walker walk(d);
+  walk.initUsingWave(w);
+
+
+  int iter = 0;
+  double cumulative = 0., cumulative2 = 0., Eavg=0., stddev=1.e4;
+  double rk;
+  double ovlp= 0., ham=0.;
+  w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
+
+  std::vector<double> Elocvec(1000, 0);
+
+  while (iter < niter && stddev > targetError) {
+    double Eloc = ham/ovlp;
+
+    if (iter < 1000) Elocvec[iter] = Eloc;
+
+    cumulative += Eloc;
+    cumulative2 += Eloc*Eloc;
+    iter ++;
+
+    if (iter %1000 == 0) {
+      if (iter == 1000 && commrank == 0) rk = calcTcorr(Elocvec);
+      double cum = cumulative, cum2 = cumulative2;
+      int cumiter = iter*commsize;
+#ifndef SERIAL
+      MPI_Allreduce(&cumulative,  &cum,  1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(&cumulative2, &cum2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+      if (commrank == 0) {
+	stddev = pow(  (cum2*cumiter - cum*cum)*rk/cumiter/(cumiter-1)/cumiter, 0.5);
+	Eavg  = cum/cumiter;
+	double Eavg2 = cum2/cumiter;
+	//std::cout << boost::format("%6i   %14.8f  %14.8f %14.8f\n") %iter % Eavg % stddev % rk;
+      }
+#ifndef SERIAL
+      MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&rk    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+    }
+    
+    //pick a random occupied orbital
+    int i = floor( random()*(nalpha+nbeta) );
+    if (i < nalpha) {
+      int a = floor(random()* (norbs-nalpha) );
+      double detfactor = walk.getDetFactorA(i, a, w);
+      if ( pow(detfactor, 2) > random() ) {
+	walk.updateA(i, a, w);
+	w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
+      }
+
+    }
+    else {
+      i = i - nalpha;
+      int a = floor( random()*(norbs-nbeta));
+      double detfactor = walk.getDetFactorB(i, a, w);
+
+      if ( pow(detfactor, 2) > random() ) {
+	walk.updateB(i, a, w);
+	w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
+      }
+      
+    }
+    
+  }
+#ifndef SERIAL
+  MPI_Bcast(&Eavg, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  return Eavg;
 }
 
 

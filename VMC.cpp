@@ -59,6 +59,17 @@ int main(int argc, char* argv[]) {
   initSHM();
   license();
 
+  string inputFile = "input.dat";
+  if (argc > 1)
+    inputFile = string(argv[1]);
+  schedule schd;
+  if (commrank == 0) readInput(inputFile, schd);
+#ifndef SERIAL
+  mpi::broadcast(world, schd, 0);
+#endif
+
+  generator = std::mt19937(getTime()+commrank);
+
   twoInt I2; oneInt I1; 
   int norbs, nalpha, nbeta; 
   double coreE=0.0;
@@ -83,6 +94,11 @@ int main(int argc, char* argv[]) {
 
   //Setup CPS wavefunctions
   std::vector<CPS> twoSiteCPS;
+  for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end();
+       it++) {
+    readCorrelator(it->second, it->first, twoSiteCPS);
+  }
+  /*
   for (int i=0; i<norbs; i++)
   for (int j=i; j<norbs; j++) {
     if (j >= i)
@@ -98,17 +114,31 @@ int main(int argc, char* argv[]) {
     }
 
   }
+  */
 
   //setup up wavefunction
   CPSSlater wave(twoSiteCPS, det);
-  if (false) 
+  if (schd.restart) 
     wave.readWave();
 
-  DIIS diis(7, wave.getNumVariables());
-  for (int iter =0; iter<4; iter++) {
-    double E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
+  cout.precision(10);
+  
+  DIIS diis;
+  if (commrank == 0) diis.init(7, wave.getNumVariables());
+
+  double gradnorm=10.0;
+  double E0;
+  if (schd.deterministic)
+    E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
+  else
+    E0 = evaluateEStochastic(wave, nalpha, nbeta, norbs, I1, I2, coreE, 10000, 1.e-4);
+  
+  for (int iter =0; iter<50 && gradnorm>schd.tol; iter++) {
+
+    if (commrank == 0)
+      std::cout << format("%6i   %14.8f ") %iter % E0;
+
     Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
-    double gradnorm;
 
     if (false)
     {
@@ -116,23 +146,40 @@ int main(int argc, char* argv[]) {
       gradnorm = grad.norm();
       grad *= -0.001;
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
-      diis.update(vars, grad);
+      if (commrank == 0)
+	diis.update(vars, grad);
+#ifndef SERIAL
+      MPI_Bcast(&(grad[0]),     grad.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&(vars[0]),     vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
       wave.updateVariables(vars);
       //wave.incrementVariables(grad);
     }
     else
     {
-      getGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
-      cout << grad<<endl;
-      gradnorm = grad.norm();
-      //grad *= 0.1;
+      if (schd.deterministic)
+	getGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+      else
+	getStochasticGradientUsingDavidson(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad, 100000, 1.e-3);      
+      gradnorm = grad.squaredNorm();
+      
       VectorXd vars = VectorXd::Zero(wave.getNumVariables());wave.getVariables(vars);
-      diis.update(vars, grad);
+      if (commrank == 0) diis.update(vars, grad);
+#ifndef SERIAL
+      MPI_Bcast(&(grad[0]),     grad.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&(vars[0]),     vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
       wave.updateVariables(vars);
       wave.writeWave();
     }
+
+    if (schd.deterministic)
+      E0 = evaluateEDeterministic(wave, nalpha, nbeta, norbs, I1, I2, coreE);
+    else
+      E0 = evaluateEStochastic(wave, nalpha, nbeta, norbs, I1, I2, coreE, 10000, 1.e-4);
+
     if (commrank == 0)
-      std::cout << format("%6i   %14.8f  %14.8f  %8.2f\n") %iter % E0 % gradnorm %( (getTime()-startofCalc));
+      std::cout << format("  %14.8f  %8.2f\n") %gradnorm %( (getTime()-startofCalc));
 
     
   }

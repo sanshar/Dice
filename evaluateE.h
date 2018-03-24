@@ -21,18 +21,31 @@
 #include <Eigen/Dense>
 #include <vector>
 class Wfn;
+class CPSSlater;
 class oneInt;
 class twoInt;
 
 double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
 			      oneInt& I1, twoInt& I2, double& coreE);
 
+double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
+			   oneInt& I1, twoInt& I2, double& coreE,
+			   int niter=10000, double targetError = 1.e-3);
+
 void getGradient(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
 		 oneInt& I1, twoInt& I2, double& coreE,
 		 Eigen::VectorXd& grad);
-void getGradientUsingDavidson(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
+
+void getGradientUsingDavidson(CPSSlater& w, double& E0, int& alpha, int& nbeta, int& norbs,
 		 oneInt& I1, twoInt& I2, double& coreE,
 		 Eigen::VectorXd& grad);
+
+//void getStochasticGradientUsingDavidson(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+//oneInt& I1, twoInt& I2, double& coreE, Eigen::VectorXd& grad, int niter);
+
+void getStochasticGradientUsingDavidson(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+ 				      oneInt& I1, twoInt& I2, double& coreE,
+				      Eigen::VectorXd& grad, int niter, double targetError);
 
 void comb(int N, int K, std::vector<std::vector<int> >& combinations);
 

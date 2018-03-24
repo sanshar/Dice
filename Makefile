@@ -5,8 +5,8 @@ BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
 #BOOST=/projects/anma2640/boost_1_66_0
 
-FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} #-DComplex
-#FLAGS = -std=c++11 -g   -I${EIGEN} -I${BOOST} #-DComplex
+#FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} #-DComplex
+FLAGS = -std=c++11 -g   -I${EIGEN} -I${BOOST} #-DComplex
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
@@ -18,7 +18,7 @@ ifeq ($(USE_INTEL), yes)
 	else
 		CXX = icpc
 		CC = icpc
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
@@ -32,7 +32,7 @@ else
 	else
 		CXX = g++
 		CC = g++
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
@@ -44,9 +44,9 @@ ifneq ($(filter dft node%, $(HOSTNAME)),)
 include dft.mk
 endif
 
-SRC_VMC = VMC.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp
+SRC_VMC = VMC.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp
 
-OBJ_VMC+=obj/VMC.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o
+OBJ_VMC+=obj/VMC.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/diis.o obj/Walker.o
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@

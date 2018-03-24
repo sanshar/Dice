@@ -26,6 +26,7 @@
 
 class oneInt;
 class twoInt;
+class Walker;
 
 class Wfn {
  public:
@@ -33,41 +34,23 @@ class Wfn {
   virtual void HamAndOvlp(Determinant& ,
 			  double& ovlp, double& ham,
 			  oneInt& I1, twoInt& I2, double& coreE) =0;
+  virtual void HamAndOvlp(Walker& ,
+		  double& ovlp, double& ham,
+		  oneInt& I1, twoInt& I2, double& coreE)=0;
+  virtual void HamAndOvlpGradient(Walker& ,
+				  double& ovlp, double& ham, Eigen::VectorXd& grad, double& scale,
+				  double& E0, oneInt& I1, twoInt& I2, double& coreE)=0;
   virtual void OverlapWithGradient(Determinant&, 
 				   double& factor,
 				   Eigen::VectorXd& grad)=0;
+  virtual void OverlapWithGradient(Walker&, 
+				   double& factor,
+				   Eigen::VectorXd& grad)=0;
   virtual void printVariables() =0;
+  virtual void getDetMatrix(Determinant&, Eigen::MatrixXd& alpha, Eigen::MatrixXd& beta)=0;
 
 };
 
-class CPSUniform: public Wfn {
- private:
-  friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive & ar, const unsigned int version) {
-    ar & cpsArray;
-  }
- public:
-  std::vector<CPS> cpsArray;
-
-  CPSUniform( std::vector<CPS>& pcpsArray) : cpsArray(pcpsArray) {};
-  
-  void OverlapWithGradient(Determinant&, 
-			   double& factor,
-			   Eigen::VectorXd& grad);
-
-  double Overlap(Determinant&);
-  void HamAndOvlp(Determinant& ,
-		  double& ovlp, double& ham,
-		  oneInt& I1, twoInt& I2, double& coreE);
-
-  void getVariables(Eigen::VectorXd& v);
-  long getNumVariables();
-  void updateVariables(Eigen::VectorXd& dv);
-  void incrementVariables(Eigen::VectorXd& dv);
-  void printVariables();
-
-};
 
 class CPSSlater : public Wfn {
  private:
@@ -83,12 +66,21 @@ class CPSSlater : public Wfn {
   CPSSlater( std::vector<CPS>& pcpsArray, MoDeterminant& pdet) : cpsArray(pcpsArray), det(pdet) {};
 
   
+  void HamAndOvlpGradient(Walker& ,
+			  double& ovlp, double& ham, Eigen::VectorXd& grad, double& scale,
+			  double& E0, oneInt& I1, twoInt& I2, double& coreE);
   void OverlapWithGradient(Determinant&, 
+			   double& factor,
+			   Eigen::VectorXd& grad);
+  void OverlapWithGradient(Walker&, 
 			   double& factor,
 			   Eigen::VectorXd& grad);
 
   double Overlap(Determinant&);
   void HamAndOvlp(Determinant& ,
+		  double& ovlp, double& ham,
+		  oneInt& I1, twoInt& I2, double& coreE);
+  void HamAndOvlp(Walker& ,
 		  double& ovlp, double& ham,
 		  oneInt& I1, twoInt& I2, double& coreE);
 
@@ -99,5 +91,7 @@ class CPSSlater : public Wfn {
   void printVariables();
   void writeWave();
   void readWave();
+  void getDetMatrix(Determinant&, Eigen::MatrixXd& alpha, Eigen::MatrixXd& beta);
 };
+
 #endif

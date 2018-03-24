@@ -19,7 +19,7 @@
 #ifndef Global_HEADER_H
 #define Global_HEADER_H
 #include <boost/interprocess/managed_shared_memory.hpp>
-
+#include <random>
 #ifndef SERIAL
 #include "mpi.h"
 extern MPI_Comm shmcomm, localcomm;
@@ -41,6 +41,7 @@ extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
 extern std::string shciint2;
 
+extern std::mt19937 generator;
 double getTime();
 void license();
 
