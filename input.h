@@ -35,12 +35,20 @@ private:
   void serialize(Archive & ar, const unsigned int version)
   {
     ar & restart & deterministic
-      & tol & correlatorFiles;
+      & tol & correlatorFiles
+      & davidsonPrecondition
+      & diisSize
+      & maxIter
+      & printLevel;
   }
 public:
   bool restart;
   bool deterministic;
   double tol;
+  bool davidsonPrecondition;
+  int diisSize;
+  int maxIter;
+  int printLevel;
   std::map<int, std::string> correlatorFiles;
 };
 

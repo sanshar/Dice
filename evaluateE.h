@@ -46,6 +46,9 @@ void getGradientUsingDavidson(CPSSlater& w, double& E0, int& alpha, int& nbeta, 
 void getStochasticGradientUsingDavidson(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
  				      oneInt& I1, twoInt& I2, double& coreE,
 				      Eigen::VectorXd& grad, int niter, double targetError);
+void getStochasticGradient(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+			   oneInt& I1, twoInt& I2, double& coreE,
+			   Eigen::VectorXd& grad, int niter, double targetError);
 
 void comb(int N, int K, std::vector<std::vector<int> >& combinations);
 

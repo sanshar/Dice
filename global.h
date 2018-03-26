@@ -22,6 +22,9 @@
 #include <random>
 #ifndef SERIAL
 #include "mpi.h"
+
+class schedule;
+
 extern MPI_Comm shmcomm, localcomm;
 #endif
 extern int commrank, shmrank, localrank;
@@ -44,6 +47,7 @@ extern std::string shciint2;
 extern std::mt19937 generator;
 double getTime();
 void license();
+extern schedule schd;
 
 #endif
 

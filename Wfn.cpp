@@ -22,6 +22,8 @@
 #include "MoDeterminants.h"
 #include "Walker.h"
 #include "Wfn.h"
+#include "global.h"
+#include "input.h"
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -670,9 +672,8 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
       ovlp *= cpsArray[i].Overlap(d);
     ham  = ovlp*E0;
 
-    double factor = -ovlp*scale;
+    double factor = schd.davidsonPrecondition ? -ovlp*scale : ovlp*(E0-Epsi)*scale;
     OverlapWithGradient(d, factor, grad);
-    //detOverlap *= cpsOvlp;
   }
 
   //Single alpha excitation 
@@ -698,6 +699,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
+	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
 	      OverlapWithGradient(dcopy, factor, grad);
 
 	    }
@@ -731,6 +733,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
+	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
 	      //double factor = tia/(Epsi-Edet);
 	      OverlapWithGradient(dcopy, factor, grad);
 
@@ -773,6 +776,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
+		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
 		      //double factor = tia/(Epsi-Edet);
 		      OverlapWithGradient(dcopy, factor, grad);
 
@@ -817,6 +821,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
+		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
 		      //double factor = tia/(Epsi-Edet);
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
@@ -860,6 +865,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
+		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
 		  }

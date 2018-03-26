@@ -78,6 +78,8 @@ void DIIS::update(VectorXd& newV, VectorXd& errorV) {
     VectorXd b = VectorXd::Zero(maxDim+1);
     b[maxDim] = 1.0;
     VectorXd x = diisMatrix.colPivHouseholderQr().solve(b);
-    newV = prevVectors*x.head(maxDim) + errorVectors*x.head(maxDim);
+    newV = prevVectors*x.head(maxDim);// + errorVectors*x.head(maxDim);
+    
+    //prevVectors.col((iter-1)%maxDim) = 1.* newV;
   }
 }

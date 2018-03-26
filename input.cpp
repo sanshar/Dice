@@ -82,7 +82,9 @@ void readInput(string input, schedule& schd) {
 
   schd.deterministic = false;
   schd.restart       = false;
-
+  schd.davidsonPrecondition = false;
+  schd.diisSize = 5;
+  schd.maxIter = 50;
   while (dump.good()) {
 
     std::string
@@ -109,6 +111,18 @@ void readInput(string input, schedule& schd) {
     else if (boost::iequals(ArgName, "correlator")) {
       int siteSize = atoi(tok[1].c_str());
       schd.correlatorFiles[siteSize] = tok[2];
+    }
+    else if (boost::iequals(ArgName, "Precondition")) {
+      schd.davidsonPrecondition = true;
+    }
+    else if (boost::iequals(ArgName, "diisSize")) {
+      schd.diisSize = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "printLevel")) {
+      schd.printLevel = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "maxiter")) {
+      schd.maxIter = atoi(tok[1].c_str());
     }
     else {
       cout << "cannot read option "<<ArgName<<endl;

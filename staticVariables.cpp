@@ -6,6 +6,7 @@
 #include <ctime>
 #include <sys/time.h>
 #include "time.h"
+#include "input.h"
 #ifndef SERIAL
 #include "mpi.h"
 #endif
@@ -31,6 +32,8 @@ MPI_Comm shmcomm, localcomm;
 #endif
 int commrank, shmrank, localrank;
 int commsize, shmsize, localsize;
+
+schedule schd;
 
 double getTime() {
   struct timeval start;
