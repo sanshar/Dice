@@ -31,7 +31,6 @@ const int DetLen = 6;
 extern double startofCalc;
 double getTime();
 
-#define Complex //Artificially add this for 4c test
 #ifdef Complex
 #define MatrixXx MatrixXcd
 #define CItype std::complex<double>
