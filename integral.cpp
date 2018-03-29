@@ -34,7 +34,7 @@
 using namespace boost;
 
 //bool myfn(double i, double j) { return fabs(i)<fabs(j); }
-bool myfn(complex<double> i, complex<double> j) { return abs(i)<abs(j); }
+bool myfn(std::complex<double> i, std::complex<double> j) { return std::abs(i)<std::abs(j); }
 
 
 //=============================================================================
@@ -123,18 +123,19 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   mpi::broadcast(world, I2.ksym, 0);
 #endif
 
-  long npair = norbs*(norbs+1)/2;
+  //long npair = norbs*(norbs+1)/2;
+  long npair = norbs*norbs;
   if (I2.ksym) npair = norbs*norbs;
   I2.norbs = norbs;
-  size_t I2memory = npair*(npair+1)/2; //memory in bytes
-
+  //size_t I2memory = npair*(npair+1)/2; //memory in bytes
+  size_t I2memory = npair*npair;
 #ifndef SERIAL
   world.barrier();
 #endif
 
-  int2Segment.truncate((I2memory)*sizeof(double));
+  int2Segment.truncate((I2memory)*sizeof(std::complex<double>));
   regionInt2 = boost::interprocess::mapped_region{int2Segment, boost::interprocess::read_write};
-  memset(regionInt2.get_address(), 0., (I2memory)*sizeof(double));
+  memset(regionInt2.get_address(), 0., (I2memory)*sizeof(std::complex<double>));
 
 #ifndef SERIAL
   world.barrier();
@@ -144,7 +145,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   I2.store = static_cast<CItype*>(regionInt2.get_address());
   if (commrank == 0) {
     I1.store.clear();
-    I1.store.resize(2*norbs*(2*norbs),0.0); I1.norbs = 2*norbs;
+    I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
     coreE = 0.0;
 
     vector<string> tok;
@@ -154,11 +155,11 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       trim(msg);
       boost::split(tok, msg, is_any_of(", \t()"), token_compress_on);
       //if (tok.size() != 5) continue;
-      if (tok.size() != 6) continue;
+      if (tok.size() != 7) continue;
 
       //double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
-      CItype integral = std::complex<double>(atof(tok[0].c_str()), atof(tok[1].c_str())); 
-      int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
+      CItype integral = std::complex<double>(atof(tok[1].c_str()), atof(tok[2].c_str())); 
+      int a=atoi(tok[3].c_str()), b=atoi(tok[4].c_str()), c=atoi(tok[5].c_str()), d=atoi(tok[6].c_str());
       if(a==b&&b==c&&c==d&&d==0) {
         coreE = integral.real();
       } else if (b==c&&c==d&&d==0) {
@@ -168,14 +169,16 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
         //I1(2*(a-1)+1,2*(b-1)+1) = integral; //beta,beta
         //I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
         //I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
-        I1(a,b) = integral;
+        I1(a-1,b-1) = integral;
       } else {
         //I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
-        I2(a,b,c,d) = integral;
-        I2(b,a,d,c) = integral;
+        I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;
+        //I2(a-1,b-1,c-1,d-1) = integral;
+        //if(a==b&&c==d) I2(c-1,d-1,a-1,b-1) = integral;
+
       }
     } // while
-
+    
     //exit(0);
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;
@@ -185,9 +188,29 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       for (int j=0; j<norbs; j++) {
         //I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
         //I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
+        //I2.Direct(i,j) = I2(i,i,j,j);
         I2.Direct(i,j) = I2(i,i,j,j);
         I2.Exchange(i,j) = I2(i,j,j,i);
+        //pout << i+1 << ',' << j+1 << ':' << I2(i,i,j,j).real() << "," << I2(i,j,j,i).real() << endl;
+        //pout << "J"<<i+1<<j+1<<" = " << I2.Direct(i,j).real() << ", K"<<i+1<<j+1<<" = " << I2.Exchange(i,j).real() << endl;
     }
+    
+    double HFEnergy = coreE;
+    double HFEnergy2 = coreE;
+    for(int i=0; i<12; i++) {
+      HFEnergy += I1(i,i).real();
+      HFEnergy2 += I1(i,i).real();
+      for(int j=0; j<i; j++) {
+        HFEnergy += I2(i,i,j,j).real();
+        HFEnergy -= I2(i,j,j,i).real();
+        HFEnergy2 += I2.Direct(i,j).real();
+        HFEnergy2 -= I2.Exchange(i,j).real();
+        pout << i <<','<< j << I2.Direct(i,j) - I2.Direct(j,i) << I2.Exchange(i,j) - I2.Exchange(j,i)<<endl;
+        //pout << i <<','<< j << I2.Direct(i,j) << I2.Direct(j,i) << I2.Exchange(i,j) << I2.Exchange(j,i)<<endl;
+      }
+    }
+    pout << "HFEnergy : " << HFEnergy << endl;
+    pout << "HFEnergy2 : " << HFEnergy2 << endl;
   } // commrank=0
 
 #ifndef SERIAL
@@ -255,7 +278,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
     //for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
     //total Memory required, have to think of it carefully
-    memRequired += nonZeroIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+    memRequired += nonZeroIntegrals*(sizeof(std::complex<double>)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
     //memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
   }
 
@@ -299,7 +322,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
                                 + nonZeroIntegrals*sizeof(std::complex<double>));
   pairs                         = (short*)(startAddress
                                 + nonZeroIntegrals*sizeof(std::complex<double>)
-                                + (norbs*(norbs+1)/2+1)*sizeof(size_t));                            
+                                + norbs*norbs*sizeof(size_t));                            
 
   if (commrank == 0) {
     //startingIndicesSameSpin[0] = 0;

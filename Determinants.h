@@ -61,7 +61,6 @@ inline int BitCount (long x)
 
 //This is used to store just the alpha or the beta sub string of the entire determinant
 class HalfDet {
- private:
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {

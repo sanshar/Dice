@@ -769,7 +769,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   MatrixXx diag;
   
-  size_t norbs = 2.*I2.Direct.rows();
+  //size_t norbs = 2.*I2.Direct.rows();
+  size_t norbs = I2.Direct.rows();
   int Norbs = norbs;
 
   CItype e0 = SHMDets[0].Energy(I1, I2, coreE);
@@ -878,9 +879,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     if (proc == 0) {
       cMax.resize(ci[0].rows(),0);
       for (int j=0; j<ci[0].rows(); j++) {
-	for (int i=0; i<ci.size(); i++)
-	  cMax[j] += pow( abs(ci[i](j,0)), 2);	
-	cMax[j] = pow( cMax[j], 0.5);
+	      for (int i=0; i<ci.size(); i++)
+	        cMax[j] += pow( abs(ci[i](j,0)), 2);	
+	        cMax[j] = pow( cMax[j], 0.5);
       }      
     }
 
@@ -910,7 +911,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     if (Determinant::Trev != 0) {
       for (int i=0; i<uniqueDEH.Det->size(); i++) 
-	uniqueDEH.Det->at(i).makeStandard();
+	      uniqueDEH.Det->at(i).makeStandard();
     }
 
 
@@ -955,22 +956,22 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 	continue ;
       }
       else if ( proc%ipow(2, level) == 0) {
-	int toproc = proc-ipow(2,level);
-	int proc = commrank;
-	long numDets = uniqueDEH.Det->size();
-	long maxint = 26843540;
-	long totalMemory = numDets*DetLen;	
-	MPI_Send(&numDets, 1, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD); 
-
-	if (totalMemory != 0) {
-	  for (int i=0; i<(totalMemory/maxint); i++)
-	    MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+i*maxint, 
-		     maxint, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
-	  MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+(totalMemory/maxint)*maxint, 
-		   totalMemory-(totalMemory/maxint)*maxint, MPI_DOUBLE, 
-		   toproc, proc, MPI_COMM_WORLD);	
-	  uniqueDEH.clear();
-	}
+	      int toproc = proc-ipow(2,level);
+	      int proc = commrank;
+	      long numDets = uniqueDEH.Det->size();
+	      long maxint = 26843540;
+	      long totalMemory = numDets*DetLen;	
+	      MPI_Send(&numDets, 1, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD); 
+      
+	      if (totalMemory != 0) {
+	        for (int i=0; i<(totalMemory/maxint); i++)
+	          MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+i*maxint, 
+	      	    maxint, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
+	          MPI_Send(&(uniqueDEH.Det->at(0).repr[0])+(totalMemory/maxint)*maxint, 
+	      	    totalMemory-(totalMemory/maxint)*maxint, MPI_DOUBLE, 
+	      	    toproc, proc, MPI_COMM_WORLD);	
+	        uniqueDEH.clear();
+	      }
       }
     }
     //*************
@@ -1028,9 +1029,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
 #ifdef Complex
-      SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
-						sparseHam.connections, sparseHam.orbDifference,
-						sparseHam.Helements, norbs, I1, nelec, false);
+      //SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
+			//			sparseHam.connections, sparseHam.orbDifference,
+			//			sparseHam.Helements, norbs, I1, nelec, false);
 #endif
 
     SortedDetsSize = DetsSize;
@@ -1211,6 +1212,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
     
     if (schd.outputlevel>0) pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
   }
+
+  //iter ends
 
   boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
   boost::interprocess::shared_memory_object::remove(shciHelper.c_str());

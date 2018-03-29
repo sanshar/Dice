@@ -101,7 +101,6 @@ int main(int argc, char* argv[]) {
 
   license();
 
-
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
@@ -141,7 +140,7 @@ int main(int argc, char* argv[]) {
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
-
+  pout << "print core energy: " << coreE << endl;
   if (HFoccupied[0].size() != nelec) {
     pout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
@@ -159,7 +158,10 @@ int main(int argc, char* argv[]) {
   }
 
   //setup the lexical table for the determinants
-  norbs *=2;
+  
+  //For relativistic, norbs is already the spin orbitals
+  //norbs *=2;
+  
   Determinant::norbs = norbs; //spin orbitals
   HalfDet::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
@@ -172,13 +174,16 @@ int main(int argc, char* argv[]) {
 
   //initialize the heatbath integral
   std::vector<int> allorbs;
-  for (int i=0; i<norbs/2; i++)
+  
+  //for (int i=0; i<norbs/2; i++)
+  for (int i=0; i<norbs; i++)
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
-  I2HBSHM.constructClass(norbs/2, I2HB);
-
+  //if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
+  //I2HBSHM.constructClass(norbs/2, I2HB);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs);
+  I2HBSHM.constructClass(norbs, I2HB);
   int num_thrds;
 
   //IF SOC is true then read the SOC integrals
@@ -209,11 +214,10 @@ int main(int argc, char* argv[]) {
   //make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
   for (int d=0;d<HFoccupied.size(); d++) {
-
     for (int i=0; i<HFoccupied[d].size(); i++) {
       if (Dets[d].getocc(HFoccupied[d][i])) {
-	pout << "orbital "<<HFoccupied[d][i]<<" appears twice in input determinant number "<<d<<endl;
-	exit(0);
+	      pout << "orbital "<<HFoccupied[d][i]<<" appears twice in input determinant number "<<d<<endl;
+	      exit(0);
       }
       Dets[d].setocc(HFoccupied[d][i], true);
     }
@@ -221,12 +225,13 @@ int main(int argc, char* argv[]) {
       Dets[d].makeStandard();
     for (int i=0; i<d; i++) {
       if (Dets[d] == Dets[i]) {
-	pout << "Determinant "<<Dets[d]<<" appears twice in the input determinant list."<<endl;
-	exit(0);
+	      pout << "Determinant "<<Dets[d]<<" appears twice in the input determinant list."<<endl;
+	      exit(0);
       }
     }
   }
   schd.HF=Dets[0];
+  pout << "HF Energy:" << Dets[0].Energy(I1, I2, coreE) << endl;
 
   if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
@@ -237,7 +242,6 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   mpi::broadcast(world, ci, 0);
 #endif
-
 
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 
@@ -259,7 +263,6 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
   }
-
 
   //print the 5 most important determinants and their weights
   pout << "Printing most important determinants"<<endl;

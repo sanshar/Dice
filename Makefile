@@ -9,7 +9,7 @@ BOOST=/usr/include/boost
 
 #FLAGS = -std=c++11 -g  -I${EIGEN} -I${BOOST} #-DComplex
 FLAGS = -std=c++11 -g  -O3 -I${EIGEN} -I${BOOST} #-DComplex
-DFLAGS = -std=c++11 -g -O3 -I${EIGEN} -I${BOOST} -DComplex
+DFLAGS = -std=c++11 -g -I${EIGEN} -I${BOOST} -DComplex
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
@@ -64,8 +64,8 @@ OBJ_ZDice2+=obj_z/SHCI.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.
 OBJ_forcyrus+=obj/forCyrus.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o obj/Davidson.o obj/SHCIgetdeterminants.o  obj/SHCIsampledeterminants.o obj/SHCIrdm.o obj/SHCISortMpiUtils.o obj/SHCImakeHamiltonian.o
 OBJ_Excitations+=obj/Excitations.o obj/SHCIbasics.o obj/Determinants.o obj/integral.o obj/input.o
 
-obj/%.o: %.cpp  
-	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+#obj/%.o: %.cpp  
+#	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj_z/%.o: %.cpp  
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 

@@ -190,12 +190,10 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 
 	for (int I = 0; I<nclosed; I++) {
 		if (I == i) continue;
-		//E = E - I2.Direct(closed[I]/2, closed[i]/2) + I2.Direct(closed[I]/2, A/2);
 		E = E - I2.Direct(closed[I], closed[i]).real() + I2.Direct(closed[I], A).real();
 		//if ( (closed[I]%2) == (closed[i]%2) )
-		if ( closed[I] == closed[i] )
-			//E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
-			E = E + I2.Exchange(closed[I], closed[i]).real() - I2.Exchange(closed[I], A).real();
+		//if ( closed[I] == closed[i] )
+		E = E + I2.Exchange(closed[I], closed[i]).real()-I2.Exchange(closed[I],A).real();
 	}
 	return E;
 }
@@ -240,8 +238,8 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 	 */
 
 #ifdef Complex
-	double E = Energyd - (I1(closed[i], closed[i]) - I1(A, A)+ I1(closed[j],
-    closed[j]) - I1(B, B)).real();
+	double E = Energyd + ( - I1(closed[i], closed[i]) + I1(A, A) - I1(closed[j],
+    closed[j]) + I1(B, B)).real();
 #else
 	double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j],
     closed[j]) + I1(B, B);
@@ -249,21 +247,23 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 
 	for (int I = 0; I<nclosed; I++) {
 		if (I == i) continue;
-		E = E - (I2.Direct(closed[I], closed[i]) - I2.Direct(closed[I], A)).real();
+		E = E - I2.Direct(closed[I], closed[i]).real() + I2.Direct(closed[I], A).real();
+		E = E + I2.Exchange(closed[I], closed[i]).real() - I2.Exchange(closed[I], A).real();
 		//if ( (closed[I]%2) == (closed[i]%2) )
 		//	E = E + I2.Exchange(closed[I]/2,closed[i]/2)-I2.Exchange(closed[I]/2,A/2);
 	}
 
 	for (int I=0; I<nclosed; I++) {
 		if (I == i || I == j) continue;
-		E = E - (I2.Direct(closed[I], closed[j]) - I2.Direct(closed[I], B)).real();
+		E = E - I2.Direct(closed[I], closed[i]).real() + I2.Direct(closed[I], B).real();
+		E = E + I2.Exchange(closed[I], closed[j]).real() - I2.Exchange(closed[I], B).real();
 		//if ( (closed[I]%2) == (closed[j]%2) )
 		//	E = E + I2.Exchange(closed[I]/2,closed[j]/2)-I2.Exchange(closed[I]/2,B/2);
 	}
 
-	E = E - (I2.Direct(A/2, closed[j]/2) - I2.Direct(A/2, B/2)).real();
+	E = E - I2.Direct(A, closed[j]).real() + I2.Direct(A, B).real();
 	//if ( (closed[i]%2) == (closed[j]%2) )
-	//	E = E + I2.Exchange(A/2, closed[j]/2) - I2.Exchange(A/2, B/2);
+	E = E + I2.Exchange(A, closed[j]).real() - I2.Exchange(A, B).real();
 
 
 	return E;
@@ -306,18 +306,21 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 	for (int i=0; i<closed.size(); i++) {
 		int I = closed.at(i);
 #ifdef Complex
+		//pout << "I1("<<I<<","<<I<<") = " << I1(I,I).real() << endl;
 		energy += I1(I,I).real();
 #else
 		energy += I1(I,I);
 #endif
-		for (int j=i+1; j<closed.size(); j++) {
+		for (int j=0; j<i; j++) {
 			int J = closed.at(j);
 			//energy += I2.Direct(I/2,J/2);
+			complex<double> Jij = I2.Direct(I,J), Kij = I2.Exchange(I,J);
 			energy += I2.Direct(I,J).real();
-			if ( (I%2) == (J%2) ) {
+			//if ( (I%2) == (J%2) ) {
 				//energy -= I2.Exchange(I/2, J/2);
-				energy -= I2.Exchange(I,J).real();
-			}
+			energy -= I2.Exchange(I,J).real();
+			//pout << "J"<<i<<j<<" = " << I2.Direct(I,J).real() << ", K"<<i<<j<<" = " << I2.Exchange(I,J).real() << endl;
+			//}
 		}
 	}
 
@@ -415,7 +418,8 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1,
 	parity(min(I, A), max(I,A), sgn);
 	parity(min(J, B), max(J,B), sgn);
 	if(A>J || B<I) sgn *= -1.;
-	return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
+	return sgn*(I2(A,I,B,J) - I2(A,J,B,I)).real();
+	//return (I2(A,I,B,J) - I2(A,J,B,I)).real();
 }
 
 
@@ -485,13 +489,13 @@ CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
 		while (reprBit != 0) {
 			int pos = __builtin_ffsl(reprBit);
 			int j = I*64+pos-1;
-			energy += (I2(a,i,j,j) - I2(a,j,j,i));
+			energy += (I2(a,i,j,j) - I2(a,j,j,i)).real();
 			reprBit &= ~(one<<(pos-1));
 		}
 
 	}
 	energy *= sgn;
-	return energy;
+	//return energy;
 }
 
 

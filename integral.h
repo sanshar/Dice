@@ -106,7 +106,7 @@ class twoInt {
       //For test run, I will store the two integral using <ij|kl> = <ji|lk>
       //The any complex conjugated relate stuff will not be incorporated for now
       int IJ = i*norbs+j, KL = k*norbs+l;
-      return store[IJ*norbs^2+KL];
+      return store[IJ*norbs*norbs+KL];
     }
 };
 
@@ -145,8 +145,10 @@ class twoIntHeatBath {
               if (abs(I2(i, a, j, b)) > epsilon) {
               //opposite spin
               //if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
-              if (abs(I2(i,a,j,b)) > epsilon)
+              if (abs(I2(i,a,j,b)) > epsilon) {
+                if (a != b)
                 integral[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i,a,j,b), make_pair(a,b)));
+              }
                 //oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
               //samespin
               //if (a>=b && fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a)) > epsilon) {

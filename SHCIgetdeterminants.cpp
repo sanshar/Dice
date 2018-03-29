@@ -100,14 +100,14 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
-    if (closed[i]%2 != open[a]%2) {
+    if (closed[i] != open[a]) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
       integral = int1(open[a], closed[i])*sgn;
     }
 
     // generate determinant if integral is above the criterion
-    if (fabs(integral) > epsilon ) {
+    if (std::abs(integral) > epsilon ) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
@@ -125,12 +125,12 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (fabs(int2.maxEntry) < epsilon) return;
+  if (std::abs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    int I = closed[i]/2, J = closed[j]/2;
+    int I = closed[i], J = closed[j];
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
@@ -145,12 +145,12 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (fabs(integrals[index]) < epsilon) break;
+      if (std::abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
       //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
-      if (!(d.getocc(a) || d.getocc(b))) {
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
+      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
@@ -544,7 +544,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   } // ia
 
   // bi-excitated determinants
-  if (fabs(int2.maxEntry) < epsilon) return;
+  if (std::abs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
@@ -574,10 +574,10 @@ void SHCIgetdeterminants::getDeterminantsVariational(
 
       // otherwise: generate the determinant corresponding to the current excitation
       //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
       //if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
       if (a >= schd.ncore+schd.nact || b >= schd.ncore+schd.nact) continue;
-      if (!(d.getocc(a) || d.getocc(b))) {
+      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
