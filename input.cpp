@@ -57,8 +57,8 @@ void readCorrelator(std::string input, int correlatorSize,
     vector<int> asites, bsites;
     for (int i=0; i<correlatorSize; i++) {
       int site = atoi(tok[i].c_str());
-      if (site%2 == 0) asites.push_back(site/2);
-      else             bsites.push_back(site/2);
+      asites.push_back(site);
+      bsites.push_back(site);
     }
     correlators.push_back(CPS(asites, bsites));
   }
@@ -85,6 +85,13 @@ void readInput(string input, schedule& schd) {
   schd.davidsonPrecondition = false;
   schd.diisSize = 5;
   schd.maxIter = 50;
+  schd.gradientFactor = 0.001;
+  schd.m   = rmsprop;
+  schd.stochasticIter = 1e6;
+  schd.momentum = 0.9;
+  schd.momentumDecay = 0.001;
+  schd.decay = 0.9;
+  schd.learningEpoch = 10;
   while (dump.good()) {
 
     std::string
@@ -106,8 +113,30 @@ void readInput(string input, schedule& schd) {
       schd.restart = true;
     else if (boost::iequals(ArgName, "deterministic"))
       schd.deterministic = true;
+    else if (boost::iequals(ArgName, "adam"))
+      schd.m = adam;
+    else if (boost::iequals(ArgName, "sgd"))
+      schd.m = sgd;
+    else if (boost::iequals(ArgName, "nestorov"))
+      schd.m = nestorov;
+    else if (boost::iequals(ArgName, "rmsprop"))
+      schd.m = rmsprop;
+    else if (boost::iequals(ArgName, "amsgrad"))
+      schd.m = amsgrad;
     else if (boost::iequals(ArgName, "tol"))
       schd.tol = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "momentum"))
+      schd.momentum = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "momentumDecay"))
+      schd.momentumDecay = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "decay"))
+      schd.decay = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "learningepoch"))
+      schd.learningEpoch = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "stochasticiter"))
+      schd.stochasticIter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "gradientFactor"))
+      schd.gradientFactor = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "correlator")) {
       int siteSize = atoi(tok[1].c_str());
       schd.correlatorFiles[siteSize] = tok[2];

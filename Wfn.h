@@ -65,7 +65,8 @@ class CPSSlater : public Wfn {
 
   CPSSlater( std::vector<CPS>& pcpsArray, MoDeterminant& pdet) : cpsArray(pcpsArray), det(pdet) {};
 
-  
+  double approximateNorm();
+  void normalizeAllCPS();
   void HamAndOvlpGradient(Walker& ,
 			  double& ovlp, double& ham, Eigen::VectorXd& grad, double& scale,
 			  double& E0, oneInt& I1, twoInt& I2, double& coreE);

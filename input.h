@@ -25,6 +25,7 @@
 #include <boost/serialization/map.hpp>
 
 class CPS;
+enum Method { sgd, nestorov, rmsprop, adam, amsgrad };
 
 void readHF(Eigen::MatrixXd&);
 
@@ -39,7 +40,14 @@ private:
       & davidsonPrecondition
       & diisSize
       & maxIter
-      & printLevel;
+      & printLevel
+      & gradientFactor
+      & m
+      & stochasticIter
+      & momentum
+      & momentumDecay
+      & decay
+      & learningEpoch;
   }
 public:
   bool restart;
@@ -49,7 +57,14 @@ public:
   int diisSize;
   int maxIter;
   int printLevel;
+  double gradientFactor;
+  Method m;
   std::map<int, std::string> correlatorFiles;
+  int stochasticIter;
+  double momentum;
+  double momentumDecay;
+  double decay;
+  int learningEpoch;
 };
 
 void readInput(std::string input, schedule& schd);

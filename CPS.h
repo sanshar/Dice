@@ -50,8 +50,8 @@ private:
 
   CPS () {};
  CPS(std::vector<int>& pasites, std::vector<int>& pbsites, double iv=1.0) : asites(pasites), bsites(pbsites) {
-    if (asites.size()+bsites.size() > 5) {
-      std::cout << "Cannot handle correlators of size greater than 5."<<std::endl;
+    if (asites.size()+bsites.size() > 20) {
+      std::cout << "Cannot handle correlators of size greater than 20."<<std::endl;
       exit(0);
     }
     std::sort(asites.begin(), asites.end());

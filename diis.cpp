@@ -43,7 +43,7 @@ void DIIS::init(int pmaxDim, int pvectorDim) {
   diisMatrix   = MatrixXd::Zero(pmaxDim+1, pmaxDim+1);
   iter = 0;
   for (int i=0; i<maxDim; i++) {
-    diisMatrix(i, maxDim) = 1.0;
+    diisMatrix(i, maxDim) = -1.0;
     diisMatrix(maxDim, i) = 1.0;
   }
 }
@@ -51,7 +51,7 @@ void DIIS::init(int pmaxDim, int pvectorDim) {
 
 void DIIS::update(VectorXd& newV, VectorXd& errorV) {
 
-  prevVectors .col(iter%maxDim)   = newV;
+  prevVectors .col(iter%maxDim)  = newV;
   errorVectors.col(iter%maxDim)  = errorV;
 
   int col = iter%maxDim;
@@ -60,18 +60,18 @@ void DIIS::update(VectorXd& newV, VectorXd& errorV) {
     diisMatrix(col, i   ) = diisMatrix(i, col);
   }
   iter++;
-
+  
   if (iter < maxDim) {
     VectorXd b = VectorXd::Zero(iter+1);
     b[iter] = 1.0;
     MatrixXd localdiis = diisMatrix.block(0,0,iter+1, iter+1);
     for (int i=0; i<iter; i++) {
-      localdiis(i, iter) = 1.0;
+      localdiis(i, iter) = -1.0;
       localdiis(iter, i) = 1.0;
     }
     VectorXd x = localdiis.colPivHouseholderQr().solve(b);
-    newV = prevVectors.block(0,0,vectorDim,iter)*x.head(iter) 
-        + errorVectors.block(0,0,vectorDim,iter)*x.head(iter);
+    newV = prevVectors.block(0,0,vectorDim,iter)*x.head(iter); 
+    //+ errorVectors.block(0,0,vectorDim,iter)*x.head(iter);
 
   }
   else {

@@ -70,7 +70,7 @@ void CPSSlater::incrementVariables(Eigen::VectorXd& dv){
     }
   }
 
-
+  /*
   for (int i=0; i<det.AlphaOrbitals.rows(); i++)
     for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
       det.AlphaOrbitals(i,j) += dv[numVars];
@@ -82,7 +82,7 @@ void CPSSlater::incrementVariables(Eigen::VectorXd& dv){
       det.BetaOrbitals(i,j) += dv[numVars];
       numVars++;
     }
-
+  */
 
 }
 
@@ -135,7 +135,7 @@ void CPSSlater::getVariables(Eigen::VectorXd& v){
     }
   }
 
-
+  /*
   for (int i=0; i<det.AlphaOrbitals.rows(); i++)
     for (int j=0; j<det.AlphaOrbitals.cols(); j++) {
       v[numVars] = det.AlphaOrbitals(i,j);
@@ -147,13 +147,34 @@ void CPSSlater::getVariables(Eigen::VectorXd& v){
       v[numVars] = det.BetaOrbitals(i,j);
       numVars++;
     }
+  */
+}
+
+void CPSSlater::normalizeAllCPS() {
+  for (int i=0; i<cpsArray.size(); i++) {
+    double norm = 0.;
+
+    for (int a=0; a<cpsArray[i].Variables.size(); a++)
+      norm += pow(cpsArray[i].Variables[a], 2);
+
+    for (int a=0; a<cpsArray[i].Variables.size(); a++)
+      cpsArray[i].Variables[a] /= sqrt(norm);
+  }
+}
+
+
+double CPSSlater::approximateNorm() {
+  double norm = 1.0;
+  for (int i=0; i<cpsArray.size(); i++)     
+    norm *= *max_element(cpsArray[i].Variables.begin(), cpsArray[i].Variables.end());
+  return norm;
 }
 
 long CPSSlater::getNumVariables() {
   long numVars = 0;
   for (int i=0; i<cpsArray.size(); i++) 
     numVars += cpsArray[i].Variables.size();
-  numVars+=det.norbs*det.nalpha+det.norbs*det.nbeta;
+  //numVars+=det.norbs*det.nalpha+det.norbs*det.nbeta;
   return numVars;
 }
 
@@ -672,7 +693,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
       ovlp *= cpsArray[i].Overlap(d);
     ham  = ovlp*E0;
 
-    double factor = schd.davidsonPrecondition ? -ovlp*scale : ovlp*(E0-Epsi)*scale;
+    double factor = schd.davidsonPrecondition ? ovlp*scale : ovlp*(E0-Epsi)*scale;
     OverlapWithGradient(d, factor, grad);
   }
 
@@ -700,6 +721,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
 	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
+	      else factor *= -1;
 	      OverlapWithGradient(dcopy, factor, grad);
 
 	    }
@@ -734,6 +756,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
 	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
+	      else factor *= -1;
 	      //double factor = tia/(Epsi-Edet);
 	      OverlapWithGradient(dcopy, factor, grad);
 
@@ -777,6 +800,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
 		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
+		      else factor *= -1;
 		      //double factor = tia/(Epsi-Edet);
 		      OverlapWithGradient(dcopy, factor, grad);
 
@@ -822,6 +846,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
 		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
+		      else factor *= -1;
 		      //double factor = tia/(Epsi-Edet);
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
@@ -866,6 +891,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
 		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
+		      else factor *= -1;
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
 		  }
