@@ -165,8 +165,9 @@ void CPSSlater::normalizeAllCPS() {
 
 double CPSSlater::approximateNorm() {
   double norm = 1.0;
-  for (int i=0; i<cpsArray.size(); i++)     
+  for (int i=0; i<cpsArray.size(); i++) {
     norm *= *max_element(cpsArray[i].Variables.begin(), cpsArray[i].Variables.end());
+  }
   return norm;
 }
 
@@ -675,11 +676,12 @@ void CPSSlater::HamAndOvlp(Walker& walk,
 }
 
 
-//<psi_t| (H0-E0)^-1 (H-E0) |D>
+//<psi_t| (H-E0) |D>
 void CPSSlater::HamAndOvlpGradient(Walker& walk,
 				   double& ovlp, double& ham, VectorXd& grad, double& scale,
 				   double& Epsi, oneInt& I1, twoInt& I2, double& coreE) {
 
+  double TINY = 1.e-7;
   MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
   double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
   double detOverlap = alphaDet*betaDet;
@@ -693,7 +695,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
       ovlp *= cpsArray[i].Overlap(d);
     ham  = ovlp*E0;
 
-    double factor = schd.davidsonPrecondition ? ovlp*scale : ovlp*(E0-Epsi)*scale;
+    double factor = schd.davidsonPrecondition ? ovlp*scale : ovlp*(E0-Epsi)*scale;    
     OverlapWithGradient(d, factor, grad);
   }
 
@@ -705,7 +707,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	  if (!d.getoccA(a)) {
 	    double tia = d.Hij_1ExciteA(a, i, I1, I2);
 	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
+	    if (abs(tia) > TINY) {
 	      Determinant dcopy = d;
 	      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 
@@ -719,9 +721,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
-	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
-	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
-	      else factor *= -1;
+	      double factor = tia * ovlpdetcopy*scale;
 	      OverlapWithGradient(dcopy, factor, grad);
 
 	    }
@@ -739,7 +739,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	  if (!d.getoccB(a)) {
 	    double tia = d.Hij_1ExciteB(a, i, I1, I2);
 	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
+	    if (abs(tia) > TINY) {
 	      Determinant dcopy = d;
 	      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
 
@@ -754,9 +754,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
-	      double factor = tia/(Epsi-Edet) * ovlpdetcopy*scale;
-	      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
-	      else factor *= -1;
+	      double factor = tia * ovlpdetcopy*scale;
 	      //double factor = tia/(Epsi-Edet);
 	      OverlapWithGradient(dcopy, factor, grad);
 
@@ -779,7 +777,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		    double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
 		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
+		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
@@ -798,12 +796,8 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
-		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
-		      else factor *= -1;
-		      //double factor = tia/(Epsi-Edet);
+		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
-
 		    }
 		  }
 	      }
@@ -825,7 +819,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		    double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
 		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
+		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
@@ -844,10 +838,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
-		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
-		      else factor *= -1;
-		      //double factor = tia/(Epsi-Edet);
+		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
 		  }
@@ -870,7 +861,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		    double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
 		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
+		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
@@ -889,9 +880,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb/(Epsi-Edet) * ovlpdetcopy*scale;
-		      if( !schd.davidsonPrecondition) factor *= -(Edet-Epsi);
-		      else factor *= -1;
+		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
 		    }
 		  }

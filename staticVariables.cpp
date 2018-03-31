@@ -40,7 +40,7 @@ double getTime() {
   gettimeofday(&start, NULL);
   return start.tv_sec + 1.e-6*start.tv_usec;
 }
-
+double startofCalc;
 
 void license() {
   if (commrank == 0) {

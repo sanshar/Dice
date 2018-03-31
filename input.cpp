@@ -86,6 +86,7 @@ void readInput(string input, schedule& schd) {
   schd.diisSize = 5;
   schd.maxIter = 50;
   schd.gradientFactor = 0.001;
+  schd.mingradientFactor = 0.00001;
   schd.m   = rmsprop;
   schd.stochasticIter = 1e6;
   schd.momentum = 0.9;
@@ -137,6 +138,8 @@ void readInput(string input, schedule& schd) {
       schd.stochasticIter = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "gradientFactor"))
       schd.gradientFactor = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "mingradientFactor"))
+      schd.mingradientFactor = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "correlator")) {
       int siteSize = atoi(tok[1].c_str());
       schd.correlatorFiles[siteSize] = tok[2];

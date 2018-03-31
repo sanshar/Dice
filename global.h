@@ -48,6 +48,7 @@ extern std::mt19937 generator;
 double getTime();
 void license();
 extern schedule schd;
+extern double startofCalc;
 
 #endif
 

@@ -42,6 +42,7 @@ private:
       & maxIter
       & printLevel
       & gradientFactor
+      & mingradientFactor
       & m
       & stochasticIter
       & momentum
@@ -58,6 +59,7 @@ public:
   int maxIter;
   int printLevel;
   double gradientFactor;
+  double mingradientFactor;
   Method m;
   std::map<int, std::string> correlatorFiles;
   int stochasticIter;
