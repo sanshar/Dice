@@ -50,11 +50,11 @@ double CPS::Overlap(Determinant& d) {
   long index=0, one=1;
   for (int n=0; n<bsites.size(); n++)
     if (d.getoccB( bsites[n]))
-      index != (one<<n);
+      index |= (one<<n);
       //index += pow(2,n);
   for (int n=0; n<asites.size(); n++)
     if (d.getoccA( asites[n]))
-      index != (one << (n+bsites.size()));
+      index |= (one << (n+bsites.size()));
   //index += pow(2, n+bsites.size());
 
   return Variables[index];

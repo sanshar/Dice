@@ -719,6 +719,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
 	      ham += localham;
 
+	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia * ovlpdetcopy*scale;
 	      OverlapWithGradient(dcopy, factor, grad);
@@ -751,6 +752,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 	      ham += localham;
 
+	      double Edet = dcopy.Energy(I1, I2, coreE);
 	      double ovlpdetcopy = localham/tia;
 	      double factor = tia * ovlpdetcopy*scale;
 	      //double factor = tia/(Epsi-Edet);
@@ -773,15 +775,14 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		for (int b=a+1; b<Determinant::norbs; b++)
 		  if (!d.getoccA(b)) {
 
-		    //double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
-		    double tiajb = I2(2*a,2*i,2*b,2*j) - I2(2*a,2*j,2*b,2*i);
+		    double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
 		    double localham = 0.0;
 		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
 
-		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv, false)
+		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv)
 			*ovlp;
 
 		      for (int n=0; n<cpsArray.size(); n++) 
@@ -793,6 +794,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      ham += localham;
 
+		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
@@ -815,15 +817,14 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		for (int b=a+1; b<Determinant::norbs; b++)
 		  if (!d.getoccB(b)) {
 
-		    //double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
-		    double tiajb = I2(2*a+1, 2*i+1, 2*b+1, 2*j+1) - I2(2*a+1, 2*j+1, 2*b+1, 2*i+1 );
+		    double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
 		    double localham = 0.0;
 		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
 
-		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv, false)
+		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv)
 			*ovlp;
 
 		      for (int n=0; n<cpsArray.size(); n++) 
@@ -835,6 +836,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      ham += localham;
 
+		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
@@ -857,15 +859,14 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		for (int b=0; b<Determinant::norbs; b++)
 		  if (!d.getoccB(b)) {
 
-		    //double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
-		    double tiajb = I2(2*a,2*i,2*b+1,2*j+1);
+		    double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
 		    double localham = 0.0;
 		    if (abs(tiajb) > TINY) {
 		      Determinant dcopy = d;
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
 
-		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv, false)
+		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv)
 			*ovlp;
 
 		      for (int n=0; n<cpsArray.size(); n++) 
@@ -877,6 +878,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 
 		      ham += localham;
 
+		      double Edet = dcopy.Energy(I1, I2, coreE);
 		      double ovlpdetcopy = localham/tiajb;
 		      double factor = tiajb * ovlpdetcopy*scale;
 		      OverlapWithGradient(dcopy, factor, grad);
