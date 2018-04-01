@@ -41,7 +41,8 @@ double MoDeterminant::OverlapB(Determinant& d, int i, int a,
 
 
 double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b, 
-				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				bool doparity) {
 
   double p = 1.0;
 
@@ -51,14 +52,18 @@ double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b,
   factor2 = OverlapA(d, j, b, alphainv, betainv, false);
   factor3 = OverlapA(d, i, b, alphainv, betainv, false);
   factor4 = OverlapA(d, j, a, alphainv, betainv, false);
-  d.parityA(a, i, p); d.setoccA(a, true); d.setoccA(i, false);
-  d.parityA(b, j, p); d.setoccA(a, false); d.setoccA(i, true);
+
+  if (doparity) {
+    d.parityA(a, i, p); d.setoccA(a, true); d.setoccA(i, false);
+    d.parityA(b, j, p); d.setoccA(a, false); d.setoccA(i, true);
+  }
   return p*(factor1*factor2 - factor3*factor4);
 }
 
 
 double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b, 
-				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				bool doparity) {
 
   double p = 1.0;
 
@@ -68,21 +73,23 @@ double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b,
   factor2 = OverlapB(d, j, b, alphainv, betainv, false);
   factor3 = OverlapB(d, i, b, alphainv, betainv, false);
   factor4 = OverlapB(d, j, a, alphainv, betainv, false);
-  d.parityB(a, i, p); d.setoccB(a, true);  d.setoccB(i, false);
-  d.parityB(b, j, p); d.setoccB(a, false); d.setoccB(i, true);
-
+  if (doparity) {
+    d.parityB(a, i, p); d.setoccB(a, true);  d.setoccB(i, false);
+    d.parityB(b, j, p); d.setoccB(a, false); d.setoccB(i, true);
+  }
   return p*(factor1*factor2 - factor3*factor4);
 }
 
 double MoDeterminant::OverlapAB(Determinant& d, int i, int j, int a, int b, 
-				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv) {
+				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				bool doparity) {
 
   double p = 1.0;
 
   double factor1 = 1.0, factor2 = 1.0, factor3 = 1.0, factor4 = 1.0;
 
-  factor1 = OverlapA(d, i, a, alphainv, betainv);
-  factor2 = OverlapB(d, j, b, alphainv, betainv);
+  factor1 = OverlapA(d, i, a, alphainv, betainv, doparity);
+  factor2 = OverlapB(d, j, b, alphainv, betainv, doparity);
   return p*(factor1*factor2);
 }
 

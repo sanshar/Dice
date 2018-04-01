@@ -194,6 +194,26 @@ class Determinant {
     }
   }
 
+  void getOpenClosedElecHoleAlpha( vector<int>& openE, vector<int>& closedE,
+				   vector<int>& openH, vector<int>& closedH) {
+    for (int i=0; i<norbs; i++) {
+      if ( getoccA(i) &&  getoccB(i)) closedE.push_back(i); 
+      if ( getoccA(i) && !getoccB(i)) openE.push_back(i); 
+      if (!getoccA(i) &&  getoccB(i)) closedH.push_back(i); 
+      if (!getoccA(i) && !getoccB(i)) openH.push_back(i); 
+    }    
+  }
+
+  void getOpenClosedElecHoleBeta( vector<int>& openE, vector<int>& closedE,
+				  vector<int>& openH, vector<int>& closedH) {
+    for (int i=0; i<norbs; i++) {
+      if ( getoccB(i) &&  getoccA(i)) closedE.push_back(i); 
+      if ( getoccB(i) && !getoccA(i)) openE.push_back(i); 
+      if (!getoccB(i) &&  getoccA(i)) closedH.push_back(i); 
+      if (!getoccB(i) && !getoccA(i)) openH.push_back(i); 
+    }    
+  }
+
   void getAlphaBeta(vector<int>& alpha, vector<int>& beta) {
     for (int i=0; i<64*EffDetLen; i++) {
       if (getoccA(i)) alpha.push_back(i);

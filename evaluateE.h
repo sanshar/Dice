@@ -39,7 +39,8 @@ void getGradient(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
 void getStochasticGradient(CPSSlater& w, double& E0, double& stddev, 
 			   int& nalpha, int& nbeta, int& norbs,
 			   oneInt& I1, twoInt& I2, double& coreE,
-			   Eigen::VectorXd& grad, int niter, double targetError);
+			   Eigen::VectorXd& grad, double& rk,
+			   int niter, double targetError);
 
 void comb(int N, int K, std::vector<std::vector<int> >& combinations);
 

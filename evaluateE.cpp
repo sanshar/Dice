@@ -277,10 +277,9 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
 void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
 			   int& nalpha, int& nbeta, int& norbs,
 			   oneInt& I1, twoInt& I2, double& coreE, 
-			   VectorXd& grad, int niter, double targetError) 
+			   VectorXd& grad, double& rk, 
+			   int niter, double targetError) 
 {
-  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
-			  std::ref(generator));
 
   //initialize the walker
   Determinant d;
@@ -294,8 +293,7 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
   stddev = 1.e4;
   int iter = 0;
   double M1=0., S1 = 0., Eavg=0.;
-  double cumulative=0, cumulative2=0;
-  double rk=1.0, Eloc=0.;
+  double Eloc=0.;
   double ham=0., ovlp =0.;
   VectorXd localGrad = grad; localGrad.setZero();
   double scale = 1.0;
@@ -315,7 +313,6 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       iter = 0;
       reset = false;
       M1 = 0.; S1=0.;
-      gradError.resize(1000, 0);
       Eloc = 0; grad.setZero();
       diagonalGrad.setZero();
     }
@@ -337,35 +334,17 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       rk = calcTcorr(gradError);
     }
     
+    bool success = walk.makeMove(w);
+    //bool success = walk.makeCleverMove(w, I1);
+    //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
+    //if (iter == 50) exit(0);
+    if (success) {
+      localGrad.setZero();
+      localdiagonalGrad.setZero();
+      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+      w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
+    }
     
-    //pick a random occupied orbital
-    int i = floor( random()*(nalpha+nbeta) );
-    if (i < nalpha) {
-      int a = floor(random()* (norbs-nalpha) );
-      double detfactor = walk.getDetFactorA(i, a, w);
-      if ( pow(detfactor, 2) > random() ) {
-	walk.updateA(i, a, w);
-	localGrad.setZero();
-	localdiagonalGrad.setZero();
-	w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
-	w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
-      }
-      
-    }
-    else {
-      i = i - nalpha;
-      int a = floor( random()*(norbs-nbeta));
-      double detfactor = walk.getDetFactorB(i, a, w);
-      
-      if ( pow(detfactor, 2) > random() ) {
-	walk.updateB(i, a, w);
-	localGrad.setZero();
-	localdiagonalGrad.setZero();
-	w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
-	w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
-      }
-      
-    }
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

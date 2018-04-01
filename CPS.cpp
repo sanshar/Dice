@@ -26,13 +26,17 @@ void CPS::OverlapWithGradient(Determinant& d,
 			      double& ovlp,
 			      long& startIndex) {
 
-  long index=0;
+  long index=0, one=1, index2=0;
   for (int n=0; n<bsites.size(); n++)
-    if (d.getoccB( bsites[n]))
-      index += pow(2,n);
+    if (d.getoccB( bsites[n])) {
+      index |= (one<< (n));
+    }
   for (int n=0; n<asites.size(); n++)
-    if (d.getoccA( asites[n]))
-      index += pow(2, n+bsites.size());
+    if (d.getoccA( asites[n])) {
+      index |= (one<< (n+bsites.size()));
+    }
+  //index &= (one << (n+bsites.size()+1));
+  //index += pow(2, n+bsites.size());
 
   grad[index+startIndex] += ovlp/Variables[index]; 
   return ;
@@ -43,13 +47,15 @@ double CPS::Overlap(Determinant& d) {
   //Coeff = sum_n c_nP_n |Psi>, where n is all the possible occupations of asites and bsites
   double Coefficient = 0.0;
 
-  long index=0;
+  long index=0, one=1;
   for (int n=0; n<bsites.size(); n++)
     if (d.getoccB( bsites[n]))
-      index += pow(2,n);
+      index != (one<<n);
+      //index += pow(2,n);
   for (int n=0; n<asites.size(); n++)
     if (d.getoccA( asites[n]))
-      index += pow(2, n+bsites.size());
+      index != (one << (n+bsites.size()));
+  //index += pow(2, n+bsites.size());
 
   return Variables[index];
 }

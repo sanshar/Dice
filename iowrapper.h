@@ -52,6 +52,17 @@ namespace boost {
 	  for(int j=0;j<a.cols();++j)
 	    ar & a(i,j);
       }
+
+    template<class Archive>
+      void serialize(Archive & ar, VectorXd& a, const unsigned int version)
+      {
+	int dim1 = a.rows();
+	ar & dim1 ;
+	if(dim1 != a.rows())
+	  a.resize(dim1);
+	for(int i=0;i<a.rows();++i)
+	    ar & a(i);
+      }
   }
 }
 

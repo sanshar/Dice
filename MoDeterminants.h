@@ -60,11 +60,14 @@ class MoDeterminant {
 		  Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 		  bool doparity = true);
   double OverlapAA(Determinant& d, int i, int j, int a, int b,
-		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
   double OverlapBB(Determinant& d, int i, int j, int a, int b,
-		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
   double OverlapAB(Determinant& d, int i, int j, int a, int b,
-		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv);
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
   void getDetMatrix(Determinant& d, Eigen::MatrixXd& alpha, Eigen::MatrixXd &beta);
   double Overlap(MoDeterminant& m);
 

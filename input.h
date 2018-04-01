@@ -48,7 +48,8 @@ private:
       & momentum
       & momentumDecay
       & decay
-      & learningEpoch;
+      & learningEpoch
+      & seed;
   }
 public:
   bool restart;
@@ -67,6 +68,7 @@ public:
   double momentumDecay;
   double decay;
   int learningEpoch;
+  int seed;
 };
 
 void readInput(std::string input, schedule& schd);

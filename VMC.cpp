@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, schd, 0);
 #endif
 
-  generator = std::mt19937(getTime()+commrank);
+  generator = std::mt19937(schd.seed+commrank);
   //generator = std::mt19937(commrank);
 
   twoInt I2; oneInt I1; 

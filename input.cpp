@@ -18,6 +18,7 @@
 */
 #include "input.h"
 #include "CPS.h"
+#include "global.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -93,6 +94,7 @@ void readInput(string input, schedule& schd) {
   schd.momentumDecay = 0.001;
   schd.decay = 0.9;
   schd.learningEpoch = 10;
+  schd.seed = getTime();
   while (dump.good()) {
 
     std::string
@@ -130,6 +132,8 @@ void readInput(string input, schedule& schd) {
       schd.momentum = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "momentumDecay"))
       schd.momentumDecay = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "seed"))
+      schd.seed = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "decay"))
       schd.decay = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "learningepoch"))
