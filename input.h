@@ -71,7 +71,7 @@ public:
   int seed;
 };
 
-void readInput(std::string input, schedule& schd);
+void readInput(std::string input, schedule& schd, bool print=true);
 void readCorrelator(std::string input, int correlatorSize,
 		    std::vector<CPS>& correlators);
 #endif

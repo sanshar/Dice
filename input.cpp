@@ -74,10 +74,12 @@ void readHF(MatrixXd& Hfmatrix) {
     dump >> Hfmatrix(i,j);
 }
 
-void readInput(string input, schedule& schd) {
+void readInput(string input, schedule& schd, bool print) {
+  if (print) {
   cout << "**************************************************************"<<endl;
   cout << "Input file  :"<<endl;
   cout << "**************************************************************"<<endl;
+  }
 
   ifstream dump(input.c_str());
 
@@ -101,7 +103,7 @@ void readInput(string input, schedule& schd) {
       Line;
     std::getline(dump, Line);
     trim(Line);
-    cout <<Line<<endl;
+    if (print) cout <<Line<<endl;
 
     vector<string> tok;
     boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
