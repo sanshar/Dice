@@ -44,7 +44,7 @@ vector<double> davidsonDirect(
 double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
 
 //(H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc 
-//solving using QR decomposition
-double LinearSolverQR(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
+//solving using eigen with CG same as above
+double LinearSolver(MatrixXx& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
 
 #endif

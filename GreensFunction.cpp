@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License along with thi
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
+#include "SHCIgetdeterminants.h"
+#include "SHCISortMpiUtils.h"
 #include "SHCImakeHamiltonian.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -26,6 +28,7 @@ You should have received a copy of the GNU General Public License along with thi
 #include <tuple>
 #include <numeric>
 #include "boost/format.hpp"
+#include <boost/serialization/shared_ptr.hpp>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -40,6 +43,7 @@ You should have received a copy of the GNU General Public License along with thi
 
 using namespace Eigen;
 using namespace boost;
+using namespace SHCISortMpiUtils;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
@@ -75,8 +79,12 @@ void license() {
   pout << endl;
 }
 
-CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
+//only works for i=j=0, need to fix creation/annihilation operator action
+CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
         Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) ; 
+
+CItype calcFirstGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, std::vector<Determinant>& DetsPert, std::vector<CItype>& ciPert, double E0, CItype w) ; 
 
 CItype calcGreensFunctionExact(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
         Determinant* DetsNm1v, int DetsNm1vSize, std::vector<MatrixXd>& ciNm1, 
@@ -222,6 +230,7 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, DetsNm1vSize, 0);
 #endif
   //calculate greens function
+  pout << "w               g" << schd.ij[0] << schd.ij[1] << endl; 
   for(int i=0; i<(schd.w[1]-schd.w[0])/schd.w[3]; i++){
       std::complex<double> w (schd.w[0]+schd.w[3]*i, schd.w[2]);
       CItype g_ij = calcGreensFunctionExact(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
@@ -236,7 +245,8 @@ int main(int argc, char* argv[]) {
   
   //to store dets in psi0 less one electron, to construct H0 on N-1 electron space 
   //calc only in 0 proc
-  std::vector<Determinant> DetsNm1;
+  std::vector<Determinant> DetsNm1; 
+  std::vector<Determinant> SortedDetsvec; //dets in psi0 sorted 
  
   if (commrank == 0) {
       //fill up DetsNm1
@@ -257,14 +267,21 @@ int main(int argc, char* argv[]) {
       //remove duplicates
       std::sort(DetsNm1.begin(), DetsNm1.end());
       SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
-  }
+      for (int i=0; i<Dets.size(); i++) SortedDetsvec.push_back(Dets[i]);
+      std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
+      }
 
-
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+  
   //put dets in shared memory
-  Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
+  Determinant* SHMDets, *SHMDetsNm1, *SHMSortedDets; CItype *SHMci;//don't need non-sorted shared dets, delete later
   int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   Dets.clear();
+  SHMVecFromVecs(SortedDetsvec, SHMSortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+  SortedDetsvec.clear();
   SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
   DetsNm1.clear();
   SHMVecFromMatrix(ci, SHMci, shcicMax, cMaxSegment, regioncMax);
@@ -288,14 +305,210 @@ int main(int argc, char* argv[]) {
   Hmult2 H(sparseHam);
   t2 = MPI_Wtime();
 
+  //preparing first order perturbation calculation
+  //initialize the heatbath integral
+  std::vector<int> allorbs;
+  for (int i=0; i<norbs/2; i++) allorbs.push_back(i);
+  twoIntHeatBath I2HB(1.e-10);
+  twoIntHeatBathSHM I2HBSHM(1.e-10);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs/2);
+  I2HBSHM.constructClass(norbs/2, I2HB);
+
+  //testing getdets
+  //int nclosed = nelec;
+  //int nopen   = norbs-nclosed;
+  //vector<int> closed(nelec,0);
+  //vector<int> open(norbs-nelec,0);
+  //Determinant d = SHMDets[0];
+  //d.getOpenClosed(open, closed);
+  ////d.getRepArray(detArray);
+
+  //// mono-excited determinants
+  //pout << "singly excited" << endl;
+  //for (int ia=0; ia<nopen*nclosed; ia++){
+  //  int i=ia/nopen, a=ia%nopen;
+  //  //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
+  //  CItype integral = Hij_1Excite(open[a],closed[i],I1,I2, &closed[0], nclosed);
+
+  //  // sgn
+  //  if (closed[i]%2 != open[a]%2) {
+  //    double sgn = 1.0;
+  //    d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+  //    integral = I1(open[a], closed[i])*sgn;
+  //  }
+
+  //  // generate determinant if integral is above the criterion
+  //  if (fabs(integral) > 1e-10 ) {
+  //    Determinant di = d;
+  //    di.setocc(open[a], true); di.setocc(closed[i],false);
+  //    pout << di << endl;
+  //  }
+  //} // ia
+
+  //
+  //// bi-excitated determinants
+  ////#pragma omp parallel for schedule(dynamic)
+  ////if (fabs(I2.maxEntry) < 1e-10) return;
+  //// for all pairs of closed
+  //pout << "double excited" << endl;
+  //for (int ij=0; ij<nclosed*nclosed; ij++) {
+  //  int i=ij/nclosed, j = ij%nclosed;
+  //  if (i<=j) continue;
+  //  int I = closed[i]/2, J = closed[j]/2;
+  //  int X = max(I, J), Y = min(I, J);
+
+  //  int pairIndex = X*(X+1)/2+Y;
+  //  size_t start = closed[i]%2==closed[j]%2 ? I2HBSHM.startingIndicesSameSpin[pairIndex]   : I2HBSHM.startingIndicesOppositeSpin[pairIndex];
+  //  size_t end   = closed[i]%2==closed[j]%2 ? I2HBSHM.startingIndicesSameSpin[pairIndex+1] : I2HBSHM.startingIndicesOppositeSpin[pairIndex+1];
+  //  float* integrals  = closed[i]%2==closed[j]%2 ?  I2HBSHM.sameSpinIntegrals : I2HBSHM.oppositeSpinIntegrals;
+  //  short* orbIndices = closed[i]%2==closed[j]%2 ?  I2HBSHM.sameSpinPairs     : I2HBSHM.oppositeSpinPairs;
+  //  pout << start << "  " << end << endl;
+
+  //  // for all HCI integrals
+  //  for (size_t index=start; index<end; index++) {
+  //    // if we are going below the criterion, break
+  //    //if (fabs(integrals[index]) < 1e-10) break;
+
+  //    // otherwise: generate the determinant corresponding to the current excitation
+  //    int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+  //    if (!(d.getocc(a) || d.getocc(b))) {
+  //      Determinant di = d;
+  //      di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+  //      pout << di << endl;
+  //    }
+  //  } // heatbath integrals
+  //} // ij
+
+  //calculating psi1
+  StitchDEH uniqueDEH;
+  int size = commsize, rank = commrank;
+  vector<size_t> all_to_all(size*size,0);
+  int count = 0;
+  for (int i=0; i<DetsSize; i++) {
+    if ((i%size != rank)) continue;
+    SHCIgetdeterminants::getDeterminantsDeterministicPT(SHMDets[i], 0.0, SHMci[i], 0.0,
+  						  I1, I2, I2HBSHM, irrep, coreE, E0[0],
+  						  *uniqueDEH.Det,
+  						  *uniqueDEH.Num,
+  						  *uniqueDEH.Energy,
+  						  schd,0, nelec);
+        //pout << i << "  " << SHMDets[i] << endl;
+        //pout << "connected to Dets[i]  " << endl;
+        //for(int j=count; j<uniqueDEH.Det->size(); j++){
+        //    pout << uniqueDEH.Det->at(j) << endl;
+        //    count++;
+        //}
+    }
+    
+
+  if(commsize >1 ) {
+    boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH.Det;
+    boost::shared_ptr<vector<CItype> >& Num = uniqueDEH.Num;
+    boost::shared_ptr<vector<double> >& Energy = uniqueDEH.Energy;
+    boost::shared_ptr<vector<int > >& var_indices = uniqueDEH.var_indices_beforeMerge;
+    boost::shared_ptr<vector<size_t > >& orbDifference = uniqueDEH.orbDifference_beforeMerge;
+ 
+    std::vector<size_t> hashValues(Det->size());
+    
+    std::vector<size_t> all_to_all_cumulative(size,0);
+    for (int i=0; i<Det->size(); i++) {
+      hashValues[i] = Det->at(i).getHash();
+      all_to_all[rank*size+hashValues[i]%size]++; 
+    }
+    for (int i=0; i<size; i++)
+      all_to_all_cumulative[i] = i == 0 ? all_to_all[rank*size+i] :  all_to_all_cumulative[i-1]+all_to_all[rank*size+i];
+    
+    size_t dsize = Det->size() == 0 ? 1 : Det->size();
+    vector<Determinant> atoaDets(dsize);
+    vector<CItype> atoaNum(dsize);
+    vector<double> atoaE(dsize);
+    vector<int > atoaVarIndices;
+    vector<size_t > atoaOrbDiff;
+
+#ifndef SERIAL
+    vector<size_t> all_to_allCopy = all_to_all;
+    MPI_Allreduce( &all_to_allCopy[0], &all_to_all[0], 2*size*size, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif    
+
+    vector<size_t> counter(size, 0);
+    for (int i=0; i<Det->size(); i++) {
+      int toProc = hashValues[i]%size;
+      size_t index = toProc==0 ? counter[0] : counter[toProc] + all_to_all_cumulative[toProc-1];
+      
+      atoaDets[index ] = Det->at(i);
+      atoaNum[index] = Num->at(i);
+      atoaE[index] = Energy->at(i);
+      counter[toProc]++;
+    }
+    
+    vector<int> sendcts(size,0), senddisp(size,0), recvcts(size,0), recvdisp(size,0);
+    vector<int> sendctsDets(size,0), senddispDets(size,0), recvctsDets(size,0), recvdispDets(size,0);
+    vector<int> sendctsVarDiff(size,0), senddispVarDiff(size,0), recvctsVarDiff(size,0), recvdispVarDiff(size,0);
+    
+    size_t recvSize = 0;
+    for (int i=0; i<size; i++) {
+      sendcts[i] = all_to_all[rank*size+i]* sizeof(CItype)/sizeof(double);
+      senddisp[i] = i==0? 0 : senddisp[i-1]+sendcts[i-1];
+      recvcts[i] = all_to_all[i*size+rank]*sizeof(CItype)/sizeof(double);
+      recvdisp[i] = i==0? 0 : recvdisp[i-1]+recvcts[i-1];
+      
+      sendctsDets[i] = all_to_all[rank*size+i]* sizeof(Determinant)/sizeof(double);
+      senddispDets[i] = i==0? 0 : senddispDets[i-1]+sendctsDets[i-1];
+      recvctsDets[i] = all_to_all[i*size+rank]*sizeof(Determinant)/sizeof(double);
+      recvdispDets[i] = i==0? 0 : recvdispDets[i-1]+recvctsDets[i-1];
+      
+      sendctsVarDiff[i] = all_to_all[rank*size+i];
+      senddispVarDiff[i] = i==0? 0 : senddispVarDiff[i-1]+sendctsVarDiff[i-1];
+      recvctsVarDiff[i] = all_to_all[i*size+rank];
+      recvdispVarDiff[i] = i==0? 0 : recvdispVarDiff[i-1]+recvctsVarDiff[i-1];
+      
+      recvSize += all_to_all[i*size+rank];
+    }
+    
+    recvSize =  recvSize == 0 ? 1 : recvSize;
+    Det->resize(recvSize), Num->resize(recvSize), Energy->resize(recvSize);
+    
+#ifndef SERIAL
+    MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE, &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE, MPI_COMM_WORLD);
+    MPI_Alltoallv(&atoaE.at(0), &sendctsVarDiff[0], &senddispVarDiff[0], MPI_DOUBLE, &Energy->at(0), &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
+    MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0], MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0], &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
+#endif
+    uniqueDEH.Num2->clear();
+    
+  }
+  uniqueDEH.MergeSortAndRemoveDuplicates();
+  uniqueDEH.RemoveDetsPresentIn(SHMSortedDets, DetsSize);
+  
+  vector<Determinant>& hasHEDDets = *uniqueDEH.Det;
+  vector<CItype>& hasHEDNumerator = *uniqueDEH.Num;
+  vector<double>& hasHEDEnergy    = *uniqueDEH.Energy;
+  for(int i=0; i<hasHEDDets.size(); i++) hasHEDNumerator[i]=hasHEDNumerator[i]/(E0[0]-hasHEDEnergy[i]);
+  //pout <<" cSize  " << hasHEDDets.size() << " " << hasHEDNumerator.size() << " " << hasHEDEnergy.size() << endl; 
+  //size_t orbDiff = 0;
+  //for(int i=0; i< hasHEDDets.size(); i++) pout << hasHEDNumerator[i] << "  " << hasHEDDets[i] << "  " << Hij(SHMDets[0], hasHEDDets[i], I1, I2, coreE, orbDiff).real() << endl;
+
+  //constructing matrix hamiltonian to use eigen linearsolver
+  //MatrixXd HamiltonianNm1=MatrixXd::Zero(DetsNm1Size, DetsNm1Size);
+  //for (int i=0; i<DetsNm1Size; i++) {
+  //    HamiltonianNm1(i,i) = SHMDetsNm1[i].Energy(I1, I2, coreE);
+  //    for (int j=i+1; j<DetsNm1Size; j++) {
+  //        if (SHMDetsNm1[i].connected(SHMDetsNm1[j])) {
+  //            size_t orbDiff = 0;
+  //            HamiltonianNm1(i,j) = Hij(SHMDetsNm1[i], SHMDetsNm1[j], I1, I2, coreE, orbDiff).real();
+  //            HamiltonianNm1(j,i) = HamiltonianNm1(i,j);
+  //        }
+  //    }
+  //}
+  
   //calculate greens function
-  pout << "w               g00" << endl; 
+  pout << "w               g" << schd.ij[0] << schd.ij[1] << endl; 
   for(int i=0; i<(schd.w[1]-schd.w[0])/schd.w[3]; i++){
       std::complex<double> w (schd.w[0]+schd.w[3]*i, schd.w[2]);
       //pout << "w " << w << endl;
-      CItype g_ij = calcGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H,  E0[0], w);
+      CItype g_ij = calcZerothGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, E0[0], w);
+      CItype g_ij1 = calcFirstGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, hasHEDDets, hasHEDNumerator, E0[0], w);
       t3 = MPI_Wtime();
-      pout << w << "  " << g_ij << endl;
+      pout << w << "  " << g_ij << "  " << g_ij1 << "  " << " " << g_ij-((0,1.0)*g_ij1) << endl;
   }
   
  
@@ -308,13 +521,13 @@ int main(int argc, char* argv[]) {
 
 }
 
-//to calculate G_ij(w) = <psi0| a_i^(dag) 1/(H0-E0-w) a_j |psi0>
+//to calculate G^0_ij(w) = -<psi0| a_i^(dag) 1/(H0-E0-w) a_j |psi0>
 //w is a complex number
 //psi0 is the variational ground state, a_i, a_j are annihilation operators 
 //H0 is the Hamiltonian and E0 is the N electron variational ground state energy 
 //Dets has dets in psi0, ci has the corresponding coeffs
 //DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
-CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) {
+CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) {
 
 #ifndef SERIAL
     boost::mpi::communicator world;
@@ -335,22 +548,25 @@ CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
         }
     }
     
-
-
 #ifndef SERIAL
     world.barrier();
 #endif
     
-    
-    //solve for x0 = 1/w+H0-E0 a_j |psi0>
+    //solving for x0 using eigen linear solver
+    //MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
+    //MatrixXx HamiltonianNm1diag = HamiltonianNm1;// to store H0-E0-w
+    //for(int k=0; k< DetsNm1Size; k++) HamiltonianNm1diag(k,k) = HamiltonianNm1(k,k)-E0-w;
+    //x0 = HamiltonianNm1diag.colPivHouseholderQr().solve(ciNm1);
+
+    //solve for x0 = 1/H0-E0-w a_j |psi0>
     MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
     vector<CItype*> proj;
     LinearSolver(HNm1, E0+w, x0, ciNm1, proj, 1.e-5, false);
     
     //testing
-    //pout << "ciNm1   x0     DetsNm1 " << endl;
+    //pout << " x0     x01    DetsNm1" << endl;
     //for(int k=0; k<DetsNm1Size; k++){
-    //    pout << ciNm1(k) << "  " << x0(k) << "   " << DetsNm1[k] << endl;
+    //    pout << x0(k) << "  " << x01(k) << "   " << DetsNm1[k] << endl;
     //}
     
     //calc <psi0|a_i^(dag) x0
@@ -373,6 +589,79 @@ CItype calcGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsS
     return -overlap;
 
 }
+
+
+//to calculate G^1_ij(w) = <psi0| a_i* 1/(w-(H0-E0)) a_j 1/(H0-E0) H1 |psi0> + <psi0| H1 1/(H0-E0) a_i* 1/(w-(H0-E0)) a_j |psi0>
+//w is a complex number
+//psi0 is the variational ground state, a_i, a_j are annihilation operators 
+//H0 is the Hamiltonian and E0 is the N electron variational ground state energy
+//H1 is the perturbation
+//Dets has dets in psi0, ci has the corresponding coeffs
+//DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
+//DetsPert has dets in 1/(H0-E0) H1 |psi0>, ciPert has corresponding coeffs (each proc has a copy of these for now)
+CItype calcFirstGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, std::vector<Determinant>& DetsPert, std::vector<CItype>& ciPert, double E0, CItype w) {
+
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
+
+    //first evaluating 1/(w-(H0-E0)) a_i |psi0> (not w*)
+    //to store ci coeffs in a_i|psi0>, corresponding to dets in DetsNm1
+    MatrixXx ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);  
+    
+    //calc a_i|psi0>
+    //doing this on all procs
+    Determinant detTemp;
+    for(int k=0; k<DetsSize; k++){
+        if(Dets[k].getocc(i)) {
+            detTemp = Dets[k];
+            detTemp.setocc(i, false); //annihilated Det[k]
+            int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); //binary search for detTemp in DetsNm1
+            ciNm1(n) = ci[k];
+        }
+    }
+    
+#ifndef SERIAL
+    world.barrier();
+#endif
+   
+    //solving for x0 using eigen linear solver
+    //MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
+    //MatrixXx HamiltonianNm1diag = HamiltonianNm1;// to store H0-E0-w
+    //for(int k=0; k< DetsNm1Size; k++) HamiltonianNm1diag(k,k) = HamiltonianNm1(k,k)-E0-w;
+    //x0 = HamiltonianNm1diag.colPivHouseholderQr().solve(ciNm1);
+
+    //solve for x0 = 1/H0-E0-w a_i |psi0>
+    MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
+    vector<CItype*> proj;
+    LinearSolver(HNm1, E0+w, x0, ciNm1, proj, 1.e-5, false);
+    
+
+    //calculate overlap < x0 | a_j | ciPert >
+    CItype overlap = 0.0;
+    if(commrank == 0){
+        for(int k=0; k<DetsPert.size(); k++){
+            if(DetsPert[k].getocc(j)) {
+                detTemp = DetsPert[k];
+                detTemp.setocc(j, false); //annihilated DetPert[k]
+                if(std::binary_search(DetsNm1, DetsNm1+DetsNm1Size, detTemp)){//binary search for detTemp in DetsNm1
+                        int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); 
+                        overlap += ciPert[k]*x0(n);
+                }
+            }
+        }
+    }
+    
+#ifndef SERIAL
+    mpi::broadcast(world, overlap, 0);
+#endif
+
+    return -2*overlap;
+
+}
+
+
 
 CItype calcGreensFunctionExact(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
         Determinant* DetsNm1v, int DetsNm1vSize, std::vector<MatrixXd>& ciNm1, std::vector<size_t>& idx, double E0, std::vector<double>& ENm1, CItype w) {
