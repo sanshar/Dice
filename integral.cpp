@@ -247,7 +247,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   size_t nonZeroIntegrals = 0;
 
   if (commrank == 0) {
-    //conver to CItype
+    //convert to CItype
     std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.begin();
     for (;it1!= I2.integral.end(); it1++) nonZeroIntegrals += it1->second.size();
 
