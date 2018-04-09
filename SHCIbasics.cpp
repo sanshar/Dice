@@ -793,10 +793,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
   //update the Hamiltonian with SOC terms
 #ifdef Complex
-  SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize, SortedDets, sparseHam.connections, 
-					    sparseHam.orbDifference, 
-					    sparseHam.Helements,
-					    norbs, I1, nelec, false);
+  //SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize, SortedDets, sparseHam.connections, 
+	//				    sparseHam.orbDifference, 
+	//				    sparseHam.Helements,
+	//				    norbs, I1, nelec, false);
 #endif
 
 
@@ -867,7 +867,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
 
   for (int iter=iterstart; iter<schd.epsilon1.size(); iter++) {
-
     double epsilon1 = schd.epsilon1[iter];    
     StitchDEH uniqueDEH;
     
@@ -1038,76 +1037,76 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
   mpi::broadcast(world, SortedDetsSize, 0);
 #endif
-
-  //Make the diagonal elements so that preconditioner can be applied in davidson
-  if (proc == 0) {
-    MatrixXx diagbkp = diag;
-    diag =MatrixXx::Zero(DetsSize,1);
-    for (int k=0; k<diagbkp.rows(); k++)
-      diag(k,0) = diagbkp(k,0);
-    
-    for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
-      CItype hij = SHMDets[k].Energy(I1, I2, coreE);
-      diag(k,0) = hij;
+//Make the diagonal elements so that preconditioner can be applied in davidson
+  //if (proc == 0) {
+  //  MatrixXx diagbkp = diag;
+  //  diag =MatrixXx::Zero(DetsSize,1);
+  //  for (int k=0; k<diagbkp.rows(); k++)
+  //    diag(k,0) = diagbkp(k,0);
+  //  
+  //  for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
+  //    CItype hij = SHMDets[k].Energy(I1, I2, coreE);
+  //    diag(k,0) = hij;
+  //  }
+  //}  
+/* Make the sparse Hamiltonian */
+  sparseHam.clear();
+  diag = MatrixXx::Zero(DetsSize,1);
+  sparseHam.connections.resize(SortedDetsSize);
+  sparseHam.Helements.resize(SortedDetsSize);
+  sparseHam.orbDifference.resize(SortedDetsSize);
+  if (proc==0) {
+    for (int i=0; i<SortedDetsSize; i++) {
+      for (int j=0; j<=i; j++) {
+        size_t orbDiff;
+        CItype connection;
+        if (i!=j) connection = Hij(SortedDets[i], SortedDets[j], I1, I2, coreEbkp, orbDiff);
+        else connection = SortedDets[i].Energy(I1,I2,coreEbkp), diag(i,0) = connection;
+        if (abs(connection) >= 1.0e-10) {
+          sparseHam.connections[i].push_back(j);
+          sparseHam.Helements[i].push_back(connection);
+          sparseHam.orbDifference[i].push_back(orbDiff);
+        }
+      }
     }
-  }  
-  
-
-  //Hmult has a operator() that lets you multiply a vector with H to generate and output
-  double prevE0 = E0[0];
-  if (iter == 0) prevE0 = -10.0;
+  }
   Hmult2 H(sparseHam);
-  HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
-		      I1, I2, coreE, diag); 
-  if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
   int numIter = 0;
-  
-  //do the davidson calculation
-  if (schd.DavidsonType == DIRECT)
-    E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
-  else
-    E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, schd.outputlevel >0);
-  
-  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
-
-
+  double prevE0 = E0[0];
+  E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
+  ci = X0;
+  //MatrixXx Hamiltonian = MatrixXx::Zero(SortedDetsSize,SortedDetsSize);
+  //if (proc == 0) {
+  //  for (int i=0; i<SortedDetsSize; i++) {
+  //    for (int j=0; j<=i; j++) {
+  //      if (i==j) Hamiltonian(i,j)=SortedDets[i].Energy(I1, I2, coreEbkp);
+  //      else {
+  //        size_t orbDiff;
+  //        Hamiltonian(i,j) = Hij(SortedDets[i], SortedDets[j], I1, I2, coreEbkp, orbDiff);
+  //        Hamiltonian(j,i) = std::conj(Hij(SortedDets[i], SortedDets[j], I1, I2, coreEbkp, orbDiff));
+  //      }
+  //    }
+  //  }
+  //  
+  //  //MatrixXx eigens = solveHermitian.eigenvectors();
+  //  //MatrixXx civec = eigens.row(0);
+  //  //ci.push_back(civec);
+  //  //pout << civec << endl;
+  //}
+  //  using Eigen::SelfAdjointEigenSolver;
+  //  SelfAdjointEigenSolver<MatrixXx> solveHermitian(Hamiltonian);
+  //  VectorXd energies = solveHermitian.eigenvalues();
+  //  E0[0] = energies(0);
+  //  ci[0] = solveHermitian.eigenvectors().col(0);
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
 #endif
 
-    pout << format("%4i %4i  %10.2e  %10.2e") 
-      %(iter) %(0) % schd.epsilon1[iter] % (newDets.size()+DetsSize) ;
-    pout << format("   %18.10f  %9i  %10.2f\n") 
-      % (E0[0]+coreEbkp) % (numIter) %(getTime()-startofCalc);
-
-    for (int i=1; i<E0.size(); i++)
-      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") 
-        %(iter) %(i) % schd.epsilon1[iter] % DetsSize % (E0[i]+coreEbkp) % (numIter) %(getTime()-startofCalc);
-    if (E0.size() >1) pout <<endl;
-
-    //update the civector
-    if (proc == 0) {
-      for (int i=0; i<E0.size(); i++) {
-        ci[i].resize(DetsSize,1); ci[i] = 1.0*X0[i];
-        X0[i].resize(0,0);
-      }
-    }
-
-
-    //the variational step has converged
-    if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
-      pout << endl<<"Performing final tight davidson with tol: "<<schd.davidsonTol<<endl;
-
-      if (schd.DavidsonType == DIRECT)
-        E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
-      else
-        E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
-
-#ifndef SERIAL
-      mpi::broadcast(world, E0, 0);
-#endif
-      pout <<endl<<"Exiting variational iterations"<<endl;
-      if (commrank == 0) {
+    //pout << format("%4i %10.2e %4i %18.10e %10.2e") 
+    //  %(iter) % schd.epsilon1[iter] % (newDets.size()+DetsSize) %(E0[0]) %(getTime()-startofCalc);
+    //pout << iter <<' '<< ' ' << SortedDetsSize << ' '<< E0[0]<<' ' << getTime()-startofCalc << endl;
+    pout << format("%4i %6i %16.10d %10.2d") %(iter) %(SortedDetsSize) %(E0[0]) %(getTime()-startofCalc)<< endl;
+        if (commrank == 0) {
         Dets.resize(DetsSize);
         for (int i=0; i<DetsSize; i++)
           Dets[i] = SHMDets[i];	
@@ -1115,118 +1114,183 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
+  //Make the diagonal elements so that preconditioner can be applied in davidson
+  //if (proc == 0) {
+  //  MatrixXx diagbkp = diag;
+  //  diag =MatrixXx::Zero(DetsSize,1);
+  //  for (int k=0; k<diagbkp.rows(); k++)
+  //    diag(k,0) = diagbkp(k,0);
+  //  
+  //  for (size_t k=diagbkp.rows(); k<DetsSize ; k++) {
+  //    CItype hij = SHMDets[k].Energy(I1, I2, coreE);
+  //    diag(k,0) = hij;
+  //  }
+  //}  
+  
 
-      unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||schd.doResponse, I1, I2, coreE);
-      if (Determinant::Trev != 0) {
-	//we add additional determinats 
-	SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);    
-      }
+  //Hmult has a operator() that lets you multiply a vector with H to generate and output
+  //double prevE0 = E0[0];
+  //if (iter == 0) prevE0 = -10.0;
+  //Hmult2 H(sparseHam);
+  //HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
+	//	      I1, I2, coreE, diag); exit(1)
+  //if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
+  //int numIter = 0;
+  
+  //do the davidson calculation
+  //if (schd.DavidsonType == DIRECT)
+  //  E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, //numIter, schd.outputlevel >0);
+  //else
+  //  E0 = davidson(H, X0, diag, schd.nroots+4, schd.davidsonTolLoose, numIter, //schd.outputlevel >0);
+  
+  //if (schd.outputlevel > 0 && commrank == 0) Time::print_time("davidson finished");
 
-      if (schd.DoOneRDM) {
-	pout <<"Calculating 1RDM"<<endl;
-	for (int i=0; i<schd.nroots; i++) {
-	  MatrixXx s1RDM, oneRDM;
-	  oneRDM = MatrixXx::Zero(norbs,norbs);
-	  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
-	  CItype *SHMci;
-	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
-	  SHCIrdm::EvaluateOneRDM(sparseHam.connections,SHMDets,DetsSize, SHMci,
-				  SHMci, sparseHam.orbDifference, nelec, schd,i,
-				  oneRDM, s1RDM);
-	  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
-	}
+
+
+    //pout << format("   %18.10f  %9i  %10.2f\n") 
+    //  % (E0[0]+coreEbkp) % (numIter) %(getTime()-startofCalc);
+//
+    //for (int i=1; i<E0.size(); i++)
+    //  pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  //%10.2f\n") 
+    //    %(iter) %(i) % schd.epsilon1[iter] % DetsSize % (E0[i]//+coreEbkp) % (numIter) %(getTime()-startofCalc);
+    //if (E0.size() >1) pout <<endl;
+
+    //update the civector
+    //if (proc == 0) {
+    //  for (int i=0; i<E0.size(); i++) {
+    //    ci[i].resize(DetsSize,1); 
+        //ci[i] = 1.0*X0[i];
+        //X0[i].resize(0,0);
+    //  }
+    //}
+
+
+    //the variational step has converged
+    if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
+      pout << endl<<"Performing final tight davidson with tol: ////"<<schd.davidsonTol<<endl;
+      //if (schd.DavidsonType == DIRECT)
+        //E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
+      //else
+      E0 = davidson(H, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, false);
+
+#ifndef SERIAL
+      mpi::broadcast(world, E0, 0);
+#endif
+      pout <<endl<<"Exiting variational iterations"<<endl;
+
+  //    writeVariationalResult(iter, ci, Dets, sparseHam, E0, true,// schd, helper2);
+//
+  //    unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||//schd.doResponse, I1, I2, coreE);
+  //    if (Determinant::Trev != 0) {
+	////we add additional determinats 
+	//SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, //regionDetsCI);    
       }
-      
-      
-      if (DoRDM || schd.doResponse) {
-	//if (schd.DavidsonType == DIRECT) {
-	//pout << "RDM not implemented with direct davidson."<<endl;
-	//exit(0);
+//
+  //    if (schd.DoOneRDM) {
+	//pout <<"Calculating 1RDM"<<endl;
+	//for (int i=0; i<schd.nroots; i++) {
+	//  MatrixXx s1RDM, oneRDM;
+	//  oneRDM = MatrixXx::Zero(norbs,norbs);
+	//  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
+	//  CItype *SHMci;
+	//  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, //regionDavidson);
+	//  SHCIrdm::EvaluateOneRDM(sparseHam.connections,SHMDets,//DetsSize, SHMci,
+	//			  SHMci, sparseHam.orbDifference, nelec, schd,i,
+	//			  oneRDM, s1RDM);
+	//  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
 	//}
-	pout <<"Calculating 2RDM"<<endl;
-	int trev = Determinant::Trev;
-	Determinant::Trev = 0;
-	for (int i=0; i<schd.nroots; i++) {
-	  CItype *SHMci;
-	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
- 
-	  MatrixXx twoRDM;
-	  if (schd.DoSpinRDM )
-	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
-	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
-
-	  if ((trev != 0 || schd.DavidsonType == DIRECT)) {
-	    //now that we have unpacked Trev list, we can forget about t-reversal symmetry
-	    if (proc == 0) {
-	      helper2.clear();
-	      helper2.PopulateHelpers(SHMDets, DetsSize, 0);
-	    }
-	    if (i == 0)
-	      helper2.MakeSHMHelpers();
-	    SHCIrdm::makeRDM(helper2.AlphaMajorToBetaLen, 
-			     helper2.AlphaMajorToBetaSM ,
-			     helper2.AlphaMajorToDetSM  ,
-			     helper2.BetaMajorToAlphaLen, 
-			     helper2.BetaMajorToAlphaSM ,
-			     helper2.BetaMajorToDetSM   ,
-			     helper2.SinglesFromAlphaLen, 
-			     helper2.SinglesFromAlphaSM ,
-			     helper2.SinglesFromBetaLen , 
-			     helper2.SinglesFromBetaSM  ,
-			     SHMDets, DetsSize,
-			     Norbs, nelec, SHMci, SHMci,
-			     s2RDM);
-
-	    //if (schd.outputlevel>0) 
-	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
-	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
-
-	  }
-	  else {
-	    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
-				 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
-	    //if (schd.outputlevel>0) 
-	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
-	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
-	    
-	    boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
-	  }
-        } // for i
-      }
-      sparseHam.resize(0);
-
-      break;
-    }
-    else {
-      if (schd.io) {
-	if (commrank == 0) {
-	  Dets.resize(DetsSize);
-	  for (int i=0; i<DetsSize; i++)
-	    Dets[i] = SHMDets[i];	  
-	}
-      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
-      }
-      Dets.clear();
-    }
-    
-    if (schd.outputlevel>0) pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
+  //    }
+  //    
+  //    
+  //    if (DoRDM || schd.doResponse) {
+	////if (schd.DavidsonType == DIRECT) {
+	////pout << "RDM not implemented with direct davidson."<<endl;
+	////exit(0);
+	////}.push_back(energies(0))
+	//pout <<"Calculating 2RDM"<<endl;
+	//int trev = Determinant::Trev;
+	//Determinant::Trev = 0;
+	//for (int i=0; i<schd.nroots; i++) {
+	//  CItype *SHMci;
+	//  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, //regionDavidson);
+ //
+	//  MatrixXx twoRDM;
+	//  if (schd.DoSpinRDM )
+	//    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)///2);
+	//  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)//*norbs/2);
+//
+	//  if ((trev != 0 || schd.DavidsonType == DIRECT)) {
+	//    //now that we have unpacked Trev list, we can forget about //t-reversal symmetry
+	//    if (proc == 0) {
+	//      helper2.clear();
+	//      helper2.PopulateHelpers(SHMDets, DetsSize, 0);
+	//    }
+	//    if (i == 0)
+	//      helper2.MakeSHMHelpers();
+	//    SHCIrdm::makeRDM(helper2.AlphaMajorToBetaLen, 
+	//		     helper2.AlphaMajorToBetaSM ,
+	//		     helper2.AlphaMajorToDetSM  ,
+	//		     helper2.BetaMajorToAlphaLen, 
+	//		     helper2.BetaMajorToAlphaSM ,
+	//		     helper2.BetaMajorToDetSM   ,
+	//		     helper2.SinglesFromAlphaLen, 
+	//		     helper2.SinglesFromAlphaSM ,
+	//		     helper2.SinglesFromBetaLen , 
+	//		     helper2.SinglesFromBetaSM  ,
+	//		     SHMDets, DetsSize,
+	//		     Norbs, nelec, SHMci, SHMci,
+	//		     s2RDM);
+//
+	//    //if (schd.outputlevel>0) 
+	//      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, //I2, coreEbkp, s2RDM);
+	//    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+//
+	//  }
+	//  else {
+	//    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, //DetsSize, SHMci, 
+	//			 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, //s2RDM);
+	//    //if (schd.outputlevel>0) 
+	//      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, //I2, coreEbkp, s2RDM);
+	//    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+	//    
+	//    boost::interprocess::shared_memory_object::remove//(shciDetsCI.c_str());
+	//  }
+  //      } // for i
+  //    }
+  //    sparseHam.resize(0);
+//
+  //    break;
+  //  }
+  //  else {
+  //    if (schd.io) {
+	//if (commrank == 0) {
+	//  Dets.resize(DetsSize);
+	//  for (int i=0; i<DetsSize; i++)
+	//    Dets[i] = SHMDets[i];	  
+	//}
+  //    writeVariationalResult(iter, ci, Dets, sparseHam, E0, true,// schd, helper2);
+  //    }
+  //    Dets.clear();
+  //  }
+  //  
+  //  if (schd.outputlevel>0) pout << format//("###########################################      %10.2f ") //%(getTime()-startofCalc)<<endl;
+  //}
+//
+  ////iter ends
+//
+  //boost::interprocess::shared_memory_object::remove//(shciDetsCI.c_str());
+  //boost::interprocess::shared_memory_object::remove//(shciHelper.c_str());
+//
+//
+  //pout << "VARIATIONAL CALCULATION RESULT"<<endl;
+  //pout << "------------------------------"<<endl;
+  //pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %//("Time(s)");
+  //for (int i=0; i<E0.size(); i++) {
+  //  E0[i] += coreEbkp;
+  //  pout << format("%4i  %18.10f  %10.2f\n") 
+  //    %(i) % (E0[i]) % (getTime()-startofCalc);
   }
-
-  //iter ends
-
-  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
-  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
-
-
-  pout << "VARIATIONAL CALCULATION RESULT"<<endl;
-  pout << "------------------------------"<<endl;
-  pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %("Time(s)");
-  for (int i=0; i<E0.size(); i++) {
-    E0[i] += coreEbkp;
-    pout << format("%4i  %18.10f  %10.2f\n") 
-      %(i) % (E0[i]) % (getTime()-startofCalc);
-  }
+  pout <<endl<<"Exiting variational iterations"<<endl;
   pout <<endl<<endl;
   coreE = coreEbkp;
   return E0;

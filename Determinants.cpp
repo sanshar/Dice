@@ -306,7 +306,6 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 	for (int i=0; i<closed.size(); i++) {
 		int I = closed.at(i);
 #ifdef Complex
-		//pout << "I1("<<I<<","<<I<<") = " << I1(I,I).real() << endl;
 		energy += I1(I,I).real();
 #else
 		energy += I1(I,I);
@@ -316,14 +315,12 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 			//energy += I2.Direct(I/2,J/2);
 			complex<double> Jij = I2.Direct(I,J), Kij = I2.Exchange(I,J);
 			energy += I2.Direct(I,J).real();
+			energy -= I2.Exchange(I,J).real();
 			//if ( (I%2) == (J%2) ) {
 				//energy -= I2.Exchange(I/2, J/2);
-			energy -= I2.Exchange(I,J).real();
-			//pout << "J"<<i<<j<<" = " << I2.Direct(I,J).real() << ", K"<<i<<j<<" = " << I2.Exchange(I,J).real() << endl;
 			//}
 		}
 	}
-
 	return energy+coreE;
 }
 
@@ -418,8 +415,7 @@ CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1,
 	parity(min(I, A), max(I,A), sgn);
 	parity(min(J, B), max(J,B), sgn);
 	if(A>J || B<I) sgn *= -1.;
-	return sgn*(I2(A,I,B,J) - I2(A,J,B,I)).real();
-	//return (I2(A,I,B,J) - I2(A,J,B,I)).real();
+	return sgn*(I2(A,I,B,J) - I2(A,J,B,I));
 }
 
 
@@ -489,13 +485,13 @@ CItype Determinant::Hij_1Excite(int& a, int& i, oneInt&I1, twoInt& I2) {
 		while (reprBit != 0) {
 			int pos = __builtin_ffsl(reprBit);
 			int j = I*64+pos-1;
-			energy += (I2(a,i,j,j) - I2(a,j,j,i)).real();
+			energy += (I2(a,i,j,j) - I2(a,j,j,i));
 			reprBit &= ~(one<<(pos-1));
 		}
 
 	}
 	energy *= sgn;
-	//return energy;
+	return energy;
 }
 
 

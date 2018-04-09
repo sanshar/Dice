@@ -26,8 +26,20 @@
 #########
 *.swp
 *.doctree
+*.bkp
+input*
 output*.dat
 *.vscode
+FCIDUMP*
+.idea/*
+input.dat
+shci.e
+cmake-builde-debug/*
+cmake*
+tests*
+CMakeLists.txt
+test
+.gitignore
 
 # Executable Files #
 ####################

@@ -140,7 +140,6 @@ int main(int argc, char* argv[]) {
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
-  pout << "print core energy: " << coreE << endl;
   if (HFoccupied[0].size() != nelec) {
     pout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
@@ -231,7 +230,6 @@ int main(int argc, char* argv[]) {
     }
   }
   schd.HF=Dets[0];
-  pout << "HF Energy:" << Dets[0].Energy(I1, I2, coreE) << endl;
 
   if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
@@ -258,7 +256,7 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for(int j=0;j<E0.size();++j) {
-      //pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
+      pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
       fwrite( &E0[j], 1, sizeof(CItype), f);
     }
     fclose(f);
@@ -275,15 +273,15 @@ int main(int argc, char* argv[]) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
 #ifdef Complex
-      pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;
+      //pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
 #else
       pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
 #endif
-      //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
+      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
-    //pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+    pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
   if (schd.stochastic == true && schd.DoRDM) {
     schd.DoRDM = false;
     pout << "We cannot perform PT RDM with stochastic PT. Disabling RDM."<<endl;
@@ -313,11 +311,11 @@ int main(int argc, char* argv[]) {
       pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(E0[j]) %( (E0[j]-E0[0])*219470));
 
     //dont do this here, if perturbation theory is switched on
-    //if (schd.doGtensor)  {
-    //  SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
-    //  pout << "VARIATIONAL G-TENSOR"<<endl;
-    //  SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-    //}
+    if (schd.doGtensor)  {
+      SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
+      pout << "VARIATIONAL G-TENSOR"<<endl;
+      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+    }
   }
 #endif
 

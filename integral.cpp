@@ -173,9 +173,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       } else {
         //I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
         I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;
-        //I2(a-1,b-1,c-1,d-1) = integral;
-        //if(a==b&&c==d) I2(c-1,d-1,a-1,b-1) = integral;
-
       }
     } // while
     
@@ -188,29 +185,9 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       for (int j=0; j<norbs; j++) {
         //I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
         //I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
-        //I2.Direct(i,j) = I2(i,i,j,j);
         I2.Direct(i,j) = I2(i,i,j,j);
         I2.Exchange(i,j) = I2(i,j,j,i);
-        //pout << i+1 << ',' << j+1 << ':' << I2(i,i,j,j).real() << "," << I2(i,j,j,i).real() << endl;
-        //pout << "J"<<i+1<<j+1<<" = " << I2.Direct(i,j).real() << ", K"<<i+1<<j+1<<" = " << I2.Exchange(i,j).real() << endl;
     }
-    
-    double HFEnergy = coreE;
-    double HFEnergy2 = coreE;
-    for(int i=0; i<12; i++) {
-      HFEnergy += I1(i,i).real();
-      HFEnergy2 += I1(i,i).real();
-      for(int j=0; j<i; j++) {
-        HFEnergy += I2(i,i,j,j).real();
-        HFEnergy -= I2(i,j,j,i).real();
-        HFEnergy2 += I2.Direct(i,j).real();
-        HFEnergy2 -= I2.Exchange(i,j).real();
-        pout << i <<','<< j << I2.Direct(i,j) - I2.Direct(j,i) << I2.Exchange(i,j) - I2.Exchange(j,i)<<endl;
-        //pout << i <<','<< j << I2.Direct(i,j) << I2.Direct(j,i) << I2.Exchange(i,j) << I2.Exchange(j,i)<<endl;
-      }
-    }
-    pout << "HFEnergy : " << HFEnergy << endl;
-    pout << "HFEnergy2 : " << HFEnergy2 << endl;
   } // commrank=0
 
 #ifndef SERIAL

@@ -161,7 +161,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
         // numerator and energy
         numerator.push_back(integrals[index]*sgn*ci1);
-        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        double E = di.Energy(int1, int2, coreE);
         energy.push_back(E);
       }
     } // heatbath integrals
