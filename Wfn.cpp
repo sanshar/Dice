@@ -693,9 +693,9 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
     ovlp = detOverlap;
     for (int i=0; i<cpsArray.size(); i++)
       ovlp *= cpsArray[i].Overlap(d);
-    ham  = ovlp*E0;
+    ham  = E0;
 
-    double factor = schd.davidsonPrecondition ? ovlp*scale : ovlp*(E0-Epsi)*scale;    
+    double factor = schd.davidsonPrecondition ? ovlp*scale : (E0-Epsi)*scale;    
     OverlapWithGradient(d, factor, grad);
   }
 
@@ -711,7 +711,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      Determinant dcopy = d;
 	      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 
-	      localham += tia*det.OverlapA(d, i, a,  alphainv, betainv)*ovlp;
+	      localham += tia*det.OverlapA(d, i, a,  alphainv, betainv);
 
 	      for (int n=0; n<cpsArray.size(); n++) 
 		if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
@@ -743,7 +743,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      Determinant dcopy = d;
 	      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
 
-	      localham += tia*det.OverlapB(d, i, a,  alphainv, betainv)*ovlp;
+	      localham += tia*det.OverlapB(d, i, a,  alphainv, betainv);
 
 	      for (int n=0; n<cpsArray.size(); n++) 
 		if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
@@ -783,8 +783,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
 
-		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv, false)
-			*ovlp;
+		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv, false);
 
 		      for (int n=0; n<cpsArray.size(); n++) 
 			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
@@ -825,8 +824,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
 
-		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv, false)
-			*ovlp;
+		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv, false);
 
 		      for (int n=0; n<cpsArray.size(); n++) 
 			if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
@@ -867,8 +865,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
 		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
 
-		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv, false)
-			*ovlp;
+		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv, false);
 
 		      for (int n=0; n<cpsArray.size(); n++) 
 			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||

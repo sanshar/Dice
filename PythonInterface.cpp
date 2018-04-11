@@ -121,7 +121,13 @@ int main(int argc, char* argv[]) {
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
 
   double E0=0.0, stddev, rt;
-  getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+  if (schd.deterministic) {
+    getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+    stddev = 0.0;
+  }
+  else {
+    getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+  }
 
   if (commrank == 0)
     std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %8.2f\n") 

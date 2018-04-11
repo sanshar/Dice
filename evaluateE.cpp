@@ -119,22 +119,37 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 
   alphaDets.clear(); betaDets.clear();
 
-  double Overlap = 0;
+  double Overlap = 0, Energy=0;
   grad.setZero();
+  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
+  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
+  VectorXd localgrad = VectorXd::Zero(grad.rows());
+
   for (int i=commrank; i<allDets.size(); i+=commsize) {
-    double overlap = w.Overlap(allDets[i]);
     Walker walk(allDets[i]);walk.initUsingWave(w);
     double ovlp=0, ham=0;
-    w.HamAndOvlpGradient(walk, ovlp, ham, grad, overlap, E0, I1, I2, coreE);
-    Overlap += ovlp*ovlp;
+
+    {
+      E0 = 0.; double scale = 1.0;
+      localgrad.setZero(); localdiagonalGrad.setZero();
+      w.HamAndOvlpGradient(walk, ovlp, ham, localgrad, scale, E0, I1, I2, coreE);
+      w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
+    }
+    grad         += localgrad*ovlp*ovlp;
+    diagonalGrad += localdiagonalGrad*ovlp;
+    Overlap      += ovlp*ovlp;
+    Energy       += ham*ovlp*ovlp;
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Overlap),               1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(Energy),               1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-  //grad[0] = 0.0;//********
 
-  grad /= Overlap;
+  E0 = Energy/Overlap;
+  grad = (grad - E0*diagonalGrad)/Overlap;
+
 }
 
 
@@ -212,6 +227,7 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
       iter = 0;
       cumulative = 0.; cumulative2 =0; reset = false;
       Elocvec.resize(10000, 0);
+      walk.initUsingWave(w, true);
       continue;
     }
     double Eloc = ham/ovlp;
@@ -303,9 +319,10 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
 
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
-  w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
+  w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
 
-  std::vector<double> gradError(1000, 0);
+  int gradIter = min(niter, 100000);
+  std::vector<double> gradError(gradIter, 0);
   bool reset = true;
 
   while (iter <niter && stddev >targetError) {
@@ -315,22 +332,24 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       M1 = 0.; S1=0.;
       Eloc = 0; grad.setZero();
       diagonalGrad.setZero();
+      walk.initUsingWave(w, true);
     }
 
-    diagonalGrad = diagonalGrad + (localdiagonalGrad/ovlp - diagonalGrad)/(iter+1);
-    grad = grad + (localGrad/ovlp-grad)/(iter+1); //running average of grad
-    Eloc = Eloc + (ham/ovlp - Eloc)/(iter+1);     //running average of energy
+    diagonalGrad = diagonalGrad + (localdiagonalGrad - diagonalGrad)/(iter+1);
+    grad = grad + (localGrad - grad)/(iter+1); //running average of grad
+    Eloc = Eloc + (ham - Eloc)/(iter+1);     //running average of energy
 
     double Mprev = M1;
-    M1 = Mprev + (ham/ovlp - Mprev)/(iter+1);
+    M1 = Mprev + (ham - Mprev)/(iter+1);
     if (iter != 0)
-      S1 = S1 + (ham/ovlp - Mprev)*(ham/ovlp - M1);
+      S1 = S1 + (ham - Mprev)*(ham - M1);
 
-    if (iter <1000) gradError[iter] = ham/ovlp;
+    if (iter < gradIter)
+      gradError[iter] = ham;
 
     iter++;
     
-    if (iter == niter-1) {
+    if (iter == gradIter-1) {
       rk = calcTcorr(gradError);
     }
     
@@ -342,7 +361,7 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
-      w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
+      w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
     }
     
   }

@@ -40,7 +40,8 @@ namespace optimizer {
     double rt = 1;
 
     Eigen::VectorXd prevGrad = Eigen::VectorXd::Zero(wave.getNumVariables());
-    Eigen::VectorXd sumsqGrad = Eigen::VectorXd::Zero(wave.getNumVariables());
+    //Eigen::VectorXd sumsqGrad = Eigen::VectorXd::Zero(wave.getNumVariables());
+    Eigen::VectorXd sumsqGrad = Eigen::VectorXd::Constant(wave.getNumVariables(),1.0);
     
     double momentum, momentumdecay = schd.momentumDecay, decay = schd.decay;
     double lrt = schd.gradientFactor; int epoch = schd.learningEpoch;
@@ -73,7 +74,7 @@ namespace optimizer {
 	}
       
       
-      int stochasticIter = min(schd.stochasticIter*10, schd.stochasticIter* (int)( pow(2, floor( (1+iter)/epoch)) +0.1) ); 
+      int stochasticIter = schd.stochasticIter;//min(schd.stochasticIter*10, schd.stochasticIter* (int)( pow(2, floor( (1+iter)/epoch)) +0.1) ); 
       if (schd.deterministic) {
 	getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
 	stddev = 0.0;
@@ -81,6 +82,7 @@ namespace optimizer {
       else {
 	getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, coreE, grad, rt, stochasticIter, 0.5e-3);
       }
+
       lrt = max(schd.mingradientFactor, schd.gradientFactor/pow(2.0, floor( (1+iter)/epoch)));
       gradnorm = grad.squaredNorm();
       for (int i=0; i<grad.rows(); i++) {
@@ -103,7 +105,6 @@ namespace optimizer {
       if (commrank == 0)
 	std::cout << format("%6i   %14.8f (%8.2e) %14.8f %8.1e %8.1f %8.2f\n") %iter 
 	  % E0 % stddev %(grad.norm()) %(lrt) %(rt) %( (getTime()-startofCalc));
-
     }
   }
 };  
