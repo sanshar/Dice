@@ -1,0 +1,5 @@
+correlator 5 correlators.txt
+stochasticIter 100000
+
+#restart
+
