@@ -91,12 +91,15 @@ void readInput(string input, schedule& schd, bool print) {
   schd.gradientFactor = 0.001;
   schd.mingradientFactor = 0.00001;
   schd.m   = rmsprop;
-  schd.stochasticIter = 1e6;
+  schd.stochasticIter = 1e4;
   schd.momentum = 0.9;
   schd.momentumDecay = 0.001;
   schd.decay = 0.9;
   schd.learningEpoch = 10;
   schd.seed = getTime();
+  schd.PTlambda = 0.5;
+  schd.epsilon = 1.e-7;
+
   while (dump.good()) {
 
     std::string
@@ -126,6 +129,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.m = nestorov;
     else if (boost::iequals(ArgName, "rmsprop"))
       schd.m = rmsprop;
+    else if (boost::iequals(ArgName, "ptlambda"))
+      schd.PTlambda = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "amsgrad"))
       schd.m = amsgrad;
     else if (boost::iequals(ArgName, "tol"))
@@ -134,6 +139,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.momentum = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "momentumDecay"))
       schd.momentumDecay = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "epsilon"))
+      schd.epsilon = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "seed"))
       schd.seed = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "decay"))

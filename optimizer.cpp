@@ -29,7 +29,7 @@ namespace optimizer {
     }
   }
 
-  void rmsprop(CPSSlater& wave, oneInt& I1, twoInt& I2, double& coreE) {
+  void rmsprop(CPSSlater& wave, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE) {
 
     int norbs = MoDeterminant::norbs,
        nalpha = MoDeterminant::nalpha, 
@@ -76,11 +76,11 @@ namespace optimizer {
       
       int stochasticIter = schd.stochasticIter;//min(schd.stochasticIter*10, schd.stochasticIter* (int)( pow(2, floor( (1+iter)/epoch)) +0.1) ); 
       if (schd.deterministic) {
-	getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+	getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, I2hb, coreE, grad);
 	stddev = 0.0;
       }
       else {
-	getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, coreE, grad, rt, stochasticIter, 0.5e-3);
+	getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2hb, coreE, grad, rt, stochasticIter, 0.5e-3);
       }
 
       lrt = max(schd.mingradientFactor, schd.gradientFactor/pow(2.0, floor( (1+iter)/epoch)));

@@ -69,13 +69,22 @@ int main(int argc, char* argv[]) {
 #endif
 
   generator = std::mt19937(schd.seed+commrank);
-  //generator = std::mt19937(commrank);
 
   twoInt I2; oneInt I1; 
   int norbs, nalpha, nbeta; 
   double coreE=0.0;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nalpha, nbeta, norbs, coreE, irrep);
+
+  //initialize the heatbath integrals
+  std::vector<int> allorbs;
+  for (int i=0; i<norbs; i++)
+    allorbs.push_back(i);
+  twoIntHeatBath I2HB(1.e-10);
+  twoIntHeatBathSHM I2HBSHM(1.e-10);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs);
+  I2HBSHM.constructClass(norbs, I2HB);
+
   
   //Setup static variables
   Determinant::EffDetLen = (norbs)/64+1;
@@ -104,14 +113,36 @@ int main(int argc, char* argv[]) {
   //setup up wavefunction
   CPSSlater wave(nSiteCPS, det);
   if (schd.restart) {
-    wave.readWave();
+    ifstream file ("params_min.bin", ios::in|ios::binary|ios::ate);
+    size_t size = file.tellg();
+    Eigen::VectorXd vars = Eigen::VectorXd::Zero(size/sizeof(double));
+    file.seekg (0, ios::beg);
+    file.read ( (char*)(&vars[0]), size);
+    file.close();
+    
+    if (vars.size() != wave.getNumVariables()) {
+      cout << "number of variables on disk: "<<vars.size()<<" is not equal to wfn parameters: "<<wave.getNumVariables()<<endl;
+      exit(0);
+    }
+    
+    wave.updateVariables(vars);
+
+    if (commrank == 0) cout << "Calculating the energy of the wavefunction."<<endl;
+    double stddev=0.;
+    double E = evaluateEStochastic(wave, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, stddev, schd.stochasticIter, 0.5e-3);
+    if (commrank == 0) cout << format("%14.8f (%8.2e)\n") %(E) % (stddev);
+  }
+  else {
+    cout << "Use the python script to optimize the wavefunction."<<endl;
+    exit(0);
   }
   cout.precision(10);
 
 
   //optimize the wavefunction
-  if (schd.m == rmsprop) 
-    optimizer::rmsprop(wave, I1, I2, coreE);
+  //if (schd.m == rmsprop) 
+  //optimizer::rmsprop(wave, I1, I2, coreE);
+  
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   return 0;

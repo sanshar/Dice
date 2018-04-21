@@ -21,9 +21,10 @@
 
 class CPSSlater;
 class oneInt;
+class twoIntHeatBathSHM; 
 class twoInt;
 namespace optimizer {
-  void rmsprop(CPSSlater& cps, oneInt& I1, twoInt& I2, double& coreE);
+  void rmsprop(CPSSlater& cps, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
 };
 
 #endif

@@ -76,6 +76,15 @@ int main(int argc, char* argv[]) {
   double coreE=0.0;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nalpha, nbeta, norbs, coreE, irrep);
+
+  //initialize the heatbath integrals
+  std::vector<int> allorbs;
+  for (int i=0; i<norbs; i++)
+    allorbs.push_back(i);
+  twoIntHeatBath I2HB(1.e-10);
+  twoIntHeatBathSHM I2HBSHM(1.e-10);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs);
+  I2HBSHM.constructClass(norbs, I2HB);
   
   //Setup static variables
   Determinant::EffDetLen = (norbs)/64+1;
@@ -122,11 +131,11 @@ int main(int argc, char* argv[]) {
 
   double E0=0.0, stddev, rt;
   if (schd.deterministic) {
-    getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, coreE, grad);
+    getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
     stddev = 0.0;
   }
   else {
-    getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+    getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
   }
 
   if (commrank == 0)
@@ -140,5 +149,6 @@ int main(int argc, char* argv[]) {
   }
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
   return 0;
 }

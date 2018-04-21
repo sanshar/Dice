@@ -44,6 +44,10 @@ extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
 extern std::string shciint2;
 
+extern boost::interprocess::shared_memory_object int2SHMSegment;
+extern boost::interprocess::mapped_region regionInt2SHM;
+extern std::string shciint2shm;
+
 extern std::mt19937 generator;
 double getTime();
 void license();

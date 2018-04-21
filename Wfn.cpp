@@ -298,394 +298,134 @@ double CPSSlater::Overlap(Determinant& d) {
 }
 
 
-void CPSSlater::HamAndOvlp(Determinant& d,
-			   double& ovlp, double& ham,
-			   oneInt& I1, twoInt& I2, double& coreE) {
-
-  MatrixXd alpha, beta;
-  det.getDetMatrix(d, alpha, beta);
-  MatrixXd alphainv = alpha.inverse(), betainv = beta.inverse();
-  double alphaDet = alpha.determinant(), betaDet = beta.determinant();
-  double detOverlap = alphaDet*betaDet;
-
-  //noexcitation
-  {
-    double E0 = d.Energy(I1, I2, coreE);
-    ovlp = detOverlap;
-    for (int i=0; i<cpsArray.size(); i++)
-      ovlp *= cpsArray[i].Overlap(d);
-    ham  = ovlp*E0;
-    //detOverlap *= cpsOvlp;
-  }
-
-  
-  //Single alpha excitation 
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccA(a)) {
-	    double tia = d.Hij_1ExciteA(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
-	      Determinant dcopy = d;
-	      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-
-	      localham += tia*det.OverlapA(d, i, a,  alphainv, betainv)*ovlp;
-
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-		    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	      ham += localham;
-	    }
-
-	  }
-      }
-  }
-
-
-  //Single beta excitation 
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccB(a)) {
-	    double tia = d.Hij_1ExciteB(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
-	      Determinant dcopy = d;
-	      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
-
-	      localham += tia*det.OverlapB(d, i, a,  alphainv, betainv)*ovlp;
-
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-		    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-	      ham += localham;
-
-	    }
-
-	  }
-      }
-  }
-
-
-  //Double excitation alpha alpha
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccA(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccA(b)) {
-
-		    double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
-
-		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation beta beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccB(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		      //cout <<dcopy<<"  "<< tiajb<<"  "<<localham<<"  "<<ham<<" - ";
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation alpha beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=0; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=0; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		      //cout <<dcopy<<"  "<< tiajb<<"  "<<localham<<"  "<<ham<<" - ";
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-}
-
 void CPSSlater::HamAndOvlp(Walker& walk,
-			   double& ovlp, double& ham,
-			   oneInt& I1, twoInt& I2, double& coreE) {
+			   double& ovlp, double& ham, oneInt& I1, twoInt& I2, 
+			   twoIntHeatBathSHM& I2hb, double& coreE) {
 
+  double TINY = schd.epsilon;
   MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
   double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
   double detOverlap = alphaDet*betaDet;
   Determinant& d = walk.d;
 
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
   //noexcitation
   {
     double E0 = d.Energy(I1, I2, coreE);
     ovlp = detOverlap;
     for (int i=0; i<cpsArray.size(); i++)
       ovlp *= cpsArray[i].Overlap(d);
-    ham  = ovlp*E0;
-    //detOverlap *= cpsOvlp;
+    ham  = E0;
+
   }
 
-  
-  //Single alpha excitation 
+
+  //Single alpha-beta excitation 
   {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccA(a)) {
-	    double tia = d.Hij_1ExciteA(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
-	      Determinant dcopy = d;
-	      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
+    for (int i=0; i<closed.size(); i++) {
+      for (int a=0; a<open.size(); a++) {
+	if (closed[i]%2 == open[a]%2) {
+	  int I = closed[i]/2, A = open[a]/2;
+	  double tia = 0; Determinant dcopy = d;
+	  bool Alpha = closed[i]%2 == 0 ? true : false;
+	  if (Alpha) tia = d.Hij_1ExciteA(A, I, I1, I2);
+	  else tia = d.Hij_1ExciteB(A, I, I1, I2);
 
-	      localham += tia*det.OverlapA(d, i, a,  alphainv, betainv)*ovlp;
+	  double localham = 0.0;
+	  if (abs(tia) > TINY) {
+	    if (Alpha) {dcopy.setoccA(I, false); dcopy.setoccA(A, true);}
+	    else  {dcopy.setoccB(I, false); dcopy.setoccB(A, true);}
 
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-		    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	      ham += localham;
-	    }
+	    if (Alpha) localham += tia*det.OverlapA(d, I, A,  alphainv, betainv);
+	    else localham += tia*det.OverlapB(d, I, A,  alphainv, betainv);
 
+	    for (int n=0; n<cpsArray.size(); n++) 
+	      if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
+		  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) )
+		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+	    ham += localham;
+	    
 	  }
+	}
       }
+    }
   }
 
-
-  //Single beta excitation 
+  //Double excitation
   {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccB(a)) {
-	    double tia = d.Hij_1ExciteB(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > 1.e-10) {
-	      Determinant dcopy = d;
-	      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
+    int nclosed = closed.size();
+    for (int ij=0; ij<nclosed*nclosed; ij++) {
+      int i=ij/nclosed, j = ij%nclosed;
+      if (i<=j) continue;
+      int I = closed[i]/2, J = closed[j]/2;
+      int X = max(I, J), Y = min(I, J);
 
-	      localham += tia*det.OverlapB(d, i, a,  alphainv, betainv)*ovlp;
+      int pairIndex = X*(X+1)/2+Y;
+      size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+      size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+      float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+      short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-		    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+      // for all HCI integrals
+      for (size_t index=start; index<end; index++) {
+	// if we are going below the criterion, break
+	if (fabs(integrals[index]) < TINY) break;
 
-	      ham += localham;
+	// otherwise: generate the determinant corresponding to the current excitation
+	int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+	if (!(d.getocc(a) || d.getocc(b))) {
+	  Determinant dcopy = d;
+	  double localham = 0.0;
+	  double tiajb = integrals[index];
 
-	    }
+	  dcopy.setocc(closed[i], false); dcopy.setocc(a, true);
+	  dcopy.setocc(closed[j], false); dcopy.setocc(b, true);
 
-	  }
+	  int A = a/2, B = b/2;
+	  int type = 0; //0 = AA, 1 = BB, 2 = AB, 3 = BA
+	  if (closed[i]%2==closed[j]%2 && closed[i]%2 == 0) 
+	    localham += tiajb*det.OverlapAA(d, I, J, A, B,  alphainv, betainv, false);
+	  else if (closed[i]%2==closed[j]%2 && closed[i]%2 == 1) 
+	    localham += tiajb*det.OverlapBB(d, I, J, A, B,  alphainv, betainv, false);
+	  else if (closed[i]%2!=closed[j]%2 && closed[i]%2 == 0)
+	    localham += tiajb*det.OverlapAB(d, I, J, A, B,  alphainv, betainv, false);
+	  else
+	    localham += tiajb*det.OverlapAB(d, J, I, B, A,  alphainv, betainv, false);
+
+	  for (int n=0; n<cpsArray.size(); n++) 
+	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
+		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
+		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
+		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
+	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+	  
+	  ham += localham;
+	}
       }
+    }
+
   }
-
-
-  //Double excitation alpha alpha
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccA(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccA(b)) {
-
-		    double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
-
-		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation beta beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccB(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		      //cout <<dcopy<<"  "<< tiajb<<"  "<<localham<<"  "<<ham<<" - ";
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation alpha beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=0; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=0; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > 1.e-10) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv)
-			*ovlp;
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-		      //cout <<dcopy<<"  "<< tiajb<<"  "<<localham<<"  "<<ham<<" - ";
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
 }
 
 
 //<psi_t| (H-E0) |D>
 void CPSSlater::HamAndOvlpGradient(Walker& walk,
 				   double& ovlp, double& ham, VectorXd& grad, double& scale,
-				   double& Epsi, oneInt& I1, twoInt& I2, double& coreE) {
+				   double& Epsi, oneInt& I1, twoInt& I2, 
+				   twoIntHeatBathSHM& I2hb, double& coreE) {
 
-  double TINY = 1.e-7;
+  double TINY = schd.epsilon;
   MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
   double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
   double detOverlap = alphaDet*betaDet;
   Determinant& d = walk.d;
+
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
 
   //noexcitation
   {
@@ -699,193 +439,100 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
     OverlapWithGradient(d, factor, grad);
   }
 
-  //Single alpha excitation 
+
+  //Single alpha-beta excitation 
   {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccA(a)) {
-	    double tia = d.Hij_1ExciteA(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > TINY) {
-	      Determinant dcopy = d;
-	      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
+    for (int i=0; i<closed.size(); i++) {
+      for (int a=0; a<open.size(); a++) {
+	if (closed[i]%2 == open[a]%2) {
+	  int I = closed[i]/2, A = open[a]/2;
+	  double tia = 0; Determinant dcopy = d;
+	  bool Alpha = closed[i]%2 == 0 ? true : false;
+	  if (Alpha) tia = d.Hij_1ExciteA(A, I, I1, I2);
+	  else tia = d.Hij_1ExciteB(A, I, I1, I2);
 
-	      localham += tia*det.OverlapA(d, i, a,  alphainv, betainv);
+	  double localham = 0.0;
+	  if (abs(tia) > TINY) {
+	    if (Alpha) {dcopy.setoccA(I, false); dcopy.setoccA(A, true);}
+	    else  {dcopy.setoccB(I, false); dcopy.setoccB(A, true);}
 
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-		    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	      ham += localham;
+	    if (Alpha) localham += tia*det.OverlapA(d, I, A,  alphainv, betainv);
+	    else localham += tia*det.OverlapB(d, I, A,  alphainv, betainv);
 
-	      double Edet = dcopy.Energy(I1, I2, coreE);
-	      double ovlpdetcopy = localham/tia;
-	      double factor = tia * ovlpdetcopy*scale;
-	      OverlapWithGradient(dcopy, factor, grad);
-
-	    }
-
+	    for (int n=0; n<cpsArray.size(); n++) 
+	      if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
+		  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) )
+		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+	    ham += localham;
+	    
+	    double ovlpdetcopy = localham/tia;
+	    double factor = tia * ovlpdetcopy*scale;
+	    OverlapWithGradient(dcopy, factor, grad);
+	    
 	  }
+	}
       }
+    }
   }
 
-  
-  //Single beta excitation 
+  //Double excitation
   {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int a=0; a<Determinant::norbs; a++)
-	  if (!d.getoccB(a)) {
-	    double tia = d.Hij_1ExciteB(a, i, I1, I2);
-	    double localham = 0.0;
-	    if (abs(tia) > TINY) {
-	      Determinant dcopy = d;
-	      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
+    int nclosed = closed.size();
+    for (int ij=0; ij<nclosed*nclosed; ij++) {
+      int i=ij/nclosed, j = ij%nclosed;
+      if (i<=j) continue;
+      int I = closed[i]/2, J = closed[j]/2;
+      int X = max(I, J), Y = min(I, J);
 
-	      localham += tia*det.OverlapB(d, i, a,  alphainv, betainv);
+      int pairIndex = X*(X+1)/2+Y;
+      size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+      size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+      float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+      short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
-	      for (int n=0; n<cpsArray.size(); n++) 
-		if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-		    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) )
-		  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+      // for all HCI integrals
+      for (size_t index=start; index<end; index++) {
+	// if we are going below the criterion, break
+	if (fabs(integrals[index]) < TINY) break;
 
-	      ham += localham;
+	// otherwise: generate the determinant corresponding to the current excitation
+	int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+	if (!(d.getocc(a) || d.getocc(b))) {
+	  Determinant dcopy = d;
+	  double localham = 0.0;
+	  double tiajb = integrals[index];
 
-	      double Edet = dcopy.Energy(I1, I2, coreE);
-	      double ovlpdetcopy = localham/tia;
-	      double factor = tia * ovlpdetcopy*scale;
-	      //double factor = tia/(Epsi-Edet);
-	      OverlapWithGradient(dcopy, factor, grad);
+	  dcopy.setocc(closed[i], false); dcopy.setocc(a, true);
+	  dcopy.setocc(closed[j], false); dcopy.setocc(b, true);
 
-	    }
+	  int A = a/2, B = b/2;
+	  int type = 0; //0 = AA, 1 = BB, 2 = AB, 3 = BA
+	  if (closed[i]%2==closed[j]%2 && closed[i]%2 == 0) 
+	    localham += tiajb*det.OverlapAA(d, I, J, A, B,  alphainv, betainv, false);
+	  else if (closed[i]%2==closed[j]%2 && closed[i]%2 == 1) 
+	    localham += tiajb*det.OverlapBB(d, I, J, A, B,  alphainv, betainv, false);
+	  else if (closed[i]%2!=closed[j]%2 && closed[i]%2 == 0)
+	    localham += tiajb*det.OverlapAB(d, I, J, A, B,  alphainv, betainv, false);
+	  else
+	    localham += tiajb*det.OverlapAB(d, J, I, B, A,  alphainv, betainv, false);
 
-	  }
+	  for (int n=0; n<cpsArray.size(); n++) 
+	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
+		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
+		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
+		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
+	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+	  
+	  ham += localham;
+	  
+	  double ovlpdetcopy = localham/tiajb;
+	  double factor = tiajb * ovlpdetcopy*scale;
+	  OverlapWithGradient(dcopy, factor, grad);
+	}
       }
+    }
+
   }
-
-  //Double excitation alpha alpha
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccA(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccA(b)) {
-
-		    //double tiajb = d.Hij_2ExciteAA(a, i, b, j, I1, I2);
-		    double tiajb = I2(2*a,2*i,2*b,2*j) - I2(2*a,2*j,2*b,2*i);
-		    double localham = 0.0;
-		    if (abs(tiajb) > TINY) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccA(j, false); dcopy.setoccA(b, true);
-
-		      localham += tiajb*det.OverlapAA(d, i, j, a, b,  alphainv, betainv, false);
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-
-		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb * ovlpdetcopy*scale;
-		      OverlapWithGradient(dcopy, factor, grad);
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation beta beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccB(i)) {
-	for (int j=i+1; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccB(a)) {
-		for (int b=a+1; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    double tiajb = I2(2*a+1, 2*i+1, 2*b+1, 2*j+1) - I2(2*a+1, 2*j+1, 2*b+1, 2*i+1 );
-		    //double tiajb = d.Hij_2ExciteBB(a, i, b, j, I1, I2);
-		    double localham = 0.0;
-		    if (abs(tiajb) > TINY) {
-		      Determinant dcopy = d;
-		      dcopy.setoccB(i, false); dcopy.setoccB(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapBB(d, i, j, a, b,  alphainv, betainv, false);
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-
-		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb * ovlpdetcopy*scale;
-		      OverlapWithGradient(dcopy, factor, grad);
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
-
-  //Double excitation alpha beta
-  {
-    for (int i=0; i<Determinant::norbs; i++) 
-      if (d.getoccA(i)) {
-	for (int j=0; j<Determinant::norbs; j++) 
-	  if (d.getoccB(j)) {
-	    for (int a=0; a<Determinant::norbs; a++)
-	      if (!d.getoccA(a)) {
-		for (int b=0; b<Determinant::norbs; b++)
-		  if (!d.getoccB(b)) {
-
-		    //double tiajb = d.Hij_2ExciteAB(a, i, b, j, I1, I2);
-		    double tiajb = I2(2*a,2*i,2*b+1,2*j+1);
-		    double localham = 0.0;
-		    if (abs(tiajb) > TINY) {
-		      Determinant dcopy = d;
-		      dcopy.setoccA(i, false); dcopy.setoccA(a, true);
-		      dcopy.setoccB(j, false); dcopy.setoccB(b, true);
-
-		      localham += tiajb*det.OverlapAB(d, i, j, a, b,  alphainv, betainv, false);
-
-		      for (int n=0; n<cpsArray.size(); n++) 
-			if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), i) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), j) ||
-			    std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), a) ||
-			    std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), b) )
-			  localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-
-		      ham += localham;
-
-		      double ovlpdetcopy = localham/tiajb;
-		      double factor = tiajb * ovlpdetcopy*scale;
-		      OverlapWithGradient(dcopy, factor, grad);
-		    }
-		  }
-	      }
-	  }
-      }
-  }
-
 }
 
 

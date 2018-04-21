@@ -25,6 +25,9 @@
 #include "Walker.h"
 #include <boost/format.hpp>
 #include <iostream>
+#include "evaluateE.h"
+#include "Davidson.h"
+#include "Hmult.h"
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -101,7 +104,7 @@ double calcTcorr(vector<double>& v) {
 
 //<psi_t| (H-E0) |psi>
 void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
-		 oneInt& I1, twoInt& I2, double& coreE,
+		 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE,
 		 VectorXd& grad) {
   vector<vector<int> > alphaDets, betaDets;
   comb(norbs, nalpha, alphaDets);
@@ -132,7 +135,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
     {
       E0 = 0.; double scale = 1.0;
       localgrad.setZero(); localdiagonalGrad.setZero();
-      w.HamAndOvlpGradient(walk, ovlp, ham, localgrad, scale, E0, I1, I2, coreE);
+      w.HamAndOvlpGradient(walk, ovlp, ham, localgrad, scale, E0, I1, I2, I2hb, coreE);
       w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
     }
     grad         += localgrad*ovlp*ovlp;
@@ -155,7 +158,8 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
 double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
-			      oneInt& I1, twoInt& I2, double& coreE) {
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			      double& coreE) {
 
   vector<vector<int> > alphaDets, betaDets;
   comb(norbs, nalpha, alphaDets);
@@ -178,8 +182,8 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
     double Eloc=0, ovlploc=0; 
     Walker walk(allDets[d]);
     walk.initUsingWave(w);
-    w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, coreE);
-    E += ovlploc*Eloc;
+    w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, I2hb, coreE);
+    E    += ovlploc*ovlploc*Eloc;
     ovlp += ovlploc*ovlploc;
   }
   allDets.clear();
@@ -196,13 +200,14 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
 }
 
 
+
+
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
 double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
-			   oneInt& I1, twoInt& I2, double& coreE, double& stddev,
+			   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+			   double& coreE, double& stddev,
 			   int niter, double targetError) {
 
-  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
-			  std::ref(generator));
 
   //initialize the walker
   Determinant d;
@@ -213,86 +218,71 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
   Walker walk(d);
   walk.initUsingWave(w);
 
-  stddev = 1e4;
-  int iter = 0;
-  double cumulative = 0., cumulative2 = 0., Eavg=0.;
-  double rk;
-  double ovlp= 0., ham=0.;
-  w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
 
-  std::vector<double> Elocvec(10000, 0);
+  stddev = 1.e4;
+  int iter = 0;
+  double M1=0., S1 = 0., Eavg=0.;
+  double Eloc=0.;
+  double ham=0., ovlp =0.;
+  double scale = 1.0;
+
+  double E0 = 0.0, rk = 1.;
+  w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
+
+  int gradIter = min(niter, 100000);
+  std::vector<double> gradError(gradIter, 0);
   bool reset = true;
-  while (iter < niter && stddev > targetError) {
+
+  while (iter <niter && stddev >targetError) {
     if (iter == 100 && reset) {
       iter = 0;
-      cumulative = 0.; cumulative2 =0; reset = false;
-      Elocvec.resize(10000, 0);
+      reset = false;
+      M1 = 0.; S1=0.;
+      Eloc = 0;
       walk.initUsingWave(w, true);
-      continue;
     }
-    double Eloc = ham/ovlp;
 
-    if (iter < 10000) Elocvec[iter] = Eloc;
+    Eloc = Eloc + (ham - Eloc)/(iter+1);     //running average of energy
 
-    cumulative += Eloc;
-    cumulative2 += Eloc*Eloc;
-    iter ++;
+    double Mprev = M1;
+    M1 = Mprev + (ham - Mprev)/(iter+1);
+    if (iter != 0)
+      S1 = S1 + (ham - Mprev)*(ham - M1);
 
-    if (iter == niter-1) {
-      rk = calcTcorr(Elocvec);
-      double cum = cumulative, cum2 = cumulative2;
-      int cumiter = iter*commsize;
-#ifndef SERIAL
-      MPI_Allreduce(&cumulative,  &cum,  1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      MPI_Allreduce(&cumulative2, &cum2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-      if (commrank == 0) {
-	stddev = pow(  (cum2*cumiter - cum*cum)*rk/cumiter/(cumiter-1)/cumiter, 0.5);
-	Eavg  = cum/cumiter;
-	double Eavg2 = cum2/cumiter;
-	//if (iter % 10000 == 0)
-	//std::cout << boost::format("%6i   %14.8f  %14.8f %14.8f\n") %iter % Eavg % stddev % rk;
-      }
-#ifndef SERIAL
-      MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      MPI_Bcast(&rk    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
+    if (iter < gradIter)
+      gradError[iter] = ham;
+
+    iter++;
+    
+    if (iter == gradIter-1) {
+      rk = calcTcorr(gradError);
     }
     
-    //pick a random occupied orbital
-    int i = floor( random()*(nalpha+nbeta) );
-    if (i < nalpha) {
-      int a = floor(random()* (norbs-nalpha) );
-      double detfactor = walk.getDetFactorA(i, a, w);
-      if ( pow(detfactor, 2) > random() ) {
-	walk.updateA(i, a, w);
-	w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
-      }
-
-    }
-    else {
-      i = i - nalpha;
-      int a = floor( random()*(norbs-nbeta));
-      double detfactor = walk.getDetFactorB(i, a, w);
-
-      if ( pow(detfactor, 2) > random() ) {
-	walk.updateB(i, a, w);
-	w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE);
-      }
-      
+    bool success = walk.makeMove(w);
+    //bool success = walk.makeCleverMove(w, I1);
+    //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
+    //if (iter == 50) exit(0);
+    if (success) {
+      w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
     }
     
   }
 #ifndef SERIAL
-  MPI_Bcast(&Eavg, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-  return Eavg;
-}
 
+  E0 = Eloc/commsize;
+
+  stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
+#ifndef SERIAL
+  MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  return E0;
+}
 
 void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
 			   int& nalpha, int& nbeta, int& norbs,
-			   oneInt& I1, twoInt& I2, double& coreE, 
+			   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE, 
 			   VectorXd& grad, double& rk, 
 			   int niter, double targetError) 
 {
@@ -318,7 +308,7 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
 
   E0 = 0.0;
-  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, I2hb, coreE); 
   w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
 
   int gradIter = min(niter, 100000);
@@ -360,7 +350,7 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
     if (success) {
       localGrad.setZero();
       localdiagonalGrad.setZero();
-      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, coreE); 
+      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, I2hb, coreE); 
       w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
     }
     

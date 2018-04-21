@@ -119,7 +119,7 @@ class HalfDet {
       return true;
   }
 
-  int getClosed(vector<int>& closed){
+  int getClosed(std::vector<int>& closed){
     int cindex = 0;
     for (int i=0; i<32*DetLen; i++) {
       if (getocc(i)) {closed.at(cindex) = i; cindex++;}
@@ -127,7 +127,7 @@ class HalfDet {
     return cindex;
   }
 
-  int getOpenClosed(vector<int>& open, vector<int>& closed){
+  int getOpenClosed(std::vector<int>& open, std::vector<int>& closed){
     int cindex = 0;
     int oindex = 0;
     for (int i=0; i<32*DetLen; i++) {
@@ -194,8 +194,17 @@ class Determinant {
     }
   }
 
-  void getOpenClosedElecHoleAlpha( vector<int>& openE, vector<int>& closedE,
-				   vector<int>& openH, vector<int>& closedH) {
+  void getOpenClosed( std::vector<int>& open, std::vector<int>& closed) {
+    for (int i=0; i<norbs; i++) {
+      if ( getoccA(i)) closed.push_back(2*i); 
+      else open.push_back(2*i);
+      if ( getoccB(i)) closed.push_back(2*i+1); 
+      else open.push_back(2*i+1);
+    }    
+  }
+
+  void getOpenClosedElecHoleAlpha( std::vector<int>& openE, std::vector<int>& closedE,
+				   std::vector<int>& openH, std::vector<int>& closedH) {
     for (int i=0; i<norbs; i++) {
       if ( getoccA(i) &&  getoccB(i)) closedE.push_back(i); 
       if ( getoccA(i) && !getoccB(i)) openE.push_back(i); 
@@ -204,8 +213,8 @@ class Determinant {
     }    
   }
 
-  void getOpenClosedElecHoleBeta( vector<int>& openE, vector<int>& closedE,
-				  vector<int>& openH, vector<int>& closedH) {
+  void getOpenClosedElecHoleBeta( std::vector<int>& openE, std::vector<int>& closedE,
+				  std::vector<int>& openH, std::vector<int>& closedH) {
     for (int i=0; i<norbs; i++) {
       if ( getoccB(i) &&  getoccA(i)) closedE.push_back(i); 
       if ( getoccB(i) && !getoccA(i)) openE.push_back(i); 
@@ -214,7 +223,7 @@ class Determinant {
     }    
   }
 
-  void getAlphaBeta(vector<int>& alpha, vector<int>& beta) {
+  void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) {
     for (int i=0; i<64*EffDetLen; i++) {
       if (getoccA(i)) alpha.push_back(i);
       if (getoccB(i)) beta .push_back(i);
@@ -365,6 +374,15 @@ class Determinant {
       reprB[Integer] &= ~(one<<bit);
   }
 
+  void setocc(int i, bool occ)  {
+    if (i%2 == 0) return setoccA(i/2, occ);
+    else return setoccB(i/2, occ);
+  }
+
+  bool getocc(int i) const {
+    if (i%2 == 0) return getoccA(i/2);
+    else return getoccB(i/2);
+  }
 
   //get the occupation of the ith orbital
   bool getoccA(int i) const {

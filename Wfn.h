@@ -26,20 +26,20 @@
 
 class oneInt;
 class twoInt;
+class twoIntHeatBathSHM;
 class Walker;
 
 class Wfn {
  public:
   virtual double Overlap(Determinant&) =0;
-  virtual void HamAndOvlp(Determinant& ,
-			  double& ovlp, double& ham,
-			  oneInt& I1, twoInt& I2, double& coreE) =0;
   virtual void HamAndOvlp(Walker& ,
-		  double& ovlp, double& ham,
-		  oneInt& I1, twoInt& I2, double& coreE)=0;
-  virtual void HamAndOvlpGradient(Walker& ,
-				  double& ovlp, double& ham, Eigen::VectorXd& grad, double& scale,
-				  double& E0, oneInt& I1, twoInt& I2, double& coreE)=0;
+			  double& ovlp, double& ham,
+			  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			  double& coreE)=0;
+  virtual void HamAndOvlpGradient(Walker& walk,
+				  double& ovlp, double& ham, VectorXd& grad, double& scale,
+				  double& Epsi, oneInt& I1, twoInt& I2, 
+				  twoIntHeatBathSHM& I2hb, double& coreE) =0;
   virtual void OverlapWithGradient(Determinant&, 
 				   double& factor,
 				   Eigen::VectorXd& grad)=0;
@@ -67,9 +67,10 @@ class CPSSlater : public Wfn {
 
   double approximateNorm();
   void normalizeAllCPS();
-  void HamAndOvlpGradient(Walker& ,
-			  double& ovlp, double& ham, Eigen::VectorXd& grad, double& scale,
-			  double& E0, oneInt& I1, twoInt& I2, double& coreE);
+  void HamAndOvlpGradient(Walker& walk,
+			  double& ovlp, double& ham, VectorXd& grad, double& scale,
+			  double& Epsi, oneInt& I1, twoInt& I2, 
+			  twoIntHeatBathSHM& I2hb, double& coreE) ;
   void OverlapWithGradient(Determinant&, 
 			   double& factor,
 			   Eigen::VectorXd& grad);
@@ -78,12 +79,10 @@ class CPSSlater : public Wfn {
 			   Eigen::VectorXd& grad);
 
   double Overlap(Determinant&);
-  void HamAndOvlp(Determinant& ,
-		  double& ovlp, double& ham,
-		  oneInt& I1, twoInt& I2, double& coreE);
   void HamAndOvlp(Walker& ,
 		  double& ovlp, double& ham,
-		  oneInt& I1, twoInt& I2, double& coreE);
+		  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+		  double& coreE);
 
   void getVariables(Eigen::VectorXd& v);
   long getNumVariables();

@@ -20,35 +20,67 @@
 #define EvalE_HEADER_H
 #include <Eigen/Dense>
 #include <vector>
+#ifndef SERIAL
+#include "mpi.h"
+#endif
 class Wfn;
 class CPSSlater;
 class oneInt;
 class twoInt;
+class twoIntHeatBathSHM;
+class MoDeterminant;
 
+//generate all the alpha or beta strings
+void comb(int N, int K, std::vector<std::vector<int> >& combinations);
+
+//calculate reblocking analysis to find correlation length
+double calcTcorr(std::vector<double>& v);
+
+
+//evaluate energy and gradient using stochastic or deterministic algorithm
 double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
-			      oneInt& I1, twoInt& I2, double& coreE);
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			      double& coreE);
 
 double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
-			   oneInt& I1, twoInt& I2, double& coreE, double& stddev,
+			   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			   double& coreE, double& stddev,
 			   int niter=10000, double targetError = 1.e-3);
 
 void getGradient(Wfn& w, double& E0, int& alpha, int& nbeta, int& norbs,
-		 oneInt& I1, twoInt& I2, double& coreE,
+		 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE,
 		 Eigen::VectorXd& grad);
 
 void getStochasticGradient(CPSSlater& w, double& E0, double& stddev, 
 			   int& nalpha, int& nbeta, int& norbs,
-			   oneInt& I1, twoInt& I2, double& coreE,
+			   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE,
 			   Eigen::VectorXd& grad, double& rk,
 			   int niter, double targetError);
 
-void comb(int N, int K, std::vector<std::vector<int> >& combinations);
 
-void getGradientUsingDavidson(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
-			      oneInt& I1, twoInt& I2, double& coreE,
-			      Eigen::VectorXd& grad);
 
-void davidsonDirect(int nalpha, int nbeta, int norbs, oneInt& I1,
-		    twoInt& I2, double& coreE, Eigen::VectorXd& vars);
+
+
+//evaluate PT correction 
+double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE,
+				    int& nalpha, int& nbeta, int& norbs,
+				    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				    double& coreE);
+double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE,
+				 int& nalpha, int& nbeta, int& norbs,
+				 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				 double& coreE, double& stddev,
+				 int niter=10000, double targetError = 1e-3);
+
+double evaluatePTDeterministic(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+			       double& coreE);
+
+double evaluatePTDeterministic2(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
+
+
+double evaluateOvlpWithMoDet(Wfn& w, MoDeterminant&  E0, int& nalpha, int& nbeta, int& norbs,
+			     oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
 
 #endif

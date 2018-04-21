@@ -25,6 +25,10 @@ boost::interprocess::shared_memory_object int2Segment;
 boost::interprocess::mapped_region regionInt2;
 std::string shciint2;
 
+boost::interprocess::shared_memory_object int2SHMSegment;
+boost::interprocess::mapped_region regionInt2SHM;
+std::string shciint2shm;
+
 std::mt19937 generator;
 
 #ifndef SERIAL
