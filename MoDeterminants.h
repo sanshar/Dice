@@ -62,6 +62,22 @@ class MoDeterminant {
   double OverlapAA(Determinant& d, int i, int j, int a, int b,
 		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 		   bool doparity = true);
+  double OverlapAAA(Determinant& d, int i, int j, int k, 
+		    int a, int b, int c,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
+  double OverlapAAAA(Determinant& d, int i, int j, int k, int l,
+		     int a, int b, int c, int e,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
+  double OverlapBBB(Determinant& d, int i, int j, int k, 
+		    int a, int b, int c,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
+  double OverlapBBBB(Determinant& d, int i, int j, int k, int l,
+		     int a, int b, int c, int e,
+		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+		   bool doparity = true);
   double OverlapBB(Determinant& d, int i, int j, int a, int b,
 		   Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 		   bool doparity = true);

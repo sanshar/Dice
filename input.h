@@ -51,7 +51,10 @@ private:
       & learningEpoch
       & seed
       & PTlambda
-      & epsilon;
+      & epsilon
+      & singleProbability
+      & doubleProbability;
+
   }
 public:
   bool restart;
@@ -73,6 +76,8 @@ public:
   int seed;
   double PTlambda;
   double epsilon;
+  double singleProbability;
+  double doubleProbability;
 };
 
 void readInput(std::string input, schedule& schd, bool print=true);

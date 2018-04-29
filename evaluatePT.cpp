@@ -150,7 +150,9 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
     }
 
   alphaDets.clear(); betaDets.clear();
-  
+
+  if (commrank == 0) cout << allDets.size()<<endl;
+
   double A=0, B=0, C=0, ovlp=0;
   for (int d=commrank; d<allDets.size(); d+=commsize) {
     double Eloc=0, ovlploc=0; 
@@ -160,6 +162,7 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
     w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, I2hb, coreE);
 
     double ovlp2 = ovlploc*ovlploc;
+    //if (commrank == 0) cout << allDets[d]<<"  "<<Eloc<<"  "<<E0<<"  "<<Ei<<"  "<<ovlp2<<endl;
     A    -= pow(Eloc-E0, 2)*ovlp2/(Ei-E0);
     B    += (Eloc-E0)*ovlp2/(Ei-E0);
     C    += ovlp2/(Ei-E0);
@@ -180,17 +183,17 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
   MPI_Allreduce(&Bbkp, &B,     size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&Cbkp, &C,     size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
-  if (commrank == 0) cout << A<<"  "<<B*B/C<<"  "<<A+B*B/C<<"  "<<ovlp<<endl;
+  if (commrank == 0) cout <<A<<"  "<< B<<"  "<<C<<"  "<<B*B/C<<endl;
   return A + B*B/C;
 }
 
 
-//<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
-double evaluatePTStochastic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
-			    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-			    double& coreE, double& stddev,
-			    int niter, double targetError) {
+//\sum_i <psi|(H0-E0)|D_j><D_j|H0-E0|Di>/(Ei-E0)/<Di|psi>  pi
+//where pi = <D_i|psi>**2/<psi|psi>
+double evaluatePTStochasticMethodA(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				   double& coreE, double& stddev,
+				   int niter, double& A, double& B, double& C) {
 
 
   //initialize the walker
@@ -206,9 +209,179 @@ double evaluatePTStochastic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, i
   stddev = 1.e4;
   int iter = 0;
   double M1=0., S1 = 0.;
-  double A=0, B=0, C=0;
-  double ham=0., ovlp =0.;
+  A=0; B=0; C=0;
+  double Aloc=0, Bloc=0, Cloc=0;
   double scale = 1.0;
+
+  double rk = 1.;
+  w.PTcontribution(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc); 
+
+  int gradIter = min(niter, 100000);
+  std::vector<double> gradError(gradIter, 0);
+  bool reset = true;
+
+
+  while (iter <niter ) {
+    if (iter == 100 && reset) {
+      iter = 0;
+      reset = false;
+      M1 = 0.; S1=0.;
+      A=0; B=0; C=0;
+      walk.initUsingWave(w, true);
+    }
+
+
+
+    A   =   A  +  ( Aloc - A)/(iter+1);
+    B   =   B  +  ( Bloc - B)/(iter+1);
+    C   =   C  +  ( Cloc - C)/(iter+1);
+
+    double Mprev = M1;
+    M1 = Mprev + (Aloc - Mprev)/(iter+1);
+    if (iter != 0)
+      S1 = S1 + (Aloc - Mprev)*(Aloc - M1);
+
+    if (iter < gradIter)
+      gradError[iter] = Aloc;
+
+    iter++;
+    
+    if (iter == gradIter-1) {
+      rk = calcTcorr(gradError);
+    }
+    
+    bool success = walk.makeCleverMove(w);
+
+    if (success) {
+      w.PTcontribution(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc); 
+    }
+    
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &A, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &B, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &C, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  A = A/commsize;
+  B = B/commsize;
+  C = C/commsize;
+
+  stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
+#ifndef SERIAL
+  MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+  return A + B*B/C;
+}
+
+/*
+void getSingleDoubleExcitation(Determinant& d, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			       int& Isingle, int& Asingle, int& Idouble, int& Adouble,
+			       int& Jdouble, int& Bdouble, double& psingle, double& pdouble) {
+
+  int norbs = Determinant::norbs;
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
+  vector<double> upperBoundOfSingles;
+  vector<size_t> orbitalPairs;
+  double cumSingles = 0.0;
+  //generate a single excitation
+  for (int i=0; i<closed.size(); i++)
+    for (int a=0; a<open.size(); a++) {
+      if (closed[i]%2 == open[a]%2) {
+	upperBoundOfSingles.push_back(cumSingles+I2hb.Singles(closed[i], open[a]));
+	cumSingles += I2hb.Singles(closed[i], open[a]);
+	orbitalPairs.push_back(closed[i]*2*norbs + open[a]);
+      }
+    }
+  double selectSingle = random()*cumSingles;
+  int singleIndex = std::lower_bound(upperBoundOfSingles.begin(), upperBoundOfSingles.end(),
+				     selectSingle) - upperBoundOfSingles.begin();
+  Isingle = orbitalPairs[singleIndex]/norbs;
+  Asingle = orbitalPairs[singleIndex] - Isingle*norbs;
+
+  psingle = singleIndex == 0 ? upperBoundOfSingles[singleIndex]/cumSingles 
+    : (upperBoundOfSingles[singleIndex] - upperBoundOfSingles[singleIndex-1])/cumSingles; 
+  
+
+  //generate a double excitation
+  vector<double> allOccupiedPairs;
+  vector<size_t> occOrbsPair;
+  double cumdoubles = 0.0;
+  for (int i=0; i<closed.size(); i++)
+    for (int j=i+1; j<closed.size(); j++) {
+      if (closed[i]%2 == closed[j]%2) {
+	int I = max(closed[i]/2, closed[j]/2), J =  min(closed[i]/2, closed[j]/2);
+	allOccupisedPairs.push_back(cumdoubles + I2hb.sameSpinPairExcitations(I, j));
+	occOrbsPair.push_back(closed[i]*2*norbs+closed[j]);
+      }
+      else if (closed[i]%2 != closed[j]%2) {
+	int I = max(closed[i]/2, closed[j]/2), J =  min(closed[i]/2, closed[j]/2);
+	allOccupisedPairs.push_back(cumdoubles + I2hb.oppositeSpinPairExcitations(I, j));
+	occOrbsPair.push_back(closed[i]*2*norbs+closed[j]);
+      }
+    }
+
+  double doubleOcc = random()*cumdoubles;
+  int doulbleOccIndex = std::lower_bound(allOccupiedPairs.begin(), allOccupiedPairs.end(),
+				     doubleOcc) - allOccupiedPairs.begin();
+  Idouble = occOrbsPair[doubleOcc]/(2*norbs);
+  Jdouble = occOrbsPair[doubleOcc] - Idouble*2*norbs;
+  double occpairSize = Idouble%2==Jdouble%2 ?  I2hb.sameSpinPairExciations(Idouble/2, Jdouble/2) :
+    I2hb.oppositeSpinPairExciations(Idouble/2, Jdouble/2) ;
+  pdouble = occpairSize/cumdoubles;
+
+
+  int X = max(Idouble/2, Jdouble/2), Y = min(Idouble/2, Jdouble/2);
+  int pairIndex = X*(X+1)/2+Y;
+  size_t start = Idouble%2==Jdouble%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+  size_t end   = Idouble%2==Jdouble%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+  float* integrals  = Idouble%2==Jdouble%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+  short* orbIndices = Idouble%2==Jdouble%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
+
+  double cumForVirt = 0.;
+  vector<double> relevantExcitations;
+  vector<size_t> relevantVirts;
+  for (size_t index = start; index <end; indes++) {
+    int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+    if (!(d.getocc(a) || d.getocc(b))) {
+      relevantVirts.push_back(a*2*norbs+b);
+      relevantExcitations.push_back(cumForVirt+integrals[index]);
+      cumForVirt += integrals[index];
+    }
+  }
+}
+*/
+
+//A = sum_i <D_i|(H-E0)|Psi>/(Ei-E0) pi 
+//where pi = <D_i|psi>**2/<psi|psi>
+//this introduces a bias because there are determinants that have a near zero overlap with
+//psi but make a non-zero contribution to A.
+double evaluatePTStochasticMethodB(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				   double& coreE, double& stddev,
+				   int niter, double& A, double& B, double& C) {
+
+
+  //initialize the walker
+  Determinant d;
+  for (int i=0; i<nalpha; i++)
+    d.setoccA(i, true);
+  for (int j=0; j<nbeta; j++)
+    d.setoccB(j, true);
+  Walker walk(d);
+  walk.initUsingWave(w);
+
+
+  stddev = 1.e4;
+  int iter = 0;
+  double M1=0., S1 = 0.;
+  A=0; B=0; C=0;
+  double Aloc=0, Bloc=0, Cloc=0;
+  double scale = 1.0, ham, ovlp;
 
   double rk = 1.;
   w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
@@ -218,9 +391,9 @@ double evaluatePTStochastic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, i
   std::vector<double> gradError(gradIter, 0);
   bool reset = true;
 
-  /*
-  while (iter <niter && stddev >targetError) {
-    if (iter == 100 && reset) {
+
+  while (iter <niter ) {
+    if (iter == 20 && reset) {
       iter = 0;
       reset = false;
       M1 = 0.; S1=0.;
@@ -228,21 +401,22 @@ double evaluatePTStochastic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, i
       walk.initUsingWave(w, true);
     }
 
-    double ovlp2= ovlp*ovlp;
-    A   =   A  -  (pow(Eloc-E0, 2)/(Ei-E0) - A)/(iter+1);
-    B   =   B  +  (pow(Eloc-E0, 2)/(Ei-E0) - A)/(iter+1);
-    C   =   C  +  (pow(Eloc-E0, 2)/(Ei-E0) - A)/(iter+1);
-
-    Eloc       = Eloc        + (ham - Eloc)/(iter+1);     //running average of energy
-    ElocScaled = ElocScaled  + ((1-lambda)*ham+lambda*Ei - ElocScaled)/(iter+1);
+    //if (commrank == 0) cout << walk.d<<"  "<<ham<<"  "<<E0<<"  "<<Ei<<"  "<<ovlp<<endl;
+    Aloc = -pow(ham-E0, 2)/(Ei-E0);
+    Bloc = (ham-E0)/(Ei-E0);
+    Cloc = 1./(Ei-E0);
+    
+    A   =   A  +  ( Aloc - A)/(iter+1);
+    B   =   B  +  ( Bloc - B)/(iter+1);
+    C   =   C  +  ( Cloc - C)/(iter+1);
 
     double Mprev = M1;
-    M1 = Mprev + (ham - Mprev)/(iter+1);
+    M1 = Mprev + (Aloc - Mprev)/(iter+1);
     if (iter != 0)
-      S1 = S1 + (ham - Mprev)*(ham - M1);
+      S1 = S1 + (Aloc - Mprev)*(Aloc - M1);
 
     if (iter < gradIter)
-      gradError[iter] = ham;
+      gradError[iter] = Aloc;
 
     iter++;
     
@@ -250,30 +424,36 @@ double evaluatePTStochastic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, i
       rk = calcTcorr(gradError);
     }
     
-    bool success = walk.makeMove(w);
-    //bool success = walk.makeCleverMove(w, I1);
-    //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
-    //if (iter == 50) exit(0);
+    bool success = walk.makeCleverMove(w);
+    //bool success = walk.makeMove(w);
+
     if (success) {
-      w.HamAndOvlp(walk, ovlp, ham, I1, I2, coreE); 
+      w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
       Ei = walk.d.Energy(I1, I2, coreE);
     }
     
   }
+
 #ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &ElocScaled, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &A, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &B, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &C, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  unscaledE = Eloc/commsize;
+  A = A/commsize;
+  B = B/commsize;
+  C = C/commsize;
 
   stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
 #ifndef SERIAL
   MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-  */
-  return 0.;
+  if (commrank == 0) cout << rk<<endl;
+  return A + B*B/C;
 }
+
+
+
 
 
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
@@ -337,7 +517,7 @@ double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE
       rk = calcTcorr(gradError);
     }
     
-    bool success = walk.makeMove(w);
+    bool success = walk.makeCleverMove(w);
     //bool success = walk.makeCleverMove(w, I1);
     //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
     //if (iter == 50) exit(0);
@@ -360,6 +540,7 @@ double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE
 #endif
   return ElocScaled/commsize;
 }
+
 
 
 double evaluatePTDeterministic2(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,

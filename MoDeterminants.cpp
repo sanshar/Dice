@@ -60,6 +60,90 @@ double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b,
   return p*(factor1*factor2 - factor3*factor4);
 }
 
+double MoDeterminant::OverlapAAA(Determinant& d, int i, int j, int k, 
+				 int a, int b, int c,
+				 Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				 bool doparity) {
+
+  vector<int> occ(3,0); occ[0] = i; occ[1] = j; occ[2] = k;
+  vector<int> vir(3,0); vir[0] = a; vir[1] = b; vir[2] = c;
+
+  Matrix3f m ;
+  
+  for (int x=0; x<3; x++)
+    for (int y=0; y<3; y++)
+      m(x,y) = OverlapA(d, occ[x], vir[y], alphainv, betainv, false);
+
+  if (doparity) {
+    cout << "not supported, SORRY!!"<<endl;
+    exit(0);
+  }
+  return m.determinant();
+}
+
+double MoDeterminant::OverlapAAAA(Determinant& d, int i, int j, int k, int l,
+				  int a, int b, int c, int e,
+				  Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				  bool doparity) {
+
+  vector<int> occ(4,0); occ[0] = i; occ[1] = j; occ[2] = k; occ[3] = l;
+  vector<int> vir(4,0); vir[0] = a; vir[1] = b; vir[2] = c; vir[3] = e;
+
+  Matrix4f m ;
+  
+  for (int x=0; x<4; x++)
+    for (int y=0; y<4; y++)
+      m(x,y) = OverlapA(d, occ[x], vir[y], alphainv, betainv, false);
+
+  if (doparity) {
+    cout << "not supported, SORRY!!"<<endl;
+    exit(0);
+  }
+  return m.determinant();
+}
+
+double MoDeterminant::OverlapBBB(Determinant& d, int i, int j, int k, 
+				 int a, int b, int c,
+				 Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				 bool doparity) {
+
+  vector<int> occ(3,0); occ[0] = i; occ[1] = j; occ[2] = k;
+  vector<int> vir(3,0); vir[0] = a; vir[1] = b; vir[2] = c;
+
+  Matrix3f m ;
+  
+  for (int x=0; x<3; x++)
+    for (int y=0; y<3; y++)
+      m(x,y) = OverlapB(d, occ[x], vir[y], alphainv, betainv, false);
+
+  if (doparity) {
+    cout << "not supported, SORRY!!"<<endl;
+    exit(0);
+  }
+  return m.determinant();
+}
+
+double MoDeterminant::OverlapBBBB(Determinant& d, int i, int j, int k, int l,
+				  int a, int b, int c, int e,
+				  Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
+				  bool doparity) {
+
+  vector<int> occ(4,0); occ[0] = i; occ[1] = j; occ[2] = k; occ[3] = l;
+  vector<int> vir(4,0); vir[0] = a; vir[1] = b; vir[2] = c; vir[3] = e;
+
+  Matrix4f m ;
+  
+  for (int x=0; x<4; x++)
+    for (int y=0; y<4; y++)
+      m(x,y) = OverlapB(d, occ[x], vir[y], alphainv, betainv, false);
+
+  if (doparity) {
+    cout << "not supported, SORRY!!"<<endl;
+    exit(0);
+  }
+  return m.determinant();
+}
+
 
 double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b, 
 				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,

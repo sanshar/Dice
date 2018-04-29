@@ -137,9 +137,9 @@ CItype Determinant::Hij_2ExciteAB(int& a, int& i, int& b, int& j, oneInt&I1,
 
 
 //=============================================================================
-CItype Determinant::Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2) {
+CItype Determinant::Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity) {
   double sgn = 1.0;
-  parityA(a, i, sgn);
+  if (doparity) parityA(a, i, sgn);
 
   CItype energy = I1(2*a, 2*i);
   long one = 1;
@@ -164,9 +164,9 @@ CItype Determinant::Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2) {
   return energy;
 }
 
-CItype Determinant::Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2) {
+CItype Determinant::Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity) {
   double sgn = 1.0;
-  parityB(a, i, sgn);
+  if (doparity) parityB(a, i, sgn);
 
   CItype energy = I1(2*a+1, 2*i+1);
   long one = 1;

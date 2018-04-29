@@ -76,6 +76,20 @@ double evaluatePTDeterministic(Wfn& w, double&  E0, int& nalpha, int& nbeta, int
 			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
 			       double& coreE);
 
+double evaluatePTStochasticMethodA(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+			    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+			    double& coreE, double& stddev, int niter, double& A, double& B, double& C);
+
+double evaluatePTStochasticMethodB(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				   double& coreE, double& stddev, int niter, double& A, double& B, 
+				   double& C);
+
+double evaluatePTStochasticMethodC(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				   double& coreE, double& stddev, int niter, double& A, double& B, 
+				   double& C);
+
 double evaluatePTDeterministic2(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
 

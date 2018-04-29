@@ -258,8 +258,8 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
       rk = calcTcorr(gradError);
     }
     
-    bool success = walk.makeMove(w);
-    //bool success = walk.makeCleverMove(w, I1);
+    //bool success = walk.makeMove(w);
+    bool success = walk.makeCleverMove(w);
     //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
     //if (iter == 50) exit(0);
     if (success) {
@@ -295,7 +295,8 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
     d.setoccB(j, true);
   Walker walk(d);
   walk.initUsingWave(w);
-  
+  //cout << d <<endl;
+
   stddev = 1.e4;
   int iter = 0;
   double M1=0., S1 = 0., Eavg=0.;
@@ -343,8 +344,8 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       rk = calcTcorr(gradError);
     }
     
-    bool success = walk.makeMove(w);
-    //bool success = walk.makeCleverMove(w, I1);
+    //bool success = walk.makeMove(w);
+    bool success = walk.makeCleverMove(w);
     //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
     //if (iter == 50) exit(0);
     if (success) {

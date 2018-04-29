@@ -84,6 +84,11 @@ class CPSSlater : public Wfn {
 		  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
 		  double& coreE);
 
+  //<psi|(H-E0) X^-1 (H-E0)|D_i>
+  void PTcontribution(Walker& , double& E0,
+		      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+		      double& coreE, double& A, double& B, double& C);
+
   void getVariables(Eigen::VectorXd& v);
   long getNumVariables();
   void updateVariables(Eigen::VectorXd& dv);

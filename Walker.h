@@ -45,7 +45,15 @@ class Walker {
   double getDetFactorA(int i, int a, CPSSlater& w);
   double getDetFactorB(int i, int a, CPSSlater& w);
   bool makeMove(CPSSlater& w);
-  bool makeCleverMove(CPSSlater& w, oneInt& I1);
+  bool makeCleverMove(CPSSlater& w);
+
+  void genAllMoves(CPSSlater& w, vector<Determinant>& dout, 
+		   vector<double>& prob, vector<size_t>& alphaExcitation,
+		   vector<size_t>& betaExcitation);
+  void genAllMoves2(CPSSlater& w, vector<Determinant>& dout, 
+		   vector<double>& prob, vector<size_t>& alphaExcitation,
+		   vector<size_t>& betaExcitation);
+
 };
 
 #endif

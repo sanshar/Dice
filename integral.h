@@ -164,7 +164,12 @@ class twoIntHeatBathSHM {
     short* oppositeSpinPairs;
     double* singleExcitation;
     MatrixXd Singles;
- 
+
+    //for each pair i,j it has sum_{a>b} abs((ai|bj)-(aj|bi)) if they are same spin
+    //and sum_{ab} abs(ai|bj) if they are opposite spins
+    MatrixXd sameSpinPairExcitations;
+    MatrixXd oppositeSpinPairExcitations;
+
     double epsilon;
     twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
  

@@ -19,8 +19,57 @@
 #include "Walker.h"
 #include "Wfn.h"
 #include "integral.h"
+#include "global.h"
+#include "input.h"
 using namespace Eigen;
 
+int getAbsoluteClosedIndexA(int i, Determinant& d){
+  int occi = -1, occa=-1;//d.getNalphaBefore(i);
+  for (int n=0; n<Determinant::norbs; n++) {
+    if (d.getoccA(n) && (d.getNalphaBefore(n)) == i) {
+      occi = n;
+      break;
+    }
+  }
+  if (occi == -1) occi = Determinant::norbs-1;
+  return occi;
+}
+
+int getAbsoluteOpenIndexA(int a, Determinant& d){
+  int occi = -1, occa=-1;//d.getNalphaBefore(i);
+  for (int n=0; n<Determinant::norbs; n++) {
+    if (!d.getoccA(n) && (n-d.getNalphaBefore(n)) == a) {
+      occa = n;
+      break;
+    }
+  }
+  if (occa == -1) occa = Determinant::norbs-1;
+  return occa;
+}
+
+int getAbsoluteClosedIndexB(int i, Determinant& d){
+  int occi = -1, occa=-1;//d.getNalphaBefore(i);
+  for (int n=0; n<Determinant::norbs; n++) {
+    if (d.getoccB(n) && (d.getNbetaBefore(n)) == i) {
+      occi = n;
+      break;
+    }
+  }
+  if (occi == -1) occi = Determinant::norbs-1;
+  return occi;
+}
+
+int getAbsoluteOpenIndexB(int a, Determinant& d){
+  int occi = -1, occa=-1;//d.getNalphaBefore(i);
+  for (int n=0; n<Determinant::norbs; n++) {
+    if (!d.getoccB(n) && (n-d.getNbetaBefore(n)) == a) {
+      occa = n;
+      break;
+    }
+  }
+  if (occa == -1) occa = Determinant::norbs-1;
+  return occa;
+}
 
 bool Walker::makeMove(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
@@ -34,10 +83,12 @@ bool Walker::makeMove(CPSSlater& w) {
   int i = floor( random()*(nalpha+nbeta) );
   if (i < nalpha) {
     int a = floor(random()* (norbs-nalpha) );
-    double detfactor = getDetFactorA(i, a, w);
+    int I = getAbsoluteClosedIndexA(i, d);
+    int A = getAbsoluteOpenIndexA(a, d);
+    double detfactor = getDetFactorA(I, A, w);
     //cout << i<<"   "<<a<<"   "<<detfactor<<endl;
     if ( pow(detfactor, 2) > random() ) {
-      updateA(i, a, w);
+      updateA(I, A, w);
       return true;
     }
     
@@ -45,10 +96,12 @@ bool Walker::makeMove(CPSSlater& w) {
   else {
     i = i - nalpha;
     int a = floor( random()*(norbs-nbeta));
-    double detfactor = getDetFactorB(i, a, w);
+    int I = getAbsoluteClosedIndexB(i, d);
+    int A = getAbsoluteOpenIndexB(a, d);
+    double detfactor = getDetFactorB(I, A, w);
     //cout << i<<"   "<<a<<"   "<<detfactor<<endl;    
     if ( pow(detfactor, 2) > random() ) {
-      updateB(i, a, w);
+      updateB(I, A, w);
       return true;
     }
     
@@ -58,233 +111,205 @@ bool Walker::makeMove(CPSSlater& w) {
 }
 
 
-bool Walker::makeCleverMove(CPSSlater& w, oneInt& I1) {
+void Walker::genAllMoves(CPSSlater& w, vector<Determinant>& dout, 
+			  vector<double>& prob, vector<size_t>& alphaExcitation,
+			  vector<size_t>& betaExcitation) {
+
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
+  //generate all single excitation
+  for (int i=0; i<closed.size(); i++) {
+    for (int a=0; a<open.size(); a++) {
+      if (closed[i]%2 == open[a]%2) {
+	if (closed[i]%2 == 0) {
+	  Determinant dcopy = d;
+	  dcopy.setoccA(closed[i]/2, false); dcopy.setoccA(open[a]/2, true);
+	  dout.push_back(dcopy);
+	  prob.push_back(getDetFactorA(closed[i]/2, open[a]/2, w));
+	  alphaExcitation.push_back(closed[i]/2*Determinant::norbs+open[a]/2);
+	  betaExcitation.push_back(0);
+	  //cout << " alpha "<<*alphaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<open[a]<<endl;
+	}
+	else {
+	  Determinant dcopy = d;
+	  dcopy.setoccB(closed[i]/2, false); dcopy.setoccB(open[a]/2, true);
+	  dout.push_back(dcopy);
+	  prob.push_back(getDetFactorB(closed[i]/2, open[a]/2, w));
+	  alphaExcitation.push_back(0);
+	  betaExcitation.push_back(closed[i]/2*Determinant::norbs+open[a]/2);	
+	  //cout << " beta "<<*betaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<open[a]<<endl;
+	}
+      }
+    }
+  }
+
+
+  //alpha-beta electron exchanges
+  for (int i=0; i<closed.size(); i++) {
+    if (closed[i]%2 == 0 && !d.getocc(closed[i]+1)) {//alpha orbital and single alpha occupation 
+      for (int j=0; j<closed.size(); j++) {
+	if (closed[j]%2 == 1 && !d.getocc(closed[j]-1)) {//beta orbital and single beta occupation 
+	  Determinant dcopy = d;
+	  dcopy.setoccA(closed[i]/2, false); dcopy.setoccB(closed[i]/2, true);
+	  dcopy.setoccA(closed[j]/2, true) ; dcopy.setoccB(closed[j]/2, false);
+	  prob.push_back(getDetFactorA(closed[i]/2, closed[j]/2,w)
+			 *getDetFactorB(closed[j]/2, closed[i]/2,w));
+	  alphaExcitation.push_back(closed[i]/2*Determinant::norbs+closed[j]/2);
+	  betaExcitation.push_back(closed[j]/2*Determinant::norbs+closed[i]/2);
+	  //cout << " alpha/beta "<<*alphaExcitation.rbegin()<<"  "<<*betaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<closed[j]<<endl;
+	}
+      }
+    }
+  }
+
+}
+
+
+void Walker::genAllMoves2(CPSSlater& w, vector<Determinant>& dout, 
+			  vector<double>& prob, vector<size_t>& alphaExcitation,
+			  vector<size_t>& betaExcitation) {
+  
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
+
+  //alpha-beta electron exchanges
+  if (schd.doubleProbability > 1.e-10) {
+    for (int i=0; i<closed.size(); i++) {
+      if (closed[i]%2 == 0 && !d.getocc(closed[i]+1)) {//alpha orbital and single alpha occupation 
+	for (int j=0; j<closed.size(); j++) {
+	  if (closed[j]%2 == 1 && !d.getocc(closed[j]-1)) {//beta orbital and single beta occupation 
+	    Determinant dcopy = d;
+	    dcopy.setoccA(closed[i]/2, false); dcopy.setoccB(closed[i]/2, true);
+	    dcopy.setoccA(closed[j]/2, true) ; dcopy.setoccB(closed[j]/2, false);
+	    prob.push_back(schd.doubleProbability);
+	    alphaExcitation.push_back(closed[i]/2*Determinant::norbs+closed[j]/2);
+	    betaExcitation.push_back(closed[j]/2*Determinant::norbs+closed[i]/2);
+	    //cout << " alpha/beta "<<*alphaExcitation.rbegin()<<"  "<<*betaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<closed[j]<<endl;
+	  }
+	}
+      }
+    }
+  }
+
+  if (prob.size() == 0 || schd.singleProbability > 1.e-10) {
+    //generate all single excitation
+    for (int i=0; i<closed.size(); i++) {
+      for (int a=0; a<open.size(); a++) {
+	if (closed[i]%2 == open[a]%2) {
+	  if (closed[i]%2 == 0) {
+	    Determinant dcopy = d;
+	    dcopy.setoccA(closed[i]/2, false); dcopy.setoccA(open[a]/2, true);
+	    dout.push_back(dcopy);
+	    //if (dcopy.getocc(open[a]+1)) 
+	      prob.push_back(schd.singleProbability);
+	      //else
+	      //prob.push_back(10.*schd.singleProbability);
+
+	    alphaExcitation.push_back(closed[i]/2*Determinant::norbs+open[a]/2);
+	    betaExcitation.push_back(0);
+	    //cout << " alpha "<<*alphaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<open[a]<<endl;
+	  }
+	  else {
+	    Determinant dcopy = d;
+	    dcopy.setoccB(closed[i]/2, false); dcopy.setoccB(open[a]/2, true);
+	    dout.push_back(dcopy);
+	    //if (dcopy.getocc(open[a]-1)) 
+	      prob.push_back(schd.singleProbability);
+	      //else
+	      //prob.push_back(10.*schd.singleProbability);
+
+	    alphaExcitation.push_back(0);
+	    betaExcitation.push_back(closed[i]/2*Determinant::norbs+open[a]/2);	
+	    //cout << " beta "<<*betaExcitation.rbegin()<<"  "<<closed[i]<<"  "<<open[a]<<endl;
+	  }
+	}
+      }
+    }
+  }
+
+
+}
+
+
+bool Walker::makeCleverMove(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
 			  std::ref(generator));
 
-  //double pickOpenElec = 1.0, pickClosedElec = 5.0;
-  //double pickOpenHole = 5.0, pickClosedHole = 1.0;
-  double pickOpenElec = 1.0, pickClosedElec = 2.0;
-  double pickOpenHole = 2.0, pickClosedHole = 1.0;
+  double probForward, ovlpForward=1.0;
+  Walker wcopy = *this;
 
-  double epsilon = 1.e-4;
-  int norbs = MoDeterminant::norbs,
-    nalpha = MoDeterminant::nalpha, 
-    nbeta  = MoDeterminant::nbeta; 
 
-  
-
-  //pick a random occupied orbital
-  int aorb = floor( random()*(nalpha+nbeta) );
-  if (aorb < nalpha) {
-    vector<int> openE, closedE, openH, closedH;
-    //d.getOpenClosedElecHoleAlpha(openE, closedE, openH, closedH);
+  {
+    vector<Determinant> dout;
+    vector<double> prob;
+    vector<size_t> alphaExcitation, betaExcitation;
+    genAllMoves2(w, dout, prob, alphaExcitation, betaExcitation);
     
-    double probForward=1.;
-
-    //pickElectron
-    double totalCountE = (pickOpenElec*openE.size() 
-			  + pickClosedElec*closedE.size());
-    double picki = random()*totalCountE;
-    //cout << totalCountE<<"  "<<picki<<"  "<<openE.size()<<"  "<<closedE.size()<<endl;
-    int i=0, occi=0;
-    for (int n=0; n<norbs; n++) {
-      if (d.getoccA(n) && d.getoccB(n) && pickClosedElec > picki) {
-	probForward *= pickClosedElec/totalCountE;
-	occi = n;
-	break;
-      }
-      else if (d.getoccA(n) && !d.getoccB(n) && pickOpenElec > picki) {
-	probForward *= pickOpenElec/totalCountE;
-	occi = n;
-	break;
-      }
-      else if (d.getoccA(n) && d.getoccB(n) && pickClosedElec < picki) {
-	picki -= pickClosedElec;
-	i++;
-      }
-      else if (d.getoccA(n) && !d.getoccB(n) && pickOpenElec < picki) {
-	picki -= pickOpenElec;
-	i++;
-      }
+    //pick one determinant at random
+    double cumulForward = 0;
+    vector<double> cumulative(prob.size(), 0);
+    double prev = 0.;
+    for (int i=0; i<prob.size(); i++) {
+      cumulForward += prob[i];
+      cumulative[i] = prev + prob[i];
+      prev = cumulative[i];
     }
-
-    //pickHole
-    double totalCountH = (pickOpenHole*openH.size() 
-			  + pickClosedHole*closedH.size());
-    double picka = random()*totalCountH;
-    //cout << totalCountH<<"  "<<picka<<"  "<<openH.size()<<"  "<<closedH.size()<<endl;
-
-    int a=0, occa=0;
-    for (int n=0; n<norbs; n++) {
-      if (!d.getoccA(n) && d.getoccB(n) && pickClosedHole > picka) {
-	probForward *= pickClosedHole/totalCountH;
-	occa = n;
-	break;
-      }
-      else if (!d.getoccA(n) && !d.getoccB(n) && pickOpenHole > picka) {
-	probForward *= pickOpenHole/totalCountH;
-	occa = n;
-	break;
-      }
-      else if (!d.getoccA(n) && d.getoccB(n) && pickClosedElec < picka) {
-	picka -= pickClosedHole;
-	a++;
-      }
-      else if (!d.getoccA(n) && !d.getoccB(n) && pickOpenHole < picka) {
-	picka -= pickOpenHole;
-	a++;
-      }
-    }
-
-    double probReverse = 1.0;
-    {
-      double pickH , pickE;
-      if (find(openE.begin(), openE.end(), occi) != openE.end()) {
-	totalCountE -= pickOpenElec;
-	totalCountH += pickOpenHole;
-	pickH = pickOpenHole;
-      }
-      else {
-	totalCountE -= pickClosedElec;
-	totalCountH += pickClosedHole;
-	pickH = pickClosedHole;
-      }
-      if (find(openH.begin(), openH.end(), occa) != openH.end()) {
-	totalCountE += pickOpenElec;
-	totalCountH -= pickOpenHole;
-	pickE = pickOpenElec;
-      }
-      else {
-	totalCountE += pickClosedElec;
-	totalCountH -= pickClosedHole;
-	pickE = pickClosedElec;
-      }
-      probReverse = (pickH/totalCountH)*(pickE/totalCountE);
-    }
-
-    double detfactor = pow(getDetFactorA(i, a, w),2) * probReverse/probForward;
     
-    Determinant dcopy = d; dcopy.setoccA(occi,false); dcopy.setoccA(occa, true); 
-    //cout << i<<"  "<<occi<<"  "<<a<<" "<<occa<<endl;
-    //cout << pow(getDetFactorA(i, a, w), 2)<<"  "<<probReverse/probForward<<"  "<<d<<"   "<<dcopy<<endl;
-    if ( detfactor > random() ) {
-      updateA(i, a, w);
-      return true;
-    }
+    double selectForward = random()*cumulForward;
+    //cout << selectForward/cumulForward<<endl;
 
-  }
-  else {
-    /*
-    {
-      int i = floor( random()*nbeta);//**********
-      int a = floor( random()*(norbs-nbeta));
-      double detfactor = getDetFactorB(i, a, w);
-      
-      if ( pow(detfactor, 2) > random() ) {
-	updateB(i, a, w);
-	return true;
-      }
-      else return false;
-    }
-    */
-    vector<int> openE, closedE, openH, closedH;
-    //d.getOpenClosedElecHoleBeta(openE, closedE, openH, closedH);
+    int detIndex= std::lower_bound(cumulative.begin(), cumulative.end(), selectForward)-cumulative.begin();
     
-    double probForward=1.;
+    probForward = prob[detIndex]/cumulForward;
 
-    //pickElectron
-    double totalCountE = (pickOpenElec*openE.size() 
-			  + pickClosedElec*closedE.size());
-    double picki = random()*totalCountE;
-    //cout << openE.size()<<"  "<<closedE.size()<<endl;
-    //cout << totalCountE<<"  "<<picki<<endl;
-    int i=0, occi=0;
-    for (int n=0; n<norbs; n++) {
-      if (d.getoccB(n) && d.getoccA(n) && pickClosedElec > picki) {
-	probForward *= pickClosedElec/totalCountE;
-	occi = n;
-	break;
-      }
-      else if (d.getoccB(n) && !d.getoccA(n) && pickOpenElec > picki) {
-	probForward *= pickOpenElec/totalCountE;
-	occi = n;
-	break;
-      }
-      else if (d.getoccB(n) && d.getoccA(n) && pickClosedElec < picki) {
-	picki -= pickClosedElec;
-	//cout << picki<<"  "<<n<<"  "<<pickClosedElec<<endl;
-	i++;
-      }
-      else if (d.getoccB(n) && !d.getoccA(n) && pickOpenElec < picki) {
-	picki -= pickOpenElec;
-	//cout << picki<<"  "<<n<<"  "<<pickOpenElec<<endl;
-	i++;
-      }
+    if (alphaExcitation[detIndex] != 0) {
+      int I = alphaExcitation[detIndex]/Determinant::norbs;
+      int A = alphaExcitation[detIndex]-I*Determinant::norbs;
+      //cout <<" a "<<I<<"  "<<A<<"  "<<wcopy.d<<"  "<<alphaExcitation[detIndex]<<endl;
+      ovlpForward *= getDetFactorA(I, A, w);
+      wcopy.updateA(I, A, w);
     }
-
-    //pickHole
-    double totalCountH = (pickOpenHole*openH.size() 
-			  + pickClosedHole*closedH.size());
-    double picka = random()*totalCountH;
-
-    int a=0, occa=0;
-    for (int n=0; n<norbs; n++) {
-      if (!d.getoccB(n) && d.getoccA(n) && pickClosedHole > picka) {
-	probForward *= pickClosedHole/totalCountH;
-	occa = n;
-	break;
-      }
-      else if (!d.getoccB(n) && !d.getoccA(n) && pickOpenHole > picka) {
-	probForward *= pickOpenHole/totalCountH;
-	occa = n;
-	break;
-      }
-      else if (!d.getoccB(n) && d.getoccA(n) && pickClosedElec < picka) {
-	picka -= pickClosedHole;
-	a++;
-      }
-      else if (!d.getoccB(n) && !d.getoccA(n) && pickOpenHole < picka) {
-	picka -= pickOpenHole;
-	a++;
-      }
-    }
-
-    double probReverse = 1.0;
-    {
-      double pickH , pickE;
-      if (find(openE.begin(), openE.end(), occi) != openE.end()) {
-	totalCountE -= pickOpenElec;
-	totalCountH += pickOpenHole;
-	pickH = pickOpenHole;
-      }
-      else {
-	totalCountE -= pickClosedElec;
-	totalCountH += pickClosedHole;
-	pickH = pickClosedHole;
-      }
-      if (find(openH.begin(), openH.end(), occa) != openH.end()) {
-	totalCountE += pickOpenElec;
-	totalCountH -= pickOpenHole;
-	pickE = pickOpenElec;
-      }
-      else {
-	totalCountE += pickClosedElec;
-	totalCountH -= pickClosedHole;
-	pickE = pickClosedElec;
-      }
-      probReverse = (pickH/totalCountH)*(pickE/totalCountE);
-    }
-
-    double detfactor = pow(getDetFactorB(i, a, w),2) * probReverse/probForward;
-
-    if ( detfactor > random() ) {
-      updateB(i, a, w);
-      return true;
+    if (betaExcitation[detIndex] != 0) {
+      int I = betaExcitation[detIndex]/Determinant::norbs;
+      int A = betaExcitation[detIndex]-I*Determinant::norbs;
+      //cout <<" b "<<I<<"  "<<A<<endl;
+      ovlpForward *= getDetFactorB(I, A, w);
+      wcopy.updateB(I, A, w);
     }
     
   }
-  
+
+  double probBackward, ovlpBackward;
+  {
+    vector<Determinant> dout;
+    vector<double> prob;
+    vector<size_t> alphaExcitation, betaExcitation;
+    wcopy.genAllMoves2(w, dout, prob, alphaExcitation, betaExcitation);
+    
+    //pick one determinant at random
+    double cumulBackward = 0;
+    int index = -1;
+    for (int i=0; i<prob.size(); i++) {
+      cumulBackward += prob[i];
+      if (dout[i] == this->d) 
+	index = i;
+    }
+    //cout << "backward    "<<prob[index]<<"  "<<dout[index]<<"  "<<cumulBackward<<endl;
+    probBackward = prob[index]/cumulBackward;
+  }
+
+  //cout << ovlpForward<<"  "<<probBackward<<"  "<<probForward<<endl;
+
+  double acceptance = pow(ovlpForward,2)*probBackward/probForward;
+
+  if (acceptance > random()) {
+    *this = wcopy;
+    return true;
+  }
   return false;
 }
 
@@ -321,21 +346,8 @@ void Walker::initUsingWave(Wfn& w, bool check) {
 }
 
 double Walker::getDetFactorA(int i, int a, CPSSlater& w) {
-  int occi = -1, occa=-1;//d.getNalphaBefore(i);
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (!d.getoccA(n) && (n-d.getNalphaBefore(n)) == a) {
-      occa = n;
-      break;
-    }
-  }
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (d.getoccA(n) && (d.getNalphaBefore(n)) == i) {
-      occi = n;
-      break;
-    }
-  }
-  if (occi == -1) occi = Determinant::norbs-1;
-  if (occa == -1) occa = Determinant::norbs-1;
+  int occi = i, occa=a;
+  i = d.getNalphaBefore(occi);
 
   double p=1.;
   d.parityA(occa, occi, p);
@@ -354,22 +366,9 @@ double Walker::getDetFactorA(int i, int a, CPSSlater& w) {
 
 void Walker::updateA(int i, int a, CPSSlater& w) {
   double p = 1.0;
-  int occi = -1, occa=-1;//d.getNalphaBefore(i);
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (!d.getoccA(n) && (n-d.getNalphaBefore(n)) == a) {
-      occa = n;
-      break;
-    }
-  }
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (d.getoccA(n) && (d.getNalphaBefore(n)) == i) {
-      occi = n;
-      break;
-    }
-  }
-  if (occi == -1) occi = Determinant::norbs-1;
-  if (occa == -1) occa = Determinant::norbs-1;
 
+  int occi = i, occa = a;
+  i = d.getNalphaBefore(occi);
   d.parityA(occa, occi, p);
 
   double alphaDetFactor = (1+(w.det.AlphaOrbitals.row(occa)-
@@ -399,21 +398,8 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
 }
 
 double Walker::getDetFactorB(int i, int a, CPSSlater& w) {
-  int occi = -1, occa=-1;//d.getNalphaBefore(i);
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (!d.getoccB(n) && (n-d.getNbetaBefore(n)) == a) {
-      occa = n;
-      break;
-    }
-  }
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (d.getoccB(n) && (d.getNbetaBefore(n)) == i) {
-      occi = n;
-      break;
-    }
-  }
-  if (occi == -1) occi = Determinant::norbs-1;
-  if (occa == -1) occa = Determinant::norbs-1;
+  int occi = i, occa=a;
+  i = d.getNbetaBefore(occi);
 
   double p=1.;
   d.parityB(occa, occi, p);
@@ -433,21 +419,8 @@ double Walker::getDetFactorB(int i, int a, CPSSlater& w) {
 
 void Walker::updateB(int i, int a, CPSSlater& w) {
   double p = 1.0;
-  int occi = -1, occa=-1;//d.getNalphaBefore(i);
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (!d.getoccB(n) && (n-d.getNbetaBefore(n)) == a) {
-      occa = n;
-      break;
-    }
-  }
-  for (int n=0; n<Determinant::norbs; n++) {
-    if (d.getoccB(n) && (d.getNbetaBefore(n)) == i) {
-      occi = n;
-      break;
-    }
-  }
-  if (occi == -1) occi = Determinant::norbs-1;
-  if (occa == -1) occa = Determinant::norbs-1;
+  int occi = i, occa=a;
+  i = d.getNbetaBefore(occi);
 
   d.parityB(occa, occi, p);
 

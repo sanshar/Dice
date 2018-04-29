@@ -99,6 +99,8 @@ void readInput(string input, schedule& schd, bool print) {
   schd.seed = getTime();
   schd.PTlambda = 0.5;
   schd.epsilon = 1.e-7;
+  schd.singleProbability = 0.5;
+  schd.doubleProbability = 0.5;
 
   while (dump.good()) {
 
@@ -137,6 +139,10 @@ void readInput(string input, schedule& schd, bool print) {
       schd.tol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "momentum"))
       schd.momentum = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "singleexcitationprobability"))
+      schd.singleProbability = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "doubleexcitationprobability"))
+      schd.doubleProbability = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "momentumDecay"))
       schd.momentumDecay = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "epsilon"))

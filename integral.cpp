@@ -285,12 +285,16 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   boost::mpi::communicator world;
 #endif
 
+  sameSpinPairExcitations = MatrixXd::Zero(norbs, norbs);
+  oppositeSpinPairExcitations = MatrixXd::Zero(norbs, norbs);
+
   Singles = I2.Singles;
   if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
 
 #ifndef SERIAL
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
 #endif
+  
 
   I2.Singles.resize(0,0);
   size_t memRequired = 0;
@@ -299,8 +303,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 
   if (commrank == 0) {
     std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it1 = I2.sameSpin.begin();
-    for (;it1!= I2.sameSpin.end(); it1++) nonZeroSameSpinIntegrals += it1->second.size();
-
+    for (;it1!= I2.sameSpin.end(); it1++)  nonZeroSameSpinIntegrals += it1->second.size();
+      
     std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > >::iterator it2 = I2.oppositeSpin.begin();
     for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
@@ -356,6 +360,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
             sameSpinIntegrals[index] = it->first;
             sameSpinPairs[2*index] = it->second.first;
             sameSpinPairs[2*index+1] = it->second.second;
+	    sameSpinPairExcitations(it->second.first, it->second.second) += it->first; 
+
             index++;
           }
         }
@@ -376,6 +382,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
             oppositeSpinIntegrals[index] = it->first;
             oppositeSpinPairs[2*index] = it->second.first;
             oppositeSpinPairs[2*index+1] = it->second.second;
+	    oppositeSpinPairExcitations(it->second.first, it->second.second) += it->first; 
             index++;
           }
         }
@@ -398,6 +405,14 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
   world.barrier();
 #endif
+
+#ifndef SERIAL
+  MPI::COMM_WORLD.Bcast(&sameSpinPairExcitations(0,0), sameSpinPairExcitations.rows()*
+			sameSpinPairExcitations.cols(), MPI_DOUBLE, 0);
+  MPI::COMM_WORLD.Bcast(&oppositeSpinPairExcitations(0,0), oppositeSpinPairExcitations.rows()*
+			oppositeSpinPairExcitations.cols(), MPI_DOUBLE, 0);
+#endif
+
 } // end twoIntHeatBathSHM::constructClass
 
 

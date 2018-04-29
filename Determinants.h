@@ -278,8 +278,8 @@ class Determinant {
   void parityAA(int& i, int& j, int& a, int& b, double& sgn);
   void parityBB(int& i, int& j, int& a, int& b, double& sgn);
 
-  CItype Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2);
-  CItype Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2);
+  CItype Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity=true);
+  CItype Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity=true);
 
   CItype Hij_2ExciteAA(int& a, int& i, int& b, int& j, oneInt&I1, twoInt& I2);
   CItype Hij_2ExciteBB(int& a, int& i, int& b, int& j, oneInt&I1, twoInt& I2);
