@@ -28,6 +28,7 @@
 #include "evaluateE.h"
 #include "Davidson.h"
 #include "Hmult.h"
+#include <math.h>
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -352,6 +353,134 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, I2hb, coreE); 
+      w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+    }
+    
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]),     grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  diagonalGrad /= (commsize);
+  grad /= (commsize);
+  E0 = Eloc/commsize;
+  grad = grad - E0*diagonalGrad;
+
+  stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
+#ifndef SERIAL
+  MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+}
+
+
+
+void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stddev,
+					 int& nalpha, int& nbeta, int& norbs,
+					 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE, 
+					 VectorXd& grad, double& rk, 
+					 int niter, double targetError)
+{
+  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
+			  std::ref(generator));
+
+
+  //initialize the walker
+  Determinant d;
+  for (int i=0; i<nalpha; i++)
+    d.setoccA(i, true);
+  for (int j=0; j<nbeta; j++)
+    d.setoccB(j, true);
+  Walker walk(d);
+  walk.initUsingWave(w);
+  //cout << d <<endl;
+
+  vector<double> ovlpRatio;
+  vector<size_t> excitation1, excitation2;
+
+  stddev = 1.e4;
+  int iter = 0;
+  double M1=0., S1 = 0., Eavg=0.;
+  double Eloc=0.;
+  double ham=0., ovlp =0.;
+  VectorXd localGrad = grad; localGrad.setZero();
+  double scale = 1.0;
+
+  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
+  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
+
+  E0 = 0.0;
+  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, I2hb, coreE, ovlpRatio,
+		       excitation1, excitation2); 
+  w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+
+  int gradIter = min(niter, 100000);
+  std::vector<double> gradError(gradIter, 0);
+  bool reset = true;
+  double cumdeltaT = 0., cumdeltaT2=0.;
+  while (iter <niter && stddev >targetError) {
+    if (iter == 100 && reset) {
+      iter = 0;
+      reset = false;
+      M1 = 0.; S1=0.;
+      Eloc = 0; grad.setZero();
+      diagonalGrad.setZero();
+      walk.initUsingWave(w, true);
+      cumdeltaT = 0.; cumdeltaT2 = 0;
+    }
+
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    
+    for (int i=0; i<ovlpRatio.size(); i++) {
+      cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
+      ovlpRatio[i]  = cumovlpRatio;
+    }
+    
+    double deltaT = -1.0/log(1-cumovlpRatio);
+    int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
+				   random()*cumovlpRatio)-ovlpRatio.begin();
+
+    cumdeltaT  += deltaT;
+    cumdeltaT2 += deltaT*deltaT;
+
+    double Elocold = Eloc;
+
+    diagonalGrad = diagonalGrad + deltaT*(localdiagonalGrad - diagonalGrad)/(cumdeltaT);
+    grad = grad + deltaT*(localGrad - grad)/(cumdeltaT); //running average of grad
+    Eloc = Eloc + deltaT*(ham - Eloc)/(cumdeltaT);     //running average of energy
+
+    S1 = S1 + (ham - Elocold)*(ham - Eloc);
+
+    if (iter < gradIter)
+      gradError[iter] = ham;
+
+    iter++;
+    
+    if (iter == gradIter-1) {
+      rk = calcTcorr(gradError);
+    }
+    
+
+    //update the walker
+    if (true) {
+      int I = excitation1[nextDet]/2/norbs, A = excitation1[nextDet] - 2*norbs*I;
+      if (I%2 == 0) walk.updateA(I/2, A/2, w);
+      else walk.updateB(I/2, A/2, w);
+
+      if (excitation2[nextDet] != 0) {
+	int I = excitation2[nextDet]/2/norbs, A = excitation2[nextDet] - 2*norbs*I;
+	//cout << excitation2[nextDet]<<"  "<<I<<"  "<<A<<"  "<<walk.d<<endl;
+	if (I%2 == 0) walk.updateA(I/2, A/2, w);
+	else walk.updateB(I/2, A/2, w);
+      }
+      ovlpRatio.clear(); excitation1.clear(); excitation2.clear();
+
+      localGrad.setZero();
+      localdiagonalGrad.setZero();
+      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, scale, E0, I1, I2, I2hb, coreE, ovlpRatio,
+			   excitation1, excitation2); 
       w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
     }
     

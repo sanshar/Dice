@@ -57,6 +57,11 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
 			   Eigen::VectorXd& grad, double& rk,
 			   int niter, double targetError);
 
+void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stddev,
+					 int& nalpha, int& nbeta, int& norbs,
+					 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE, 
+					 Eigen::VectorXd& grad, double& rk, 
+					 int niter, double targetError);
 
 
 

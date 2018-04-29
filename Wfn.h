@@ -71,6 +71,14 @@ class CPSSlater : public Wfn {
 			  double& ovlp, double& ham, VectorXd& grad, double& scale,
 			  double& Epsi, oneInt& I1, twoInt& I2, 
 			  twoIntHeatBathSHM& I2hb, double& coreE) ;
+  void HamAndOvlpGradient(Walker& walk,
+			  double& ovlp, double& ham, VectorXd& grad, double& scale,
+			  double& Epsi, oneInt& I1, twoInt& I2, 
+			  twoIntHeatBathSHM& I2hb, double& coreE,
+			  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+			  vector<size_t>& excitation2);
+
+
   void OverlapWithGradient(Determinant&, 
 			   double& factor,
 			   Eigen::VectorXd& grad);
