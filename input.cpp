@@ -101,6 +101,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.epsilon = 1.e-7;
   schd.singleProbability = 0.5;
   schd.doubleProbability = 0.5;
+  schd.screen = 1.e-8;
 
   while (dump.good()) {
 
@@ -137,6 +138,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.m = amsgrad;
     else if (boost::iequals(ArgName, "tol"))
       schd.tol = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "screentol"))
+      schd.screen = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "momentum"))
       schd.momentum = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "singleexcitationprobability"))

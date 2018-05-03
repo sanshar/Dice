@@ -47,6 +47,7 @@ double getTime() {
 double startofCalc;
 
 void license() {
+  return;
   if (commrank == 0) {
   cout << endl;
   cout << endl;

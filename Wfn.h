@@ -32,14 +32,19 @@ class Walker;
 class Wfn {
  public:
   virtual double Overlap(Determinant&) =0;
-  virtual void HamAndOvlp(Walker& ,
-			  double& ovlp, double& ham,
-			  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-			  double& coreE)=0;
   virtual void HamAndOvlpGradient(Walker& walk,
-				  double& ovlp, double& ham, VectorXd& grad, double& scale,
-				  double& Epsi, oneInt& I1, twoInt& I2, 
-				  twoIntHeatBathSHM& I2hb, double& coreE) =0;
+				  double& ovlp, double& ham, VectorXd& grad,
+				  oneInt& I1, twoInt& I2, 
+				  twoIntHeatBathSHM& I2hb, double& coreE,
+				  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+				  vector<size_t>& excitation2, bool doGradient=true)=0;
+  virtual void HamAndOvlpGradientStochastic(Walker& walk,
+					    double& ovlp, double& ham, VectorXd& grad,
+					    oneInt& I1, twoInt& I2, 
+					    twoIntHeatBathSHM& I2hb, double& coreE,
+					    vector<Walker>& returnWalker, 
+					    vector<double> coeffWalker, 
+					    bool fillWalker) =0;
   virtual void OverlapWithGradient(Determinant&, 
 				   double& factor,
 				   Eigen::VectorXd& grad)=0;
@@ -48,6 +53,9 @@ class Wfn {
 				   Eigen::VectorXd& grad)=0;
   virtual void printVariables() =0;
   virtual void getDetMatrix(Determinant&, Eigen::MatrixXd& alpha, Eigen::MatrixXd& beta)=0;
+  virtual void PTcontribution(Walker& , double& E0,
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			      double& coreE, double& A, double& B, double& C) = 0;
 
 };
 
@@ -68,16 +76,19 @@ class CPSSlater : public Wfn {
   double approximateNorm();
   void normalizeAllCPS();
   void HamAndOvlpGradient(Walker& walk,
-			  double& ovlp, double& ham, VectorXd& grad, double& scale,
-			  double& Epsi, oneInt& I1, twoInt& I2, 
-			  twoIntHeatBathSHM& I2hb, double& coreE) ;
-  void HamAndOvlpGradient(Walker& walk,
-			  double& ovlp, double& ham, VectorXd& grad, double& scale,
-			  double& Epsi, oneInt& I1, twoInt& I2, 
+			  double& ovlp, double& ham, VectorXd& grad,
+			  oneInt& I1, twoInt& I2, 
 			  twoIntHeatBathSHM& I2hb, double& coreE,
 			  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-			  vector<size_t>& excitation2);
+			  vector<size_t>& excitation2, bool doGradient=true);
 
+  void HamAndOvlpGradientStochastic(Walker& walk,
+				    double& ovlp, double& ham, VectorXd& grad,
+				    oneInt& I1, twoInt& I2, 
+				    twoIntHeatBathSHM& I2hb, double& coreE,
+				    vector<Walker>& returnWalker, 
+				    vector<double> coeffWalker, 
+				    bool fillWalker);
 
   void OverlapWithGradient(Determinant&, 
 			   double& factor,
@@ -87,10 +98,6 @@ class CPSSlater : public Wfn {
 			   Eigen::VectorXd& grad);
 
   double Overlap(Determinant&);
-  void HamAndOvlp(Walker& ,
-		  double& ovlp, double& ham,
-		  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-		  double& coreE);
 
   //<psi|(H-E0) X^-1 (H-E0)|D_i>
   void PTcontribution(Walker& , double& E0,

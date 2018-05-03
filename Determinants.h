@@ -28,6 +28,7 @@
 
 class oneInt;
 class twoInt;
+class twoIntHeatBathSHM;
 
 using namespace std;
 
@@ -421,10 +422,18 @@ class Determinant {
     return os;
   }
 
+  int numberPossibleSingles(double& screen, oneInt& I1, twoInt& I2,
+			    twoIntHeatBathSHM& I2hb);
+
 
 };
 
 
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE);
+
+void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+				  int& Isingle, int& Asingle, int& Idouble, int& Adouble,
+				  int& Jdouble, int& Bdouble, double& psingle, double& pdouble);
+
 
 #endif

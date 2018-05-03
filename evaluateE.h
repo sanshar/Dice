@@ -80,6 +80,8 @@ double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE
 double evaluatePTDeterministic(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
 			       double& coreE);
+double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+				oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
 
 double evaluatePTStochasticMethodA(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 			    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 

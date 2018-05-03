@@ -53,7 +53,8 @@ private:
       & PTlambda
       & epsilon
       & singleProbability
-      & doubleProbability;
+      & doubleProbability
+      & screen;
 
   }
 public:
@@ -78,6 +79,7 @@ public:
   double epsilon;
   double singleProbability;
   double doubleProbability;
+  double screen;
 };
 
 void readInput(std::string input, schedule& schd, bool print=true);

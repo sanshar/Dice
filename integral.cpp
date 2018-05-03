@@ -360,7 +360,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
             sameSpinIntegrals[index] = it->first;
             sameSpinPairs[2*index] = it->second.first;
             sameSpinPairs[2*index+1] = it->second.second;
-	    sameSpinPairExcitations(it->second.first, it->second.second) += it->first; 
+	    sameSpinPairExcitations(it->second.first, it->second.second) += abs(it->first); 
 
             index++;
           }
@@ -382,7 +382,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
             oppositeSpinIntegrals[index] = it->first;
             oppositeSpinPairs[2*index] = it->second.first;
             oppositeSpinPairs[2*index+1] = it->second.second;
-	    oppositeSpinPairExcitations(it->second.first, it->second.second) += it->first; 
+	    oppositeSpinPairExcitations(it->second.first, it->second.second) += abs(it->first); 
             index++;
           }
         }
