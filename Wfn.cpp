@@ -436,12 +436,24 @@ void CPSSlater::PTcontribution(Walker& walk, double& E0,
 	  firstRoundDets.push_back(wcopy);
 
 	  for (int n=0; n<cpsArray.size(); n++) 
+	    for (int j = 0; j<cpsArray[n].asites.size(); j++) {
+	      if (cpsArray[n].asites[j] == I || 
+		  cpsArray[n].asites[j] == J || 
+		  cpsArray[n].asites[j] == A ||
+		  cpsArray[n].asites[j] == B) {
+		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+		break;
+	      }
+	    }
+
+	      /*
 	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
 		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
 		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
 		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
 	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	  
+	      */
+
 	  Bterm += localham/(Eidet-E0);
 	  firstRoundCi.push_back(localham/(Ei-E0));
 	  //Bterm += localham;
@@ -456,7 +468,9 @@ void CPSSlater::PTcontribution(Walker& walk, double& E0,
     VectorXd grad;
 
     vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
+    int nsingles = 1; int ndoubles =1;
     HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
+				 nsingles, ndoubles,
 				 returnWalker, coeffWalker, fillWalker);
 
     //vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
@@ -474,6 +488,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 					     double& ovlp, double& ham, VectorXd& grad,
 					     oneInt& I1, twoInt& I2, 
 					     twoIntHeatBathSHM& I2hb, double& coreE,
+					     int nsingles, int ndoubles,
  					     vector<Walker>& returnWalker, 
 					     vector<double> coeffWalker, 
 					     bool fillWalker) {
@@ -492,15 +507,16 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
   }
 
 
-  int Isingle, Asingle;
-  int Idouble, Adouble,
-      Jdouble, Bdouble;
+  vector<int> Isingle, Asingle;
+  vector<int> Idouble, Adouble,
+    Jdouble, Bdouble;
 
-  double psingle,
-         pdouble;
-
+  vector<double> psingle,
+    pdouble;
+  
 
   sampleSingleDoubleExcitation(walk.d, I1, I2, I2hb, 
+			       nsingles, ndoubles,
 			       Isingle, Asingle,
 			       Idouble, Adouble,
 			       Jdouble, Bdouble,
@@ -510,12 +526,13 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
   //Calculate the contribution to the matrix through the single 
   double HijSingle = 0;
 
+  for (int ns=0; ns<nsingles; ns++)
   {  
     Determinant dcopy = walk.d;
-    dcopy.setocc(Isingle, false); dcopy.setocc(Asingle, true);
-    int I = Isingle/2, A = Asingle/2;
+    dcopy.setocc(Isingle[ns], false); dcopy.setocc(Asingle[ns], true);
+    int I = Isingle[ns]/2, A = Asingle[ns]/2;
 
-    HijSingle = Isingle%2 == 0 ? 
+    HijSingle = Isingle[ns]%2 == 0 ? 
       walk.d.Hij_1ExciteA(A, I, I1, I2)
       *det.OverlapA(walk.d, I, A, alphainv, betainv) :
       
@@ -526,64 +543,76 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
       if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
 	  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) )
 	HijSingle *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(walk.d);
-  }
+    
+    ham += HijSingle/psingle[ns]/nsingles;
 
-  ham += HijSingle/psingle;
-
-  if (fillWalker) {
-    Walker wcopy = walk;
-    if (Isingle%2 == 0) wcopy.updateA(Isingle/2, Asingle/2, *this);
-    else                wcopy.updateB(Isingle/2, Asingle/2, *this);
-
-    returnWalker.push_back(wcopy);
-    coeffWalker .push_back(HijSingle/psingle);
+    if (fillWalker) {
+      Walker wcopy = walk;
+      if (Isingle[ns]%2 == 0) wcopy.updateA(Isingle[ns]/2, Asingle[ns]/2, *this);
+      else                wcopy.updateB(Isingle[ns]/2, Asingle[ns]/2, *this);
+      
+      returnWalker.push_back(wcopy);
+      coeffWalker .push_back(HijSingle/psingle[ns]/nsingles);
+    }
   }
 
 
 
   //Calculate the contribution to the matrix through the double 
-  double Hijdouble = (I2(Adouble, Idouble, Bdouble, Jdouble) - I2(Adouble, Jdouble, Bdouble, Idouble));
+  for (int nd=0; nd<ndoubles; nd++) {
+    double Hijdouble = (I2(Adouble[nd], Idouble[nd], Bdouble[nd], Jdouble[nd]) 
+			- I2(Adouble[nd], Jdouble[nd], Bdouble[nd], Idouble[nd]));
 
-  {
     Determinant dcopy = walk.d;
-    dcopy.setocc(Idouble, false); dcopy.setocc(Adouble, true);
-    dcopy.setocc(Jdouble, false); dcopy.setocc(Bdouble, true);
+    dcopy.setocc(Idouble[nd], false); dcopy.setocc(Adouble[nd], true);
+    dcopy.setocc(Jdouble[nd], false); dcopy.setocc(Bdouble[nd], true);
     
-    int I = Idouble/2, J = Jdouble/2, A = Adouble/2, B = Bdouble/2;
+    int I = Idouble[nd]/2, J = Jdouble[nd]/2, A = Adouble[nd]/2, B = Bdouble[nd]/2;
 
-    if      (Idouble%2==Jdouble%2 && Idouble%2 == 0) 
+    if      (Idouble[nd]%2==Jdouble[nd]%2 && Idouble[nd]%2 == 0) 
       Hijdouble *= det.OverlapAA(walk.d, I, J, A, B,  alphainv, betainv, false);
 
-    else if (Idouble%2==Jdouble%2 && Idouble%2 == 1) 
+    else if (Idouble[nd]%2==Jdouble[nd]%2 && Idouble[nd]%2 == 1) 
       Hijdouble *= det.OverlapBB(walk.d, I, J, A, B,  alphainv, betainv, false);
 
-    else if (Idouble%2!=Jdouble%2 && Idouble%2 == 0)
+    else if (Idouble[nd]%2!=Jdouble[nd]%2 && Idouble[nd]%2 == 0)
       Hijdouble *= det.OverlapAB(walk.d, I, J, A, B,  alphainv, betainv, false);
 
     else
       Hijdouble *= det.OverlapAB(walk.d, J, I, B, A,  alphainv, betainv, false);
 
     for (int n=0; n<cpsArray.size(); n++) 
+      for (int j = 0; j<cpsArray[n].asites.size(); j++) {
+	if (cpsArray[n].asites[j] == I || 
+	    cpsArray[n].asites[j] == J || 
+	    cpsArray[n].asites[j] == A ||
+	    cpsArray[n].asites[j] == B) {
+	  Hijdouble *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(walk.d);
+	  //localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+	  break;
+	}
+      }
+    /*
       if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
 	  std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
 	  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
 	  std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
 	Hijdouble *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(walk.d);
+    */
 
-  }  
-  ham += Hijdouble/pdouble;
+    ham += Hijdouble/pdouble[nd]/ndoubles;
 
-  if (fillWalker) {
-    Walker wcopy = walk;
-    if (Idouble%2 == 0) wcopy.updateA(Idouble/2, Adouble/2, *this);
-    else                wcopy.updateB(Idouble/2, Adouble/2, *this);
-    if (Idouble%2 == 0) wcopy.updateA(Jdouble/2, Bdouble/2, *this);
-    else                wcopy.updateB(Jdouble/2, Bdouble/2, *this);
-
-    returnWalker.push_back(wcopy);
-    coeffWalker .push_back(Hijdouble/pdouble);
+    if (fillWalker) {
+      Walker wcopy = walk;
+      if (Idouble[nd]%2 == 0) wcopy.updateA(Idouble[nd]/2, Adouble[nd]/2, *this);
+      else                wcopy.updateB(Idouble[nd]/2, Adouble[nd]/2, *this);
+      if (Idouble[nd]%2 == 0) wcopy.updateA(Jdouble[nd]/2, Bdouble[nd]/2, *this);
+      else                wcopy.updateB(Jdouble[nd]/2, Bdouble[nd]/2, *this);
+      
+      returnWalker.push_back(wcopy);
+      coeffWalker .push_back(Hijdouble/pdouble[nd]/ndoubles);
+    }
   }
-
 
 }
 
@@ -710,12 +739,22 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	    localham += tiajb*det.OverlapAB(d, J, I, B, A,  alphainv, betainv, false);
 
 	  for (int n=0; n<cpsArray.size(); n++) 
+	    for (int j = 0; j<cpsArray[n].asites.size(); j++) {
+	      if (cpsArray[n].asites[j] == I || 
+		  cpsArray[n].asites[j] == J || 
+		  cpsArray[n].asites[j] == A ||
+		  cpsArray[n].asites[j] == B) {
+		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
+		break;
+	      }
+	    }
+	  /*
 	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
 		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
 		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
 		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
 	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	  
+	  */
 	  ham += localham;
 	  //if (commrank == 0) cout << ham<<"  d "<<endl;
 	  

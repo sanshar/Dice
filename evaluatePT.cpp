@@ -66,8 +66,8 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
   
   double E=0, ovlp=0;
   double unscaledE = 0;
-  //for (int d=commrank; d<allDets.size(); d+=commsize) {
-  for (int d=1; d<allDets.size(); d+=commsize) {
+  for (int d=commrank; d<allDets.size(); d+=commsize) {
+  //for (int d=1; d<allDets.size(); d+=commsize) {
     double Eloc=0, ovlploc=0; 
     double scale = 1.0, E0;
     Walker walk(allDets[d]);
@@ -83,7 +83,9 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
 
       double E0 = walk.d.Energy(I1, I2, coreE);
       double Elocloc = 0.;
+      int nsingles = 1, ndoubles = 1;
       w.HamAndOvlpGradientStochastic(walk, ovlploc, Elocloc, localGrad, I1, I2, I2hb, coreE,
+				     nsingles, ndoubles,
 				     returnVec, coeffWalker, false);
       double Mprev = M1;
       M1 = Mprev + (Elocloc - Mprev)/(j+1);
@@ -207,7 +209,7 @@ double evaluatePTStochasticMethodA(CPSSlater& w, double& E0, int& nalpha, int& n
   double rk = 1.;
   w.PTcontribution(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc); 
 
-  int gradIter = min(niter, 100000);
+  int gradIter = min(niter, 1000);
   std::vector<double> gradError(gradIter, 0);
   bool reset = true;
 

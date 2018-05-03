@@ -432,8 +432,11 @@ class Determinant {
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE);
 
 void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-				  int& Isingle, int& Asingle, int& Idouble, int& Adouble,
-				  int& Jdouble, int& Bdouble, double& psingle, double& pdouble);
+				  int nsingles, int ndoubles,
+				  vector<int>& Isingle, vector<int>& Asingle, 
+				  vector<int>& Idouble, vector<int>& Adouble,
+				  vector<int>& Jdouble, vector<int>& Bdouble, 
+				  vector<double>& psingle, vector<double>& pdouble);
 
 
 #endif
