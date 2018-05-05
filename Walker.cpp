@@ -111,6 +111,48 @@ bool Walker::makeMove(CPSSlater& w) {
 }
 
 
+bool Walker::makeMovePropPsi(CPSSlater& w) {
+  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
+			  std::ref(generator));
+
+  int norbs = MoDeterminant::norbs,
+    nalpha = MoDeterminant::nalpha, 
+    nbeta  = MoDeterminant::nbeta; 
+  
+  //pick a random occupied orbital
+  int i = floor( random()*(nalpha+nbeta) );
+  if (i < nalpha) {
+    int a = floor(random()* (norbs-nalpha) );
+    int I = getAbsoluteClosedIndexA(i, d);
+    int A = getAbsoluteOpenIndexA(a, d);
+    double detfactor = getDetFactorA(I, A, w);
+    //cout << i<<"   "<<a<<"   "<<detfactor<<endl;
+    if ( abs(detfactor) > random() ) {
+      updateA(I, A, w);
+      return true;
+    }
+    
+  }
+  else {
+    i = i - nalpha;
+    int a = floor( random()*(norbs-nbeta));
+    int I = getAbsoluteClosedIndexB(i, d);
+    int A = getAbsoluteOpenIndexB(a, d);
+    double detfactor = getDetFactorB(I, A, w);
+    //cout << i<<"   "<<a<<"   "<<detfactor<<endl;    
+    if ( abs(detfactor) > random() ) {
+      updateB(I, A, w);
+      return true;
+    }
+    
+  }
+  
+  return false;
+}
+
+
+
+
 void Walker::genAllMoves(CPSSlater& w, vector<Determinant>& dout, 
 			  vector<double>& prob, vector<size_t>& alphaExcitation,
 			  vector<size_t>& betaExcitation) {
