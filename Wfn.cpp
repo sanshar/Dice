@@ -446,14 +446,6 @@ void CPSSlater::PTcontribution(Walker& walk, double& E0,
 	      }
 	    }
 
-	      /*
-	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
-		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
-		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
-		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
-	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	      */
-
 	  Bterm += localham/(Eidet-E0);
 	  firstRoundCi.push_back(localham/(Ei-E0));
 	  //Bterm += localham;
@@ -467,35 +459,99 @@ void CPSSlater::PTcontribution(Walker& walk, double& E0,
     double ovlp=0, ham=0;
     VectorXd grad;
 
-    vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
-    int nsingles = 1; int ndoubles =1;
-    HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-				 nsingles, ndoubles,
-				 returnWalker, coeffWalker, fillWalker);
+    //vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
+    //int nsingles = 1; int ndoubles =10;
+    //HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
+    //nsingles, ndoubles,
+    //returnWalker, coeffWalker, fillWalker);
 
-    //vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
-    //HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-    //ovlpRatio, excitation1, excitation2, dogradient);
+    vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
+    HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
+    ovlpRatio, excitation1, excitation2, dogradient);
 
     Aterm -= (ham-E0)*firstRoundCi[dindex];
   }
 }
 
 
+
+void CPSSlater::PTcontributionFullyStochastic(Walker& walk, double& E0,
+					      oneInt& I1, twoInt& I2, 
+					      twoIntHeatBathSHM& I2hb, double& coreE,
+					      double& Aterm, double& Bterm, double& C,
+					      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+					      vector<size_t>& excitation2, bool doGradient) {
+
+
+  double TINY = schd.screen;
+  double THRESH = schd.epsilon;
+
+
+  double ovlp=0, ham=0;
+  VectorXd grad;
+  vector<Walker> firstRoundDets; vector<double> firstRoundCi; bool fillWalker = true;
+  int nsingles = 1; int ndoubles =1;
+
+  double coreEtmp = coreE - E0;
+  HamAndOvlpGradientStochastic(walk, ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			       nsingles, ndoubles, 
+			       firstRoundDets, firstRoundCi, fillWalker);
+
+  double Eidet = walk.d.Energy(I1, I2, coreE);
+  C = 1.0/(Eidet-E0);
+  Aterm = 0.0;
+  double sgn = ovlp/abs(ovlp);
+
+  for (int dindex =0; dindex<firstRoundDets.size(); dindex++) {
+    double ovlp=0, ham=0;
+    VectorXd grad;
+    double Eidet = firstRoundDets[dindex].d.Energy(I1, I2, coreE);
+
+    //vector<Walker> secondRoundDets; vector<double> secondRoundCi; bool fillWalker = false;
+    //int nsingles = 1; int ndoubles = 1;
+    //HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+    //nsingles, ndoubles, secondRoundDets, secondRoundCi, fillWalker);
+
+    if (dindex == 0)  {
+      HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			 ovlpRatio, excitation1, excitation2, doGradient);
+      Bterm = ham/(Eidet-E0);
+    }
+    else {
+      vector<double> ovlpRatio; vector<size_t> excitation1, excitation2;
+      HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			 ovlpRatio, excitation1, excitation2, doGradient);
+    }
+
+    Aterm -= (ham)*firstRoundCi[dindex]/(Eidet - E0);
+
+  }
+}
+
+
 //only appends to ham and returnWalkder, coeffWalker, so make sure they are empty at the
 //begining if you don't want to just append things
+//it gives the following output, where i can be nsingles+ndoubles
+// <psi|H|D_j> = \sum_i (H_ij/pi) *(<psi|D_i>/<psi|D_j>) <psi|D_j>
 void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 					     double& ovlp, double& ham, VectorXd& grad,
 					     oneInt& I1, twoInt& I2, 
 					     twoIntHeatBathSHM& I2hb, double& coreE,
 					     int nsingles, int ndoubles,
  					     vector<Walker>& returnWalker, 
-					     vector<double> coeffWalker, 
+					     vector<double>& coeffWalker, 
 					     bool fillWalker) {
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
+
   MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
+  double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
+  double detOverlap = alphaDet*betaDet;
+  ovlp = detOverlap;
+  for (int i=0; i<cpsArray.size(); i++)
+    ovlp *= cpsArray[i].Overlap(walk.d);
+  
   {
     double E0 = walk.d.Energy(I1, I2, coreE);
     ham  += E0;
@@ -522,6 +578,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 			       Jdouble, Bdouble,
 			       psingle, 
 			       pdouble);
+
 
   //Calculate the contribution to the matrix through the single 
   double HijSingle = 0;
@@ -592,13 +649,6 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 	  break;
 	}
       }
-    /*
-      if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
-	  std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
-	  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
-	  std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
-	Hijdouble *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(walk.d);
-    */
 
     ham += Hijdouble/pdouble[nd]/ndoubles;
 
@@ -606,7 +656,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
       Walker wcopy = walk;
       if (Idouble[nd]%2 == 0) wcopy.updateA(Idouble[nd]/2, Adouble[nd]/2, *this);
       else                wcopy.updateB(Idouble[nd]/2, Adouble[nd]/2, *this);
-      if (Idouble[nd]%2 == 0) wcopy.updateA(Jdouble[nd]/2, Bdouble[nd]/2, *this);
+      if (Jdouble[nd]%2 == 0) wcopy.updateA(Jdouble[nd]/2, Bdouble[nd]/2, *this);
       else                wcopy.updateB(Jdouble[nd]/2, Bdouble[nd]/2, *this);
       
       returnWalker.push_back(wcopy);
@@ -748,15 +798,8 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 		break;
 	      }
 	    }
-	  /*
-	    if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
-		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), J) ||
-		std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) ||
-		std::binary_search(cpsArray[n].bsites.begin(), cpsArray[n].bsites.end(), B) )
-	      localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	  */
+
 	  ham += localham;
-	  //if (commrank == 0) cout << ham<<"  d "<<endl;
 	  
 	  double ovlpdetcopy = localham/tiajb;
 	  if (doGradient) {

@@ -44,7 +44,7 @@ class Wfn {
 					    twoIntHeatBathSHM& I2hb, double& coreE,
 					    int nsingles, int ndoubles,
 					    vector<Walker>& returnWalker, 
-					    vector<double> coeffWalker, 
+					    vector<double>& coeffWalker, 
 					    bool fillWalker) =0;
   virtual void OverlapWithGradient(Determinant&, 
 				   double& factor,
@@ -57,6 +57,11 @@ class Wfn {
   virtual void PTcontribution(Walker& , double& E0,
 			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
 			      double& coreE, double& A, double& B, double& C) = 0;
+  virtual void PTcontributionFullyStochastic(Walker& , double& E0,
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+					     double& coreE, double& A, double& B, double& C,
+					      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+					     vector<size_t>& excitation2, bool doGradient=false)=0;
 
 };
 
@@ -89,7 +94,7 @@ class CPSSlater : public Wfn {
 				    twoIntHeatBathSHM& I2hb, double& coreE,
 				    int nsingles, int ndoubles,
 				    vector<Walker>& returnWalker, 
-				    vector<double> coeffWalker, 
+				    vector<double>& coeffWalker, 
 				    bool fillWalker);
 
   void OverlapWithGradient(Determinant&, 
@@ -105,6 +110,14 @@ class CPSSlater : public Wfn {
   void PTcontribution(Walker& , double& E0,
 		      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
 		      double& coreE, double& A, double& B, double& C);
+
+  void PTcontributionFullyStochastic(Walker& , double& E0,
+		      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+				     double& coreE, double& A, double& B, double& C,
+			  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+			  vector<size_t>& excitation2, bool doGradient=true);
+
+
 
   void getVariables(Eigen::VectorXd& v);
   long getNumVariables();

@@ -64,44 +64,4 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
 					 int niter, double targetError);
 
 
-
-
-//evaluate PT correction 
-double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE,
-				    int& nalpha, int& nbeta, int& norbs,
-				    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				    double& coreE);
-double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE,
-				 int& nalpha, int& nbeta, int& norbs,
-				 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				 double& coreE, double& stddev,
-				 int niter=10000, double targetError = 1e-3);
-
-double evaluatePTDeterministic(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
-			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-			       double& coreE);
-double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
-				oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
-
-double evaluatePTStochasticMethodA(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
-			    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-			    double& coreE, double& stddev, int niter, double& A, double& B, double& C);
-
-double evaluatePTStochasticMethodB(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
-				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				   double& coreE, double& stddev, int niter, double& A, double& B, 
-				   double& C);
-
-double evaluatePTStochasticMethodC(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
-				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				   double& coreE, double& stddev, int niter, double& A, double& B, 
-				   double& C);
-
-double evaluatePTDeterministic2(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
-			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
-
-
-double evaluateOvlpWithMoDet(Wfn& w, MoDeterminant&  E0, int& nalpha, int& nbeta, int& norbs,
-			     oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
-
 #endif
