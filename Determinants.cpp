@@ -333,6 +333,7 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
 
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
 			  std::ref(generator));
+
   int norbs = Determinant::norbs;
   vector<int> closed;
   vector<int> open;
@@ -411,33 +412,18 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
     double doubleOcc       = random()*cumOccPair;
     int    doubleOccIndex  = std::lower_bound(occPairProbability.begin(), occPairProbability.end(),
 					      doubleOcc) - occPairProbability.begin();
-    
+
     Idouble.push_back( occPair[doubleOccIndex] / (norbs) / 2);
     Jdouble.push_back( occPair[doubleOccIndex] - Idouble[nd] * 2 * norbs);
     bool   occSameSpin     = Idouble[nd]%2 == Jdouble[nd]%2;
 
-
     int X = max(Idouble[nd], Jdouble[nd]), 
       Y = min(Idouble[nd], Jdouble[nd]);
-    
+
     double pdoubletemp = occSameSpin ? 
       I2hb.sameSpinPairExcitations     (X/2, Y/2)/cumOccPair :
-      I2hb.oppositeSpinPairExcitations (X/2, Y/2)/cumOccPair ;
-    
-    //now select a pair of virtual orbitals based on the occupied orbitals
-    //using the heat bath integrals
-    int    pairIndex = (X/2)*(X/2+1)/2+Y/2;
-    size_t start     = occSameSpin ? 
-      I2hb.startingIndicesSameSpin    [pairIndex] : 
-      I2hb.startingIndicesOppositeSpin[pairIndex] ;
-    
-    size_t  end      = occSameSpin ? 
-      I2hb.startingIndicesSameSpin    [pairIndex+1] : 
-      I2hb.startingIndicesOppositeSpin[pairIndex+1] ;
-    
-    float* integrals  = occSameSpin ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    short* orbIndices = occSameSpin ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    
+      I2hb.oppositeSpinPairExcitations (X/2, Y/2)/cumOccPair ;    
+
     double cumVirtPair = 0.;
     vector<double> virtPairProbability;
     vector<size_t> virtPair;
@@ -445,17 +431,21 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
     virtPairProbability.reserve( open.size()*open.size());
     virtPair           .reserve( open.size()*open.size());
     
-    for (size_t index = start; index <end; index++) {
-      int a = 2 * orbIndices[2*index  ] + X%2, 
-          b = 2 * orbIndices[2*index+1] + Y%2;
-      
-      if (!(d.getocc(a) || d.getocc(b))) {
-	virtPair           .push_back( a * 2 * norbs + b);
-	virtPairProbability.push_back(cumVirtPair + abs(integrals[index]));
-	cumVirtPair        += abs(integrals[index]);
-      }
+    for (int a=0; a<open.size()  ; a++) {
+    for (int b=0; b<open.size()  ; b++) {
+      if (open[a] %2 != Idouble[nd]%2 ||
+	  open[b] %2 != Jdouble[nd]%2 )
+	continue;
+
+      int A = open[a],
+	  B = open[b];
+      double integral = abs(I2(A, Idouble[nd], B, Jdouble[nd]) - I2(A, Jdouble[nd], B, Idouble[nd]));
+      virtPair           .push_back( A * 2 * norbs + B);
+      virtPairProbability.push_back(cumVirtPair + integral);
+      cumVirtPair        += integral;
     }
-    
+    }
+
     double doubleVirt      = random()*cumVirtPair;
     int    doubleVirtIndex = std::lower_bound(virtPairProbability.begin(), virtPairProbability.end(),
 					      doubleVirt) - virtPairProbability.begin();
@@ -466,9 +456,13 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
     pdoubletemp *= doubleVirtIndex == 0 ? 
       abs(virtPairProbability[doubleVirtIndex]                                         )/cumVirtPair :
       abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1])/cumVirtPair ;
-
+    
     pdouble.push_back(pdoubletemp);
-  }
 
+    double integral = doubleVirtIndex == 0 ?
+      abs(virtPairProbability[doubleVirtIndex]                                         ):
+      abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1]);
+
+  }
 }
 
