@@ -42,7 +42,7 @@ class Wfn {
 					    double& ovlp, double& ham, VectorXd& grad,
 					    oneInt& I1, twoInt& I2, 
 					    twoIntHeatBathSHM& I2hb, double& coreE,
-					    int nsingles, int ndoubles,
+					    int terms,
 					    vector<Walker>& returnWalker, 
 					    vector<double>& coeffWalker, 
 					    bool fillWalker) =0;
@@ -92,7 +92,7 @@ class CPSSlater : public Wfn {
 				    double& ovlp, double& ham, VectorXd& grad,
 				    oneInt& I1, twoInt& I2, 
 				    twoIntHeatBathSHM& I2hb, double& coreE,
-				    int nsingles, int ndoubles,
+				    int nterms,
 				    vector<Walker>& returnWalker, 
 				    vector<double>& coeffWalker, 
 				    bool fillWalker);

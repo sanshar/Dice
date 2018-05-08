@@ -22,6 +22,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "Determinants.h"
+#include "input.h"
 
 using namespace std;
 using namespace Eigen;
@@ -322,18 +323,16 @@ int Determinant::numberPossibleSingles(double& screen, oneInt& I1, twoInt& I2,
 
 
 void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-				  int nsingles, int ndoubles,
+				  int nterms,
 				  vector<int>& Isingle, vector<int>& Asingle, 
 				  vector<int>& Idouble, vector<int>& Adouble,
 				  vector<int>& Jdouble, vector<int>& Bdouble, 
 				  vector<double>& psingle, vector<double>& pdouble) {
 
-  assert(nsingles != 0);
-  assert(ndoubles != 0);
-
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
 			  std::ref(generator));
 
+  double TINY = schd.screen;
   int norbs = Determinant::norbs;
   vector<int> closed;
   vector<int> open;
@@ -350,32 +349,16 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
   //generate a single excitation
   for (int i=0; i<closed.size(); i++)
   for (int a=0; a<open.size()  ; a++) {
-    if (closed[i]%2 == open[a]%2) {
+    if (closed[i]%2 == open[a]%2&& I2hb.Singles(closed[i], open[a]) > TINY) {
       int I = closed[i],
 	  A = open[a];
       upperBoundOfSingles.push_back( cumSingles + I2hb.Singles(I, A));
-      orbitalPairs       .push_back( I * 2 * norbs + A);
+      orbitalPairs       .push_back( closed[i] * 2 * norbs + open[a]);
       cumSingles += I2hb.Singles(I, A);
 
     }
   }
 
-  for (int i=0; i<nsingles; i++) {
-    double selectSingle = random()*cumSingles;
-    int    singleIndex  = std::lower_bound(upperBoundOfSingles.begin(), upperBoundOfSingles.end(),
-					   selectSingle) - upperBoundOfSingles.begin();
-
-    Isingle.push_back(orbitalPairs[singleIndex] / (2*norbs));
-    Asingle.push_back(orbitalPairs[singleIndex] - Isingle[i] * 2 * norbs);
-
-    //probability of having selected this single
-    double psingletemp = singleIndex == 0 ? 
-         upperBoundOfSingles[singleIndex]/cumSingles 
-      : (upperBoundOfSingles[singleIndex] - upperBoundOfSingles[singleIndex-1])/cumSingles; 
-    psingle.push_back(psingletemp);
-  }
-
-  //********************************
   //select a pair of occupied orbitals
   vector<double>    occPairProbability;
   vector<size_t>    occPair;
@@ -408,61 +391,83 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
     }
   }
 
-  for (int nd=0; nd<ndoubles; nd++) {
-    double doubleOcc       = random()*cumOccPair;
-    int    doubleOccIndex  = std::lower_bound(occPairProbability.begin(), occPairProbability.end(),
-					      doubleOcc) - occPairProbability.begin();
+  //cout << cumSingles<<"  "<<cumOccPair<<endl;
+  for (int term = 0; term <nterms; term++) {
+    double singleOrDouble = random()*(cumSingles+cumOccPair);
 
-    Idouble.push_back( occPair[doubleOccIndex] / (norbs) / 2);
-    Jdouble.push_back( occPair[doubleOccIndex] - Idouble[nd] * 2 * norbs);
-    bool   occSameSpin     = Idouble[nd]%2 == Jdouble[nd]%2;
+    if (singleOrDouble < cumSingles) {
+      double selectSingle = singleOrDouble;
+      int    singleIndex  = std::lower_bound(upperBoundOfSingles.begin(), upperBoundOfSingles.end(),
+					     selectSingle) - upperBoundOfSingles.begin();
 
-    int X = max(Idouble[nd], Jdouble[nd]), 
-      Y = min(Idouble[nd], Jdouble[nd]);
-
-    double pdoubletemp = occSameSpin ? 
-      I2hb.sameSpinPairExcitations     (X/2, Y/2)/cumOccPair :
-      I2hb.oppositeSpinPairExcitations (X/2, Y/2)/cumOccPair ;    
-
-    double cumVirtPair = 0.;
-    vector<double> virtPairProbability;
-    vector<size_t> virtPair;
-
-    virtPairProbability.reserve( open.size()*open.size());
-    virtPair           .reserve( open.size()*open.size());
-    
-    for (int a=0; a<open.size()  ; a++) {
-    for (int b=0; b<open.size()  ; b++) {
-      if (open[a] %2 != Idouble[nd]%2 ||
-	  open[b] %2 != Jdouble[nd]%2 )
-	continue;
-
-      int A = open[a],
-	  B = open[b];
-      double integral = abs(I2(A, Idouble[nd], B, Jdouble[nd]) - I2(A, Jdouble[nd], B, Idouble[nd]));
-      virtPair           .push_back( A * 2 * norbs + B);
-      virtPairProbability.push_back(cumVirtPair + integral);
-      cumVirtPair        += integral;
-    }
+      Isingle.push_back(orbitalPairs[singleIndex] / (2*norbs));
+      Asingle.push_back(orbitalPairs[singleIndex] - *Isingle.rbegin()* (2 * norbs));
+      
+      //probability of having selected this single
+      double psingletemp = singleIndex == 0 ? 
+	upperBoundOfSingles[singleIndex]/(cumSingles+cumOccPair) 
+	: (upperBoundOfSingles[singleIndex] - upperBoundOfSingles[singleIndex-1])/(cumSingles+cumOccPair); 
+      psingle.push_back(psingletemp);
     }
 
-    double doubleVirt      = random()*cumVirtPair;
-    int    doubleVirtIndex = std::lower_bound(virtPairProbability.begin(), virtPairProbability.end(),
-					      doubleVirt) - virtPairProbability.begin();
-    
-    Adouble.push_back( virtPair[doubleVirtIndex] / (norbs) / 2);
-    Bdouble.push_back( virtPair[doubleVirtIndex] - Adouble[nd] * 2 * norbs);
-    
-    pdoubletemp *= doubleVirtIndex == 0 ? 
-      abs(virtPairProbability[doubleVirtIndex]                                         )/cumVirtPair :
-      abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1])/cumVirtPair ;
-    
-    pdouble.push_back(pdoubletemp);
+    else {
+      double doubleOcc       = singleOrDouble - cumSingles;
+      int    doubleOccIndex  = std::lower_bound(occPairProbability.begin(), occPairProbability.end(),
+						doubleOcc) - occPairProbability.begin();
+      
+      int Ipresent = occPair[doubleOccIndex] / (norbs) / 2 ;
+      int Jpresent = occPair[doubleOccIndex] - Ipresent * 2 * norbs;
+      Idouble.push_back( Ipresent);
+      Jdouble.push_back( Jpresent);
+      bool   occSameSpin     = Ipresent%2 == Jpresent%2;
+      
+      int X = max(Ipresent, Jpresent), 
+ 	  Y = min(Ipresent, Jpresent);
 
-    double integral = doubleVirtIndex == 0 ?
-      abs(virtPairProbability[doubleVirtIndex]                                         ):
-      abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1]);
+      double pdoubletemp = occSameSpin ? 
+	I2hb.sameSpinPairExcitations     (X/2, Y/2)/(cumSingles+cumOccPair):
+	I2hb.oppositeSpinPairExcitations (X/2, Y/2)/(cumSingles+cumOccPair);    
+      
+      double cumVirtPair = 0.;
+      vector<double> virtPairProbability;
+      vector<size_t> virtPair;
+      
+      virtPairProbability.reserve( open.size()*open.size());
+      virtPair           .reserve( open.size()*open.size());
+      
+      for (int a=0; a<open.size()  ; a++) {
+      for (int b=0; b<open.size()  ; b++) {
+	if (open[a] %2 != Ipresent%2 ||
+	    open[b] %2 != Jpresent%2 )
+	  continue;
+	
+	int A = open[a],
+	    B = open[b];
+	double integral = abs(I2(A, Ipresent, B, Jpresent) - I2(A, Jpresent, B, Ipresent));
+	virtPair           .push_back( A * 2 * norbs + B);
+	virtPairProbability.push_back(cumVirtPair + integral);
+	cumVirtPair        += integral;
+      }
+      }
 
+      double doubleVirt      = random()*cumVirtPair;
+      int    doubleVirtIndex = std::lower_bound(virtPairProbability.begin(), virtPairProbability.end(),
+						doubleVirt) - virtPairProbability.begin();
+    
+      Adouble.push_back( virtPair[doubleVirtIndex] / (norbs) / 2);
+      Bdouble.push_back( virtPair[doubleVirtIndex] - *Adouble.rbegin()* (2 * norbs));
+    
+      pdoubletemp *= doubleVirtIndex == 0 ? 
+	abs(virtPairProbability[doubleVirtIndex]                                         )/cumVirtPair :
+	abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1])/cumVirtPair ;
+    
+      pdouble.push_back(pdoubletemp);
+      
+      double integral = doubleVirtIndex == 0 ?
+	abs(virtPairProbability[doubleVirtIndex]                                         ):
+	abs(virtPairProbability[doubleVirtIndex] - virtPairProbability[doubleVirtIndex-1]);
+    }
   }
 }
+
 

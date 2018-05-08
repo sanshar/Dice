@@ -459,15 +459,15 @@ void CPSSlater::PTcontribution(Walker& walk, double& E0,
     double ovlp=0, ham=0;
     VectorXd grad;
 
-    //vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
-    //int nsingles = 1; int ndoubles =10;
-    //HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-    //nsingles, ndoubles,
-    //returnWalker, coeffWalker, fillWalker);
+    vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
+    int nterms=1;
+    HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
+				 nterms,
+				 returnWalker, coeffWalker, fillWalker);
 
-    vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
-    HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-    ovlpRatio, excitation1, excitation2, dogradient);
+    //vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
+    //HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
+    //ovlpRatio, excitation1, excitation2, dogradient);
 
     Aterm -= (ham-E0)*firstRoundCi[dindex];
   }
@@ -490,11 +490,11 @@ void CPSSlater::PTcontributionFullyStochastic(Walker& walk, double& E0,
   double ovlp=0, ham=0;
   VectorXd grad;
   vector<Walker> firstRoundDets; vector<double> firstRoundCi; bool fillWalker = true;
-  int nsingles = 1; int ndoubles =1;
+  int nterms=1;
 
   double coreEtmp = coreE - E0;
   HamAndOvlpGradientStochastic(walk, ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
-			       nsingles, ndoubles, 
+			       nterms, 
 			       firstRoundDets, firstRoundCi, fillWalker);
 
   double Eidet = walk.d.Energy(I1, I2, coreE);
@@ -537,7 +537,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 					     double& ovlp, double& ham, VectorXd& grad,
 					     oneInt& I1, twoInt& I2, 
 					     twoIntHeatBathSHM& I2hb, double& coreE,
-					     int nsingles, int ndoubles,
+					     int nterms,
  					     vector<Walker>& returnWalker, 
 					     vector<double>& coeffWalker, 
 					     bool fillWalker) {
@@ -572,7 +572,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
   
 
   sampleSingleDoubleExcitation(walk.d, I1, I2, I2hb, 
-			       nsingles, ndoubles,
+			       nterms,
 			       Isingle, Asingle,
 			       Idouble, Adouble,
 			       Jdouble, Bdouble,
@@ -580,9 +580,11 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 			       pdouble);
 
 
+  //cout << Isingle.size()<<"  "<<Idouble.size()<<"  ";
+
   //Calculate the contribution to the matrix through the single 
   double HijSingle = 0;
-
+  int nsingles = Isingle.size();
   for (int ns=0; ns<nsingles; ns++)
   {  
     Determinant dcopy = walk.d;
@@ -601,20 +603,21 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 	  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) )
 	HijSingle *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(walk.d);
     
-    ham += HijSingle/psingle[ns]/nsingles;
+    ham += HijSingle/psingle[ns]/nterms;
 
     if (fillWalker) {
       Walker wcopy = walk;
       if (Isingle[ns]%2 == 0) wcopy.updateA(Isingle[ns]/2, Asingle[ns]/2, *this);
-      else                wcopy.updateB(Isingle[ns]/2, Asingle[ns]/2, *this);
+      else                    wcopy.updateB(Isingle[ns]/2, Asingle[ns]/2, *this);
       
       returnWalker.push_back(wcopy);
-      coeffWalker .push_back(HijSingle/psingle[ns]/nsingles);
+      coeffWalker .push_back(HijSingle/psingle[ns]/nterms);
     }
   }
 
 
 
+  int ndoubles = Idouble.size();
   //Calculate the contribution to the matrix through the double 
   for (int nd=0; nd<ndoubles; nd++) {
     double Hijdouble = (I2(Adouble[nd], Idouble[nd], Bdouble[nd], Jdouble[nd]) 
@@ -650,7 +653,7 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
 	}
       }
 
-    ham += Hijdouble/pdouble[nd]/ndoubles;
+    ham += Hijdouble/pdouble[nd]/nterms;
 
     if (fillWalker) {
       Walker wcopy = walk;
@@ -660,10 +663,9 @@ void CPSSlater::HamAndOvlpGradientStochastic(Walker& walk,
       else                wcopy.updateB(Jdouble[nd]/2, Bdouble[nd]/2, *this);
       
       returnWalker.push_back(wcopy);
-      coeffWalker .push_back(Hijdouble/pdouble[nd]/ndoubles);
+      coeffWalker .push_back(Hijdouble/pdouble[nd]/nterms);
     }
   }
-
 }
 
 

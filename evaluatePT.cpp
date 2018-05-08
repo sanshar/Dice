@@ -407,6 +407,92 @@ double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE
 
 
 
+double evaluatePTStochasticMethodA(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				   double& coreE, double& stddev,
+				   int niter, double& A, double& B, double& C) {
+
+
+  //initialize the walker
+  Determinant d;
+  for (int i=0; i<nalpha; i++)
+    d.setoccA(i, true);
+  for (int j=0; j<nbeta; j++)
+    d.setoccB(j, true);
+  Walker walk(d);
+  walk.initUsingWave(w);
+
+
+  stddev = 1.e4;
+  int iter = 0;
+  double M1=0., S1 = 0.;
+  A=0; B=0; C=0;
+  double Aloc=0, Bloc=0, Cloc=0;
+  double scale = 1.0;
+
+  double rk = 1.;
+  w.PTcontribution(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc); 
+
+  int gradIter = min(niter, 100000);
+  std::vector<double> gradError(gradIter, 0);
+  bool reset = true;
+
+
+  while (iter <niter ) {
+    if (iter == 100 && reset) {
+      iter = 0;
+      reset = false;
+      M1 = 0.; S1=0.;
+      A=0; B=0; C=0;
+      walk.initUsingWave(w, true);
+    }
+
+
+    //if (commrank == 0) cout <<iter<<"  "<< walk.d<<"  "<<Aloc<<"  "<<Bloc<<"  "<<Cloc<<endl;
+
+    A   =   A  +  ( Aloc - A)/(iter+1);
+    B   =   B  +  ( Bloc - B)/(iter+1);
+    C   =   C  +  ( Cloc - C)/(iter+1);
+
+    double Mprev = M1;
+    M1 = Mprev + (Aloc - Mprev)/(iter+1);
+    if (iter != 0)
+      S1 = S1 + (Aloc - Mprev)*(Aloc - M1);
+
+    if (iter < gradIter)
+      gradError[iter] = Aloc;
+
+    iter++;
+    
+    if (iter == gradIter-1) {
+      rk = calcTcorr(gradError);
+    }
+    
+    //bool success = walk.makeCleverMove(w);
+    bool success = walk.makeMove(w);
+
+    if (success) {
+      w.PTcontribution(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc); 
+    }
+    
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &A, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &B, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &C, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  A = A/commsize;
+  B = B/commsize;
+  C = C/commsize;
+
+  stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
+#ifndef SERIAL
+  MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+  return A + B*B/C;
+}
 
 
 
@@ -569,18 +655,11 @@ double evaluatePTStochasticMethodC(CPSSlater& w, double& E0, int& nalpha, int& n
 
     double cumovlpRatio = 0;
     for (int i=0; i<ovlpRatio.size(); i++) {
-      Determinant dcopy = walk.d;
-      int I = excitation1[i]/2/norbs, A = excitation1[i] - 2*norbs*I;
-      if (I%2 == 0) {dcopy.setoccA(I/2, true); dcopy.setoccA(A/2, false);}
-      else          {dcopy.setoccB(I/2, true); dcopy.setoccB(A/2, false);}
-      
-      cumovlpRatio += min(1.0, ovlpRatio[i])*
-	dcopy.numberPossibleSingles(schd.screen, I1, I2, I2hb)/pow(ovlpRatio.size(),2);
-      //cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
+      cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
       ovlpRatio[i]  = cumovlpRatio;
     }
-    
-    double deltaT = -1.0/log(1-cumovlpRatio);
+
+    double deltaT = -log(random())/(cumovlpRatio);
     double select = random()*cumovlpRatio;
     int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
 				   select)-ovlpRatio.begin();

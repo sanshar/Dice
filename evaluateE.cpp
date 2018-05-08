@@ -457,18 +457,12 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     
     for (int i=0; i<ovlpRatio.size(); i++) {
-      Determinant dcopy = walk.d;
-      int I = excitation1[i]/2/norbs, A = excitation1[i] - 2*norbs*I;
-      if (I%2 == 0) {dcopy.setoccA(I/2, true); dcopy.setoccA(A/2, false);}
-      else          {dcopy.setoccB(I/2, true); dcopy.setoccB(A/2, false);}
-      
-      cumovlpRatio += min(1.0, ovlpRatio[i])*
-	dcopy.numberPossibleSingles(schd.screen, I1, I2, I2hb)/pow(ovlpRatio.size(),2);
-      //cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
+      cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
       ovlpRatio[i]  = cumovlpRatio;
     }
     
-    double deltaT = -1.0/log(1-cumovlpRatio);
+    double deltaT = -log(random())/(cumovlpRatio);
+    //double deltaT = -1.0/log(1-cumovlpRatio);
     int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
 				   random()*cumovlpRatio)-ovlpRatio.begin();
 
