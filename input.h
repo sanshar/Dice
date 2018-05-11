@@ -45,6 +45,7 @@ private:
       & mingradientFactor
       & m
       & stochasticIter
+      & integralSampleSize
       & momentum
       & momentumDecay
       & decay
@@ -70,6 +71,7 @@ public:
   Method m;
   std::map<int, std::string> correlatorFiles;
   int stochasticIter;
+  int integralSampleSize;
   double momentum;
   double momentumDecay;
   double decay;

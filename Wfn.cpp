@@ -298,190 +298,31 @@ double CPSSlater::Overlap(Determinant& d) {
 }
 
 
+void CPSSlater::exciteWalker(Walker& wcopy, int excite1, int excite2, int norbs) {
+  
+  int I1 = excite1/(2*norbs), A1= excite1%(2*norbs);
 
-void CPSSlater::PTcontribution(Walker& walk, double& E0,
-			       oneInt& I1, twoInt& I2, 
-			       twoIntHeatBathSHM& I2hb, double& coreE,
-			       double& Aterm, double& Bterm, double& C) {
 
-  double TINY = schd.screen;
-  double THRESH = schd.epsilon;
+  if (I1%2 == 0) wcopy.updateA(I1/2, A1/2, *this);
+  else           wcopy.updateB(I1/2, A1/2, *this);
 
-  MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
-  double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
-  double detOverlap = alphaDet*betaDet;
-  Determinant& d = walk.d;
-
-  double overlap0 = detOverlap;
-  for (int i=0; i<cpsArray.size(); i++)
-    overlap0 *= cpsArray[i].Overlap(d);
-
-  vector<int> closed;
-  vector<int> open;
-  d.getOpenClosed(open, closed);
-
-  int norbs = Determinant::norbs;
-
-  //First application of X^-1 H0-E0|D>
-  vector<double>      firstRoundCi;
-  vector<Walker>      firstRoundDets;
-
-  Bterm = 0; Aterm=0;
-
-  double Eidet = d.Energy(I1, I2, coreE);
-  //noexcitation
-  {
-    firstRoundDets.push_back(walk);
-    firstRoundCi.push_back(1.0); //X^-1 (H0-Ei) = 1.0 at diagonal
-    C = 1.0/(Eidet-E0);
-    //Bterm += (Eidet);
-    Bterm += 1.0;
+  if (excite2 != 0) {
+    int I2 = excite2/(2*norbs), A2= excite2%(2*norbs);
+    if (I2%2 == 0) wcopy.updateA(I2/2, A2/2, *this);
+    else               wcopy.updateB(I2/2, A2/2, *this);
   }
-
-
-  //Single alpha-beta excitation 
-  {
-    for (int i=0; i<closed.size(); i++) {
-      for (int a=0; a<open.size(); a++) {
-	if (closed[i]%2 == open[a]%2 && I2hb.Singles(closed[i], open[a]) > TINY) {
-	  //if (closed[i]%2 == open[a]%2) {
-	  int I = closed[i]/2, A = open[a]/2;
-	  double tia = 0; Determinant dcopy = d;
-	  bool Alpha = closed[i]%2 == 0 ? true : false;
-
-	  if (Alpha) tia = d.Hij_1ExciteA(A, I, I1, I2, false);
-	  else       tia = d.Hij_1ExciteB(A, I, I1, I2, false);
-
-	  double localham = 0.0;
-	  if (abs(tia) > TINY) {
-	    if (Alpha) {dcopy.setoccA(I, false); dcopy.setoccA(A, true);}
-	    else       {dcopy.setoccB(I, false); dcopy.setoccB(A, true);}
-
-	    double Ei    = dcopy.Energy(I1, I2, coreE);
-	    Walker wcopy = walk;
-
-	    if (Alpha) wcopy.updateA(I, A, *this);
-	    else       wcopy.updateB(I, A, *this);	    
-
-	    firstRoundDets.push_back(wcopy);
-
-	    if (Alpha) localham += tia*det.OverlapA(d, I, A,  alphainv, betainv, false);
-	    else       localham += tia*det.OverlapB(d, I, A,  alphainv, betainv, false);
-
-	    for (int n=0; n<cpsArray.size(); n++) 
-	      if (std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), I) ||
-		  std::binary_search(cpsArray[n].asites.begin(), cpsArray[n].asites.end(), A) )
-		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-	    Bterm += localham/(Eidet-E0);
-	    firstRoundCi.push_back(localham/(Ei-E0));
-	  }
-	}
-      }
-    }
-  }
-
-  //Double excitation
-  {
-    int nclosed = closed.size();
-    for (int ij=0; ij<nclosed*nclosed; ij++) {
-      int i=ij/nclosed, j = ij%nclosed;
-      if (i<=j) continue;
-      int I = closed[i]/2, J = closed[j]/2;
-      int X = max(I, J), Y = min(I, J);
-
-      int pairIndex = X*(X+1)/2+Y;
-      size_t start = closed[i]%2==closed[j]%2 ? 
-	I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-      size_t end   = closed[i]%2==closed[j]%2 ? 
-	I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-      float* integrals  = closed[i]%2==closed[j]%2 ?  
-	I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-      short* orbIndices = closed[i]%2==closed[j]%2 ?  
-	I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-
-      // for all HCI integrals
-      for (size_t index=start; index<end; index++) {
-	// if we are going below the criterion, break
-	if (fabs(integrals[index]) < THRESH) break;
-
-	// otherwise: generate the determinant corresponding to the current excitation
-	int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-	if (!(d.getocc(a) || d.getocc(b))) {
-	  Determinant dcopy = d;
-	  double localham = 0.0;
-	  double tiajb = integrals[index];
-
-	  dcopy.setocc(closed[i], false); dcopy.setocc(a, true);
-	  dcopy.setocc(closed[j], false); dcopy.setocc(b, true);
-
-	  double Ei = dcopy.Energy(I1, I2, coreE);
-
-
-	  int A = a/2, B = b/2;
-	  int type = 0; //0 = AA, 1 = BB, 2 = AB, 3 = BA
-	  if (closed[i]%2==closed[j]%2 && closed[i]%2 == 0) 
-	    localham += tiajb*det.OverlapAA(d, I, J, A, B,  alphainv, betainv, false);
-	  else if (closed[i]%2==closed[j]%2 && closed[i]%2 == 1) 
-	    localham += tiajb*det.OverlapBB(d, I, J, A, B,  alphainv, betainv, false);
-	  else if (closed[i]%2!=closed[j]%2 && closed[i]%2 == 0)
-	    localham += tiajb*det.OverlapAB(d, I, J, A, B,  alphainv, betainv, false);
-	  else
-	    localham += tiajb*det.OverlapAB(d, J, I, B, A,  alphainv, betainv, false);
-
-	  Walker wcopy = walk;
-	  if (closed[i]%2==0) wcopy.updateA(I, A, *this);
-	  else wcopy.updateB(I, A, *this);	    
-	  if (closed[j]%2==0) wcopy.updateA(J, B, *this);
-	  else wcopy.updateB(J, B, *this);	    
-	  firstRoundDets.push_back(wcopy);
-
-	  for (int n=0; n<cpsArray.size(); n++) 
-	    for (int j = 0; j<cpsArray[n].asites.size(); j++) {
-	      if (cpsArray[n].asites[j] == I || 
-		  cpsArray[n].asites[j] == J || 
-		  cpsArray[n].asites[j] == A ||
-		  cpsArray[n].asites[j] == B) {
-		localham *= cpsArray[n].Overlap(dcopy)/cpsArray[n].Overlap(d);
-		break;
-	      }
-	    }
-
-	  Bterm += localham/(Eidet-E0);
-	  firstRoundCi.push_back(localham/(Ei-E0));
-	  //Bterm += localham;
-	}
-      }
-    }
-
-  }
-
-  for (int dindex =0; dindex<firstRoundDets.size(); dindex++) {
-    double ovlp=0, ham=0;
-    VectorXd grad;
-
-    vector<Walker> returnWalker; vector<double> coeffWalker; bool fillWalker = false;
-    int nterms=1;
-    HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-				 nterms,
-				 returnWalker, coeffWalker, fillWalker);
-
-    //vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool dogradient=false;
-    //HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreE,
-    //ovlpRatio, excitation1, excitation2, dogradient);
-
-    Aterm -= (ham-E0)*firstRoundCi[dindex];
-  }
+  
 }
 
+void CPSSlater::PTcontribution2ndOrder(Walker& walk, double& E0,
+				       oneInt& I1, twoInt& I2, 
+				       twoIntHeatBathSHM& I2hb, double& coreE,
+				       double& Aterm, double& Bterm, double& C,
+				       vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+				       vector<size_t>& excitation2, bool doGradient) {
 
-
-void CPSSlater::PTcontributionFullyStochastic(Walker& walk, double& E0,
-					      oneInt& I1, twoInt& I2, 
-					      twoIntHeatBathSHM& I2hb, double& coreE,
-					      double& Aterm, double& Bterm, double& C,
-					      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-					      vector<size_t>& excitation2, bool doGradient) {
-
+  auto random = std::bind(std::uniform_real_distribution<double>(0,1),
+			  std::ref(generator));
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
@@ -490,7 +331,107 @@ void CPSSlater::PTcontributionFullyStochastic(Walker& walk, double& E0,
   double ovlp=0, ham=0;
   VectorXd grad;
   vector<Walker> firstRoundDets; vector<double> firstRoundCi; bool fillWalker = true;
-  int nterms=1;
+  size_t nterms=schd.integralSampleSize;
+  double coreEtmp = coreE - E0;
+
+
+  firstRoundDets.push_back(walk); firstRoundCi.push_back(walk.d.Energy(I1, I2, coreEtmp));
+
+  //Here we first calculate the loca energy of walker and then use that to select 
+  //important elements of V
+  double inputWalkerHam = 0;
+  {
+    vector<double> HijElements;
+    HamAndOvlpGradient(walk, ovlp, inputWalkerHam, grad, I1, I2, I2hb, coreEtmp,
+		       ovlpRatio, excitation1, excitation2, HijElements, doGradient);
+
+
+    std::vector<size_t> idx(HijElements.size());
+    std::iota(idx.begin(), idx.end(), 0);
+    std::sort(idx.begin(), idx.end(), [&HijElements](size_t i1, size_t i2)
+	      {return abs(HijElements[i1])<abs(HijElements[i2]);});
+    
+    //pick the first nterms-1 most important integrals
+    for (int i=0; i<min(nterms-1, HijElements.size()); i++) {
+      int I = idx[HijElements.size()-i-1] ; //the largest Hij matrix elements
+
+      firstRoundDets.push_back(walk);
+      exciteWalker(*firstRoundDets.rbegin(), excitation1[I], excitation2[I], Determinant::norbs); 
+      firstRoundCi.push_back(HijElements[I]*ovlpRatio[I]);
+
+      //zero out the integral 
+      HijElements[I] = 0;
+    }
+
+    //include the last term stochastically
+    if (HijElements.size() > nterms-1) {
+
+      double cumHij = 0;
+      vector<double> cumHijList(HijElements.size(), 0);
+      for (int i=0; i<HijElements.size(); i++) {
+	cumHij += abs(HijElements[i]);
+	cumHijList[i] = cumHij;
+      }
+      int T  = std::lower_bound(cumHijList.begin(), cumHijList.end(),
+				random()*cumHij) - cumHijList.begin();
+      firstRoundDets.push_back(walk);
+      exciteWalker(*firstRoundDets.rbegin(), excitation1[T], excitation2[T], Determinant::norbs); 
+      firstRoundCi.push_back(cumHij*ovlpRatio[T]*abs(HijElements[T])/HijElements[T]);
+    }
+  }
+
+
+  //HamAndOvlpGradientStochastic(walk, ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+  //nterms, 
+  //firstRoundDets, firstRoundCi, fillWalker);
+
+  double Eidet = walk.d.Energy(I1, I2, coreE);
+  C = 1.0/(Eidet-E0);
+  Aterm = 0.0;
+
+  for (int dindex =0; dindex<firstRoundDets.size(); dindex++) {
+    double ovlp=0, ham=0;
+    VectorXd grad;
+    double Eidet = firstRoundDets[dindex].d.Energy(I1, I2, coreE);
+
+    
+    if (dindex == 0)  {
+      ham = inputWalkerHam;
+      //vector<double> HijElements;
+      //HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+      //ovlpRatio, excitation1, excitation2, HijElements, doGradient);
+      Bterm = ham/(Eidet-E0);
+    }
+    else {
+      vector<double> HijElements;
+      vector<double> ovlpRatio; vector<size_t> excitation1, excitation2;
+      HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			 ovlpRatio, excitation1, excitation2, HijElements, doGradient, false);
+    }
+
+    Aterm -= (ham)*firstRoundCi[dindex]/(Eidet - E0);
+    //cout << firstRoundCi[dindex]<<"  "<<firstRoundDets[dindex].d<<"  "<<ham<<"  "<<Aterm<<endl;
+  }
+
+}
+
+
+void CPSSlater::PTcontribution3rdOrder(Walker& walk, double& E0,
+				       oneInt& I1, twoInt& I2, 
+				       twoIntHeatBathSHM& I2hb, double& coreE,
+				       double& Aterm2, double& Bterm, double& C, double& Aterm3,
+				       vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+				       vector<size_t>& excitation2, bool doGradient) {
+  
+
+  double TINY = schd.screen;
+  double THRESH = schd.epsilon;
+
+
+  double ovlp=0, ham=0;
+  VectorXd grad;
+  vector<Walker> firstRoundDets; vector<double> firstRoundCi; bool fillWalker = true;
+  int nterms=schd.integralSampleSize;
 
   double coreEtmp = coreE - E0;
   HamAndOvlpGradientStochastic(walk, ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
@@ -499,35 +440,44 @@ void CPSSlater::PTcontributionFullyStochastic(Walker& walk, double& E0,
 
   double Eidet = walk.d.Energy(I1, I2, coreE);
   C = 1.0/(Eidet-E0);
-  Aterm = 0.0;
+  Aterm2 = 0.0; Aterm3 = 0.0;
   double sgn = ovlp/abs(ovlp);
 
-  for (int dindex =0; dindex<firstRoundDets.size(); dindex++) {
-    double ovlp=0, ham=0;
-    VectorXd grad;
-    double Eidet = firstRoundDets[dindex].d.Energy(I1, I2, coreE);
+  for (int dindex1 =0; dindex1<firstRoundDets.size(); dindex1++) {
+    double Eidet = firstRoundDets[dindex1].d.Energy(I1, I2, coreE);
+    firstRoundCi[dindex1] /= (Eidet- E0);
 
-    //vector<Walker> secondRoundDets; vector<double> secondRoundCi; bool fillWalker = false;
-    //int nsingles = 1; int ndoubles = 1;
-    //HamAndOvlpGradientStochastic(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
-    //nsingles, ndoubles, secondRoundDets, secondRoundCi, fillWalker);
+    vector<Walker> secondRoundDets; vector<double> secondRoundCi; bool fillWalker = true;
+    HamAndOvlpGradientStochastic(firstRoundDets[dindex1], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+				 nterms, secondRoundDets, secondRoundCi, fillWalker);
+    
+				 
+    for (int dindex2 =0; dindex2<secondRoundDets.size(); dindex2++) {
+      double ovlp=0, ham=0;
+      double Eidet = secondRoundDets[dindex2].d.Energy(I1, I2, coreE);
+      secondRoundCi[dindex2] *= firstRoundCi[dindex1] / (Eidet- E0);
 
-    if (dindex == 0)  {
-      HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
-			 ovlpRatio, excitation1, excitation2, doGradient);
-      Bterm = ham/(Eidet-E0);
+    
+      if (dindex2 == 0 && dindex1 == 0)  {
+	vector<double> HijElements;
+	HamAndOvlpGradient(secondRoundDets[dindex2], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			   ovlpRatio, excitation1, excitation2, HijElements, doGradient);
+	Bterm = ham/(Eidet-E0);
+      }
+      else {
+	vector<double> HijElements;
+	vector<double> ovlpRatio; vector<size_t> excitation1, excitation2;
+	HamAndOvlpGradient(secondRoundDets[dindex2], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
+			   ovlpRatio, excitation1, excitation2, HijElements, doGradient, false);
+      }
+    
+      if (dindex2 == 0) 
+	Aterm2 -= (ham)*firstRoundCi[dindex1];
+      
+      Aterm3 -= (ham)*secondRoundCi[dindex2];
     }
-    else {
-      vector<double> ovlpRatio; vector<size_t> excitation1, excitation2;
-      HamAndOvlpGradient(firstRoundDets[dindex], ovlp, ham, grad, I1, I2, I2hb, coreEtmp,
-			 ovlpRatio, excitation1, excitation2, doGradient);
-    }
-
-    Aterm -= (ham)*firstRoundCi[dindex]/(Eidet - E0);
-
   }
 }
-
 
 //only appends to ham and returnWalkder, coeffWalker, so make sure they are empty at the
 //begining if you don't want to just append things
@@ -675,7 +625,8 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 				   oneInt& I1, twoInt& I2, 
 				   twoIntHeatBathSHM& I2hb, double& coreE,
 				   vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-				   vector<size_t>& excitation2, bool doGradient) {
+				   vector<size_t>& excitation2, vector<double>& HijElements, 
+				   bool doGradient, bool fillExcitations) {
   ovlpRatio.clear(); excitation1.clear(); excitation2.clear();
 
   double TINY = schd.screen;
@@ -704,7 +655,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
       OverlapWithGradient(d, factor, grad);
     }
   }
-
+  //cout << ham<<endl;
 
   //Single alpha-beta excitation 
   {
@@ -732,6 +683,8 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	    ham += localham;
 	    //if (commrank == 0) cout << ham<<"  s "<<endl;
 
+	    //cout << ham<<"  "<<localham<<endl;
+	    //cout << ham<<endl;
 	    
 	    double ovlpdetcopy = localham/tia;
 	    if (doGradient) {
@@ -739,9 +692,12 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	      OverlapWithGradient(dcopy, factor, grad);
 	    }
 
-	    ovlpRatio.push_back(ovlpdetcopy*ovlpdetcopy);
-	    excitation1.push_back( closed[i]*2*norbs+open[a]);
-	    excitation2.push_back(0);
+	    if (fillExcitations) {
+	      ovlpRatio.push_back(ovlpdetcopy);
+	      excitation1.push_back( closed[i]*2*norbs+open[a]);
+	      excitation2.push_back(0);
+	      HijElements.push_back(tia);
+	    }
 	    //cout << *excitation1.rbegin()<<"  "<<*excitation2.rbegin()<<"  "<<excitation1.size()<<"  "<<excitation2.size()<<endl;
 	  }
 	}
@@ -802,6 +758,7 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	    }
 
 	  ham += localham;
+	  //cout << ham<<"  "<<localham<<endl;
 	  
 	  double ovlpdetcopy = localham/tiajb;
 	  if (doGradient) {
@@ -809,9 +766,12 @@ void CPSSlater::HamAndOvlpGradient(Walker& walk,
 	    OverlapWithGradient(dcopy, factor, grad);
 	  }
 
-	  //ovlpRatio.push_back(ovlpdetcopy*ovlpdetcopy);
-	  //excitation1.push_back( closed[i]*2*norbs+a);
-	  //excitation2.push_back( closed[j]*2*norbs+b);
+	  if (fillExcitations) {
+	    ovlpRatio.push_back(ovlpdetcopy);
+	    excitation1.push_back( closed[i]*2*norbs+a);
+	    excitation2.push_back( closed[j]*2*norbs+b);
+	    HijElements.push_back(tiajb);
+	  }
 	  //cout << *excitation1.rbegin()<<"  "<<*excitation2.rbegin()<<"  "<<excitation1.size()<<"  "<<excitation2.size()<<endl;
 
 	}

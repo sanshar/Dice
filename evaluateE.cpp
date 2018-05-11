@@ -127,6 +127,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  vector<double> HijElements;
 
 
   double Overlap = 0, Energy=0;
@@ -143,7 +144,7 @@ void getGradient(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
       E0 = 0.; double scale = 1.0;
       localgrad.setZero(); localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localgrad, I1, I2, I2hb, coreE, ovlpRatio,
-			   excitation1, excitation2);
+			   excitation1, excitation2, HijElements);
       w.OverlapWithGradient(walk.d, ovlp, localdiagonalGrad);
     }
     grad         += localgrad*ovlp*ovlp;
@@ -187,6 +188,7 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
   VectorXd localGrad; bool doGradient = false;
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  vector<double> HijElements;
 
   double E=0, ovlp=0;
   for (int d=commrank; d<allDets.size(); d+=commsize) {
@@ -196,7 +198,7 @@ double evaluateEDeterministic(Wfn& w, int& nalpha, int& nbeta, int& norbs,
 
     
     w.HamAndOvlpGradient(walk, ovlploc, Eloc, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-		 excitation1, excitation2, doGradient);
+			 excitation1, excitation2, HijElements, doGradient);
 
     E    += ovlploc*ovlploc*Eloc;
     ovlp += ovlploc*ovlploc;
@@ -236,6 +238,7 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
   VectorXd localGrad; bool doGradient = false;
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  vector<double> HijElements;
 
   stddev = 1.e4;
   int iter = 0;
@@ -246,7 +249,7 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
 
   double E0 = 0.0, rk = 1.;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-	       ovlpRatio, excitation1, excitation2, doGradient); 
+		       ovlpRatio, excitation1, excitation2, HijElements, doGradient); 
 
   int gradIter = min(niter, 100000);
   std::vector<double> gradError(gradIter, 0);
@@ -283,7 +286,7 @@ double evaluateEStochastic(CPSSlater& w, int& nalpha, int& nbeta, int& norbs,
     //if (iter == 50) exit(0);
     if (success) {
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-		   ovlpRatio, excitation1, excitation2, doGradient); 
+			   ovlpRatio, excitation1, excitation2, HijElements, doGradient); 
       //w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
     }
     
@@ -330,9 +333,10 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  vector<double> HijElements;
 
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-		       ovlpRatio, excitation1, excitation2); 
+		       ovlpRatio, excitation1, excitation2, HijElements); 
   w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
 
   int gradIter = min(niter, 100000);
@@ -375,7 +379,7 @@ void getStochasticGradient(CPSSlater& w, double& E0, double& stddev,
       localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-		       ovlpRatio, excitation1, excitation2);  
+			   ovlpRatio, excitation1, excitation2, HijElements);  
       w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
     }
     
@@ -421,6 +425,7 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
 
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  vector<double> HijElements;
 
   stddev = 1.e4;
   int iter = 0;
@@ -435,7 +440,7 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
 
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-		       excitation1, excitation2); 
+		       excitation1, excitation2, HijElements); 
   w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
 
   int gradIter = min(niter, 100000);
@@ -457,12 +462,12 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     
     for (int i=0; i<ovlpRatio.size(); i++) {
-      cumovlpRatio += min(1.0, ovlpRatio[i])/ovlpRatio.size();
+      cumovlpRatio += min(1.0, pow(ovlpRatio[i],2));
       ovlpRatio[i]  = cumovlpRatio;
     }
     
-    double deltaT = -log(random())/(cumovlpRatio);
-    //double deltaT = -1.0/log(1-cumovlpRatio);
+    //double deltaT = -log(random())/(cumovlpRatio);
+    double deltaT = 1.0/(cumovlpRatio);
     int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
 				   random()*cumovlpRatio)-ovlpRatio.begin();
 
@@ -504,7 +509,7 @@ void getStochasticGradientContinuousTime(CPSSlater& w, double& E0, double& stdde
       localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-			   excitation1, excitation2); 
+			   excitation1, excitation2, HijElements); 
       w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
     }
     

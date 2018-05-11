@@ -92,6 +92,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.mingradientFactor = 0.00001;
   schd.m   = rmsprop;
   schd.stochasticIter = 1e4;
+  schd.integralSampleSize = 10;
   schd.momentum = 0.9;
   schd.momentumDecay = 0.001;
   schd.decay = 0.9;
@@ -158,6 +159,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.learningEpoch = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "stochasticiter"))
       schd.stochasticIter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "integralsamplesize"))
+      schd.integralSampleSize = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "gradientFactor"))
       schd.gradientFactor = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "mingradientFactor"))

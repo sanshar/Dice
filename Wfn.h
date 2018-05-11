@@ -37,7 +37,9 @@ class Wfn {
 				  oneInt& I1, twoInt& I2, 
 				  twoIntHeatBathSHM& I2hb, double& coreE,
 				  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-				  vector<size_t>& excitation2, bool doGradient=true)=0;
+				  vector<size_t>& excitation2, vector<double>& Hij, 
+				  bool doGradient=true, bool fillExcitations=true)=0;
+
   virtual void HamAndOvlpGradientStochastic(Walker& walk,
 					    double& ovlp, double& ham, VectorXd& grad,
 					    oneInt& I1, twoInt& I2, 
@@ -54,14 +56,12 @@ class Wfn {
 				   Eigen::VectorXd& grad)=0;
   virtual void printVariables() =0;
   virtual void getDetMatrix(Determinant&, Eigen::MatrixXd& alpha, Eigen::MatrixXd& beta)=0;
-  virtual void PTcontribution(Walker& , double& E0,
-			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-			      double& coreE, double& A, double& B, double& C) = 0;
-  virtual void PTcontributionFullyStochastic(Walker& , double& E0,
-			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-					     double& coreE, double& A, double& B, double& C,
-					      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-					     vector<size_t>& excitation2, bool doGradient=false)=0;
+
+  virtual void PTcontribution2ndOrder(Walker& , double& E0,
+				      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+				      double& coreE, double& A, double& B, double& C,
+				      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+				      vector<size_t>& excitation2, bool doGradient=false)=0;
 
 };
 
@@ -86,7 +86,8 @@ class CPSSlater : public Wfn {
 			  oneInt& I1, twoInt& I2, 
 			  twoIntHeatBathSHM& I2hb, double& coreE,
 			  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-			  vector<size_t>& excitation2, bool doGradient=true);
+			  vector<size_t>& excitation2, vector<double>& HijElement,
+			  bool doGradient=true, bool fillExcitations=true);
 
   void HamAndOvlpGradientStochastic(Walker& walk,
 				    double& ovlp, double& ham, VectorXd& grad,
@@ -106,19 +107,20 @@ class CPSSlater : public Wfn {
 
   double Overlap(Determinant&);
 
-  //<psi|(H-E0) X^-1 (H-E0)|D_i>
-  void PTcontribution(Walker& , double& E0,
-		      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-		      double& coreE, double& A, double& B, double& C);
+  void PTcontribution2ndOrder(Walker& , double& E0,
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			      double& coreE, double& A, double& B, double& C,
+			      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+			      vector<size_t>& excitation2, bool doGradient=true);  
 
-  void PTcontributionFullyStochastic(Walker& , double& E0,
-		      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
-				     double& coreE, double& A, double& B, double& C,
-			  vector<double>& ovlpRatio, vector<size_t>& excitation1, 
-			  vector<size_t>& excitation2, bool doGradient=true);
+  void PTcontribution3rdOrder(Walker& , double& E0,
+			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
+			      double& coreE, double& A2, double& B, double& C, double& A3,
+			      vector<double>& ovlpRatio, vector<size_t>& excitation1, 
+			      vector<size_t>& excitation2, bool doGradient=true);  
 
 
-
+  void exciteWalker(Walker& w, int excite1, int excite2, int norbs) ;
   void getVariables(Eigen::VectorXd& v);
   long getNumVariables();
   void updateVariables(Eigen::VectorXd& dv);

@@ -67,8 +67,14 @@ double evaluatePTStochasticMethodB(CPSSlater& w, double&  E0, int& nalpha, int& 
 
 double evaluatePTStochasticMethodC(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				   double& coreE, double& stddev, int niter, double& A, double& B, 
+				   double& coreE, double& stddevA, double& stddevB, double& stddevC,
+				   int niter, double& A, double& B, 
 				   double& C);
+
+double evaluatePTStochastic3rdOrder(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+				    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
+				    double& coreE, double& stddev, int niter, double& A2, double& B, 
+				    double& C, double& A3);
 
 
 
