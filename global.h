@@ -18,8 +18,8 @@
 */
 #ifndef Global_HEADER_H
 #define Global_HEADER_H
-#include <ctime>
-#include <sys/time.h>
+//#include <ctime>
+//#include <sys/time.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <string>
 #ifndef SERIAL
