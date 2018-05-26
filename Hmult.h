@@ -20,9 +20,7 @@
 #define Hmult_HEADER_H
 #include <Eigen/Dense>
 #include <vector>
-#ifndef SERIAL
-#include "mpi.h"
-#endif
+
 
 struct SparseHam {
   std::vector<std::vector<int> > connections;  
