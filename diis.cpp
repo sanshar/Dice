@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "diis.h"
@@ -24,7 +24,7 @@ using namespace Eigen;
 using namespace std;
 
 DIIS::DIIS(int pmaxDim, int pvectorDim) : maxDim(pmaxDim), vectorDim(pvectorDim) {
-  
+
   prevVectors  = MatrixXd::Zero(pvectorDim, pmaxDim);
   errorVectors = MatrixXd::Zero(pvectorDim, pmaxDim);
   diisMatrix   = MatrixXd::Zero(pmaxDim+1, pmaxDim+1);
@@ -37,7 +37,7 @@ DIIS::DIIS(int pmaxDim, int pvectorDim) : maxDim(pmaxDim), vectorDim(pvectorDim)
 
 void DIIS::init(int pmaxDim, int pvectorDim) {
   maxDim = pmaxDim; vectorDim = pvectorDim;
-  
+
   prevVectors  = MatrixXd::Zero(pvectorDim, pmaxDim);
   errorVectors = MatrixXd::Zero(pvectorDim, pmaxDim);
   diisMatrix   = MatrixXd::Zero(pmaxDim+1, pmaxDim+1);
@@ -60,7 +60,7 @@ void DIIS::update(VectorXd& newV, VectorXd& errorV) {
     diisMatrix(col, i   ) = diisMatrix(i, col);
   }
   iter++;
-  
+
   if (iter < maxDim) {
     VectorXd b = VectorXd::Zero(iter+1);
     b[iter] = 1.0;
@@ -70,7 +70,7 @@ void DIIS::update(VectorXd& newV, VectorXd& errorV) {
       localdiis(iter, i) = 1.0;
     }
     VectorXd x = localdiis.colPivHouseholderQr().solve(b);
-    newV = prevVectors.block(0,0,vectorDim,iter)*x.head(iter); 
+    newV = prevVectors.block(0,0,vectorDim,iter)*x.head(iter);
     //+ errorVectors.block(0,0,vectorDim,iter)*x.head(iter);
 
   }
@@ -79,7 +79,7 @@ void DIIS::update(VectorXd& newV, VectorXd& errorV) {
     b[maxDim] = 1.0;
     VectorXd x = diisMatrix.colPivHouseholderQr().solve(b);
     newV = prevVectors*x.head(maxDim);// + errorVectors*x.head(maxDim);
-    
+
     //prevVectors.col((iter-1)%maxDim) = 1.* newV;
   }
 }

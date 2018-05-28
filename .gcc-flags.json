@@ -1,0 +1,8 @@
+{
+  "execPath": "/opt/local/bin/gcc-mp-6",
+  "gccDefaultCFlags": "-Wall",
+  "gccDefaultCppFlags": "-Wall -std=c++11 -fsyntax-only -c",
+  "gccErrorLimit": 15,
+  "gccIncludePaths": ".,./include,/Users/sandeepsharma/Academics/Programs/Eigen/,/opt/local/include,/opt/local/include/openmpi-mp/",
+  "gccSuppressWarnings": false
+}

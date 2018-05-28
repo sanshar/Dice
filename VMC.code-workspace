@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"stackoperators.h": "c",
+			"stackbaseoperator.h": "c"
+		}
+	}
+}

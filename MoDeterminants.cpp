@@ -12,7 +12,7 @@ double MoDeterminant::Overlap(Determinant& d) {
   return Overlap(alpha, beta);
 }
 
-void MoDeterminant::HamAndOvlp(Determinant& d, 
+void MoDeterminant::HamAndOvlp(Determinant& d,
 			       double& ovlp, double& ham,
 			       oneInt& I1, twoInt& I2, double& coreE) {
   std::vector<int> alpha, beta;
@@ -21,7 +21,7 @@ void MoDeterminant::HamAndOvlp(Determinant& d,
 
 }
 
-double MoDeterminant::OverlapA(Determinant& d, int i, int a, 
+double MoDeterminant::OverlapA(Determinant& d, int i, int a,
 			      Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 			      bool doparity) {
   double p = 1.0;
@@ -30,7 +30,7 @@ double MoDeterminant::OverlapA(Determinant& d, int i, int a,
   return p*AlphaOrbitals.row(a)*alphainv.col(occ);
 }
 
-double MoDeterminant::OverlapB(Determinant& d, int i, int a, 
+double MoDeterminant::OverlapB(Determinant& d, int i, int a,
 			      Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 			      bool doparity) {
   double p = 1.0;
@@ -40,7 +40,7 @@ double MoDeterminant::OverlapB(Determinant& d, int i, int a,
 }
 
 
-double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b, 
+double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b,
 				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 				bool doparity) {
 
@@ -60,7 +60,7 @@ double MoDeterminant::OverlapAA(Determinant& d, int i, int j, int a, int b,
   return p*(factor1*factor2 - factor3*factor4);
 }
 
-double MoDeterminant::OverlapAAA(Determinant& d, int i, int j, int k, 
+double MoDeterminant::OverlapAAA(Determinant& d, int i, int j, int k,
 				 int a, int b, int c,
 				 Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 				 bool doparity) {
@@ -69,7 +69,7 @@ double MoDeterminant::OverlapAAA(Determinant& d, int i, int j, int k,
   vector<int> vir(3,0); vir[0] = a; vir[1] = b; vir[2] = c;
 
   Matrix3f m ;
-  
+
   for (int x=0; x<3; x++)
     for (int y=0; y<3; y++)
       m(x,y) = OverlapA(d, occ[x], vir[y], alphainv, betainv, false);
@@ -90,7 +90,7 @@ double MoDeterminant::OverlapAAAA(Determinant& d, int i, int j, int k, int l,
   vector<int> vir(4,0); vir[0] = a; vir[1] = b; vir[2] = c; vir[3] = e;
 
   Matrix4f m ;
-  
+
   for (int x=0; x<4; x++)
     for (int y=0; y<4; y++)
       m(x,y) = OverlapA(d, occ[x], vir[y], alphainv, betainv, false);
@@ -102,7 +102,7 @@ double MoDeterminant::OverlapAAAA(Determinant& d, int i, int j, int k, int l,
   return m.determinant();
 }
 
-double MoDeterminant::OverlapBBB(Determinant& d, int i, int j, int k, 
+double MoDeterminant::OverlapBBB(Determinant& d, int i, int j, int k,
 				 int a, int b, int c,
 				 Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 				 bool doparity) {
@@ -111,7 +111,7 @@ double MoDeterminant::OverlapBBB(Determinant& d, int i, int j, int k,
   vector<int> vir(3,0); vir[0] = a; vir[1] = b; vir[2] = c;
 
   Matrix3f m ;
-  
+
   for (int x=0; x<3; x++)
     for (int y=0; y<3; y++)
       m(x,y) = OverlapB(d, occ[x], vir[y], alphainv, betainv, false);
@@ -132,7 +132,7 @@ double MoDeterminant::OverlapBBBB(Determinant& d, int i, int j, int k, int l,
   vector<int> vir(4,0); vir[0] = a; vir[1] = b; vir[2] = c; vir[3] = e;
 
   Matrix4f m ;
-  
+
   for (int x=0; x<4; x++)
     for (int y=0; y<4; y++)
       m(x,y) = OverlapB(d, occ[x], vir[y], alphainv, betainv, false);
@@ -145,7 +145,7 @@ double MoDeterminant::OverlapBBBB(Determinant& d, int i, int j, int k, int l,
 }
 
 
-double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b, 
+double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b,
 				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 				bool doparity) {
 
@@ -164,7 +164,7 @@ double MoDeterminant::OverlapBB(Determinant& d, int i, int j, int a, int b,
   return p*(factor1*factor2 - factor3*factor4);
 }
 
-double MoDeterminant::OverlapAB(Determinant& d, int i, int j, int a, int b, 
+double MoDeterminant::OverlapAB(Determinant& d, int i, int j, int a, int b,
 				Eigen::MatrixXd& alphainv, Eigen::MatrixXd &betainv,
 				bool doparity) {
 
@@ -179,37 +179,19 @@ double MoDeterminant::OverlapAB(Determinant& d, int i, int j, int a, int b,
 
 
 void MoDeterminant::getDetMatrix(Determinant& d, MatrixXd& DetAlpha, MatrixXd &DetBeta) {
-  std::vector<int> alpha, beta;
-  d.getAlphaBeta(alpha, beta);
-
-  DetAlpha = MatrixXd::Zero(nalpha, nalpha);
-  DetBeta  = MatrixXd::Zero(nbeta,  nbeta);
-  
-  //<psi1 | psi2> = det(phi1^dag phi2)
-  //in out case psi1 is a simple occupation number determ inant
-  for (int i=0; i<alpha.size(); i++)
-    for (int j=0; j<DetAlpha.cols(); j++) 
-      DetAlpha(i,j) = AlphaOrbitals(alpha[i], j);
-
-  
-  for (int i=0; i<beta.size(); i++)
-    for (int j=0; j<DetBeta.cols(); j++)
-      DetBeta(i,j) = BetaOrbitals(beta[i], j);
-
-  return;
 }
 
 double MoDeterminant::Overlap(vector<int>& alpha, vector<int>& beta) {
   MatrixXd DetAlpha = MatrixXd::Zero(nalpha, nalpha);
   MatrixXd DetBeta  = MatrixXd::Zero(nbeta,  nbeta);
-  
+
   //<psi1 | psi2> = det(phi1^dag phi2)
   //in out case psi1 is a simple occupation number determinant
   for (int i=0; i<alpha.size(); i++)
-    for (int j=0; j<DetAlpha.cols(); j++) 
+    for (int j=0; j<DetAlpha.cols(); j++)
       DetAlpha(i,j) = AlphaOrbitals(alpha[i], j);
 
-  
+
   for (int i=0; i<beta.size(); i++)
     for (int j=0; j<DetBeta.cols(); j++)
       DetBeta(i,j) = BetaOrbitals(beta[i], j);
@@ -234,7 +216,7 @@ void getunoccupiedOrbs(vector<int>& alpha, vector<int>& alphaOpen, int& norbs) {
   }
 }
 
-void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta, 
+void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
 				 double& ovlp, double& ham,
 				 oneInt& I1, twoInt& I2, double& coreE) {
 
@@ -253,22 +235,22 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     for (int i=0; i<alpha.size(); i++) {
       int I = 2*alpha[i];
       E0 += I1(I, I);
-      
+
       for (int j=i+1; j<alpha.size(); j++) {
 	int J = 2*alpha[j];
 	E0 += I2(I, I, J, J) - I2(I, J, I, J);
       }
-      
+
       for (int j=0; j<beta.size(); j++) {
 	int J = 2*beta[j]+1;
 	E0 += I2(I, I, J, J);
       }
     }
-    
+
     for (int i=0; i<beta.size(); i++) {
       int I = 2*beta[i]+1;
       E0 += I1(I, I);
-      
+
       for (int j=i+1; j<beta.size(); j++) {
 	int J = 2*beta[j]+1;
 	E0 += I2(I, I, J, J) - I2(I, J, I, J);
@@ -284,7 +266,7 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     for (int i=0; i<alpha.size(); i++)
       for (int a=0; a<alphaOpen.size(); a++) {
 	int I = 2*alpha[i], A = 2*alphaOpen[a];
-	
+
 	alphaCopy[i] = alphaOpen[a];
 	double tia = I1(I, A);
 
@@ -297,7 +279,7 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
 	  tia += I2(A, I, J, J);
 	}
 
-	if (abs(tia) > 1.e-8) 	
+	if (abs(tia) > 1.e-8)
 	  ham += tia*Overlap(alphaCopy, beta);
 	alphaCopy[i] = alpha[i];
       }
@@ -309,7 +291,7 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     for (int i=0; i<beta.size(); i++)
       for (int a=0; a<betaOpen.size(); a++) {
 	int I = 2*beta[i]+1, A = 2*betaOpen[a]+1;
-	
+
 	betaCopy[i] = betaOpen[a];
 	double tia = I1(I, A);
 
@@ -322,14 +304,14 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
 	  tia += I2(A, I, J, J);
 	}
 
-	if (abs(tia) > 1.e-8) 	
+	if (abs(tia) > 1.e-8)
 	  ham += tia*Overlap(alpha, betaCopy);
 
 	betaCopy[i] = beta[i];
       }
   }
 
-  
+
 
   //alpha-alpha
   {
@@ -338,15 +320,15 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     for (int a=0; a<alphaOpen.size(); a++) {
       int I = 2*alpha[i], A = 2*alphaOpen[a];
       alphaCopy[i] = alphaOpen[a];
-      
+
       for (int j=i+1; j<alpha.size(); j++)
       for (int b=a+1; b<alphaOpen.size(); b++) {
 	int J = 2*alpha[j], B = 2*alphaOpen[b];
-	
+
 	double tiajb = I2(A, I, B, J) - I2(A, J, B, I);
 	alphaCopy[j] = alphaOpen[b];
-	
-	if (abs(tiajb) > 1.e-8) 	
+
+	if (abs(tiajb) > 1.e-8)
 	  ham += tiajb*Overlap(alphaCopy, beta);
 	alphaCopy[j] = alpha[j];
       }
@@ -365,11 +347,11 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
       for (int j=0; j<beta.size(); j++)
       for (int b=0; b<betaOpen.size(); b++) {
 	int J = 2*beta[j]+1, B = 2*betaOpen[b]+1;
-	
+
 	double tiajb = I2(A, I, B, J);
 	betaCopy[j] = betaOpen[b];
-	
-	if (abs(tiajb) > 1.e-8) 	
+
+	if (abs(tiajb) > 1.e-8)
 	  ham += tiajb*Overlap(alphaCopy, betaCopy);
 	betaCopy[j] = beta[j];
       }
@@ -385,15 +367,15 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     for (int a=0; a<betaOpen.size(); a++) {
       int I = 2*beta[i]+1, A = 2*betaOpen[a]+1;
       betaCopy[i] = betaOpen[a];
-      
+
       for (int j=i+1; j<beta.size(); j++)
       for (int b=a+1; b<betaOpen.size(); b++) {
 	int J = 2*beta[j]+1, B = 2*betaOpen[b]+1;
-	
+
 	double tiajb = I2(A, I, B, J) - I2(A, J, B, I);
 	betaCopy[j] = betaOpen[b];
-	
-	if (abs(tiajb) > 1.e-8) 	
+
+	if (abs(tiajb) > 1.e-8)
 	  ham += tiajb*Overlap(alpha, betaCopy);
 	betaCopy[j] = beta[j];
       }
@@ -402,9 +384,9 @@ void MoDeterminant::HamAndOvlp(vector<int>& alpha, vector<int>& beta,
     }
   }
 
-  
+
 }
-  
+
 
 //<d|*this>
 double MoDeterminant::Overlap(MoDeterminant& d) {
@@ -413,5 +395,5 @@ double MoDeterminant::Overlap(MoDeterminant& d) {
   MatrixXd DetBeta  = d.BetaOrbitals.transpose() *BetaOrbitals;
 
   return DetAlpha.determinant()*DetBeta.determinant();
- 
+
 }

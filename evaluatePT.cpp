@@ -17,7 +17,6 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include <vector>
-#include <Eigen/Dense>
 #include "Wfn.h"
 #include <algorithm>
 #include "integral.h"
@@ -60,9 +59,9 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
     for (int b=0; b<betaDets.size(); b++) {
       Determinant d;
       for (int i=0; i<alphaDets[a].size(); i++)
-	d.setoccA(alphaDets[a][i], true);
+	      d.setoccA(alphaDets[a][i], true);
       for (int i=0; i<betaDets[b].size(); i++)
-	d.setoccB(betaDets[b][i], true);
+	      d.setoccB(betaDets[b][i], true);
       allDets.push_back(d);
     }
 
@@ -689,8 +688,8 @@ double evaluatePTStochasticMethodC(CPSSlater& w, double& E0, int& nalpha, int& n
     double deltaT = 1.0/(cumovlpRatio);
 
     double select = random()*cumovlpRatio;
-    int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
-				   select)-ovlpRatio.begin();
+    int nextDet = std::distance(ovlpRatio.begin(), std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
+				   select));
 
     cumdeltaT  += deltaT;
     cumdeltaT2 += deltaT*deltaT;
@@ -814,8 +813,8 @@ double evaluatePTStochastic3rdOrder(CPSSlater& w, double& E0, int& nalpha, int& 
     //double deltaT = -log(random())/(cumovlpRatio);
     double deltaT = 1.0/(cumovlpRatio);
     double select = random()*cumovlpRatio;
-    int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
-				   select)-ovlpRatio.begin();
+    int nextDet = std::distance(ovlpRatio.begin(), std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(), 
+				   select));
 
     cumdeltaT  += deltaT;
     cumdeltaT2 += deltaT*deltaT;

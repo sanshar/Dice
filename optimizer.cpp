@@ -7,6 +7,7 @@
 #include "global.h"
 #include "boost/format.hpp"
 #include "iowrapper.h"
+#include <fstream>
 
 using namespace boost;
 

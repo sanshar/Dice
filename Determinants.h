@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef Determinants_HEADER_H
@@ -38,123 +38,15 @@ inline int BitCount (long x)
   x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
   x = (x & 0x0F0F0F0F0F0F0F0FULL) + ((x >> 4) & 0x0F0F0F0F0F0F0F0FULL);
   return (x * 0x0101010101010101ULL) >> 56;
-
-  //unsigned int u2=u>>32, u1=u;
-
-  //return __builtin_popcount(u2)+__builtin_popcount(u);
-  /*
-  u1 = u1
-    - ((u1 >> 1) & 033333333333)
-    - ((u1 >> 2) & 011111111111);
-
-
-  u2 = u2
-    - ((u2 >> 1) & 033333333333)
-    - ((u2 >> 2) & 011111111111);
-
-  return (((u1 + (u1 >> 3))
-	   & 030707070707) % 63) +
-    (((u2 + (u2 >> 3))
-      & 030707070707) % 63);
-  */
 }
 
 
-//This is used to store just the alpha or the beta sub string of the entire determinant
-class HalfDet {
- private:
-  friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive & ar, const unsigned int version) {
-    for (int i=0; i<DetLen/2; i++)
-      ar & repr[i];
-  }
- public:
-  long repr[DetLen/2];
-  static int norbs;
-  HalfDet() {
-    for (int i=0; i<DetLen/2; i++)
-      repr[i] = 0;
-  }
 
-  //the comparison between determinants is performed
-  bool operator<(const HalfDet& d) const {
-    for (int i=DetLen/2-1; i>=0 ; i--) {
-      if (repr[i] < d.repr[i]) return true;
-      else if (repr[i] > d.repr[i]) return false;
-    }
-    return false;
-  }
 
-  bool operator==(const HalfDet& d) const {
-    for (int i=DetLen/2-1; i>=0 ; i--)
-      if (repr[i] != d.repr[i]) return false;
-    return true;
-  }
-
-  int ExcitationDistance(const HalfDet& d) const {
-    int ndiff = 0; 
-    for (int i=0; i<DetLen/2; i++) {
-      ndiff += BitCount(repr[i] ^ d.repr[i]);
-    }
-    return ndiff/2;
-  }
-
-  //set the occupation of the ith orbital
-  void setocc(int i, bool occ) {
-    //assert(i< norbs);
-    long Integer = i/64, bit = i%64, one=1;
-    if (occ)
-      repr[Integer] |= one << bit;
-    else
-      repr[Integer] &= ~(one<<bit);
-  }
-
-  //get the occupation of the ith orbital
-  bool getocc(int i) const {
-    //assert(i< norbs);
-    long Integer = i/64, bit = i%64, reprBit = repr[Integer];
-    if(( reprBit>>bit & 1) == 0)
-      return false;
-    else
-      return true;
-  }
-
-  int getClosed(std::vector<int>& closed){
-    int cindex = 0;
-    for (int i=0; i<32*DetLen; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
-    }
-    return cindex;
-  }
-
-  int getOpenClosed(std::vector<int>& open, std::vector<int>& closed){
-    int cindex = 0;
-    int oindex = 0;
-    for (int i=0; i<32*DetLen; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
-      else {open.at(oindex) = i; oindex++;}
-    }
-    return cindex;
-  }
-
-  friend ostream& operator<<(ostream& os, const HalfDet& d) {
-    char det[norbs/2];
-    d.getRepArray(det);
-    for (int i=0; i<norbs/2; i++)
-      os<<(int)(det[i])<<" ";
-    return os;
-  }
-
-  void getRepArray(char* repArray) const {
-    for (int i=0; i<norbs/2; i++) {
-      if (getocc(i)) repArray[i] = 1;
-      else repArray[i] = 0;
-    }
-  }
-
-};
-
+/**
+* This is the occupation number representation of a Determinants
+* with alpha, beta strings
+*/
 class Determinant {
 
  private:
@@ -197,38 +89,31 @@ class Determinant {
 
   void getOpenClosed( std::vector<int>& open, std::vector<int>& closed) {
     for (int i=0; i<norbs; i++) {
-      if ( getoccA(i)) closed.push_back(2*i); 
+      if ( getoccA(i)) closed.push_back(2*i);
       else open.push_back(2*i);
-      if ( getoccB(i)) closed.push_back(2*i+1); 
+      if ( getoccB(i)) closed.push_back(2*i+1);
       else open.push_back(2*i+1);
-    }    
+    }
   }
 
-  void getOpenClosedElecHoleAlpha( std::vector<int>& openE, std::vector<int>& closedE,
-				   std::vector<int>& openH, std::vector<int>& closedH) {
+  void getOpenClosedAlphaBeta( std::vector<int>& openAlpha,
+                               std::vector<int>& closedAlpha,
+                               std::vector<int>& openBeta,
+                               std::vector<int>& closedBeta
+                             ) {
     for (int i=0; i<norbs; i++) {
-      if ( getoccA(i) &&  getoccB(i)) closedE.push_back(i); 
-      if ( getoccA(i) && !getoccB(i)) openE.push_back(i); 
-      if (!getoccA(i) &&  getoccB(i)) closedH.push_back(i); 
-      if (!getoccA(i) && !getoccB(i)) openH.push_back(i); 
-    }    
-  }
-
-  void getOpenClosedElecHoleBeta( std::vector<int>& openE, std::vector<int>& closedE,
-				  std::vector<int>& openH, std::vector<int>& closedH) {
-    for (int i=0; i<norbs; i++) {
-      if ( getoccB(i) &&  getoccA(i)) closedE.push_back(i); 
-      if ( getoccB(i) && !getoccA(i)) openE.push_back(i); 
-      if (!getoccB(i) &&  getoccA(i)) closedH.push_back(i); 
-      if (!getoccB(i) && !getoccA(i)) openH.push_back(i); 
-    }    
+      if ( getoccA(i)) closedAlpha.push_back(i);
+      else openAlpha.push_back(i);
+      if ( getoccB(i)) closedBeta.push_back(i);
+      else openBeta.push_back(i);
+    }
   }
 
   void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) {
     for (int i=0; i<64*EffDetLen; i++) {
       if (getoccA(i)) alpha.push_back(i);
       if (getoccB(i)) beta .push_back(i);
-    }    
+    }
   }
 
   double Energy(oneInt& I1, twoInt& I2, double& coreE);
@@ -256,7 +141,6 @@ class Determinant {
   }
 
   void parityA(int& a, int& i, double& parity) {
-
     int occ = getNalphaBefore(i);
     setoccA(i, false);
     occ += getNalphaBefore(a);
@@ -328,7 +212,7 @@ class Determinant {
   //Get the number of electrons that need to be excited to get determinant d from *this determinant
   //e.g. single excitation will return 1
   int ExcitationDistance(const Determinant& d) const {
-    int ndiff = 0; 
+    int ndiff = 0;
     for (int i=0; i<DetLen; i++) {
       ndiff += BitCount(reprA[i] ^ d.reprA[i]);
       ndiff += BitCount(reprB[i] ^ d.reprB[i]);
@@ -422,6 +306,8 @@ class Determinant {
     return os;
   }
 
+// Calculate the number of singles reachable from the current determinant
+//given that the screening is used
   int numberPossibleSingles(double& screen, oneInt& I1, twoInt& I2,
 			    twoIntHeatBathSHM& I2hb);
 
@@ -433,9 +319,9 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& c
 
 void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb,
 				  int nterms,
-				  vector<int>& Isingle, vector<int>& Asingle, 
+				  vector<int>& Isingle, vector<int>& Asingle,
 				  vector<int>& Idouble, vector<int>& Adouble,
-				  vector<int>& Jdouble, vector<int>& Bdouble, 
+				  vector<int>& Jdouble, vector<int>& Bdouble,
 				  vector<double>& psingle, vector<double>& pdouble);
 
 

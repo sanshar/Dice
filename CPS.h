@@ -28,13 +28,12 @@
 
 class Determinant;
 
-//A correlator for a bunch of spin sites
-//e.g. for a 2 site correlator Cab
-//you have the following variables
-// C00, C10, C01, C11 , 
-
-//Similarty for n site correlator one can have 2^n variables
-class CPS {
+/**
+ * A correlator contains a tuple of local sites and contains
+ * a set of 4^n parameters, where n is the number of sites in the 
+ * correlator
+ */
+class Correlator {
 private:
   friend class boost::serialization::access;
   template<class Archive>
@@ -43,13 +42,20 @@ private:
   }
 
  public:
-  //b+1 b+2 ...         0 1 2..
-  std::vector<int> asites, bsites;
 
-  std::vector<double> Variables; //2^{na+nb} number of variables
+  std::vector<int>    asites, 
+                      bsites;  // Separately store the alpha and beta sites, although in current version they are always the same
 
-  CPS () {};
- CPS(std::vector<int>& pasites, std::vector<int>& pbsites, double iv=1.0) : asites(pasites), bsites(pbsites) {
+  std::vector<double> Variables;    //the total number of variables in a single Correlator 2^{na+nb} number of variables
+
+  //Dummy constructor
+  Correlator () {};
+
+  /**
+   * Takes the set of alpha sites and beta sites and initial set of parameters
+   * Internally these sites are always arranges in asending order
+   */
+  Correlator (std::vector<int>& pasites, std::vector<int>& pbsites, double iv=1.0) : asites(pasites), bsites(pbsites) {
     if (asites.size()+bsites.size() > 20) {
       std::cout << "Cannot handle correlators of size greater than 20."<<std::endl;
       exit(0);
@@ -59,13 +65,44 @@ private:
     Variables.resize( pow(2,asites.size()+bsites.size()), iv);
   }
 
-  double Overlap            (Determinant& d);
-  void   OverlapWithGradient(Determinant& d, 
-			     Eigen::VectorXd& grad,
-			     double& ovlp,
-			     long& startIndex);
+/**
+ * Takes an occupation number representation of a determinant
+ * in the local orbital basis and calculates the overlap with
+ * the correlator
+ * PARAMS:
+ * 
+ * Determinant: the occupation number representation as an input
+ * 
+ * RETURN:
+ * the value of the overlap
+ */
+  double Overlap              (const Determinant& d);
 
-  friend std::ostream& operator<<(std::ostream& os, CPS& c); 
+/**
+ * Takes an occupation number representation of a determinant
+ * in the local orbital basis and calculates the overlap 
+ * the correlator and also the overlap of the determinant
+ * with respect to the tangent vector w.r.t to all the 
+ * parameters in the wavefuncion
+ * 
+ * PARAMS:
+ * 
+ * Determinant: the occupation number representation of the determinant
+ * grad       : the vector of the gradient. This vector is long and contains
+ *              the space for storing gradients with respect to all the parameters
+ *              in the wavefunction and not just this CPS and so the index startIndex
+ *              is needed to indentify at what index should we start populating the
+ *              gradient w.r.t to this Correlator in the vector
+ * ovlp       : The overlap of the CPS w.r.t to the Correlator
+ * startIndex : The location in the vector gradient from where to start populating
+ *              the gradient w.r.t to the current Correlator
+ */
+  void   OverlapWithGradient  (const Determinant& d, 
+			                         Eigen::VectorXd& grad,
+                      			   const double& ovlp,
+                      			   const long& startIndex);
+
+  friend std::ostream& operator<<(std::ostream& os, const Correlator& c); 
 };
 
 

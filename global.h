@@ -1,32 +1,32 @@
 /*
   Developed by Sandeep Sharma
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef Global_HEADER_H
 #define Global_HEADER_H
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <random>
+#include <Eigen/Dense>
 #ifndef SERIAL
 #include "mpi.h"
-
-class schedule;
-
 extern MPI_Comm shmcomm, localcomm;
 #endif
+class schedule;
+
 extern int commrank, shmrank, localrank;
 extern int commsize, shmsize, localsize;
 
@@ -34,7 +34,7 @@ extern int commsize, shmsize, localsize;
 #define MatrixXx MatrixXcd
 #define CItype std::complex<double>
 #else
-#define MatrixXx MatrixXd
+#define MatrixXx Eigen::MatrixXd
 #define CItype double
 #endif
 
@@ -50,9 +50,9 @@ extern std::string shciint2shm;
 
 extern std::mt19937 generator;
 double getTime();
-void license();
+void   license();
 extern schedule schd;
 extern double startofCalc;
+extern MatrixXx Hforbs;
 
 #endif
-

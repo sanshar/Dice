@@ -21,10 +21,10 @@
 
 using namespace Eigen;
 
-void CPS::OverlapWithGradient(Determinant& d, 
-			      VectorXd& grad,
-			      double& ovlp,
-			      long& startIndex) {
+void Correlator::OverlapWithGradient(const Determinant& d, 
+			                               VectorXd& grad,
+			                               const double& ovlp,
+			                               const long& startIndex) {
 
   long index=0, one=1, index2=0;
   for (int n=0; n<bsites.size(); n++)
@@ -35,32 +35,28 @@ void CPS::OverlapWithGradient(Determinant& d,
     if (d.getoccA( asites[n])) {
       index |= (one<< (n+bsites.size()));
     }
-  //index &= (one << (n+bsites.size()+1));
-  //index += pow(2, n+bsites.size());
 
   grad[index+startIndex] += ovlp/Variables[index]; 
   return ;
 }
 
-double CPS::Overlap(Determinant& d) {
+double Correlator::Overlap(const Determinant& d) {
 
-  //Coeff = sum_n c_nP_n |Psi>, where n is all the possible occupations of asites and bsites
   double Coefficient = 0.0;
 
   long index=0, one=1;
   for (int n=0; n<bsites.size(); n++)
     if (d.getoccB( bsites[n]))
       index |= (one<<n);
-      //index += pow(2,n);
+  
   for (int n=0; n<asites.size(); n++)
     if (d.getoccA( asites[n]))
       index |= (one << (n+bsites.size()));
-  //index += pow(2, n+bsites.size());
 
   return Variables[index];
 }
 
-std::ostream& operator<<(std::ostream& os, CPS& c) {
+std::ostream& operator<<(std::ostream& os, const Correlator& c) {
   for (int i=0; i<c.asites.size(); i++)
     os << c.asites[i]<<"a  ";
   for (int i=0; i<c.bsites.size(); i++)

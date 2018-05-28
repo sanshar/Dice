@@ -24,10 +24,14 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/map.hpp>
 
-class CPS;
+class Correlator;
 enum Method { sgd, nestorov, rmsprop, adam, amsgrad };
 
-void readHF(Eigen::MatrixXd&);
+
+
+/**
+ * This stores all the input options
+ * */
 
 struct schedule {
 private:
@@ -43,7 +47,7 @@ private:
       & printLevel
       & gradientFactor
       & mingradientFactor
-      & m
+      & method
       & stochasticIter
       & integralSampleSize
       & momentum
@@ -53,38 +57,79 @@ private:
       & seed
       & PTlambda
       & epsilon
-      & singleProbability
-      & doubleProbability
       & screen;
 
   }
 public:
-  bool restart;
-  bool deterministic;
-  double tol;
+//General options
+  bool restart;                          //option to restart calculation
+  bool deterministic;                    //Performs a deterministic calculation   
+  int printLevel;                        // How much stuff to print
+
+
+//input file to define the correlator parts of the wavefunction
+  std::map<int, std::string> correlatorFiles;
+
+//Used in the stochastic calculation of E and PT evaluation
+  int stochasticIter;                    //Number of stochastic steps
+  int integralSampleSize;                //This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
+  int seed;                              // seed for the random number generator
+  double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
+  double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals
+  double screen;                         //This is the screening parameter, any integral below this is ignored
+
+//Deprecated options for optimizers
+//because now we just use the python implementation
+  double tol;                          
   bool davidsonPrecondition;
   int diisSize;
   int maxIter;
-  int printLevel;
   double gradientFactor;
   double mingradientFactor;
-  Method m;
-  std::map<int, std::string> correlatorFiles;
-  int stochasticIter;
-  int integralSampleSize;
+  Method method;
   double momentum;
   double momentumDecay;
   double decay;
   int learningEpoch;
-  int seed;
-  double PTlambda;
-  double epsilon;
-  double singleProbability;
-  double doubleProbability;
-  double screen;
+
+
 };
 
-void readInput(std::string input, schedule& schd, bool print=true);
+/**
+ * This just gives the matrix of MO coefficients, right now
+ * we just assume HF determinant, but later this can be generalized to 
+ * an alph and a beta matrix
+ * params:
+ *   Matrix:  this is the matrix of the mo coefficients
+ */
+void readHF(Eigen::MatrixXd&);
+
+/**
+ * Reads the input file which by default is input.dat, but can be anything
+ * else that is specified on the command line
+ * 
+ * params:  
+ *    input:    the input file (unchanged)
+ *    schd :    this is the object of class schedule that is populated by the options
+ *    print:    How much to print
+ */
+void readInput(const std::string input, schedule& schd, bool print=true);
+
+/**
+ * We need information about the correlators because the wavefunction is
+ * |Psi> = J|D>, where J is the set of jastro factors (correlators)
+ * The correlator file just contains the tuple of sites that form the correlators
+ * For instance, for two site correlators the file will contain lines just tell you the 
+ * orbitals , e.g.
+ * 0 1
+ * 2 3 ... 
+ * 
+ * params: 
+ *    input:          the input file (unchanged)
+ *    correlatorSize: the size of the correlator (unchanged)
+ *    correlators   : the vector of correlators,
+ *                    its usually empty at input and then is filled with Correlators
+ */
 void readCorrelator(std::string input, int correlatorSize,
-		    std::vector<CPS>& correlators);
+		    std::vector<Correlator>& correlators);
 #endif

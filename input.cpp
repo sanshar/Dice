@@ -47,7 +47,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.maxIter                = 50;
   schd.gradientFactor         = 0.001;
   schd.mingradientFactor      = 0.00001;
-  schd.m                      = rmsprop;
+  schd.method                 = rmsprop;
   schd.stochasticIter         = 1e4;
   schd.integralSampleSize     = 10;
   schd.momentum               = 0.9;
@@ -57,8 +57,6 @@ void readInput(string input, schedule& schd, bool print) {
   schd.seed                   = getTime();
   schd.PTlambda               = 0.5;
   schd.epsilon                = 1.e-7;
-  schd.singleProbability      = 0.5;
-  schd.doubleProbability      = 0.5;
   schd.screen                 = 1.e-8;
 
   while (dump.good()) {
@@ -85,22 +83,22 @@ void readInput(string input, schedule& schd, bool print) {
       schd.deterministic = true;
 
     else if (boost::iequals(ArgName,  "adam"          ))
-      schd.m = adam;
+      schd.method = adam;
 
     else if (boost::iequals(ArgName,  "sgd"           ))
-      schd.m = sgd;
+      schd.method = sgd;
 
     else if (boost::iequals(ArgName,  "nestorov"      ))
-      schd.m = nestorov;
+      schd.method = nestorov;
 
     else if (boost::iequals(ArgName,  "rmsprop"       ))
-      schd.m = rmsprop;
+      schd.method = rmsprop;
 
     else if (boost::iequals(ArgName,  "ptlambda"      ))
       schd.PTlambda = atof(tok[1].c_str());
 
     else if (boost::iequals(ArgName,  "amsgrad"       ))
-      schd.m = amsgrad;
+      schd.method = amsgrad;
 
     else if (boost::iequals(ArgName,  "tol"           ))
       schd.tol = atof(tok[1].c_str());
@@ -171,7 +169,7 @@ void readInput(string input, schedule& schd, bool print) {
 
 
 void readCorrelator(std::string input, int correlatorSize,
-		    std::vector<CPS>& correlators) {
+		    std::vector<Correlator>& correlators) {
   ifstream dump(input.c_str());
 
   while (dump.good()) {
@@ -201,7 +199,7 @@ void readCorrelator(std::string input, int correlatorSize,
       asites.push_back(site);
       bsites.push_back(site);
     }
-    correlators.push_back(CPS(asites, bsites));
+    correlators.push_back(Correlator(asites, bsites));
   }
 }
 

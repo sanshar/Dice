@@ -89,7 +89,6 @@ int main(int argc, char* argv[]) {
   //Setup static variables
   Determinant::EffDetLen = (norbs)/64+1;
   Determinant::norbs    = norbs;
-  HalfDet::norbs        = norbs;
   MoDeterminant::norbs  = norbs;
   MoDeterminant::nalpha = nalpha;
   MoDeterminant::nbeta  = nbeta;
@@ -104,15 +103,20 @@ int main(int argc, char* argv[]) {
 
 
   //Setup CPS wavefunctions
-  std::vector<CPS> nSiteCPS;
+  std::vector<Correlator> nSiteCPS;
   for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end();
        it++) {
     readCorrelator(it->second, it->first, nSiteCPS);
   }
   
-  
+  vector<Determinant> detList(1); vector<double> ciExpansion(1, 1.0);
+  for (int i=0; i<nalpha; i++)
+    detList[0].setoccA(i, true);
+  for (int i=0; i<nbeta; i++)
+    detList[0].setoccB(i, true);
+
   //setup up wavefunction
-  CPSSlater wave(nSiteCPS, det);
+  CPSSlater wave(nSiteCPS, detList, ciExpansion);
 
   ifstream file ("params.bin", ios::in|ios::binary|ios::ate);
   size_t size = file.tellg();
@@ -131,7 +135,7 @@ int main(int argc, char* argv[]) {
 
   double E0=0.0, stddev, rt;
   if (schd.deterministic) {
-    getGradient(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
+    getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
     stddev = 0.0;
   }
   else {
