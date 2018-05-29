@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
   MoDeterminant::nbeta  = nbeta;
 
   //Setup Slater Determinants
-  MatrixXd Hforbs = MatrixXd::Zero(norbs, norbs);
+  Hforbs = MatrixXd::Zero(norbs, norbs);
   readHF(Hforbs);
   MatrixXd alpha(norbs, nalpha), beta(norbs, nbeta);
   alpha = Hforbs.block(0, 0, norbs, nalpha);
