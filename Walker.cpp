@@ -322,17 +322,18 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   int nbeta = BetaClosed.size();
 
 
-  double alphaDetFactor = Hforbs.row(a) * alphaGamma.col(i);
+  double alphaDetFactor = Hforbs.row(a) * alphaGamma.col(tableIndexi);
   alphaDet *= alphaDetFactor*p;
 
   Eigen::MatrixXd Hfnarrow, alphainv;
   igl::slice(alphaGamma, RowAlpha, 1, alphainv); //alphainv = alphaGamma(R,:);
-  igl::slice(Hforbs, VectorXi::LinSpaced(norbs+1,0,norbs), RowAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+  igl::slice(Hforbs, VectorXi::LinSpaced(norbs,0,norbs+1), RowAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+  
   MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
                     alphainv;
 
   MatrixXd alphainvWrongOrder = alphainv - (alphainv.col(tableIndexi) * vtAinv) / alphaDetFactor;
-
+  
   AlphaClosed[tableIndexi] = a;
   AlphaOpen  [tableIndexa] = i;
 
@@ -352,6 +353,13 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   std::sort(AlphaOpen  .begin(), AlphaOpen  .end());
 
   igl::slice_into(alphainv, RowAlpha, 1, alphaGamma);
+  for (int i=0; i<AlphaClosed.size(); i++)
+  {
+    for (int a=0; a<AlphaOpen.size(); a++)
+    {
+      AlphaTable(a, i) = (Hforbs.row(AlphaOpen[a])*alphaGamma.col(i))(0);
+    }
+  }  
 }
 
 
@@ -370,12 +378,12 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   int nbeta = BetaClosed.size();
 
 
-  double betaDetFactor = Hforbs.row(a) * betaGamma.col(i);
+  double betaDetFactor = Hforbs.row(a) * betaGamma.col(tableIndexi);
   betaDet *= betaDetFactor*p;
 
   Eigen::MatrixXd Hfnarrow, betainv;
   igl::slice(betaGamma, RowBeta, 1, betainv); //alphainv = alphaGamma(R,:);
-  igl::slice(Hforbs, VectorXi::LinSpaced(norbs+1,0,norbs), RowBeta, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+  igl::slice(Hforbs, VectorXi::LinSpaced(norbs,0,norbs+1), RowBeta, Hfnarrow); //Hfnarrow = Hforbs(:, R)
   MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
                     betainv;
 
@@ -400,4 +408,11 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   std::sort(BetaOpen  .begin(), BetaOpen  .end());
 
   igl::slice_into(betainv, RowBeta, 1, betaGamma);
+  for (int i=0; i<BetaClosed.size(); i++)
+  {
+    for (int a=0; a<BetaOpen.size(); a++)
+    {
+      BetaTable(a, i) = (Hforbs.row(BetaOpen[a])*betaGamma.col(i))(0);
+    }
+  }  
 }
