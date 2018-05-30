@@ -22,6 +22,8 @@
 #include "global.h"
 #include "input.h"
 #include <algorithm>
+#include "igl/slice.h"
+#include "igl/slice_into.h"
 using namespace Eigen;
 
 
@@ -109,9 +111,11 @@ bool Walker::makeMovePropPsi(CPSSlater& w) {
 
 
 void Walker::initUsingWave(CPSSlater& w, bool check) {
+
   MatrixXd alpha, beta;
   w.getDetMatrix(d, alpha, beta);
 
+  MatrixXd alphainv, betainv; 
   //Sometimes the determinant is so poor that
   //the inverse is illconditioned, so it is useful
   //to test this
@@ -141,15 +145,32 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
     exit(0);
   }
 
+
   d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed,
                            BetaOpen , BetaClosed );
 
+  //Generate the alpha and beta strings for the wavefunction determinant
+  vector<int> alphaRef, betaRef;
+  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
+  Eigen::Map<VectorXi> RowAlpha(&alphaRef[0], alphaRef.size());
+  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
+  int norbs = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
+  int nbeta = BetaClosed.size();
+
+  //slice  
+  alphaGamma = MatrixXd::Zero(norbs, nalpha);
+  betaGamma = MatrixXd::Zero(norbs, nbeta);
+  igl::slice_into(alphainv, RowAlpha, 1, alphaGamma); //alphaGamma(R,:) = alphainv;
+  igl::slice_into(betainv , RowBeta , 1, betaGamma );
+
   AlphaTable = MatrixXd::Zero(AlphaOpen.size(), AlphaClosed.size());
+  
   for (int i=0; i<AlphaClosed.size(); i++)
   {
     for (int a=0; a<AlphaOpen.size(); a++)
     {
-      AlphaTable(a, i) = Hforbs.row(AlphaOpen[a])*alphainv.col(AlphaClosed[i]);
+      AlphaTable(a, i) = (Hforbs.row(AlphaOpen[a])*alphaGamma.col(i))(0);
     }
   }  
 
@@ -158,7 +179,7 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
   {
     for (int a=0; a<BetaOpen.size(); a++)
     {
-      BetaTable(a, i) = Hforbs.row(BetaOpen[a])*betainv.col(BetaClosed[i]);
+      BetaTable(a, i) = (Hforbs.row(BetaOpen[a])*betaGamma.col(i))(0);
     }
   }  
 
@@ -188,27 +209,9 @@ double Walker::getDetFactorA(int i, int a, CPSSlater &w, bool doparity)
   int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
 
   double p = 1.;
-  Determinant dcopy = d;
-  dcopy.parityA(a, i, p);
-  dcopy.setoccA(i, false);
-  dcopy.setoccA(a, true);
-  
+  if(doparity) d.parityA(a, i, p);
 
-  
-  double cpsFactor = 1.0;
-
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int j = 0; j < w.cpsArray[n].asites.size(); j++)
-    {
-      if (w.cpsArray[n].asites[j] == i ||
-          w.cpsArray[n].asites[j] == a)
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-
-  return p * cpsFactor * AlphaTable(tableIndexa, tableIndexi) ;
+  return p * AlphaTable(tableIndexa, tableIndexi) ;
 }
 
 double Walker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
@@ -217,27 +220,9 @@ double Walker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
   int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
 
   double p = 1.;
-  Determinant dcopy = d;
-  dcopy.parityB(a, i, p);
-  dcopy.setoccB(i, false);
-  dcopy.setoccB(a, true);
-  
+  if(doparity) d.parityB(a, i, p);
 
-  
-  double cpsFactor = 1.0;
-
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int j = 0; j < w.cpsArray[n].bsites.size(); j++)
-    {
-      if (w.cpsArray[n].bsites[j] == i ||
-          w.cpsArray[n].bsites[j] == a)
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-
-  return p * cpsFactor * BetaTable(tableIndexa, tableIndexi) ;
+  return p * BetaTable(tableIndexa, tableIndexi) ;
 }
 
 double Walker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool doparity)
@@ -247,34 +232,7 @@ double Walker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool dopa
   int tableIndexj = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), j) - AlphaClosed.begin();
   int tableIndexb = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), b) - AlphaOpen.begin();
 
-  double p = 1.;
-  Determinant dcopy = d;
-  if (doparity) dcopy.parityA(a, i, p);
-  dcopy.setoccA(i, false);
-  dcopy.setoccA(a, true);
-
-  if (doparity) dcopy.parityA(b, j, p);
-  dcopy.setoccA(j, false);
-  dcopy.setoccA(b, true);
- 
-
-  
-  double cpsFactor = 1.0;
-
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int k = 0; k < w.cpsArray[n].asites.size(); k++)
-    {
-      if (w.cpsArray[n].asites[k] == i ||
-          w.cpsArray[n].asites[k] == a ||
-          w.cpsArray[n].asites[k] == j ||
-          w.cpsArray[n].asites[k] == b )
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-
-  return p * cpsFactor * (AlphaTable(tableIndexa, tableIndexi) * AlphaTable(tableIndexa, tableIndexj) - AlphaTable(tableIndexb, tableIndexi)*AlphaTable(tableIndexa, tableIndexj));
+  return (AlphaTable(tableIndexa, tableIndexi) * AlphaTable(tableIndexb, tableIndexj) - AlphaTable(tableIndexb, tableIndexi)*AlphaTable(tableIndexa, tableIndexj));
 }
 
 double Walker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
@@ -284,33 +242,8 @@ double Walker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool dopa
   int tableIndexj = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), j) - BetaClosed.begin();
   int tableIndexb = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), b) - BetaOpen.begin();
 
-  double p = 1.;
-  Determinant dcopy = d;
-  if (doparity) dcopy.parityB(a, i, p);
-  dcopy.setoccB(i, false);
-  dcopy.setoccB(a, true);
-  
-  if (doparity) dcopy.parityB(b, j, p);
-  dcopy.setoccB(j, false);
-  dcopy.setoccB(b, true);
-
-  
-  double cpsFactor = 1.0;
-
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int k = 0; k < w.cpsArray[n].bsites.size(); k++)
-    {
-      if (w.cpsArray[n].bsites[k] == i ||
-          w.cpsArray[n].bsites[k] == a ||
-          w.cpsArray[n].bsites[k] == j ||
-          w.cpsArray[n].bsites[k] == b )
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-
-  return p * cpsFactor * (BetaTable(tableIndexa, tableIndexi) * BetaTable(tableIndexa, tableIndexj) - BetaTable(tableIndexb, tableIndexi)*BetaTable(tableIndexa, tableIndexj)) ;
+ 
+  return (BetaTable(tableIndexa, tableIndexi) * BetaTable(tableIndexb, tableIndexj) - BetaTable(tableIndexb, tableIndexi)*BetaTable(tableIndexa, tableIndexj)) ;
 }
 
 double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
@@ -338,27 +271,6 @@ double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater
   }
 
   double cpsFactor = 1.0;
-
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int j = 0; j < w.cpsArray[n].asites.size(); j++)
-    {
-      bool present = false;
-      for (int k=0; k<iArray.size(); k++)
-      {
-        if (w.cpsArray[n].asites[j] == iArray[k] ||
-            w.cpsArray[n].asites[j] == aArray[k]) 
-        {
-          present = true;
-          break;
-        }
-      }
-
-      if (present)
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
 
   return p * cpsFactor * localDet.determinant() ;
 }
@@ -389,29 +301,9 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
 
   double cpsFactor = 1.0;
 
-  for (int n = 0; n < w.cpsArray.size(); n++)
-    for (int j = 0; j < w.cpsArray[n].bsites.size(); j++)
-    {
-      bool present = false;
-      for (int k=0; k<iArray.size(); k++)
-      {
-        if (w.cpsArray[n].bsites[j] == iArray[k] ||
-            w.cpsArray[n].bsites[j] == aArray[k]) 
-        {
-          present = true;
-          break;
-        }
-      }
-
-      if (present)
-      {
-        cpsFactor *= w.cpsArray[n].Overlap(dcopy) / w.cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-
   return p * cpsFactor * localDet.determinant() ;
 }
+
 
 void Walker::updateA(int i, int a, CPSSlater& w) {
   double p = 1.0;
@@ -420,10 +312,23 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
   int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
 
-  double alphaDetFactor = Hforbs.row(a) * alphainv.col(tableIndexi);
+ //Generate the alpha and beta strings for the wavefunction determinant
+  vector<int> alphaRef, betaRef;
+  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
+  Eigen::Map<VectorXi> RowAlpha(&alphaRef[0], alphaRef.size());
+  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
+  int norbs = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
+  int nbeta = BetaClosed.size();
+
+
+  double alphaDetFactor = Hforbs.row(a) * alphaGamma.col(i);
   alphaDet *= alphaDetFactor*p;
 
-  MatrixXd vtAinv = (Hforbs.row(a) - Hforbs.row(tableIndexi)) *
+  Eigen::MatrixXd Hfnarrow, alphainv;
+  igl::slice(alphaGamma, RowAlpha, 1, alphainv); //alphainv = alphaGamma(R,:);
+  igl::slice(Hforbs, VectorXi::LinSpaced(norbs+1,0,norbs), RowAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+  MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
                     alphainv;
 
   MatrixXd alphainvWrongOrder = alphainv - (alphainv.col(tableIndexi) * vtAinv) / alphaDetFactor;
@@ -445,6 +350,8 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   d.setoccA(a, true );
   std::sort(AlphaClosed.begin(), AlphaClosed.end());
   std::sort(AlphaOpen  .begin(), AlphaOpen  .end());
+
+  igl::slice_into(alphainv, RowAlpha, 1, alphaGamma);
 }
 
 
@@ -455,10 +362,21 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
   int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
 
-  double betaDetFactor = Hforbs.row(a) * betainv.col(tableIndexi);
+ //Generate the alpha and beta strings for the wavefunction determinant
+  vector<int> alphaRef, betaRef;
+  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
+  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
+  int norbs = Determinant::norbs;
+  int nbeta = BetaClosed.size();
+
+
+  double betaDetFactor = Hforbs.row(a) * betaGamma.col(i);
   betaDet *= betaDetFactor*p;
 
-  MatrixXd vtAinv = (Hforbs.row(a) - Hforbs.row(tableIndexi)) *
+  Eigen::MatrixXd Hfnarrow, betainv;
+  igl::slice(betaGamma, RowBeta, 1, betainv); //alphainv = alphaGamma(R,:);
+  igl::slice(Hforbs, VectorXi::LinSpaced(norbs+1,0,norbs), RowBeta, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+  MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
                     betainv;
 
   MatrixXd betainvWrongOrder = betainv - (betainv.col(tableIndexi) * vtAinv) / betaDetFactor;
@@ -480,4 +398,6 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   d.setoccB(a, true );
   std::sort(BetaClosed.begin(), BetaClosed.end());
   std::sort(BetaOpen  .begin(), BetaOpen  .end());
+
+  igl::slice_into(betainv, RowBeta, 1, betaGamma);
 }

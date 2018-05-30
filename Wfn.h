@@ -81,6 +81,9 @@ class CPSSlater  {
    */
   double Overlap(Determinant&);
  
+  double getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d);
+  double getJastrowFactor(int i, int j, int a, int b, Determinant& dcopy, Determinant& d);
+
   /**
    * This calculates the overlap of the determinant with the
    * gradient of the wavefunction w.r.t to the jastrow parameters

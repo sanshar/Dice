@@ -86,6 +86,38 @@ double CPSSlater::Overlap(Walker& walk) {
   return ovlp*getOverlapWithDeterminants(walk);
 }
 
+double CPSSlater::getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d){
+  double cpsFactor = 1.0;
+  for (int n = 0; n < cpsArray.size(); n++)
+    for (int j = 0; j < cpsArray[n].asites.size(); j++)
+    {
+      if (cpsArray[n].asites[j] == i ||
+          cpsArray[n].asites[j] == a)
+      {
+        cpsFactor *= cpsArray[n].Overlap(dcopy) / cpsArray[n].Overlap(d);
+        break;
+      }
+    }
+  return cpsFactor;
+}
+
+double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant& dcopy, Determinant& d){
+  double cpsFactor = 1.0;
+  for (int n = 0; n < cpsArray.size(); n++)
+    for (int k = 0; k < cpsArray[n].asites.size(); k++)
+    {
+      if (cpsArray[n].asites[k] == i ||
+          cpsArray[n].asites[k] == a ||
+          cpsArray[n].asites[k] == j ||
+          cpsArray[n].asites[k] == b )
+      {
+        cpsFactor *= cpsArray[n].Overlap(dcopy) / cpsArray[n].Overlap(d);
+        break;
+      }
+    }
+  return cpsFactor;
+}
+
 void CPSSlater::OverlapWithGradient(Walker& w,
 				    double& factor,
 				    VectorXd& grad) {
@@ -220,7 +252,7 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
-  MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
+  //MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
   double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
   double detOverlap = alphaDet * betaDet;
   Determinant &d = walk.d;
@@ -277,10 +309,11 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
               dcopy.setoccB(A, true);
             }
 
+            double JastrowFactor =  getJastrowFactor(I, A, dcopy, d);
             if (Alpha)
-              localham += tia * walk.getDetFactorA(I, A, *this);
+              localham += tia * walk.getDetFactorA(I, A, *this) * JastrowFactor;
             else
-              localham += tia * walk.getDetFactorB(I, A, *this);
+              localham += tia * walk.getDetFactorB(I, A, *this) * JastrowFactor;
 
             ham += localham;
 
@@ -298,7 +331,6 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
               excitation2.push_back(0);
               HijElements.push_back(tia);
             }
-            //cout << *excitation1.rbegin()<<"  "<<*excitation2.rbegin()<<"  "<<excitation1.size()<<"  "<<excitation2.size()<<endl;
           }
         }
       }
@@ -344,15 +376,17 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
           int A = a / 2, B = b / 2;
           int type = 0; //0 = AA, 1 = BB, 2 = AB, 3 = BA
+          double JastrowFactor =  getJastrowFactor(I, J, A, B, dcopy, d);
           if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 0)
-            localham += tiajb * walk.getDetFactorA(I, J, A, B, *this, false);
+            localham += tiajb * walk.getDetFactorA(I, J, A, B, *this, false) * JastrowFactor;
           else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
-            localham += tiajb * walk.getDetFactorB(I, J, A, B, *this, false);
-          else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-            localham += tiajb * walk.getDetFactorA(I, A, *this, false) * walk.getDetFactorB(J, B, *this, false);
-          else
-            localham += tiajb * walk.getDetFactorA(I, A, *this, false) * walk.getDetFactorB(J, B, *this, false);
-
+            localham += tiajb * walk.getDetFactorB(I, J, A, B, *this, false) * JastrowFactor;
+          else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0) {
+            localham += tiajb * walk.getDetFactorA(I, A, *this, false) * walk.getDetFactorB(J, B, *this, false) * JastrowFactor;
+          }
+          else {
+            localham += tiajb * walk.getDetFactorB(I, A, *this, false) * walk.getDetFactorA(J, B, *this, false) * JastrowFactor;
+          }
 
           ham += localham;
 
@@ -370,7 +404,6 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
             excitation2.push_back(closed[j] * 2 * norbs + b);
             HijElements.push_back(tiajb);
           }
-          //cout << *excitation1.rbegin()<<"  "<<*excitation2.rbegin()<<"  "<<excitation1.size()<<"  "<<excitation2.size()<<endl;
         }
       }
     }

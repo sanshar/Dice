@@ -43,8 +43,8 @@ class Walker {
 
  public:
   Determinant     d;                      //The current determinant
-  Eigen::MatrixXd alphainv;               //The inverse of the alpha determinant
-  Eigen::MatrixXd betainv;                //The inverse of the beta determinant
+  Eigen::MatrixXd alphaGamma;             //The inverse of the beta determinant
+  Eigen::MatrixXd betaGamma;             //The inverse of the beta determinant
   double          alphaDet;               //The alpha determinant
   double          betaDet;                //The beta determinant
   vector<int>     AlphaOpen;              //The set of open alpha orbitals
@@ -71,6 +71,8 @@ class Walker {
   double getDetFactorB(int i, int j, int a, int b, CPSSlater& w, bool doparity=true);
   double getDetFactorA(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
   double getDetFactorB(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
+
+
   bool   makeMove(CPSSlater& w);
   void   exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs);
 
