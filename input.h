@@ -25,6 +25,7 @@
 #include <boost/serialization/map.hpp>
 
 class Correlator;
+class Determinant;
 enum Method { sgd, nestorov, rmsprop, adam, amsgrad };
 
 
@@ -57,7 +58,8 @@ private:
       & seed
       & PTlambda
       & epsilon
-      & screen;
+      & screen
+      & determinantFile;
 
   }
 public:
@@ -69,6 +71,8 @@ public:
 
 //input file to define the correlator parts of the wavefunction
   std::map<int, std::string> correlatorFiles;
+
+  std::string determinantFile;
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    //Number of stochastic steps
@@ -97,8 +101,8 @@ public:
 
 /**
  * This just gives the matrix of MO coefficients, right now
- * we just assume HF determinant, but later this can be generalized to 
- * an alph and a beta matrix
+ * we just assume RHF determinant, but later this can be generalized to 
+ * an alpha and a beta matrix
  * params:
  *   Matrix:  this is the matrix of the mo coefficients
  */
@@ -132,4 +136,12 @@ void readInput(const std::string input, schedule& schd, bool print=true);
  */
 void readCorrelator(std::string input, int correlatorSize,
 		    std::vector<Correlator>& correlators);
+
+
+/**
+ * We are just reading the set of determinants and their ci coefficients
+ * for the multi-slater part of the multi-slater Jastrow wavefunction
+ */
+void readDeterminants(std::string input, std::vector<Determinant>& determinants,
+        std::vector<double>& ciExpansion);
 #endif

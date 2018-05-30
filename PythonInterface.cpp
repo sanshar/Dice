@@ -26,6 +26,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #ifndef SERIAL
 //#include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -43,6 +44,7 @@
 #include "math.h"
 #include "diis.h"
 #include "optimizer.h"
+
 
 using namespace Eigen;
 using namespace boost;
@@ -109,12 +111,20 @@ int main(int argc, char* argv[]) {
     readCorrelator(it->second, it->first, nSiteCPS);
   }
   
-  vector<Determinant> detList(1); vector<double> ciExpansion(1, 1.0);
-  for (int i=0; i<nalpha; i++)
-    detList[0].setoccA(i, true);
-  for (int i=0; i<nbeta; i++)
-    detList[0].setoccB(i, true);
+  vector<Determinant> detList; vector<double> ciExpansion;
 
+  if (boost::iequals(schd.determinantFile, "") )
+  {
+    detList.resize(1); ciExpansion.resize(1, 1.0);
+    for (int i=0; i<nalpha; i++)
+      detList[0].setoccA(i, true);
+    for (int i=0; i<nbeta; i++)
+      detList[0].setoccB(i, true);
+  }
+  else 
+  {
+    readDeterminants(schd.determinantFile, detList, ciExpansion);
+  }
   //setup up wavefunction
   CPSSlater wave(nSiteCPS, detList, ciExpansion);
 
@@ -139,7 +149,6 @@ int main(int argc, char* argv[]) {
     stddev = 0.0;
   }
   else {
-
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
     getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
   }

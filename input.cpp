@@ -19,6 +19,7 @@
 #include "input.h"
 #include "CPS.h"
 #include "global.h"
+#include "Determinants.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -58,6 +59,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.PTlambda               = 0.5;
   schd.epsilon                = 1.e-7;
   schd.screen                 = 1.e-8;
+  schd.determinantFile        = "";
 
   while (dump.good()) {
 
@@ -141,6 +143,10 @@ void readInput(string input, schedule& schd, bool print) {
       schd.correlatorFiles[siteSize] = tok[2];
     }
 
+    else if (boost::iequals(ArgName,  "determinants"       )) {
+      schd.determinantFile = tok[1];
+    }
+
     else if (boost::iequals(ArgName,  "Precondition"     )) {
       schd.davidsonPrecondition = true;
     }
@@ -210,4 +216,51 @@ void readHF(MatrixXd& Hfmatrix) {
   for (int i=0; i<Hfmatrix.rows(); i++)
   for (int j=0; j<Hfmatrix.rows(); j++)
     dump >> Hfmatrix(i,j);
+}
+
+void readDeterminants(std::string input, vector<Determinant> &determinants,
+                      vector<double> &ciExpansion)
+{
+  ifstream dump(input.c_str());
+  while (dump.good())
+  {
+    std::string Line;
+    std::getline(dump, Line);
+
+    trim_if(Line, is_any_of(", \t\n"));
+      
+    vector<string> tok;
+    boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
+
+    if (tok.size() > 2 )
+    {
+      ciExpansion.push_back(atof(tok[0].c_str()));
+      determinants.push_back(Determinant());
+      Determinant& det = *determinants.rbegin();
+      for (int i=0; i<Determinant::norbs; i++) 
+      {
+        if (boost::iequals(tok[1+i], "2")) 
+        {
+          det.setoccA(i, true);
+          det.setoccB(i, true);
+        }
+        else if (boost::iequals(tok[1+i], "a")) 
+        {
+          det.setoccA(i, true);
+          det.setoccB(i, false);
+        }
+        if (boost::iequals(tok[1+i], "b")) 
+        {
+          det.setoccA(i, false);
+          det.setoccB(i, true);
+        }
+        if (boost::iequals(tok[1+i], "0")) 
+        {
+          det.setoccA(i, false);
+          det.setoccB(i, false);
+        }
+      }
+
+    }
+  }
 }
