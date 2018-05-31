@@ -43,16 +43,16 @@ class Walker {
 
  public:
   Determinant     d;                      //The current determinant
-  Eigen::MatrixXd alphaGamma;             //The inverse of the beta determinant
-  Eigen::MatrixXd betaGamma;             //The inverse of the beta determinant
-  double          alphaDet;               //The alpha determinant
-  double          betaDet;                //The beta determinant
+  Eigen::MatrixXd alphainv;               //The inverse of the beta determinant
+  Eigen::MatrixXd betainv;                //The inverse of the beta determinant
+  vector<double>  alphaDet;               //The alpha determinant
+  vector<double>  betaDet;                //The beta determinant
   vector<int>     AlphaOpen;              //The set of open alpha orbitals
   vector<int>     AlphaClosed;            //The set of closed alpha orbitals
   vector<int>     BetaOpen;               //The set of open beta orbitals
   vector<int>     BetaClosed;             //The set of closed alpha orbitals
-  Eigen::MatrixXd AlphaTable;             //This is the table used for efficiently
-  Eigen::MatrixXd BetaTable ;             //calculation of local energy, gradient, update
+  vector<Eigen::MatrixXd> AlphaTable;     //This is the table used for efficiently
+  vector<Eigen::MatrixXd> BetaTable ;     //calculation of local energy, gradient, update
 
   // The constructor
   Walker(Determinant& pd) : d(pd) {};
@@ -60,6 +60,8 @@ class Walker {
   //Use the wavefunction to initialize the alphainv, betainv, alphaDet
   //and betadet
   void initUsingWave(CPSSlater& w, bool check=false) ;
+
+  double getDetOverlap(CPSSlater& w);
 
   //these are not absolute orbital indices, but instead the
   //ith occupied and ath unoccupied
@@ -69,6 +71,7 @@ class Walker {
   double getDetFactorB(int i, int a, CPSSlater& w, bool doparity=true);
   double getDetFactorA(int i, int j, int a, int b, CPSSlater& w, bool doparity=true);
   double getDetFactorB(int i, int j, int a, int b, CPSSlater& w, bool doparity=true);
+  double getDetFactorAB(int i, int j, int a, int b, CPSSlater& w, bool doparity=true);
   double getDetFactorA(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
   double getDetFactorB(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
 

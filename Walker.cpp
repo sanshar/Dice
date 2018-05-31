@@ -108,82 +108,79 @@ bool Walker::makeMovePropPsi(CPSSlater& w) {
   return false;
 }
 
+double Walker::getDetOverlap(CPSSlater &w)
+{
+  double ovlp = 0.0;
+  for (int i = 0; i < alphaDet.size(); i++)
+    ovlp += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  return ovlp;
+}
 
 
 void Walker::initUsingWave(CPSSlater& w, bool check) {
 
-  MatrixXd alpha, beta;
-  w.getDetMatrix(d, alpha, beta);
-
-  MatrixXd alphainv, betainv; 
-  //Sometimes the determinant is so poor that
-  //the inverse is illconditioned, so it is useful
-  //to test this
-  Eigen::FullPivLU<MatrixXd> lua(alpha);
-  if (lua.isInvertible() || !check) {
-    alphainv = lua.inverse();
-    alphaDet = lua.determinant();
-  }
-  else {
-    cout << "overlap with alpha determinant "<< d <<" no invertible"<<endl;
-    cout << "rank of the matrix: "<<lua.rank()<<endl;
-    EigenSolver<MatrixXx> eigensolver(alpha);
-    cout << eigensolver.eigenvalues()<<endl;
-    exit(0);
-  }
-
-  Eigen::FullPivLU<MatrixXd> lub(beta);
-  if (lub.isInvertible() || !check) {
-    betainv = lub.inverse();
-    betaDet = lub.determinant();
-  }
-  else {
-    cout << "overlap with beta determinant "<< d <<" no invertible"<<endl;
-    cout << "rank of the matrix: "<<lub.rank()<<endl;
-    EigenSolver<MatrixXx> eigensolver(beta);
-    cout << eigensolver.eigenvalues()<<endl;
-    exit(0);
-  }
-
-
-  d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed,
-                           BetaOpen , BetaClosed );
-
-  //Generate the alpha and beta strings for the wavefunction determinant
-  vector<int> alphaRef, betaRef;
-  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
-  Eigen::Map<VectorXi> RowAlpha(&alphaRef[0], alphaRef.size());
-  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
-  int norbs = Determinant::norbs;
-  int nalpha = AlphaClosed.size();
-  int nbeta = BetaClosed.size();
-
-  //slice  
-  alphaGamma = MatrixXd::Zero(norbs, nalpha);
-  betaGamma = MatrixXd::Zero(norbs, nbeta);
-  igl::slice_into(alphainv, RowAlpha, 1, alphaGamma); //alphaGamma(R,:) = alphainv;
-  igl::slice_into(betainv , RowBeta , 1, betaGamma );
-
-  AlphaTable = MatrixXd::Zero(AlphaOpen.size(), AlphaClosed.size());
+  AlphaTable.resize(w.determinants.size());
+  BetaTable.resize(w.determinants.size());
+  alphaDet.resize(w.determinants.size());
+  betaDet.resize(w.determinants.size());
   
-  for (int i=0; i<AlphaClosed.size(); i++)
+  d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed, BetaOpen , BetaClosed );
+
+  Eigen::Map<VectorXi> RowAlpha(&AlphaClosed[0], AlphaClosed.size());
+  Eigen::Map<VectorXi> RowBeta (&BetaClosed[0] , BetaClosed.size());
+  Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
+  Eigen::Map<VectorXi> RowBetaOpen (&BetaOpen[0] , BetaOpen.size());
+  int norbs  = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
+  int nbeta  = BetaClosed.size();
+
+
+  for (int i=0; i<w.determinants.size(); i++) 
   {
-    for (int a=0; a<AlphaOpen.size(); a++)
+    MatrixXd alpha, beta;
+
+    //Generate the alpha and beta strings for the wavefunction determinant
+    vector<int> alphaRef, betaRef;
+    w.determinants[i].getAlphaBeta(alphaRef, betaRef);
+    Eigen::Map<VectorXi> ColAlpha(&alphaRef[0], alphaRef.size());
+    Eigen::Map<VectorXi> ColBeta (&betaRef[0],  betaRef.size());
+
+    igl::slice(Hforbs, RowAlpha, ColAlpha, alpha); //alpha = Hforbs(Row, Col)
+    Eigen::FullPivLU<MatrixXd> lua(alpha);
+    if (lua.isInvertible() || !check)
     {
-      AlphaTable(a, i) = (Hforbs.row(AlphaOpen[a])*alphaGamma.col(i))(0);
+      alphainv = lua.inverse();
+      alphaDet[i] = lua.determinant();
     }
-  }  
-
-  BetaTable = MatrixXd::Zero(BetaOpen.size(), BetaClosed.size());
-  for (int i=0; i<BetaClosed.size(); i++)
-  {
-    for (int a=0; a<BetaOpen.size(); a++)
+    else
     {
-      BetaTable(a, i) = (Hforbs.row(BetaOpen[a])*betaGamma.col(i))(0);
+      cout << "overlap with alpha determinant " << d << " not invertible" << endl;
+      exit(0);
     }
-  }  
 
+    igl::slice(Hforbs, RowBeta, ColBeta, beta); //beta = Hforbs(Row, Col)
+    Eigen::FullPivLU<MatrixXd> lub(beta);
+    if (lub.isInvertible() || !check)
+    {
+      betainv = lub.inverse();
+      betaDet[i] = lub.determinant();
+    }
+    else
+    {
+      cout << "overlap with beta determinant " << d << " not invertible" << endl;
+      exit(0);
+    }
 
+    AlphaTable[i] = MatrixXd::Zero(AlphaOpen.size(), AlphaClosed.size()); //k-N x N  
+    MatrixXd HfopenAlpha;
+    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    AlphaTable[i] = HfopenAlpha*alphainv;
+
+    BetaTable[i] = MatrixXd::Zero(BetaOpen.size(), BetaClosed.size()); //k-N x N  
+    MatrixXd HfopenBeta;
+    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    BetaTable[i] = HfopenBeta*betainv;
+  }
 }
 
 void   Walker::exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs)
@@ -206,44 +203,97 @@ void   Walker::exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs)
 double Walker::getDetFactorA(int i, int a, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
-  int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
+  int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
 
   double p = 1.;
-  if(doparity) d.parityA(a, i, p);
+  if (doparity)
+    d.parityA(a, i, p);
 
-  return p * AlphaTable(tableIndexa, tableIndexi) ;
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int i = 0; i < w.determinants.size(); i++)
+  {
+    double factor = AlphaTable[i](tableIndexa, tableIndexi);
+    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
+    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
+
+  return p * detFactorNum / detFactorDen;
 }
 
 double Walker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
-  int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
+  int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
 
   double p = 1.;
-  if(doparity) d.parityB(a, i, p);
+  if (doparity)
+    d.parityB(a, i, p);
 
-  return p * BetaTable(tableIndexa, tableIndexi) ;
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int i = 0; i < w.determinants.size(); i++)
+  {
+    double factor = BetaTable[i](tableIndexa, tableIndexi);
+    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
+    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
+
+  return p * detFactorNum / detFactorDen;
 }
 
 double Walker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
-  int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
+  int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
   int tableIndexj = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), j) - AlphaClosed.begin();
-  int tableIndexb = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), b) - AlphaOpen.begin();
+  int tableIndexb = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), b) - AlphaOpen.begin();
 
-  return (AlphaTable(tableIndexa, tableIndexi) * AlphaTable(tableIndexb, tableIndexj) - AlphaTable(tableIndexb, tableIndexi)*AlphaTable(tableIndexa, tableIndexj));
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int i = 0; i < w.determinants.size(); i++)
+  {
+    double factor = (AlphaTable[i](tableIndexa, tableIndexi) * AlphaTable[i](tableIndexb, tableIndexj) - AlphaTable[i](tableIndexb, tableIndexi) * AlphaTable[i](tableIndexa, tableIndexj));
+    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
+    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
+  return detFactorNum / detFactorDen;
 }
 
 double Walker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
-  int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
+  int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
   int tableIndexj = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), j) - BetaClosed.begin();
-  int tableIndexb = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), b) - BetaOpen.begin();
+  int tableIndexb = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), b) - BetaOpen.begin();
 
- 
-  return (BetaTable(tableIndexa, tableIndexi) * BetaTable(tableIndexb, tableIndexj) - BetaTable(tableIndexb, tableIndexi)*BetaTable(tableIndexa, tableIndexj)) ;
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int i = 0; i < w.determinants.size(); i++)
+  {
+    double factor = (BetaTable[i](tableIndexa, tableIndexi) * BetaTable[i](tableIndexb, tableIndexj) - BetaTable[i](tableIndexb, tableIndexi) * BetaTable[i](tableIndexa, tableIndexj));
+    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
+    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
+  return detFactorNum / detFactorDen;
+}
+
+double Walker::getDetFactorAB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
+{
+  int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
+  int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
+  int tableIndexj = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), j) - BetaClosed.begin();
+  int tableIndexb = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), b) - BetaOpen.begin();
+
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int i = 0; i < w.determinants.size(); i++)
+  {
+    double factor = AlphaTable[i](tableIndexa, tableIndexi) * BetaTable[i](tableIndexb, tableIndexj);
+    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
+    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
+  return detFactorNum / detFactorDen;
 }
 
 double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
@@ -255,7 +305,7 @@ double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater
     for (int a=0; a<aArray.size(); a++)
     {
       int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), aArray[a]) - AlphaOpen.begin();
-      localDet(i,a) = AlphaTable(tableIndexi, tableIndexa);
+      localDet(i,a) = AlphaTable[0](tableIndexi, tableIndexa);
     }
   }
 
@@ -284,7 +334,7 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
     for (int a=0; a<aArray.size(); a++)
     {
       int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), aArray[a]) - BetaOpen.begin();
-      localDet(i,a) = BetaTable(tableIndexi, tableIndexa);
+      localDet(i,a) = BetaTable[0](tableIndexi, tableIndexa);
     }
   }
 
@@ -306,113 +356,109 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
 
 
 void Walker::updateA(int i, int a, CPSSlater& w) {
+
   double p = 1.0;
   d.parityA(a, i, p);
 
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
   int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
 
- //Generate the alpha and beta strings for the wavefunction determinant
-  vector<int> alphaRef, betaRef;
-  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
-  Eigen::Map<VectorXi> RowAlpha(&alphaRef[0], alphaRef.size());
-  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
   int norbs = Determinant::norbs;
   int nalpha = AlphaClosed.size();
   int nbeta = BetaClosed.size();
 
-
-  double alphaDetFactor = Hforbs.row(a) * alphaGamma.col(tableIndexi);
-  alphaDet *= alphaDetFactor*p;
-
-  Eigen::MatrixXd Hfnarrow, alphainv;
-  igl::slice(alphaGamma, RowAlpha, 1, alphainv); //alphainv = alphaGamma(R,:);
-  igl::slice(Hforbs, VectorXi::LinSpaced(norbs,0,norbs+1), RowAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
-  
-  MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
-                    alphainv;
-
-  MatrixXd alphainvWrongOrder = alphainv - (alphainv.col(tableIndexi) * vtAinv) / alphaDetFactor;
-  
-  AlphaClosed[tableIndexi] = a;
-  AlphaOpen  [tableIndexa] = i;
-
-  std::vector<int> order(AlphaClosed.size()), acopy = AlphaClosed;
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(),
-            [&acopy](size_t i1, size_t i2) { return acopy[i1] < acopy[i2]; });
-
-  for (int i = 0; i < order.size(); i++)
+  for (int i=0; i<w.determinants.size(); i++)
   {
-    alphainv.col(i) = alphainvWrongOrder.col(order[i]);
+    //Generate the alpha and beta strings for the wavefunction determinant
+    vector<int> alphaRef, betaRef;
+    w.determinants[i].getAlphaBeta(alphaRef, betaRef);
+    Eigen::Map<VectorXi> ColAlpha(&alphaRef[0], alphaRef.size());
+
+    double alphaDetFactor = AlphaTable[i](tableIndexa, tableIndexi);
+    alphaDet[i] *= alphaDetFactor*p;
+
+    Eigen::MatrixXd Hfnarrow;
+    igl::slice(Hforbs, VectorXi::LinSpaced(norbs, 0, norbs + 1), ColAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+
+    MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) * alphainv;
+
+    MatrixXd alphainvWrongOrder = alphainv - (alphainv.col(tableIndexi) * vtAinv) / alphaDetFactor;
+
+    AlphaClosed[tableIndexi] = a;
+    AlphaOpen[tableIndexa]   = i;
+
+    std::vector<int> order(AlphaClosed.size()), acopy = AlphaClosed;
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&acopy](size_t i1, size_t i2) { return acopy[i1] < acopy[i2]; });
+    Eigen::Map<VectorXi> orderVec(&order[0], order.size());
+    igl::slice(alphainvWrongOrder, VectorXi::LinSpaced(nalpha, 0, nalpha + 1), orderVec, alphainv);
+
+    d.setoccA(i, false);
+    d.setoccA(a, true );
+    std::sort(AlphaClosed.begin(), AlphaClosed.end());
+    std::sort(AlphaOpen  .begin(), AlphaOpen  .end());
+
+
+    Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
+    MatrixXd HfopenAlpha;
+    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    AlphaTable[i] = HfopenAlpha*alphainv;
+
+
   }
 
-  d.setoccA(i, false);
-  d.setoccA(a, true );
-  std::sort(AlphaClosed.begin(), AlphaClosed.end());
-  std::sort(AlphaOpen  .begin(), AlphaOpen  .end());
-
-  igl::slice_into(alphainv, RowAlpha, 1, alphaGamma);
-  for (int i=0; i<AlphaClosed.size(); i++)
-  {
-    for (int a=0; a<AlphaOpen.size(); a++)
-    {
-      AlphaTable(a, i) = (Hforbs.row(AlphaOpen[a])*alphaGamma.col(i))(0);
-    }
-  }  
 }
 
 
 void Walker::updateB(int i, int a, CPSSlater& w) {
+
   double p = 1.0;
   d.parityB(a, i, p);
 
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
   int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
 
- //Generate the alpha and beta strings for the wavefunction determinant
-  vector<int> alphaRef, betaRef;
-  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
-  Eigen::Map<VectorXi> RowBeta (&betaRef[0] , betaRef.size());
   int norbs = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
   int nbeta = BetaClosed.size();
 
-
-  double betaDetFactor = Hforbs.row(a) * betaGamma.col(tableIndexi);
-  betaDet *= betaDetFactor*p;
-
-  Eigen::MatrixXd Hfnarrow, betainv;
-  igl::slice(betaGamma, RowBeta, 1, betainv); //alphainv = alphaGamma(R,:);
-  igl::slice(Hforbs, VectorXi::LinSpaced(norbs,0,norbs+1), RowBeta, Hfnarrow); //Hfnarrow = Hforbs(:, R)
-  MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) *
-                    betainv;
-
-  MatrixXd betainvWrongOrder = betainv - (betainv.col(tableIndexi) * vtAinv) / betaDetFactor;
-
-  BetaClosed[tableIndexi] = a;
-  BetaOpen  [tableIndexa] = i;
-
-  std::vector<int> order(BetaClosed.size()), bcopy = BetaClosed;
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(),
-            [&bcopy](size_t i1, size_t i2) { return bcopy[i1] < bcopy[i2]; });
-
-  for (int i = 0; i < order.size(); i++)
+  for (int i=0; i<w.determinants.size(); i++)
   {
-    betainv.col(i) = betainvWrongOrder.col(order[i]);
+    //Generate the alpha and beta strings for the wavefunction determinant
+    vector<int> alphaRef, betaRef;
+    w.determinants[i].getAlphaBeta(alphaRef, betaRef);
+    Eigen::Map<VectorXi> ColBeta(&betaRef[0], betaRef.size());
+
+    double betaDetFactor = BetaTable[i](tableIndexa, tableIndexi);
+    betaDet[i] *= betaDetFactor*p;
+
+    Eigen::MatrixXd Hfnarrow;
+    igl::slice(Hforbs, VectorXi::LinSpaced(norbs, 0, norbs + 1), ColBeta, Hfnarrow); //Hfnarrow = Hforbs(:, R)
+
+    MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) * betainv;
+
+    MatrixXd betainvWrongOrder = betainv - (betainv.col(tableIndexi) * vtAinv) / betaDetFactor;
+
+    BetaClosed[tableIndexi] = a;
+    BetaOpen[tableIndexa]   = i;
+
+    std::vector<int> order(BetaClosed.size()), bcopy = BetaClosed;
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&bcopy](size_t i1, size_t i2) { return bcopy[i1] < bcopy[i2]; });
+    Eigen::Map<VectorXi> orderVec(&order[0], order.size());
+    igl::slice(betainvWrongOrder, VectorXi::LinSpaced(nbeta, 0, nbeta + 1), orderVec, betainv);
+
+    d.setoccB(i, false);
+    d.setoccB(a, true );
+    std::sort(BetaClosed.begin(), BetaClosed.end());
+    std::sort(BetaOpen  .begin(), BetaOpen  .end());
+
+
+    Eigen::Map<VectorXi> RowBetaOpen(&BetaOpen[0], BetaOpen.size());
+    MatrixXd HfopenBeta;
+    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    BetaTable[i] = HfopenBeta*betainv;
+
+
   }
-
-  d.setoccB(i, false);
-  d.setoccB(a, true );
-  std::sort(BetaClosed.begin(), BetaClosed.end());
-  std::sort(BetaOpen  .begin(), BetaOpen  .end());
-
-  igl::slice_into(betainv, RowBeta, 1, betaGamma);
-  for (int i=0; i<BetaClosed.size(); i++)
-  {
-    for (int a=0; a<BetaOpen.size(); a++)
-    {
-      BetaTable(a, i) = (Hforbs.row(BetaOpen[a])*betaGamma.col(i))(0);
-    }
-  }  
 }

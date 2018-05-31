@@ -61,7 +61,7 @@ void CPSSlater::getDetMatrix(Determinant& d, Eigen::MatrixXd& DetAlpha, Eigen::M
 }
 
 double CPSSlater::getOverlapWithDeterminants(Walker& walk) {
-  return walk.alphaDet*walk.betaDet;
+  return walk.getDetOverlap(*this);
 }
 
 //This is expensive and not recommended
@@ -253,8 +253,8 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
   //MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
-  double alphaDet = walk.alphaDet, betaDet = walk.betaDet;
-  double detOverlap = alphaDet * betaDet;
+  
+  double detOverlap = walk.getDetOverlap(*this);
   Determinant &d = walk.d;
 
   int norbs = Determinant::norbs;
@@ -382,10 +382,10 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
           else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
             localham += tiajb * walk.getDetFactorB(I, J, A, B, *this, false) * JastrowFactor;
           else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0) {
-            localham += tiajb * walk.getDetFactorA(I, A, *this, false) * walk.getDetFactorB(J, B, *this, false) * JastrowFactor;
+            localham += tiajb * walk.getDetFactorAB(I, J, A, B, *this, false) * JastrowFactor;
           }
           else {
-            localham += tiajb * walk.getDetFactorB(I, A, *this, false) * walk.getDetFactorA(J, B, *this, false) * JastrowFactor;
+            localham += tiajb * walk.getDetFactorAB(J, I, B, A, *this, false) * JastrowFactor;
           }
 
           ham += localham;

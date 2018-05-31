@@ -423,7 +423,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   for (int i = 0; i < nalpha; i++)
     d.setoccA(i, true);
   for (int j = 0; j < nbeta; j++)
-    d.setoccB(norbs - 1 - j, true);
+    d.setoccB(j, true);
   Walker walk(d);
   walk.initUsingWave(w);
   //cout << d <<endl;
