@@ -428,3 +428,79 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
 		}
 	}
 }
+
+void getOrbDiff(Determinant &bra, Determinant &ket, vector<int>& creA, vector<int>& desA,
+				vector<int>& creB, vector<int>& desB)
+{
+	std::fill(creA.begin(), creA.end(), -1);
+	std::fill(desA.begin(), desA.end(), -1);
+	std::fill(creB.begin(), creB.end(), -1);
+	std::fill(desB.begin(), desB.end(), -1);
+
+	int ncre = 0, ndes = 0;
+	long u, b, k, one = 1;
+
+	for (int i = 0; i < DetLen; i++)
+	{
+		u = bra.reprA[i] ^ ket.reprA[i];
+		b = u & bra.reprA[i]; //the cre bits
+		k = u & ket.reprA[i]; //the des bits
+
+		while (b != 0)
+		{
+			int pos = __builtin_ffsl(b);
+			creA[ncre] = pos - 1 + i * 64;
+			ncre++;
+			b &= ~(one << (pos - 1));
+		}
+		while (k != 0)
+		{
+			int pos = __builtin_ffsl(k);
+			desA[ndes] = pos - 1 + i * 64;
+			ndes++;
+			k &= ~(one << (pos - 1));
+		}
+	}
+
+
+	ncre = 0; ndes = 0;
+	for (int i = 0; i < DetLen; i++)
+	{
+		u = bra.reprB[i] ^ ket.reprB[i];
+		b = u & bra.reprB[i]; //the cre bits
+		k = u & ket.reprB[i]; //the des bits
+
+		while (b != 0)
+		{
+			int pos = __builtin_ffsl(b);
+			creB[ncre] = pos - 1 + i * 64;
+			ncre++;
+			b &= ~(one << (pos - 1));
+		}
+		while (k != 0)
+		{
+			int pos = __builtin_ffsl(k);
+			desB[ndes] = pos - 1 + i * 64;
+			ndes++;
+			k &= ~(one << (pos - 1));
+		}
+	}
+}
+
+
+double getParityForDiceToAlphaBeta(Determinant& det) 
+{
+	double parity = 1.0;
+	int nalpha = det.Nalpha();
+	int norbs = Determinant::norbs;
+	for (int i=0; i<norbs; i++) 
+	{
+		if (det.getoccB(norbs-1-i))
+		{
+			int nAlphaAfteri = nalpha - det.getNalphaBefore(norbs-1-i);
+			if (det.getoccA(norbs-1-i)) nAlphaAfteri--;
+			if (nAlphaAfteri%2 == 1) parity *= -1;
+		}
+	}
+	return parity;
+}
