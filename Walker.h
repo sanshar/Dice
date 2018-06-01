@@ -79,17 +79,31 @@ class Walker {
    * This takes an inverse and determinant of a matrix formed by a subset of
    * columns and rows of Hforbs
    * and generates the new inverse and determinant 
-   * by replacing cols with incides des with those with indices des
+   * by replacing cols with incides des with those with indices cre
    * RowVec is the set of row indices that are common to both in the 
-   * incoming and outgoing matrices. ColIn ais the column indices
+   * incoming and outgoing matrices. ColIn are the column indices
    * of the incoming matrix. 
    */
-  void calculateInverseDeterminant(Eigen::MatrixXd &inverseIn, double &detValueIn,
-                                   Eigen::MatrixXd &inverseOut, double &detValueOut,
-                                   vector<int> &cre, vector<int> &des,
-                                   Eigen::Map<Eigen::VectorXi> &RowVec,
-                                   vector<int> &ColIn);
+  void calculateInverseDeterminantWithColumnChange(Eigen::MatrixXd &inverseIn, double &detValueIn,
+                                                   Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                   vector<int> &cre, vector<int> &des,
+                                                   Eigen::Map<Eigen::VectorXi> &RowVec,
+                                                   vector<int> &ColIn);
 
+  /**
+   * This takes an inverse and determinant of a matrix formed by a subset of
+   * columns and rows of Hforbs
+   * and generates the new inverse and determinant 
+   * by replacing rows with incides des with those with indices des
+   * ColVec is the set of col indices that are common to both in the 
+   * incoming and outgoing matrices. RowIn are the column indices
+   * of the incoming matrix. 
+   */
+  void calculateInverseDeterminantWithRowChange(Eigen::MatrixXd &inverseIn, double &detValueIn,
+                                                Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                vector<int> &cre, vector<int> &des,
+                                                Eigen::Map<Eigen::VectorXi> &ColVec,
+                                                vector<int> &RowIn);
   bool   makeMove(CPSSlater& w);
   void   exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs);
 

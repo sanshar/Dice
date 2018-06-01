@@ -160,6 +160,34 @@ class Determinant {
     return;
   }
 
+  double parityA(vector<int>& aArray, vector<int>& iArray)
+  {
+    double p = 1.;
+    Determinant dcopy = *this;
+    for (int i = 0; i < iArray.size(); i++)
+    {
+      dcopy.parityA(aArray[i], iArray[i], p);
+
+      dcopy.setoccA(iArray[i], false);
+      dcopy.setoccA(aArray[i], true);
+    }
+    return p;
+  }
+
+  double parityB(vector<int>& aArray, vector<int>& iArray)
+  {
+    double p = 1.;
+    Determinant dcopy = *this;
+    for (int i = 0; i < iArray.size(); i++)
+    {
+      dcopy.parityB(aArray[i], iArray[i], p);
+
+      dcopy.setoccB(iArray[i], false);
+      dcopy.setoccB(aArray[i], true);
+    }
+    return p;
+  }
+
   void parityAA(int& i, int& j, int& a, int& b, double& sgn);
   void parityBB(int& i, int& j, int& a, int& b, double& sgn);
 

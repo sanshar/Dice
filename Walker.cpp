@@ -116,11 +116,11 @@ double Walker::getDetOverlap(CPSSlater &w)
   return ovlp;
 }
 
-void Walker::calculateInverseDeterminant(MatrixXd &inverseIn, double &detValueIn,
-                                         MatrixXd &inverseOut, double &detValueOut,
-                                         vector<int>& cre, vector<int>& des,
-                                         Eigen::Map<Eigen::VectorXi>& RowVec,
-                                         vector<int>& ColIn)
+void Walker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
+                                                         MatrixXd &inverseOut, double &detValueOut,
+                                                         vector<int> &cre, vector<int> &des,
+                                                         Eigen::Map<Eigen::VectorXi> &RowVec,
+                                                         vector<int> &ColIn)
 {
   int ncre = 0, ndes = 0;
   for (int i=0; i<cre.size(); i++)
@@ -142,7 +142,8 @@ void Walker::calculateInverseDeterminant(MatrixXd &inverseIn, double &detValueIn
   igl::slice(Hforbs, RowVec, ColDes, oldCol);
   newCol = newCol - oldCol;
 
-  MatrixXd vT = MatrixXd::Zero(ncre, RowVec.rows());
+
+  MatrixXd vT = MatrixXd::Zero(ncre, ColIn.size());
   vector<int> ColOutWrong = ColIn;
   for (int i=0; i<ndes; i++) {
     int index = std::lower_bound(ColIn.begin(), ColIn.end(), des[i]) - ColIn.begin();
@@ -150,20 +151,23 @@ void Walker::calculateInverseDeterminant(MatrixXd &inverseIn, double &detValueIn
     ColOutWrong[index] = cre[i];
   }
 
+  //igl::slice(inverseIn, ColCre, 1, vTinverseIn);
+  MatrixXd vTinverseIn = vT*inverseIn; 
+
   MatrixXd Id = MatrixXd::Identity(ncre, ncre);
-  MatrixXd detFactor = Id + vT*inverseIn*newCol;
+  MatrixXd detFactor = Id + vTinverseIn*newCol;
   MatrixXd detFactorInv, inverseOutWrong;
 
   Eigen::FullPivLU<MatrixXd> lub(detFactor);
   if (lub.isInvertible() ) {
     detFactorInv = lub.inverse();
-    inverseOutWrong = inverseIn - ((inverseIn * newCol) * detFactorInv) * (vT * inverseIn); 
+    inverseOutWrong = inverseIn - ((inverseIn * newCol) * detFactorInv) * (vTinverseIn); 
     detValueOut = detValueIn * detFactor.determinant();
   }
   else {
-    MatrixXd originalOrbs;
-    Eigen::Map<VectorXi> ColDes(&ColIn[0], ColIn.size());
-    igl::slice(Hforbs, RowVec, ColDes, originalOrbs);
+    MatrixXd originalOrbs, vT;
+    Eigen::Map<VectorXi> Col(&ColIn[0], ColIn.size());
+    igl::slice(Hforbs, RowVec, Col, originalOrbs);
     MatrixXd newOrbs = originalOrbs + newCol*vT; 
     inverseOutWrong = newOrbs.inverse();
     detValueOut = newOrbs.determinant();
@@ -176,6 +180,70 @@ void Walker::calculateInverseDeterminant(MatrixXd &inverseIn, double &detValueIn
   Eigen::Map<VectorXi> orderVec(&order[0], order.size());
   igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
 }
+
+void Walker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
+                                                      MatrixXd &inverseOut, double &detValueOut,
+                                                      vector<int> &cre, vector<int> &des,
+                                                      Eigen::Map<Eigen::VectorXi> &ColVec,
+                                                      vector<int> &RowIn)
+{
+  int ncre = 0, ndes = 0;
+  for (int i=0; i<cre.size(); i++)
+    if (cre[i] != -1) ncre++;
+  for (int i=0; i<des.size(); i++)
+    if (des[i] != -1) ndes++;
+  if (ncre == 0) {
+    inverseOut = inverseIn;
+    detValueOut = detValueIn;
+    return;
+  }
+
+  Eigen::Map<VectorXi> RowCre(&cre[0], ncre); 
+  Eigen::Map<VectorXi> RowDes(&des[0], ndes); 
+
+  MatrixXd newRow, oldRow;
+  igl::slice(Hforbs, RowCre, ColVec, newRow);
+  igl::slice(Hforbs, RowDes, ColVec, oldRow);
+  newRow = newRow - oldRow;
+
+
+  MatrixXd U = MatrixXd::Zero(ColVec.rows(), ncre);
+  vector<int> RowOutWrong = RowIn;
+  for (int i=0; i<ndes; i++) {
+    int index = std::lower_bound(RowIn.begin(), RowIn.end(), des[i]) - RowIn.begin();
+    U(index, i) = 1.0;
+    RowOutWrong[index] = cre[i];
+  }
+  //igl::slice(inverseIn, VectorXi::LinSpaced(RowIn.size(), 0, RowIn.size() + 1), RowDes, inverseInU);
+  MatrixXd inverseInU = inverseIn*U;
+  MatrixXd Id = MatrixXd::Identity(ncre, ncre);
+  MatrixXd detFactor = Id + newRow*inverseInU;
+  MatrixXd detFactorInv, inverseOutWrong;
+
+  Eigen::FullPivLU<MatrixXd> lub(detFactor);
+  if (lub.isInvertible() ) {
+    detFactorInv = lub.inverse();
+    inverseOutWrong = inverseIn - ((inverseInU) * detFactorInv) * (newRow * inverseIn); 
+    detValueOut = detValueIn * detFactor.determinant();
+  }
+  else {
+    MatrixXd originalOrbs;
+    Eigen::Map<VectorXi> Row(&RowIn[0], RowIn.size());
+    igl::slice(Hforbs, Row, ColVec, originalOrbs);
+    MatrixXd newOrbs = originalOrbs + U*newRow; 
+    inverseOutWrong = newOrbs.inverse();
+    detValueOut = newOrbs.determinant();
+  }
+
+  //now we need to reorder the inverse to correct the order of rows
+  std::vector<int> order(RowOutWrong.size()), rcopy = RowOutWrong;
+  std::iota(order.begin(), order.end(), 0);
+  std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
+  Eigen::Map<VectorXi> orderVec(&order[0], order.size());
+  igl::slice(inverseOutWrong, VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows() + 1), orderVec, inverseOut);
+  
+}
+
 
 
 void Walker::initUsingWave(CPSSlater& w, bool check) {
@@ -246,10 +314,10 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
     else 
     {
       getOrbDiff(w.determinants[i], w.determinants[0], creA, desA, creB, desB);
-      double alphaParity = w.determinants[0].parity(desA, creA);
-      double betaParity  = w.determinants[0].parity(desB, creB);
-      calculateInverseDeterminant(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0);
-      calculateInverseDeterminant(betainv , betaDet[0] , betainvCurrent , betaDet[i] , creB, desB, RowBeta, betaRef0);
+      double alphaParity = w.determinants[0].parityA(creA, desA);
+      double betaParity  = w.determinants[0].parityB(creB, desB);
+      calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0);
+      calculateInverseDeterminantWithColumnChange(betainv , betaDet[0] , betainvCurrent , betaDet[i] , creB, desB, RowBeta, betaRef0);
       alphaDet[i] *= alphaParity;
       betaDet[i] *= betaParity;
 
@@ -451,51 +519,35 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   d.parityA(a, i, p);
 
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
-  int tableIndexa = std::lower_bound(AlphaOpen  .begin(), AlphaOpen  .end(), a) - AlphaOpen.begin();
+  int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
 
   int norbs = Determinant::norbs;
   int nalpha = AlphaClosed.size();
   int nbeta = BetaClosed.size();
 
-  for (int x=0; x<w.determinants.size(); x++)
-  {
-    //Generate the alpha and beta strings for the wavefunction determinant
-    vector<int> alphaRef, betaRef;
-    w.determinants[x].getAlphaBeta(alphaRef, betaRef);
-    Eigen::Map<VectorXi> ColAlpha(&alphaRef[0], alphaRef.size());
+  
+  vector<int> alphaRef, betaRef;
+  w.determinants[0].getAlphaBeta(alphaRef, betaRef);
+  vector<int> cre(1, a), des(1, i);
+  MatrixXd alphainvOld = alphainv;
+  double alphaDetOld = alphaDet[0];
+  Eigen::Map<Eigen::VectorXi> ColVec(&alphaRef[0], alphaRef.size());
+  calculateInverseDeterminantWithRowChange(alphainvOld, alphaDetOld, alphainv,
+                                           alphaDet[0], cre, des, ColVec, AlphaClosed);
+  alphaDet[0] *= p;
 
-    double alphaDetFactor = AlphaTable[x](tableIndexa, tableIndexi);
-    alphaDet[x] *= alphaDetFactor*p;
+  d.setoccA(i, false);
+  d.setoccA(a, true);
+  AlphaOpen.clear(); AlphaClosed.clear(); BetaOpen.clear(); BetaClosed.clear();
+  d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed, BetaOpen, BetaClosed);
 
-    Eigen::MatrixXd Hfnarrow;
-    igl::slice(Hforbs, VectorXi::LinSpaced(norbs, 0, norbs + 1), ColAlpha, Hfnarrow); //Hfnarrow = Hforbs(:, R)
-
-    MatrixXd vtAinv = (Hfnarrow.row(a) - Hfnarrow.row(i)) * alphainv;
-
-    MatrixXd alphainvWrongOrder = alphainv - (alphainv.col(tableIndexi) * vtAinv) / alphaDetFactor;
-
-    AlphaClosed[tableIndexi] = a;
-    AlphaOpen[tableIndexa]   = i;
-
-    std::vector<int> order(AlphaClosed.size()), acopy = AlphaClosed;
-    std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&acopy](size_t i1, size_t i2) { return acopy[i1] < acopy[i2]; });
-    Eigen::Map<VectorXi> orderVec(&order[0], order.size());
-    igl::slice(alphainvWrongOrder, VectorXi::LinSpaced(nalpha, 0, nalpha + 1), orderVec, alphainv);
-
-    d.setoccA(i, false);
-    d.setoccA(a, true );
-    std::sort(AlphaClosed.begin(), AlphaClosed.end());
-    std::sort(AlphaOpen  .begin(), AlphaOpen  .end());
-
-
-    Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
-    MatrixXd HfopenAlpha;
-    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
-    AlphaTable[x] = HfopenAlpha*alphainv;
-
-
-  }
+  Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
+  MatrixXd HfopenAlpha;
+  igl::slice(Hforbs, RowAlphaOpen, ColVec, HfopenAlpha);
+  AlphaTable[0] = HfopenAlpha * alphainv;
+  
+ 
+  
 
 }
 
