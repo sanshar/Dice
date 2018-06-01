@@ -156,7 +156,7 @@ void Walker::calculateInverseDeterminant(MatrixXd &inverseIn, double &detValueIn
 
   Eigen::FullPivLU<MatrixXd> lub(detFactor);
   if (lub.isInvertible() ) {
-    detFactorInv = detFactor.inverse();
+    detFactorInv = lub.inverse();
     inverseOutWrong = inverseIn - ((inverseIn * newCol) * detFactorInv) * (vT * inverseIn); 
     detValueOut = detValueIn * detFactor.determinant();
   }
@@ -246,8 +246,13 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
     else 
     {
       getOrbDiff(w.determinants[i], w.determinants[0], creA, desA, creB, desB);
+      double alphaParity = w.determinants[0].parity(desA, creA);
+      double betaParity  = w.determinants[0].parity(desB, creB);
       calculateInverseDeterminant(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0);
       calculateInverseDeterminant(betainv , betaDet[0] , betainvCurrent , betaDet[i] , creB, desB, RowBeta, betaRef0);
+      alphaDet[i] *= alphaParity;
+      betaDet[i] *= betaParity;
+
     }
       //cout << alphainvCurrent<<endl<<endl;
       //cout << betainvCurrent<<endl<<endl;
