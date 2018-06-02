@@ -263,7 +263,7 @@ void readDeterminants(std::string input, vector<Determinant> &determinants,
 
       //***************I AM USING alpha-beta format here, but the wavefunction is coming from Dice that uses alpha0 beta0 alpha1 beta1... format
       //So the signs need to be adjusted appropriately
-      cout << det<<"   "<<getParityForDiceToAlphaBeta(det)<<endl;
+      //cout << det<<"   "<<getParityForDiceToAlphaBeta(det)<<endl;
       *ciExpansion.rbegin() *= getParityForDiceToAlphaBeta(det);
     }
   }
