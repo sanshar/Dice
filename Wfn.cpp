@@ -146,20 +146,14 @@ void CPSSlater::printVariables() {
       numVars++;
     }
   }
+
+  for (int i=0; i<determinants.size(); i++) {
+    cout << "  "<<ciExpansion[i];
+  }
   cout <<endl;
 
 }
 
-void CPSSlater::incrementVariables(Eigen::VectorXd& dv){
-  long numVars = 0;
-  for (int i=0; i<cpsArray.size(); i++) {
-    for (int j=0; j<cpsArray[i].Variables.size(); j++) {
-      cpsArray[i].Variables[j] += dv[numVars];
-      numVars++;
-    }
-  }
-
-}
 
 void CPSSlater::updateVariables(Eigen::VectorXd& v){
   long numVars = 0;
@@ -170,6 +164,10 @@ void CPSSlater::updateVariables(Eigen::VectorXd& v){
     }
   }
 
+  for (int i=0; i<determinants.size(); i++) {
+    ciExpansion[i] = v[numVars];
+    numVars++;
+  }
 }
 
 void orthogonalise(MatrixXd& m) {
@@ -194,6 +192,10 @@ void CPSSlater::getVariables(Eigen::VectorXd& v){
       numVars++;
     }
   }
+  for (int i=0; i<determinants.size(); i++) {
+    v[numVars] = ciExpansion[i];
+    numVars++;
+  }
 
 }
 
@@ -202,10 +204,20 @@ long CPSSlater::getNumVariables() {
   long numVars = 0;
   for (int i=0; i<cpsArray.size(); i++)
     numVars += cpsArray[i].Variables.size();
+
+  numVars += determinants.size();
   //numVars+=det.norbs*det.nalpha+det.norbs*det.nbeta;
   return numVars;
 }
 
+long CPSSlater::getNumJastrowVariables() {
+  long numVars = 0;
+  for (int i=0; i<cpsArray.size(); i++)
+    numVars += cpsArray[i].Variables.size();
+
+
+  return numVars;
+}
 //factor = <psi|w> * prefactor;
 
 
@@ -262,6 +274,8 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
+  size_t numJastrow = getNumJastrowVariables();
+  VectorXd ciGrad0(ciExpansion.size()); ciGrad0.setZero(); //this is <d|Psi_x>/<d|Psi> for x= ci-coeffs
   //noexcitation
   {
     double E0 = d.Energy(I1, I2, coreE);
@@ -274,6 +288,10 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
     {
       double factor = E0;
       OverlapWithGradient(walk, factor, grad);
+      for (int i=0; i<ciExpansion.size(); i++) {
+        ciGrad0(i) = walk.alphaDet[i]*walk.betaDet[i]/detOverlap;
+        grad(numJastrow+i) += E0*ciGrad0(i);
+      }
     }
   }
   //cout << ham<<endl;
@@ -322,6 +340,30 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
             {
               double factor = tia * ovlpdetcopy;
               OverlapWithGradient(dcopy, factor, grad);
+
+              double parity = 1.0;
+              int tableIndexi, tableIndexa;
+              if (Alpha)
+              {
+                walk.d.parityA(A, I, parity);
+                tableIndexi = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), I) - walk.AlphaClosed.begin();
+                tableIndexa = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), A) - walk.AlphaOpen.begin();
+              }
+              else
+              {
+                walk.d.parityB(A, I, parity);
+                tableIndexi = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), I) - walk.BetaClosed.begin();
+                tableIndexa = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), A) - walk.BetaOpen.begin();
+              }
+              for (int i = 0; i < ciExpansion.size(); i++)
+              {
+                if (Alpha) {
+                  grad(numJastrow + i) += tia * ciGrad0(i) * JastrowFactor * parity * walk.AlphaTable[i](tableIndexa, tableIndexi);
+                }
+                else {
+                  grad(numJastrow + i) += tia * ciGrad0(i) * JastrowFactor * parity * walk.BetaTable[i](tableIndexa, tableIndexi); 
+                }
+              }
             }
 
             if (fillExcitations)
@@ -395,6 +437,55 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
           {
             double factor = tiajb * ovlpdetcopy;
             OverlapWithGradient(dcopy, factor, grad);
+            bool Alpha1 = closed[i]%2 == 0, Alpha2 = closed[j]%2 == 0;
+
+
+            int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
+            if (Alpha1)
+            {
+              tableIndexi = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), I) - walk.AlphaClosed.begin();
+              tableIndexa = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), A) - walk.AlphaOpen.begin();
+            }
+            else
+            {
+              tableIndexi = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), I) - walk.BetaClosed.begin();
+              tableIndexa = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), A) - walk.BetaOpen.begin();
+            }
+            if (Alpha2)
+            {
+              tableIndexj = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), J) - walk.AlphaClosed.begin();
+              tableIndexb = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), B) - walk.AlphaOpen.begin();
+            }
+            else
+            {
+              tableIndexj = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), J) - walk.BetaClosed.begin();
+              tableIndexb = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), B) - walk.BetaOpen.begin();
+            }
+            for (int i = 0; i < ciExpansion.size(); i++)
+            {
+              if (Alpha1 && Alpha2)
+              {
+                double factor = (walk.AlphaTable[i](tableIndexa, tableIndexi) * walk.AlphaTable[i](tableIndexb, tableIndexj) - walk.AlphaTable[i](tableIndexb, tableIndexi) * walk.AlphaTable[i](tableIndexa, tableIndexj));
+                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
+              }
+              else if (Alpha1 && !Alpha2)
+              {
+                double factor = walk.AlphaTable[i](tableIndexa, tableIndexi) * walk.BetaTable[i](tableIndexb, tableIndexj);
+                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
+              }
+              else if (!Alpha1 && Alpha2)
+              {
+                double factor = walk.BetaTable[i](tableIndexa, tableIndexi) * walk.AlphaTable[i](tableIndexb, tableIndexj);
+                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
+              }
+              else
+              {
+                double factor = (walk.BetaTable[i](tableIndexa, tableIndexi) * walk.BetaTable[i](tableIndexb, tableIndexj) - walk.BetaTable[i](tableIndexb, tableIndexi) * walk.BetaTable[i](tableIndexa, tableIndexj));
+                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
+              }
+            }
+
+
           }
 
           if (fillExcitations)

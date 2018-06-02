@@ -86,7 +86,9 @@ class CPSSlater  {
 
   /**
    * This calculates the overlap of the determinant with the
-   * gradient of the wavefunction w.r.t to the jastrow parameters
+   * gradient of the wavefunction w.r.t to the jastrow parameters,
+   * divided by the overlap of the determinant to the wavefunction
+   * <d|Psi_x>/<d|Psi>, where x is a jastrow parameter
    * Right now, the walker does not have any useful information to 
    * evaluate this efficiently
    */ 
@@ -151,8 +153,8 @@ class CPSSlater  {
   void exciteWalker(Walker& w, int excite1, int excite2, int norbs) ;
   void getVariables(Eigen::VectorXd& v);
   long getNumVariables();
+  long getNumJastrowVariables();
   void updateVariables(Eigen::VectorXd& dv);
-  void incrementVariables(Eigen::VectorXd& dv);
   void printVariables();
   void writeWave();
   void readWave();

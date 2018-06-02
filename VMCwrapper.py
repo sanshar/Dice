@@ -14,8 +14,8 @@ def getopts(argv):
     return opts
 
 
-mpiprefix = "mpirun "
-executable = "~/apps/VMC/PythonInterface"
+mpiprefix = " "
+executable = "~/Academics/Programs/VMC/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']
@@ -24,11 +24,15 @@ if '-n' in myargs:
    numprocs = int(myargs['-n'])
    mpiprefix = "mpirun -n %i"%(numprocs)
 
+
 f = open(inFile, 'r')
 correlatorSize, numCorrelators = 0, 0
 Restart = False
+ciExpansion = []
 for line in f:
     linesp = line.split();
+
+    #read the correlator file to determine the number of jastrow factors
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "correlator"):
         correlatorFile = linesp[2]
         correlatorSize = int(linesp[1])
@@ -39,8 +43,19 @@ for line in f:
                 numCorrelators += 1
     elif ( len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "restart"):
 	Restart = True
-    
-numVars = numCorrelators*2**(2*correlatorSize)
+    #read the determinant file to see the number of determinants
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "determinants"):
+        determinantFile = linesp[1]
+        f2 = open(determinantFile, 'r')
+        for line2 in f2:
+            if (line2.strip(' \n') != ''):
+                tok = line2.split()
+                ciExpansion.append(float(tok[0]))
+
+if (len(ciExpansion) == 0) :
+    ciExpansion = [1.]
+
+numVars = numCorrelators*2**(2*correlatorSize)+len(ciExpansion)
 emin = 1.e10
 
 def d_loss_wrt_pars(wrt):
@@ -69,6 +84,7 @@ def d_loss_wrt_pars(wrt):
 
 
 wrt = np.ones(shape=(numVars,))
+wrt[numCorrelators*2**(2*correlatorSize) : ] = np.asarray(ciExpansion)
 if (Restart):
     wrt  = np.fromfile("params.bin", dtype = "float64")
     emin = np.fromfile("emin.bin", dtype = "float64")[0]
