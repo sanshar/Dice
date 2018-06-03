@@ -288,9 +288,10 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
     {
       double factor = E0;
       OverlapWithGradient(walk, factor, grad);
-      for (int i=0; i<ciExpansion.size(); i++) {
-        ciGrad0(i) = walk.alphaDet[i]*walk.betaDet[i]/detOverlap;
-        grad(numJastrow+i) += E0*ciGrad0(i);
+      for (int i = 0; i < ciExpansion.size(); i++)
+      {
+        ciGrad0(i) = walk.alphaDet[i] * walk.betaDet[i] / detOverlap;
+        grad(numJastrow + i) += E0 * ciGrad0(i);
       }
     }
   }
@@ -302,7 +303,7 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
     {
       for (int a = 0; a < open.size(); a++)
       {
-        if (closed[i] % 2 == open[a] % 2 && I2hb.Singles(closed[i], open[a]) > TINY)
+        if (closed[i] % 2 == open[a] % 2)// && I2hb.Singles(closed[i], open[a]) > TINY)
         {
           int I = closed[i] / 2, A = open[a] / 2;
           double tia = 0;
@@ -423,12 +424,10 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
             localham += tiajb * walk.getDetFactorA(I, J, A, B, *this, false) * JastrowFactor;
           else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
             localham += tiajb * walk.getDetFactorB(I, J, A, B, *this, false) * JastrowFactor;
-          else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0) {
+          else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0) 
             localham += tiajb * walk.getDetFactorAB(I, J, A, B, *this, false) * JastrowFactor;
-          }
-          else {
+          else 
             localham += tiajb * walk.getDetFactorAB(J, I, B, A, *this, false) * JastrowFactor;
-          }
 
           ham += localham;
 

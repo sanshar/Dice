@@ -140,10 +140,14 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
+  for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
+    vars[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
+  }
   wave.updateVariables(vars);
+    
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
 
-  double E0=0.0, stddev, rt;
+  double E0=0.0, stddev, rt=0;
   if (schd.deterministic) {
     getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
     stddev = 0.0;
@@ -151,6 +155,10 @@ int main(int argc, char* argv[]) {
   else {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
     getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+  }
+
+  for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
+    grad[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
   }
 
   if (commrank == 0)

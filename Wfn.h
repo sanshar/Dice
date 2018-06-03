@@ -104,6 +104,7 @@ class CPSSlater  {
 			   Eigen::VectorXd& grad);
 
 
+
 /**
  * Calculates the overlap, hamiltonian and gradient,
  * actually it only calculates 
