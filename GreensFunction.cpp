@@ -90,6 +90,7 @@ CItype calcGreensFunctionExact(int i, int j, Determinant* Dets, CItype* ci, int 
         Determinant* DetsNm1v, int DetsNm1vSize, std::vector<MatrixXd>& ciNm1, 
         std::vector<size_t>& idx, double E0, std::vector<double>& ENm1, CItype w) ; 
 
+
 class schedule{
 public:
   bool exact;
@@ -499,6 +500,22 @@ int main(int argc, char* argv[]) {
   //        }
   //    }
   //}
+  MatrixXd Hamiltonian=MatrixXd::Zero(DetsSize, DetsSize);
+  for (int i=0; i<DetsSize; i++) {
+      Hamiltonian(i,i) = SHMDets[i].Energy(I1, I2, coreE);
+      pout << "Det i " << SHMDets[i] << endl;
+      pout << "H(" << i << "," << i << ") " << Hamiltonian(i,i) << endl;
+      for (int j=i+1; j<DetsSize; j++) {
+          if (SHMDets[i].connected(SHMDets[j])) {
+              size_t orbDiff = 0;
+              Hamiltonian(i,j) = Hij(SHMDets[i], SHMDets[j], I1, I2, coreE, orbDiff).real();
+              Hamiltonian(j,i) = Hamiltonian(i,j);
+              pout << "H(" << i << "," << SHMDets[j]  << ") " << Hamiltonian(i,j) << endl;
+          }
+      }
+  }
+
+  
   
   //calculate greens function
   pout << "w               g" << schd.ij[0] << schd.ij[1] << endl; 
