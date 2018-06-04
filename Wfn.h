@@ -120,7 +120,8 @@ class CPSSlater  {
 			  twoIntHeatBathSHM& I2hb, double& coreE,
 			  vector<double>& ovlpRatio, vector<size_t>& excitation1,
 			  vector<size_t>& excitation2, vector<double>& HijElement,
-			  bool doGradient=true, bool fillExcitations=true);
+			  int& nExcitations,
+        bool doGradient=true, bool fillExcitations=true);
 
 /**ham is incremented and returnWalkder, coeffWalker are appended to. 
 * so make sure they are empty at the

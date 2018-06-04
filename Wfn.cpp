@@ -256,11 +256,13 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
                                    twoIntHeatBathSHM &I2hb, double &coreE,
                                    vector<double> &ovlpRatio, vector<size_t> &excitation1,
                                    vector<size_t> &excitation2, vector<double> &HijElements,
+                                   int& nExcitations,
                                    bool doGradient, bool fillExcitations)
 {
-  ovlpRatio.clear();
-  excitation1.clear();
-  excitation2.clear();
+  //ovlpRatio.clear();
+  //excitation1.clear();
+  //excitation2.clear();
+  nExcitations = 0;
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
@@ -369,10 +371,16 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
             if (fillExcitations)
             {
-              ovlpRatio  .push_back(ovlpdetcopy);
-              excitation1.push_back(closed[i] * 2 * norbs + open[a]);
-              excitation2.push_back(0);
-              HijElements.push_back(tia);
+              ovlpRatio[nExcitations] = ovlpdetcopy;
+              excitation1[nExcitations] = closed[i] * 2 * norbs + open[a];
+              excitation2[nExcitations] = 0;
+              HijElements[nExcitations] = tia;
+              nExcitations++;
+
+              //ovlpRatio  .push_back(ovlpdetcopy);
+              //excitation1.push_back(closed[i] * 2 * norbs + open[a]);
+              //excitation2.push_back(0);
+              //HijElements.push_back(tia);
             }
           }
         }
@@ -489,10 +497,16 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
           if (fillExcitations)
           {
-            ovlpRatio.push_back(ovlpdetcopy);
-            excitation1.push_back(closed[i] * 2 * norbs + a);
-            excitation2.push_back(closed[j] * 2 * norbs + b);
-            HijElements.push_back(tiajb);
+            ovlpRatio[nExcitations] = ovlpdetcopy;
+            excitation1[nExcitations] = closed[i] * 2 * norbs + a;
+            excitation2[nExcitations] = closed[j] * 2 * norbs + b;
+            HijElements[nExcitations] = tiajb;
+            nExcitations++;
+
+            //ovlpRatio.push_back(ovlpdetcopy);
+            //excitation1.push_back(closed[i] * 2 * norbs + a);
+            //excitation2.push_back(closed[j] * 2 * norbs + b);
+            //HijElements.push_back(tiajb);
           }
         }
       }
