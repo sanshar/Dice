@@ -14,8 +14,8 @@ def getopts(argv):
     return opts
 
 
-mpiprefix = " "
-executable = "~/Academics/Programs/VMC/PythonInterface"
+mpiprefix = " mpirun"
+executable = "~/apps/VMC.bkp/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']

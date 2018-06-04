@@ -471,7 +471,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   }
   localGrad = localdiagonalGrad * ham ;
 
-  int gradIter = min(niter, 10000);
+  int gradIter = min(niter, 100000);
   std::vector<double> gradError(gradIter, 0);
   bool reset = true;
   double cumdeltaT = 0., cumdeltaT2 = 0.;
@@ -492,7 +492,6 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     }
     double cumovlpRatio = 0;
     //when using uniform probability 1./numConnection * max(1, pi/pj)
-
     for (int i = 0; i < nExcitations; i++)
     {
       cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
@@ -501,7 +500,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 
     //double deltaT = -log(random())/(cumovlpRatio);
     double deltaT = 1.0 / (cumovlpRatio);
-    int nextDet = std::lower_bound(ovlpRatio.begin(), ovlpRatio.end(),
+    int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin()+nExcitations),
                                    random() * cumovlpRatio) -
                   ovlpRatio.begin();
 
