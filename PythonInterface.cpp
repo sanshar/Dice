@@ -148,9 +148,9 @@ int main(int argc, char* argv[]) {
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
   Eigen::MatrixXd Hessian, Smatrix;
   if (schd.doHessian) {
-    cout << "Will do hessian"<<endl;
-    Hessian = MatrixXd::Zero(wave.getNumVariables(), wave.getNumVariables());
-    Smatrix = MatrixXd::Zero(wave.getNumVariables(), wave.getNumVariables());
+    Hessian.resize(wave.getNumVariables()+1, wave.getNumVariables()+1);
+    Smatrix.resize(wave.getNumVariables()+1, wave.getNumVariables()+1);
+    Hessian.setZero(); Smatrix.setZero();
   }
 
   double E0=0.0, stddev, rt=0;
@@ -162,12 +162,15 @@ int main(int argc, char* argv[]) {
     else {
       getGradientHessianDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix);
       stddev = 0.0;
-      cout << Hessian(0,0) <<endl;
     }
   }
   else {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-    getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+    if (!schd.doHessian) 
+      getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+    else
+      getStochasticGradientHessianContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix, rt, schd.stochasticIter, 0.5e-3);
+
   }
 
   for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
@@ -185,13 +188,12 @@ int main(int argc, char* argv[]) {
 
     if (schd.doHessian)
     {
-      size_t matSize = size*size;
       ofstream hfile("hessian.bin", ios::out | ios::binary);
-      hfile.write((char *)(&Hessian(0,0)), matSize);
+      hfile.write((char *)(&Hessian(0,0)), Hessian.rows()*Hessian.cols()*sizeof(double));
       hfile.close();
 
       ofstream sfile("smatrix.bin", ios::out | ios::binary);
-      sfile.write((char *)(&Smatrix(0,0)), matSize);
+      sfile.write((char *)(&Smatrix(0,0)), Hessian.rows()*Hessian.cols()*sizeof(double));
       sfile.close();
     }
   }

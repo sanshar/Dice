@@ -1,8 +1,10 @@
 import numpy as np
 import climin
+import scipy
 import sys
 import climin.rmsprop
 import climin.amsgrad
+from functools import reduce
 from subprocess import check_output, check_call, CalledProcessError
 
 def getopts(argv):
@@ -95,25 +97,51 @@ if (Restart):
 
 
 if (doHessian):
-    for i in range(2):
+    for i in range(5):
         grad = d_loss_wrt_pars(wrt)
-        Hessian = np.fromFile("Hessian.bin", dtype="float64")
-        Smatrix = np.fromFile("Smatrix.bin", dtype="float64")
-        [dc, dv] = scipy.linalg.eigh(Hessian, Smatrix)
-        print dc
-        exit(0)
-#wrt = np.fromfile("params.bin", dtype="float64")
-#opt = climin.GradientDescent(wrt, d_loss_wrt_pars, step_rate=0.01, momentum=.95)
-#opt = climin.rmsprop.RmsProp(wrt, d_loss_wrt_pars, step_rate=0.0001, decay=0.9)
-opt = climin.amsgrad.Amsgrad(wrt, d_loss_wrt_pars, step_rate=0.001, decay_mom1=0.1, decay_mom2=0.001, momentum=0.0)
+        Hessian = np.fromfile("hessian.bin", dtype="float64")
+        Smatrix = np.fromfile("smatrix.bin", dtype="float64")
+        Hessian.shape = (numVars+1, numVars+1)
+        Smatrix.shape = (numVars+1, numVars+1)
 
-if (Restart):	
-   opt.est_mom1_b = np.fromfile("moment1.bin", dtype="float64")
-   opt.est_mom2_b = np.fromfile("moment2.bin", dtype="float64")
+        print grad[:5]
+        print Hessian[:5, :5]
+        print Smatrix[:5, :5]
+        #exit(0)
+        [ds, vs] = np.linalg.eigh(Smatrix)
+        cols = []
+        for i in range(numVars+1):
+            if (abs(ds[i]) > 1.e-8):
+                cols.append(i)
+        
+        U = np.zeros((numVars+1, len(cols)))
+        for i in range(len(cols)):
+            print ds[cols[i]], i, cols[i]
+            #print vs[:,cols[i]]
+            U[:,i] = vs[:,cols[i]]/ds[cols[i]]**0.5
 
-for info in opt:
-    if info['n_iter'] >= 5000:
-        break 
-    opt.est_mom1_b.astype("float64").tofile("moment1.bin")
-    opt.est_mom2_b.astype("float64").tofile("moment2.bin")
+        Hessian_prime = reduce(np.dot, (U.T, Hessian, U))
+        [dc, dv] = np.linalg.eigh(Hessian_prime)
+        print "Expected energy in next step       : ", dc[0]
+        print "Number of total/nonredundant pramas: ", numVars+1, len(cols)
+        #print wrt
+        #print np.dot(U, dv[:,0])
+        update = np.dot(U, dv[:,0])
+        wrt += update[1:]/update[0]
 
+else :        
+    #wrt = np.fromfile("params.bin", dtype="float64")
+    #opt = climin.GradientDescent(wrt, d_loss_wrt_pars, step_rate=0.01, momentum=.95)
+    #opt = climin.rmsprop.RmsProp(wrt, d_loss_wrt_pars, step_rate=0.0001, decay=0.9)
+    opt = climin.amsgrad.Amsgrad(
+        wrt, d_loss_wrt_pars, step_rate=0.001, decay_mom1=0.1, decay_mom2=0.001, momentum=0.0)
+
+    if (Restart):
+        opt.est_mom1_b = np.fromfile("moment1.bin", dtype="float64")
+        opt.est_mom2_b = np.fromfile("moment2.bin", dtype="float64")
+
+    for info in opt:
+        if info['n_iter'] >= 5000:
+            break
+        opt.est_mom1_b.astype("float64").tofile("moment1.bin")
+        opt.est_mom2_b.astype("float64").tofile("moment2.bin")

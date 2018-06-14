@@ -233,20 +233,27 @@ void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &nalpha, int 
     diagonalGrad += localdiagonalGrad * ovlp * ovlp;
     Overlap += ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
-    Hessian += localgrad * localdiagonalGrad.transpose();
-    Smatrix += localdiagonalGrad * localdiagonalGrad.transpose();
+    //cout << walk.d<<"  "<<(localgrad * localdiagonalGrad.transpose())(0,1)<<"  "<<localgrad(0)<<"  "<<localdiagonalGrad(1)<<endl;
+    Hessian.block(1, 1, grad.rows(), grad.rows()) += localgrad * localdiagonalGrad.transpose() * ovlp * ovlp;
+    Smatrix.block(1, 1, grad.rows(), grad.rows()) += localdiagonalGrad * localdiagonalGrad.transpose() * ovlp * ovlp;
+    Hessian.block(0, 1, 1, grad.rows()) += localgrad.transpose();
+    Hessian.block(1, 0, grad.rows(), 1) += localgrad;
+    Smatrix.block(0, 1, 1, grad.rows()) += ovlp * localdiagonalGrad.transpose();
+    Smatrix.block(1, 0, grad.rows(), 1) += ovlp * localdiagonalGrad;
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Hessian(0,0)), grad.rows()*grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), grad.rows()*grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(Hessian(0,0)), Hessian.rows()*Hessian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Hessian.rows()*Hessian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   E0 = Energy / Overlap;
   grad = (grad - E0 * diagonalGrad) / Overlap;
+  Hessian = Hessian/Overlap;
+  Smatrix = Smatrix/Overlap;
 }
 
 
@@ -681,15 +688,16 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-                       excitation1, excitation2, HijElements, nExcitations, true);
+                       excitation1, excitation2, HijElements, nExcitations, true, true);
   w.OverlapWithGradient(walk, scale, localdiagonalGrad);
+  double detovlp = walk.getDetOverlap(w);
   for (int k = 0; k < w.ciExpansion.size(); k++)
   {
-    localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
+    localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/detovlp;
   }
-  localGrad = localdiagonalGrad * ham ;
+  grad = localdiagonalGrad * ham ;
 
-  Hessian = localdiagonalGrad*localGrad.transpose();
+  Hessian = localGrad*localdiagonalGrad.transpose();
   Smatrix = localdiagonalGrad*localdiagonalGrad.transpose();
 
   int gradIter = min(niter, 100000);
@@ -710,6 +718,7 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
       walk.initUsingWave(w, true);
       cumdeltaT = 0.;
       cumdeltaT2 = 0;
+      Hessian.setZero(); Smatrix.setZero();
     }
     double cumovlpRatio = 0;
     //when using uniform probability 1./numConnection * max(1, pi/pj)
@@ -731,13 +740,13 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     double Elocold = Eloc;
 
     diagonalGrad = diagonalGrad + deltaT * (localdiagonalGrad - diagonalGrad) / (cumdeltaT);
-    grad = grad + deltaT * (localGrad - grad) / (cumdeltaT); //running average of grad
+    grad = grad + deltaT * (localdiagonalGrad * ham - grad) / (cumdeltaT); //running average of grad
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
 
-    MatrixXd oldHessian = Hessian, oldSmatrix = Smatrix;
-    Hessian = Hessian + deltaT * (localdiagonalGrad*localGrad.transpose() - oldHessian)/(cumdeltaT);
-    Smatrix = Smatrix + deltaT * (localdiagonalGrad*localdiagonalGrad.transpose() - oldSmatrix)/(cumdeltaT);
-
+    //MatrixXd oldHessian = Hessian, oldSmatrix = Smatrix;
+    Hessian = Hessian + deltaT * (localGrad*localdiagonalGrad.transpose() - Hessian)/(cumdeltaT);
+    Smatrix = Smatrix + deltaT * (localdiagonalGrad*localdiagonalGrad.transpose() - Smatrix)/(cumdeltaT);
+    //cout << walk.d<<"  "<<(localGrad*localdiagonalGrad.transpose())(0,1)<<"  "<<localGrad(0)<<"  "<<localdiagonalGrad(1)<<endl;
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
@@ -776,13 +785,14 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
       localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-                           excitation1, excitation2, HijElements, nExcitations, false);
+                           excitation1, excitation2, HijElements, nExcitations, true, true);
       w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+      double detovlp = walk.getDetOverlap(w);
       for (int k = 0; k < w.ciExpansion.size(); k++)
       {
-        localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
+        localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/detovlp;
       }
-      localGrad = localdiagonalGrad * ham;
+      //localGrad = localdiagonalGrad * ham;
     }
   }
 #ifndef SERIAL
