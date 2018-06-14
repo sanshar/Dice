@@ -53,6 +53,11 @@ void getGradientDeterministic(CPSSlater &w, double &E0, int &alpha, int &nbeta, 
 							  oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
 							  Eigen::VectorXd &grad);
 
+void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &alpha, int &nbeta, int &norbs,
+							  oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
+							  Eigen::VectorXd &grad, Eigen::MatrixXd& Hessian,
+							  Eigen::MatrixXd &Smatrix);
+
 void getStochasticGradient(CPSSlater &w, double &E0, double &stddev,
 						   int &nalpha, int &nbeta, int &norbs,
 						   oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
@@ -64,5 +69,11 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 										 oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
 										 Eigen::VectorXd &grad, double &rk,
 										 int niter, double targetError);
+
+void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double &stddev,
+												int &nalpha, int &nbeta, int &norbs,
+												oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
+												Eigen::VectorXd &grad, Eigen::MatrixXd &Hessian, Eigen::MatrixXd &Smatrix, double &rk,
+												int niter, double targetError);
 
 #endif

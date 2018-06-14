@@ -519,6 +519,7 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
 }
 
 
+
 void Walker::updateA(int i, int a, CPSSlater& w) {
 
   double p = 1.0;
@@ -575,6 +576,61 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
 
 }
 
+void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
+
+  double p = 1.0;
+  Determinant dcopy = d;
+  dcopy.parityA(a, i, p);
+  dcopy.setoccA(i, false); dcopy.setoccA(a, true);
+  dcopy.parityA(b, j, p);
+  dcopy.setoccA(j, false); dcopy.setoccA(b, true);
+
+  int norbs = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
+  int nbeta = BetaClosed.size();
+  vector<int> creA(nalpha, -1), desA(nalpha, -1), creB(nbeta, -1), desB(nbeta, -1);
+  
+  vector<int> alphaRef0, betaRef0;
+  w.determinants[0].getAlphaBeta(alphaRef0, betaRef0);
+  vector<int> cre(2, a), des(2, i); cre[1] = b; des[1] = j;
+  MatrixXd alphainvOld = alphainv;
+  double alphaDetOld = alphaDet[0];
+  Eigen::Map<Eigen::VectorXi> ColVec(&alphaRef0[0], alphaRef0.size());
+  calculateInverseDeterminantWithRowChange(alphainvOld, alphaDetOld, alphainv,
+                                           alphaDet[0], cre, des, ColVec, AlphaClosed);
+  alphaDet[0] *= p;
+
+  d = dcopy;
+  AlphaOpen.clear(); AlphaClosed.clear(); BetaOpen.clear(); BetaClosed.clear();
+  d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed, BetaOpen, BetaClosed);
+  Eigen::Map<VectorXi> RowAlpha(&AlphaClosed[0], AlphaClosed.size());
+  Eigen::Map<VectorXi> RowBeta (&BetaClosed[0] , BetaClosed.size());
+
+  Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
+  MatrixXd HfopenAlpha;
+  igl::slice(Hforbs, RowAlphaOpen, ColVec, HfopenAlpha);
+  AlphaTable[0] = HfopenAlpha * alphainv;
+  
+  for (int x=1; x<w.determinants.size(); x++) 
+  {
+    MatrixXd alphainvCurrent, betainvCurrent;
+
+    vector<int> alphaRef, betaRef;
+    w.determinants[x].getAlphaBeta(alphaRef, betaRef);
+  
+    getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
+    double alphaParity = w.determinants[0].parityA(creA, desA);
+    calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0);
+    alphaDet[x] *= alphaParity;
+
+    MatrixXd HfopenAlpha;
+    Eigen::Map<VectorXi> ColAlpha (&alphaRef[0],  alphaRef.size());
+    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    AlphaTable[x] = HfopenAlpha * alphainvCurrent;
+  }
+  
+
+}
 
 void Walker::updateB(int i, int a, CPSSlater& w) {
 
@@ -592,6 +648,66 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   vector<int> alphaRef0, betaRef0;
   w.determinants[0].getAlphaBeta(alphaRef0, betaRef0);
   vector<int> cre(1, a), des(1, i);
+  MatrixXd betainvOld = betainv;
+  double betaDetOld = betaDet[0];
+  Eigen::Map<Eigen::VectorXi> ColVec(&betaRef0[0], betaRef0.size());
+  calculateInverseDeterminantWithRowChange(betainvOld, betaDetOld, betainv,
+                                           betaDet[0], cre, des, ColVec, BetaClosed);
+  betaDet[0] *= p;
+
+  d.setoccB(i, false);
+  d.setoccB(a, true);
+  AlphaOpen.clear(); AlphaClosed.clear(); BetaOpen.clear(); BetaClosed.clear();
+  d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed, BetaOpen, BetaClosed);
+  Eigen::Map<VectorXi> RowAlpha(&AlphaClosed[0], AlphaClosed.size());
+  Eigen::Map<VectorXi> RowBeta (&BetaClosed[0] , BetaClosed.size());
+
+  Eigen::Map<VectorXi> RowBetaOpen(&BetaOpen[0], BetaOpen.size());
+  MatrixXd HfopenBeta;
+  igl::slice(Hforbs, RowBetaOpen, ColVec, HfopenBeta);
+  BetaTable[0] = HfopenBeta * betainv;
+
+  for (int x=1; x<w.determinants.size(); x++) 
+  {
+    MatrixXd betainvCurrent;
+
+    vector<int> alphaRef, betaRef;
+    w.determinants[x].getAlphaBeta(alphaRef, betaRef);
+  
+    getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
+    double betaParity = w.determinants[0].parityB(creB, desB);
+    calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0);
+    betaDet[x] *= betaParity;
+
+    MatrixXd HfopenBeta;
+    Eigen::Map<VectorXi> ColBeta (&betaRef[0],  betaRef.size());
+    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    BetaTable[x] = HfopenBeta*betainvCurrent;
+
+  }
+  
+}
+
+void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
+
+  double p = 1.0;
+  Determinant dcopy = d;
+  dcopy.parityB(a, i, p);
+  dcopy.setoccB(i, false); dcopy.setoccB(a, true);
+  dcopy.parityB(b, j, p);
+  dcopy.setoccB(j, false); dcopy.setoccB(b, true);
+
+  int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
+  int tableIndexa = std::lower_bound(BetaOpen  .begin(), BetaOpen  .end(), a) - BetaOpen.begin();
+
+  int norbs = Determinant::norbs;
+  int nalpha = AlphaClosed.size();
+  int nbeta = BetaClosed.size();
+  vector<int> creA(nalpha, -1), desA(nalpha, -1), creB(nbeta, -1), desB(nbeta, -1);
+
+  vector<int> alphaRef0, betaRef0;
+  w.determinants[0].getAlphaBeta(alphaRef0, betaRef0);
+  vector<int> cre(2, a), des(2, i); cre[1] = b; des[1] = j;
   MatrixXd betainvOld = betainv;
   double betaDetOld = betaDet[0];
   Eigen::Map<Eigen::VectorXi> ColVec(&betaRef0[0], betaRef0.size());

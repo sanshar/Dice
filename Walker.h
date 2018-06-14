@@ -66,7 +66,9 @@ class Walker {
   //these are not absolute orbital indices, but instead the
   //ith occupied and ath unoccupied
   void   updateA(int i, int a, CPSSlater& w);
+  void   updateA(int i, int j, int a, int b, CPSSlater& w);
   void   updateB(int i, int a, CPSSlater& w);
+  void   updateB(int i, int j, int a, int b, CPSSlater& w);
   double getDetFactorA(int i, int a, CPSSlater& w, bool doparity=true);
   double getDetFactorB(int i, int a, CPSSlater& w, bool doparity=true);
   double getDetFactorA(int i, int j, int a, int b, CPSSlater& w, bool doparity=true);

@@ -60,6 +60,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.epsilon                = 1.e-7;
   schd.screen                 = 1.e-8;
   schd.determinantFile        = "";
+  schd.doHessian              = false;
 
   while (dump.good()) {
 
@@ -161,6 +162,10 @@ void readInput(string input, schedule& schd, bool print) {
 
     else if (boost::iequals(ArgName,  "maxiter"           )) {
       schd.maxIter = atoi(tok[1].c_str());
+    }
+
+    else if (boost::iequals(ArgName,  "doHessian"         )) {
+      schd.doHessian = true;
     }
 
     else {

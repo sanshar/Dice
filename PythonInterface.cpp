@@ -146,11 +146,24 @@ int main(int argc, char* argv[]) {
   wave.updateVariables(vars);
     
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
+  Eigen::MatrixXd Hessian, Smatrix;
+  if (schd.doHessian) {
+    cout << "Will do hessian"<<endl;
+    Hessian = MatrixXd::Zero(wave.getNumVariables(), wave.getNumVariables());
+    Smatrix = MatrixXd::Zero(wave.getNumVariables(), wave.getNumVariables());
+  }
 
   double E0=0.0, stddev, rt=0;
   if (schd.deterministic) {
-    getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
-    stddev = 0.0;
+    if (!schd.doHessian) {
+      getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
+      stddev = 0.0;
+    }
+    else {
+      getGradientHessianDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix);
+      stddev = 0.0;
+      cout << Hessian(0,0) <<endl;
+    }
   }
   else {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
@@ -169,6 +182,18 @@ int main(int argc, char* argv[]) {
     ofstream file ("grad.bin", ios::out|ios::binary);
     file.write ( (char*)(&grad[0]), size);
     file.close();
+
+    if (schd.doHessian)
+    {
+      size_t matSize = size*size;
+      ofstream hfile("hessian.bin", ios::out | ios::binary);
+      hfile.write((char *)(&Hessian(0,0)), matSize);
+      hfile.close();
+
+      ofstream sfile("smatrix.bin", ios::out | ios::binary);
+      sfile.write((char *)(&Smatrix(0,0)), matSize);
+      sfile.close();
+    }
   }
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());

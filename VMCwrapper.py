@@ -14,8 +14,8 @@ def getopts(argv):
     return opts
 
 
-mpiprefix = " mpirun"
-executable = "~/apps/VMC.bkp/PythonInterface"
+mpiprefix = " "
+executable = "/Users/sandeepsharma/Academics/Programs/VMC/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']
@@ -29,6 +29,8 @@ f = open(inFile, 'r')
 correlatorSize, numCorrelators = 0, 0
 Restart = False
 ciExpansion = []
+doHessian = False
+
 for line in f:
     linesp = line.split();
 
@@ -42,7 +44,7 @@ for line in f:
             if (line2.strip(' \n') != ''):
                 numCorrelators += 1
     elif ( len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "restart"):
-	Restart = True
+	    Restart = True
     #read the determinant file to see the number of determinants
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "determinants"):
         determinantFile = linesp[1]
@@ -51,6 +53,8 @@ for line in f:
             if (line2.strip(' \n') != ''):
                 tok = line2.split()
                 ciExpansion.append(float(tok[0]))
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "doHessian"):
+        doHessian = True
 
 if (len(ciExpansion) == 0) :
     ciExpansion = [1.]
@@ -89,6 +93,15 @@ if (Restart):
     wrt  = np.fromfile("params.bin", dtype = "float64")
     emin = np.fromfile("emin.bin", dtype = "float64")[0]
 
+
+if (doHessian):
+    for i in range(2):
+        grad = d_loss_wrt_pars(wrt)
+        Hessian = np.fromFile("Hessian.bin", dtype="float64")
+        Smatrix = np.fromFile("Smatrix.bin", dtype="float64")
+        [dc, dv] = scipy.linalg.eigh(Hessian, Smatrix)
+        print dc
+        exit(0)
 #wrt = np.fromfile("params.bin", dtype="float64")
 #opt = climin.GradientDescent(wrt, d_loss_wrt_pars, step_rate=0.01, momentum=.95)
 #opt = climin.rmsprop.RmsProp(wrt, d_loss_wrt_pars, step_rate=0.0001, decay=0.9)
