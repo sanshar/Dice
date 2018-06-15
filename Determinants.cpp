@@ -610,3 +610,25 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
 		return 0.;
 	}
 }
+
+
+double getParityForDiceToAlphaBeta(Determinant& det) 
+{
+  double parity = 1.0;
+  int nalpha = det.Nalpha();
+  int norbs = Determinant::norbs;
+  for (int i=0; i<norbs; i++) 
+    {
+      if (det.getocc( 2*(norbs-1-i) + 1))
+	{
+	  int nAlphaBeforei = 0;
+	  for (int j=0 ;j<norbs-i-1; j++)
+	    if (det.getocc( 2*j))
+	      nAlphaBeforei++;
+	  int nAlphaAfteri = nalpha - nAlphaBeforei;
+	  if (det.getocc( 2*(norbs-1-i) )) nAlphaAfteri--;
+	  if (nAlphaAfteri%2 == 1) parity *= -1;
+	}
+    }
+  return parity;
+}

@@ -519,4 +519,5 @@ void getHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
 
 void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbdiff);
 
+double getParityForDiceToAlphaBeta(Determinant& det);
 #endif
