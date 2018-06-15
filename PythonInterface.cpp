@@ -140,9 +140,9 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
-  for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
-    vars[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
-  }
+  //for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
+    //vars[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
+  //}
   wave.updateVariables(vars);
     
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
@@ -173,9 +173,9 @@ int main(int argc, char* argv[]) {
 
   }
 
-  for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
-    grad[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
-  }
+  //for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
+  //grad[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
+  //}
 
   if (commrank == 0)
     std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %8.2f\n") 

@@ -111,8 +111,9 @@ bool Walker::makeMovePropPsi(CPSSlater& w) {
 double Walker::getDetOverlap(CPSSlater &w)
 {
   double ovlp = 0.0;
-  for (int i = 0; i < alphaDet.size(); i++)
+  for (int i = 0; i < alphaDet.size(); i++) {
     ovlp += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+  }
   return ovlp;
 }
 

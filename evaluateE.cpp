@@ -206,7 +206,9 @@ void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &nalpha, int 
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localgrad = VectorXd::Zero(grad.rows());
+  double temp = 0.;
 
+  cout << Smatrix.norm()<<"  "<<Hessian.norm()<<endl;
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
     Walker walk(allDets[i]);
@@ -227,19 +229,20 @@ void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &nalpha, int 
       for (int k=0; k<w.ciExpansion.size(); k++) {
         localdiagonalGrad(k+w.getNumJastrowVariables()) += walk.alphaDet[k]*walk.betaDet[k]/detovlp;
       }
+      //cout << detovlp<<"  "<<localdiagonalGrad[grad.rows()-1]<<"  "<<walk.alphaDet[2]*walk.betaDet[2]<<endl;
     }
     //grad += localgrad * ovlp * ovlp;
     grad += localdiagonalGrad * ham * ovlp * ovlp;
     diagonalGrad += localdiagonalGrad * ovlp * ovlp;
     Overlap += ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
-    //cout << walk.d<<"  "<<(localgrad * localdiagonalGrad.transpose())(0,1)<<"  "<<localgrad(0)<<"  "<<localdiagonalGrad(1)<<endl;
+
     Hessian.block(1, 1, grad.rows(), grad.rows()) += localgrad * localdiagonalGrad.transpose() * ovlp * ovlp;
     Smatrix.block(1, 1, grad.rows(), grad.rows()) += localdiagonalGrad * localdiagonalGrad.transpose() * ovlp * ovlp;
-    Hessian.block(0, 1, 1, grad.rows()) += localgrad.transpose();
-    Hessian.block(1, 0, grad.rows(), 1) += localgrad;
-    Smatrix.block(0, 1, 1, grad.rows()) += ovlp * localdiagonalGrad.transpose();
-    Smatrix.block(1, 0, grad.rows(), 1) += ovlp * localdiagonalGrad;
+    Hessian.block(0, 1, 1, grad.rows()) += ovlp * ovlp * localgrad.transpose();
+    Hessian.block(1, 0, grad.rows(), 1) += ovlp * ovlp * localgrad;
+    Smatrix.block(0, 1, 1, grad.rows()) += ovlp * ovlp * localdiagonalGrad.transpose();
+    Smatrix.block(1, 0, grad.rows(), 1) += ovlp * ovlp * localdiagonalGrad;
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -254,6 +257,9 @@ void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &nalpha, int 
   grad = (grad - E0 * diagonalGrad) / Overlap;
   Hessian = Hessian/Overlap;
   Smatrix = Smatrix/Overlap;
+  Smatrix(0,0) = 1.0;
+  Hessian(0,0) = E0;
+
 }
 
 

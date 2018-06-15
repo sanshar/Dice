@@ -285,10 +285,10 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
     for (int i = 0; i < cpsArray.size(); i++)
       ovlp *= cpsArray[i].Overlap(d);
     ham = E0;
-  
+
     if (doGradient)
     {
-      double factor = E0;
+      double factor = E0;//*detOverlap;
       OverlapWithGradient(walk, factor, grad);
       for (int i = 0; i < ciExpansion.size(); i++)
       {

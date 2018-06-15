@@ -91,24 +91,34 @@ def d_loss_wrt_pars(wrt):
 
 wrt = np.ones(shape=(numVars,))
 wrt[numCorrelators*2**(2*correlatorSize) : ] = np.asarray(ciExpansion)
+civars = len(ciExpansion)
+ 
 if (Restart):
     wrt  = np.fromfile("params.bin", dtype = "float64")
     emin = np.fromfile("emin.bin", dtype = "float64")[0]
 
 
 if (doHessian):
-    for i in range(5):
+    for i in range(500):
         grad = d_loss_wrt_pars(wrt)
         Hessian = np.fromfile("hessian.bin", dtype="float64")
         Smatrix = np.fromfile("smatrix.bin", dtype="float64")
         Hessian.shape = (numVars+1, numVars+1)
         Smatrix.shape = (numVars+1, numVars+1)
 
-        print grad[:5]
-        print Hessian[:5, :5]
-        print Smatrix[:5, :5]
-        #exit(0)
+
+        #make the tangent space orthogonal to the wavefunction
+        Uo = 0.* Smatrix
+        Uo[0,0] = 1.0;
+        for i in range(numVars):
+            Uo[0, i+1] = -Smatrix[0, i+1]
+            Uo[i+1, i+1] = 1.0
+
+        Smatrix = reduce(np.dot, (Uo.T, Smatrix, Uo))
+        Hessian = reduce(np.dot, (Uo.T, Hessian, Uo))
+
         [ds, vs] = np.linalg.eigh(Smatrix)
+
         cols = []
         for i in range(numVars+1):
             if (abs(ds[i]) > 1.e-8):
@@ -116,16 +126,13 @@ if (doHessian):
         
         U = np.zeros((numVars+1, len(cols)))
         for i in range(len(cols)):
-            print ds[cols[i]], i, cols[i]
-            #print vs[:,cols[i]]
             U[:,i] = vs[:,cols[i]]/ds[cols[i]]**0.5
 
         Hessian_prime = reduce(np.dot, (U.T, Hessian, U))
         [dc, dv] = np.linalg.eigh(Hessian_prime)
         print "Expected energy in next step       : ", dc[0]
         print "Number of total/nonredundant pramas: ", numVars+1, len(cols)
-        #print wrt
-        #print np.dot(U, dv[:,0])
+
         update = np.dot(U, dv[:,0])
         wrt += update[1:]/update[0]
 
