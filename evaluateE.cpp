@@ -625,7 +625,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       //excitation2.clear();
       nExcitations = 0;
 
-      localGrad.setZero();
+      //localGrad.setZero();
       localdiagonalGrad.setZero();
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                            excitation1, excitation2, HijElements, nExcitations, false);
@@ -749,12 +749,14 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     grad = grad + deltaT * (localdiagonalGrad * ham - grad) / (cumdeltaT); //running average of grad
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
 
-    Hessian.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localGrad * localdiagonalGrad.transpose() - Hessian.block(1, 1, grad.rows(), grad.rows()))/cumdeltaT;
-    Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() -Smatrix.block(1, 1, grad.rows(), grad.rows()))/cumdeltaT;
-    Hessian.block(0, 1, 1, grad.rows()) += deltaT * (localGrad.transpose()-Hessian.block(0, 1, 1, grad.rows()))/cumdeltaT;
-    Hessian.block(1, 0, grad.rows(), 1) += deltaT * (localGrad-Hessian.block(1, 0, grad.rows(), 1))/cumdeltaT;
-    Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose()-Smatrix.block(0, 1, 1, grad.rows()))/cumdeltaT;
-    Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad-Smatrix.block(1, 0, grad.rows(), 1))/cumdeltaT;
+    if (!reset) {
+      Hessian.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localGrad * localdiagonalGrad.transpose() - Hessian.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
+      Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() - Smatrix.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
+      Hessian.block(0, 1, 1, grad.rows()) += deltaT * (localGrad.transpose() - Hessian.block(0, 1, 1, grad.rows())) / cumdeltaT;
+      Hessian.block(1, 0, grad.rows(), 1) += deltaT * (localGrad - Hessian.block(1, 0, grad.rows(), 1)) / cumdeltaT;
+      Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
+      Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
+    }
 
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
 
