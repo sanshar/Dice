@@ -37,7 +37,7 @@ for line in f:
     linesp = line.split();
 
     #read the correlator file to determine the number of jastrow factors
-    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "correlator"):
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "correlator"):
         correlatorFile = linesp[2]
         correlatorSize = int(linesp[1])
 	#print linesp, correlatorFile
@@ -48,14 +48,14 @@ for line in f:
     elif ( len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "restart"):
 	    Restart = True
     #read the determinant file to see the number of determinants
-    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "determinants"):
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "determinants"):
         determinantFile = linesp[1]
         f2 = open(determinantFile, 'r')
         for line2 in f2:
             if (line2.strip(' \n') != ''):
                 tok = line2.split()
                 ciExpansion.append(float(tok[0]))
-    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0] == "doHessian"):
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "dohessian"):
         doHessian = True
 
 if (len(ciExpansion) == 0) :

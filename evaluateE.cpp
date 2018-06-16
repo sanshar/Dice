@@ -208,7 +208,6 @@ void getGradientHessianDeterministic(CPSSlater &w, double &E0, int &nalpha, int 
   VectorXd localgrad = VectorXd::Zero(grad.rows());
   double temp = 0.;
 
-  cout << Smatrix.norm()<<"  "<<Hessian.norm()<<endl;
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
     Walker walk(allDets[i]);
