@@ -106,6 +106,7 @@ if (doHessian):
         Hessian.shape = (numVars+1, numVars+1)
         Smatrix.shape = (numVars+1, numVars+1)
 
+        Hessian[1:, 1:] += 0.001*np.eye(numVars)
 
         #make the tangent space orthogonal to the wavefunction
         Uo = 0.* Smatrix

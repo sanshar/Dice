@@ -703,8 +703,8 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
   }
   grad = localdiagonalGrad * ham ;
 
-  Hessian = localGrad*localdiagonalGrad.transpose();
-  Smatrix = localdiagonalGrad*localdiagonalGrad.transpose();
+  //Hessian = localGrad*localdiagonalGrad.transpose();
+  //Smatrix = localdiagonalGrad*localdiagonalGrad.transpose();
 
   int gradIter = min(niter, 100000);
   std::vector<double> gradError(gradIter, 0);
@@ -749,10 +749,13 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     grad = grad + deltaT * (localdiagonalGrad * ham - grad) / (cumdeltaT); //running average of grad
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
 
-    //MatrixXd oldHessian = Hessian, oldSmatrix = Smatrix;
-    Hessian = Hessian + deltaT * (localGrad*localdiagonalGrad.transpose() - Hessian)/(cumdeltaT);
-    Smatrix = Smatrix + deltaT * (localdiagonalGrad*localdiagonalGrad.transpose() - Smatrix)/(cumdeltaT);
-    //cout << walk.d<<"  "<<(localGrad*localdiagonalGrad.transpose())(0,1)<<"  "<<localGrad(0)<<"  "<<localdiagonalGrad(1)<<endl;
+    Hessian.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localGrad * localdiagonalGrad.transpose() - Hessian.block(1, 1, grad.rows(), grad.rows()))/cumdeltaT;
+    Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() -Smatrix.block(1, 1, grad.rows(), grad.rows()))/cumdeltaT;
+    Hessian.block(0, 1, 1, grad.rows()) += deltaT * (localGrad.transpose()-Hessian.block(0, 1, 1, grad.rows()))/cumdeltaT;
+    Hessian.block(1, 0, grad.rows(), 1) += deltaT * (localGrad-Hessian.block(1, 0, grad.rows(), 1))/cumdeltaT;
+    Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose()-Smatrix.block(0, 1, 1, grad.rows()))/cumdeltaT;
+    Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad-Smatrix.block(1, 0, grad.rows(), 1))/cumdeltaT;
+
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
@@ -820,4 +823,7 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
+  Smatrix(0,0) = 1.0;
+  Hessian(0,0) = E0;
+
 }
