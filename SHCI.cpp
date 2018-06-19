@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "time.h"
+#include "Mytime.h"
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -271,10 +271,11 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+      double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
 #ifdef Complex
       pout << format("%4i %18.8e  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;
 #else
-      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
+      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)*parity); pout << SHMDets[m]<<endl;
 #endif
       //pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
