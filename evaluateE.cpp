@@ -512,18 +512,20 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   //initialize the walker
   Determinant d;
   for (int i = 0; i < nalpha; i++)
+    //d.setoccA(i, true);
     d.setoccA(i, true);
   for (int j = 0; j < nbeta; j++)
     d.setoccB(j, true);
   Walker walk(d);
   walk.initUsingWave(w);
-  //cout << d <<endl;
 
-  int maxTerms =  (nalpha+nbeta) * (nalpha+nbeta) * norbs * norbs;
+
+  int maxTerms =  (nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
   vector<double> ovlpRatio(maxTerms);
   vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
   vector<double> HijElements(maxTerms);
   int nExcitations = 0;
+
 
   stddev = 1.e4;
   int iter = 0;
@@ -537,6 +539,42 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
 
+  //find the best determinant at overlap
+  for (int i=0; i<50; i++) {
+    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, 
+			 I1, I2, I2hb, coreE, ovlpRatio,
+			 excitation1, excitation2, HijElements,
+			 nExcitations, false);
+    int bestDet = 0;
+    double bestOvlp = 0.;
+    for (int j=0; j<nExcitations; j++) {
+      if (abs(ovlpRatio[j]) > bestOvlp) {
+	bestOvlp = abs(ovlpRatio[j]);
+	bestDet = j;
+      }
+    }
+
+    int I = excitation1[bestDet] / 2/ norbs, A = excitation1[bestDet] - 2 * norbs * I;
+    
+    if (I % 2 == 0)
+      walk.updateA(I / 2, A / 2, w);
+    else
+      walk.updateB(I / 2, A / 2, w);
+    if (excitation2[bestDet] != 0) {
+      int J = excitation2[bestDet] / 2 / norbs, B = excitation2[bestDet] - 2 * norbs * J;
+      if (J %2 == 1){
+	walk.updateB(J / 2, B / 2, w);
+      }
+      else {
+	walk.updateA(J / 2, B / 2, w);          
+      }
+      
+    }
+    nExcitations = 0;
+  }
+  walk.initUsingWave(w, true);
+  
+
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                        excitation1, excitation2, HijElements, nExcitations, false);
@@ -546,14 +584,13 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
   }
   localGrad = localdiagonalGrad * ham ;
-
   int gradIter = min(niter, 100000);
   std::vector<double> gradError(gradIter, 0);
   bool reset = true;
   double cumdeltaT = 0., cumdeltaT2 = 0.;
   while (iter < niter && stddev > targetError)
   {
-    if (iter == 100 && reset)
+    if (iter == 1 && reset)
     {
       iter = 0;
       reset = false;
@@ -566,24 +603,27 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       cumdeltaT = 0.;
       cumdeltaT2 = 0;
     }
+
     double cumovlpRatio = 0;
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     for (int i = 0; i < nExcitations; i++)
     {
-      cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
+      cumovlpRatio += abs(ovlpRatio[i]);
+      //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
       ovlpRatio[i] = cumovlpRatio;
     }
 
     //double deltaT = -log(random())/(cumovlpRatio);
     double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random()*cumovlpRatio;
     int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin()+nExcitations),
-                                   random() * cumovlpRatio) -
+                                   nextDetRandom) -
                   ovlpRatio.begin();
 
     cumdeltaT += deltaT;
     cumdeltaT2 += deltaT * deltaT;
 
-    double Elocold = Eloc;
+     double Elocold = Eloc;
 
     diagonalGrad = diagonalGrad + deltaT * (localdiagonalGrad - diagonalGrad) / (cumdeltaT);
     grad = grad + deltaT * (localGrad - grad) / (cumdeltaT); //running average of grad
@@ -619,6 +659,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
           walk.updateA(J / 2, B / 2, w);          
         }
       }
+
       //ovlpRatio.clear();
       //excitation1.clear();
       //excitation2.clear();
@@ -634,8 +675,10 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
         localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
       }
       localGrad = localdiagonalGrad * ham;
+      //cout <<iter<<" * "<< walk.d<<"  "<<localGrad.norm()<<"  "<<diagonalGrad.norm()<<"  "<<walk.alphaDet[0] <<"  "<< walk.betaDet[0]<<"  "<<w.ciExpansion[0]<<"  "<<ovlp<<endl;
     }
   }
+
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -729,7 +772,8 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     for (int i = 0; i < nExcitations; i++)
     {
-      cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
+      cumovlpRatio += ovlpRatio[i];
+      //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
       ovlpRatio[i] = cumovlpRatio;
     }
 

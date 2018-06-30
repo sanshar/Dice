@@ -16,8 +16,8 @@ def getopts(argv):
     return opts
 
 
-mpiprefix = " "
-executable = "/Users/sandeepsharma/Academics/Programs/VMC/PythonInterface"
+mpiprefix = " mpirun "
+executable = "/projects/sash2458/newApps/VMC.bkp/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']
@@ -106,7 +106,7 @@ if (doHessian):
         Hessian.shape = (numVars+1, numVars+1)
         Smatrix.shape = (numVars+1, numVars+1)
 
-        Hessian[1:, 1:] += 0.001*np.eye(numVars)
+        Hessian[1:, 1:] += 0.01*np.eye(numVars)
 
         #make the tangent space orthogonal to the wavefunction
         Uo = 0.* Smatrix
@@ -130,12 +130,15 @@ if (doHessian):
             U[:,i] = vs[:,cols[i]]/ds[cols[i]]**0.5
 
         Hessian_prime = reduce(np.dot, (U.T, Hessian, U))
-        [dc, dv] = np.linalg.eigh(Hessian_prime)
-        print "Expected energy in next step       : ", dc[0]
+        [dc, dv] = np.linalg.eig(Hessian_prime)
+        index = [np.argmin(dc.real)]
+        print "Expected energy in next step       : ", dc[index].real
         print "Number of total/nonredundant pramas: ", numVars+1, len(cols)
-
-        update = np.dot(U, dv[:,0])
-        wrt += update[1:]/update[0]
+        sys.stdout.flush()
+        update = np.dot(U, dv[:,index].real)
+        dw = update[1:]/update[0]
+        dw.shape = wrt.shape
+        wrt += dw
 
 else :        
     #wrt = np.fromfile("params.bin", dtype="float64")
