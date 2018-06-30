@@ -716,8 +716,7 @@ void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
                                            betaDet[0], cre, des, ColVec, BetaClosed);
   betaDet[0] *= p;
 
-  d.setoccB(i, false);
-  d.setoccB(a, true);
+  d = dcopy;
   AlphaOpen.clear(); AlphaClosed.clear(); BetaOpen.clear(); BetaClosed.clear();
   d.getOpenClosedAlphaBeta(AlphaOpen, AlphaClosed, BetaOpen, BetaClosed);
   Eigen::Map<VectorXi> RowAlpha(&AlphaClosed[0], AlphaClosed.size());

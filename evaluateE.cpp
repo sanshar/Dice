@@ -604,21 +604,41 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     //update the walker
     if (true)
     {
+      //Walker walkbkp = walk;
+      
       int I = excitation1[nextDet] / 2 / norbs, A = excitation1[nextDet] - 2 * norbs * I;
-      if (I % 2 == 0)
-        walk.updateA(I / 2, A / 2, w);
-      else
-        walk.updateB(I / 2, A / 2, w);
+      int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
 
-      if (excitation2[nextDet] != 0) {
-        int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
-        if (J %2 == 1){
-          walk.updateB(J / 2, B / 2, w);
-        }
+      if (I % 2 == J % 2 && excitation2[nextDet] != 0)
+      {
+        if (I % 2 == 1) {
+          walk.updateB(I / 2, J / 2, A / 2, B / 2, w);
+         }
         else {
-          walk.updateA(J / 2, B / 2, w);          
+          walk.updateA(I / 2, J / 2, A / 2, B / 2, w);
         }
       }
+      else
+      {
+        if (I % 2 == 0)
+          walk.updateA(I / 2, A / 2, w);
+        else
+          walk.updateB(I / 2, A / 2, w);
+
+        if (excitation2[nextDet] != 0)
+        {
+          if (J % 2 == 1)
+          {
+            walk.updateB(J / 2, B / 2, w);
+          }
+          else
+          {
+            walk.updateA(J / 2, B / 2, w);
+          }
+        }
+      }
+
+
       //ovlpRatio.clear();
       //excitation1.clear();
       //excitation2.clear();
