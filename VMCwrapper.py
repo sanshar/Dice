@@ -32,10 +32,12 @@ correlatorSize, numCorrelators = 0, 0
 Restart = False
 ciExpansion = []
 doHessian = False
+maxIter = 1000
 
+print "#*********INPUT FILE"
 for line in f:
     linesp = line.split();
-
+    print "#", line
     #read the correlator file to determine the number of jastrow factors
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "correlator"):
         correlatorFile = linesp[2]
@@ -57,6 +59,9 @@ for line in f:
                 ciExpansion.append(float(tok[0]))
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "dohessian"):
         doHessian = True
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "maxiter"):
+        maxIter = int(linesp[1])
+print "#*********END OF INPUT FILE"
 
 if (len(ciExpansion) == 0) :
     ciExpansion = [1.]
@@ -152,7 +157,7 @@ else :
         opt.est_mom2_b = np.fromfile("moment2.bin", dtype="float64")
 
     for info in opt:
-        if info['n_iter'] >= 5000:
+        if info['n_iter'] >= maxIter:
             break
         opt.est_mom1_b.astype("float64").tofile("moment1.bin")
         opt.est_mom2_b.astype("float64").tofile("moment2.bin")
