@@ -508,25 +508,48 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
-
+  
   //initialize the walker
   Determinant d;
-  for (int i = 0; i < nalpha; i++)
-    //d.setoccA(i, true);
-    d.setoccA(i, true);
-  for (int j = 0; j < nbeta; j++)
-    d.setoccB(j, true);
+  bool readDeterminant = false;
+  char file [5000];
+  sprintf (file, "BestDeterminant.txt");
+
+  {
+    ifstream ofile(file);
+    if (ofile) readDeterminant = true;
+  }
+
+  if ( !readDeterminant )
+  {
+    for (int i = 0; i < nalpha; i++)
+      d.setoccA(i, true);
+    for (int j = 0; j < nbeta; j++)
+      d.setoccB(j, true);
+  }
+  else {
+    if (commrank == 0) {
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> d;
+    }
+#ifndef SERIAL
+    MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  }
+  
   Walker walk(d);
   walk.initUsingWave(w);
-
-
+  
+  
   int maxTerms =  (nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
   vector<double> ovlpRatio(maxTerms);
   vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
   vector<double> HijElements(maxTerms);
   int nExcitations = 0;
-
-
+  
+  
   stddev = 1.e4;
   int iter = 0;
   double M1 = 0., S1 = 0., Eavg = 0.;
@@ -535,46 +558,52 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   VectorXd localGrad = grad;
   localGrad.setZero();
   double scale = 1.0;
-
+  
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
-
+  
+  double bestOvlp =0.;
+  Determinant bestDet=d;
+  
   //find the best determinant at overlap
-  for (int i=0; i<50; i++) {
-    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, 
-			 I1, I2, I2hb, coreE, ovlpRatio,
-			 excitation1, excitation2, HijElements,
-			 nExcitations, false);
-    int bestDet = 0;
-    double bestOvlp = 0.;
-    for (int j=0; j<nExcitations; j++) {
-      if (abs(ovlpRatio[j]) > bestOvlp) {
-	bestOvlp = abs(ovlpRatio[j]);
-	bestDet = j;
-      }
-    }
-
-    int I = excitation1[bestDet] / 2/ norbs, A = excitation1[bestDet] - 2 * norbs * I;
-    
-    if (I % 2 == 0)
-      walk.updateA(I / 2, A / 2, w);
-    else
-      walk.updateB(I / 2, A / 2, w);
-    if (excitation2[bestDet] != 0) {
-      int J = excitation2[bestDet] / 2 / norbs, B = excitation2[bestDet] - 2 * norbs * J;
-      if (J %2 == 1){
-	walk.updateB(J / 2, B / 2, w);
-      }
-      else {
-	walk.updateA(J / 2, B / 2, w);          
+  if (!readDeterminant) {
+    for (int i=0; i<50; i++) {
+      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, 
+			   I1, I2, I2hb, coreE, ovlpRatio,
+			   excitation1, excitation2, HijElements,
+			   nExcitations, false);
+      int bestDet = 0;
+      double bestOvlp = 0.;
+      for (int j=0; j<nExcitations; j++) {
+	if (abs(ovlpRatio[j]) > bestOvlp) {
+	  bestOvlp = abs(ovlpRatio[j]);
+	  bestDet = j;	
+	}
       }
       
+      int I = excitation1[bestDet] / 2/ norbs, A = excitation1[bestDet] - 2 * norbs * I;
+      
+      if (I % 2 == 0)
+	walk.updateA(I / 2, A / 2, w);
+      else
+	walk.updateB(I / 2, A / 2, w);
+      if (excitation2[bestDet] != 0) {
+	int J = excitation2[bestDet] / 2 / norbs, B = excitation2[bestDet] - 2 * norbs * J;
+	if (J %2 == 1){
+	  walk.updateB(J / 2, B / 2, w);
+	}
+	else {
+	  walk.updateA(J / 2, B / 2, w);          
+	}
+	
+      }
+      nExcitations = 0;
     }
-    nExcitations = 0;
+    
+    walk.initUsingWave(w, true);
   }
-  walk.initUsingWave(w, true);
   
-
+  
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                        excitation1, excitation2, HijElements, nExcitations, false);
@@ -591,19 +620,19 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   while (iter < niter && stddev > targetError)
   {
     if (iter == 1 && reset)
-    {
-      iter = 0;
-      reset = false;
-      M1 = 0.;
-      S1 = 0.;
-      Eloc = 0;
-      grad.setZero();
-      diagonalGrad.setZero();
-      walk.initUsingWave(w, true);
-      cumdeltaT = 0.;
-      cumdeltaT2 = 0;
-    }
-
+      {
+	iter = 0;
+	reset = false;
+	M1 = 0.;
+	S1 = 0.;
+	Eloc = 0;
+	grad.setZero();
+	diagonalGrad.setZero();
+	walk.initUsingWave(w, true);
+	cumdeltaT = 0.;
+	cumdeltaT2 = 0;
+      }
+    
     double cumovlpRatio = 0;
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     for (int i = 0; i < nExcitations; i++)
@@ -611,6 +640,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       cumovlpRatio += abs(ovlpRatio[i]);
       //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
       ovlpRatio[i] = cumovlpRatio;
+
     }
 
     //double deltaT = -log(random())/(cumovlpRatio);
@@ -618,29 +648,29 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     double nextDetRandom = random()*cumovlpRatio;
     int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin()+nExcitations),
                                    nextDetRandom) -
-                  ovlpRatio.begin();
-
+      ovlpRatio.begin();
+    
     cumdeltaT += deltaT;
     cumdeltaT2 += deltaT * deltaT;
-
-     double Elocold = Eloc;
-
+    
+    double Elocold = Eloc;
+    
     diagonalGrad = diagonalGrad + deltaT * (localdiagonalGrad - diagonalGrad) / (cumdeltaT);
     grad = grad + deltaT * (localGrad - grad) / (cumdeltaT); //running average of grad
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
-
+    
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
-
+    
     if (iter < gradIter)
       gradError[iter] = ham;
-
+    
     iter++;
-
+    
     if (iter == gradIter - 1)
     {
       rk = calcTcorr(gradError);
     }
-
+    
     //update the walker
     if (true)
     {
@@ -648,12 +678,12 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       
       int I = excitation1[nextDet] / 2 / norbs, A = excitation1[nextDet] - 2 * norbs * I;
       int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
-
+      
       if (I % 2 == J % 2 && excitation2[nextDet] != 0)
       {
-        if (I % 2 == 1) {
+	if (I % 2 == 1) {
           walk.updateB(I / 2, J / 2, A / 2, B / 2, w);
-         }
+	}
         else {
           walk.updateA(I / 2, J / 2, A / 2, B / 2, w);
         }
@@ -677,41 +707,51 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
           }
         }
       }
+    }
 
-      //ovlpRatio.clear();
-      //excitation1.clear();
-      //excitation2.clear();
-      nExcitations = 0;
-
-      //localGrad.setZero();
-      localdiagonalGrad.setZero();
-      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-                           excitation1, excitation2, HijElements, nExcitations, false);
-      w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
-      for (int k = 0; k < w.ciExpansion.size(); k++)
+    //ovlpRatio.clear();
+    //excitation1.clear();
+    //excitation2.clear();
+    nExcitations = 0;
+    
+    //localGrad.setZero();
+    localdiagonalGrad.setZero();
+    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+			 excitation1, excitation2, HijElements, nExcitations, false);
+    w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+    for (int k = 0; k < w.ciExpansion.size(); k++)
       {
-        localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
+	localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
       }
-      localGrad = localdiagonalGrad * ham;
-      //cout <<iter<<" * "<< walk.d<<"  "<<localGrad.norm()<<"  "<<diagonalGrad.norm()<<"  "<<walk.alphaDet[0] <<"  "<< walk.betaDet[0]<<"  "<<w.ciExpansion[0]<<"  "<<ovlp<<endl;
+    localGrad = localdiagonalGrad * ham;
+    
+    if (abs(ovlp) > bestOvlp) {
+      bestOvlp = abs(ovlp);
+      bestDet = walk.d;
     }
   }
-
+  
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
+  
   diagonalGrad /= (commsize);
   grad /= (commsize);
   E0 = Eloc / commsize;
   grad = grad - E0 * diagonalGrad;
-
+  
   stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
+
+  if (commrank == 0) {
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << bestDet;
+  }
 }
 
 
