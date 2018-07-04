@@ -33,6 +33,8 @@ Restart = False
 ciExpansion = []
 doHessian = False
 maxIter = 1000
+numVars = 0
+UHF = False
 
 print "#*********INPUT FILE"
 for line in f:
@@ -42,11 +44,13 @@ for line in f:
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "correlator"):
         correlatorFile = linesp[2]
         correlatorSize = int(linesp[1])
+        numCorrelators = 0
 	#print linesp, correlatorFile
         f2 = open(correlatorFile, 'r')
         for line2 in f2:
             if (line2.strip(' \n') != ''):
                 numCorrelators += 1
+        numVars += numCorrelators*2**(2*correlatorSize)
     elif ( len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "restart"):
 	    Restart = True
     #read the determinant file to see the number of determinants
@@ -57,6 +61,9 @@ for line in f:
             if (line2.strip(' \n') != ''):
                 tok = line2.split()
                 ciExpansion.append(float(tok[0]))
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "uhf"):
+        UHF = True
+        
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "dohessian"):
         doHessian = True
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "maxiter"):
@@ -66,7 +73,24 @@ print "#*********END OF INPUT FILE"
 if (len(ciExpansion) == 0) :
     ciExpansion = [1.]
 
-numVars = numCorrelators*2**(2*correlatorSize)+len(ciExpansion)
+hffilename = "hf.txt"
+
+hffile = open(hffilename, "r")
+lines = hffile.readlines()
+norbs = len(lines)
+hforbs = np.zeros((norbs*len(lines[0].split()),))  
+for i in range(len(lines)):
+    linesp = lines[i].split();
+    for j in range(len(linesp)):
+        if (j < norbs ):
+            hforbs[i*norbs+j] = float(linesp[j])
+        else:
+            hforbs[norbs*norbs+i*norbs+j-norbs] = float(linesp[j])
+
+
+
+numCPS = numVars
+numVars += len(ciExpansion) + hforbs.shape[0]
 emin = 1.e10
 
 def d_loss_wrt_pars(wrt):
@@ -95,7 +119,9 @@ def d_loss_wrt_pars(wrt):
 
 
 wrt = np.ones(shape=(numVars,))
-wrt[numCorrelators*2**(2*correlatorSize) : ] = np.asarray(ciExpansion)
+wrt[numCPS : numCPS+len(ciExpansion)] = np.asarray(ciExpansion)
+
+wrt[numCPS+len(ciExpansion) : ] = hforbs
 civars = len(ciExpansion)
  
 if (Restart):

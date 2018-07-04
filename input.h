@@ -60,7 +60,9 @@ private:
       & epsilon
       & screen
       & determinantFile
-      & doHessian;
+      & doHessian
+      & uhf
+      & optimizeOrbs;
 
   }
 public:
@@ -83,6 +85,8 @@ public:
   double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals
   double screen;                         //This is the screening parameter, any integral below this is ignored
   bool doHessian;                        //This calcules the Hessian and overlap for the linear method
+  bool uhf;
+  bool optimizeOrbs;
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
@@ -108,7 +112,7 @@ public:
  * params:
  *   Matrix:  this is the matrix of the mo coefficients
  */
-void readHF(Eigen::MatrixXd&);
+void readHF(Eigen::MatrixXd& hforbsA, Eigen::MatrixXd& hforbsB, bool uhf);
 
 /**
  * Reads the input file which by default is input.dat, but can be anything

@@ -90,7 +90,7 @@ class Walker {
                                                    Eigen::MatrixXd &inverseOut, double &detValueOut,
                                                    vector<int> &cre, vector<int> &des,
                                                    Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                   vector<int> &ColIn);
+                                                   vector<int> &ColIn, Eigen::MatrixXd &Hforbs);
 
   /**
    * This takes an inverse and determinant of a matrix formed by a subset of
@@ -105,7 +105,7 @@ class Walker {
                                                 Eigen::MatrixXd &inverseOut, double &detValueOut,
                                                 vector<int> &cre, vector<int> &des,
                                                 Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                vector<int> &RowIn);
+                                                vector<int> &RowIn, Eigen::MatrixXd &Hforbs);
   bool   makeMove(CPSSlater& w);
   void   exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs);
 

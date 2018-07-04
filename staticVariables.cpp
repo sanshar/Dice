@@ -66,4 +66,4 @@ void license() {
   }
 }
 
-MatrixXx Hforbs;
+MatrixXx HforbsA, HforbsB;

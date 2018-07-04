@@ -50,12 +50,12 @@ void CPSSlater::getDetMatrix(Determinant& d, Eigen::MatrixXd& DetAlpha, Eigen::M
   //in out case psi1 is a simple occupation number determ inant
   for (int i=0; i<nalpha; i++)
     for (int j=0; j<nalpha; j++)
-      DetAlpha(i,j) = Hforbs(alpha[i], alphaRef[j]);
+      DetAlpha(i,j) = HforbsA(alpha[i], alphaRef[j]);
 
 
   for (int i=0; i<nbeta; i++)
     for (int j=0; j<nbeta; j++)
-      DetBeta(i,j) = Hforbs(beta[i], betaRef[j]);
+      DetBeta(i,j) = HforbsB(beta[i], betaRef[j]);
 
   return;
 }
@@ -282,9 +282,14 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
   {
     double E0 = d.Energy(I1, I2, coreE);
     ovlp = detOverlap;
-    for (int i = 0; i < cpsArray.size(); i++)
+    //cout << ovlp <<endl;
+    for (int i = 0; i < cpsArray.size(); i++) {
       ovlp *= cpsArray[i].Overlap(d);
+      //cout << i<<"  "<<cpsArray[i].Overlap(d)<<endl;
+    }
     ham = E0;
+    
+    //cout << E0<<"  "<<ovlp<<endl;exit(0);
 
     if (doGradient)
     {

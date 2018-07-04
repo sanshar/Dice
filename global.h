@@ -38,7 +38,7 @@ extern int commsize, shmsize, localsize;
 #define CItype double
 #endif
 
-const int DetLen = 1;
+const int DetLen = 3;
 
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
@@ -53,6 +53,6 @@ double getTime();
 void   license();
 extern schedule schd;
 extern double startofCalc;
-extern MatrixXx Hforbs;
+extern MatrixXx HforbsA, HforbsB;
 
 #endif

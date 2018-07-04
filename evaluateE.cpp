@@ -513,6 +513,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   Determinant d;
   bool readDeterminant = false;
   char file [5000];
+
   sprintf (file, "BestDeterminant.txt");
 
   {
@@ -522,10 +523,28 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 
   if ( !readDeterminant )
   {
-    for (int i = 0; i < nalpha; i++)
-      d.setoccA(i, true);
-    for (int j = 0; j < nbeta; j++)
-      d.setoccB(j, true);
+    
+    for (int i =0; i<nalpha; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsA(i,j)) > maxovlp && !d.getoccA(j)) {
+	  maxovlp = abs(HforbsA(i,j));
+	  bestorb = j; 
+	}
+      }
+      d.setoccA(bestorb, true);
+    }
+    for (int i =0; i<nbeta; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsB(i,j)) > maxovlp && !d.getoccB(j)) {
+	  bestorb = j; maxovlp = abs(HforbsB(i,j));
+	}
+      }
+      d.setoccB(bestorb, true);
+    }
   }
   else {
     if (commrank == 0) {
@@ -572,6 +591,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 			   I1, I2, I2hb, coreE, ovlpRatio,
 			   excitation1, excitation2, HijElements,
 			   nExcitations, false);
+
       int bestDet = 0;
       double bestOvlp = 0.;
       for (int j=0; j<nExcitations; j++) {
@@ -582,7 +602,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       }
       
       int I = excitation1[bestDet] / 2/ norbs, A = excitation1[bestDet] - 2 * norbs * I;
-      
+
       if (I % 2 == 0)
 	walk.updateA(I / 2, A / 2, w);
       else
@@ -607,6 +627,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                        excitation1, excitation2, HijElements, nExcitations, false);
+
   w.OverlapWithGradient(walk, scale, localdiagonalGrad);
   for (int k = 0; k < w.ciExpansion.size(); k++)
   {
@@ -705,7 +726,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
           {
             walk.updateA(J / 2, B / 2, w);
           }
-        }
+       }
       }
     }
 
@@ -719,10 +740,53 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
 			 excitation1, excitation2, HijElements, nExcitations, false);
     w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+    double detovlp=0;
     for (int k = 0; k < w.ciExpansion.size(); k++)
       {
 	localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/ovlp;
+	detovlp += w.ciExpansion[k]*walk.alphaDet[k] * walk.betaDet[k];
       }
+
+    
+    if (w.determinants.size() <= 1 && schd.optimizeOrbs) {
+      int KA = 0, KB = 0;
+      for (int k = 0; k < norbs; k++) {//walker indices on the row
+	if (walk.d.getoccA(k)) {
+	  
+	  for (int det = 0; det<w.determinants.size(); det++) {
+	    Determinant ddet = w.determinants[det];
+	    int L = 0;
+	    for (int l = 0; l < norbs; l++) {
+	      if (ddet.getoccA(l)) {
+		localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphainv(L, KA)*walk.alphaDet[det]*walk.betaDet[det]/detovlp;
+		//localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.alphainv(L, KA);
+		L++;
+	      }
+	    }
+	  }
+	  KA++;
+	}
+	if (walk.d.getoccB(k)) {
+	  
+	  for (int det = 0; det<w.determinants.size(); det++) {
+	    Determinant ddet = w.determinants[det];
+	    int L = 0;
+	    for (int l = 0; l < norbs; l++) {
+	      if (ddet.getoccB(l)) {
+		if (schd.uhf) 
+		  localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + norbs*norbs + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
+		else
+		  localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
+		//localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.betainv(L, KB);
+		L++;
+	      }
+	    }
+	  }
+	  KB++;
+	}
+      }
+    }
+
     localGrad = localdiagonalGrad * ham;
     
     if (abs(ovlp) > bestOvlp) {

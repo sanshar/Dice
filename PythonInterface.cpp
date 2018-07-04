@@ -96,12 +96,9 @@ int main(int argc, char* argv[]) {
   MoDeterminant::nbeta  = nbeta;
 
   //Setup Slater Determinants
-  Hforbs = MatrixXd::Zero(norbs, norbs);
-  readHF(Hforbs);
-  MatrixXd alpha(norbs, nalpha), beta(norbs, nbeta);
-  alpha = Hforbs.block(0, 0, norbs, nalpha);
-  beta  = Hforbs.block(0, 0, norbs, nbeta );
-  MoDeterminant det(alpha, beta);
+  HforbsA = MatrixXd::Zero(norbs, norbs);
+  HforbsB = MatrixXd::Zero(norbs, norbs);
+  readHF(HforbsA, HforbsB, schd.uhf);
 
 
   //Setup CPS wavefunctions
@@ -135,21 +132,38 @@ int main(int argc, char* argv[]) {
   file.read ( (char*)(&vars[0]), size);
   file.close();
 
-  if (vars.size() != wave.getNumVariables()) {
+  if ( (schd.uhf && vars.size() != wave.getNumVariables()+2*norbs*norbs) ||
+       (!schd.uhf && vars.size() != wave.getNumVariables()+norbs*norbs) ){
     cout << "number of variables on disk: "<<vars.size()<<" is not equal to wfn parameters: "<<wave.getNumVariables()<<endl;
     exit(0);
   }
 
-  //for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
-    //vars[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
-  //}
   wave.updateVariables(vars);
-    
-  Eigen::VectorXd grad = Eigen::VectorXd::Zero(wave.getNumVariables());
+  int numVars = wave.getNumVariables();
+
+  for (int i=0; i<norbs; i++) {
+    for (int j=0; j<norbs; j++) {
+      if (!schd.uhf) {
+	HforbsA(i,j) = vars[numVars + i *norbs + j];
+	HforbsB(i,j) = vars[numVars + i *norbs + j];
+      }
+      else {
+	HforbsA(i,j) = vars[numVars + i *norbs + j];
+	HforbsB(i,j) = vars[numVars + norbs*norbs + i *norbs + j];
+      }
+    }
+  }
+
+  MatrixXd alpha(norbs, nalpha), beta(norbs, nbeta);
+  alpha = HforbsA.block(0, 0, norbs, nalpha);
+  beta  = HforbsB.block(0, 0, norbs, nbeta );
+  MoDeterminant det(alpha, beta);
+
+  Eigen::VectorXd grad = Eigen::VectorXd::Zero(vars.size());
   Eigen::MatrixXd Hessian, Smatrix;
   if (schd.doHessian) {
-    Hessian.resize(wave.getNumVariables()+1, wave.getNumVariables()+1);
-    Smatrix.resize(wave.getNumVariables()+1, wave.getNumVariables()+1);
+    Hessian.resize(vars.size()+1, vars.size()+1);
+    Smatrix.resize(vars.size()+1, vars.size()+1);
     Hessian.setZero(); Smatrix.setZero();
   }
 

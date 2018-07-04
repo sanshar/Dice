@@ -61,6 +61,8 @@ void readInput(string input, schedule& schd, bool print) {
   schd.screen                 = 1.e-8;
   schd.determinantFile        = "";
   schd.doHessian              = false;
+  schd.uhf                    = false;
+  schd.optimizeOrbs           = true;
 
   while (dump.good()) {
 
@@ -168,6 +170,14 @@ void readInput(string input, schedule& schd, bool print) {
       schd.doHessian = true;
     }
 
+    else if (boost::iequals(ArgName,  "uhf"               )) {
+      schd.uhf = true;
+    }
+
+    else if (boost::iequals(ArgName,  "dontoptimizeorbs" )) {
+      schd.optimizeOrbs = false;
+    }
+
     else {
       cout << "cannot read option "<<ArgName<<endl;
       exit(0);
@@ -215,12 +225,25 @@ void readCorrelator(std::string input, int correlatorSize,
 }
 
 
-void readHF(MatrixXd& Hfmatrix) {
+void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, bool uhf) {
 
-  ifstream dump("hf.txt");
-  for (int i=0; i<Hfmatrix.rows(); i++)
-  for (int j=0; j<Hfmatrix.rows(); j++)
-    dump >> Hfmatrix(i,j);
+  if (!uhf) {
+    ifstream dump("rhf.txt");
+    for (int i=0; i<HfmatrixA.rows(); i++)
+      for (int j=0; j<HfmatrixA.rows(); j++) {
+	dump >> HfmatrixA(i,j);
+	HfmatrixB(i,j) = HfmatrixA(i,j);
+      }
+  }
+  else {
+    ifstream dump("uhf.txt");
+    for (int i=0; i<HfmatrixA.rows(); i++) {
+      for (int j=0; j<HfmatrixA.rows(); j++) 
+	dump >> HfmatrixA(i,j);
+      for (int j=0; j<HfmatrixB.rows(); j++) 
+	dump >> HfmatrixB(i,j);
+    }
+  }
 }
 
 void readDeterminants(std::string input, vector<Determinant> &determinants,

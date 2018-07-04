@@ -121,7 +121,7 @@ void Walker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, do
                                                          MatrixXd &inverseOut, double &detValueOut,
                                                          vector<int> &cre, vector<int> &des,
                                                          Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                         vector<int> &ColIn)
+                                                         vector<int> &ColIn, MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i=0; i<cre.size(); i++)
@@ -186,7 +186,7 @@ void Walker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, doubl
                                                       MatrixXd &inverseOut, double &detValueOut,
                                                       vector<int> &cre, vector<int> &des,
                                                       Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                      vector<int> &RowIn)
+                                                      vector<int> &RowIn, MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i=0; i<cre.size(); i++)
@@ -285,7 +285,7 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
     if (i == 0)   
     //if (true)
     {
-      igl::slice(Hforbs, RowAlpha, ColAlpha, alpha); //alpha = Hforbs(Row, Col)
+      igl::slice(HforbsA, RowAlpha, ColAlpha, alpha); //alpha = Hforbs(Row, Col)
       Eigen::FullPivLU<MatrixXd> lua(alpha);
       if (lua.isInvertible() || !check)
       {
@@ -304,7 +304,7 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
         exit(0);
       }
 
-      igl::slice(Hforbs, RowBeta, ColBeta, beta); //beta = Hforbs(Row, Col)
+      igl::slice(HforbsB, RowBeta, ColBeta, beta); //beta = Hforbs(Row, Col)
       Eigen::FullPivLU<MatrixXd> lub(beta);
       if (lub.isInvertible() || !check)
       {
@@ -323,8 +323,8 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
       getOrbDiff(w.determinants[i], w.determinants[0], creA, desA, creB, desB);
       double alphaParity = w.determinants[0].parityA(creA, desA);
       double betaParity  = w.determinants[0].parityB(creB, desB);
-      calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0);
-      calculateInverseDeterminantWithColumnChange(betainv , betaDet[0] , betainvCurrent , betaDet[i] , creB, desB, RowBeta, betaRef0);
+      calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0, HforbsA);
+      calculateInverseDeterminantWithColumnChange(betainv , betaDet[0] , betainvCurrent , betaDet[i] , creB, desB, RowBeta, betaRef0, HforbsB);
       alphaDet[i] *= alphaParity;
       betaDet[i] *= betaParity;
 
@@ -335,12 +335,12 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
 
     AlphaTable[i] = MatrixXd::Zero(AlphaOpen.size(), AlphaClosed.size()); //k-N x N  
     MatrixXd HfopenAlpha;
-    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    igl::slice(HforbsA, RowAlphaOpen, ColAlpha, HfopenAlpha);
     AlphaTable[i] = HfopenAlpha*alphainvCurrent;
 
     BetaTable[i] = MatrixXd::Zero(BetaOpen.size(), BetaClosed.size()); //k-N x N  
     MatrixXd HfopenBeta;
-    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    igl::slice(HforbsB, RowBetaOpen, ColBeta, HfopenBeta);
     BetaTable[i] = HfopenBeta*betainvCurrent;
 
 
@@ -541,7 +541,7 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   double alphaDetOld = alphaDet[0];
   Eigen::Map<Eigen::VectorXi> ColVec(&alphaRef0[0], alphaRef0.size());
   calculateInverseDeterminantWithRowChange(alphainvOld, alphaDetOld, alphainv,
-                                           alphaDet[0], cre, des, ColVec, AlphaClosed);
+                                           alphaDet[0], cre, des, ColVec, AlphaClosed, HforbsA);
   alphaDet[0] *= p;
 
   d.setoccA(i, false);
@@ -553,7 +553,7 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
 
   Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
   MatrixXd HfopenAlpha;
-  igl::slice(Hforbs, RowAlphaOpen, ColVec, HfopenAlpha);
+  igl::slice(HforbsA, RowAlphaOpen, ColVec, HfopenAlpha);
   AlphaTable[0] = HfopenAlpha * alphainv;
   
   for (int x=1; x<w.determinants.size(); x++) 
@@ -565,12 +565,12 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
   
     getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
     double alphaParity = w.determinants[0].parityA(creA, desA);
-    calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0);
+    calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0, HforbsA);
     alphaDet[x] *= alphaParity;
 
     MatrixXd HfopenAlpha;
     Eigen::Map<VectorXi> ColAlpha (&alphaRef[0],  alphaRef.size());
-    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    igl::slice(HforbsA, RowAlphaOpen, ColAlpha, HfopenAlpha);
     AlphaTable[x] = HfopenAlpha * alphainvCurrent;
   }
   
@@ -598,7 +598,7 @@ void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
   double alphaDetOld = alphaDet[0];
   Eigen::Map<Eigen::VectorXi> ColVec(&alphaRef0[0], alphaRef0.size());
   calculateInverseDeterminantWithRowChange(alphainvOld, alphaDetOld, alphainv,
-                                           alphaDet[0], cre, des, ColVec, AlphaClosed);
+                                           alphaDet[0], cre, des, ColVec, AlphaClosed, HforbsA);
   alphaDet[0] *= p;
 
   d = dcopy;
@@ -609,7 +609,7 @@ void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
 
   Eigen::Map<VectorXi> RowAlphaOpen(&AlphaOpen[0], AlphaOpen.size());
   MatrixXd HfopenAlpha;
-  igl::slice(Hforbs, RowAlphaOpen, ColVec, HfopenAlpha);
+  igl::slice(HforbsA, RowAlphaOpen, ColVec, HfopenAlpha);
   AlphaTable[0] = HfopenAlpha * alphainv;
   
   for (int x=1; x<w.determinants.size(); x++) 
@@ -621,12 +621,12 @@ void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
   
     getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
     double alphaParity = w.determinants[0].parityA(creA, desA);
-    calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0);
+    calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0, HforbsA);
     alphaDet[x] *= alphaParity;
 
     MatrixXd HfopenAlpha;
     Eigen::Map<VectorXi> ColAlpha (&alphaRef[0],  alphaRef.size());
-    igl::slice(Hforbs, RowAlphaOpen, ColAlpha, HfopenAlpha);
+    igl::slice(HforbsA, RowAlphaOpen, ColAlpha, HfopenAlpha);
     AlphaTable[x] = HfopenAlpha * alphainvCurrent;
   }
   
@@ -653,7 +653,7 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   double betaDetOld = betaDet[0];
   Eigen::Map<Eigen::VectorXi> ColVec(&betaRef0[0], betaRef0.size());
   calculateInverseDeterminantWithRowChange(betainvOld, betaDetOld, betainv,
-                                           betaDet[0], cre, des, ColVec, BetaClosed);
+                                           betaDet[0], cre, des, ColVec, BetaClosed, HforbsB);
   betaDet[0] *= p;
 
   d.setoccB(i, false);
@@ -665,7 +665,7 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
 
   Eigen::Map<VectorXi> RowBetaOpen(&BetaOpen[0], BetaOpen.size());
   MatrixXd HfopenBeta;
-  igl::slice(Hforbs, RowBetaOpen, ColVec, HfopenBeta);
+  igl::slice(HforbsB, RowBetaOpen, ColVec, HfopenBeta);
   BetaTable[0] = HfopenBeta * betainv;
 
   for (int x=1; x<w.determinants.size(); x++) 
@@ -677,12 +677,12 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   
     getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
     double betaParity = w.determinants[0].parityB(creB, desB);
-    calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0);
+    calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0, HforbsB);
     betaDet[x] *= betaParity;
 
     MatrixXd HfopenBeta;
     Eigen::Map<VectorXi> ColBeta (&betaRef[0],  betaRef.size());
-    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    igl::slice(HforbsB, RowBetaOpen, ColBeta, HfopenBeta);
     BetaTable[x] = HfopenBeta*betainvCurrent;
 
   }
@@ -713,7 +713,7 @@ void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
   double betaDetOld = betaDet[0];
   Eigen::Map<Eigen::VectorXi> ColVec(&betaRef0[0], betaRef0.size());
   calculateInverseDeterminantWithRowChange(betainvOld, betaDetOld, betainv,
-                                           betaDet[0], cre, des, ColVec, BetaClosed);
+                                           betaDet[0], cre, des, ColVec, BetaClosed, HforbsB);
   betaDet[0] *= p;
 
   d = dcopy;
@@ -724,7 +724,7 @@ void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
 
   Eigen::Map<VectorXi> RowBetaOpen(&BetaOpen[0], BetaOpen.size());
   MatrixXd HfopenBeta;
-  igl::slice(Hforbs, RowBetaOpen, ColVec, HfopenBeta);
+  igl::slice(HforbsB, RowBetaOpen, ColVec, HfopenBeta);
   BetaTable[0] = HfopenBeta * betainv;
 
   for (int x=1; x<w.determinants.size(); x++) 
@@ -736,12 +736,12 @@ void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
   
     getOrbDiff(w.determinants[x], w.determinants[0], creA, desA, creB, desB);
     double betaParity = w.determinants[0].parityB(creB, desB);
-    calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0);
+    calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0, HforbsB);
     betaDet[x] *= betaParity;
 
     MatrixXd HfopenBeta;
     Eigen::Map<VectorXi> ColBeta (&betaRef[0],  betaRef.size());
-    igl::slice(Hforbs, RowBetaOpen, ColBeta, HfopenBeta);
+    igl::slice(HforbsB, RowBetaOpen, ColBeta, HfopenBeta);
     BetaTable[x] = HfopenBeta*betainvCurrent;
 
   }
