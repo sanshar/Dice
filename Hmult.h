@@ -115,6 +115,7 @@ struct Hmult2 {
           if (J != i*size+rank)
 #ifdef Complex
             ytemp[J] += std::conj(hij)*x[i*size+rank];
+            cout << I <<" "<< J << " " << x[I] << " " << x[J] << " " << hij << endl;
 #else
             ytemp[J] += hij*x[i*size+rank];
 #endif

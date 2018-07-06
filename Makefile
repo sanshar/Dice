@@ -1,7 +1,7 @@
-USE_MPI = yes
+USE_MPI = no
 USE_INTEL = no
 EIGEN=/usr/include/eigen3
-BOOST=/usr/include/boost
+BOOST=/home/xubo/software/boost_1_66_0
 #EIGEN=/projects/sash2458/apps/eigen/
 #BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen
@@ -70,7 +70,7 @@ obj_z/%.o: %.cpp
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 
 
-all: Dice ZDice2 # stats QDPTSOC GTensorFT GTensorFT2
+all: ZDice2 # stats QDPTSOC GTensorFT GTensorFT2
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats

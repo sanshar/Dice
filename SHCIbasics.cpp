@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "time.h"
+#include "Mytime.h"
 #include "Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
@@ -1167,7 +1167,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 
     //the variational step has converged
     if (abs(E0[0]-prevE0) < schd.dE || iter == schd.epsilon1.size()-1)  {
-      pout << endl<<"Performing final tight davidson with tol: ////"<<schd.davidsonTol<<endl;
+      pout << endl<<"Performing final tight davidson with tol: "<<schd.davidsonTol<<endl;
       //if (schd.DavidsonType == DIRECT)
         //E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
       //else
@@ -1176,49 +1176,47 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif
-      pout <<endl<<"Exiting variational iterations"<<endl;
 
-  //    writeVariationalResult(iter, ci, Dets, sparseHam, E0, true,// schd, helper2);
-//
-  //    unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||//schd.doResponse, I1, I2, coreE);
+      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
+
+      unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||schd.doResponse, I1, I2, coreE);
   //    if (Determinant::Trev != 0) {
 	////we add additional determinats 
 	//SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, //regionDetsCI);    
-      }
 //
-  //    if (schd.DoOneRDM) {
-	//pout <<"Calculating 1RDM"<<endl;
-	//for (int i=0; i<schd.nroots; i++) {
-	//  MatrixXx s1RDM, oneRDM;
-	//  oneRDM = MatrixXx::Zero(norbs,norbs);
-	//  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
-	//  CItype *SHMci;
-	//  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, //regionDavidson);
-	//  SHCIrdm::EvaluateOneRDM(sparseHam.connections,SHMDets,//DetsSize, SHMci,
-	//			  SHMci, sparseHam.orbDifference, nelec, schd,i,
-	//			  oneRDM, s1RDM);
-	//  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
-	//}
-  //    }
+      if (schd.DoOneRDM) {
+	pout <<"Calculating 1RDM"<<endl;
+	for (int i=0; i<schd.nroots; i++) {
+	  MatrixXx s1RDM, oneRDM;
+	  oneRDM = MatrixXx::Zero(norbs,norbs);
+	  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
+	  CItype *SHMci;
+	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+	  SHCIrdm::EvaluateOneRDM(sparseHam.connections,SHMDets,DetsSize, SHMci,
+				  SHMci, sparseHam.orbDifference, nelec, schd,i,
+				  oneRDM, s1RDM);
+	  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+	}
+      }
   //    
   //    
-  //    if (DoRDM || schd.doResponse) {
+      if (DoRDM || schd.doResponse) {
 	////if (schd.DavidsonType == DIRECT) {
 	////pout << "RDM not implemented with direct davidson."<<endl;
 	////exit(0);
 	////}.push_back(energies(0))
-	//pout <<"Calculating 2RDM"<<endl;
-	//int trev = Determinant::Trev;
-	//Determinant::Trev = 0;
-	//for (int i=0; i<schd.nroots; i++) {
-	//  CItype *SHMci;
-	//  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, //regionDavidson);
- //
-	//  MatrixXx twoRDM;
-	//  if (schd.DoSpinRDM )
-	//    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)///2);
-	//  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)//*norbs/2);
-//
+	pout <<"Calculating 2RDM"<<endl;
+	int trev = Determinant::Trev;
+	Determinant::Trev = 0;
+	for (int i=0; i<schd.nroots; i++) {
+	  CItype *SHMci;
+	  SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+ 
+	  MatrixXx twoRDM;
+	  if (schd.DoSpinRDM )
+	    twoRDM = MatrixXx::Zero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
+	  MatrixXx s2RDM = MatrixXx::Zero((norbs/2)*norbs/2, (norbs/2)*norbs/2);
+
 	//  if ((trev != 0 || schd.DavidsonType == DIRECT)) {
 	//    //now that we have unpacked Trev list, we can forget about //t-reversal symmetry
 	//    if (proc == 0) {
@@ -1247,51 +1245,46 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
 //
 	//  }
 	//  else {
-	//    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, //DetsSize, SHMci, 
-	//			 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, //s2RDM);
-	//    //if (schd.outputlevel>0) 
-	//      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, //I2, coreEbkp, s2RDM);
-	//    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
-	//    
-	//    boost::interprocess::shared_memory_object::remove//(shciDetsCI.c_str());
+	    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci, 
+				 SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
+      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
+      SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreEbkp, twoRDM);
+	    if (schd.outputlevel>0) 
+	      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreEbkp, s2RDM);
+	    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+	    
+	    boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
 	//  }
-  //      } // for i
-  //    }
-  //    sparseHam.resize(0);
+        } // for i
+      }
+      sparseHam.resize(0);
 //
-  //    break;
-  //  }
-  //  else {
-  //    if (schd.io) {
-	//if (commrank == 0) {
-	//  Dets.resize(DetsSize);
-	//  for (int i=0; i<DetsSize; i++)
-	//    Dets[i] = SHMDets[i];	  
-	//}
-  //    writeVariationalResult(iter, ci, Dets, sparseHam, E0, true,// schd, helper2);
-  //    }
-  //    Dets.clear();
-  //  }
-  //  
-  //  if (schd.outputlevel>0) pout << format//("###########################################      %10.2f ") //%(getTime()-startofCalc)<<endl;
-  //}
-//
-  ////iter ends
-//
-  //boost::interprocess::shared_memory_object::remove//(shciDetsCI.c_str());
-  //boost::interprocess::shared_memory_object::remove//(shciHelper.c_str());
-//
-//
-  //pout << "VARIATIONAL CALCULATION RESULT"<<endl;
-  //pout << "------------------------------"<<endl;
-  //pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %//("Time(s)");
-  //for (int i=0; i<E0.size(); i++) {
-  //  E0[i] += coreEbkp;
-  //  pout << format("%4i  %18.10f  %10.2f\n") 
-  //    %(i) % (E0[i]) % (getTime()-startofCalc);
+      break;
+    }
+    else {
+      if (schd.io) {
+	if (commrank == 0) {
+	  Dets.resize(DetsSize);
+	  for (int i=0; i<DetsSize; i++)
+	    Dets[i] = SHMDets[i];	  
+	}
+      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
+      }
+      Dets.clear();
+    }
+    
+    if (schd.outputlevel>0) pout << format("###########################################      %10.2f ") %(getTime()-startofCalc)<<endl;
+  }//iter ends
+
+  boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
+  boost::interprocess::shared_memory_object::remove(shciHelper.c_str());
+  pout << "VARIATIONAL CALCULATION RESULT"<<endl;
+  pout << "------------------------------"<<endl;
+  pout << format("%4s %18s  %10s\n") %("Root") %("Energy") %("Time(s)");
+  for (int i=0; i<E0.size(); i++) {
+    pout << format("%4i  %18.10f  %10.2f\n") 
+      %(i) % (E0[i]+coreEbkp) % (getTime()-startofCalc);
   }
-  pout <<endl<<"Exiting variational iterations"<<endl;
-  pout <<endl<<endl;
   coreE = coreEbkp;
   return E0;
 

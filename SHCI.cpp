@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "time.h"
+#include "Mytime.h"
 #include "global.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -273,11 +273,10 @@ int main(int argc, char* argv[]) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
 #ifdef Complex
-      //pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
+      pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
 #else
       pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
 #endif
-      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
@@ -462,18 +461,25 @@ int main(int argc, char* argv[]) {
 
     SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
 			 sparseHam.orbDifference, nelec, schd, 0, twoRDM, s2RDM);
-
+    SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
     // Add DoOneRDM Block
-
+    //if (schd.DoOneRDM) {
+    //  MatrixXx s1RDM, oneRDM;
+	  //  oneRDM = MatrixXx::Zero(norbs,norbs);
+	  //  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
+    //  SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
+		//	 sparseHam.orbDifference, nelec, schd, 0, oneRDM, s1RDM);
+    //  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, 0);
+    //}
     if (commrank == 0) {
       MatrixXx s2RDMdisk, twoRDMdisk;
       SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
       SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+      
     }
-
     //pout <<" response ";
-    //SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE, s2RDM);
+    
   }
 
 

@@ -253,6 +253,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
       // numerator and energy
       numerator.push_back(integral*ci);
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+      //double E = EnergyAfterExcitation(int1, int2, coreE)
       energy.push_back(E);
 
       // ...
@@ -287,10 +288,11 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
           // if we are going below the criterion, break
-          if (fabs(integrals[index]) < epsilon) break;
+          if (abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
       if (!(det.getocc(a) || det.getocc(b))) {
         dets.push_back(det);
         Determinant& di = *dets.rbegin();
@@ -302,7 +304,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
 
         // numerator and energy
         numerator.push_back(integrals[index]*sgn*ci);
-        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        double E = di.Energy(int1, int2, coreE);
         energy.push_back(E);
 
         // ...
