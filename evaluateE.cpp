@@ -676,8 +676,13 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     
     double Elocold = Eloc;
     
-    diagonalGrad = diagonalGrad + deltaT * (localdiagonalGrad - diagonalGrad) / (cumdeltaT);
-    grad = grad + deltaT * (localGrad - grad) / (cumdeltaT); //running average of grad
+    double ratio = deltaT/cumdeltaT;
+    for (int i=0; i<grad.rows(); i++) {
+      diagonalGrad[i] += ratio * (localdiagonalGrad[i] - diagonalGrad[i]);
+      grad[i] += ratio * (localGrad[i] - grad[i]);
+      localdiagonalGrad[i] = 0.0;
+    }
+
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
     
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
@@ -736,7 +741,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     nExcitations = 0;
     
     //localGrad.setZero();
-    localdiagonalGrad.setZero();
+    //localdiagonalGrad.setZero();
     w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
 			 excitation1, excitation2, HijElements, nExcitations, false);
     w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
@@ -749,42 +754,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 
     
     if (w.determinants.size() <= 1 && schd.optimizeOrbs) {
-      int KA = 0, KB = 0;
-      for (int k = 0; k < norbs; k++) {//walker indices on the row
-	if (walk.d.getoccA(k)) {
-	  
-	  for (int det = 0; det<w.determinants.size(); det++) {
-	    Determinant ddet = w.determinants[det];
-	    int L = 0;
-	    for (int l = 0; l < norbs; l++) {
-	      if (ddet.getoccA(l)) {
-		localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphainv(L, KA)*walk.alphaDet[det]*walk.betaDet[det]/detovlp;
-		//localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.alphainv(L, KA);
-		L++;
-	      }
-	    }
-	  }
-	  KA++;
-	}
-	if (walk.d.getoccB(k)) {
-	  
-	  for (int det = 0; det<w.determinants.size(); det++) {
-	    Determinant ddet = w.determinants[det];
-	    int L = 0;
-	    for (int l = 0; l < norbs; l++) {
-	      if (ddet.getoccB(l)) {
-		if (schd.uhf) 
-		  localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + norbs*norbs + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
-		else
-		  localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
-		//localdiagonalGrad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.betainv(L, KB);
-		L++;
-	      }
-	    }
-	  }
-	  KB++;
-	}
-      }
+      walk.OverlapWithGradient(w, localdiagonalGrad, detovlp);
     }
 
     localGrad = localdiagonalGrad * ham;

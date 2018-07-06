@@ -27,6 +27,52 @@
 using namespace Eigen;
 
 
+void Walker::OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp) {
+  int numJastrowVariables = w.getNumJastrowVariables();
+  int norbs = Determinant::norbs;
+  Walker& walk = *this;
+
+  int KA = 0, KB = 0;
+  for (int k = 0; k < norbs; k++) {//walker indices on the row
+    if (walk.d.getoccA(k)) {
+      
+      for (int det = 0; det<w.determinants.size(); det++) {
+	Determinant ddet = w.determinants[det];
+	int L = 0;
+	for (int l = 0; l < norbs; l++) {
+	  if (ddet.getoccA(l)) {
+	    grad(numJastrowVariables + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphainv(L, KA)*walk.alphaDet[det]*walk.betaDet[det]/detovlp;
+	    //grad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.alphainv(L, KA);
+	    L++;
+	  }
+	}
+      }
+      KA++;
+    }
+    if (walk.d.getoccB(k)) {
+      
+      for (int det = 0; det<w.determinants.size(); det++) {
+	Determinant ddet = w.determinants[det];
+	int L = 0;
+	for (int l = 0; l < norbs; l++) {
+	  if (ddet.getoccB(l)) {
+	    if (schd.uhf) 
+	      grad(numJastrowVariables + w.ciExpansion.size() + norbs*norbs + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
+	    else
+	      grad(numJastrowVariables + w.ciExpansion.size() + k*norbs+l) += w.ciExpansion[det]*walk.alphaDet[det]*walk.betaDet[det]*walk.betainv(L, KB)/detovlp;
+	    //grad(w.getNumJastrowVariables() + w.ciExpansion.size() + k*norbs+l) += walk.betainv(L, KB);
+	    L++;
+	  }
+	}
+      }
+      KB++;
+    }
+  }
+  
+  
+}
+
+
 bool Walker::makeMove(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));

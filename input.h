@@ -27,7 +27,7 @@
 class Correlator;
 class Determinant;
 enum Method { sgd, nestorov, rmsprop, adam, amsgrad };
-
+enum HAM {HUBBARD, ABINITIO};
 
 
 /**
@@ -62,7 +62,8 @@ private:
       & determinantFile
       & doHessian
       & uhf
-      & optimizeOrbs;
+      & optimizeOrbs
+      & Hamiltonian;
 
   }
 public:
@@ -87,6 +88,7 @@ public:
   bool doHessian;                        //This calcules the Hessian and overlap for the linear method
   bool uhf;
   bool optimizeOrbs;
+  HAM Hamiltonian;
 
 //Deprecated options for optimizers
 //because now we just use the python implementation

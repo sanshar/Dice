@@ -63,7 +63,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.doHessian              = false;
   schd.uhf                    = false;
   schd.optimizeOrbs           = true;
-
+  schd.Hamiltonian            = ABINITIO;
   while (dump.good()) {
 
     std::string
@@ -176,6 +176,10 @@ void readInput(string input, schedule& schd, bool print) {
 
     else if (boost::iequals(ArgName,  "dontoptimizeorbs" )) {
       schd.optimizeOrbs = false;
+    }
+
+    else if (boost::iequals(ArgName,  "hubbard"          )) {
+      schd.Hamiltonian = HUBBARD;
     }
 
     else {

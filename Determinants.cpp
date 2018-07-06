@@ -124,6 +124,8 @@ CItype Determinant::Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2, bool dop
 	if (doparity) parityA(a, i, sgn);
 
 	CItype energy = I1(2*a, 2*i);
+	if (schd.Hamiltonian == HUBBARD) return energy*sgn;
+
 	long one = 1;
 	for (int I=0; I<DetLen; I++) {
 		long reprBit = reprA[I];
@@ -151,6 +153,8 @@ CItype Determinant::Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2, bool dop
 	if (doparity) parityB(a, i, sgn);
 
 	CItype energy = I1(2*a+1, 2*i+1);
+	if (schd.Hamiltonian == HUBBARD) return energy*sgn;
+
 	long one = 1;
 	for (int I=0; I<DetLen; I++) {
 		long reprBit = reprA[I];

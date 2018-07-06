@@ -120,6 +120,8 @@ class Walker {
 		     vector<double>& prob, vector<size_t>& alphaExcitation,
 		     vector<size_t>& betaExcitation);
 
+  void OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp);
+
 };
 
 #endif
