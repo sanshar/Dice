@@ -192,8 +192,8 @@ int main(int argc, char* argv[]) {
   //}
 
   if (commrank == 0)
-    std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %8.2f\n") 
-      %E0 % stddev %(grad.norm()) %(rt) %( (getTime()-startofCalc));
+    std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") 
+      %E0 % stddev %(grad.norm()) %(rt)  %(schd.stochasticIter) %( (getTime()-startofCalc));
 
   {
     ofstream file ("grad.bin", ios::out|ios::binary);

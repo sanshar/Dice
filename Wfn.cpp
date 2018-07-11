@@ -262,6 +262,7 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
   //ovlpRatio.clear();
   //excitation1.clear();
   //excitation2.clear();
+  int ovlpSize = ovlpRatio.size();
   nExcitations = 0;
 
   double TINY = schd.screen;
@@ -376,6 +377,15 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
             if (fillExcitations)
             {
+	      if (ovlpSize <= nExcitations) {
+		ovlpSize += 100000;
+		//ovlpSize += 1000;
+		ovlpRatio.resize(ovlpSize);
+		excitation1.resize(ovlpSize);
+		excitation2.resize(ovlpSize);
+		HijElements.resize(ovlpSize);
+	      }
+
               ovlpRatio[nExcitations] = ovlpdetcopy;
               excitation1[nExcitations] = closed[i] * 2 * norbs + open[a];
               excitation2[nExcitations] = 0;
@@ -502,6 +512,14 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
           if (fillExcitations)
           {
+	    if (ovlpSize <= nExcitations) {
+	      ovlpSize += 100000;
+	      ovlpRatio.resize(ovlpSize);
+	      excitation1.resize(ovlpSize);
+	      excitation2.resize(ovlpSize);
+	      HijElements.resize(ovlpSize);
+	    }
+
             ovlpRatio[nExcitations] = ovlpdetcopy;
             excitation1[nExcitations] = closed[i] * 2 * norbs + a;
             excitation2[nExcitations] = closed[j] * 2 * norbs + b;

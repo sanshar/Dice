@@ -1,9 +1,5 @@
 import numpy as np
-import climin
-import scipy
-import sys
-import climin.rmsprop
-import climin.amsgrad
+import sys, os, climin.amsgrad, scipy
 from functools import reduce
 from subprocess import check_output, check_call, CalledProcessError
 
@@ -16,8 +12,12 @@ def getopts(argv):
     return opts
 
 
+m_stepsize = 0.001
+m_decay_mom1 = 0.1
+m_decay_mom2 = 0.001
+
 mpiprefix = " mpirun "
-executable = "/projects/sash2458/newApps/VMC.bkp/PythonInterface"
+executable = "/projects/sash2458/newApps/VMC/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']
@@ -25,6 +25,15 @@ if '-i' in myargs:
 if '-n' in myargs:
    numprocs = int(myargs['-n'])
    mpiprefix = "mpirun -n %i"%(numprocs)
+
+if '-stepsize' in myargs:
+   m_stepsize = float(myargs['-stepsize'])
+
+if '-decay1' in myargs:
+   m_decay_mom1 = float(myargs['-decay1'])
+
+if '-decay2' in myargs:
+   m_decay_mom2 = float(myargs['-decay2'])
 
 
 f = open(inFile, 'r')
@@ -39,7 +48,7 @@ UHF = False
 print "#*********INPUT FILE"
 for line in f:
     linesp = line.split();
-    print "#", line
+    print "#", line,
     #read the correlator file to determine the number of jastrow factors
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "correlator"):
         correlatorFile = linesp[2]
@@ -68,7 +77,13 @@ for line in f:
         doHessian = True
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "maxiter"):
         maxIter = int(linesp[1])
+        
 print "#*********END OF INPUT FILE"
+print "#opt-params"
+print "#stepsize   : %f"%(m_stepsize)
+print "#decay_mom1 : %f"%(m_decay_mom1)
+print "#decay_mom2 : %f"%(m_decay_mom2)
+print "#**********"
 
 if (len(ciExpansion) == 0) :
     ciExpansion = [1.]
@@ -175,8 +190,7 @@ else :
     #wrt = np.fromfile("params.bin", dtype="float64")
     #opt = climin.GradientDescent(wrt, d_loss_wrt_pars, step_rate=0.01, momentum=.95)
     #opt = climin.rmsprop.RmsProp(wrt, d_loss_wrt_pars, step_rate=0.0001, decay=0.9)
-    opt = climin.amsgrad.Amsgrad(
-        wrt, d_loss_wrt_pars, step_rate=0.001, decay_mom1=0.1, decay_mom2=0.001, momentum=0.0)
+    opt = climin.amsgrad.Amsgrad(wrt, d_loss_wrt_pars, step_rate=m_stepsize, decay_mom1=m_decay_mom1, decay_mom2=m_decay_mom2, momentum=0.0)
 
     if (Restart):
         opt.est_mom1_b = np.fromfile("moment1.bin", dtype="float64")
@@ -187,3 +201,27 @@ else :
             break
         opt.est_mom1_b.astype("float64").tofile("moment1.bin")
         opt.est_mom2_b.astype("float64").tofile("moment2.bin")
+
+        if (os.path.isfile("updateparams.txt")):
+            f = open("updateparams.txt", 'r')
+            for line in f:
+                linesp = line.split();            
+                if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "stepsize"):
+                    m_stepsize = float(linesp[1])
+                if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "decay1"):
+                    m_decay_mom1 = float(linesp[1])
+                if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "decay2"):
+                    m_decay_mom2 = float(linesp[1])
+
+                print "#updating opt-params"
+                print "#stepsize   : %f"%(m_stepsize)
+                print "#decay_mom1 : %f"%(m_decay_mom1)
+                print "#decay_mom2 : %f"%(m_decay_mom2)
+                print "#**********"
+
+                opt.step_rate = m_stepsize
+                opt.decay_mom1 = m_decay_mom1
+                opt.decay_mom2 = m_decay_mom2
+
+            f.close()
+            os.remove("updateparams.txt")

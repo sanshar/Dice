@@ -562,7 +562,8 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   walk.initUsingWave(w);
   
   
-  int maxTerms =  (nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
+  //int maxTerms =  3*(nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
+  int maxTerms =  (nalpha) * (norbs-nalpha); //pick a small number that will be incremented later
   vector<double> ovlpRatio(maxTerms);
   vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
   vector<double> HijElements(maxTerms);
@@ -586,7 +587,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
   
   //find the best determinant at overlap
   if (!readDeterminant) {
-    for (int i=0; i<50; i++) {
+    for (int i=0; i<0; i++) {
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, 
 			   I1, I2, I2hb, coreE, ovlpRatio,
 			   excitation1, excitation2, HijElements,
@@ -623,11 +624,10 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
     walk.initUsingWave(w, true);
   }
   
-  
+  nExcitations = 0;
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                        excitation1, excitation2, HijElements, nExcitations, false);
-
   w.OverlapWithGradient(walk, scale, localdiagonalGrad);
   for (int k = 0; k < w.ciExpansion.size(); k++)
   {
@@ -661,7 +661,6 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       cumovlpRatio += abs(ovlpRatio[i]);
       //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
       ovlpRatio[i] = cumovlpRatio;
-
     }
 
     //double deltaT = -log(random())/(cumovlpRatio);
@@ -671,6 +670,8 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
                                    nextDetRandom) -
       ovlpRatio.begin();
     
+    //cout <<nextDet<<"  "<< excitation1[nextDet]<<"  "<<excitation2[nextDet]<<endl;
+
     cumdeltaT += deltaT;
     cumdeltaT2 += deltaT * deltaT;
     
@@ -682,6 +683,8 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       grad[i] += ratio * (localGrad[i] - grad[i]);
       localdiagonalGrad[i] = 0.0;
     }
+
+    //cout <<nextDet<<"  "<< excitation1[nextDet]<<"  "<<excitation2[nextDet]<<endl;
 
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
     
@@ -705,6 +708,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
       int I = excitation1[nextDet] / 2 / norbs, A = excitation1[nextDet] - 2 * norbs * I;
       int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
       
+
       if (I % 2 == J % 2 && excitation2[nextDet] != 0)
       {
 	if (I % 2 == 1) {
