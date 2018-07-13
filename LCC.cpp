@@ -51,6 +51,7 @@ using namespace SHCISortMpiUtils;
 
 
 
+#ifndef Complex
 //=============================================================================
 void LCC::doLCC(
         Determinant *Dets, CItype *ci, int DetsSize,
@@ -636,3 +637,4 @@ void LCC::get_landscape(
    cout<<"BM: what?? "<<i<<" "<<j<<" "<<a<<" "<<b<<" "<<schd.ncore<<" "<<schd.nact<<endl;
   }
 }
+#endif

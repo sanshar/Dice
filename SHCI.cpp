@@ -496,12 +496,16 @@ int main(int argc, char* argv[]) {
 #endif
   } else if (schd.doLCC) {
     log_pt(schd);
+#ifndef Complex
     for (int root = 0; root<schd.nroots; root++) {
       CItype *ciroot;
       SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
       LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2,
                  I2HBSHM, irrep, schd, coreE, nelec, root);
     }
+#else
+    pout<<" Not for Complex"<<endl;
+#endif
   } else if (!schd.stochastic && schd.nblocks == 1) {
     log_pt(schd);
     double ePT = 0.0;
