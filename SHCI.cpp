@@ -342,6 +342,7 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+      double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
 #ifdef Complex
       pout << format("%4i %18.10f  ") %(i) %(abs(prevci(m,0))); pout << SHMDets[m]<<endl;
 #else

@@ -1,7 +1,7 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
-  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
-
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
   This file is part of DICE.
 
   This program is free software: you can redistribute it and/or modify it under the terms
@@ -122,14 +122,13 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
   int proc = commrank, nprocs = commsize;
 
   size_t norbs = Norbs;
-  int nSpatOrbs = norbs / 2;
+  int nSpatOrbs = norbs/2;
 
   int EndIndex = DetsSize;
 
   // diagonal element
   for (size_t k = 0; k < EndIndex; k++) {
-    if (k % (nprocs) != proc)
-      continue;
+    if (k % (nprocs) != proc) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
@@ -139,8 +138,7 @@ void SHCIrdm::makeRDM(int* &AlphaMajorToBetaLen,
       for (int n2 = 0; n2 < n1; n2++) {
         int orb1 = closed[n1], orb2 = closed[n2];
         // if (schd.DoSpinRDM)
-        // twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) +=
-        // localConj::conj(cibra[i])*ciket[i];
+        // twoRDM(orb1*(orb1+1)/2 + orb2, orb1*(orb1+1)/2+orb2) += localConj::conj(cibra[i])*ciket[i];
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM,
                            localConj::conj(cibra[k]) * ciket[k], nSpatOrbs);
       }
@@ -429,6 +427,8 @@ void SHCIrdm::loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
   }
 }
 
+
+
 void SHCIrdm::load3RDM(schedule &schd, MatrixXx &s3RDM, int root) {
   // TODO 3RDM is currently only for the spatial 3RDM not spin.
   int nSpatOrbs = pow(s3RDM.rows(), 1 / 3);
@@ -467,38 +467,20 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
   */
   int nSpatOrbs = pow(s2RDM.rows(),0.5);
   if(commrank == 0) {
-    char file [5000];
-    sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix[0].c_str(), root, root );
-    std::ofstream ofs(file, std::ios::out);
-    ofs << nSpatOrbs<<endl;
-
-    for (int n1=0; n1<nSpatOrbs; n1++)
-      for (int n2=0; n2<nSpatOrbs; n2++)
-	for (int n3=0; n3<nSpatOrbs; n3++)
-	  for (int n4=0; n4<nSpatOrbs; n4++)
-	    {
-	      if (fabs(s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4))  > 1.e-6)
-		ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") % n1 % n2 % n3 % n4 % s2RDM(n1*nSpatOrbs+n2, n3*nSpatOrbs+n4));
-	    }
-    ofs.close();
-
-  if (commrank == 0) {
-
     {
-      char file[5000];
-      sprintf(file, "%s/spatialRDM.%d.%d.txt", schd.prefix[0].c_str(), root,
-              root);
+      char file [5000];
+      sprintf (file, "%s/spatialRDM.%d.%d.txt" , schd.prefix[0].c_str(), root, root );
       std::ofstream ofs(file, std::ios::out);
       ofs << nSpatOrbs << endl;
       for (int n1 = 0; n1 < nSpatOrbs; n1++)
-        for (int n2 = 0; n2 < nSpatOrbs; n2++)
-          for (int n3 = 0; n3 < nSpatOrbs; n3++)
-            for (int n4 = 0; n4 < nSpatOrbs; n4++) {
-              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
-                ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
-                           n1 % n2 % n3 % n4 %
-                           s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4));
-            }
+      for (int n2 = 0; n2 < nSpatOrbs; n2++)
+        for (int n3 = 0; n3 < nSpatOrbs; n3++)
+        for (int n4 = 0; n4 < nSpatOrbs; n4++) {
+          if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
+            ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n")
+                       % n1 % n2 % n3 % n4
+                       %s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4));
+      }
       ofs.close();
     }
 
@@ -539,29 +521,25 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
       std::ofstream ofs(file, std::ios::out);
       ofs << nSpatOrbs << endl;
       for (int n0 = 0; n0 < nSpatOrbs; n0++)
-        for (int n1 = 0; n1 < nSpatOrbs; n1++)
-          for (int n2 = 0; n2 < nSpatOrbs; n2++)
-            for (int n3 = 0; n3 < nSpatOrbs; n3++)
-              for (int n4 = 0; n4 < nSpatOrbs; n4++)
-                for (int n5 = 0; n5 < nSpatOrbs; n5++) {
-                  if (abs(s3RDM(n0 * nSpatOrbs2 + n1 * nSpatOrbs + n2,
-                                n3 * nSpatOrbs2 + n4 * nSpatOrbs + n5)) >
-                      1.e-12)
-                    ofs << str(
-                        boost::format(
-                            "%3d   %3d   %3d   %3d   %3d   %3d   %20.14e\n") %
-                        n0 % n1 % n2 % n3 % n4 % n5 %
-                        s3RDM(n0 * nSpatOrbs2 + n1 * nSpatOrbs + n2,
+      for (int n1 = 0; n1 < nSpatOrbs; n1++)
+      for (int n2 = 0; n2 < nSpatOrbs; n2++)
+        for (int n3 = 0; n3 < nSpatOrbs; n3++)
+        for (int n4 = 0; n4 < nSpatOrbs; n4++)
+        for (int n5 = 0; n5 < nSpatOrbs; n5++) {
+          if (abs(s3RDM(n0 * nSpatOrbs2 + n1 * nSpatOrbs + n2,
+                        n3 * nSpatOrbs2 + n4 * nSpatOrbs + n5)) > 1.e-12)
+            ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %20.14e\n")
+                       % n0 % n1 % n2 % n3 % n4 % n5
+                       %s3RDM(n0 * nSpatOrbs2 + n1 * nSpatOrbs + n2,
                               n3 * nSpatOrbs2 + n4 * nSpatOrbs + n5));
-                }
+      }
       ofs.close();
     }
 
     // BIN
     {
       char file[5000];
-      sprintf(file, "%s/spatial3RDM.%d.%d.bin", schd.prefix[0].c_str(), root,
-              root);
+      sprintf(file, "%s/spatial3RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << s3RDM;
@@ -579,8 +557,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
   } // commrank
 }
 
-void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM,
-                       int root, int norbs) {
+void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM, int root, int norbs) {
   int n = norbs / 2;
   int n2 = n * n;
   int n3 = n2 * n;
@@ -590,29 +567,47 @@ void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM,
     // TXT
     {
       char file[5000];
-      sprintf(file, "%s/spatial4RDM.%d.%d.txt", schd.prefix[0].c_str(), root,
-              root);
+      sprintf(file, "%s/spatial4RDM.%d.%d.txt", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::out);
       ofs << n << endl;
       for (int c0 = 0; c0 < n; c0++)
-        for (int c1 = 0; c1 < n; c1++)
-          for (int c2 = 0; c2 < n; c2++)
-            for (int c3 = 0; c3 < n; c3++)
-              for (int d0 = 0; d0 < n; d0++)
-                for (int d1 = 0; d1 < n; d1++)
-                  for (int d2 = 0; d2 < n; d2++)
-                    for (int d3 = 0; d3 < n; d3++) {
-                      if (abs(s4RDM(n3 * c0 + n2 * c1 + n * c2 + c3,
-                                    n3 * d0 + n2 * d1 + n * d2 + d3)) > 1.e-12)
-                        ofs << str(
-                            boost::format("%3d   %3d   %3d   %3d   %3d   %3d   "
-                                          "%3d   %3d   %20.14e\n") %
-                            c0 % c1 % c2 % c3 % d0 % d1 % d2 % d3 %
-                            s4RDM(n3 * c0 + n2 * c1 + n * c2 + c3,
-                                  n3 * d0 + n2 * d1 + n * d2 + d3));
-                    }
+      for (int c1 = 0; c1 < n; c1++)
+      for (int c2 = 0; c2 < n; c2++)
+      for (int c3 = 0; c3 < n; c3++)
+        for (int d0 = 0; d0 < n; d0++)
+        for (int d1 = 0; d1 < n; d1++)
+        for (int d2 = 0; d2 < n; d2++)
+        for (int d3 = 0; d3 < n; d3++) {
+          if (abs(s4RDM(n3 * c0 + n2 * c1 + n * c2 + c3,
+                        n3 * d0 + n2 * d1 + n * d2 + d3)) > 1.e-12)
+            ofs << str(boost::format("%3d   %3d   %3d   %3d   %3d   %3d   %3d   %3d   %20.14e\n")
+                       % c0 % c1 % c2 % c3 % d0 % d1 % d2 % d3
+                       %s4RDM(n3 * c0 + n2 * c1 + n * c2 + c3,
+                              n3 * d0 + n2 * d1 + n * d2 + d3));
+      }
       ofs.close();
     }
+
+    // SpinRDM
+    if ( schd.DoSpinRDM ){
+      char file [5000];
+      sprintf (file, "%s/%d-spin4RDM.bkp", schd.prefix[0].c_str(), root);
+      std::ofstream ofs( file, std::ios::binary );
+      boost::archive::binary_oarchive save(ofs);
+      save << fourRDM;
+    }
+
+    // BIN
+    {
+      char file [5000];
+      sprintf (file, "%s/spatial4RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << s4RDM;
+    }
+
+  } // commrank
+}
 
 //=============================================================================
 void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int DetsSize, CItype *ci, double& E0,
@@ -660,8 +655,6 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
 
   */
 
-  s2RDM *= (1.-Psi1Norm);
-
   s2RDM *= (1. - Psi1Norm);
 
   int nSpatOrbs = norbs / 2;
@@ -671,6 +664,7 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(Determinant *Dets, int 
   vector<CItype> &uniqueNumerator = *uniqueDEH.Num;
   vector<vector<int>> &uniqueVarIndices = *uniqueDEH.var_indices;
   vector<vector<size_t>> &uniqueOrbDiff = *uniqueDEH.orbDifference;
+
 
   for (size_t i=0; i<uniqueDets.size();i++)
   {
@@ -959,6 +953,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs/2;
 
+  //#pragma omp parallel for schedule(dynamic)
   for (int i=0; i<DetsSize; i++) {
     if (i%commsize != commrank) continue;
 
@@ -1012,9 +1007,6 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
   */
 }
 
-double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
-                                         twoInt &I2, double coreE,
-                                         MatrixXx &twoRDM) {
 
 
 //=============================================================================
@@ -1075,29 +1067,25 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1,
 
 #pragma omp parallel for reduction(+ : twobody)
   for (int p = 0; p < norbs; p++)
-    for (int q = 0; q < norbs; q++)
-      for (int r = 0; r < norbs; r++)
-        for (int s = 0; s < norbs; s++) {
-          // if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not
-          // necessary
-          int P = max(p, q), Q = min(p, q);
-          int R = max(r, s), S = min(r, s);
-          double sgn = 1;
-          if (P != p)
-            sgn *= -1;
-          if (R != r)
-            sgn *= -1;
+  for (int q = 0; q < norbs; q++)
+    for (int r = 0; r < norbs; r++)
+    for (int s = 0; s < norbs; s++) {
+      // if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not necessary
+      int P = max(p, q), Q = min(p, q);
+      int R = max(r, s), S = min(r, s);
+      double sgn = 1;
+      if (P != p) sgn *= -1;
+      if (R != r) sgn *= -1;
 #ifdef Complex
           twobody +=
               (sgn * 0.5 * twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
-               I2(p, r, q, s))
-                  .real(); // 2-body term
+               I2(p, r, q, s)).real(); // 2-body term
 #else
           twobody += sgn * 0.5 *
                      twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
                      I2(p, r, q, s); // 2-body term
 #endif
-        }
+  }
 
   energy += onebody + twobody;
   pout << format("E(one-body) from 2RDM: %18.10f") % (onebody) << endl;
@@ -1154,15 +1142,14 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1,
 
 #pragma omp parallel for reduction(+ : twobody)
   for (int p = 0; p < norbs; p++)
-    for (int q = 0; q < norbs; q++)
-      for (int r = 0; r < norbs; r++)
-        for (int s = 0; s < norbs; s++)
+  for (int q = 0; q < norbs; q++)
+    for (int r = 0; r < norbs; r++)
+    for (int s = 0; s < norbs; s++)
 #ifdef Complex
-          twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
-                      I2(2 * p, 2 * r, 2 * q, 2 * s))
-                         .real(); // 2-body term
+      twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
+                      I2(2 * p, 2 * r, 2 * q, 2 * s)).real(); // 2-body term
 #else
-          twobody += 0.5 * twoRDM(p * norbs + q, r * norbs + s) *
+      twobody += 0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                      I2(2 * p, 2 * r, 2 * q, 2 * s); // 2-body term
 #endif
 
@@ -1288,9 +1275,9 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         double sgn = 1.0;
         DetsK.parity(cs[0], cs[1], cs[2], ds[0], ds[1], ds[2], sgn);
         if (schd.DoSpinRDM)
-          popSpin3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), norbs,
+          popSpin3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], norbs,
                       threeRDM);
-        popSpatial3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), norbs,
+        popSpatial3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], norbs,
                        s3RDM);
       }
 
@@ -1320,9 +1307,9 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
           DetsK.parity(ds[2], ds[1], cs[0], cs[1], sgn); // TOOD
 
           if (schd.DoSpinRDM)
-            popSpin3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), norbs,
+            popSpin3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], norbs,
                         threeRDM);
-          popSpatial3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+          popSpatial3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                          norbs, s3RDM);
         } // end x
       }
@@ -1358,9 +1345,9 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                          sgn); // TODO Update repop order
 
             if (schd.DoSpinRDM)
-              popSpin3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+              popSpin3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                           norbs, threeRDM);
-            popSpatial3RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+            popSpatial3RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                            norbs, s3RDM);
           } // end y
         }   // end x
@@ -1390,9 +1377,9 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
               ds[0] = closed[z];
 
               if (schd.DoSpinRDM)
-                popSpin3RDM(cs, ds, (conj(cibra[b]) * ciket[k]).real(), norbs,
+                popSpin3RDM(cs, ds, conj(cibra[b]) * ciket[k], norbs,
                             threeRDM);
-              popSpatial3RDM(cs, ds, (conj(cibra[b]) * ciket[k]).real(), norbs,
+              popSpatial3RDM(cs, ds, conj(cibra[b]) * ciket[k], norbs,
                              s3RDM);
             } // end z
           }   // end y
@@ -1505,9 +1492,9 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                      sgn);
         // popSpin4RDM(cs,ds,sgn*conj(cibra(b,0))*ciket(k,0),norbs,fourRDM);
         if (schd.DoSpinRDM)
-          popSpin4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), norbs,
+          popSpin4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], norbs,
                       fourRDM);
-        popSpatial4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), nSOs,
+        popSpatial4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], nSOs,
                        s4RDM);
       }
 
@@ -1535,9 +1522,9 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
           DetsK.parity(cs[0], cs[1], cs[2], ds[1], ds[2], ds[3], sgn);
 
           if (schd.DoSpinRDM)
-            popSpin4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), norbs,
+            popSpin4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], norbs,
                         fourRDM);
-          popSpatial4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(), nSOs,
+          popSpatial4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k], nSOs,
                          s4RDM);
         } // end w
       }
@@ -1574,9 +1561,9 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
             DetsK.parity(ds[3], ds[2], cs[0], cs[1], sgn); // SS notation
 
             if (schd.DoSpinRDM)
-              popSpin4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+              popSpin4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                           norbs, fourRDM);
-            popSpatial4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+            popSpatial4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                            nSOs, s4RDM);
           } // end x
         }   // end w
@@ -1617,9 +1604,9 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                            sgn); // SS notation
 
               if (schd.DoSpinRDM)
-                popSpin4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+                popSpin4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                             norbs, fourRDM);
-              popSpatial4RDM(cs, ds, sgn * (conj(cibra[b]) * ciket[k]).real(),
+              popSpatial4RDM(cs, ds, sgn * conj(cibra[b]) * ciket[k],
                              nSOs, s4RDM);
             } // end y
           }   // end x
@@ -1654,9 +1641,9 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                 ds[0] = closed[z];
 
                 if (schd.DoSpinRDM)
-                  popSpin4RDM(cs, ds, (conj(cibra[b]) * ciket[k]).real(), norbs,
+                  popSpin4RDM(cs, ds, conj(cibra[b]) * ciket[k], norbs,
                               fourRDM);
-                popSpatial4RDM(cs, ds, (conj(cibra[b]) * ciket[k]).real(), nSOs,
+                popSpatial4RDM(cs, ds, conj(cibra[b]) * ciket[k], nSOs,
                                s4RDM);
               } // end z
             }   // end y

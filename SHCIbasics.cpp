@@ -1040,28 +1040,29 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci, vector<Determinan
   mpi::broadcast(world, SortedDetsSize, 0);
 #endif
   
-    if (proc == 0) {
-      MatrixXx diagbkp = diag;
-      diag =MatrixXx::Zero(DetsSize,1);
-      for (int k=0; k<diagbkp.rows(); k++)
-        diag(k,0) = diagbkp(k,0);
+    //MERGE 2018.07.13, don't know where that comes from, commenting it
+    //if (proc == 0) {
+    //  MatrixXx diagbkp = diag;
+    //  diag =MatrixXx::Zero(DetsSize,1);
+    //  for (int k=0; k<diagbkp.rows(); k++)
+    //    diag(k,0) = diagbkp(k,0);
 
-      for (size_t k=diagbkp.rows(); k<DetsSize; k++) {
-        CItype hij = SHMDets[k].Energy(I1, I2, coreE);
-        diag(k,0) = hij;
-      }
-    }  
-    
-    
-    double prevE0 = E0[0];
-    if (iter == 0) prevE0 = -10.0;
-    Hmult2 H(sparseHam);
-    HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
-			I1, I2, coreE, diag);
-    if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
-    //pout << "nbatches : " << sparseHam.Nbatches << endl;
-    //cout << commrank << "  " << sparseHam.Helements[0][0] << endl;
-    int numIter = 0;
+    //  for (size_t k=diagbkp.rows(); k<DetsSize; k++) {
+    //    CItype hij = SHMDets[k].Energy(I1, I2, coreE);
+    //    diag(k,0) = hij;
+    //  }
+    //}  
+    //
+    //
+    //double prevE0 = E0[0];
+    //if (iter == 0) prevE0 = -10.0;
+    //Hmult2 H(sparseHam);
+    //HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs,
+	//		I1, I2, coreE, diag);
+    //if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
+    ////pout << "nbatches : " << sparseHam.Nbatches << endl;
+    ////cout << commrank << "  " << sparseHam.Helements[0][0] << endl;
+    //int numIter = 0;
 
   //Make the diagonal elements so that preconditioner can be applied in davidson
   if (proc == 0) {
