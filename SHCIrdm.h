@@ -59,6 +59,11 @@ namespace SHCIrdm {
   void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root);
   void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
   void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
+  void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
+		size_t norbs);
+  void save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM, int root,
+		int norbs);
+  void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
 
   void EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets, int DetsSize, CItype *cibra,
 		   CItype *ciket, vector<vector<size_t> >& orbDifference, int nelec, schedule& schd,
@@ -92,6 +97,23 @@ namespace SHCIrdm {
   double ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt& I1, twoInt& I2,
 				   double coreE, MatrixXx& twoRDM);
 
+  void getUniqueIndices( Determinant& bra, Determinant& ket,
+    vector<int>& cIndices, vector<int>& dIndices );
+
+
+  void popSpatial3RDM( vector<int>& cs, vector<int>& ds, CItype value,
+		       size_t& norbs, MatrixXx& s3RDM );
+
+  void popSpatial4RDM( vector<int>& cs, vector<int>& ds, CItype value,
+		       int& nSOs, MatrixXx& s4RDM );
+
+  void Evaluate3RDM( Determinant* Dets, int DetsSize, CItype* cibra,
+		     CItype* ciket, int nelec, schedule& schd, int root, 
+		     MatrixXx& threeRDM, MatrixXx& s3RDM );
+
+  void Evaluate4RDM( Determinant* Dets, int DetsSize, CItype* cibra,
+		     CItype* ciket, int nelec, schedule& schd, int root, 
+		     MatrixXx& fourRDM, MatrixXx& s4RDM );
 };
 
 #endif
