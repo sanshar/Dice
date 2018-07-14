@@ -515,6 +515,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
 
     // TXT
     {
+      pout << "(save txt file)" << endl;pout << std::flush;
       char file[5000];
       sprintf(file, "%s/spatial3RDM.%d.%d.txt", schd.prefix[0].c_str(), root,
               root);
@@ -538,6 +539,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
 
     // BIN
     {
+      pout << "(save bin file)" << endl;pout << std::flush;
       char file[5000];
       sprintf(file, "%s/spatial3RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::binary);
@@ -547,6 +549,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
 
     // SpinRDM
     if (schd.DoSpinRDM) {
+      pout << "(save bkp file)" << endl;pout << std::flush;
       char file[5000];
       sprintf(file, "%s/%d-spin3RDM.bkp", schd.prefix[0].c_str(), root);
       std::ofstream ofs(file, std::ios::binary);
@@ -566,6 +569,7 @@ void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM, int r
 
     // TXT
     {
+      pout << "(save txt file)" << endl;pout << std::flush;
       char file[5000];
       sprintf(file, "%s/spatial4RDM.%d.%d.txt", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::out);
@@ -590,6 +594,7 @@ void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM, int r
 
     // SpinRDM
     if ( schd.DoSpinRDM ){
+      pout << "(save bkp file)" << endl;pout << std::flush;
       char file [5000];
       sprintf (file, "%s/%d-spin4RDM.bkp", schd.prefix[0].c_str(), root);
       std::ofstream ofs( file, std::ios::binary );
@@ -599,6 +604,7 @@ void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM, int r
 
     // BIN
     {
+      pout << "(save bin file)" << endl;pout << std::flush;
       char file [5000];
       sprintf (file, "%s/spatial4RDM.%d.%d.bin", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::binary);

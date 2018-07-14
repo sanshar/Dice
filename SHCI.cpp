@@ -421,7 +421,6 @@ int main(int argc, char* argv[]) {
       threeRDM.setZero(norbs*norbs*norbs,norbs*norbs*norbs);
     s3RDM.setZero(norbs*norbs*norbs/8, norbs*norbs*norbs/8);
     SHCIrdm::Evaluate3RDM(SHMDets,DetsSize,ciroot,ciroot,nelec,schd,0,threeRDM,s3RDM);
-    pout << "(save)" << endl;pout << std::flush;
     SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
   }
 
@@ -436,7 +435,6 @@ int main(int argc, char* argv[]) {
       fourRDM.setZero(norbs*norbs*norbs*norbs,norbs*norbs*norbs*norbs);
     s4RDM.setZero(norbs*norbs*norbs*norbs/16,norbs*norbs*norbs*norbs/16);
     SHCIrdm::Evaluate4RDM(SHMDets,DetsSize,ciroot,ciroot,nelec,schd,0,fourRDM,s4RDM);
-    pout << "(save)" << endl;pout << std::flush;
     SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
   }
 
