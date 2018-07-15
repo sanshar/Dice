@@ -24,27 +24,19 @@
 
   
 
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
-        <link rel="next" title="Installation" href="installation.html"/>
-        <link rel="prev" title="Welcome to Dice’s documentation!" href="index.html"/> 
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Welcome to Dice’s documentation!" href="index.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
@@ -113,7 +105,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Dice</a>
@@ -121,9 +113,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -171,7 +164,7 @@
 <h2>Algorithm<a class="headerlink" href="#algorithm" title="Permalink to this headline">¶</a></h2>
 <p>There are two key ideas that set the SHCI algorithm apart and account for its vastly higher efficiency. SHCI partitions the entire set of determinants in the Hilbert space into two sets, the first that are treated variationally are included in the set <em>V</em> and a second set <em>C</em> that are connected to the determinants in <em>V</em> by a non-zero Hamiltonian matrix element. We use indices <em>i, j</em> for determinants in the variational space <em>V</em>, and index <em>a</em> for determinants in the connected space <em>C</em>.</p>
 <ol class="arabic simple">
-<li>The SHCI algorithm takes advantage of the fact that the 2-body excitation matrix elements depend only on the indices of the 4 orbitals whose occupations are changing and not on the other occupied orbitals [JCTC, 12, 3674]. This allows Dice to use a procedure in which only the important determinants are ever looked at! In addition, the usual SCI-PT algorithm promotes a determinant a to the V space if the criterion <span class="math">\(\frac{\sum_i H_{ai} c_i}{E_0 - H_{aa}} &gt; \epsilon_1\)</span>, is satisfied for a user defined parameter <span class="math">\(\epsilon_1\)</span>. Instead the SHCI algorithm uses a much simpler criterion in which a determinant <em>a</em> is promoted to <em>V</em> if <span class="math">\(|H_{ai}c_i| &gt; \epsilon_1\)</span> for any <em>i</em> in <em>V</em>. Although using the SHCI criterion is much cheaper, the difference in calculated energies is negligibly small.</li>
+<li>The SHCI algorithm takes advantage of the fact that the 2-body excitation matrix elements depend only on the indices of the 4 orbitals whose occupations are changing and not on the other occupied orbitals [JCTC, 12, 3674]. This allows Dice to use a procedure in which only the important determinants are ever looked at! In addition, the usual SCI-PT algorithm promotes a determinant a to the V space if the criterion <span class="math notranslate nohighlight">\(\frac{\sum_i H_{ai} c_i}{E_0 - H_{aa}} &gt; \epsilon_1\)</span>, is satisfied for a user defined parameter <span class="math notranslate nohighlight">\(\epsilon_1\)</span>. Instead the SHCI algorithm uses a much simpler criterion in which a determinant <em>a</em> is promoted to <em>V</em> if <span class="math notranslate nohighlight">\(|H_{ai}c_i| &gt; \epsilon_1\)</span> for any <em>i</em> in <em>V</em>. Although using the SHCI criterion is much cheaper, the difference in calculated energies is negligibly small.</li>
 <li>The above ideas speed up both the variational and the perturbative steps of the algorithm by several orders of magnitude. However, the perturbative step has a large memory requirement because all determinants that are connected to those in <em>V</em> must be stored [JCTC, 13, 1595]. We have developed a semistochastic perturbative approach that both overcomes this memory bottleneck and is faster than the deterministic approach at the cost of having a small statistical error. The resulting semistochastic algorithm has several attractive features:</li>
 </ol>
 <blockquote>
@@ -187,7 +180,7 @@
 <ul class="simple">
 <li>Wavefunction optimization and calculation of one and two reduced density matrices (RDMs) for multireference systems with large active spaces, between 30-100 orbitals. Dice can also calculated the one and two-body relaxed density matrices during the perturbative calculation.</li>
 <li>Calculation of excited states.</li>
-<li>Exploitation of Abelian, <span class="math">\(D_{\infty h}\)</span>, and <span class="math">\(C_{\infty v}\)</span> symmetries.</li>
+<li>Exploitation of Abelian, <span class="math notranslate nohighlight">\(D_{\infty h}\)</span>, and <span class="math notranslate nohighlight">\(C_{\infty v}\)</span> symmetries.</li>
 <li>Active space orbital optimization with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a>. When combined with <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> <em>Dice</em> can also calculate excited states using state averaging.</li>
 <li>Spin orbit coupling.</li>
 </ul>
@@ -244,9 +237,7 @@
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -268,7 +259,7 @@
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -287,6 +278,7 @@
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
             VERSION:'0.1',
+            LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
@@ -300,19 +292,13 @@
 
   
 
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
+  <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-   
+  </script> 
 
 </body>
 </html>

@@ -24,27 +24,19 @@
 
   
 
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
-        <link rel="next" title="Getting Started" href="gettingstarted.html"/>
-        <link rel="prev" title="Overview" href="overview.html"/> 
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="gettingstarted.html" />
+    <link rel="prev" title="Overview" href="overview.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
@@ -114,7 +106,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Dice</a>
@@ -122,9 +114,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -171,8 +164,9 @@
 <div class="section" id="source-code">
 <h2>Source Code<a class="headerlink" href="#source-code" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Download the latest version of Dice (1.0): <a class="reference download internal" href="_downloads/dice_1_0.tar.gz" download=""><code class="xref download docutils literal"><span class="pre">dice_1_0.tar.gz</span></code></a></li>
-<li>Download Dice from July, 2017 (0.9): <a class="reference download internal" href="_downloads/dice_0_9.tar.gz" download=""><code class="xref download docutils literal"><span class="pre">dice_0_9.tar.gz</span></code></a></li>
+<li>Download the latest stable version of Dice (1.0): <a class="reference download internal" href="_downloads/dice_1_0.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_1_0.tar.gz</span></code></a></li>
+<li>Download Dice from July, 2018: <a class="reference download internal" href="_downloads/dice_N_0.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_N_0.tar.gz</span></code></a></li>
+<li>Download Dice from July, 2017 (0.9): <a class="reference download internal" href="_downloads/dice_0_9.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_0_9.tar.gz</span></code></a></li>
 </ul>
 </div>
 <div class="section" id="connecting-module-for-pyscf">
@@ -189,7 +183,7 @@
 <li>Intel icpc 14.0.1 or newer required.</li>
 </ul>
 <p>Before you can compile Dice you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">USE_MPI</span> <span class="o">=</span> <span class="n">yes</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">USE_MPI</span> <span class="o">=</span> <span class="n">yes</span>
 <span class="n">USE_INTEL</span> <span class="o">=</span> <span class="n">yes</span>
 
 <span class="n">FLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">O3</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span>
@@ -206,16 +200,14 @@
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">If you compiled the serial version of Dice, replace the line <code class="code docutils literal"><span class="pre">MPICOMMAND=&quot;mpirun</span> <span class="pre">-np</span> <span class="pre">28&quot;</span></code> with <code class="code docutils literal"><span class="pre">MPICOMMAND=&quot;&quot;</span></code> in the “runTests.sh” and “runSmallTests.sh” files.</p>
+<p class="last">If you compiled the serial version of Dice, replace the line <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;mpirun</span> <span class="pre">-np</span> <span class="pre">28&quot;</span></code> with <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;&quot;</span></code> in the “runTests.sh” and “runSmallTests.sh” files.</p>
 </div>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -237,7 +229,7 @@
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -256,6 +248,7 @@
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
             VERSION:'0.1',
+            LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
@@ -269,19 +262,13 @@
 
   
 
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
+  <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-   
+  </script> 
 
 </body>
 </html>

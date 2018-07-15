@@ -24,27 +24,19 @@
 
   
 
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Dice 0.1 documentation" href="index.html"/>
-        <link rel="next" title="Keywords" href="keywords.html"/>
-        <link rel="prev" title="Getting Started" href="gettingstarted.html"/> 
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Keywords" href="keywords.html" />
+    <link rel="prev" title="Getting Started" href="gettingstarted.html" /> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
@@ -111,7 +103,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Dice</a>
@@ -119,9 +111,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -168,12 +161,12 @@
 <div class="section" id="interfacing-with-pyscf">
 <span id="id1"></span><h2>Interfacing with PySCF<a class="headerlink" href="#interfacing-with-pyscf" title="Permalink to this headline">¶</a></h2>
 <p>Dice can also be used as an FCI solver in CASSCF calculation with a large number of active space orbitals and electrons. If <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> is successfully installed (see <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md#installation">Installing PySCF</a>), you can call Dice from within a python input script. After you compile Dice, you must edit the two path variables shown below in the settings.py file in the shciscf module directory in PySCF.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">SHCIEXE</span> <span class="o">=</span> <span class="s1">&#39;/path_to/Dice/Dice&#39;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">SHCIEXE</span> <span class="o">=</span> <span class="s1">&#39;/path_to/Dice/Dice&#39;</span>
 <span class="nv">SHCIQDPTEXE</span> <span class="o">=</span> <span class="s1">&#39;/path_to/Dice/QDPTSOC&#39;</span>
 </pre></div>
 </div>
 <p>Once this is completed you can run call SHCI from within <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a>. An example input is shown below:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyscf</span> <span class="kn">import</span> <span class="n">gto</span><span class="p">,</span> <span class="n">scf</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyscf</span> <span class="kn">import</span> <span class="n">gto</span><span class="p">,</span> <span class="n">scf</span>
 <span class="kn">from</span> <span class="nn">pyscf.future.shciscf</span> <span class="kn">import</span> <span class="n">shci</span>
 
 
@@ -214,7 +207,7 @@
 </pre></div>
 </div>
 <p>This script can be executed in the command line as follows:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>python test_c2.py
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python test_c2.py
 </pre></div>
 </div>
 </div>
@@ -222,9 +215,7 @@
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -246,7 +237,7 @@
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -265,6 +256,7 @@
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
             VERSION:'0.1',
+            LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
@@ -278,19 +270,13 @@
 
   
 
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
+  <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-   
+  </script> 
 
 </body>
 </html>
