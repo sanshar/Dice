@@ -2,7 +2,9 @@ Installation
 ************
 Source Code
 -----------
-* Download the latest version of Dice (1.0): :download:`dice_1_0.tar.gz <../_downloads/dice_1_0.tar.gz>`
+* Download the latest stable version of Dice (1.0): :download:`dice_1_0.tar.gz <../_downloads/dice_1_0.tar.gz>`
+
+* Download Dice from July, 2018: :download:`dice_N_0.tar.gz <../_downloads/dice_N_0.tar.gz>`
 
 * Download Dice from July, 2017 (0.9): :download:`dice_0_9.tar.gz <../_downloads/dice_0_9.tar.gz>`
 
