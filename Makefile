@@ -1,13 +1,21 @@
+##########################
+# User Specific Settings #
+##########################
+
 USE_MPI = yes
 USE_INTEL = no
-#EIGEN=/projects/sash2458/apps/eigen/
-#BOOST=/projects/sash2458/apps/boost_1_57_0/
-EIGEN=/home/mussard/softwares/eigen
-BOOST=/home/mussard/softwares/boost_1_57_0
+USING_OSX = yes
 
-#FLAGS = -std=c++11 -g        -I${EIGEN} -I${BOOST}#-DComplex
-FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}#-DComplex
+EIGEN=/Users/jets/apps/eigen
+BOOST=/Users/jets/apps/boost_1_67_0
+
+#########################################
+# DO NOT EDIT ANYTHING BELOW THIS POINT #
+#########################################
+
+FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}
 DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} -DComplex
+LFLAGS = -L${BOOST}/stage/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
 	FLAGS += -qopenmp
@@ -15,28 +23,31 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes)
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS += -lboost_mpi
 	else
 		CXX = icpc
 		CC = icpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
 else
-	FLAGS += -fopenmp
+	# FLAGS += -fopenmp
 	DFLAGS += -fopenmp
 	ifeq ($(USE_MPI), yes)
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS += -lboost_mpi
 	else
 		CXX = g++
 		CC = g++
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
+endif
+
+# Add -lrt flag if NOT using Mac OSX
+ifeq ($(USING_OSX), no)
+	LFLAGS += -lrt
 endif
 
 # Host specific configurations.
@@ -94,4 +105,3 @@ GTensorFT2	: $(OBJ_gtensorft2)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f CIST Dice ZDice2 QDPTSOC GTensorFT forcyrus >/dev/null 2>&1
-
