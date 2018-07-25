@@ -6,6 +6,7 @@
 #include <ctime>
 #include <sys/time.h>
 #include "input.h"
+#include "Profile.h"
 #ifndef SERIAL
 #include "mpi.h"
 #endif
@@ -37,6 +38,7 @@ int commrank, shmrank, localrank;
 int commsize, shmsize, localsize;
 
 schedule schd;
+Profile prof;
 
 double getTime() {
   struct timeval start;

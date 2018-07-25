@@ -498,11 +498,11 @@ double Walker::getDetFactorAB(int i, int j, int a, int b, CPSSlater &w, bool dop
 
   double detFactorNum = 0.0;
   double detFactorDen = 0.0;
-  for (int i = 0; i < w.determinants.size(); i++)
+  for (int I = 0; I < w.determinants.size(); I++)
   {
-    double factor = AlphaTable[i](tableIndexa, tableIndexi) * BetaTable[i](tableIndexb, tableIndexj);
-    detFactorNum += w.ciExpansion[i] * factor * alphaDet[i] * betaDet[i];
-    detFactorDen += w.ciExpansion[i] * alphaDet[i] * betaDet[i];
+    double factor = AlphaTable[I](tableIndexa, tableIndexi) * BetaTable[I](tableIndexb, tableIndexj);
+    detFactorNum += w.ciExpansion[I] * factor * alphaDet[I] * betaDet[I];
+    detFactorDen += w.ciExpansion[I] * alphaDet[I] * betaDet[I];
   }
   return detFactorNum / detFactorDen;
 }

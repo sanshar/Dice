@@ -42,8 +42,7 @@
 #include "integral.h"
 #include "SHCIshm.h"
 #include "math.h"
-#include "diis.h"
-#include "optimizer.h"
+#include "Profile.h"
 
 
 using namespace Eigen;
@@ -166,7 +165,11 @@ int main(int argc, char* argv[]) {
     Smatrix.resize(vars.size()+1, vars.size()+1);
     Hessian.setZero(); Smatrix.setZero();
   }
-
+  
+  //if (commrank == 0)
+  //std::cout << format("Finished reading from disk: %8.2f\n") 
+  //%( (getTime()-startofCalc));
+  
   double E0=0.0, stddev, rt=0;
   if (schd.deterministic) {
     if (!schd.doHessian) {
@@ -182,6 +185,7 @@ int main(int argc, char* argv[]) {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
     if (!schd.doHessian) 
       getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+      //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
     else
       getStochasticGradientHessianContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix, rt, schd.stochasticIter, 0.5e-3);
 
@@ -191,11 +195,13 @@ int main(int argc, char* argv[]) {
   //grad[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
   //}
 
-  if (commrank == 0)
+  if (commrank == 0) {
     std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") 
       %E0 % stddev %(grad.norm()) %(rt)  %(schd.stochasticIter) %( (getTime()-startofCalc));
 
-  {
+    //cout << prof.SinglesTime<<"  "<<prof.SinglesCount<<endl;
+    //cout << prof.DoubleTime<<"  "<<prof.DoubleCount<<endl;
+
     ofstream file ("grad.bin", ios::out|ios::binary);
     file.write ( (char*)(&grad[0]), size);
     file.close();

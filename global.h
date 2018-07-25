@@ -26,6 +26,7 @@
 extern MPI_Comm shmcomm, localcomm;
 #endif
 class schedule;
+class Profile;
 
 extern int commrank, shmrank, localrank;
 extern int commsize, shmsize, localsize;
@@ -55,4 +56,5 @@ extern schedule schd;
 extern double startofCalc;
 extern MatrixXx HforbsA, HforbsB;
 
+extern Profile prof;
 #endif

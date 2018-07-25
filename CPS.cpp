@@ -22,10 +22,10 @@
 using namespace Eigen;
 
 void Correlator::OverlapWithGradient(const Determinant& d, 
-			                               VectorXd& grad,
-			                               const double& ovlp,
-			                               const long& startIndex) {
-
+				     VectorXd& grad,
+				     const double& ovlp,
+				     const long& startIndex) {
+  
   long index=0, one=1, index2=0;
   for (int n=0; n<bsites.size(); n++)
     if (d.getoccB( bsites[n])) {
@@ -54,6 +54,28 @@ double Correlator::Overlap(const Determinant& d) {
       index |= (one << (n+bsites.size()));
 
   return Variables[index];
+}
+
+double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) {
+
+  double Coefficient = 0.0;
+
+  long index1=0, index2=0, one=1;
+  for (int n=0; n<bsites.size(); n++) {
+    if (d1.getoccB( bsites[n]))
+      index1 |= (one<<n);
+    if (d2.getoccB( bsites[n]))
+      index2 |= (one<<n);
+  }
+  
+  for (int n=0; n<asites.size(); n++) {
+    if (d1.getoccA( asites[n]))
+      index1 |= (one<< (n+bsites.size()));
+    if (d2.getoccA( asites[n]))
+      index2 |= (one<< (n+bsites.size()));
+  }
+
+  return Variables[index1]/Variables[index2];
 }
 
 std::ostream& operator<<(std::ostream& os, const Correlator& c) {

@@ -19,6 +19,7 @@
 #ifndef Wfn_HEADER_H
 #define Wfn_HEADER_H
 #include <vector>
+#include <set>
 #include "MoDeterminants.h"
 #include "Determinants.h"
 #include "CPS.h"
@@ -48,13 +49,13 @@ class CPSSlater  {
   std::vector<Correlator> cpsArray    ;     //The jastrow factors
   vector<Determinant>     determinants;     //The set of determinants
   vector<double>          ciExpansion ;     //The ci expansion
+  vector<vector<int> >             orbitalToCPS;     //for each orbital all CPS that it belongs to
+  vector<int>             workingVectorOfCPS;
 
   CPSSlater( std::vector<Correlator> & pcpsArray,
              std::vector<Determinant>& pdeterminants,
              std::vector<double>     & pciExpansion
-           ): cpsArray    (pcpsArray),
-              determinants(pdeterminants),
-              ciExpansion (pciExpansion) {};
+	     );
 
 /**
  * Generates the determinant of overlap of the input determinant d and the

@@ -79,6 +79,19 @@ private:
   double Overlap              (const Determinant& d);
 
 /**
+ * Takes an occupation number representation of two determinants
+ * in the local orbital basis and calculates the ratio of overlap 
+ * of one the correlator over that of the other <d1|CPS>/<d2|CPS>
+ * PARAMS:
+ * 
+ * Determinant: the occupation number representation as an input
+ * 
+ * RETURN:
+ * the value of the ratio of overlaps
+ */
+  double OverlapRatio(const Determinant& d1, const Determinant& d2);
+
+/**
  * Takes an occupation number representation of a determinant
  * in the local orbital basis and calculates the overlap 
  * the correlator and also the overlap of the determinant

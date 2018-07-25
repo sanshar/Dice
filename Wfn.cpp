@@ -24,6 +24,7 @@
 #include "Wfn.h"
 #include "global.h"
 #include "input.h"
+#include "Profile.h"
 #include <fstream>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
@@ -32,6 +33,27 @@
 #endif
 
 using namespace Eigen;
+
+
+CPSSlater::CPSSlater( std::vector<Correlator> & pcpsArray,
+		      std::vector<Determinant>& pdeterminants,
+		      std::vector<double>     & pciExpansion
+		      ): cpsArray    (pcpsArray),
+			 determinants(pdeterminants),
+			 ciExpansion (pciExpansion) 
+{
+  int maxCPSSize = 0;
+  orbitalToCPS.resize(Determinant::norbs);
+  for (int i=0; i<cpsArray.size(); i++) { 
+    for (int j=0; j<cpsArray[i].asites.size(); j++) 
+      orbitalToCPS[cpsArray[i].asites[j]].push_back(i);
+  }
+
+  for (int i=0; i<orbitalToCPS.size(); i++)
+    if (orbitalToCPS[i].size() > maxCPSSize)
+      maxCPSSize = orbitalToCPS[i].size();
+  workingVectorOfCPS.resize(4*maxCPSSize);
+};
 
 void CPSSlater::getDetMatrix(Determinant& d, Eigen::MatrixXd& DetAlpha, Eigen::MatrixXd& DetBeta) {
   //alpha and beta orbitals of the walker determinant d
@@ -86,6 +108,7 @@ double CPSSlater::Overlap(Walker& walk) {
   return ovlp*getOverlapWithDeterminants(walk);
 }
 
+/*
 double CPSSlater::getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d){
   double cpsFactor = 1.0;
   for (int n = 0; n < cpsArray.size(); n++)
@@ -117,6 +140,50 @@ double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant& dcop
     }
   return cpsFactor;
 }
+*/
+
+double CPSSlater::getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d){
+  double cpsFactor = 1.0;
+
+  int index = 0;
+  for (int x=0; x<orbitalToCPS[i].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[i][x]; index++;}
+  for (int x=0; x<orbitalToCPS[a].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[a][x]; index++;}
+  sort( workingVectorOfCPS.begin(), workingVectorOfCPS.begin()+index );
+
+  int prevIndex = -1;
+  for (int x=0; x<index; x++) {
+    if (workingVectorOfCPS[x] != prevIndex ) {
+      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
+      cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].Overlap(dcopy)/cpsArray[ workingVectorOfCPS[x] ].Overlap(d);
+      prevIndex = workingVectorOfCPS[x] ;
+    }
+  }
+
+
+  return cpsFactor;
+}
+
+double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant& dcopy, Determinant& d){
+  double cpsFactor = 1.0;
+
+  int index = 0;
+  for (int x=0; x<orbitalToCPS[i].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[i][x]; index++;}
+  for (int x=0; x<orbitalToCPS[a].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[a][x]; index++;}
+  for (int x=0; x<orbitalToCPS[j].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[j][x]; index++;}
+  for (int x=0; x<orbitalToCPS[b].size(); x++) {workingVectorOfCPS[index] = orbitalToCPS[b][x]; index++;}
+  sort( workingVectorOfCPS.begin(), workingVectorOfCPS.begin()+index );
+
+  int prevIndex = -1;
+  for (int x=0; x<index; x++) {
+    if (workingVectorOfCPS[x] != prevIndex ) {
+      cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].Overlap(dcopy)/cpsArray[ workingVectorOfCPS[x] ].Overlap(d);
+      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
+      prevIndex = workingVectorOfCPS[x] ;
+    }
+  }
+  return cpsFactor;
+}
+
 
 void CPSSlater::OverlapWithGradient(Walker& w,
 				    double& factor,
@@ -307,23 +374,54 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
   //Single alpha-beta excitation
   {
+    double time = getTime();
     for (int i = 0; i < closed.size(); i++)
     {
       for (int a = 0; a < open.size(); a++)
       {
-        if (closed[i] % 2 == open[a] % 2)// && I2hb.Singles(closed[i], open[a]) > TINY)
+	if (closed[i] % 2 == open[a] % 2 && abs(I2hb.Singles(closed[i], open[a])) > THRESH)
         {
+	  prof.SinglesCount++;
+
           int I = closed[i] / 2, A = open[a] / 2;
           double tia = 0;
           Determinant dcopy = d;
           bool Alpha = closed[i] % 2 == 0 ? true : false;
-          if (Alpha)
-            tia = d.Hij_1ExciteA(A, I, I1, I2);
-          else
-            tia = d.Hij_1ExciteB(A, I, I1, I2);
+
+	  bool doparity = true;
+	  if (schd.Hamiltonian == HUBBARD) {
+	    tia = I1(2*A, 2*I);
+	    doparity = false;
+	  }
+	  else {
+	    tia = I1(2*A, 2*I);
+	    int X = max(I, A), Y = min(I, A);
+	    int pairIndex = X * (X + 1) / 2 + Y;
+	    size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
+	    size_t end   = I2hb.startingIndicesSingleIntegrals[pairIndex+1];
+	    float* integrals = I2hb.singleIntegrals;
+	    short* orbIndices = I2hb.singleIntegralsPairs;
+	    for (size_t index = start; index < end; index++) {
+	      if (fabs(integrals[index]) < TINY)
+		break;
+	      int j = orbIndices[2*index] ;
+	      if (closed[i] %2 == 1 && j%2 == 1) j--;
+	      else if (closed[i] %2 == 1 && j%2 == 0) j++;
+ 
+	      if (d.getocc(j))  {
+		tia += integrals[index];
+	      }
+	      //cout << tia<<"  "<<a<<"  "<<integrals[index]<<endl;
+	    }
+	    double sgn = 1.0;
+	    if (Alpha) d.parityA(A, I, sgn);
+	    else  d.parityB(A, I, sgn);
+	    tia *= sgn;
+
+	  }
 
           double localham = 0.0;
-          if (abs(tia) > TINY)
+          if (abs(tia) > THRESH)
           {
             if (Alpha)
             {
@@ -338,9 +436,9 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
 
             double JastrowFactor =  getJastrowFactor(I, A, dcopy, d);
             if (Alpha)
-              localham += tia * walk.getDetFactorA(I, A, *this) * JastrowFactor;
+              localham += tia * walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
             else
-              localham += tia * walk.getDetFactorB(I, A, *this) * JastrowFactor;
+              localham += tia * walk.getDetFactorB(I, A, *this, doparity) * JastrowFactor;
 
             ham += localham;
 
@@ -401,10 +499,15 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
         }
       }
     }
+    prof.SinglesTime += getTime() - time;
   }
+
+  if (schd.Hamiltonian == HUBBARD) return;
 
   //Double excitation
   {
+    double time = getTime();
+
     int nclosed = closed.size();
     for (int ij = 0; ij < nclosed * nclosed; ij++)
     {
@@ -427,10 +530,12 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
         if (fabs(integrals[index]) < THRESH)
           break;
 
+
         // otherwise: generate the determinant corresponding to the current excitation
         int a = 2 * orbIndices[2 * index] + closed[i] % 2, b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
         if (!(d.getocc(a) || d.getocc(b)))
         {
+	  prof.DoubleCount++;
           Determinant dcopy = d;
           double localham = 0.0;
           double tiajb = integrals[index];
@@ -534,6 +639,8 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
         }
       }
     }
+    prof.DoubleTime += getTime() - time;
+
   }
 }
 
