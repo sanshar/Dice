@@ -36,7 +36,7 @@ IF( NOT BOOST_ROOT )
   message(STATUS "ENV variable BOOST_ROOT not found. Using find_package to locate Boost.")
 ENDIF()
 find_package(Boost REQUIRED)
-include_directories(${BOOST_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIRS})
 message( STATUS ${Boost_INCLUDE_DIRS})
 message( STATUS ${Boost_LIBRARY_DIRS})
 
@@ -72,7 +72,10 @@ set(DICE_SOURCES
   ${DICE_SOURCE_DIR}/symmetry.cpp
 )
 
-
+set(ZDICE2_SOURCES ${DICE_SOURCES}
+  ${DICE_SOURCE_DIR}/SOChelper.cpp
+  ${DICE_SOURCE_DIR}/new_anglib.cpp
+)
 
 
 #####################
@@ -80,6 +83,7 @@ set(DICE_SOURCES
 #####################
 
 add_executable(Dice ${DICE_SOURCES})
+add_executable(ZDice2 ${ZDICE2_SOURCES})
 
 ###############
 ### Linking ###
@@ -88,6 +92,8 @@ add_executable(Dice ${DICE_SOURCES})
 # Do not include -lrt on Mac OSX builds
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
+  target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
 ELSE()
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+  target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
 ENDIF()
