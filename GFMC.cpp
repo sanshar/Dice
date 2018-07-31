@@ -180,117 +180,11 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-void updateWalker(Walker& newWalk, int Ex1, int Ex2, CPSSlater& w){
-  int norbs = Determinant::norbs ;
 
-  int I = Ex1 / 2 / norbs, A = Ex1 - 2 * norbs * I;
-  int J = Ex2 / 2 / norbs, B = Ex2 - 2 * norbs * J;
-  
-  if (I % 2 == J % 2 && Ex2 != 0)
-    {
-      if (I % 2 == 1)
-        {
-	  newWalk.updateB(I / 2, J / 2, A / 2, B / 2, w);
-        }
-      else
-        {
-	  newWalk.updateA(I / 2, J / 2, A / 2, B / 2, w);
-        }
-    }
-  else
-    {
-      if (I % 2 == 0)
-	newWalk.updateA(I / 2, A / 2, w);
-      else
-	newWalk.updateB(I / 2, A / 2, w);
-      
-      if (Ex2 != 0)
-        {
-	  if (J % 2 == 1)
-            {
-	      newWalk.updateB(J / 2, B / 2, w);
-            }
-	  else
-            {
-	      newWalk.updateA(J / 2, B / 2, w);
-            }
-        }
-    }
-}
-
-void applyPropogator(Walker& walk, double& wt, vector<Walker>& newWalkers, vector<double>& newWeights,
-		     CPSSlater& w, double tau, vector<double>& ovlpRatio, vector<size_t>& excitation1,
-		     vector<size_t>& excitation2,
-		     vector<double>& HijElements, vector<double>& cumHijElements, double& Eshift,
-		     double& ham, double& ovlp, oneInt& I1, twoInt& I2, 
-		     twoIntHeatBathSHM& I2hb, double coreE,
-		     double fn_factor) {
-
-  bool importanceSample = true;
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
-  double Ewalk = walk.d.Energy(I1, I2, coreE);
-  
-  int nExcitations = 0;
-  VectorXd localGrad;
-  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-		       excitation1, excitation2, HijElements, nExcitations, false);
-
-  if (cumHijElements.size()< nExcitations) cumHijElements.resize(nExcitations);
-
-  double cumHij = 0;
-
-  for (int i = 0; i < nExcitations; i++)
-  {
-    if (HijElements[i]*ovlpRatio[i] > 0.0) {
-      Ewalk += HijElements[i]/ovlpRatio[i] * fn_factor;
-      cumHij += abs(-tau*HijElements[i]*ovlpRatio[i]* (1-fn_factor));
-      cumHijElements[i] = cumHij; //the cumulative does not change and so wont be excited to
-    }
-    else {
-      if (importanceSample)      cumHij += abs(-tau*HijElements[i]*ovlpRatio[i]);
-      else                       cumHij += abs(-tau*HijElements[i]);
-      cumHijElements[i] = cumHij;
-    }
-  }
-  
-  //cout << cumHij<<endl;
-  cumHij += (1.0 - tau*(Ewalk - Eshift));
-
-
-  int nwtsInt = int(abs(wt) + random());
-  if (abs(wt) < 2.0)
-    nwtsInt = 1;
-  
-  for (int t = 0; t < nwtsInt; t++){
-    if (cumHij < 0.0) {
-      cout << "probably need to reduce time step"<<endl;
-      cout << t<<"  "<<nwtsInt<<"  "<<tau<<"  "<<Ewalk<<"  "<<Eshift<<"  "<<cumHij<<"  "<<(1.0 - tau*(Ewalk - Eshift))<<endl;
-      cout << walk.d.Energy(I1, I2, coreE)<<endl;
-      exit(0);
-    }
-    double nextDetRandom = random() * cumHij;
-    if (nextDetRandom > cumHijElements[nExcitations-1]) {
-      newWeights.push_back( cumHij * (wt/nwtsInt));
-      newWalkers.push_back(walk);
-    }
-    else {
-      int nextDet = std::lower_bound(cumHijElements.begin(), (cumHijElements.begin() + nExcitations),
-				     nextDetRandom) - cumHijElements.begin();
-
-
-      newWalkers.push_back(walk);
-      newWeights.push_back( (wt / nwtsInt) * cumHij * -1.*abs(HijElements[nextDet]*ovlpRatio[nextDet])/(HijElements[nextDet]*ovlpRatio[nextDet]) );
-      Walker& newWalk = *newWalkers.rbegin();
-      updateWalker(newWalk, excitation1[nextDet], excitation2[nextDet], w);
-    }
-  }
-  //exit(0);
-}
 
 
 void applyPropogatorContinousTime(Walker& walk, double& wt, 
-				  CPSSlater& w, double tau, vector<double>& ovlpRatio, vector<size_t>& excitation1,
+				  CPSSlater& w, double& tau, vector<double>& ovlpRatio, vector<size_t>& excitation1,
 				  vector<size_t>& excitation2,
 				  vector<double>& HijElements, vector<double>& cumHijElements, double& Eshift,
 				  double& ham, double& ovlp, oneInt& I1, twoInt& I2, 
@@ -304,10 +198,11 @@ void applyPropogatorContinousTime(Walker& walk, double& wt,
 
   double t = tau;
   int index = 0;
+
   while (t > 0) {
     double Ewalk = walk.d.Energy(I1, I2, coreE);
     int nExcitations = 0;
-    //ham = 0.; ovlp = 0.;
+
     w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
 			 excitation1, excitation2, HijElements, nExcitations, false);
 
@@ -315,90 +210,35 @@ void applyPropogatorContinousTime(Walker& walk, double& wt,
 
     double cumHij = 0;
 
-
-    //(Eshift - H), there is no tau
     for (int i = 0; i < nExcitations; i++)
     {
       //if sy,x is > 0 then add include contribution to the diagonal
       if (HijElements[i]*ovlpRatio[i] > 0.0) {
 	Ewalk += HijElements[i]*ovlpRatio[i] * fn_factor;
-	//cumHij += abs(-HijElements[i]*ovlpRatio[i]* (1-fn_factor));
-	//cumHij += HijElements[i]*ovlpRatio[i]; //positive contribution
 	cumHijElements[i] = cumHij; 
       }
       else {
 	cumHij += abs(HijElements[i]*ovlpRatio[i]); //negatie of the contribution to local energy
 	cumHijElements[i] = cumHij;
       }
-
     }
 
-    if (1.0/cumHij > tau) {
-      cout <<" Increase the value of "<<tau<<endl;
-      exit(0);
-    }
-    //if (abs(ham - (Ewalk-cumHij)) > 1.e-10) {
-    //cout << ham<<"  "<<Ewalk-cumHij<<endl;
-    //exit(0);
-    //}
-    ham = Ewalk - cumHij;
 
-    double deltaT = min(t, 1.0/cumHij);
+    double tsample = -log(random())/cumHij;
+    double deltaT = min(t, tsample);
+    t -= tsample;
 
-    wt = wt * exp(deltaT*(Eshift - ham ));
-    if (1.0/cumHij < t)   {
+    wt = wt * exp(deltaT*(Eshift - (Ewalk-cumHij) ));
+
+    if (t > 0.0)   {
       double nextDetRandom = random()*cumHij;
       int nextDet = std::lower_bound(cumHijElements.begin(), (cumHijElements.begin() + nExcitations),
 				     nextDetRandom) - cumHijElements.begin();    
       walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
-      //updateWalker(walk, excitation1[nextDet], excitation2[nextDet], w);
 
     }
     
-    t -= 1.0/cumHij;
   }
-}
-
-void removeWalkersAndAccumulate(vector<Walker>& newWalkers, vector<double>& newWeights,
-				vector<Walker>& walkers   , vector<double>& weights) {
-
-  copy(newWalkers.begin(), newWalkers.end(), std::back_inserter(walkers));
-  copy(newWeights.begin(), newWeights.end(), std::back_inserter(weights));
-  
-  //Sort walkers
-  std::vector<size_t> idx(weights.size());
-  std::iota(idx.begin(), idx.end(), 0); //idx=0,1,2,...,
-  std::sort(idx.begin(), idx.end(), [&walkers](size_t i1, size_t i2) { return walkers[i1] < walkers[i2]; });
-  newWalkers.clear(); newWeights.clear();
-
-  vector<Walker> sortedWalkers = walkers;
-  vector<double> sortedWeights = weights;
-  for (int i=0; i<idx.size(); i++) {
-    sortedWalkers[i] = walkers[idx[i]];
-    sortedWeights[i] = weights[idx[i]];
-  }
-
-  //Remove duplicates
-  int uniqueIndex = 0, i =1;
-  walkers[0] = sortedWalkers[0];
-  weights[0] = sortedWeights[0];
-  while ( i < sortedWalkers.size()) {
-    if ( !(sortedWalkers[i] == walkers[uniqueIndex]) ) {
-      uniqueIndex++;
-      walkers[uniqueIndex] = sortedWalkers[i]; 
-      weights[uniqueIndex] = sortedWeights[i];
-    }
-    else if (sortedWalkers[i] == walkers[uniqueIndex]) {
-      weights[uniqueIndex] += sortedWeights[i];
-    }
-    else {
-      cout <<"something is not right"<<endl;
-      exit(0);
-    }
-    i++;
-  }
-  walkers.resize(uniqueIndex+1);
-  weights.resize(uniqueIndex+1);
 }
 
 double reconfigure_splitjoin(list<pair<Walker,double> >& walkers, double targetwt, double tau, double Eest, double Eshift) {
@@ -406,6 +246,7 @@ double reconfigure_splitjoin(list<pair<Walker,double> >& walkers, double targetw
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
 			  std::ref(generator));
 
+  /*
   auto it = walkers.begin();
   double newwt = 0.0;
   while (it != walkers.end()) {
@@ -419,17 +260,18 @@ double reconfigure_splitjoin(list<pair<Walker,double> >& walkers, double targetw
 #endif
   newwt /= commsize;
 
-  double factor = (newwt/targetwt);
+  double factor = pow((newwt/targetwt), schd.tau);
 
   for (it = walkers.begin(); it != walkers.end(); it++) { 
     it->second = it->second/factor;
   }
+  */
 
-
+  double factor= 1.0;
 
   auto prevSmall = walkers.begin();
   bool prevSmallAssigned = false;
-  it = walkers.begin();
+  auto it = walkers.begin();
 
   while (it != walkers.end()) {
     double wt = it->second;
@@ -463,8 +305,60 @@ double reconfigure_splitjoin(list<pair<Walker,double> >& walkers, double targetw
     else
       it++;
   }
+  int maxwalkers=walkers.size(), minwalkers=walkers.size();
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &maxwalkers, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &minwalkers, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+#endif
+  //if (commrank == 0)
+  //cout << minwalkers<<"  "<<maxwalkers<<endl;
+  return factor;
+}
+
+double reconfigure_simple(list<pair<Walker,double> >& walkers, double targetwt, double tau, double Eest, double Eshift) {
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+			  std::ref(generator));
 
 
+  auto it = walkers.begin();
+  double sumwt = 0.0;
+  int nwts = 0;
+  while (it != walkers.end()) {
+    double wt = it->second;
+    sumwt += wt;
+    it++;
+    nwts++;
+  }
+
+
+
+
+  it = walkers.begin();
+
+  while (it != walkers.end()) {
+    double wt = it->second*nwts/sumwt;
+
+    if (wt < 1.0 ) {
+      if (wt+random() > 1.0) {
+	wt = 1.0*sumwt/nwts;
+	it++;
+      }
+      else 
+	it = walkers.erase(it);
+    }
+    else if (wt > 2.0) {
+      int numReplicate = int(wt);
+      it->second = it->second/(1.0*numReplicate);
+      for (int i=0; i<numReplicate-1; i++) 
+	walkers.push_front(*it); //add at front
+      it++;
+    }
+    else
+      it++;
+  }
+
+  double factor = 1.0;
   return factor;
 }
 
@@ -522,65 +416,80 @@ void doGFMC(CPSSlater &w, double Eshift, oneInt& I1, twoInt& I2, twoIntHeatBathS
   double scale = 1.0;
   int niter = schd.maxIter;
   double tau = schd.tau;
-  //Eshift = -2.05;
+  Eshift = -2.048;
   
   double oldwt = .0;
   for (auto it=Walkers.begin(); it!=Walkers.end(); it++) oldwt += it->second;
   
-  
   double targetwt = oldwt;
   
-  int reconfigureInterval = 1;
+  int nGeneration = schd.nGeneration;
   int gradIter = min(niter, 100000);
   double Eavg = 0.0;
   
   double Enum = 0.0, Eden = 0.0, totalwt = 0.0;
   bool importanceSample = true;
-  
+  double popControl = 1.0;
+  double iterPop = 0.0, genPop = 0.0, olditerPop = oldwt, oldgenPop = oldwt*schd.nGeneration;
+
   while (iter < niter)
   {
     
-    Enum = 0.0; Eden = 0.0;
+
+    //One step iter
+    int i = 0;
     for (auto it = Walkers.begin(); it != Walkers.end(); it++) {
+      //cout << iter<<"  "<<wkrtau[i]<<endl;
       Walker& walk = it->first;
       double& wt = it->second;
       
       double ham=0., ovlp=0.;
       double wtsold = wt;
-      applyPropogatorContinousTime(walk, wt, w, tau,
+      applyPropogatorContinousTime(walk, wt, w, schd.tau,
 				   ovlpRatio, excitation1, excitation2, 
 				   HijElements, cumHijElements, Eshift,
 				   ham, ovlp, I1, I2, I2hb, coreE,
 				   schd.fn_factor);
       
-      totalwt += abs(wt);
-      
-      Enum += wt*ham;
-      Eden += wt;	
+      iterPop += abs(wt);
+      Enum += popControl*wt*ham;
+      Eden += popControl*wt;	
+
+      i++;
     }
+    genPop += iterPop;
+
+    //reconfigure
+    double factor = reconfigure_splitjoin(Walkers, targetwt, tau, Eavg, Eshift);
+    //#ifndef SERIAL
+    //MPI_Allreduce(MPI_IN_PLACE, &iterPop, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    //#endif
+
+    Eshift = Eshift - 0.1/tau * log(iterPop/olditerPop);
+    factor *= pow(olditerPop/iterPop, 0.1);
+    popControl = pow(popControl, 0.99)*factor;
+    olditerPop = iterPop;
+    iterPop = 0.0;
     
-    //if (iter == 3) exit(0);
-    if (iter % reconfigureInterval == 0 ) {
+    if (iter % nGeneration == 0 && iter != 0) {
 #ifndef SERIAL
       MPI_Allreduce(MPI_IN_PLACE, &Enum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE, &Eden, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      MPI_Allreduce(MPI_IN_PLACE, &totalwt, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &genPop, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
       Eavg = Enum/Eden;
-      Enum = 0.0; Eden = 0.0;
-      
-      double factor = reconfigure_splitjoin(Walkers, targetwt, tau, Eavg, Eshift);
-      double Egr = Eshift - 1.0/(tau)*log(totalwt/targetwt/commsize);
-      //double Egr = Eshift + 1.0/(tau) *(1. - totalwt/oldwt);
-      if (iter==reconfigureInterval ) Egr = Eshift;
+
+      double Egr = Eshift ;
       
       if (commrank == 0)	  
-	cout << format("%8i %14.8f  %10i  %8.2f  %8.2f  %14.8f   %8.2f\n") % iter % (Eavg) % (Walkers.size()) % (totalwt/commsize/reconfigureInterval) % (oldwt/commsize/reconfigureInterval) % Egr % (getTime()-startofCalc);
+	cout << format("%8i %14.8f  %10i  %8.2f  %8.2f  %14.8f   %8.2f\n") % iter % (Eavg) % (Walkers.size()) % (genPop/commsize/nGeneration) % (oldgenPop/commsize/nGeneration) % Egr % (getTime()-startofCalc);
       
-      oldwt = totalwt;
-      totalwt = 0.0;
+      oldgenPop = genPop;
+      genPop = 0.0;
       
       Eavg = 0.0;
+      Enum=0.0; Eden =0.0;
+      popControl = 1.0;
     }
     iter++;
   }
