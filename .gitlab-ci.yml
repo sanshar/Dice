@@ -10,9 +10,11 @@ before_script:
 # build script #
 ################
 
+# MPI
 build:
   script:
-    # compile and execute unit tests
+    - which mpicxx
+    - $CXX = mpicxx
     - mkdir -p build && cd build
     - cmake ..
     - make -j Dice
