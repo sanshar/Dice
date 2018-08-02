@@ -11,13 +11,20 @@ before_script:
 ################
 
 # MPI
-build:
+mpi:
   script:
     - which mpicxx
-    - $CXX = mpicxx
+    - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
     - make -j Dice
     # - cmake .. ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS_RELEASE=-O3 && cmake --build . --config Release
     # - ctest -C Release -V -j
     # - cd ..
+
+# Serial
+# serial:
+#   script:
+#     - mkdir -p build && cd build
+#     - cmake ..
+#     - make -j DiceSerial

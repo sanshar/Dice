@@ -27,8 +27,8 @@ ENDIF()
 ###################
 
 # Get MPI
-find_package(MPI REQUIRED)
-include_directories(${MPI_INCLUDE_PATH})
+# find_package(MPI REQUIRED)
+# include_directories(${MPI_INCLUDE_PATH})
 
 # Get Boost
 set( BOOST_ROOT "$ENV{BOOST_ROOT}" )
@@ -84,7 +84,11 @@ set(ZDICE2_SOURCES ${DICE_SOURCES}
 #####################
 
 add_executable(Dice ${DICE_SOURCES})
+add_executable(DiceSerial ${DICE_SOURCES})
+set_target_properties(DiceSerial PROPERTIES COMPILE_FLAGS "-DSERIAL")
+
 add_executable(ZDice2 ${ZDICE2_SOURCES})
+
 
 ###############
 ### Linking ###
