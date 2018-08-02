@@ -1,54 +1,19 @@
-#########################
-# project configuration #
-#########################
-
-# C++ project
-language: cpp
-
-dist: trusty
-sudo: required
-
 ################
 # build matrix #
 ################
 
-# matrix:
-#   include:
-#
-#   - os: linux
-#     compiler: gcc
-#     env:
-#       - COMPILER=g++-6
-#     addons:
-#       apt:
-#         sources: ['ubuntu-toolchain-r-test']
-#         packages: ['g++-6','mpich','libmpich-dev', 'libboost-all-dev']
-#
-#
-# cache:
-#   apt: true
-
-before_install:
-    - sudo apt-get install libopenmpi-dev openmpi-bin
-    - sudo apt-get install libboost-all-dev
+before_script:
+    - sudo apt-get install libopenmpi-dev openmpi-bin libboost-all-dev cmake
 
 
 ################
 # build script #
 ################
 
-script:
-  # make sure CXX is correctly set
-  - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
-
-  # show OS/compiler version
-  - uname -a
-  - $CXX --version
-
-
-
-  # compile and execute unit tests
-  - mkdir -p build && cd build
-  - cmake .. ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS_RELEASE=-O3 && cmake --build . --config Release
-  - ctest -C Release -V -j
-  - cd ..
+build:
+  script:
+    # compile and execute unit tests
+    - mkdir -p build && cd build
+    - cmake .. ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS_RELEASE=-O3 && cmake --build . --config Release
+    - ctest -C Release -V -j
+    - cd ..
