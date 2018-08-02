@@ -3,7 +3,7 @@
 ################
 
 before_script:
-    - sudo apt-get install libopenmpi-dev openmpi-bin libboost-all-dev cmake
+    - apt-get install libopenmpi-dev openmpi-bin libboost-all-dev cmake
 
 
 ################
