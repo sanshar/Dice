@@ -63,7 +63,12 @@ private:
       & doHessian
       & uhf
       & optimizeOrbs
-      & Hamiltonian;
+      & Hamiltonian
+      & nwalk
+      & tau
+      & fn_factor
+      & nGeneration
+      & excitationLevel;
 
   }
 public:
@@ -105,6 +110,14 @@ public:
   int learningEpoch;
 
 
+  //options for gfmc
+  int nwalk;
+  double tau;
+  double fn_factor;
+  int nGeneration;
+
+  //option for configuration interaction
+  int excitationLevel;
 };
 
 /**

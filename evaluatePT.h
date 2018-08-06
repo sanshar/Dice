@@ -23,7 +23,7 @@
 #ifndef SERIAL
 #include "mpi.h"
 #endif
-class Wfn;
+
 class CPSSlater;
 class oneInt;
 class twoInt;
@@ -32,18 +32,18 @@ class MoDeterminant;
 
 
 //evaluate PT correction 
-double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE,
+double evaluateScaledEDeterministic(CPSSlater& w, double& lambda, double& unscaledE,
 				    int& nalpha, int& nbeta, int& norbs,
 				    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
 				    double& coreE);
 
 
-double evaluatePTDeterministic(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministic(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
 			       double& coreE);
-double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministicB(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 				oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
-double evaluatePTDeterministicC(Wfn& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministicC(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 			       oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE);
 
 
@@ -51,7 +51,7 @@ double evaluatePTDeterministicC(Wfn& w, double&  E0, int& nalpha, int& nbeta, in
 double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE,
 				 int& nalpha, int& nbeta, int& norbs,
 				 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				 double& coreE, double& stddev,
+				 double& coreE, double& stddev, double& rk,
 				 int niter=10000, double targetError = 1e-3);
 
 
@@ -62,7 +62,7 @@ double evaluatePTStochasticMethodA(CPSSlater& w, double&  E0, int& nalpha, int& 
 
 double evaluatePTStochasticMethodB(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,
 				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				   double& coreE, double& stddev, int niter, double& A, double& B, 
+				   double& coreE, double& stddev, double& rk, int niter, double& A, double& B, 
 				   double& C);
 
 double evaluatePTStochasticMethodC(CPSSlater& w, double&  E0, int& nalpha, int& nbeta, int& norbs,

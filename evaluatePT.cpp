@@ -41,7 +41,7 @@ using namespace Eigen;
 
 
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
-double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
+double evaluateScaledEDeterministic(CPSSlater& w, double& lambda, double& unscaledE0,
 				    int& nalpha, int& nbeta, int& norbs,
 				    oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
 				    double& coreE) {
@@ -50,6 +50,7 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
   vector<double> Hij;
+  int nExcitations;
 
   vector<vector<int> > alphaDets, betaDets;
   comb(norbs, nalpha, alphaDets);
@@ -76,7 +77,8 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
     Walker walk(allDets[d]);
     walk.initUsingWave(w);
     w.HamAndOvlpGradient(walk, ovlploc, Eloc, localGrad, I1, I2, I2hb, coreE,
-			 ovlpRatio, excitation1, excitation2, Hij, doGradient);
+			 ovlpRatio, excitation1, excitation2, Hij, nExcitations,
+			 doGradient);
 
     E          += ((1-lambda)*Eloc + lambda*allDets[d].Energy(I1, I2, coreE))*ovlploc*ovlploc;
     unscaledE  += Eloc*ovlploc*ovlploc;
@@ -98,8 +100,7 @@ double evaluateScaledEDeterministic(Wfn& w, double& lambda, double& unscaledE0,
 
 
 
-//<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
-double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministic(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 			      oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE) {
 
   vector<vector<int> > alphaDets, betaDets;
@@ -121,6 +122,7 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
   vector<double> Hij;
+  int nExcitations;
 
   double A=0, B=0, C=0, ovlp=0;
   for (int d=commrank; d<allDets.size(); d+=commsize) {
@@ -130,7 +132,7 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
     walk.initUsingWave(w);
     double Ei = allDets[d].Energy(I1, I2, coreE);
     w.HamAndOvlpGradient(walk, ovlploc, Eloc, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-			 excitation1, excitation2, Hij, doGradient);
+			 excitation1, excitation2, Hij, nExcitations, doGradient);
     //w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, I2hb, coreE);
 
     double ovlp2 = ovlploc*ovlploc;
@@ -161,7 +163,7 @@ double evaluatePTDeterministic(Wfn& w, double& E0, int& nalpha, int& nbeta, int&
 
 
 //<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
-double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministicB(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 				oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE) {
 
   vector<vector<int> > alphaDets, betaDets;
@@ -183,6 +185,7 @@ double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
   vector<double> Hij;
+  int nExcitations;
 
   //if (commrank == 0) cout << allDets.size()<<endl;
 
@@ -195,12 +198,12 @@ double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int
     double Ei = allDets[d].Energy(I1, I2, coreE);
 
     double Aloc=0, Bloc=0, Cloc=0;
-    vector<double> ovlpRatio; vector<size_t> excitation1, excitation2; bool doGradient=false;
-    w.PTcontribution2ndOrder(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc,
-			     ovlpRatio, excitation1, excitation2, doGradient); 
+
+    ///w.PTcontribution2ndOrder(walk, E0, I1, I2, I2hb, coreE, Aloc, Bloc, Cloc,
+    //ovlpRatio, excitation1, excitation2, doGradient); 
 
     w.HamAndOvlpGradient(walk, ovlploc, Eloc, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-			 excitation1, excitation2, Hij, doGradient);
+			 excitation1, excitation2, Hij, nExcitations, doGradient);
 
     double ovlp2 = ovlploc*ovlploc;
 
@@ -229,7 +232,7 @@ double evaluatePTDeterministicB(Wfn& w, double& E0, int& nalpha, int& nbeta, int
 }
 
 
-double evaluatePTDeterministicC(Wfn& w, double& E0, int& nalpha, int& nbeta, int& norbs,
+double evaluatePTDeterministicC(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 				oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, double& coreE) {
 
   vector<vector<int> > alphaDets, betaDets;
@@ -269,6 +272,7 @@ double evaluatePTDeterministicC(Wfn& w, double& E0, int& nalpha, int& nbeta, int
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
   vector<double> Hij;
+  int nExcitations;
 
   MatrixXx psi0 = MatrixXx::Zero(allDets.size(),1);
   MatrixXx diag = MatrixXx::Zero(allDets.size(),1);
@@ -279,7 +283,8 @@ double evaluatePTDeterministicC(Wfn& w, double& E0, int& nalpha, int& nbeta, int
     double Ei = allDets[d].Energy(I1, I2, coreE);
     double scale = 1.0, E0;
     w.HamAndOvlpGradient(walk, ovlploc, Eloc, localGrad, I1, I2, I2hb, coreE,
-			 ovlpRatio, excitation1, excitation2, Hij, doGradient); 
+			 ovlpRatio, excitation1, excitation2, Hij, nExcitations,
+			 doGradient); 
     //w.HamAndOvlp(walk, ovlploc, Eloc, I1, I2, I2hb, coreE);
 
     psi0(d,0) = ovlploc;
@@ -308,7 +313,8 @@ double evaluatePTDeterministicC(Wfn& w, double& E0, int& nalpha, int& nbeta, int
     Ham0.Helements[index].resize(1);
     index++;
   }
-  double PT = LinearSolver(hmult, E0, x0, Hpsi0, proj, 1.e-6, true);
+  double PT = 0;
+  //double PT = LinearSolver(hmult, E0, x0, Hpsi0, proj, 1.e-6, true);
 
   
 #ifndef SERIAL
@@ -329,102 +335,190 @@ double evaluatePTDeterministicC(Wfn& w, double& E0, int& nalpha, int& nbeta, int
 
 
 
+double evaluateScaledEStochastic(CPSSlater &w, double& lambda, double &unscaledE,
+			       int &nalpha, int &nbeta, int &norbs,
+			       oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
+				 double& stddev, double& rk,
+				 int niter, double targetError)
+{
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
 
+  double scaledE=0., E0=0.;
 
-//<psi|H|psi>/<psi|psi> = <psi|d> <d|H|psi>/<psi|d><d|psi>
-double evaluateScaledEStochastic(CPSSlater& w, double& lambda, double& unscaledE, 
-				 int& nalpha, int& nbeta, int& norbs,
-				 oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				 double& coreE, double& stddev,
-				 int niter, double targetError) {
-
+  VectorXd grad;
 
   //initialize the walker
   Determinant d;
-  for (int i=0; i<nalpha; i++)
-    d.setoccA(i, true);
-  for (int j=0; j<nbeta; j++)
-    d.setoccB(j, true);
+  bool readDeterminant = false;
+  char file [5000];
+
+  sprintf (file, "BestDeterminant.txt");
+
+  {
+    ifstream ofile(file);
+    if (ofile) readDeterminant = true;
+  }
+  //readDeterminant = false;
+
+  if ( !readDeterminant )
+  {
+    
+    for (int i =0; i<nalpha; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsA(i,j)) > maxovlp && !d.getoccA(j)) {
+	  maxovlp = abs(HforbsA(i,j));
+	  bestorb = j; 
+	}
+      }
+      d.setoccA(bestorb, true);
+    }
+    for (int i =0; i<nbeta; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsB(i,j)) > maxovlp && !d.getoccB(j)) {
+	  bestorb = j; maxovlp = abs(HforbsB(i,j));
+	}
+      }
+      d.setoccB(bestorb, true);
+    }
+  }
+  else {
+    if (commrank == 0) {
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> d;
+    }
+#ifndef SERIAL
+    MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  }
+  
   Walker walk(d);
   walk.initUsingWave(w);
-
-
-  VectorXd localGrad; bool doGradient = false;
-  vector<double> ovlpRatio;
-  vector<size_t> excitation1, excitation2;
-  vector<double> Hij;
-
+  
+  //int maxTerms =  3*(nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
+  int maxTerms =  (nalpha) * (norbs-nalpha); //pick a small number that will be incremented later
+  vector<double> ovlpRatio(maxTerms);
+  vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
+  vector<double> HijElements(maxTerms);
+  int nExcitations = 0;
+  
+  
   stddev = 1.e4;
   int iter = 0;
-  double M1=0., S1 = 0., Eavg=0.;
-  double Eloc=0.;
-  double ElocScaled = 0.;
-  double ham=0., ovlp =0.;
+  double M1 = 0., S1 = 0., Eavg = 0.;
+  double Eloc = 0.;
+  double ham = 0., ovlp = 0.;
+  VectorXd localGrad = grad;
+  localGrad.setZero();
   double scale = 1.0;
+  
+  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
+  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
+  
+  double bestOvlp =0.;
+  Determinant bestDet=d;
+  
+  
+  nExcitations = 0;
+  E0 = 0.0;
+  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+                       excitation1, excitation2, HijElements, nExcitations, false);
 
-  double E0 = 0.0, rk = 1.;
-  w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-		       ovlpRatio, excitation1, excitation2, Hij, doGradient); 
-  //w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
-  double Ei = walk.d.Energy(I1, I2, coreE);
+  int nstore = 1000000/commsize;
+  int gradIter = min(nstore, niter);
 
-  int gradIter = min(niter, 100000);
-  std::vector<double> gradError(gradIter, 0);
+  std::vector<double> gradError(gradIter*commsize, 0);
   bool reset = true;
-
-  while (iter <niter && stddev >targetError) {
-    if (iter == 100 && reset) {
-      iter = 0;
-      reset = false;
-      M1 = 0.; S1=0.;
-      Eloc = 0;
-      ElocScaled = 0;
-      walk.initUsingWave(w, true);
+  double cumdeltaT = 0., cumdeltaT2 = 0.;
+  int reset_len = readDeterminant ? 1 : 10*norbs;
+  while (iter < niter && stddev > targetError)
+  {
+    if (iter == reset_len && reset)
+      {
+	iter = 0;
+	reset = false;
+	M1 = 0.;
+	S1 = 0.;
+	Eloc = 0;
+	grad.setZero();
+	diagonalGrad.setZero();
+	walk.initUsingWave(w, true);
+	cumdeltaT = 0.;
+	cumdeltaT2 = 0;
+	scaledE = 0.0;
+      }
+    
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < nExcitations; i++)
+    {
+      cumovlpRatio += abs(ovlpRatio[i]);
+      //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
+      ovlpRatio[i] = cumovlpRatio;
     }
 
-    Eloc       = Eloc        + (ham - Eloc)/(iter+1);     //running average of energy
-    ElocScaled = ElocScaled  + ((1-lambda)*ham+lambda*Ei - ElocScaled)/(iter+1);
+    //double deltaT = -log(random())/(cumovlpRatio);
+    double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random()*cumovlpRatio;
+    int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin()+nExcitations),
+                                   nextDetRandom) -
+      ovlpRatio.begin();
+    
 
-    double Mprev = M1;
-    M1 = Mprev + (ham - Mprev)/(iter+1);
-    if (iter != 0)
-      S1 = S1 + (ham - Mprev)*(ham - M1);
+    cumdeltaT += deltaT;
+    cumdeltaT2 += deltaT * deltaT;
+    
+    double Elocold = Eloc;
+    
+    double ratio = deltaT/cumdeltaT;
 
+    double E0 = walk.d.Energy(I1, I2, coreE);
+    Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
+
+    ham = (1. - lambda) * ham + lambda * E0;
+    scaledE = scaledE + deltaT * (ham - scaledE) / (cumdeltaT);       //running average of energy
+
+    
+    S1 = S1 + (ham - Elocold) * (ham - Eloc);
+    
     if (iter < gradIter)
-      gradError[iter] = ham;
-
+      gradError[iter + commrank*gradIter] = ham;
+    
     iter++;
     
-    if (iter == gradIter-1) {
-      rk = calcTcorr(gradError);
-    }
+    walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
+
+    nExcitations = 0;
     
-    bool success = walk.makeCleverMove(w);
-    //bool success = walk.makeCleverMove(w, I1);
-    //cout <<iter <<"  "<< walk.d<<"  "<<Eloc<<endl;
-    //if (iter == 50) exit(0);
-    if (success) {
-      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-			   ovlpRatio, excitation1, excitation2, Hij, doGradient); 
-      //w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
-      Ei = walk.d.Energy(I1, I2, coreE);
-    }
-    
+    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+			 excitation1, excitation2, HijElements, nExcitations, false);
   }
+  
 #ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &ElocScaled, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &scaledE, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  unscaledE = Eloc/commsize;
+  rk = calcTcorr(gradError);
 
-  stddev = sqrt(S1*rk/(niter-1)/niter/commsize) ;
+  E0 = Eloc / commsize;
+  unscaledE = E0;
+  scaledE = scaledE / commsize;
+  
+  stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
 #ifndef SERIAL
-  MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-  return ElocScaled/commsize;
-}
 
+  return scaledE;
+}
 
 
 
@@ -528,24 +622,47 @@ double evaluatePTStochasticMethodA(CPSSlater& w, double& E0, int& nalpha, int& n
 //psi but make a non-zero contribution to A.
 double evaluatePTStochasticMethodB(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
 				   oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2hb, 
-				   double& coreE, double& stddev,
+				   double& coreE, double& stddev, double& rk,
 				   int niter, double& A, double& B, double& C) {
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
 
 
   //initialize the walker
   Determinant d;
-  for (int i=0; i<nalpha; i++)
-    d.setoccA(i, true);
-  for (int j=0; j<nbeta; j++)
-    d.setoccB(j, true);
+  for (int i =0; i<nalpha; i++) {
+    int bestorb = 0;
+    double maxovlp = 0;
+    for (int j=0; j<norbs; j++) {
+      if (abs(HforbsA(i,j)) > maxovlp && !d.getoccA(j)) {
+	maxovlp = abs(HforbsA(i,j));
+	bestorb = j; 
+      }
+    }
+    d.setoccA(bestorb, true);
+  }
+  for (int i =0; i<nbeta; i++) {
+    int bestorb = 0;
+    double maxovlp = 0;
+    for (int j=0; j<norbs; j++) {
+      if (abs(HforbsB(i,j)) > maxovlp && !d.getoccB(j)) {
+	bestorb = j; maxovlp = abs(HforbsB(i,j));
+      }
+    }
+    d.setoccB(bestorb, true);
+  }
+
   Walker walk(d);
   walk.initUsingWave(w);
 
 
   VectorXd localGrad; bool doGradient = false;
-  vector<double> ovlpRatio;
-  vector<size_t> excitation1, excitation2;
-  vector<double> Hij;
+  int maxTerms =  (nalpha) * (norbs-nalpha); //pick a small number that will be incremented later
+  vector<double> ovlpRatio(maxTerms);
+  vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
+  vector<double> Hij(maxTerms);
+  int nExcitations = 0;
 
 
   stddev = 1.e4;
@@ -555,16 +672,20 @@ double evaluatePTStochasticMethodB(CPSSlater& w, double& E0, int& nalpha, int& n
   double Aloc=0, Bloc=0, Cloc=0;
   double scale = 1.0, ham, ovlp;
 
-  double rk = 1.;
 
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-		       ovlpRatio, excitation1, excitation2, Hij, doGradient); 
+		       ovlpRatio, excitation1, excitation2, Hij, 
+		       nExcitations, doGradient); 
 
   double Ei = walk.d.Energy(I1, I2, coreE);
 
-  int gradIter = min(niter, 100000);
-  std::vector<double> gradError(gradIter, 0);
+  int nstore = 1000000/commsize;
+  int gradIter = min(nstore, niter);
+
+  std::vector<double> gradError(gradIter*commsize, 0);
+
   bool reset = true;
+  double cumdeltaT = 0., cumdeltaT2 = 0.;
 
   while (iter <niter ) {
     if (iter == 20 && reset) {
@@ -575,46 +696,63 @@ double evaluatePTStochasticMethodB(CPSSlater& w, double& E0, int& nalpha, int& n
       walk.initUsingWave(w, true);
     }
 
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < nExcitations; i++)
+    {
+      cumovlpRatio += abs(ovlpRatio[i]);
+      ovlpRatio[i] = cumovlpRatio;
+    }
+
+    //double deltaT = -log(random())/(cumovlpRatio);
+    double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random()*cumovlpRatio;
+
+    int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin()+nExcitations),
+                                   nextDetRandom) -
+      ovlpRatio.begin();
+
+    cumdeltaT += deltaT;
+    cumdeltaT2 += deltaT * deltaT;
+    
+    double Aold = A;
+    
+    double ratio = deltaT/cumdeltaT;
+
     Aloc = -pow(ham-E0, 2)/(Ei-E0);
     Bloc = (ham-E0)/(Ei-E0);
     Cloc = 1./(Ei-E0);
     
-    A   =   A  +  ( Aloc - A)/(iter+1);
-    B   =   B  +  ( Bloc - B)/(iter+1);
-    C   =   C  +  ( Cloc - C)/(iter+1);
+    A   =   A  +  deltaT * ( Aloc - A)/(cumdeltaT);
+    B   =   B  +  deltaT * ( Bloc - B)/(cumdeltaT);
+    C   =   C  +  deltaT * ( Cloc - C)/(cumdeltaT);
 
 
-    double Mprev = M1;
-    M1 = Mprev + (Aloc - Mprev)/(iter+1);
-    if (iter != 0)
-      S1 = S1 + (Aloc - Mprev)*(Aloc - M1);
+    S1 = S1 + (Aloc - Aold)*(Aloc - A);
 
     if (iter < gradIter)
-      gradError[iter] = Aloc;
+      gradError[iter + commrank*gradIter] = Aloc;
 
     iter++;
-    
-    if (iter == gradIter-1) {
-      rk = calcTcorr(gradError);
-    }
-    
-    //bool success = walk.makeCleverMove(w);
-    bool success = walk.makeMove(w);
 
-    if (success) {
-      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE,
-			   ovlpRatio, excitation1, excitation2, Hij, doGradient); 
-      //w.HamAndOvlp(walk, ovlp, ham, I1, I2, I2hb, coreE); 
-      Ei = walk.d.Energy(I1, I2, coreE);
-    }
+    walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
+
+
+    nExcitations = 0;
+    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+			 excitation1, excitation2, Hij, nExcitations, false);
+    Ei = walk.d.Energy(I1, I2, coreE);
     
   }
 
 #ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &A, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &B, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &C, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
+
+  rk = calcTcorr(gradError);
 
   A = A/commsize;
   B = B/commsize;
@@ -624,13 +762,12 @@ double evaluatePTStochasticMethodB(CPSSlater& w, double& E0, int& nalpha, int& n
 #ifndef SERIAL
   MPI_Bcast(&stddev    , 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-  if (commrank == 0) cout << rk<<endl;
 
   return A + B*B/C;
 }
 
 
-
+/*
 //\sum_i <psi|(H0-E0)|D_j><D_j|H0-E0|Di>/(Ei-E0)/<Di|psi>  pi
 //where pi = <D_i|psi>**2/<psi|psi>
 double evaluatePTStochasticMethodC(CPSSlater& w, double& E0, int& nalpha, int& nbeta, int& norbs,
@@ -652,6 +789,7 @@ double evaluatePTStochasticMethodC(CPSSlater& w, double& E0, int& nalpha, int& n
 
   vector<double> ovlpRatio;
   vector<size_t> excitation1, excitation2;
+  int nExcitations;
 
   stddevA = 1.e4; stddevB = 1.e-4; stddevC = 1.e-4;
   int iter = 0;
@@ -876,7 +1014,7 @@ double evaluatePTStochastic3rdOrder(CPSSlater& w, double& E0, int& nalpha, int& 
   if (commrank == 0) cout << A2<<"  "<<A3<<endl;
   return A2 + B*B/C;
 }
-
+*/
 
 
 

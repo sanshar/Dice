@@ -214,12 +214,15 @@ double getNVariables(int excitationLevel, vector<int>& SingleIndices,
 
   for (int i=0; i<2*norbs; i++) 
     for (int j=0; j<2*norbs; j++) {
-      if (i == j) continue;
-      if (I2hb.Singles(i, j) > schd.epsilon) {
+      //if (i == j) continue;
+      if (i%2 == j%2) {
 	SingleIndices.push_back(i);
 	SingleIndices.push_back(j);
       }
     }
+  SingleIndices.resize(norbs*norbs);
+  //for (int i=0; i<3; i++)
+  //cout << SingleIndices[2*i]<<"  "<<SingleIndices[2*i+1]<<endl;
 }
 
 int getIndex(int I, int A, int norbs) {
@@ -327,52 +330,29 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
   double bestOvlp =0.;
   Determinant bestDet=d;
   
-  
+
+  //schd.epsilon = -1;
   nExcitations = 0;
   E0 = walk.d.Energy(I1, I2, coreE);
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
                        excitation1, excitation2, HijElements, nExcitations, false);
 
-
-  
-  //<n|Psi_i>/<n|Psi0>
-  gradRatio[0] = 1;
-
-  for (int m=0; m<nExcitations; m++) {
-    if (excitation2[m] != 0) //this is the start of double excitation
-      break;
-    int I = excitation1[m] / 2 / norbs, A = excitation1[m] - 2 * norbs * I;    
-    int index = getIndex(A, I, norbs);
-    gradRatio[index] = -ovlpRatio[m]; //-<n|a_i^dag a_a|Psi0>/<n|Psi0>
-  }
+  gradRatio.setZero();
+  double factor = 1.0;
+  w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
 
 
-  //<m|Psi_i>/<n|Psi0>
   hamRatio = E0*gradRatio;
   for (int m=0; m<nExcitations; m++) {
-
+    
     Walker wtmp = walk;
     //this is the new walker m, later I should try to get rid of this step
     wtmp.updateWalker(w, excitation1[m], excitation2[m]); 
-
-    //this should only generate singles when excitationlevel = 1
-    nExcitationsForM = 0;
-    double ovlpForM, hamForM;
-    w.HamAndOvlpGradient(wtmp, ovlpForM, hamForM, localGrad, I1, I2, I2hb, coreE, ovlpRatioForM,
-			 excitation1ForM, excitation2ForM, HijElementsForM, nExcitationsForM, false);
-
-    hamRatio[0] += HijElements[m] * ovlpRatio[m];
-
-    //h_{nm} <m|Psi_i>/<m|Psi0> * <m|Psi0>/<n|Psi0> 
-    for (int n=0; n<nExcitationsForM; n++) {
-      if (excitation2ForM[n] != 0) //this is the start of double excitation
-	break;
-      int I = excitation1ForM[n] / 2 / norbs, A = excitation1ForM[n] - 2 * norbs * I;    
-      int index = getIndex(A, I, norbs);
-      hamRatio[index] += HijElements[m] * ovlpRatio[m] * ovlpRatioForM[n];
-    }
-  }
-
+    
+    double factor = HijElements[m]*ovlpRatio[m];
+    w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2, 
+		  SingleIndices, I2hb, coreE, factor);
+  }  
 
 
   updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
@@ -438,6 +418,10 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
 			 excitation1, excitation2, HijElements, nExcitations, false);
   
     gradRatio.setZero();
+    double factor = 1.0;
+    //gradRatio[0] = 1.0;
+    w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
+    /*
     //<n|Psi_i>/<n|Psi0>
     gradRatio[0] = 1;
     for (int m=0; m<nExcitations; m++) {
@@ -447,16 +431,21 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
       int index = getIndex(I, A, norbs);
       gradRatio[index] = ovlpRatio[m]; //-<n|a_i^dag a_a|Psi0>/<n|Psi0>
     }
-    
-    
+    */
+
     //<m|Psi_i>/<n|Psi0>
     hamRatio = E0*gradRatio;
     for (int m=0; m<nExcitations; m++) {
       
       Walker wtmp = walk;
-      //this is the new walker m, later I should try to get rid of this step
       wtmp.updateWalker(w, excitation1[m], excitation2[m]); 
-      
+
+      double factor = HijElements[m]*ovlpRatio[m];
+      //hamRatio[0] += factor;
+      w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2, 
+		    SingleIndices, I2hb, coreE, factor);
+
+      /*
       //this should only generate singles when excitationlevel = 1
       nExcitationsForM = 0;
       double ovlpForM, hamForM;
@@ -473,11 +462,11 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
 	int index = getIndex(A, I, norbs);
 	hamRatio[index] += HijElements[m] * ovlpRatio[m] * ovlpRatioForM[n];
       }
-      
+      */
     }
 
     updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
-    
+
     if (abs(ovlp) > bestOvlp) {
       bestOvlp = abs(ovlp);
       bestDet = walk.d;
@@ -511,8 +500,8 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
     //cout << Hamiltonian <<endl;
     //cout << Overlap <<endl;
   //}
-    ges.compute(Hamiltonian, Overlap);
-    cout << ges.eigenvalues().transpose()(0)<<"  ("<<stddev<<")"<<"  "<<rk<<endl;
+    //ges.compute(Hamiltonian, Overlap);
+    cout << ges.eigenvalues().transpose()(0)<<"  ("<<stddev<<")"<<"  "<<Hamiltonian(0,0)/Overlap(0,0)<<endl;
   }
   
 }
@@ -554,7 +543,8 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int>& SingleIndices,
     Walker walk(allDets[i]);
     walk.initUsingWave(w);
 
-    gradRatio.setZero();
+    schd.epsilon = -1;
+
     double ham, ovlp;
     {
       nExcitations = 0;
@@ -562,46 +552,22 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int>& SingleIndices,
       w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
 			   excitation1, excitation2, HijElements, nExcitations, false);
   
-      //<n|Psi_i>/<n|Psi0>
-      gradRatio[0] = 1;
+      gradRatio.setZero();
+      double factor = 1.0;
+      w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
       
-      for (int m=0; m<nExcitations; m++) {
-	if (excitation2[m] != 0) //this is the start of double excitation
-	  break;
-	//|m> = A^dag I |n>
-	int I = excitation1[m] / 2 / norbs, A = excitation1[m] - 2 * norbs * I;    
-	int index = getIndex(I, A, norbs);
-	gradRatio[index] = ovlpRatio[m]; //<n|a_i^dag a_a|Psi0>/<n|Psi0> = <n|Psi_i>/<n|Psi0>
-      }
       
-
-      //<m|Psi_i>/<n|Psi0>
       hamRatio = E0*gradRatio;
       for (int m=0; m<nExcitations; m++) {
 	
 	Walker wtmp = walk;
 	//this is the new walker m, later I should try to get rid of this step
 	wtmp.updateWalker(w, excitation1[m], excitation2[m]); 
-
-	//this should only generate singles when excitationlevel = 1
-	nExcitationsForM = 0;
-	double ovlpForM, hamForM;
-	w.HamAndOvlpGradient(wtmp, ovlpForM, hamForM, localGrad, I1, I2, I2hb, coreE, ovlpRatioForM,
-			     excitation1ForM, excitation2ForM, HijElementsForM, nExcitationsForM, false);
 	
-	hamRatio[0] += HijElements[m] * ovlpRatio[m];
-	
-	//h_{nm} <m|Psi_i>/<m|Psi0> * <m|Psi0>/<n|Psi0> 
-	for (int n=0; n<nExcitationsForM; n++) {
-	  if (excitation2ForM[n] != 0) //this is the start of double excitation
-	    break;
-	  int I = excitation1ForM[n] / 2 / norbs, A = excitation1ForM[n] - 2 * norbs * I;    
-	  int index = getIndex(I, A, norbs);
-	  hamRatio[index] += HijElements[m] * ovlpRatio[m] * ovlpRatioForM[n];
-	}
-	//cout << hamRatio[2] <<endl;
-	
-      }
+	double factor = HijElements[m]*ovlpRatio[m];
+	w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2, 
+		      SingleIndices, I2hb, coreE, factor);
+      }  
     }
     
     updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
@@ -624,15 +590,15 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int>& SingleIndices,
   //E0 = Eloc / commsize;
   
   if (commrank == 0) {
-    //EigenSolver<MatrixXd> es(Overlap);
-    //cout << es.eigenvalues().transpose()<<endl;
+    EigenSolver<MatrixXd> es(Overlap);
+    cout << es.eigenvalues().transpose()<<endl;
     GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
     //if (commrank == 0) {
-    //cout << Hamiltonian <<endl;
-    //cout << Overlap <<endl;
+    cout << Hamiltonian <<endl;
+    cout << Overlap <<endl;
     //}
     //ges.compute(Hamiltonian, Overlap);
-    cout << ges.eigenvalues().transpose()(0)<<"  "<<Hamiltonian(0,0)/Overlap(0,0)<<endl;
+    cout << ges.eigenvalues().transpose()<<"  "<<Hamiltonian(0,0)/Overlap(0,0)<<endl;
   }
   
 }

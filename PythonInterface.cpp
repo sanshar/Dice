@@ -124,12 +124,25 @@ int main(int argc, char* argv[]) {
   //setup up wavefunction
   CPSSlater wave(nSiteCPS, detList, ciExpansion);
 
+
+  size_t size;
   ifstream file ("params.bin", ios::in|ios::binary|ios::ate);
-  size_t size = file.tellg();
+  if (commrank == 0) {
+    size = file.tellg();
+  }
+#ifndef SERIAL
+  MPI_Bcast(&size, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
   Eigen::VectorXd vars = Eigen::VectorXd::Zero(size/sizeof(double));
-  file.seekg (0, ios::beg);
-  file.read ( (char*)(&vars[0]), size);
-  file.close();
+  if (commrank == 0) {
+    file.seekg (0, ios::beg);
+    file.read ( (char*)(&vars[0]), size);
+    file.close();
+  }
+
+#ifndef SERIAL
+  MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
 
   if ( (schd.uhf && vars.size() != wave.getNumVariables()+2*norbs*norbs) ||
        (!schd.uhf && vars.size() != wave.getNumVariables()+norbs*norbs) ){
@@ -205,6 +218,10 @@ int main(int argc, char* argv[]) {
     ofstream file ("grad.bin", ios::out|ios::binary);
     file.write ( (char*)(&grad[0]), size);
     file.close();
+
+    ofstream filee ("E0.bin", ios::out|ios::binary);
+    filee.write ( (char*)(&E0), sizeof(double));
+    filee.close();
 
     if (schd.doHessian)
     {

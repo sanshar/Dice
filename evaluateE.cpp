@@ -87,6 +87,7 @@ double calcTcorr(vector<double> &v)
   var = var * neff / (neff - 1.0);
 
   double c[v.size()];
+  for (int i=0; i<v.size(); i++) c[i] = 0.0;
   int l = v.size() - 1;
 
   int i = commrank+1;
@@ -103,23 +104,21 @@ double calcTcorr(vector<double> &v)
     };
     c[i] = c[i] / norm / var;
   };
-  if (commrank == 0)
-    rk = 1.0;
-  else
-    rk = 0.0;
+ 
+  MPI_Allreduce(MPI_IN_PLACE, &c[0], v.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+
+  rk = 1.0;
 
   f = 1.0;
 
-  i = commrank+1;
-  for (; i < l; i+=commsize)
-    //i = 1;
-    //for (; i < l; i++)
+  i = 1;
+  for (; i < l; i++)
   {
     if (c[i] < 0.0)
       f = 0.0;
     rk = rk + 2.0 * c[i] * f;
   };
-  MPI_Allreduce(MPI_IN_PLACE, &rk, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   return rk;
 }
@@ -515,7 +514,6 @@ void getStochasticGradient(CPSSlater &w, double &E0, double &stddev,
       walk.initUsingWave(w, true);
     }
 
-    cout << walk.d <<"  "<<Eloc<<endl;
     diagonalGrad = diagonalGrad + (localdiagonalGrad - diagonalGrad) / (iter + 1);
     grad = grad + (ham*localdiagonalGrad - grad) / (iter + 1); //running average of grad
     Eloc = Eloc + (ham - Eloc) / (iter + 1);       //running average of energy

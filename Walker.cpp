@@ -26,6 +26,51 @@
 #include "igl/slice_into.h"
 using namespace Eigen;
 
+bool Walker::operator<(const Walker& w) const {
+  return d < w.d;
+}
+
+bool Walker::operator==(const Walker& w) const {
+  return d == w.d;
+}
+
+void Walker::updateWalker(CPSSlater& w, int ex1, int ex2) {
+  int norbs = Determinant::norbs ;
+
+  int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+  if (I % 2 == J % 2 && ex2 != 0)
+    {
+      if (I % 2 == 1) {
+	updateB(I / 2, J / 2, A / 2, B / 2, w);
+      }
+
+      else {
+	updateA(I / 2, J / 2, A / 2, B / 2, w);
+      }
+    }
+  else
+    {
+      if (I % 2 == 0)
+	updateA(I / 2, A / 2, w);
+      else
+	updateB(I / 2, A / 2, w);
+      
+      if (ex2 != 0)
+        {
+          if (J % 2 == 1)
+	    {
+	      updateB(J / 2, B / 2, w);
+	    }
+          else
+	    {
+	      updateA(J / 2, B / 2, w);
+	    }
+	}
+    }
+  
+}
 
 void Walker::OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp) {
   int numJastrowVariables = w.getNumJastrowVariables();
@@ -568,6 +613,7 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
 
 
 void Walker::updateA(int i, int a, CPSSlater& w) {
+
 
   double p = 1.0;
   d.parityA(a, i, p);

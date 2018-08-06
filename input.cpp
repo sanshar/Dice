@@ -56,7 +56,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.decay                  = 0.9;
   schd.learningEpoch          = 10;
   schd.seed                   = getTime();
-  schd.PTlambda               = 0.5;
+  schd.PTlambda               = 0.;
   schd.epsilon                = 1.e-7;
   schd.screen                 = 1.e-8;
   schd.determinantFile        = "";
@@ -64,6 +64,12 @@ void readInput(string input, schedule& schd, bool print) {
   schd.uhf                    = false;
   schd.optimizeOrbs           = true;
   schd.Hamiltonian            = ABINITIO;
+  schd.nwalk                  = 100;
+  schd.tau                    = 0.001;
+  schd.fn_factor              = 1.0;
+  schd.nGeneration            = 30.0;
+  schd.excitationLevel        = 1;
+
   while (dump.good()) {
 
     std::string
@@ -180,6 +186,26 @@ void readInput(string input, schedule& schd, bool print) {
 
     else if (boost::iequals(ArgName,  "hubbard"          )) {
       schd.Hamiltonian = HUBBARD;
+    }
+
+    else if (boost::iequals(ArgName,  "nwalk"            )) {
+      schd.nwalk = atoi(tok[1].c_str());
+    }
+
+    else if (boost::iequals(ArgName,  "tau"              )) {
+      schd.tau = atof(tok[1].c_str());
+    }
+
+    else if (boost::iequals(ArgName,  "fixednodefactor"  )) {
+      schd.fn_factor = atof(tok[1].c_str());
+    }
+
+    else if (boost::iequals(ArgName,  "ngeneration"      )) {
+      schd.nGeneration = atoi(tok[1].c_str());
+    }
+
+    else if (boost::iequals(ArgName,  "excitationlevel"      )) {
+      schd.excitationLevel = atoi(tok[1].c_str());
     }
 
     else {

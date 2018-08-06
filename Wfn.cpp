@@ -316,6 +316,52 @@ void CPSSlater::readWave() {
 #endif
 }
 
+
+//for a determinant |N> it updates the grad ratio vector
+// grad[i] += <N|Psi_i>/<N|Psi0> * factor
+void CPSSlater::OvlpRatioCI(Walker &walk, VectorXd &gradRatio, int (*getIndex)(int, int, int), 
+			    oneInt &I1, twoInt &I2, vector<int>& SingleIndices,
+			    twoIntHeatBathSHM& I2hb, double & coreE, double factor) {
+  //<d|I^dag A |Psi0>
+  //|dcopy> = A^dag I|d>
+  int norbs = Determinant::norbs;
+  gradRatio[0] += factor;
+  for (int i=0; i<SingleIndices.size()/2; i++) {
+    int I = SingleIndices[2*i], A = SingleIndices[2*i+1];
+    int index = getIndex(A, I, norbs);
+
+    Determinant d = walk.d;
+    Determinant dcopy = walk.d;
+
+    if (I == A) {
+      if (d.getocc(I))
+	gradRatio[index] += factor;
+      continue;
+    }
+
+    if (!d.getocc(I)) continue;
+    dcopy.setocc(I, false);
+    if (dcopy.getocc(A)) continue;
+    dcopy.setocc(A, true);
+
+
+    bool doparity = false;
+    double JastrowFactor =  getJastrowFactor(I/2, A/2, dcopy, d);
+    double ovlpdetcopy ;
+
+    if (I%2 == 0)
+      ovlpdetcopy =  walk.getDetFactorA(I/2, A/2, *this, doparity) * JastrowFactor;
+    else
+      ovlpdetcopy =  walk.getDetFactorB(I/2, A/2, *this, doparity) * JastrowFactor;
+
+    gradRatio[index] += factor*ovlpdetcopy; //-<n|a_i^dag a_a|Psi0>/<n|Psi0>
+    //cout << i<<"  "<<index<<"  "<<gradRatio[index]<<endl;
+  }
+  //exit(0);
+
+
+}
+
 //<psi_t| (H-E0) |D>
 void CPSSlater::HamAndOvlpGradient(Walker &walk,
                                    double &ovlp, double &ham, VectorXd &grad,
@@ -435,14 +481,16 @@ void CPSSlater::HamAndOvlpGradient(Walker &walk,
             }
 
             double JastrowFactor =  getJastrowFactor(I, A, dcopy, d);
+	    double ovlpdetcopy ;
             if (Alpha)
-              localham += tia * walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
+              ovlpdetcopy =  walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
+	    //localham += tia * walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
             else
-              localham += tia * walk.getDetFactorB(I, A, *this, doparity) * JastrowFactor;
+              ovlpdetcopy =  walk.getDetFactorB(I, A, *this, doparity) * JastrowFactor;
 
-            ham += localham;
+            ham += ovlpdetcopy*tia;
 
-            double ovlpdetcopy = localham / tia;
+            //double ovlpdetcopy = localham / tia;
             if (doGradient)
             {
               double factor = tia * ovlpdetcopy;
