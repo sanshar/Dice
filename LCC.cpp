@@ -51,6 +51,7 @@ using namespace SHCISortMpiUtils;
 
 
 
+#ifndef Complex
 //=============================================================================
 void LCC::doLCC(
         Determinant *Dets, CItype *ci, int DetsSize,
@@ -287,7 +288,7 @@ void LCC::doLCC(
   Hmult2 Hab(sparseHab);
 
   // Scenario1: show the different contributions
-  cout<<"Dets:";
+  cout<<"Dets/class:";
   for (int iclass=0; iclass<8; iclass++)
     cout<<format("%8i") %(Psi1nDets[iclass]);
   cout<<endl;
@@ -636,3 +637,4 @@ void LCC::get_landscape(
    cout<<"BM: what?? "<<i<<" "<<j<<" "<<a<<" "<<b<<" "<<schd.ncore<<" "<<schd.nact<<endl;
   }
 }
+#endif

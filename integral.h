@@ -44,8 +44,6 @@ class compAbs {
     bool operator()(const complex<double>& a, const complex<double>& b) const { return std::abs(a) < std::abs(b); }
 };
 
-
-
 class oneInt {
   private:
     friend class boost::serialization::access;
@@ -116,11 +114,11 @@ class twoIntHeatBath {
     std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > sameSpin;
     std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
     MatrixXd Singles;
- 
+
     double epsilon;
     double zero ;
     twoIntHeatBath(double epsilon_) :zero(0.0),epsilon(fabs(epsilon_)) {}
- 
+
     //the orbs contain all orbitals used to make the ij pair above
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
@@ -142,7 +140,7 @@ class twoIntHeatBath {
               }
           }
       } // ij
- 
+
       Singles = MatrixXd::Zero(2*norbs, 2*norbs);
       for (int i=0; i<2*norbs; i++)
         for (int a=0; a<2*norbs; a++) {
@@ -155,8 +153,6 @@ class twoIntHeatBath {
     } // end constructClass
 };
 
-
-
 class twoIntHeatBathSHM {
   public:
     float* sameSpinIntegrals;
@@ -167,10 +163,10 @@ class twoIntHeatBathSHM {
     short* oppositeSpinPairs;
     double* singleExcitation;
     MatrixXd Singles;
- 
+
     double epsilon;
     twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
- 
+
     void constructClass(int norbs, twoIntHeatBath& I2) ;
 };
 
