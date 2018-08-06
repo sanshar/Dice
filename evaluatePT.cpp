@@ -24,6 +24,7 @@
 #include "Walker.h"
 #include <boost/format.hpp>
 #include <iostream>
+#include <fstream>
 #include "evaluateE.h"
 #include "evaluatePT.h"
 #include "Davidson.h"

@@ -25,6 +25,7 @@
 #include "Walker.h"
 #include <boost/format.hpp>
 #include <iostream>
+#include <fstream>
 #include "evaluateE.h"
 #include "Davidson.h"
 #include "Hmult.h"
@@ -104,9 +105,9 @@ double calcTcorr(vector<double> &v)
     };
     c[i] = c[i] / norm / var;
   };
- 
+ #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &c[0], v.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
+#endif
 
   rk = 1.0;
 

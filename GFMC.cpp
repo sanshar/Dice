@@ -171,7 +171,9 @@ int main(int argc, char* argv[]) {
     fileE.read ( (char*)(&shift0), sizeof(double));
     fileE.close();
   }
+#ifndef SERIAL
   MPI_Bcast(&shift0, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
 
   doGFMCCT(wave, shift0, I1, I2, I2HBSHM, coreE);
   //doGFMC(wave, shift0, I1, I2, I2HBSHM, coreE);
