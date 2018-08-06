@@ -41,6 +41,7 @@
 #endif
 #include "communicate.h"
 #include "SOChelper.h"
+#include <boost/serialization/vector.hpp>
 
 
 void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2,

@@ -3,11 +3,11 @@
 ##########################
 
 USE_MPI = yes
-USE_INTEL = no
-USING_OSX = yes
+USE_INTEL = yes
+USING_OSX = no
 
-EIGEN=/Users/jets/apps/eigen
-BOOST=/Users/jets/apps/boost_1_67_0
+EIGEN=/projects/sash2458/apps/eigen/
+BOOST=/projects/sash2458/apps/boost_1_57_0/
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
@@ -31,7 +31,7 @@ ifeq ($(USE_INTEL), yes)
 		DFLAGS += -DSERIAL
 	endif
 else
-	# FLAGS += -fopenmp
+	FLAGS += -fopenmp
 	DFLAGS += -fopenmp
 	ifeq ($(USE_MPI), yes)
 		CXX = mpicxx
