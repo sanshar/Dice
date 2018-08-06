@@ -48,7 +48,7 @@ using namespace Eigen;
 using namespace boost;
 using namespace std;
 
-double getNVariables(int excitationLevel, vector<int>& SingleIndices,
+void getNVariables(int excitationLevel, vector<int>& SingleIndices,
 		     int norbs, twoIntHeatBathSHM& I2hb);
 void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>& SingleIndices,
 					   double &stddev, int &nalpha, int &nbeta, int &norbs,
@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
   MoDeterminant det(alpha, beta);
 
   vector<int> SingleSpinIndices;
-  int nvars = getNVariables(schd.excitationLevel, SingleSpinIndices, norbs, I2HBSHM);
+  getNVariables(schd.excitationLevel, SingleSpinIndices, norbs, I2HBSHM);
 
   //we assume intermediate normalization
   Eigen::VectorXd civars = Eigen::VectorXd::Zero(SingleSpinIndices.size()/2+1);
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 }
 
 
-double getNVariables(int excitationLevel, vector<int>& SingleIndices,
+void getNVariables(int excitationLevel, vector<int>& SingleIndices,
 		     int norbs, twoIntHeatBathSHM& I2hb) {
   if (excitationLevel > 1) {
     cout << "excitaitonLevel greater than 1 has not been implemented yet!!"<<endl;
@@ -221,8 +221,7 @@ double getNVariables(int excitationLevel, vector<int>& SingleIndices,
       }
     }
   SingleIndices.resize(norbs*norbs);
-  //for (int i=0; i<3; i++)
-  //cout << SingleIndices[2*i]<<"  "<<SingleIndices[2*i+1]<<endl;
+  
 }
 
 int getIndex(int I, int A, int norbs) {
