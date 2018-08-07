@@ -49,14 +49,16 @@ using namespace boost;
 using namespace std;
 
 void getNVariables(int excitationLevel, vector<int> &SingleIndices,
-                   int norbs, twoIntHeatBathSHM &I2hb);
+                   vector<int>& DoubleIndices, int norbs, twoIntHeatBathSHM &I2hb);
 void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
-                                           double &stddev, int &nalpha, int &nbeta, int &norbs,
+                                           vector<int>& DoubleIndices, double &stddev, 
+					   int &nalpha, int &nbeta, int &norbs,
                                            oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb,
                                            double &coreE, VectorXd &vars, double &rk,
                                            int niter, double targetError);
 void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
-                        double &stddev, int &nalpha, int &nbeta, int &norbs,
+                        vector<int>& DoubleIndices, double &stddev, 
+			int &nalpha, int &nbeta, int &norbs,
                         oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb,
                         double &coreE, VectorXd &vars, double &rk,
                         int niter, double targetError);
@@ -195,19 +197,22 @@ int main(int argc, char *argv[])
   beta = HforbsB.block(0, 0, norbs, nbeta);
   MoDeterminant det(alpha, beta);
 
-  vector<int> SingleSpinIndices;
-  getNVariables(schd.excitationLevel, SingleSpinIndices, norbs, I2HBSHM);
+  vector<int> SingleSpinIndices, DoubleSpinIndices;
+  getNVariables(schd.excitationLevel, SingleSpinIndices, DoubleSpinIndices, norbs, I2HBSHM);
 
   //we assume intermediate normalization
-  Eigen::VectorXd civars = Eigen::VectorXd::Zero(SingleSpinIndices.size() / 2 + 1);
+  Eigen::VectorXd civars = Eigen::VectorXd::Zero(SingleSpinIndices.size() / 2 + 
+						 1 + DoubleSpinIndices.size() / 4);
   double rt = 0., stddev, E0 = 0.;
 
   if (!schd.deterministic)
-    getStochasticGradientContinuousTimeCI(wave, E0, SingleSpinIndices, stddev, nalpha, nbeta, norbs,
+    getStochasticGradientContinuousTimeCI(wave, E0, SingleSpinIndices, DoubleSpinIndices,
+					  stddev, nalpha, nbeta, norbs,
                                           I1, I2, I2HBSHM, coreE, civars, rt,
                                           schd.stochasticIter, 0.5e-3);
   else
-    getDeterministicCI(wave, E0, SingleSpinIndices, stddev, nalpha, nbeta, norbs,
+    getDeterministicCI(wave, E0, SingleSpinIndices, DoubleSpinIndices, 
+		       stddev, nalpha, nbeta, norbs,
                        I1, I2, I2HBSHM, coreE, civars, rt,
                        schd.stochasticIter, 0.5e-3);
 
@@ -216,7 +221,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void getNVariables(int excitationLevel, vector<int> &SingleIndices,
+void getNVariables(int excitationLevel, vector<int> &SingleIndices, vector<int>& DoubleIndices,
                    int norbs, twoIntHeatBathSHM &I2hb)
 {
   if (excitationLevel > 1)
@@ -228,59 +233,42 @@ void getNVariables(int excitationLevel, vector<int> &SingleIndices,
   for (int i = 0; i < 2 * norbs; i++)
     for (int j = 0; j < 2 * norbs; j++)
     {
+      if (I2hb.Singles(i, j) > schd.epsilon) 
       //if (i == j) continue;
-      if (i % 2 == j % 2)
+      //if (i % 2 == j % 2)
       {
         SingleIndices.push_back(i);
         SingleIndices.push_back(j);
       }
     }
+  //return;
+  for (int i=0; i < 2*norbs; i++) {
+    for (int j=i+1; j < 2*norbs; j++) {
+      int pair = (j/2) * (j/2 + 1)/2 + i/2;
 
-}
+      size_t start = i%2 == j%2 ? I2hb.startingIndicesSameSpin[pair]   : I2hb.startingIndicesOppositeSpin[pair];
+      size_t end   = i%2 == j%2 ? I2hb.startingIndicesSameSpin[pair+1] : I2hb.startingIndicesOppositeSpin[pair+1];
+      float *integrals = i%2 == j%2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+      short *orbIndices = i%2 == j%2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
-int getIndex(int I, int A, int norbs)
-{
-  int I1 = I / 2, I2 = A / 2;
-
-  if (I % 2 != A % 2)
-  {
-    cout << "something wrong " << endl;
-    exit(0);
-  }
-  if (I % 2 == 0)
-    return I1 * norbs + I2 + 1;
-  else
-    return norbs * norbs + I1 * norbs + I2 + 1;
-}
-
-void updateHamOverlap(MatrixXd &Ham, MatrixXd &S, VectorXd &hamRatio, VectorXd &gradRatio,
-                      vector<int> &SingleIndices)
-{
-  VectorXd hamRatioSmall = VectorXd::Zero(Ham.rows());
-  VectorXd gradRatioSmall = VectorXd::Zero(Ham.rows());
-
-  hamRatioSmall[0] = hamRatio[0];
-  gradRatioSmall[0] = gradRatio[0];
-
-  int norbs = Determinant::norbs;
-  int index = 1;
-  for (int i = 0; i < SingleIndices.size() / 2; i++)
-  {
-    int a = SingleIndices[2 * i], b = SingleIndices[2 * i + 1];
-    int longIndex = getIndex(a, b, norbs);
-    hamRatioSmall[index] = hamRatio[longIndex];
-    gradRatioSmall[index] = gradRatio[longIndex];
-    index++;
+      for (size_t index = start; index < end; index++) {
+	if (fabs(integrals[index]) < schd.epsilon)
+	  break;
+	int a = 2 * orbIndices[2* index] + i%2, b = 2 * orbIndices[2 * index] + j%2;
+	//cout <<i<<"  "<<j<<"  "<<a<<"  "<<b<<endl;
+	DoubleIndices.push_back(i); DoubleIndices.push_back(j); 
+	DoubleIndices.push_back(a); DoubleIndices.push_back(b);
+      }
+    }
   }
 
-  Ham = gradRatioSmall * hamRatioSmall.transpose();
-  S = gradRatioSmall * gradRatioSmall.transpose();
-
-  return;
 }
+
+
 
 void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
-                                           double &stddev, int &nalpha, int &nbeta, int &norbs,
+                                           vector<int>& DoubleIndices, double &stddev, 
+					   int &nalpha, int &nbeta, int &norbs,
                                            oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb,
                                            double &coreE, VectorXd &civars, double &rk,
                                            int niter, double targetError)
@@ -336,8 +324,8 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
   double ham = 0., ovlp = 0.;
   double scale = 1.0;
 
-  VectorXd hamRatio = VectorXd::Zero(2 * norbs * norbs + 1);
-  VectorXd gradRatio = VectorXd::Zero(2 * norbs * norbs + 1);
+  VectorXd hamRatio = VectorXd::Zero(2 * norbs * norbs + 1 + norbs);
+  VectorXd gradRatio = VectorXd::Zero(2 * norbs * norbs + 1 + norbs);
   MatrixXd Hamiltonian(civars.rows(), civars.rows());
   MatrixXd Overlap(civars.rows(), civars.rows());
   MatrixXd iterHamiltonian(civars.rows(), civars.rows());
@@ -355,7 +343,7 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
 
   gradRatio.setZero();
   double factor = 1.0;
-  w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
+  w.OvlpRatioCI(walk, gradRatio, I1, I2, SingleIndices, DoubleIndices, I2hb, coreE, factor);
 
   hamRatio = E0 * gradRatio;
   for (int m = 0; m < nExcitations; m++)
@@ -366,11 +354,13 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
     wtmp.updateWalker(w, excitation1[m], excitation2[m]);
 
     double factor = HijElements[m] * ovlpRatio[m];
-    w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2,
-                  SingleIndices, I2hb, coreE, factor);
+    w.OvlpRatioCI(wtmp, hamRatio,  I1, I2,
+		  SingleIndices, DoubleIndices, I2hb, coreE, factor);
   }
 
-  updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
+  //updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
+  iterHamiltonian = gradRatio*hamRatio.transpose();
+  iterOverlap     = gradRatio*gradRatio.transpose();
   Hamiltonian = iterHamiltonian;
   Overlap = iterOverlap;
 
@@ -433,18 +423,7 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
     gradRatio.setZero();
     double factor = 1.0;
     //gradRatio[0] = 1.0;
-    w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
-    /*
-    //<n|Psi_i>/<n|Psi0>
-    gradRatio[0] = 1;
-    for (int m=0; m<nExcitations; m++) {
-      if (excitation2[m] != 0) //this is the start of double excitation
-	break;
-      int I = excitation1[m] / 2 / norbs, A = excitation1[m] - 2 * norbs * I;    
-      int index = getIndex(I, A, norbs);
-      gradRatio[index] = ovlpRatio[m]; //-<n|a_i^dag a_a|Psi0>/<n|Psi0>
-    }
-    */
+    w.OvlpRatioCI(walk, gradRatio,  I1, I2, SingleIndices, DoubleIndices, I2hb, coreE, factor);
 
     //<m|Psi_i>/<n|Psi0>
     hamRatio = E0 * gradRatio;
@@ -456,30 +435,13 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
 
       double factor = HijElements[m] * ovlpRatio[m];
       //hamRatio[0] += factor;
-      w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2,
-                    SingleIndices, I2hb, coreE, factor);
-
-      /*
-      //this should only generate singles when excitationlevel = 1
-      nExcitationsForM = 0;
-      double ovlpForM, hamForM;
-      w.HamAndOvlpGradient(wtmp, ovlpForM, hamForM, localGrad, I1, I2, I2hb, coreE, ovlpRatioForM,
-			   excitation1ForM, excitation2ForM, HijElementsForM, nExcitationsForM, false);
-      
-      hamRatio[0] += HijElements[m] * ovlpRatio[m];
-      
-      //<m|Psi>/<m|Psi0> 
-      for (int n=0; n<nExcitationsForM; n++) {
-	if (excitation2ForM[n] != 0) //this is the start of double excitation
-	  break;
-	int I = excitation1ForM[n] / 2 / norbs, A = excitation1ForM[n] - 2 * norbs * I;    
-	int index = getIndex(A, I, norbs);
-	hamRatio[index] += HijElements[m] * ovlpRatio[m] * ovlpRatioForM[n];
-      }
-      */
+      w.OvlpRatioCI(wtmp, hamRatio,  I1, I2,
+		    SingleIndices, DoubleIndices, I2hb, coreE, factor);
     }
 
-    updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
+    iterHamiltonian = gradRatio*hamRatio.transpose();
+    iterOverlap     = gradRatio*gradRatio.transpose();
+    //updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
 
     if (abs(ovlp) > bestOvlp)
     {
@@ -517,13 +479,22 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
     //cout << Overlap <<endl;
     //}
     //ges.compute(Hamiltonian, Overlap);
-    cout << ges.eigenvalues().transpose()(0) << "  (" << stddev << ")"
-         << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
+    double lowest = Hamiltonian(0,0)/Overlap(0,0);
+    for (int i=0; i<Hamiltonian.rows(); i++)  {
+      if (abs(ges.betas().transpose()(i)) > 1.e-10) {
+	if (ges.eigenvalues().transpose()(i).real() < lowest )
+	  lowest = ges.eigenvalues().transpose()(i).real();
+      }
+    }
+    cout << lowest << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
+    //cout << ges.eigenvalues().transpose()(0) << "  (" << stddev << ")"
+    //<< "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
   }
 }
 
 void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
-                        double &stddev, int &nalpha, int &nbeta, int &norbs,
+                        vector<int>& DoubleIndices, double &stddev, 
+			int &nalpha, int &nbeta, int &norbs,
                         oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb,
                         double &coreE, VectorXd &civars, double &rk,
                         int niter, double targetError)
@@ -544,12 +515,12 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
   int nExcitationsForM = 0;
 
   double Energy = 0.0;
-  VectorXd hamRatio = VectorXd::Zero(2 * norbs * norbs + 1);
-  VectorXd gradRatio = VectorXd::Zero(2 * norbs * norbs + 1);
-  MatrixXd Hamiltonian(civars.rows(), civars.rows());
-  MatrixXd Overlap(civars.rows(), civars.rows());
-  MatrixXd iterHamiltonian(civars.rows(), civars.rows());
-  MatrixXd iterOverlap(civars.rows(), civars.rows());
+  VectorXd hamRatio = VectorXd::Zero(civars.rows());
+  VectorXd gradRatio = VectorXd::Zero(civars.rows());
+  MatrixXd Hamiltonian = MatrixXd::Zero(civars.rows(), civars.rows());
+  MatrixXd Overlap = MatrixXd::Zero(civars.rows(), civars.rows());
+  //MatrixXd iterHamiltonian(civars.rows(), civars.rows());
+  //MatrixXd iterOverlap(civars.rows(), civars.rows());
   VectorXd localGrad;
 
   for (int i = commrank; i < allDets.size(); i += commsize)
@@ -568,7 +539,7 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
 
       gradRatio.setZero();
       double factor = 1.0;
-      w.OvlpRatioCI(walk, gradRatio, getIndex, I1, I2, SingleIndices, I2hb, coreE, factor);
+      w.OvlpRatioCI(walk, gradRatio,  I1, I2, SingleIndices, DoubleIndices, I2hb, coreE, factor);
 
       hamRatio = E0 * gradRatio;
       for (int m = 0; m < nExcitations; m++)
@@ -579,19 +550,21 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
         wtmp.updateWalker(w, excitation1[m], excitation2[m]);
 
         double factor = HijElements[m] * ovlpRatio[m];
-        w.OvlpRatioCI(wtmp, hamRatio, getIndex, I1, I2,
-                      SingleIndices, I2hb, coreE, factor);
+        w.OvlpRatioCI(wtmp, hamRatio,  I1, I2,
+                      SingleIndices, DoubleIndices, I2hb, coreE, factor);
       }
     }
 
-    updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
-    Hamiltonian += iterHamiltonian * ovlp * ovlp;
-    Overlap += iterOverlap * ovlp * ovlp;
+    //updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
+    //iterHamiltonian = gradRatio*hamRatio.transpose();
+    //iterOverlap     = gradRatio*gradRatio.transpose();
+    Hamiltonian += gradRatio*hamRatio.transpose() * ovlp * ovlp;
+    Overlap += gradRatio*gradRatio.transpose() * ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
     //cout << iterHamiltonian(0,0)<<"  "<<ovlp<<"  "<<Energy<<endl;
   }
 
-  cout << Energy/Overlap(0,0) << endl;
+  //cout << Energy/Overlap(0,0) << endl;
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(Hamiltonian(0, 0)), Hamiltonian.rows() * Hamiltonian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Overlap(0, 0)), Overlap.rows() * Overlap.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -602,10 +575,9 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
   Overlap /= (commsize);
   //E0 = Eloc / commsize;
 
-
   if (commrank == 0)
   {
-    EigenSolver<MatrixXd> es(Overlap);
+    //EigenSolver<MatrixXd> es(Overlap);
     //cout << es.eigenvalues().transpose() << endl;
     GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
     //if (commrank == 0) {
@@ -613,6 +585,13 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
     //cout << Overlap << endl;
     //}
     //ges.compute(Hamiltonian, Overlap);
-    cout << ges.eigenvalues().transpose()(0) << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
+    double lowest = Hamiltonian(0,0)/Overlap(0,0);
+    for (int i=0; i<Hamiltonian.rows(); i++)  {
+      if (abs(ges.betas().transpose()(i)) > 1.e-10) {
+	if (ges.eigenvalues().transpose()(i).real() < lowest)
+	  lowest = ges.eigenvalues().transpose()(i).real();
+      }
+    }
+    cout << lowest << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
   }
 }

@@ -105,9 +105,10 @@ class CPSSlater  {
 			   Eigen::VectorXd& grad);
 
 
-  void OvlpRatioCI(Walker &walk, VectorXd &gradRatio, int (*getIndex)(int, int, int),
+  void OvlpRatioCI(Walker &walk, VectorXd &gradRatio,
 		   oneInt &I1, twoInt &I2, vector<int>& SingleIndices,
-		   twoIntHeatBathSHM& I2hb, double & coreE, double factor);
+		   vector<int>& DoubleIndices, twoIntHeatBathSHM& I2hb, 
+		   double & coreE, double factor);
 
 /**
  * Calculates the overlap, hamiltonian and gradient,
