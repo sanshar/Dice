@@ -26,6 +26,8 @@
 #include <utility>
 #include "iowrapper.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/serialization/complex.hpp>
+#include <boost/serialization/vector.hpp>
 
 using namespace std;
 using namespace Eigen;
