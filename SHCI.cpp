@@ -22,7 +22,8 @@
 #include <stdio.h>
 #include <fstream>
 #include "Determinants.h"
-#include "SHCImakeHamiltonian.h"
+//#include "SHCImakeHamiltonian.h"
+#include "SHCImake4cHamiltonian.h"
 #include "SHCIrdm.h"
 #include "input.h"
 #include "integral.h"
@@ -273,14 +274,14 @@ int main(int argc, char* argv[]) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
 #ifdef Complex
-      //pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
+      pout << format("%4i %16.10f %16.10f  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
 #else
-      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
+      pout << format("%4i %18.10e ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
 #endif
-      pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"  "<<Dets[m]<<endl;
       prevci(m,0) = 0.0;
     }
   }
+    pout << endl;
     pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
   if (schd.stochastic == true && schd.DoRDM) {
     schd.DoRDM = false;
@@ -438,7 +439,7 @@ int main(int argc, char* argv[]) {
       exit(0);
     }
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
-    SHCImakeHamiltonian::SparseHam sparseHam;
+    SHCImake4cHamiltonian::SparseHam sparseHam;
     {
       char file [5000];
       sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
