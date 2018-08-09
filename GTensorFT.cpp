@@ -22,6 +22,7 @@
 #include <fstream>
 #include "Determinants.h"
 #include "SHCImakeHamiltonian.h"
+#include "SHCIshm.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -39,15 +40,19 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include "SOChelper.h"
+#include "symmetry.h"
 
 using namespace Eigen;
 using namespace boost;
+using namespace SHCIbasics;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
+char Determinant::Trev = 0;  // Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 //get the current time
 double getTime() {
@@ -57,17 +62,16 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment;
-boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment;
-boost::interprocess::mapped_region regionInt2SHM;
-
+// boost::interprocess::shared_memory_object int2Segment;
+// boost::interprocess::mapped_region regionInt2;
+// boost::interprocess::shared_memory_object int2SHMSegment;
+// boost::interprocess::mapped_region regionInt2SHM;
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
-				 vector<double>& E0, oneInt& I1, twoInt& I2,
-				 twoIntHeatBathSHM& I2HB, vector<int>& irrep,
-				 schedule& schd, double coreE, int nelec) ;
+// double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
+// 				 vector<double>& E0, oneInt& I1, twoInt& I2,
+// 				 twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+// 				 schedule& schd, double coreE, int nelec) ;
 
 void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 	      schedule& schd, vector<vector<int> >& HFoccupied);
@@ -79,10 +83,18 @@ int main(int argc, char* argv[]) {
   boost::mpi::communicator world;
 #endif
 
+  // Initialize
+  initSHM();
+
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
+  string inputFile = "input.dat";
+  if (argc > 1) inputFile = string(argv[1]);
+  if (commrank == 0) readInput(inputFile, HFoccupied, schd);
+  if(DetLen % 2 ==1) {
+    pout << "Change DetLen in global to an even number and recompile." << endl;
+  }
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
@@ -92,40 +104,54 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+mpigetrank());
+  srand(schd.randomSeed + commrank);
+  if (schd.outputlevel > 1) pout << "#using seed: " << schd.randomSeed << endl;
 
+  std::cout.precision(15);
 
   //set up shared memory files to store the integrals
-  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
-  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
+  // string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  // string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  // int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
+  // int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
 
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
-  twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
+  twoInt I2; 
+  oneInt I1; 
+  int nelec; 
+  int norbs; 
+  double coreE, eps;
   std::vector<int> irrep;
-  readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
+  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
 
-  int num_thrds;
+  // int num_thrds;
 
+  // Check
+  if (HFoccupied[0].size() != nelec) {
+    pout << "The number of electrons given in the FCIDUMP should be";
+    pout << " equal to the nocc given in the shci input file." << endl;
+    exit(0);
+  }
+
+  // Setup the lexical table for the determinants
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
   HalfDet::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
   Determinant::initLexicalOrder(nelec);
   if (Determinant::EffDetLen >DetLen) {
-    cout << "change DetLen in global.h to "<<Determinant::EffDetLen<<" and recompile "<<endl;
+    cout << "change DetLen in global.h to " << Determinant::EffDetLen <<" and recompile " << endl;
     exit(0);
   }
 
+  // Initialize the Heat-Bath integrals
   std::vector<int> allorbs;
-  for (int i=0; i<norbs/2; i++)
-    allorbs.push_back(i);
+  for (int i = 0; i < norbs / 2; i++) allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, norbs/2);
-  I2HBSHM.constructClass(norbs/2, I2HB);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
+  I2HBSHM.constructClass(norbs / 2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
 #ifndef SERIAL
@@ -160,15 +186,17 @@ int main(int argc, char* argv[]) {
     S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
-  std::cout.precision(15);
-  vector<MatrixXx> ci;
+  // std::cout.precision(15);
+  vector<MatrixXx> ci(2 , MatrixXx::Zero(HFoccupied.size(), 1));
   vector<Determinant> Dets;
 
   //the perturbation is S[i]+L[i]
   double epsilon = 1.e-4;
 
-  vector<double> fpm(6,0.0); //these are f+ and f- function evaluations
+  vector<double> fpm(6,0.0); 
+  vector<double> dpm(6,0.0);//these are f+ and f- function evaluations
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
+
   for (int a=0; a<3; a++) {
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
@@ -179,12 +207,16 @@ int main(int argc, char* argv[]) {
 
     pout << ((E0[1]-E0[0])/epsilon -ge)*1e6<<"  "<<endl;
     if (!schd.stochastic) {
-      fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      //fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      pout << "We can't support perturbation calculation now" << endl;
+      pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+      exit(0);
     }
     else
       fpm[2*a] = pow(E0[1]-E0[0],2);
 
-    pout << (sqrt(fpm[2*a])/epsilon - ge)*1e6<<endl; exit(0);
+
+    // pout << (sqrt(fpm[2*a])/epsilon - ge)*1e6<<endl;
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
@@ -197,17 +229,23 @@ int main(int argc, char* argv[]) {
 				   irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      //fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      pout << "We can't support perturbation calculation now" << endl;
+      pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+      exit(0);
     }
     else
       fpm[2*a+1] = pow(E0[1]-E0[0],2);
+  
 
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
     }
 
-    Gtensor(a,a) = (fpm[2*a] + fpm[2*a+1])/(epsilon*epsilon)/2.;
+    Gtensor(a,a) = (fpm[2*a] + fpm[2*a+1])/(epsilon*epsilon)/2;
   }
+
+  int count=0;
 
   for (int a=0; a<3; a++)
   for (int b=0; b<a; b++)
@@ -222,11 +260,13 @@ int main(int argc, char* argv[]) {
 						  irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      plusplus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      //plusplus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      pout << "We can't support perturbation calculation now" << endl;
+      pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+      exit(0);
     }
     else
       plusplus = pow(E0[1]-E0[0],2);
-
 
 
     for (int i=0; i<I1.store.size(); i++) {
@@ -244,22 +284,45 @@ int main(int argc, char* argv[]) {
 				   irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      minusminus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+      //minusminus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+       pout << "We can't support perturbation calculation now" << endl;
+       pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+      exit(0);    
     }
     else
       minusminus = pow(E0[1]-E0[0],2);
+
 
     for (int i=0; i<I1.store.size(); i++) {
       I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
       I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
     }
 
-    Gtensor(a,b) = (plusplus  - fpm[2*a] - fpm[2*b] - fpm[2*a+1] - fpm[2*b+1]+minusminus)/2/(epsilon*epsilon)/2;
+    dpm[2*count] = plusplus;
+    dpm[2*count+1] = minusminus;
+
+    count++;
+
+    Gtensor(a,b) = (plusplus  - fpm[2*a] - fpm[2*b] - fpm[2*a+1] - fpm[2*b+1] + minusminus)/2/(epsilon*epsilon)/2;
     Gtensor(b,a) = Gtensor(a,b);
   }
 
-
-  cout << Gtensor<<endl;
+  pout << endl;
+  pout << "DeltaE^2              ++              --"<< endl;
+  for (int i = 0; i < 3; i++)
+  for (int j = 0; j <= i; j++){
+    if (i == j) {
+      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",fpm[2*i],fpm[2*i+1]);
+    }
+    else if (i == 1){
+      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",dpm[0],dpm[1]);
+    }
+    else {
+      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",dpm[2*j+2],dpm[2*j+3]);
+    }
+  }
+  pout << endl;
+  pout << Gtensor<<endl;
 
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
@@ -286,7 +349,7 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
       Dets[d].setocc(HFoccupied[d][i], true);
     }
   }
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
@@ -296,38 +359,38 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 #endif
 }
 
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
-			       vector<double>& E0, oneInt& I1, twoInt& I2,
-			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep,
-			       schedule& schd, double coreE, int nelec) {
+// double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
+// 			       vector<double>& E0, oneInt& I1, twoInt& I2,
+// 			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep,
+// 			       schedule& schd, double coreE, int nelec) {
 
 
 
-  schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
-  vector<MatrixXx> spinRDM(3);
+//   schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
+//   vector<MatrixXx> spinRDM(3);
 
-  MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
-  for (int root1 =0 ;root1<schd.nroots; root1++) {
-    for (int root2=root1+1 ;root2<schd.nroots; root2++) {
-      Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
-      SHCIbasics::DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
-							 E0[root2], I1,
-							 I2, I2HBSHM, irrep, schd,
-							 coreE, nelec, root1, Heff(root1,root1),
-							 Heff(root2, root2), Heff(root1, root2),
-							 spinRDM);
-      Heff(root2, root1) = conj(Heff(root1, root2));
-    }
-  }
-  for (int root1 =0 ;root1<schd.nroots; root1++)
-    Heff(root1, root1) += E0[root1];
+//   MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
+//   for (int root1 =0 ;root1<schd.nroots; root1++) {
+//     for (int root2=root1+1 ;root2<schd.nroots; root2++) {
+//       Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
+//       DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
+// 							 E0[root2], I1,
+// 							 I2, I2HBSHM, irrep, schd,
+// 							 coreE, nelec, root1, Heff(root1,root1),
+// 							 Heff(root2, root2), Heff(root1, root2),
+// 							 spinRDM);
+//       Heff(root2, root1) = conj(Heff(root1, root2));
+//     }
+//   }
+//   for (int root1 =0 ;root1<schd.nroots; root1++)
+//     Heff(root1, root1) += E0[root1];
 
-  schd.doGtensor = true;
+//   schd.doGtensor = true;
 
-  SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
-  //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
-  //exit(0);
-  return eigensolver.eigenvalues()(1,0)-eigensolver.eigenvalues()(0,0);
+//   SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
+//   //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
+//   //exit(0);
+//   return eigensolver.eigenvalues()(1,0)-eigensolver.eigenvalues()(0,0);
 
 
-}
+// }
