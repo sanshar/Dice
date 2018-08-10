@@ -44,83 +44,77 @@ class schedule;
 namespace SHCIbasics {
 
   void writeHelperIntermediate( std::map<HalfDet, int >& BetaN,
-				std::map<HalfDet, int >& AlphaN,
-				std::map<HalfDet, vector<int> >& BetaNm1,
-				std::map<HalfDet, vector<int> >& AlphaNm1, 
-				schedule& schd, int iter);
+          std::map<HalfDet, int >& AlphaN,
+          std::map<HalfDet, vector<int> >& BetaNm1,
+          std::map<HalfDet, vector<int> >& AlphaNm1, 
+          schedule& schd, int iter);
   
   void readHelperIntermediate(std::map<HalfDet, int >& BetaN,
-			      std::map<HalfDet, int >& AlphaN,
-			      std::map<HalfDet, vector<int> >& BetaNm1,
-			      std::map<HalfDet, vector<int> >& AlphaNm1, 
-			      schedule& schd, int iter);
+          std::map<HalfDet, int >& AlphaN,
+          std::map<HalfDet, vector<int> >& BetaNm1,
+          std::map<HalfDet, vector<int> >& AlphaNm1, 
+          schedule& schd, int iter);
   
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     SHCImakeHamiltonian::SparseHam& sparseHam,
-			     vector<double>& E0, bool& converged, schedule& schd,
-			     SHCImakeHamiltonian::HamHelpers2& helper2);
+          SHCImakeHamiltonian::SparseHam& sparseHam,
+          vector<double>& E0, bool& converged, schedule& schd,
+          SHCImakeHamiltonian::HamHelpers2& helper2);
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets, 
-			     SHCImakeHamiltonian::SparseHam& sparseHam,
-			     vector<double>& E0, bool converged, schedule& schd,
-			     SHCImakeHamiltonian::HamHelpers2& helper2);
+          SHCImakeHamiltonian::SparseHam& sparseHam,
+          vector<double>& E0, bool converged, schedule& schd,
+          SHCImakeHamiltonian::HamHelpers2& helper2);
 
   void writeVariationalResult(int iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
-			      vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
-			      vector<vector<CItype> >& Helements,
-			      vector<double>& E0, bool converged, schedule& schd,
-			      std::map<HalfDet, std::vector<int> >& BetaN,
-			      std::map<HalfDet, std::vector<int> >& AlphaNm1);
+          vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+          vector<vector<CItype> >& Helements,
+          vector<double>& E0, bool converged, schedule& schd,
+          std::map<HalfDet, std::vector<int> >& BetaN,
+          std::map<HalfDet, std::vector<int> >& AlphaNm1);
   void readVariationalResult(int& iter, vector<MatrixXx>& ci, vector<Determinant>& Dets,
-			     vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
-			     vector<vector<CItype> >& Helements,
-			     vector<double>& E0, bool& converged, schedule& schd,
-			     std::map<HalfDet, std::vector<int> >& BetaN,
-			     std::map<HalfDet, std::vector<int> >& AlphaNm1);
+          vector<vector<int> >& connections, vector<vector<size_t> >& orbDifference,
+          vector<vector<CItype> >& Helements,
+          vector<double>& E0, bool& converged, schedule& schd,
+          std::map<HalfDet, std::vector<int> >& BetaN,
+          std::map<HalfDet, std::vector<int> >& AlphaNm1);
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
-			       twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
-			       bool DoRDM=false);
+          twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
+          bool DoRDM=false);
 
   vector<double> DoVariationalDirect(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
-				     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
-				     bool DoRDM=false);
+          twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
+          bool DoRDM=false);
 
-  double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *ci, int DetsSize
-								 , double& E0, oneInt& I1, twoInt& I2,
-								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
-								 schedule& schd, double coreE,
-								 int nelec, int root) ;
-  void DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci
-								 , double& E0, oneInt& I1, twoInt& I2,
-								 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
-								 schedule& schd, double coreE,
-								 int nelec, int root) ;
-  void DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci
-							 , double& E0, oneInt& I1, twoInt& I2,
-							 twoIntHeatBathSHM& I2HB,vector<int>& irrep,
-							 schedule& schd, double coreE,
-							 int nelec, int root) ;
+  double DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *ci, int DetsSize, 
+          double& E0, oneInt& I1, twoInt& I2,
+          twoIntHeatBathSHM& I2HB,vector<int>& irrep,
+          schedule& schd, double coreE,
+          int nelec, int root) ;
+  void DoPerturbativeStochastic2SingleListDoubleEpsilon2OMPTogether(vector<Determinant>& Dets, MatrixXx& ci, 
+          double& E0, oneInt& I1, twoInt& I2,
+          twoIntHeatBathSHM& I2HB,vector<int>& irrep,
+          schedule& schd, double coreE,
+          int nelec, int root) ;
+  void DoPerturbativeStochastic2SingleListDoubleEpsilon2(vector<Determinant>& Dets, MatrixXx& ci, 
+          double& E0, oneInt& I1, twoInt& I2,
+          twoIntHeatBathSHM& I2HB,vector<int>& irrep,
+          schedule& schd, double coreE,
+          int nelec, int root) ;
 
   void DoPerturbativeStochastic2SingleList(vector<Determinant>& Dets, MatrixXx& ci, double& E0, oneInt& I1, twoInt& I2,
-					   twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) ;
+          twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE, int nelec, int root) ;
 
   double DoPerturbativeDeterministic(Determinant* Dets, CItype *ci, int DetsSize, double& E0, oneInt& I1, twoInt& I2,
-				     twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE,
-				     int nelec, int root, vector<MatrixXx>& vdVector, double& Psi1Norm,
-				     bool appendPsi1ToPsi0=false) ;
+          twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd, double coreE,
+          int nelec, int root, vector<MatrixXx>& vdVector, double& Psi1Norm,
+          bool appendPsi1ToPsi0=false) ;
 
   void DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01,
-					      MatrixXx&ci2, double& E02, oneInt& I1, twoInt& I2,
-					      twoIntHeatBathSHM& I2HB, vector<int>& irrep,
-					      schedule& schd, double coreE, int nelec, int root,
-					      CItype& EPT1, CItype& EPT2, CItype& EPT12,
-					      std::vector<MatrixXx>& spinRDM);
-
-
-
-
-
-
+          MatrixXx&ci2, double& E02, oneInt& I1, twoInt& I2,
+          twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+          schedule& schd, double coreE, int nelec, int root,
+          CItype& EPT1, CItype& EPT2, CItype& EPT12,
+          std::vector<MatrixXx>& spinRDM);
 
 }
 

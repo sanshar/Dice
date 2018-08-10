@@ -3,16 +3,17 @@ nocc 10
 end
 
 nptiter 0
-epsilon2 1e-07
+epsilon2 1e-7
 sampleN 200
 davidsonTol 5e-05
 dE 1e-08
 
 schedule 
-0	0.001
+0	1e-3
 end
 deterministic 
-noio 
+noio
+nroots 2 
 maxiter 9
 DoSpinRDM
-
+DoOneRDM

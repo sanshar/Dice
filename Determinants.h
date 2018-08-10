@@ -100,7 +100,7 @@ class HalfDet {
 
   //set the occupation of the ith orbital
   void setocc(int i, bool occ) {
-    //assert(i< norbs);
+    //assert(i < norbs);
     long Integer = i/64, bit = i%64, one=1;
     if (occ)
       repr[Integer] |= one << bit;
@@ -417,7 +417,7 @@ class Determinant {
 
   //set the occupation of the ith orbital
   void setocc(int i, bool occ) {
-    //assert(i< norbs);
+    //assert(i < norbs);
     long Integer = i/64, bit = i%64, one=1;
     if (occ)
       repr[Integer] |= one << bit;
@@ -428,7 +428,7 @@ class Determinant {
 
   //get the occupation of the ith orbital
   bool getocc(int i) const {
-    //asser(i<norbs);
+    //assert(i < norbs);
     long Integer = i/64, bit = i%64, reprBit = repr[Integer];
     if(( reprBit>>bit & 1) == 0)
       return false;
@@ -451,16 +451,11 @@ class Determinant {
     char det[norbs];
     d.getRepArray(det);
     for (int i=0; i<norbs/2; i++) {
-      if (det[2*i]==false && det[2*i+1] == false)
-	os<<0<<" ";
-      else if (det[2*i]==true && det[2*i+1] == false)
-	os<<"a"<<" ";
-      else if (det[2*i]==false && det[2*i+1] == true)
-	os<<"b"<<" ";
-      else if (det[2*i]==true && det[2*i+1] == true)
-	os<<2<<" ";
-      if ( (i+1)%5 == 0)
-	os <<"  ";
+      if (det[2*i]==false && det[2*i+1] == false) os<<0<<" ";
+      else if (det[2*i]==true && det[2*i+1] == false) os<<"a"<<" ";
+      else if (det[2*i]==false && det[2*i+1] == true) os<<"b"<<" ";
+      else if (det[2*i]==true && det[2*i+1] == true) os<<2<<" ";
+      if ( (i+1)%5 == 0) os <<"  ";
     }
     return os;
   }

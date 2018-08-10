@@ -150,8 +150,8 @@ int main(int argc, char* argv[]) {
     if (schd.nact == 1000000) 
       schd.nact = norbs - schd.ncore;
     else if (schd.nact+schd.ncore > norbs) {
-      pout << "core + active orbitals = "<<schd.nact+schd.ncore<<
-	" greater than orbitals "<<norbs<<endl;
+      pout << "core + active orbitals = " << schd.nact+schd.ncore << 
+	            " greater than orbitals " << norbs << endl;
       exit(0);
     }
   }
@@ -256,7 +256,7 @@ int main(int argc, char* argv[]) {
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
     FILE* f = fopen(efile.c_str(), "wb");
     for(int j=0;j<E0.size();++j) {
-      pout << "Writing energy "<<E0[j]<<"  to file: "<<efile<<endl;
+      pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
       fwrite( &E0[j], 1, sizeof(CItype), f);
     }
     fclose(f);
@@ -271,16 +271,18 @@ int main(int argc, char* argv[]) {
     int num = max(6, schd.printBestDeterminants);
     for (int i=0; i<min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
-      int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0)+prevci.rows(), comp));
+      int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0) + prevci.rows(), comp));
 #ifdef Complex
       pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
 #else
-      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
+      pout << format("%4i %18.8e  ") %(i) %(prevci(m,0)); pout << SHMDets[m] << endl;
 #endif
       prevci(m,0) = 0.0;
     }
   }
-    pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+
+  pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
+
   if (schd.stochastic == true && schd.DoRDM) {
     schd.DoRDM = false;
     pout << "We cannot perform PT RDM with stochastic PT. Disabling RDM."<<endl;
@@ -392,7 +394,7 @@ int main(int argc, char* argv[]) {
 						    I2HBSHM, irrep, schd, coreE, nelec,
 						    root, vdVector, Psi1Norm);
       ePT += E0[root];
-      pout << "Writing energy "<<ePT<<"  to file: "<<efile<<endl;
+      pout << "Writing energy " << ePT << "  to file: " << efile << endl;
       if (commrank == 0) fwrite( &ePT, 1, sizeof(double), f);
     }
     fclose(f);
@@ -415,7 +417,7 @@ int main(int argc, char* argv[]) {
 
     if (schd.doSOC) {
       for (int j=0; j<E0.size(); j++)
-	pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(ePT[j]) %( (ePT[j]-ePT[0])*219470));
+	      pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(ePT[j]) %( (ePT[j]-ePT[0])*219470));
     }
   }
   else {
@@ -436,8 +438,10 @@ int main(int argc, char* argv[]) {
       pout << "PT RDM not implemented with direct davidson."<<endl;
       exit(0);
     }
+
     std::vector<MatrixXx> lambda(schd.nroots, MatrixXx::Zero(Dets.size(),1));
     SHCImakeHamiltonian::SparseHam sparseHam;
+    
     {
       char file [5000];
       sprintf (file, "%s/%d-hamiltonian.bkp" , schd.prefix[0].c_str(), commrank );
@@ -446,40 +450,39 @@ int main(int argc, char* argv[]) {
       load >> sparseHam.connections >> sparseHam.Helements >> sparseHam.orbDifference;
     }
 
-
     vector<CItype*> ciroot(schd.nroots);
-    SHMVecFromMatrix(ci[0], ciroot[0], shcicMax, cMaxSegment, regioncMax);
-    Hmult2 H(sparseHam);
-    LinearSolver(H, E0[0], lambda[0], vdVector[0], ciroot, 1.e-5, false);
-#ifndef SERIAL
-    mpi::broadcast(world, lambda[0], 0);
-#endif
-    
-    MatrixXx s2RDM, twoRDM;
-    s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
-    if (schd.DoSpinRDM) twoRDM.setZero(norbs*(norbs+1)/2, norbs*(norbs+1)/2);
 
-    SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
-			 sparseHam.orbDifference, nelec, schd, 0, twoRDM, s2RDM);
-    SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+    for (int iroot = 0; iroot < schd.nroots; iroot++) {
+      SHMVecFromMatrix(ci[iroot], ciroot[iroot], shcicMax, cMaxSegment, regioncMax);
+      Hmult2 H(sparseHam);
+      //LinearSolver(H, E0[iroot], lambda[iroot], vdVector[iroot], ciroot, 1.e-5, false);
+#ifndef SERIAL
+      mpi::broadcast(world, lambda[i], 0);
+#endif
+      MatrixXx s2RDM, twoRDM;
+      s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
+      if (schd.DoSpinRDM) twoRDM.setZero(norbs*norbs, norbs*norbs);
+    
+      if (schd.DoOneRDM) {
+        MatrixXx s1RDM, oneRDM;
+	      oneRDM = MatrixXx::Zero(norbs,norbs);
+	      s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
+        SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, ciroot[iroot], ciroot[iroot], 
+			  sparseHam.orbDifference, nelec, schd, iroot, oneRDM, s1RDM);
+        SHCIrdm::save1RDM(schd, s1RDM, oneRDM, iroot);
+      }
     // Add DoOneRDM Block
-    //if (schd.DoOneRDM) {
-    //  MatrixXx s1RDM, oneRDM;
-	  //  oneRDM = MatrixXx::Zero(norbs,norbs);
-	  //  s1RDM = MatrixXx::Zero(norbs/2, norbs/2);
-    //  SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, &lambda[0](0,0), ciroot[0], 
-		//	 sparseHam.orbDifference, nelec, schd, 0, oneRDM, s1RDM);
-    //  SHCIrdm::save1RDM(schd, s1RDM, oneRDM, 0);
-    //}
-    if (commrank == 0) {
-      MatrixXx s2RDMdisk, twoRDMdisk;
-      SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
-      s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
-      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
-      
+    
+    
+      if (commrank == 0) {
+        MatrixXx s2RDMdisk, twoRDMdisk;
+        SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, iroot);
+        s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
+        SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, iroot);
+        SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDMdisk);
+      }
     }
     //pout <<" response ";
-    
   }
 
 

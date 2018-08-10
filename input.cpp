@@ -94,11 +94,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 
   while (dump.good()) {
 
-    std::string
-      Line;
+    std::string Line;
     std::getline(dump, Line);
     trim(Line);
-    cout <<Line<<endl;
+    cout << Line << endl;
 
     vector<string> tok;
     boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
@@ -122,23 +121,23 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       int index =0;
       while (!boost::iequals(tok[0], "end")) {
 
-	occupied.push_back(vector<int>(nocc));
-	if (nocc != tok.size()) {
-	  cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
-	  for (int t=0;t<tok.size(); t++)
-	    cout << tok[t]<<"  ";
-	  exit(0);
-	}
+	      occupied.push_back(vector<int>(nocc));
+	      if (nocc != tok.size()) {
+	        cout << "nocc: "<<nocc<<" neq "<<tok.size()<<endl;
+	        for (int t=0;t<tok.size(); t++)
+	          cout << tok[t]<<"  ";
+	        exit(0);
+	      }
 
-	for (int i=0; i<tok.size(); i++) {
-	  occupied[index][i] = atoi(tok[i].c_str());
-	  cout << occupied[index][i]<<" ";
-	}
-	cout <<endl;
-	std::getline(dump, Line);
-	trim(Line);
-	boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
-	index++;
+	      for (int i=0; i<tok.size(); i++) {
+	        occupied[index][i] = atoi(tok[i].c_str());
+	        cout << occupied[index][i] << " ";
+	      }
+	      cout <<endl;
+	      std::getline(dump, Line);
+	      trim(Line);
+	      boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
+	      index++;
       }
     }
     else if (boost::iequals(ArgName, "nact"))
@@ -164,7 +163,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "extrapolate")) {
       schd.extrapolate = true;
       if (tok.size() == 2)
-	schd.extrapolationFactor = atof(tok[1].c_str());
+	      schd.extrapolationFactor = atof(tok[1].c_str());
     }
     else if (boost::iequals(ArgName, "dosoc"))
       schd.doSOC=true;
@@ -176,17 +175,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
     else if (boost::iequals(ArgName, "maxseniority")) {
       schd.enforceSeniority = true;
-      if (tok.size() == 1) 
-	schd.maxSeniority = 0;
-      else
-	schd.maxSeniority = atoi(tok[1].c_str());
+      if (tok.size() == 1) schd.maxSeniority = 0;
+      else schd.maxSeniority = atoi(tok[1].c_str());
     }
     else if (boost::iequals(ArgName, "maxexcitation")) {
       schd.enforceExcitation = true;
-      if (tok.size() == 1) 
-	schd.maxExcitation = 0;
-      else
-	schd.maxExcitation = atoi(tok[1].c_str());
+      if (tok.size() == 1) schd.maxExcitation = 0;
+      else schd.maxExcitation = atoi(tok[1].c_str());
     }
     else if (boost::iequals(ArgName, "SenioAndExc"))
       schd.enforceSenioExc = true;
@@ -223,8 +218,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "Treversal")) {
       schd.Trev = atoi(tok[1].c_str());
       if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {
-	cout << "Treversal should be either 0, 1, or -1."<<endl;
-	exit(0);
+	      cout << "Treversal should be either 0, 1, or -1."<<endl;
+	    exit(0);
       }
     }
     else if (boost::iequals(ArgName, "dospinrdm")) {
@@ -266,13 +261,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       vector<string> schd_tok;
       boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       while(!boost::iequals(schd_tok[0], "END")) {
-	if (!boost::iequals(schd_tok[0].substr(0,1), "#")) {
-	  sweep_iter.push_back( atoi(schd_tok[0].c_str()));
-	  sweep_epsilon.push_back( atof(schd_tok[1].c_str()));
-	}
-	std::getline(dump, Line);
-	cout <<Line<<endl;
-	boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
+	      if (!boost::iequals(schd_tok[0].substr(0,1), "#")) {
+	        sweep_iter.push_back( atoi(schd_tok[0].c_str()));
+	        sweep_epsilon.push_back( atof(schd_tok[1].c_str()));
+	      }
+	      std::getline(dump, Line);
+	      cout <<Line<<endl;
+	      boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
     }
     else if (boost::iequals(ArgName, "maxiter"))
@@ -310,5 +305,4 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     schd.prefix.push_back(".");
   //cout << "**************************************************************"<<endl;
   cout << endl;
-  cout <<endl;
 }

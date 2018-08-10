@@ -33,9 +33,11 @@
 
 using namespace boost;
 
-//bool myfn(double i, double j) { return fabs(i)<fabs(j); }
-bool myfn(std::complex<double> i, std::complex<double> j) { return std::abs(i)<std::abs(j); }
-
+#ifndef Complex
+bool myfn(CItype i, CItype j) { return fabs(i)<fabs(j); }
+#else
+bool myfn(CItype i, CItype j) { return std::abs(i) < std::abs(j); }
+#endif
 
 //=============================================================================
 void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE, std::vector<int>& irrep) {
@@ -94,14 +96,14 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
             norbs = atoi(tok[2].c_str());
           if (boost::iequals(tok[3].substr(0,5), "NELEC"))
             nelec = atoi(tok[4].c_str());
-        } else if (boost::iequals(tok[0].substr(0,4),"ISYM")) {
-          continue;
-        } else if (boost::iequals(tok[0].substr(0,4),"KSYM")) {
-          I2.ksym = true;
-        } else if (boost::iequals(tok[0].substr(0,6),"ORBSYM")) {
+        } 
+        else if (boost::iequals(tok[0].substr(0,4),"ISYM")) continue;
+        else if (boost::iequals(tok[0].substr(0,4),"KSYM")) I2.ksym = true;
+        else if (boost::iequals(tok[0].substr(0,6),"ORBSYM")) {
           for (int i=1;i<tok.size(); i++)
             irrep.push_back(atoi(tok[i].c_str()));
-        } else {
+        } 
+        else {
           for (int i=0;i<tok.size(); i++)
             irrep.push_back(atoi(tok[i].c_str()));
         }
@@ -124,11 +126,10 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
 
   //long npair = norbs*(norbs+1)/2;
-  long npair = norbs*norbs;
-  if (I2.ksym) npair = norbs*norbs;
-  I2.norbs = norbs;
   //size_t I2memory = npair*(npair+1)/2; //memory in bytes
-  size_t I2memory = npair*npair;
+  long npair = norbs*norbs;
+  I2.norbs = norbs;
+  size_t I2memory = npair*(npair+1)/2;
 #ifndef SERIAL
   world.barrier();
 #endif
@@ -160,20 +161,14 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       //double integral = atof(tok[0].c_str());int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str()), c=atoi(tok[3].c_str()), d=atoi(tok[4].c_str());
       CItype integral = std::complex<double>(atof(tok[1].c_str()), atof(tok[2].c_str())); 
       int a=atoi(tok[3].c_str()), b=atoi(tok[4].c_str()), c=atoi(tok[5].c_str()), d=atoi(tok[6].c_str());
-      if(a==b&&b==c&&c==d&&d==0) {
+      if(a==b && b==c && c==d && d==0)
         coreE = integral.real();
-      } else if (b==c&&c==d&&d==0) {
+      else if (b==c && c==d && d==0)
         continue;//orbital energy
-      } else if (c==d&&d==0) {
-        //I1(2*(a-1),2*(b-1)) = integral; //alpha,alpha
-        //I1(2*(a-1)+1,2*(b-1)+1) = integral; //beta,beta
-        //I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
-        //I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
+      else if (c==d&&d==0)
         I1(a-1,b-1) = integral;
-      } else {
-        //I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
+      else
         I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;
-      }
     } // while
     
     //exit(0);
@@ -183,8 +178,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
-        //I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
-        //I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
         I2.Direct(i,j) = I2(i,i,j,j);
         I2.Exchange(i,j) = I2(i,j,j,i);
     }
@@ -234,7 +227,6 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 #endif
 
   Singles = I2.Singles;
-  //if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
   if (commrank != 0) Singles.resize(norbs, norbs);
 #ifndef SERIAL
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
@@ -242,9 +234,9 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 
   I2.Singles.resize(0,0);
   size_t memRequired = 0;
+  size_t nonZeroIntegrals = 0;
   //size_t nonZeroSameSpinIntegrals = 0;
   //size_t nonZeroOppositeSpinIntegrals = 0;
-  size_t nonZeroIntegrals = 0;
 
   if (commrank == 0) {
     //convert to CItype

@@ -31,27 +31,25 @@ namespace boost {
   namespace serialization {
 
     template<class Archive>
-      void serialize(Archive & ar, MatrixXcd& a, const unsigned int version)
-      {
-	int dim1 = a.rows(), dim2 = a.cols();
-	ar & dim1 & dim2;
-	if(dim1 != a.rows() || dim2 != a.cols())
-	  a.resize(dim1, dim2);
-	for(int i=0;i<a.rows();++i)
-	for(int j=0;j<a.cols();++j)
-	  ar & a(i,j);
+      void serialize(Archive & ar, MatrixXcd& a, const unsigned int version) {
+	      int dim1 = a.rows(), dim2 = a.cols();
+	      ar & dim1 & dim2;
+	      if(dim1 != a.rows() || dim2 != a.cols())
+	        a.resize(dim1, dim2);
+	      for(int i=0;i<a.rows();++i)
+	      for(int j=0;j<a.cols();++j)
+	        ar & a(i,j);
       }
 
     template<class Archive>
-      void serialize(Archive & ar, MatrixXd& a, const unsigned int version)
-      {
-	int dim1 = a.rows(), dim2 = a.cols();
-	ar & dim1 & dim2;
-	if(dim1 != a.rows() || dim2 != a.cols())
-	  a.resize(dim1, dim2);
-	for(int i=0;i<a.rows();++i)
-	  for(int j=0;j<a.cols();++j)
-	    ar & a(i,j);
+      void serialize(Archive & ar, MatrixXd& a, const unsigned int version) {
+	      int dim1 = a.rows(), dim2 = a.cols();
+	      ar & dim1 & dim2;
+	      if(dim1 != a.rows() || dim2 != a.cols())
+	        a.resize(dim1, dim2);
+	      for(int i=0;i<a.rows();++i)
+	        for(int j=0;j<a.cols();++j)
+	          ar & a(i,j);
       }
   }
 }

@@ -33,7 +33,7 @@ using namespace Eigen;
 
 
 //bool myfn(double i, double j);
-bool myfn(complex<double> i, complex<double> j);
+bool myfn(CItype i, CItype j);
 
 
 
@@ -57,7 +57,7 @@ class oneInt {
     //I explicitly store all elements of the matrix
     //so for normal operator if i and j dont have the same spin
     //then it will just return zero. If we have SOC and
-    // i and j have different spin then it can be a complex number.
+    //i and j have different spin then it can be a complex number.
     inline CItype& operator()(int i, int j) { return store.at(i*norbs+j); }
 };
 
@@ -106,7 +106,8 @@ class twoInt {
       //For test run, I will store the two integral using <ij|kl> = <ji|lk>
       //The any complex conjugated relate stuff will not be incorporated for now
       int IJ = i*norbs+j, KL = k*norbs+l;
-      return store[IJ*norbs*norbs+KL];
+      int A = max(IJ, KL), B = min(IJ, KL);
+      return store[A*(A+1)/2+B];
     }
 };
 
@@ -145,15 +146,16 @@ class twoIntHeatBath {
               if (abs(I2(i, a, j, b)) > epsilon) {
               //opposite spin
               //if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
-              if (abs(I2(i,a,j,b)) > epsilon) {
-                if (a != b)
-                integral[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i,a,j,b), make_pair(a,b)));
-              }
+
                 //oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
               //samespin
               //if (a>=b && fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a)) > epsilon) {
                 //sameSpin[IJ].insert(pair<float, std::pair<short,short> >( I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a), make_pair(a,b)));
                 //sameSpin[IJ][fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a))] = make_pair<int,int>(a,b);
+                if (abs(I2(i,a,j,b)) > epsilon) {
+                  if (a != b)
+                    integral[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i,a,j,b), make_pair(a,b)));
+                }
               }
           }
       } // ij
@@ -164,14 +166,14 @@ class twoIntHeatBath {
       for (int i=0; i<norbs; i++)
         //for (int a=0; a<2*norbs; a++) {
         for (int a=0; a<norbs; a++) {
-          Singles(i,a) = std::abs(I1(i,a));
+          Singles(i,a) = abs(I1(i,a));
           //for (int j=0; j<2*norbs; j++) {
           for (int j=0; j<norbs; j++) {
             //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
             if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i,j,j,a)))
-              Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i,j,j,a));
+              Singles(i,a) = abs(I2(i,a,j,j) - I2(i,j,j,a));
           }
-        } 
+      } 
     } // end constructClass
 };
 

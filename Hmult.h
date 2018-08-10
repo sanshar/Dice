@@ -74,7 +74,6 @@ struct Hmult2 {
 #endif
 
     if (numDets > 100000000) { // more than 10 million
-      
       for (int i=0; i<sparseHam.connections.size(); i++) {
         for (int j=0; j<sparseHam.connections[i].size(); j++) {
           CItype hij = sparseHam.Helements[i][j];
@@ -115,7 +114,6 @@ struct Hmult2 {
           if (J != i*size+rank)
 #ifdef Complex
             ytemp[J] += std::conj(hij)*x[i*size+rank];
-            cout << I <<" "<< J << " " << x[I] << " " << x[J] << " " << hij << endl;
 #else
             ytemp[J] += hij*x[i*size+rank];
 #endif
@@ -127,26 +125,24 @@ struct Hmult2 {
 #ifndef Complex
       if (localrank == 0) {
         MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
-        for (int j=0; j<numDets; j++)
-          y[j] = ytemp[j];
-      } else {
+        for (int j=0; j<numDets; j++) y[j] = ytemp[j];
+      } 
+      else {
         MPI_Reduce(&ytemp[0], &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
       }
 #else
       if (localrank == 0) {
         MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
-        for (int j=0; j<numDets; j++)
-          y[j] = ytemp[j];
-      } else {
+        for (int j=0; j<numDets; j++) y[j] = ytemp[j];
+      } 
+      else {
         MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
       }
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #else
-      for (int j=0; j<numDets; j++)
-	y[j] = ytemp[j];
+      for (int j=0; j<numDets; j++) y[j] = ytemp[j];
 #endif
-      
     } // ndets
   } // operator
 };
