@@ -1,7 +1,7 @@
 USE_MPI = no
 USE_INTEL = no
 EIGEN=/usr/include/eigen3
-BOOST=/usr/include/boost
+BOOST=/home/xubo/software/boost_1_66_0
 #EIGEN=/projects/sash2458/apps/eigen/
 #BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen

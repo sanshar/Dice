@@ -352,22 +352,21 @@ void SHCIrdm::save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM,
     for (int n1=0; n1<nSpatOrbs; n1++) {
       for (int n2=0; n2<nSpatOrbs; n2++) {
 	if (fabs(s1RDM(n1,n2)) > 1.e-6) {
-	    ofs << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % s1RDM(n1,n2));    
+	    ofs << str(boost::format("%3d   %3d   %10.8g %10.8g\n") % n1 % n2 % s1RDM(n1,n2).real()% s1RDM(n1,n2).imag());    
 	}
       }
     }
     ofs.close();  
     
     char file2 [5000];
-    sprintf(file2, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root, 
+    sprintf(file2, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, 
 	    root);
     std::ofstream ofs2(file2, std::ios::out);
-    ofs2 << norbs << endl;
     
     for (int n1=0; n1<norbs; n1++) {
       for (int n2=0; n2<norbs; n2++) {
-	if (fabs(oneRDM(n1,n2)) > 1.e-6) {
-	  ofs2 << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 % oneRDM(n1,n2));    
+	if (abs(oneRDM(n1,n2)) > 1.e-6) {
+	  ofs2 << str(boost::format("%3d   %3d   %16.10f %16.10f\n") % (n1+1) % (n2+1) % oneRDM(n1,n2).real() % oneRDM(n1, n2).imag());    
 	}
       }
     }
@@ -461,16 +460,6 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
 	    }
     ofs.close();
 
-
-    if (schd.DoSpinRDM) {
-      char file [5000];
-      sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
-      std::ofstream ofs(file, std::ios::binary);
-      boost::archive::binary_oarchive save(ofs);
-      save << twoRDM;
-      //ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-    }
-
     {
       char file [5000];
       sprintf (file, "%s/%d-spatialRDM.bkp" , schd.prefix[0].c_str(), root );
@@ -478,6 +467,32 @@ void SHCIrdm::saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM,
       boost::archive::binary_oarchive save(ofs);
       save << s2RDM;
       //ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
+    }
+
+    if (schd.DoSpinRDM) {
+      int nSpinOrbs = pow(s2RDM.rows(),0.5) * 2;
+      char file [5000];
+      sprintf (file, "%s/Dice_%d_%d.rdm2" , schd.prefix[0].c_str(), root, root );
+      std::ofstream ofs(file, std::ios::out);
+  
+      for (int n1=0; n1<nSpinOrbs; n1++)
+      for (int n2=0; n2<nSpinOrbs; n2++)
+	    for (int n3=0; n3<nSpinOrbs; n3++)
+	    for (int n4=0; n4<nSpinOrbs; n4++)
+	    {
+        complex<double> rdmValue = twoRDM(n1*(n1+1)/2+n2, n3*(n3+1)/2+n4);
+	      if (abs(rdmValue) > 1.e-6)
+		    ofs << str(boost::format("%3d   %3d   %3d   %3d   %16.10g %16.10g\n") % (n1+1) % (n2+1) % (n3+1) % (n4+1) % rdmValue.real() % rdmValue.imag());
+	    }
+      ofs.close();
+      {
+        char file [5000];
+        sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
+        std::ofstream ofs(file, std::ios::binary);
+        boost::archive::binary_oarchive save(ofs);
+        save << twoRDM;
+        //ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+      }
     }
   }
 
@@ -794,24 +809,20 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int> >& connections,
 
   for (int i=0; i<DetsSize; i++) {
     if (i%commsize != commrank) continue;
-
     vector<int> closed(nelec, 0);
     vector<int> open(norbs-nelec,0);
     Dets[i].getOpenClosed(open, closed);
-
     //<Di| Gamma |Di>
     for (int n1=0; n1<nelec; n1++) {
       int orb1 = closed[n1];
       oneRDM(orb1,orb1) += localConj::conj(cibra[i])*ciket[i];
       s1RDM(orb1/2, orb1/2) += localConj::conj(cibra[i])*ciket[i];
     }
-    
     for (int j=1; j<connections[i/commsize].size(); j++) {
       int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
       if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
 	double sgn = 1.0;
 	Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-
 	oneRDM(c0,d0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
 	oneRDM(d0,c0) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
 
@@ -863,7 +874,7 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1,
       twoInt& I2:
          Two body integrals.
       double coreE:
-          Core energy.
+          Core energy
       MatrixXx& twoRDM:
           Spin 2RDM.
 
@@ -924,8 +935,8 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt& I1,
   //if (commrank == 0)  cout << "Two-body from 2RDM: " << twobody << endl;
 
   energy += onebody + twobody;
-  if (commrank == 0)  cout << "E from 2RDM: " << energy << endl;
-  return energy;
+  if (commrank == 0)  cout << "E from 2RDM: " << energy << " "<< onebody << " " << twobody << endl;
+  return energy; 
 }
 
 

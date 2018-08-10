@@ -1,6 +1,8 @@
 nocc 10
 0 2 4 6 8 1 3 5 7 9 
 end
+
+nptiter 0
 epsilon2 1e-07
 sampleN 200
 davidsonTol 5e-05
@@ -8,9 +10,9 @@ dE 1e-08
 
 schedule 
 0	0.001
-3	0.0001
 end
 deterministic 
 noio 
 maxiter 9
-#DoRDM
+DoSpinRDM
+
