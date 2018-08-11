@@ -417,19 +417,22 @@ int main(int argc, char* argv[]) {
 
     // SpinRDM
     vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
-
     // SOC
 #ifdef Complex
     if (schd.doSOC) {
-      for (int j = 0; j < E0.size(); j++)
-        pout << str(boost::format("State: %3d,  E: %18.10f, dE: %10.2f\n") % j %
-                    (E0[j]) % ((E0[j] - E0[0]) * 219470));
-
+      pout << "PERFORMING G-tensor calculations" << endl;
+      
       // dont do this here, if perturbation theory is switched on
       if (schd.doGtensor) {
-        SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], Dets, norbs, nelec);
-        pout << "VARIATIONAL G-TENSOR" << endl;
-        SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+#ifndef SERIAL
+	mpi::broadcast(world, ci, 0);
+#endif
+	SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
+	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
+	if (commrank != 0) {
+	  ci[0].resize(1,1);
+	  ci[1].resize(1,1);
+	}
       }
     }
 #endif
@@ -524,7 +527,7 @@ int main(int argc, char* argv[]) {
       fclose(f);
 
 #ifdef Complex
-      SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
+      //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
       return 0;
 #endif
     } else if (schd.doLCC) {
