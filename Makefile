@@ -3,19 +3,11 @@
 ##########################
 
 USE_MPI = yes
-<<<<<<< HEAD
 USE_INTEL = no
 USING_OSX = no
 
 EIGEN=/usr/include/eigen3
 BOOST=/home/warlocat/Downloads/boost_1_67_0
-=======
-USE_INTEL = yes
-USING_OSX = no
-
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
->>>>>>> ac1ff6e3c9895e225206625ffa84d449ceab25e8
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
