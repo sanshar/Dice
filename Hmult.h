@@ -30,12 +30,12 @@
 #include "Determinants.h"
 #include <algorithm>
 #include "SHCISortMpiUtils.h"
-#include "SHCImakeHamiltonian.h"
+#include "SHCImake4cHamiltonian.h"
 
 using namespace Eigen;
 using namespace std;
 using namespace SHCISortMpiUtils;
-using namespace SHCImakeHamiltonian;
+using namespace SHCImake4cHamiltonian;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
@@ -147,7 +147,7 @@ struct Hmult2 {
   } // operator
 };
 
-struct HmultDirect {
+/*struct HmultDirect {
   int*          &AlphaMajorToBetaLen; 
   vector<int* > &AlphaMajorToBeta   ;
   vector<int* > &AlphaMajorToDet    ;
@@ -249,7 +249,8 @@ struct HmultDirect {
       if (k%(nprocs) != proc) continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       size_t orbDiff;
-      if (Determinant::Trev != 0) 
+      
+      /*if (Determinant::Trev != 0) 
         updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
       y[k] += hij*x[k];
     }
@@ -308,7 +309,7 @@ struct HmultDirect {
             if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle)
               SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
             */
-            int index=SearchStartIndex;
+            /*int index=SearchStartIndex;
             for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
             
             SearchStartIndex = index;
@@ -376,6 +377,6 @@ struct HmultDirect {
       } // ii
     } // i
   }; // end operator
-};
+};*/
 
 #endif
