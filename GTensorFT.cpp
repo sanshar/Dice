@@ -68,10 +68,10 @@ double startofCalc = getTime();
 // boost::interprocess::mapped_region regionInt2SHM;
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
-				 vector<double>& E0, oneInt& I1, twoInt& I2,
-				 twoIntHeatBathSHM& I2HB, vector<int>& irrep,
-				 schedule& schd, double coreE, int nelec) ;
+// double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
+// 				 vector<double>& E0, oneInt& I1, twoInt& I2,
+// 				 twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+// 				 schedule& schd, double coreE, int nelec) ;
 
 void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 	      schedule& schd, vector<vector<int> >& HFoccupied);
@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
   if (commrank == 0) readInput(inputFile, HFoccupied, schd);
   if(DetLen % 2 ==1) {
     pout << "Change DetLen in global to an even number and recompile." << endl;
+    exit(0);
   }
 
 #ifndef SERIAL
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> irrep;
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
 
-  // int num_thrds;
+  int num_thrds;
 
   // Check
   if (HFoccupied[0].size() != nelec) {
@@ -207,10 +208,10 @@ int main(int argc, char* argv[]) {
 
     pout << ((E0[1]-E0[0])/epsilon -ge)*1e6<<"  "<<endl;
     if (!schd.stochastic) {
-      fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
+      //fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+       pout << "We can't support perturbation calculation now" << endl;
+       pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+       exit(0);
     }
     else
       fpm[2*a] = pow(E0[1]-E0[0],2);
@@ -229,10 +230,10 @@ int main(int argc, char* argv[]) {
 				   irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
+      //fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+       pout << "We can't support perturbation calculation now" << endl;
+       pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+       exit(0);
     }
     else
       fpm[2*a+1] = pow(E0[1]-E0[0],2);
@@ -260,10 +261,10 @@ int main(int argc, char* argv[]) {
 						  irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      plusplus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
+      //plusplus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+       pout << "We can't support perturbation calculation now" << endl;
+       pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+       exit(0);
     }
     else
       plusplus = pow(E0[1]-E0[0],2);
@@ -284,10 +285,10 @@ int main(int argc, char* argv[]) {
 				   irrep, I1, coreE, nelec, schd.DoRDM);
 
     if (!schd.stochastic) {
-      minusminus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      //  pout << "We can't support perturbation calculation now" << endl;
-      //  pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);    
+      //minusminus = pow(getdEusingDeterministicPT(Dets, ci, E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
+       pout << "We can't support perturbation calculation now" << endl;
+       pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
+       exit(0);    
     }
     else
       minusminus = pow(E0[1]-E0[0],2);
@@ -359,38 +360,38 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 #endif
 }
 
-double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
-			       vector<double>& E0, oneInt& I1, twoInt& I2,
-			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep,
-			       schedule& schd, double coreE, int nelec) {
+// double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci,
+// 			       vector<double>& E0, oneInt& I1, twoInt& I2,
+// 			       twoIntHeatBathSHM& I2HBSHM, vector<int>& irrep,
+// 			       schedule& schd, double coreE, int nelec) {
 
 
 
-  schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
-  vector<MatrixXx> spinRDM(3);
+//   schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
+//   vector<MatrixXx> spinRDM(3);
 
-  MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
-  for (int root1 =0 ;root1<schd.nroots; root1++) {
-    for (int root2=root1+1 ;root2<schd.nroots; root2++) {
-      Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
-      DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
-							 E0[root2], I1,
-							 I2, I2HBSHM, irrep, schd,
-							 coreE, nelec, root1, Heff(root1,root1),
-							 Heff(root2, root2), Heff(root1, root2),
-							 spinRDM);
-      Heff(root2, root1) = conj(Heff(root1, root2));
-    }
-  }
-  for (int root1 =0 ;root1<schd.nroots; root1++)
-    Heff(root1, root1) += E0[root1];
+//   MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
+//   for (int root1 =0 ;root1<schd.nroots; root1++) {
+//     for (int root2=root1+1 ;root2<schd.nroots; root2++) {
+//       Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2) = 0.0;
+//       DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1], E0[root1], ci[root2],
+// 							 E0[root2], I1,
+// 							 I2, I2HBSHM, irrep, schd,
+// 							 coreE, nelec, root1, Heff(root1,root1),
+// 							 Heff(root2, root2), Heff(root1, root2),
+// 							 spinRDM);
+//       Heff(root2, root1) = conj(Heff(root1, root2));
+//     }
+//   }
+//   for (int root1 =0 ;root1<schd.nroots; root1++)
+//     Heff(root1, root1) += E0[root1];
 
-  schd.doGtensor = true;
+//   schd.doGtensor = true;
 
-  SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
-  //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
-  //exit(0);
-  return eigensolver.eigenvalues()(1,0)-eigensolver.eigenvalues()(0,0);
+//   SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
+//   //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;
+//   //exit(0);
+//   return eigensolver.eigenvalues()(1,0)-eigensolver.eigenvalues()(0,0);
 
 
-}
+// }

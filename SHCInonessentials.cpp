@@ -97,10 +97,10 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
 
       for (int proc=0; proc<commsize; proc++) {
-	      hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	      hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	      hashedNum2BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
-	      hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedDetBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedNumBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedNum2BeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
+	hashedEnergyBeforeMPI[proc][omp_get_thread_num()].resize(num_thrds);
       }
 
       if (omp_get_thread_num()==0) {
@@ -119,17 +119,17 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
         size_t start = (ntries-1-tries)*batchsize;
         size_t end   = tries==0 ? uniqueDEH[omp_get_thread_num()].Det->size() : (ntries-tries)*batchsize;
-	      for (size_t j=start; j<end; j++) {
-	        size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
-	        size_t procThrd = lOrder%(commsize*num_thrds);
-	        int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
-	        hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
-	        hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
-	        hashedNum2BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num2->at(j));
-	        hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
-	      }
-      
-	      uniqueDEH[omp_get_thread_num()].resize(start);
+	for (size_t j=start; j<end; j++) {
+	  size_t lOrder = uniqueDEH[omp_get_thread_num()].Det->at(j).getHash();
+	  size_t procThrd = lOrder%(commsize*num_thrds);
+	  int proc = abs(procThrd/num_thrds), thrd = abs(procThrd%num_thrds);
+	  hashedDetBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Det->at(j));
+	  hashedNumBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num->at(j));
+	  hashedNum2BeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Num2->at(j));
+	  hashedEnergyBeforeMPI[proc][omp_get_thread_num()][thrd].push_back(uniqueDEH[omp_get_thread_num()].Energy->at(j));
+	}
+
+	uniqueDEH[omp_get_thread_num()].resize(start);
 
 
 

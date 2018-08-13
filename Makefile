@@ -7,7 +7,7 @@ USE_INTEL = no
 USING_OSX = no
 
 EIGEN=/usr/include/eigen3
-BOOST=/home/warlocat/Downloads/boost_1_67_0
+BOOST=/home/warlocat/Download/boost_1_67_0
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
@@ -67,7 +67,9 @@ SRC_forcyrus    = forCyrus.cpp    SHCIbasics.cpp Determinants.cpp integral.cpp i
 SRC_Excitations = Excitations.cpp SHCIbasics.cpp Determinants.cpp integral.cpp input.cpp
 
 OBJ_qdptsoc+=   obj_z/QDPTSOC.o    obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o
+
 OBJ_gtensorft+= obj_z/GTensorFT.o  obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o obj_z/SHCIshm.o
+
 OBJ_gtensorft2+=obj_z/GTensorFT2.o obj_z/SHCIbasics.o obj_z/Determinants.o obj_z/integral.o obj_z/input.o obj_z/Davidson.o obj_z/new_anglib.o obj_z/SOChelper.o obj_z/SHCIgetdeterminants.o obj_z/SHCIsampledeterminants.o obj_z/SHCIrdm.o obj_z/SHCISortMpiUtils.o obj_z/SHCImakeHamiltonian.o obj_z/SHCIshm.o
 
 OBJ_Dice+=    obj/SHCI.o   obj/SHCIbasics.o   obj/Determinants.o   obj/integral.o   obj/input.o   obj/Davidson.o                                        obj/SHCIgetdeterminants.o   obj/SHCIsampledeterminants.o   obj/SHCIrdm.o   obj/SHCISortMpiUtils.o   obj/SHCImakeHamiltonian.o   obj/SHCIshm.o obj/LCC.o     obj/symmetry.o
@@ -82,7 +84,7 @@ obj_z/%.o: %.cpp
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 
 
-all: Dice # GTensorFT  stats QDPTSOC GTensorFT2
+all: Dice ZDice2 GTensorFT # stats QDPTSOC GTensorFT GTensorFT2
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats
