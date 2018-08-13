@@ -1,9 +1,19 @@
-##################
-# Configurations #
-##################
+##########
+# Set-up #
+##########
 
-# Testing openmpi compiling on linux
-linux_openmpi:
+stages:
+  - build
+  - test
+
+#################
+# Build Configs #
+#################
+
+# Openmpi test builds
+openmpi_ubuntu16:
+  stage: build
+  image: ubuntu:16.04
   script:
     - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
     - which mpicxx
@@ -12,8 +22,21 @@ linux_openmpi:
     - cmake ..
     - make -j Dice
 
-# Testing mpich compiling on linux
-linux_mpich:
+openmpi_ubuntu17:
+  stage: build
+  image: ubuntu:17.10
+  script:
+    - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
+    - which mpicxx
+    - export CXX=mpicxx
+    - mkdir -p build && cd build
+    - cmake ..
+    - make -j Dice
+
+# Testing mpich compiling on different versions of ubuntu
+mpich_ubuntu16:
+  stage: build
+  image: ubuntu:16.04
   script:
     - apt-get -qq update && apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake
     - which mpicxx
@@ -21,3 +44,24 @@ linux_mpich:
     - mkdir -p build && cd build
     - cmake ..
     - make -j Dice
+
+mpich_ubuntu17:
+  stage: build
+  image: ubuntu:17.10
+  script:
+    - apt-get -qq update && apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake
+    - which mpicxx
+    - export CXX=mpicxx
+    - mkdir -p build && cd build
+    - cmake ..
+    - make -j Dice
+
+#########
+# Tests #
+#########
+
+simple_test:
+  stage: test
+  script:
+    - cd tests/o2_omp1_det
+    - ../../build/Dice
