@@ -1,30 +1,23 @@
-################
-# build matrix #
-################
+##################
+# Configurations #
+##################
 
-before_script:
-  - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
-
-
-################
-# build script #
-################
-
-# MPI
-mpi:
+# Testing openmpi compiling on linux
+linux_openmpi:
   script:
+    - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
     - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
     - make -j Dice
-    # - cmake .. ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS_RELEASE=-O3 && cmake --build . --config Release
-    # - ctest -C Release -V -j
-    # - cd ..
 
-# Serial
-# serial:
-#   script:
-#     - mkdir -p build && cd build
-#     - cmake ..
-#     - make -j DiceSerial
+# Testing mpich compiling on linux
+linux_mpich:
+  script:
+    - apt-get -qq update && apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake
+    - which mpicxx
+    - export CXX=mpicxx
+    - mkdir -p build && cd build
+    - cmake ..
+    - make -j Dice
