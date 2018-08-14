@@ -34,6 +34,7 @@
 #include <boost/mpi.hpp>
 #endif
 #include "evaluateE.h"
+#include "evaluateVar.h"
 #include "MoDeterminants.h"
 #include "Determinants.h"
 #include "CPS.h"
@@ -183,6 +184,7 @@ int main(int argc, char* argv[]) {
   //std::cout << format("Finished reading from disk: %8.2f\n") 
   //%( (getTime()-startofCalc));
   
+  double variance = 0.;
   double E0=0.0, stddev, rt=0;
   if (schd.deterministic) {
     if (!schd.doHessian) {
@@ -196,12 +198,19 @@ int main(int argc, char* argv[]) {
   }
   else {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-    if (!schd.doHessian) 
+    if (!schd.doHessian)  {
+      if (schd.optvar) {
+      std::cout << schd.optvar << std::endl;
+       getStochasticVarianceGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, variance, rt, schd.stochasticIter, 0.5e-3);
+      }
+      else {
       getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
       //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-    else
+      }
+    }
+    else {
       getStochasticGradientHessianContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix, rt, schd.stochasticIter, 0.5e-3);
-
+    }
   }
 
   //for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
@@ -209,9 +218,18 @@ int main(int argc, char* argv[]) {
   //}
 
   if (commrank == 0) {
+    if (schd.optvar) {
+      std::cout << format("%14.8f %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n")
+      %variance %E0 % stddev %(grad.norm()) %(rt)  %(schd.stochasticIter) %( (getTime()-startofCalc));
+
+      ofstream filevar ("var.bin", ios::out|ios::binary);
+      filevar.write( (char*)(&variance), sizeof(double));
+      filevar.close();
+    }
+    else {
     std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") 
       %E0 % stddev %(grad.norm()) %(rt)  %(schd.stochasticIter) %( (getTime()-startofCalc));
-
+    }
     //cout << prof.SinglesTime<<"  "<<prof.SinglesCount<<endl;
     //cout << prof.DoubleTime<<"  "<<prof.DoubleCount<<endl;
 

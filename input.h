@@ -69,6 +69,7 @@ private:
       & fn_factor
       & nGeneration
       & excitationLevel;
+      & optvar;
 
   }
 public:
@@ -94,6 +95,7 @@ public:
   bool uhf;
   bool optimizeOrbs;
   HAM Hamiltonian;
+  bool optvar;
 
 //Deprecated options for optimizers
 //because now we just use the python implementation

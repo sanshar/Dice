@@ -17,7 +17,7 @@ m_decay_mom1 = 0.1
 m_decay_mom2 = 0.001
 
 mpiprefix = " mpirun "
-executable = "/projects/sash2458/newApps/VMC/PythonInterface"
+executable = "/projects/ilsa8974/apps/VMC/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']
@@ -44,6 +44,7 @@ doHessian = False
 maxIter = 1000
 numVars = 0
 UHF = False
+optvar = False
 
 print "#*********INPUT FILE"
 for line in f:
@@ -77,6 +78,8 @@ for line in f:
         doHessian = True
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "maxiter"):
         maxIter = int(linesp[1])
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "optvar"):
+	optvar = True
         
 print "#*********END OF INPUT FILE"
 print "#opt-params"

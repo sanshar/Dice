@@ -69,6 +69,7 @@ void readInput(string input, schedule& schd, bool print) {
   schd.fn_factor              = 1.0;
   schd.nGeneration            = 30.0;
   schd.excitationLevel        = 1;
+  schd.optvar 		      = false;
 
   while (dump.good()) {
 
@@ -206,6 +207,9 @@ void readInput(string input, schedule& schd, bool print) {
 
     else if (boost::iequals(ArgName,  "excitationlevel"      )) {
       schd.excitationLevel = atoi(tok[1].c_str());
+    }
+    else if (boost::iequals(ArgName, "optvar"             )) {
+      schd.optvar = true;
     }
 
     else {
