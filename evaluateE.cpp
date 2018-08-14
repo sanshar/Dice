@@ -896,7 +896,7 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
   walk.initUsingWave(w);
   //cout << d <<endl;
 
-  int maxTerms =  (nalpha+nbeta) * (nalpha+nbeta) * norbs * norbs;
+  int maxTerms =  1000000;
   vector<double> ovlpRatio(maxTerms);
   vector<size_t> excitation1( maxTerms), excitation2( maxTerms);
   vector<double> HijElements(maxTerms);
@@ -927,9 +927,10 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 
   //Hessian = localGrad*localdiagonalGrad.transpose();
   //Smatrix = localdiagonalGrad*localdiagonalGrad.transpose();
+  int nstore = 1000000/commsize;
+  int gradIter = min(nstore, niter);
 
-  int gradIter = min(niter, 10000);
-  std::vector<double> gradError(gradIter, 0);
+  std::vector<double> gradError(gradIter*commsize, 0);
   bool reset = true;
   double cumdeltaT = 0., cumdeltaT2 = 0.;
   while (iter < niter && stddev > targetError)
@@ -952,8 +953,7 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     //when using uniform probability 1./numConnection * max(1, pi/pj)
     for (int i = 0; i < nExcitations; i++)
     {
-      cumovlpRatio += ovlpRatio[i];
-      //cumovlpRatio += min(1.0, pow(ovlpRatio[i], 2));
+      cumovlpRatio += abs(ovlpRatio[i]);
       ovlpRatio[i] = cumovlpRatio;
     }
 
@@ -984,51 +984,66 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     S1 = S1 + (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
-      gradError[iter] = ham;
+      gradError[iter + commrank*gradIter] = ham;
 
     iter++;
-
-    if (iter == gradIter - 1)
-    {
-      rk = calcTcorr(gradError);
-    }
 
     //update the walker
     if (true)
     {
       int I = excitation1[nextDet] / 2 / norbs, A = excitation1[nextDet] - 2 * norbs * I;
-      if (I % 2 == 0)
-        walk.updateA(I / 2, A / 2, w);
-      else
-        walk.updateB(I / 2, A / 2, w);
+      int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
 
-      if (excitation2[nextDet] != 0) {
-        int J = excitation2[nextDet] / 2 / norbs, B = excitation2[nextDet] - 2 * norbs * J;
-        if (J %2 == 1){
-          walk.updateB(J / 2, B / 2, w);
-        }
-        else {
-          walk.updateA(J / 2, B / 2, w);          
-        }
-      }
-      //ovlpRatio.clear();
-      //excitation1.clear();
-      //excitation2.clear();
-      nExcitations = 0;
 
-      localGrad.setZero();
-      localdiagonalGrad.setZero();
-      w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-                           excitation1, excitation2, HijElements, nExcitations, true, true);
-      w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
-      double detovlp = walk.getDetOverlap(w);
-      for (int k = 0; k < w.ciExpansion.size(); k++)
+      if (I % 2 == J % 2 && excitation2[nextDet] != 0)
       {
-        localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/detovlp;
+	if (I % 2 == 1) {
+	  walk.updateB(I / 2, J / 2, A / 2, B / 2, w);
+	}
+        else {
+          walk.updateA(I / 2, J / 2, A / 2, B / 2, w);
+        }
       }
-      //localGrad = localdiagonalGrad * ham;
+      else
+      {
+        if (I % 2 == 0)
+          walk.updateA(I / 2, A / 2, w);
+        else
+          walk.updateB(I / 2, A / 2, w);
+	
+        if (excitation2[nextDet] != 0)
+        {
+          if (J % 2 == 1)
+          {
+            walk.updateB(J / 2, B / 2, w);
+          }
+          else
+          {
+            walk.updateA(J / 2, B / 2, w);
+          }
+	}
+      }
     }
+
+    //ovlpRatio.clear();
+    //excitation1.clear();
+    //excitation2.clear();
+    nExcitations = 0;
+    
+    localGrad.setZero();
+    localdiagonalGrad.setZero();
+    w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+			 excitation1, excitation2, HijElements, nExcitations, true, true);
+    w.OverlapWithGradient(walk.d, scale, localdiagonalGrad);
+    double detovlp = walk.getDetOverlap(w);
+    for (int k = 0; k < w.ciExpansion.size(); k++)
+    {
+      localdiagonalGrad(k + w.getNumJastrowVariables()) += walk.alphaDet[k] * walk.betaDet[k]/detovlp;
+    }
+    //localGrad = localdiagonalGrad * ham;
+
   }
+  
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Hessian(0,0)), Hessian.rows()*Hessian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
