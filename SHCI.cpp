@@ -1,6 +1,7 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
-  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
+  Developed by Sandeep Sharma
+  with contributions from James E. T. Smith and Adam A. Holmes
+  2017 Copyright (c) 2017, Sandeep Sharma
 
   This file is part of DICE.
 
@@ -51,6 +52,7 @@
 #include "SHCIshm.h"
 #include "SOChelper.h"
 #include "communicate.h"
+#include <unistd.h> 
 
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
@@ -75,19 +77,26 @@ double getTime() {
 double startofCalc = getTime();
 
 // License
-void license() {
+void license(char* argv[]) {
+  pout << endl;
+  pout << "     ____  _\n";
+  pout << "    |  _ \\(_) ___ ___\n";
+  pout << "    | | | | |/ __/ _ \\\n";
+  pout << "    | |_| | | (_|  __/\n";
+  pout << "    |____/|_|\\___\\___|   v1.0\n";
   pout << endl;
   pout << endl;
   pout << "**************************************************************"
        << endl;
   pout << "Dice  Copyright (C) 2017  Sandeep Sharma" << endl;
+  pout << endl;
   pout << "This program is distributed in the hope that it will be useful,"
        << endl;
   pout << "but WITHOUT ANY WARRANTY; without even the implied warranty of"
        << endl;
   pout << "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
-  pout << "See the GNU General Public License for more details." << endl;
-  pout << endl;
+  pout << "See the GNU General Public License for more details."
+       << endl;
   pout << endl;
   pout << "Author:       Sandeep Sharma" << endl;
   pout << "Contributors: James E Smith, Adam A Holmes, Bastien Mussard" << endl;
@@ -98,6 +107,26 @@ void license() {
   pout << "http://www.colorado.edu/lab/sharmagroup/" << endl;
   pout << "**************************************************************"
        << endl;
+  pout << endl;
+
+  char *user;
+  user=(char *)malloc(10*sizeof(char));
+  user=getlogin();
+
+  time_t t = time(NULL);
+  struct tm *tm = localtime(&t);
+  char date[64];
+  strftime(date, sizeof(date), "%c", tm);
+
+  printf("User:             %s\n",user);
+  printf("Date:             %s\n",date);
+  printf("PID:              %d\n",getpid());
+  pout << endl;
+  printf("Path:             %s\n",argv[0]);
+  printf("Commit:           %s\n",git_commit);
+  printf("Branch:           %s\n",git_branch);
+  printf("Compilation Date: %s %s\n",__DATE__,__TIME__);
+  //printf("Cores:            %s\n","TODO");
 }
 
 // Read Input
@@ -134,7 +163,7 @@ int main(int argc, char* argv[]) {
 
   // Initialize
   initSHM();
-  license();
+  license(argv);
 
   // Read the input file
   string inputFile = "input.dat";
@@ -425,14 +454,14 @@ int main(int argc, char* argv[]) {
       // dont do this here, if perturbation theory is switched on
       if (schd.doGtensor) {
 #ifndef SERIAL
-	mpi::broadcast(world, ci, 0);
+        mpi::broadcast(world, ci, 0);
 #endif
-	SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
-	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
-	if (commrank != 0) {
-	  ci[0].resize(1,1);
-	  ci[1].resize(1,1);
-	}
+        SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
+        SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
+        if (commrank != 0) {
+          ci[0].resize(1,1);
+          ci[1].resize(1,1);
+        }
       }
     }
 #endif

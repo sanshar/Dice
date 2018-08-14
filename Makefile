@@ -13,8 +13,12 @@ BOOST=/projects/sash2458/apps/boost_1_57_0/
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
 #########################################
 
-FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}
-DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} -DComplex
+git_commit=`git rev-parse HEAD`
+git_branch=`git branch | grep "^\*" | sed 's/^..//'`
+export VERSION_FLAGS=-Dgit_commit="\"$(git_commit)\"" -Dgit_branch="\"$(git_branch)\""
+
+FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS)
+DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS) -DComplex
 LFLAGS = -L${BOOST}/stage/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
