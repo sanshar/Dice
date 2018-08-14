@@ -888,10 +888,55 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 
   //initialize the walker
   Determinant d;
-  for (int i = 0; i < nalpha; i++)
-    d.setoccA(i, true);
-  for (int j = 0; j < nbeta; j++)
-    d.setoccB(j, true);
+  bool readDeterminant = false;
+  char file [5000];
+
+  sprintf (file, "BestDeterminant.txt");
+
+  {
+    ifstream ofile(file);
+    if (ofile) readDeterminant = true;
+  }
+  //readDeterminant = false;
+
+  if ( !readDeterminant )
+  {
+    
+    for (int i =0; i<nalpha; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsA(i,j)) > maxovlp && !d.getoccA(j)) {
+	  maxovlp = abs(HforbsA(i,j));
+	  bestorb = j; 
+	}
+      }
+      d.setoccA(bestorb, true);
+    }
+    for (int i =0; i<nbeta; i++) {
+      int bestorb = 0;
+      double maxovlp = 0;
+      for (int j=0; j<norbs; j++) {
+	if (abs(HforbsB(i,j)) > maxovlp && !d.getoccB(j)) {
+	  bestorb = j; maxovlp = abs(HforbsB(i,j));
+	}
+      }
+      d.setoccB(bestorb, true);
+    }
+  }
+  else {
+    if (commrank == 0) {
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> d;
+    }
+#ifndef SERIAL
+    MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  }
+
+
   Walker walk(d);
   walk.initUsingWave(w);
   //cout << d <<endl;
@@ -913,6 +958,9 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
+
+  double bestOvlp =0.;
+  Determinant bestDet=d;
 
   E0 = 0.0;
   w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
@@ -1042,6 +1090,11 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
     }
     //localGrad = localdiagonalGrad * ham;
 
+    if (abs(ovlp) > bestOvlp) {
+      bestOvlp = abs(ovlp);
+      bestDet = walk.d;
+    }
+
   }
   
 #ifndef SERIAL
@@ -1051,6 +1104,8 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
+
+  rk = calcTcorr(gradError);
 
   diagonalGrad /= (commsize);
   grad /= (commsize);
@@ -1065,5 +1120,11 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
 #endif
   Smatrix(0,0) = 1.0;
   Hessian(0,0) = E0;
+
+  if (commrank == 0) {
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << bestDet;
+  }
 
 }
