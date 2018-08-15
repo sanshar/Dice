@@ -10,15 +10,14 @@ stages:
 # Build Configs #
 #################
 
-# Openmpi test builds
 openmpi_ubuntu16:
   stage: build
   image: ubuntu:16.04
+  artifacts:
+    untracked: true
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - which g++
-    - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
@@ -27,25 +26,24 @@ openmpi_ubuntu16:
 openmpi_ubuntu17:
   stage: build
   image: ubuntu:17.10
+  artifacts:
+    untracked: true
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - which g++
-    - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
     - make -j Dice
 
-# Testing mpich compiling on different versions of ubuntu
 mpich_ubuntu16:
   stage: build
   image: ubuntu:16.04
+  artifacts:
+    untracked: true
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - which g++
-    - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
@@ -54,11 +52,11 @@ mpich_ubuntu16:
 mpich_ubuntu17:
   stage: build
   image: ubuntu:17.10
+  artifacts:
+    untracked: true
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - which g++
-    - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
     - cmake ..
@@ -68,8 +66,34 @@ mpich_ubuntu17:
 # Tests #
 #########
 
-simple_test:
+openmpi_ubuntu16_test:
   stage: test
+  dependencies:
+    - openmpi_ubuntu16
+  script:
+    - cd tests/o2_omp1_det
+    - ../../build/Dice
+
+openmpi_ubuntu17_test:
+  stage: test
+  dependencies:
+    - openmpi_ubuntu17
+  script:
+    - cd tests/o2_omp1_det
+    - ../../build/Dice
+
+mpich_ubuntu16_test:
+  stage: test
+  dependencies:
+    - mpich_ubuntu16
+  script:
+    - cd tests/o2_omp1_det
+    - ../../build/Dice
+
+mpich_ubuntu17_test:
+  stage: test
+  dependencies:
+    - mpich_ubuntu17
   script:
     - cd tests/o2_omp1_det
     - ../../build/Dice
