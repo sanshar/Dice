@@ -37,13 +37,18 @@ using namespace boost;
 using namespace SHCISortMpiUtils;
 
 void SHCImake4cHamiltonian::HamHelper4c::MakeSHMHelpers() {
-  SHCImake4cHamiltonian::MakeSMHelpers();
+  SHCImake4cHamiltonian::MakeSMHelpers(Nminus1, Nminus1ToDet, Nminus1ToDetLen, Nminus1ToDetSM,
+    Nminus2, Nminus2ToDet, Nminus2ToDetLen, Nminus2ToDetSM);
 }
 void SHCImake4cHamiltonian::MakeSMHelpers(
+  map<Determinant, int>& Nminus1,
+  vector<vector<int>>& Nminus1ToDet,
+  int* &Nminus1ToDetLen,
+  vector<int*>& Nminus1ToDetSM,
+  map<Determinant, int>& Nminus2,
   vector<vector<int>>& Nminus2ToDet,
   int* &Nminus2ToDetLen,
-  vector<int*>& Nminus2ToDetSM
-)
+  vector<int*>& Nminus2ToDetSM)
 {
   int comm_rank = 0, comm_size = 1;
 #ifndef SERIAL
@@ -54,11 +59,18 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
 
   size_t totalMemory = 0;
   size_t nNminus2 = Nminus2.size();
+  size_t nNminus1 = Nminus1.size();
   vector<int> Nminus2ToDetTemp(nNminus2, 0);
+  vector<int> Nminus1ToDetTemp(nNminus1, 0);
   for (int i=0; i<nNminus2; i++) {
     totalMemory += 2*sizeof(int);
     totalMemory += 2*sizeof(int) * Nminus2ToDet[i].size();
     Nminus2ToDetTemp[i] = Nminus2ToDet[i].size();
+  }
+  for (int i=0; i<nNminus1; i++) {
+    totalMemory += 2*sizeof(int);
+    totalMemory += 2*sizeof(int) * Nminus1ToDet[i].size();
+    Nminus1ToDetTemp[i] = Nminus1ToDet[i].size();
   }
 #ifndef SERIAL
 #endif
@@ -72,20 +84,30 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
 #endif
 
   Nminus2ToDetLen = static_cast<int*>(regionHelpers.get_address());
-
+  Nminus1ToDetLen = Nminus2ToDetLen + nNminus2;
   for (int i = 0; i < nNminus2; i++) Nminus2ToDetLen[i] = Nminus2ToDetTemp[i];
+  for (int i = 0; i < nNminus1; i++) Nminus1ToDetLen[i] = Nminus1ToDetTemp[i];
   Nminus2ToDetSM.resize(nNminus2);
+  Nminus1ToDetSM.resize(nNminus1);
 
-  int* begin = Nminus2ToDetLen + nNminus2;
+  int* begin = Nminus2ToDetLen + nNminus2 + nNminus1;
   size_t counter = 0;
   for (int i = 0; i < nNminus2; i++) {
     Nminus2ToDetSM[i] = begin + counter; counter += Nminus2ToDetLen[i];
   }
+  for (int i = 0; i < nNminus1; i++) {
+    Nminus1ToDetSM[i] = begin + counter; counter += Nminus1ToDetLen[i];
+  }
 
   if (comm_rank == 0) {
-    for (int i=0; i<nNminu2; i++) {
+    for (int i=0; i<nNminus2; i++) {
       for (int j=0; j<Nminus2ToDet[i].size(); j++) {
         Nminus2ToDetSM[i][j] = Nminus2ToDet[i][j];
+      }
+    }
+    for (int i=0; i<nNminus1; i++) {
+      for (int j=0; j<Nminus1ToDet[i].size(); j++) {
+        Nminus1ToDetSM[i][j] = Nminus1ToDet[i][j];
       }
     }
   }
@@ -108,58 +130,70 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
 #endif
 
 }
-void SHCImakeHamiltonian::SparseHam::makeFromHelper(
+void SHCImake4cHamiltonian::SparseHam::makeFromHelper(
         HamHelper4c& helper, Determinant * SHMDets,
         int startIndex, int endIndex,
-        int Norbs, oneInt& I1, towInt& I2, double& coreE, bool DoRDM) 
+        int Norbs, oneInt& I1, twoInt& I2, double& coreE, bool DoRDM) 
 {
-  SHCImake4cHamiltonian::MakeHfromSMHelpers(Nminus2ToDet,
-  Dets, startIndex, endIndex, diskio, *this, I1, I2, coreE, DoRDM);
+  SHCImake4cHamiltonian::MakeHfromSMHelpers(helper.Nminus1ToDetSM, helper.Nminus1ToDetLen,
+  helper.Nminus2ToDetSM, helper.Nminus2ToDetLen,
+  SHMDets, startIndex, endIndex, diskio, *this, Norbs, I1, I2, coreE, DoRDM);
 }
 
-void SHCImake4cHamiltonian::HamHelpers::PopulateHelpers(
+void SHCImake4cHamiltonian::HamHelper4c::PopulateHelpers(
         Determinant* SHMDets,
         int DetsSize, int startIndex)
 {
   SHCImake4cHamiltonian::PopulateHelperLists(
+    Nminus1, Nminus1ToDet,
     Nminus2, Nminus2ToDet,
     SHMDets, DetsSize, startIndex);
 }
+void updateNminus(Determinant & Nminus2, std::map<Determinant, int>&Nminus2s, 
+vector<vector<int>>& Nminus2ToDets, Determinant* Dets, int DetsSize, int StartIndex, int DetIndex) {
+  auto iter = Nminus2s.find(Nminus2);
+  if (iter == Nminus2s.end()) {
+    auto newElement = Nminus2s.insert(std::pair<Determinant, int>(Nminus2, Nminus2ToDets.size()));
+    iter = newElement.first;
+    Nminus2ToDets.resize(iter->second+1);
+    Nminus2ToDets[iter->second]=vector<int>(1, DetIndex);
+    int norbs = 64*DetLen;
+  }
+  else {
+    Nminus2ToDets[iter->second].push_back(DetIndex);
+  }
+}
 
-void PopulateHelperLists(map<Determinants, int>& Nminus2s,
- map<Determinants, int> Nminus1s, 
- vector<vector<int>> Nminus2ToDets, vector<vector<int>> Nminus1to2, Determinant *Dets, int DetsSize, int StartIndex) {
+void SHCImake4cHamiltonian::PopulateHelperLists(
+  map<Determinant, int>& Nminus1s, vector<vector<int>> & Nminus1ToDet, map<Determinant, int>& Nminus2s, vector<vector<int>> & Nminus2ToDet, 
+  Determinant *Dets, int DetsSize, int StartIndex) {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
+  int norbs = Dets[0].norbs;
   if (commrank == 0) {
     for (int i = StartIndex; i < DetsSize; i++) {
-      for (int j = 0; j<nocc; j++) {
+      for (int j = 0; j<norbs; j++) {
+        if (!Dets[i].getocc(j)) continue;
+        Determinant Nminus1 = Dets[i];
+        Nminus1.setocc(j, false);
+        updateNminus(Nminus1, Nminus1s, Nminus1ToDet, Dets, DetsSize, StartIndex, i);
         for (int k = 0; k < j; k++) {
-          Determinant Nminus2 = removeTewElectron(Dets[i], j, k);
-          updateNminus(Nminus2, Nminus2s, Nminus2ToDets, Dets, DetsSize, StartIndex);
+          if (!Dets[i].getocc(k)) continue;
+          Determinant Nminus2 = Dets[i];
+          Nminus2.setocc(j, false), Nminus2.setocc(k, false);
+          updateNminus(Nminus2, Nminus2s, Nminus2ToDet, Dets, DetsSize, StartIndex, i);
         }
       }
     }
   }
 }
 
-void updateNminus(Determinant & Nminus2, std::map<Determinant, int>&Nminus2s, vector<vector<int>> Nminus2ToDets, Determinant* Dets, int DetsSize, int StartIndex) {
-  auto iter = Nminus2s.find(Nminus2);
-  if (iter == Nminus2s.end()) {
-    auto newElement = Nminus2s.insert(std::pair<Determinant, int>(Nminus2, Nminus2ToDets.size()));
-    iter = newElement.first;
-    Nminus2ToDets.resize(iter->second+1);
 
-    int norbs = 64*DetLen;
-  }
-}
 
-void SHCImake4cHamiltonian::MakeSMHelpers(
-  vector<vector<int>>& Nminus2ToDet,
-)
 void SHCImake4cHamiltonian::MakeHfromSMHelpers(
-  vector<int* > &Nminus2ToDet,
+  vector<int* > &Nminus1ToDetSM, int* Nminus1ToDetLen,
+  vector<int* > &Nminus2ToDetSM, int* Nminus2ToDetLen,
   Determinant* Dets, int StartIndex, int EndIndex,
   bool diskio, SparseHam& sparseHam,
   int Norbs, oneInt& I1, twoInt& I2, double& coreE,
@@ -170,27 +204,46 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 #endif
   size_t norbs = Norbs;
-  iont offSet = 0;
-  std::vector<std::vecto<int>> & connections = sparseHam.connections;
+  size_t orbDiff;
+  int offSet = 0;
+  std::vector<std::vector<int>> & connections = sparseHam.connections;
   std::vector<std::vector<CItype>> & Helements = sparseHam.Helements;
   std::vector<std::vector<size_t>> & orbDifference = sparseHam.orbDifference;
 
   for (size_t k = StartIndex; k < EndIndex; k++) {
-    if (k%(nprocs) != proc || k < max(StartIndex, offSet)) continue;
+    //if (k%(nprocs) != proc || k < max(StartIndex, offSet)) continue;
     connections.push_back(vector<int>(1,k));
     CItype hij = Dets[k].Energy(I1, I2, coreE);
-    size_t orbDiff;
+    Helements.push_back(vector<CItype>(1,hij));
     if (DoRDM) orbDifference.push_back(vector<size_t>(1,0));
   }
+  for (int i = 0; i < Nminus1ToDetSM.size(); i++) {
+    for (int j = 0; j<Nminus1ToDetLen[i]; j++) {
+      for (int k = j+1; k<Nminus1ToDetLen[i]; k++) {
+        if (Nminus1ToDetSM[i][j] < StartIndex && Nminus1ToDetSM[i][k] < StartIndex) continue;
+        CItype hij = Hij(Dets[Nminus1ToDetSM[i][k]], Dets[Nminus1ToDetSM[i][j]], I1, I2, coreE, orbDiff);
+        if (std::abs(hij) > 1.e-10) {
+          //pout << Dets[Nminus1ToDetSM[i][j]].ExcitationDistance(Dets[Nminus1ToDetSM[i][k]]);
+        //pout << "(" << Nminus1ToDetSM[i][j] << " " << Nminus1ToDetSM[i][k] << ")" << " " << hij.real() << " " << hij.imag() << endl;
 
-  for (int i = 0; i < Nminus2ToDet.size(); i++) {
-    for (auto iter=Nminus2ToDet[i].begin(), iter !=Nminus2ToDet[i].end(), iter++) {
-      for (auto iter2=++iter, iter!=Nminus2ToDet[i].end(), iter2++) {
-        CItype hij = Hij(Dets[*iter2], Dets[*iter], I1, I2, coreE, orbDiff);
-        if std::abs(hij) > 1.e-10 {
-          connections[*iter].push_back(*iter2);
-          Helements[*iter].push_back(hij);
-          if (DoRDM) orbDifference[*iter].push_back(orbDiff);
+          connections[Nminus1ToDetSM[i][j]].push_back(Nminus1ToDetSM[i][k]);
+          Helements[Nminus1ToDetSM[i][j]].push_back(hij);
+          if (DoRDM) orbDifference[Nminus1ToDetSM[i][j]].push_back(orbDiff);
+        }
+      }
+    }
+  }
+  for (int i = 0; i < Nminus2ToDetSM.size(); i++) {
+    for (int j = 0; j<Nminus2ToDetLen[i]; j++) {
+      for (int k=j+1; k<Nminus2ToDetLen[i]; k++) {
+        if (Nminus2ToDetSM[i][j] < StartIndex && Nminus2ToDetSM[i][k] < StartIndex) continue;
+        CItype hij = Hij(Dets[Nminus2ToDetSM[i][k]], Dets[Nminus2ToDetSM[i][j]], I1, I2, coreE, orbDiff);
+        //pout  << hij << endl;
+        if (std::abs(hij) > 1.e-10) {
+          if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;
+          connections[Nminus2ToDetSM[i][j]].push_back(Nminus2ToDetSM[i][k]);
+          Helements[Nminus2ToDetSM[i][j]].push_back(hij);
+          if (DoRDM) orbDifference[Nminus2ToDetSM[i][j]].push_back(orbDiff);
         }
       }
     }
@@ -215,7 +268,7 @@ void SHCImake4cHamiltonian::SparseHam::writeBatch(int batch) {
   save << connections << Helements << orbDifference;
 }
 
-void SHCImakeHamiltonian::SparseHam::readBatch (int batch) {
+void SHCImake4cHamiltonian::SparseHam::readBatch (int batch) {
   char file [5000];
   sprintf (file, "%s/%d-4chamiltonian-batch%d.bkp" , prefix.c_str(), commrank, batch);
   std::ifstream ifs(file, std::ios::binary);

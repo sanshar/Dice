@@ -20,9 +20,16 @@ class schedule;
 namespace SHCImake4cHamiltonian {
   
   struct HamHelper4c {
+    map<Determinant, int> Nminus1; // The string with n-1 electrons
     map<Determinant, int> Nminus2; // The string with n-2 electrons
     vector<vector<int>> Nminus2ToDet; // The connection between n-2 string and n strings
+    vector<int*> Nminus2ToDetSM;
+    int* Nminus2ToDetLen;
 
+    vector<vector<int>> Nminus1ToDet; // The connection between n-1 string and n strings
+    //This helps to generate the single excitation
+    vector<int*> Nminus1ToDetSM;
+    int* Nminus1ToDetLen;
 
     // Consistent with the non-relativistic function name
     void PopulateHelpers(Determinant* SHMDets, int DetsSize, int startIndex);
@@ -32,6 +39,8 @@ namespace SHCImake4cHamiltonian {
     void clear() {
       Nminus2.clear();
       Nminus2ToDet.clear();
+      Nminus1.clear();
+      Nminus1ToDet.clear();
     }
   }; // HamHelper4c
 
@@ -79,10 +88,32 @@ struct SparseHam {
 
 // fixForTreversal and regenerateH is not implemented
 
-void PopulateHelperLists(map<Determinant, int>& Nminus2, vector<vector<int>> Nminus2ToDet, Determinant *Dets, int DetsSize, int StartIndex);
+void PopulateHelperLists(
+map<Determinant, int>& Nminus1s, vector<vector<int>>& Nminus1ToDet,
+map<Determinant, int>& Nminus2s, vector<vector<int>>& Nminus2ToDet, 
+Determinant *Dets, int DetsSize, int StartIndex);
 
-void MakeHfromHelpers();
+void MakeHfromSMHelpers(
+  vector<int* > &Nminus1ToDetSM,
+  int* Nminus1ToDetLen,
+  vector<int* > &Nminus2ToDetSM,
+  int* Nminus2ToDetLen,
+  Determinant* Dets, int StartIndex, int EndIndex,
+  bool diskio, SparseHam& sparseHam,
+  int Norbs, oneInt& I1, twoInt& I2, double& coreE,
+  bool DoRDM);
 
 void MakeSHMHelpers();
+
+void MakeSMHelpers(
+  map<Determinant, int>& Nminus1,
+  vector<vector<int>>& Nminus1ToDet,
+  int* &Nminus1ToDetLen,
+  vector<int*>& Nminus1ToDetSM,
+  map<Determinant, int>& Nminus2,
+  vector<vector<int>>& Nminus2ToDet,
+  int* &Nminus2ToDetLen,
+  vector<int*>& Nminus2ToDetSM);
+
 }
 #endif

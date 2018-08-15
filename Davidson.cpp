@@ -350,7 +350,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 //=============================================================================
-vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+//vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
     /*!
     Davidson, implemented very similarly to as implementeded in Block
@@ -378,7 +378,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
             BM_description
     */
 //-----------------------------------------------------------------------------
-  std::vector<double> eroots;
+/*  std::vector<double> eroots;
 
   CItype* bcol, *sigmacol;
   AllocateSHM(x0, bcol, sigmacol);
@@ -587,7 +587,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
         }
       } // commrank=0
   } // while
-} // end davidsonDirect
+} // end davidsonDirect */
 
 
 
