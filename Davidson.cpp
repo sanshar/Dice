@@ -19,6 +19,7 @@
 #include "Davidson.h"
 #include "Hmult.h"
 #include <Eigen/Dense>
+#include <Eigen/Core>
 #include <iostream>
 #include <iostream>
 #include "boost/format.hpp"
@@ -28,6 +29,28 @@
 using namespace Eigen;
 using namespace std;
 using namespace boost;
+
+void SolveEigen(MatrixXd& A, VectorXd& b, VectorXd& x) {
+  x = A.colPivHouseholderQr().solve(b);
+
+}
+
+void GeneralizedEigen(MatrixXd& Hamiltonian, MatrixXd& Overlap, VectorXcd& eigenvalues, MatrixXcd& eigenvectors, VectorXd& betas) {
+
+  GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
+  eigenvalues = ges.eigenvalues();
+  eigenvectors = ges.eigenvectors();
+  betas = ges.betas();
+} 
+
+void SelfAdjointEigen(MatrixXd& Overlap, VectorXd& eigenvalues, MatrixXd& eigenvectors) {
+
+  SelfAdjointEigenSolver<MatrixXd> oes(Overlap);
+  eigenvalues = oes.eigenvalues();
+  eigenvectors = oes.eigenvectors();
+} 
+
+
 
 double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
 

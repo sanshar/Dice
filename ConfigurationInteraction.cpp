@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <random>
 #include <chrono>
+#include <complex>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fstream>
@@ -43,6 +44,7 @@
 #include "SHCIshm.h"
 #include "math.h"
 #include "Walker.h"
+#include "Davidson.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -203,6 +205,7 @@ int main(int argc, char *argv[])
   //we assume intermediate normalization
   Eigen::VectorXd civars = Eigen::VectorXd::Zero(SingleSpinIndices.size() / 2 + 
 						 1 + DoubleSpinIndices.size() / 4);
+
   double rt = 0., stddev, E0 = 0.;
 
   if (!schd.deterministic)
@@ -224,24 +227,17 @@ int main(int argc, char *argv[])
 void getNVariables(int excitationLevel, vector<int> &SingleIndices, vector<int>& DoubleIndices,
                    int norbs, twoIntHeatBathSHM &I2hb)
 {
-  if (excitationLevel > 1)
-  {
-    cout << "excitaitonLevel greater than 1 has not been implemented yet!!" << endl;
-    exit(0);
-  }
-
   for (int i = 0; i < 2 * norbs; i++)
     for (int j = 0; j < 2 * norbs; j++)
     {
-      if (I2hb.Singles(i, j) > schd.epsilon) 
-      //if (i == j) continue;
-      //if (i % 2 == j % 2)
+      //if (I2hb.Singles(i, j) > schd.epsilon ) 
+      if (i%2 == j%2)
       {
         SingleIndices.push_back(i);
         SingleIndices.push_back(j);
       }
     }
-  //return;
+
   for (int i=0; i < 2*norbs; i++) {
     for (int j=i+1; j < 2*norbs; j++) {
       int pair = (j/2) * (j/2 + 1)/2 + i/2;
@@ -255,13 +251,33 @@ void getNVariables(int excitationLevel, vector<int> &SingleIndices, vector<int>&
 	if (fabs(integrals[index]) < schd.epsilon)
 	  break;
 	int a = 2 * orbIndices[2* index] + i%2, b = 2 * orbIndices[2 * index] + j%2;
-	//cout <<i<<"  "<<j<<"  "<<a<<"  "<<b<<endl;
+
 	DoubleIndices.push_back(i); DoubleIndices.push_back(j); 
 	DoubleIndices.push_back(a); DoubleIndices.push_back(b);
       }
     }
   }
 
+  //SingleIndices.resize(4); DoubleIndices.resize(8);
+  /*
+  for (int i=0; i<SingleIndices.size()/2; i++) {
+    for (int j=i+1; j<SingleIndices.size()/2; j++) {
+      int I = SingleIndices[2*i], A = SingleIndices[2*i+1], 
+	J = SingleIndices[2*j], B = SingleIndices[2*j+1];
+
+      if (I == A || J == A || I == B || J == B ||
+	  I == J || A == B) continue;
+
+      DoubleIndices.push_back(I);
+      DoubleIndices.push_back(J);
+      DoubleIndices.push_back(A);
+      DoubleIndices.push_back(B);
+      //cout << I<<"  "<<J<<"  "<<A<<"  "<<B<<endl;
+    }
+  }
+  */
+  //exit(0);
+  return;
 }
 
 
@@ -324,8 +340,8 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
   double ham = 0., ovlp = 0.;
   double scale = 1.0;
 
-  VectorXd hamRatio = VectorXd::Zero(2 * norbs * norbs + 1 + norbs);
-  VectorXd gradRatio = VectorXd::Zero(2 * norbs * norbs + 1 + norbs);
+  VectorXd hamRatio = VectorXd::Zero(civars.rows());
+  VectorXd gradRatio = VectorXd::Zero(civars.rows());
   MatrixXd Hamiltonian(civars.rows(), civars.rows());
   MatrixXd Overlap(civars.rows(), civars.rows());
   MatrixXd iterHamiltonian(civars.rows(), civars.rows());
@@ -471,24 +487,93 @@ void getStochasticGradientContinuousTimeCI(CPSSlater &w, double &E0, vector<int>
 
   if (commrank == 0)
   {
-    //EigenSolver<MatrixXd> es(Overlap);
-    //cout << es.eigenvalues().transpose()<<endl;
-    GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
-    //if (commrank == 0) {
-    //cout << Hamiltonian <<endl;
-    //cout << Overlap <<endl;
-    //}
-    //ges.compute(Hamiltonian, Overlap);
+    MatrixXcd eigenvectors; VectorXcd eigenvalues;
+    VectorXd betas;
+    GeneralizedEigen(Hamiltonian, Overlap, eigenvalues, eigenvectors, betas);
+    //GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
     double lowest = Hamiltonian(0,0)/Overlap(0,0);
+    
+    MatrixXcd eigenvecInv = eigenvectors.inverse();
+    int vecIndex = 0;
     for (int i=0; i<Hamiltonian.rows(); i++)  {
-      if (abs(ges.betas().transpose()(i)) > 1.e-10) {
-	if (ges.eigenvalues().transpose()(i).real() < lowest )
-	  lowest = ges.eigenvalues().transpose()(i).real();
+      if (abs(betas.transpose()(i)) > 1.e-10) {
+	if (eigenvalues.transpose()(i).real() < lowest) {
+	  lowest = eigenvalues.transpose()(i).real();
+	  vecIndex = i;
+	}
       }
     }
-    cout << lowest << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
-    //cout << ges.eigenvalues().transpose()(0) << "  (" << stddev << ")"
-    //<< "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
+
+    double norm = std::abs((eigenvectors.col(vecIndex).adjoint()*(Overlap*eigenvectors.col(vecIndex)))(0,0));
+    double a0 = std::norm((Overlap*eigenvectors.col(vecIndex))(0,0)/pow(Overlap(0,0),0.5))/norm;
+
+
+    double e0 = (Hamiltonian(0,0)/Overlap(0,0));
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("VMC energy") %  e0 % stddev<<endl;
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("CISD energy") %  (lowest) % stddev<<endl;
+    
+    double de = lowest - e0;
+    double plusQ = (1 - a0)*de/a0;
+
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("CISD+Q energy") %  (lowest+plusQ) % stddev<<endl;
+  }
+
+  if (commrank == 0) {
+    Hamiltonian /= Overlap(0,0);
+    Overlap /= Overlap(0,0);
+
+    double E0 = Hamiltonian(0,0)/Overlap(0,0);
+    MatrixXd Uo = MatrixXd::Zero(Hamiltonian.rows(), Hamiltonian.cols());
+    Uo(0,0) = 1.0;
+    for (int i=1; i<Uo.rows(); i++) {
+      Uo(0, i) = - Overlap(0,i);
+      Uo(i, i) = 1.0;
+    }
+
+
+    Overlap = Uo.transpose()* (Overlap * Uo);
+    Hamiltonian = Uo.transpose()* (Hamiltonian * Uo);
+
+    VectorXd Vpsi0 = Hamiltonian.block(1,0,Overlap.rows()-1, 1);
+
+    MatrixXd temp = Overlap;
+    Overlap     = temp.block(1,1, Overlap.rows()-1, Overlap.rows()-1);
+    temp = Hamiltonian;
+    Hamiltonian = temp.block(1,1, temp.rows()-1, temp.rows()-1);
+
+    MatrixXd eigenvectors; VectorXd eigenvalues;
+    SelfAdjointEigen(Overlap, eigenvalues, eigenvectors);
+
+
+    int nCols = 0;
+
+    for (int i=0; i<Overlap.rows(); i++) 
+      if ( eigenvalues(i) > 1.e-8)
+	nCols ++;
+
+    MatrixXd U = MatrixXd::Zero(Overlap.rows(), nCols);
+    int index = 0;
+  
+    for (int i=0; i<Overlap.rows(); i++) 
+      if ( eigenvalues(i) > 1.e-8) {
+	U.col(index) = eigenvectors.col(i)/pow(eigenvalues(i), 0.5);
+	index++;
+      }
+   
+    MatrixXd Hprime = U.transpose()*(Hamiltonian * U);
+    MatrixXd Hprime_E0 = 1.*Hprime;
+    for (int i=0; i<Hprime.rows(); i++) {
+      Hprime_E0(i,i) -= E0;
+    }
+
+    VectorXd temp1 = Vpsi0;
+    Vpsi0 = U.transpose()*temp1;
+    
+    VectorXd psi1;
+    SolveEigen(Hprime_E0, Vpsi0, psi1);
+
+    double E2 = -Vpsi0.transpose()*psi1;
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("E0+E2 energy") %  (E0+E2) % stddev<<endl;
   }
 }
 
@@ -503,32 +588,23 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
   vector<Determinant> allDets;
   generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
-  int maxTerms = (nalpha) * (norbs - nalpha); //pick a small number that will be incremented later
+  int maxTerms = 1000000; //pick a small number that will be incremented later
   vector<double> ovlpRatio(maxTerms);
   vector<size_t> excitation1(maxTerms), excitation2(maxTerms);
   vector<double> HijElements(maxTerms);
   int nExcitations = 0;
-
-  vector<double> ovlpRatioForM(maxTerms);
-  vector<size_t> excitation1ForM(maxTerms), excitation2ForM(maxTerms);
-  vector<double> HijElementsForM(maxTerms);
-  int nExcitationsForM = 0;
 
   double Energy = 0.0;
   VectorXd hamRatio = VectorXd::Zero(civars.rows());
   VectorXd gradRatio = VectorXd::Zero(civars.rows());
   MatrixXd Hamiltonian = MatrixXd::Zero(civars.rows(), civars.rows());
   MatrixXd Overlap = MatrixXd::Zero(civars.rows(), civars.rows());
-  //MatrixXd iterHamiltonian(civars.rows(), civars.rows());
-  //MatrixXd iterOverlap(civars.rows(), civars.rows());
   VectorXd localGrad;
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
     Walker walk(allDets[i]);
     walk.initUsingWave(w);
-
-    schd.epsilon = -1;
 
     double ham, ovlp;
     {
@@ -555,13 +631,9 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
       }
     }
 
-    //updateHamOverlap(iterHamiltonian, iterOverlap, hamRatio, gradRatio, SingleIndices);
-    //iterHamiltonian = gradRatio*hamRatio.transpose();
-    //iterOverlap     = gradRatio*gradRatio.transpose();
     Hamiltonian += gradRatio*hamRatio.transpose() * ovlp * ovlp;
     Overlap += gradRatio*gradRatio.transpose() * ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
-    //cout << iterHamiltonian(0,0)<<"  "<<ovlp<<"  "<<Energy<<endl;
   }
 
   //cout << Energy/Overlap(0,0) << endl;
@@ -571,27 +643,100 @@ void getDeterministicCI(CPSSlater &w, double &E0, vector<int> &SingleIndices,
   //MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  Hamiltonian /= (commsize);
-  Overlap /= (commsize);
+  //Hamiltonian /= (commsize);
+  //Overlap /= (commsize);
   //E0 = Eloc / commsize;
+
 
   if (commrank == 0)
   {
-    //EigenSolver<MatrixXd> es(Overlap);
-    //cout << es.eigenvalues().transpose() << endl;
-    GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
-    //if (commrank == 0) {
-    //cout << Hamiltonian << endl;
-    //cout << Overlap << endl;
-    //}
-    //ges.compute(Hamiltonian, Overlap);
+    MatrixXcd eigenvectors; VectorXcd eigenvalues;
+    VectorXd betas;
+    GeneralizedEigen(Hamiltonian, Overlap, eigenvalues, eigenvectors, betas);
+    //GeneralizedEigenSolver<MatrixXd> ges(Hamiltonian, Overlap);
     double lowest = Hamiltonian(0,0)/Overlap(0,0);
+    
+    MatrixXcd eigenvecInv = eigenvectors.inverse();
+    int vecIndex = 0;
     for (int i=0; i<Hamiltonian.rows(); i++)  {
-      if (abs(ges.betas().transpose()(i)) > 1.e-10) {
-	if (ges.eigenvalues().transpose()(i).real() < lowest)
-	  lowest = ges.eigenvalues().transpose()(i).real();
+      if (abs(betas.transpose()(i)) > 1.e-10) {
+	if (eigenvalues.transpose()(i).real() < lowest) {
+	  lowest = eigenvalues.transpose()(i).real();
+	  vecIndex = i;
+	}
       }
     }
-    cout << lowest << "  " << Hamiltonian(0, 0) / Overlap(0, 0) << endl;
+
+    double norm = std::abs((eigenvectors.col(vecIndex).adjoint()*(Overlap*eigenvectors.col(vecIndex)))(0,0));
+    double a0 = std::norm((Overlap*eigenvectors.col(vecIndex))(0,0)/pow(Overlap(0,0),0.5))/norm;
+
+
+    double e0 = (Hamiltonian(0,0)/Overlap(0,0));
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("VMC energy") %  e0 % stddev<<endl;
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("CISD energy") %  (lowest) % stddev<<endl;
+    
+    double de = lowest - e0;
+    double plusQ = (1 - a0)*de/a0;
+
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("CISD+Q energy") %  (lowest+plusQ) % stddev<<endl;
   }
+
+  if (commrank == 0) {
+    Hamiltonian /= Overlap(0,0);
+    Overlap /= Overlap(0,0);
+
+    double E0 = Hamiltonian(0,0)/Overlap(0,0);
+    MatrixXd Uo = MatrixXd::Zero(Hamiltonian.rows(), Hamiltonian.cols());
+    Uo(0,0) = 1.0;
+    for (int i=1; i<Uo.rows(); i++) {
+      Uo(0, i) = - Overlap(0,i);
+      Uo(i, i) = 1.0;
+    }
+
+
+    Overlap = Uo.transpose()* (Overlap * Uo);
+    Hamiltonian = Uo.transpose()* (Hamiltonian * Uo);
+
+    VectorXd Vpsi0 = Hamiltonian.block(1,0,Overlap.rows()-1, 1);
+
+    MatrixXd temp = Overlap;
+    Overlap     = temp.block(1,1, Overlap.rows()-1, Overlap.rows()-1);
+    temp = Hamiltonian;
+    Hamiltonian = temp.block(1,1, temp.rows()-1, temp.rows()-1);
+
+    MatrixXd eigenvectors; VectorXd eigenvalues;
+    SelfAdjointEigen(Overlap, eigenvalues, eigenvectors);
+
+
+    int nCols = 0;
+
+    for (int i=0; i<Overlap.rows(); i++) 
+      if ( eigenvalues(i) > 1.e-8)
+	nCols ++;
+
+    MatrixXd U = MatrixXd::Zero(Overlap.rows(), nCols);
+    int index = 0;
+  
+    for (int i=0; i<Overlap.rows(); i++) 
+      if ( eigenvalues(i) > 1.e-8) {
+	U.col(index) = eigenvectors.col(i)/pow(eigenvalues(i), 0.5);
+	index++;
+      }
+   
+    MatrixXd Hprime = U.transpose()*(Hamiltonian * U);
+    MatrixXd Hprime_E0 = 1.*Hprime;
+    for (int i=0; i<Hprime.rows(); i++) {
+      Hprime_E0(i,i) -= E0;
+    }
+
+    VectorXd temp1 = Vpsi0;
+    Vpsi0 = U.transpose()*temp1;
+    
+    VectorXd psi1;
+    SolveEigen(Hprime_E0, Vpsi0, psi1);
+
+    double E2 = -Vpsi0.transpose()*psi1;
+    std::cout << format("%18s    : %14.8f (%8.2e)") % ("E0+E2 energy") %  (E0+E2) % stddev<<endl;
+  }
+
 }
