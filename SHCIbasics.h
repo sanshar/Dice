@@ -128,7 +128,7 @@ double DoPerturbativeDeterministic(Determinant* Dets, CItype* ci, int DetsSize,
 
 void DoPerturbativeDeterministicOffdiagonal(
     vector<Determinant>& Dets, MatrixXx& ci1, double& E01, MatrixXx& ci2,
-    double& E02, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB,
+    double& E02, int DetsSize, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB,
     vector<int>& irrep, schedule& schd, double coreE, int nelec, int root,
     CItype& EPT1, CItype& EPT2, CItype& EPT12, std::vector<MatrixXx>& spinRDM);
 

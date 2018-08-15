@@ -58,7 +58,13 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   boost::mpi::communicator world;
 #endif
   int norbs = Determinant::norbs;
-  std::vector<Determinant> SortedDets = Dets; std::sort(SortedDets.begin(), SortedDets.end());
+
+  Determinant* SortedDets;
+  std::vector<Determinant> SortedDetsvec;
+  if (commrank == 0) {
+    for (int i = 0; i < DetsSize; i++) SortedDetsvec.push_back(Dets[i]);
+    std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
+  }
 
   double energyEN = 0.0;
 

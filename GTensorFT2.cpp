@@ -39,15 +39,19 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include "SOChelper.h"
+#include "symmetry.h"
+#include "SHCIshm.h"
 
 using namespace Eigen;
 using namespace boost;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
+char Determinant::Trev = 0;  // Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 //get the current time
 double getTime() {
@@ -57,10 +61,10 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment;
-boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment;
-boost::interprocess::mapped_region regionInt2SHM;
+// boost::interprocess::shared_memory_object int2Segment;
+// boost::interprocess::mapped_region regionInt2;
+// boost::interprocess::shared_memory_object int2SHMSegment;
+// boost::interprocess::mapped_region regionInt2SHM;
 
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
@@ -79,10 +83,19 @@ int main(int argc, char* argv[]) {
   boost::mpi::communicator world;
 #endif
 
+  //Initialize
+  initSHM();
+
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
+  string inputFile = "input.dat";
+  if (argc > 1) inputFile = string(argv[1]);
+  if (commrank == 0) readInput(inputFile, HFoccupied, schd);
+  if(DetLen % 2 ==1) {
+    pout << "Change DetLen in global to an even number and recompile." << endl;
+    exit(0);
+  }
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
@@ -92,22 +105,31 @@ int main(int argc, char* argv[]) {
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+mpigetrank());
-
+  srand(schd.randomSeed + commrank);
+  if (schd.outputlevel > 1) pout << "#using seed: " << schd.randomSeed << endl;
 
   //set up shared memory files to store the integrals
-  string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
-  int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
-  int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
+  // string shciint2 = "SHCIint2" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  // string shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  // int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
+  // int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
 
 
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
-  twoInt I2; oneInt I1; int nelec; int norbs; double coreE, eps;
+  twoInt I2; oneInt I1; 
+  int nelec; int norbs; 
+  double coreE, eps;
   std::vector<int> irrep;
-  readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
+  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
 
   int num_thrds;
+
+  // Check
+  if (HFoccupied[0].size() != nelec) {
+    pout << "The number of electrons given in the FCIDUMP should be";
+    pout << " equal to the nocc given in the shci input file." << endl;
+    exit(0);
+  }
 
   norbs *=2;
   Determinant::norbs = norbs; //spin orbitals
@@ -124,36 +146,44 @@ int main(int argc, char* argv[]) {
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (mpigetrank() == 0) I2HB.constructClass(allorbs, I2, norbs/2);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
   I2HBSHM.constructClass(norbs/2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
-
+#ifndef SERIAL
+  mpi::broadcast(world, I1, 0);
+#endif
 
   //initialize L and S integrals
   vector<oneInt> LplusS(3), L(3), S(3);
   for (int i=0; i<3; i++) {
     LplusS[i].store.resize(norbs*norbs, 0.0);
     LplusS[i].norbs = norbs;
+
+    L[i].store.resize(norbs*norbs, 0.0);
+    L[i].norbs = norbs;
+
+    S[i].store.resize(norbs*norbs, 0.0);
+    S[i].norbs = norbs;
   }
   //read L integrals
-  readGTensorIntegrals(LplusS, norbs, "GTensor");
+  readGTensorIntegrals(L, norbs, "GTensor");
 
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
-    LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
-    LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+    S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+    S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
 
-    LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
-    LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+    S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+    S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
 
-    LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
-    LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+    S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+    S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
   std::cout.precision(15);
-  vector<MatrixXx> ci;
+  vector<MatrixXx> ci(2 , MatrixXx::Zero(HFoccupied.size(), 1));
   vector<Determinant> Dets;
 
   double Ezero = 0.0;
@@ -171,14 +201,15 @@ int main(int argc, char* argv[]) {
 
 
   //the perturbation is S[i]+L[i]
-  double epsilon = 5.e-4;
+  double epsilonB = 1.e-6;
+  double epsilonS = 1.e-6;
 
   vector<double> Bfpm(6,0.0); //these are f+ and f- function evaluations
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
   for (int a=0; a<3; a++) {
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
@@ -190,12 +221,12 @@ int main(int argc, char* argv[]) {
       Bfpm[2*a] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
     }
 
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
     }
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
@@ -207,7 +238,7 @@ int main(int argc, char* argv[]) {
       Bfpm[2*a+1] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
     }
   }
 
@@ -216,7 +247,7 @@ int main(int argc, char* argv[]) {
   for (int a=0; a<3; a++) {
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (0.*L[a].store.at(i)+S[a].store.at(i))*epsilonS;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
@@ -228,12 +259,12 @@ int main(int argc, char* argv[]) {
       Sfpm[2*a] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= (0.*L[a].store.at(i)+S[a].store.at(i))*epsilonS;
     }
 
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= (0.*L[a].store.at(i)+S[a].store.at(i))*epsilonS;
     }
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
@@ -245,7 +276,7 @@ int main(int argc, char* argv[]) {
       Sfpm[2*a+1] = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (0.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (0.*L[a].store.at(i)+S[a].store.at(i))*epsilonS;
     }
 
   }
@@ -256,8 +287,8 @@ int main(int argc, char* argv[]) {
     double plusplus, minusminus;
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
+      I1.store.at(i) += (0.*L[b].store.at(i)+S[b].store.at(i))*epsilonS;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
@@ -271,15 +302,15 @@ int main(int argc, char* argv[]) {
 
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
+      I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilonS;
     }
 
 
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
+      I1.store.at(i) -= (0.*L[b].store.at(i)+S[b].store.at(i))*epsilonS;
     }
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
@@ -291,15 +322,15 @@ int main(int argc, char* argv[]) {
       minusminus = E0[0];
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (0.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilonB;
+      I1.store.at(i) += (0.*L[b].store.at(i)+S[b].store.at(i))*epsilonS;
     }
 
-    cout << plusplus<<"  "<<Bfpm[0]<<"  "<<Sfpm[0]<<"  "<<Ezero<<"  "<<Bfpm[1]<<"  "<<Sfpm[1]<<"  "<<minusminus<<endl;
-    Gtensor(a,b) = (plusplus  - Bfpm[2*a] - Sfpm[2*b] +2*Ezero - Bfpm[2*a+1] - Sfpm[2*b+1]+minusminus)/2/(epsilon*epsilon);
+    //cout << plusplus<<"  "<<Bfpm[0]<<"  "<<Sfpm[0]<<"  "<<Ezero<<"  "<<Bfpm[1]<<"  "<<Sfpm[1]<<"  "<<minusminus<<endl;
+    Gtensor(a,b) = (plusplus  - Bfpm[2*a] - Sfpm[2*b] +2*Ezero - Bfpm[2*a+1] - Sfpm[2*b+1]+minusminus)/2/(epsilonS*epsilonB);
     Gtensor(b,a) = Gtensor(a,b);
-    cout << Gtensor(0,0)<<endl;
-    exit(0);
+    //cout << Gtensor(0,0)<<endl;
+    //exit(0);
   }
 
 
@@ -331,7 +362,7 @@ void initDets(vector<MatrixXx>& ci, vector<Determinant>& Dets,
       Dets[d].setocc(HFoccupied[d][i], true);
     }
   }
-  if (mpigetrank() == 0) {
+  if (commrank == 0) {
     for (int j=0; j<ci[0].rows(); j++)
       ci[0](j,0) = 1.0;
     ci[0] = ci[0]/ci[0].norm();
@@ -348,7 +379,7 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
 
 
 
-  schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
+  //schd.doGtensor = false; ///THIS IS DONE BECAUSE WE DONT WANT TO doperturbativedeterministicoffdiagonal to calculate rdm
   vector<MatrixXx> spinRDM(3);
   MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
   for (int root1 =0 ;root1<schd.nroots; root1++) {
@@ -366,7 +397,7 @@ double getdEusingDeterministicPT(vector<Determinant>& Dets, vector<MatrixXx>& ci
   for (int root1 =0 ;root1<schd.nroots; root1++)
     Heff(root1, root1) += E0[root1];
 
-  schd.doGtensor = true;
+  //schd.doGtensor = true;
 
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Heff);
   //cout << eigensolver.eigenvalues()(1,0)<<"  "<<eigensolver.eigenvalues()(0,0)<<endl;

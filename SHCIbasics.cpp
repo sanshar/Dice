@@ -1573,3 +1573,209 @@ void SHCIbasics::readHelperIntermediate(
     ifs.close();
   }
 }
+
+void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01,
+							MatrixXx&ci2, double& E02, int DetsSize, oneInt& I1, twoInt& I2,
+							twoIntHeatBathSHM& I2HB, vector<int>& irrep,
+							schedule& schd, double coreE, int nelec, int root,
+							CItype& EPT1, CItype& EPT2, CItype& EPT12,
+							std::vector<MatrixXx>& spinRDM) {
+
+#ifndef SERIAL
+  boost::mpi::communicator world;
+#endif
+  int norbs = Determinant::norbs;
+
+  Determinant* SortedDets;
+  std::vector<Determinant> SortedDetsvec;
+  if (commrank == 0) {
+    for (int i = 0; i < DetsSize; i++) SortedDetsvec.push_back(Dets[i]);
+    std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
+  }
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+  SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment,
+                 regionSortedDets);
+  SortedDetsvec.clear();
+
+  double energyEN = 0.0;
+  int ntries = 1;
+  StitchDEH uniqueDEH;// changed
+
+  // changed
+  // std::vector<Determinant> detscz; 
+  // std::vector<CItype> numerator1cz; 
+  // std::vector<CItype> numerator2cz; 
+  // std::vector<double> energycz;
+  // std::vector<Determinant>& dets_=detscz;
+  // std::vector<CItype>& numerator1_=numerator1cz;
+  // std::vector<CItype>& numerator2_=numerator2cz;
+  // std::vector<double>& energy_=energycz;
+  int size = commsize, rank = commrank;
+  vector<size_t> all_to_all(size * size, 0);
+
+
+    for (int i=0; i<Dets.size(); i++) {
+      if ((i % size != rank)) continue;
+      SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(Dets[i], i, abs(schd.epsilon2/ci1(i,0)), ci1(i,0),
+						      abs(schd.epsilon2/ci2(i,0)), ci2(i,0),
+						      I1, I2, I2HB, irrep, coreE,
+						      *uniqueDEH.Det, *uniqueDEH.Num,
+                  *uniqueDEH.Num2, *uniqueDEH.Energy,
+						      schd, nelec);
+    }
+
+  if (commsize > 1) {
+    boost::shared_ptr<vector<Determinant> >& Det = uniqueDEH.Det;
+    boost::shared_ptr<vector<CItype> >& Num = uniqueDEH.Num;
+    boost::shared_ptr<vector<CItype> >& Num2 = uniqueDEH.Num2;
+    boost::shared_ptr<vector<double> >& Energy = uniqueDEH.Energy;
+    boost::shared_ptr<vector<int> >& var_indices =
+        uniqueDEH.var_indices_beforeMerge;
+    boost::shared_ptr<vector<size_t> >& orbDifference =
+        uniqueDEH.orbDifference_beforeMerge;
+
+    std::vector<size_t> hashValues(Det->size());
+
+    std::vector<size_t> all_to_all_cumulative(size, 0);
+    for (int i = 0; i < Det->size(); i++) {
+      hashValues[i] = Det->at(i).getHash();
+      all_to_all[rank * size + hashValues[i] % size]++;
+    }
+    for (int i = 0; i < size; i++)
+      all_to_all_cumulative[i] =
+          i == 0 ? all_to_all[rank * size + i]
+                 : all_to_all_cumulative[i - 1] + all_to_all[rank * size + i];
+
+    size_t dsize = Det->size() == 0 ? 1 : Det->size();
+    vector<Determinant> atoaDets(dsize);
+    vector<CItype> atoaNum(dsize);
+    vector<CItype> atoaNum2(dsize);
+    vector<double> atoaE(dsize);
+    vector<int> atoaVarIndices;
+    vector<size_t> atoaOrbDiff;
+    // if (schd.DoRDM || schd.doResponse) {
+    //   atoaVarIndices.resize(dsize);
+    //   atoaOrbDiff.resize(dsize);
+    // }
+
+#ifndef SERIAL
+    vector<size_t> all_to_allCopy = all_to_all;
+    MPI_Allreduce(&all_to_allCopy[0], &all_to_all[0], 2 * size * size, MPI_INT,
+                  MPI_SUM, MPI_COMM_WORLD);
+#endif
+    vector<size_t> counter(size, 0);
+    for (int i = 0; i < Det->size(); i++) {
+      int toProc = hashValues[i] % size;
+      size_t index = toProc == 0
+                         ? counter[0]
+                         : counter[toProc] + all_to_all_cumulative[toProc - 1];
+
+      atoaDets[index] = Det->at(i);
+      atoaNum[index] = Num->at(i);
+      atoaNum2[index] = Num2->at(i);
+      atoaE[index] = Energy->at(i);
+      // if (schd.DoRDM || schd.doResponse) {
+      //   atoaVarIndices[index] = var_indices->at(i);
+      //   atoaOrbDiff[index] = orbDifference->at(i);
+      // }
+      counter[toProc]++;
+    }
+
+    vector<int> sendcts(size, 0), senddisp(size, 0), recvcts(size, 0),
+        recvdisp(size, 0);
+    vector<int> sendcts2(size, 0), senddisp2(size, 0), recvcts2(size, 0),
+        recvdisp2(size, 0);
+    vector<int> sendctsDets(size, 0), senddispDets(size, 0),
+        recvctsDets(size, 0), recvdispDets(size, 0);
+    vector<int> sendctsVarDiff(size, 0), senddispVarDiff(size, 0),
+        recvctsVarDiff(size, 0), recvdispVarDiff(size, 0);
+
+    size_t recvSize = 0;
+    for (int i = 0; i < size; i++) {
+      sendcts[i] =
+          all_to_all[rank * size + i] * sizeof(CItype) / sizeof(double);
+      sendcts2[i] =
+          all_to_all[rank * size + i] * sizeof(CItype) / sizeof(double);
+      senddisp[i] = i == 0 ? 0 : senddisp[i - 1] + sendcts[i - 1];
+      senddisp2[i] = i == 0 ? 0 : senddisp2[i - 1] + sendcts2[i - 1];
+      recvcts[i] =
+          all_to_all[i * size + rank] * sizeof(CItype) / sizeof(double);
+      recvcts2[i] =
+          all_to_all[i * size + rank] * sizeof(CItype) / sizeof(double);
+      recvdisp[i] = i == 0 ? 0 : recvdisp[i - 1] + recvcts[i - 1];
+      recvdisp2[i] = i == 0 ? 0 : recvdisp2[i - 1] + recvcts2[i - 1];
+
+      sendctsDets[i] =
+          all_to_all[rank * size + i] * sizeof(Determinant) / sizeof(double);
+      senddispDets[i] = i == 0 ? 0 : senddispDets[i - 1] + sendctsDets[i - 1];
+      recvctsDets[i] =
+          all_to_all[i * size + rank] * sizeof(Determinant) / sizeof(double);
+      recvdispDets[i] = i == 0 ? 0 : recvdispDets[i - 1] + recvctsDets[i - 1];
+
+      sendctsVarDiff[i] = all_to_all[rank * size + i];
+      senddispVarDiff[i] =
+          i == 0 ? 0 : senddispVarDiff[i - 1] + sendctsVarDiff[i - 1];
+      recvctsVarDiff[i] = all_to_all[i * size + rank];
+      recvdispVarDiff[i] =
+          i == 0 ? 0 : recvdispVarDiff[i - 1] + recvctsVarDiff[i - 1];
+
+      recvSize += all_to_all[i * size + rank];
+    }
+
+    recvSize = recvSize == 0 ? 1 : recvSize;
+    Det->resize(recvSize), Num->resize(recvSize), Num2->resize(recvSize), Energy->resize(recvSize);
+    // if (schd.DoRDM || schd.doResponse) {
+    //   var_indices->resize(recvSize);
+    //   orbDifference->resize(recvSize);
+    // }
+
+#ifndef SERIAL
+    MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE,
+                  &Num->at(0), &recvcts[0], &recvdisp[0], MPI_DOUBLE,
+                  MPI_COMM_WORLD);
+    MPI_Alltoallv(&atoaNum2.at(0), &sendcts2[0], &senddisp2[0], MPI_DOUBLE,
+                  &Num2->at(0), &recvcts2[0], &recvdisp2[0], MPI_DOUBLE,
+                  MPI_COMM_WORLD);
+    MPI_Alltoallv(&atoaE.at(0), &sendctsVarDiff[0], &senddispVarDiff[0],
+                  MPI_DOUBLE, &Energy->at(0), &recvctsVarDiff[0],
+                  &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
+    MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0],
+                  MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0],
+                  &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
+
+    // if (schd.DoRDM || schd.doResponse) {
+    //   MPI_Alltoallv(&atoaVarIndices.at(0), &sendctsVarDiff[0],
+    //                 &senddispVarDiff[0], MPI_INT, &(var_indices->at(0)),
+    //                 &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_INT,
+    //                 MPI_COMM_WORLD);
+    //   MPI_Alltoallv(&atoaOrbDiff.at(0), &sendctsVarDiff[0], &senddispVarDiff[0],
+    //                 MPI_DOUBLE, &(orbDifference->at(0)), &recvctsVarDiff[0],
+    //                 &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
+    // }
+#endif
+    uniqueDEH.Num2->clear();
+  }
+  uniqueDEH.MergeSortAndRemoveDuplicates();
+  uniqueDEH.RemoveDetsPresentIn(SortedDets, DetsSize);
+
+  vector<Determinant>& hasHEDDets = *uniqueDEH.Det;
+  vector<CItype>& hasHEDNumerator = *uniqueDEH.Num;
+  vector<CItype>& hasHEDNumerator2 = *uniqueDEH.Num2;
+  vector<double>& hasHEDEnergy = *uniqueDEH.Energy;
+
+  std::complex<double> PTEnergy1 = 0.0, PTEnergy2 = 0.0, PTEnergy12 = 0.0; 
+    
+  for (size_t i=0; i<hasHEDDets.size();i++) {
+    PTEnergy1 += pow(abs(hasHEDNumerator[i]),2)/(E01-hasHEDEnergy[i]);
+    PTEnergy12 += 0.5*(conj(hasHEDNumerator[i])*hasHEDNumerator2[i] / (E01-hasHEDEnergy[i])+conj(hasHEDNumerator[i])*hasHEDNumerator2[i] / (E02-hasHEDEnergy[i]));
+    PTEnergy2 += pow(abs(hasHEDNumerator2[i]),2)/(E02-hasHEDEnergy[i]);
+  }
+
+  EPT1 += PTEnergy1;
+  EPT2 += PTEnergy2;
+  EPT12 += PTEnergy12;
+}
+
