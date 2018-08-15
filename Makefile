@@ -84,7 +84,7 @@ obj_z/%.o: %.cpp
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 
 
-all: Dice ZDice2 GTensorFT GTensorFT2 # stats QDPTSOC GTensorFT GTensorFT2
+all: Dice ZDice2 GTensorFT # stats QDPTSOC GTensorFT GTensorFT2
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats

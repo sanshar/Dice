@@ -130,7 +130,8 @@ void DoPerturbativeDeterministicOffdiagonal(
     vector<Determinant>& Dets, MatrixXx& ci1, double& E01, MatrixXx& ci2,
     double& E02, int DetsSize, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB,
     vector<int>& irrep, schedule& schd, double coreE, int nelec, int root,
-    CItype& EPT1, CItype& EPT2, CItype& EPT12, std::vector<MatrixXx>& spinRDM);
+    std::complex<double>& EPT1, std::complex<double>& EPT2, std::complex<double>& EPT12, 
+    std::vector<MatrixXx>& spinRDM);
 
 }  // namespace SHCIbasics
 
