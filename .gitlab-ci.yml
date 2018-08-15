@@ -15,7 +15,8 @@ openmpi_ubuntu16:
   stage: build
   image: ubuntu:16.04
   script:
-    - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
+    - apt-get -qq update
+    - apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake gcc
     - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
@@ -26,7 +27,8 @@ openmpi_ubuntu17:
   stage: build
   image: ubuntu:17.10
   script:
-    - apt-get -qq update && apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake
+    - apt-get -qq update
+    - apt-get -qq install -y libopenmpi-dev openmpi-bin libboost-all-dev cmake gcc
     - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
@@ -38,7 +40,8 @@ mpich_ubuntu16:
   stage: build
   image: ubuntu:16.04
   script:
-    - apt-get -qq update && apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake
+    - apt-get -qq update
+    - apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake gcc
     - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
@@ -49,7 +52,8 @@ mpich_ubuntu17:
   stage: build
   image: ubuntu:17.10
   script:
-    - apt-get -qq update && apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake
+    - apt-get -qq update
+    - apt-get -qq install -y libcr-dev mpich libmpich-dev libboost-all-dev cmake gcc
     - which mpicxx
     - export CXX=mpicxx
     - mkdir -p build && cd build
