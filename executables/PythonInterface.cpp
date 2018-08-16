@@ -35,14 +35,14 @@
 #endif
 #include "evaluateE.h"
 #include "Determinants.h"
-#include "CPS.h"
-#include "Wfn.h"
+#include "CPSSlater.h"
+#include "CPSSlaterWalker.h"
 #include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
 #include "math.h"
 #include "Profile.h"
-#include "Walker.h"
+
 
 using namespace Eigen;
 using namespace boost;
@@ -75,10 +75,9 @@ int main(int argc, char *argv[])
   Eigen::VectorXd grad;
   Eigen::MatrixXd Hessian, Smatrix;
 
-
-  //perform the optimization
+  //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
-    CPSSlater wave; Walker walk;
+    CPSSlater wave; CPSSlaterWalker walk;
     wave.read();
     int nvars = schd.uhf ? wave.getNumVariables() + 2 * norbs * norbs : wave.getNumVariables() + norbs * norbs;
     grad = Eigen::VectorXd::Zero(nvars);
@@ -89,7 +88,7 @@ int main(int argc, char *argv[])
     }
 
     wave.initWalker(walk);
-    getStochasticGradientContinuousTime<CPSSlater, Walker>(wave, walk, E0, stddev, grad, rt, schd.stochasticIter, 0.5e-3);
+    getStochasticGradientContinuousTime(wave, walk, E0, stddev, grad, rt, schd.stochasticIter, 0.5e-3);
   }
 
   //write the results

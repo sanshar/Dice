@@ -26,6 +26,7 @@ class Wfn;
 class CPSSlater;
 class oneInt;
 
+
 /**
 * Is essentially a single determinant used in the VMC/DMC simulation
 * At each step in VMC one need to be able to calculate the following
@@ -39,7 +40,7 @@ class oneInt;
 * alphaDet and betaDet
 */
 
-class Walker {
+class CPSSlaterWalker  {
 
  public:
   Determinant     d;                      //The current determinant
@@ -55,8 +56,8 @@ class Walker {
   vector<Eigen::MatrixXd> BetaTable ;     //calculation of local energy, gradient, update
 
   // The constructor
-  Walker(Determinant& pd) : d(pd) {};
-  Walker() {};
+  CPSSlaterWalker(Determinant& pd) : d(pd) {};
+  CPSSlaterWalker() {};
 
   //Use the wavefunction to initialize the alphainv, betainv, alphaDet
   //and betadet
@@ -65,6 +66,8 @@ class Walker {
   double getDetOverlap(CPSSlater& w);
 
   void updateWalker(CPSSlater& w, int ex1, int ex2);
+
+  Determinant& getDet() {return d;}
 
   //these are not absolute orbital indices, but instead the
   //ith occupied and ath unoccupied
@@ -80,8 +83,8 @@ class Walker {
   double getDetFactorA(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
   double getDetFactorB(vector<int>& i, vector<int>& a, CPSSlater& w, bool doparity=true);
 
-  bool operator<(const Walker& w) const;
-  bool operator==(const Walker& w) const;
+  bool operator<(const CPSSlaterWalker& w) const;
+  bool operator==(const CPSSlaterWalker& w) const;
   /**
    * This takes an inverse and determinant of a matrix formed by a subset of
    * columns and rows of Hforbs

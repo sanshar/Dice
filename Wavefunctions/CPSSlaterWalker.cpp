@@ -26,15 +26,15 @@
 #include "igl/slice_into.h"
 using namespace Eigen;
 
-bool Walker::operator<(const Walker& w) const {
+bool CPSSlaterWalker::operator<(const CPSSlaterWalker& w) const {
   return d < w.d;
 }
 
-bool Walker::operator==(const Walker& w) const {
+bool CPSSlaterWalker::operator==(const CPSSlaterWalker& w) const {
   return d == w.d;
 }
 
-void Walker::updateWalker(CPSSlater& w, int ex1, int ex2) {
+void CPSSlaterWalker::updateWalker(CPSSlater& w, int ex1, int ex2) {
   int norbs = Determinant::norbs ;
 
   int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
@@ -72,10 +72,10 @@ void Walker::updateWalker(CPSSlater& w, int ex1, int ex2) {
   
 }
 
-void Walker::OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp) {
+void CPSSlaterWalker::OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp) {
   int numJastrowVariables = w.getNumJastrowVariables();
   int norbs = Determinant::norbs;
-  Walker& walk = *this;
+  CPSSlaterWalker& walk = *this;
 
   int KA = 0, KB = 0;
   for (int k = 0; k < norbs; k++) {//walker indices on the row
@@ -118,7 +118,7 @@ void Walker::OverlapWithGradient(CPSSlater& w, VectorXd& grad, double detovlp) {
 }
 
 
-bool Walker::makeMove(CPSSlater& w) {
+bool CPSSlaterWalker::makeMove(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
 
@@ -160,7 +160,7 @@ bool Walker::makeMove(CPSSlater& w) {
 }
 
 
-bool Walker::makeMovePropPsi(CPSSlater& w) {
+bool CPSSlaterWalker::makeMovePropPsi(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
 			  std::ref(generator));
 
@@ -199,7 +199,7 @@ bool Walker::makeMovePropPsi(CPSSlater& w) {
   return false;
 }
 
-double Walker::getDetOverlap(CPSSlater &w)
+double CPSSlaterWalker::getDetOverlap(CPSSlater &w)
 {
   double ovlp = 0.0;
   for (int i = 0; i < alphaDet.size(); i++) {
@@ -208,7 +208,7 @@ double Walker::getDetOverlap(CPSSlater &w)
   return ovlp;
 }
 
-void Walker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
+void CPSSlaterWalker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
                                                          MatrixXd &inverseOut, double &detValueOut,
                                                          vector<int> &cre, vector<int> &des,
                                                          Eigen::Map<Eigen::VectorXi> &RowVec,
@@ -273,7 +273,7 @@ void Walker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, do
   igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
 }
 
-void Walker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
+void CPSSlaterWalker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
                                                       MatrixXd &inverseOut, double &detValueOut,
                                                       vector<int> &cre, vector<int> &des,
                                                       Eigen::Map<Eigen::VectorXi> &ColVec,
@@ -338,7 +338,7 @@ void Walker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, doubl
 
 
 
-void Walker::initUsingWave(CPSSlater& w, bool check) {
+void CPSSlaterWalker::initUsingWave(CPSSlater& w, bool check) {
 
   AlphaTable.resize(w.determinants.size());
   BetaTable.resize(w.determinants.size());
@@ -439,7 +439,7 @@ void Walker::initUsingWave(CPSSlater& w, bool check) {
   //exit(0);
 }
 
-void   Walker::exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs)
+void   CPSSlaterWalker::exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs)
 {
   int I1 = excite1/(2*norbs), A1= excite1%(2*norbs);
 
@@ -456,7 +456,7 @@ void   Walker::exciteWalker(CPSSlater& w, int excite1, int excite2, int norbs)
 
 }
 
-double Walker::getDetFactorA(int i, int a, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorA(int i, int a, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
   int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
@@ -477,7 +477,7 @@ double Walker::getDetFactorA(int i, int a, CPSSlater &w, bool doparity)
   return p * detFactorNum / detFactorDen;
 }
 
-double Walker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
   int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
@@ -498,7 +498,7 @@ double Walker::getDetFactorB(int i, int a, CPSSlater &w, bool doparity)
   return p * detFactorNum / detFactorDen;
 }
 
-double Walker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
   int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
@@ -516,7 +516,7 @@ double Walker::getDetFactorA(int i, int j, int a, int b, CPSSlater &w, bool dopa
   return detFactorNum / detFactorDen;
 }
 
-double Walker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
   int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
@@ -534,7 +534,7 @@ double Walker::getDetFactorB(int i, int j, int a, int b, CPSSlater &w, bool dopa
   return detFactorNum / detFactorDen;
 }
 
-double Walker::getDetFactorAB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorAB(int i, int j, int a, int b, CPSSlater &w, bool doparity)
 {
   int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
   int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
@@ -552,7 +552,7 @@ double Walker::getDetFactorAB(int i, int j, int a, int b, CPSSlater &w, bool dop
   return detFactorNum / detFactorDen;
 }
 
-double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
 {
   MatrixXd localDet = MatrixXd::Zero(aArray.size(), iArray.size());
   for (int i=0; i<iArray.size(); i++)
@@ -581,7 +581,7 @@ double Walker::getDetFactorA(vector<int>& iArray, vector<int>& aArray, CPSSlater
   return p * cpsFactor * localDet.determinant() ;
 }
 
-double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
+double CPSSlaterWalker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater &w, bool doparity)
 {
   MatrixXd localDet = MatrixXd::Zero(aArray.size(), iArray.size());
   for (int i=0; i<iArray.size(); i++)
@@ -612,7 +612,7 @@ double Walker::getDetFactorB(vector<int>& iArray, vector<int>& aArray, CPSSlater
 
 
 
-void Walker::updateA(int i, int a, CPSSlater& w) {
+void CPSSlaterWalker::updateA(int i, int a, CPSSlater& w) {
 
 
   double p = 1.0;
@@ -669,7 +669,7 @@ void Walker::updateA(int i, int a, CPSSlater& w) {
 
 }
 
-void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
+void CPSSlaterWalker::updateA(int i, int j, int a, int b, CPSSlater& w) {
 
   double p = 1.0;
   Determinant dcopy = d;
@@ -725,7 +725,7 @@ void Walker::updateA(int i, int j, int a, int b, CPSSlater& w) {
 
 }
 
-void Walker::updateB(int i, int a, CPSSlater& w) {
+void CPSSlaterWalker::updateB(int i, int a, CPSSlater& w) {
 
   double p = 1.0;
   d.parityB(a, i, p);
@@ -781,7 +781,7 @@ void Walker::updateB(int i, int a, CPSSlater& w) {
   
 }
 
-void Walker::updateB(int i, int j, int a, int b, CPSSlater& w) {
+void CPSSlaterWalker::updateB(int i, int j, int a, int b, CPSSlater& w) {
 
   double p = 1.0;
   Determinant dcopy = d;
