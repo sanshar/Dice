@@ -79,7 +79,7 @@ openmpi_ubuntu16_test:
 
 openmpi_ubuntu17_test:
   stage: test
-  image: ubuntu:17.10
+  # image: ubuntu:17.10
   dependencies:
     - openmpi_ubuntu17
   script:
@@ -101,7 +101,7 @@ mpich_ubuntu16_test:
 
 mpich_ubuntu17_test:
   stage: test
-  image: ubuntu:17.10
+  # image: ubuntu:17.10
   dependencies:
     - mpich_ubuntu17
   script:
