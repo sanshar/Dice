@@ -68,6 +68,7 @@ mpich_ubuntu17:
 
 openmpi_ubuntu16_test:
   stage: test
+  image: ubuntu:16.04
   dependencies:
     - openmpi_ubuntu16
   script:
@@ -78,6 +79,7 @@ openmpi_ubuntu16_test:
 
 openmpi_ubuntu17_test:
   stage: test
+  image: ubuntu:17.10
   dependencies:
     - openmpi_ubuntu17
   script:
@@ -88,6 +90,7 @@ openmpi_ubuntu17_test:
 
 mpich_ubuntu16_test:
   stage: test
+  image: ubuntu:16.04
   dependencies:
     - mpich_ubuntu16
   script:
@@ -98,6 +101,7 @@ mpich_ubuntu16_test:
 
 mpich_ubuntu17_test:
   stage: test
+  image: ubuntu:17.10
   dependencies:
     - mpich_ubuntu17
   script:
