@@ -22,13 +22,11 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <vector>
+#include <iostream>
 #include "global.h"
 
-class Hmult2;
 using namespace Eigen;
 using namespace std;
-
-double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
 
 void GeneralizedEigen(MatrixXd& Hamiltonian, MatrixXd& Overlap, VectorXcd& eigenvalues, MatrixXcd& eigenvectors, VectorXd& betas);
 

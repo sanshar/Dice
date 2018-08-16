@@ -17,7 +17,6 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Davidson.h"
-#include "Hmult.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <iostream>
@@ -49,67 +48,4 @@ void SelfAdjointEigen(MatrixXd& Overlap, VectorXd& eigenvalues, MatrixXd& eigenv
   eigenvalues = oes.eigenvalues();
   eigenvectors = oes.eigenvectors();
 } 
-
-
-
-double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
-
-  for (int i=0; i<proj.size(); i++) {
-    CItype dotProduct = 0.0, norm=0.0;
-    for (int j=0; j<b.rows(); j++) {
-      dotProduct += proj[i][j]*b(j,0);
-      norm += proj[i][j]*proj[i][j];
-    }
-    for (int j=0; j<b.rows(); j++)
-      b(j,0) = b(j,0) - dotProduct*proj[i][j]/norm;
-  }
-
-  x0.setZero(b.rows(),1);
-  MatrixXx r = 1.*b, p = 1.*b;
-  double rsold = r.squaredNorm();
-
-  if (fabs(r.norm()) < tol) return 0.0;
-
-  int iter = 0;
-  while (true) {
-    MatrixXx Ap = 0.*p;
-    H(&p(0,0), &Ap(0,0)); ///REPLACE THIS WITH SOMETHING
-#ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &Ap(0,0), Ap.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-    Ap = Ap - E0*p; //H0-E0
-    CItype alpha = rsold/(p.adjoint()*Ap)(0,0);
-    x0 += alpha*p;
-    r -= alpha*Ap;
-
-    for (int i=0; i<proj.size(); i++) {
-      CItype dotProduct = 0.0, norm=0.0;
-      for (int j=0; j<b.rows(); j++) {
-        dotProduct += proj[i][j]*r(j,0);
-        norm += proj[i][j]*proj[i][j];
-      }
-      for (int j=0; j<r.rows(); j++)
-        r(j,0) = r(j,0) - dotProduct*proj[i][j]/norm;
-    }
-
-    //r = r - ((proj[i].adjoint()*r)(0,0))*proj[i]/((proj[i].adjoint()*proj[i])(0,0));
-    //r = r- ((proj.adjoint()*r)(0,0))*proj/((proj.adjoint()*proj)(0,0));
-
-    double rsnew = r.squaredNorm();
-    CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (commrank==0)
-      cout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
-    if (r.norm() < tol || iter > 200) {
-      p.setZero(p.rows(),1);
-      H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
-      p -=b;
-      return abs(ept);
-    }
-
-    p = r +(rsnew/rsold)*p;
-    rsold = rsnew;
-    iter++;
-  }
-
-}
 

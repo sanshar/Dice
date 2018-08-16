@@ -16,12 +16,11 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Wfn.h"
+
 #include "integral.h"
 #include "CPS.h"
-#include "MoDeterminants.h"
-#include "Walker.h"
-#include "Wfn.h"
+#include "CPSSlaterWalker.h"
+#include "CPSSlater.h"
 #include "global.h"
 #include "input.h"
 #include "Profile.h"

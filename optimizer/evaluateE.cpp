@@ -26,7 +26,6 @@
 #include <fstream>
 #include "evaluateE.h"
 #include "Davidson.h"
-#include "Hmult.h"
 #include <math.h>
 #include "global.h"
 #include "input.h"

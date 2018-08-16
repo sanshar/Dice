@@ -16,8 +16,8 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Walker.h"
-#include "Wfn.h"
+#include "CPSSlaterWalker.h"
+#include "CPSSlater.h"
 #include "integral.h"
 #include "global.h"
 #include "input.h"
