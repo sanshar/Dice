@@ -1,4 +1,4 @@
-#include "MoDeterminants.h"
+
 #include "Determinants.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include "Eigen/Dense"
@@ -7,17 +7,22 @@
 #include <sys/time.h>
 #include "input.h"
 #include "Profile.h"
+#include "integral.h"
 #ifndef SERIAL
 #include "mpi.h"
 #endif
 
-int MoDeterminant::norbs = 1;
-int MoDeterminant::nalpha = 1;
-int MoDeterminant::nbeta = 1;
 
 int Determinant::norbs = 1;
+int Determinant::nalpha = 1;
+int Determinant::nbeta = 1;
 int Determinant::EffDetLen = 1;
 char Determinant::Trev = 0;
+
+twoInt I2;
+oneInt I1;
+double coreE;
+twoIntHeatBathSHM I2hb(1e-10);
 
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 

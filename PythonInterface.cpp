@@ -34,7 +34,6 @@
 #include <boost/mpi.hpp>
 #endif
 #include "evaluateE.h"
-#include "MoDeterminants.h"
 #include "Determinants.h"
 #include "CPS.h"
 #include "Wfn.h"
@@ -43,14 +42,14 @@
 #include "SHCIshm.h"
 #include "math.h"
 #include "Profile.h"
-
+#include "Walker.h"
 
 using namespace Eigen;
 using namespace boost;
 using namespace std;
 
-
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
 
 #ifndef SERIAL
   boost::mpi::environment env(argc, argv);
@@ -64,177 +63,147 @@ int main(int argc, char* argv[]) {
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
-  if (commrank == 0) readInput(inputFile, schd, false);
-#ifndef SERIAL
-  mpi::broadcast(world, schd, 0);
-#endif
+  readInput(inputFile, schd, false);
 
-  generator = std::mt19937(schd.seed+commrank);
-  //generator = std::mt19937(commrank);
+  generator = std::mt19937(schd.seed + commrank);
 
-  twoInt I2; oneInt I1; 
-  int norbs, nalpha, nbeta; 
-  double coreE=0.0;
-  std::vector<int> irrep;
-  readIntegrals("FCIDUMP", I2, I1, nalpha, nbeta, norbs, coreE, irrep);
+  readIntegralsAndInitializeDeterminantStaticVariables("FCIDUMP");
 
-  //initialize the heatbath integrals
-  std::vector<int> allorbs;
-  for (int i=0; i<norbs; i++)
-    allorbs.push_back(i);
-  twoIntHeatBath I2HB(1.e-10);
-  twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs);
-  I2HBSHM.constructClass(norbs, I2HB);
-  
-  //Setup static variables
-  Determinant::EffDetLen = (norbs)/64+1;
-  Determinant::norbs    = norbs;
-  MoDeterminant::norbs  = norbs;
-  MoDeterminant::nalpha = nalpha;
-  MoDeterminant::nbeta  = nbeta;
-
-  //Setup Slater Determinants
-  HforbsA = MatrixXd::Zero(norbs, norbs);
-  HforbsB = MatrixXd::Zero(norbs, norbs);
-  readHF(HforbsA, HforbsB, schd.uhf);
+  //Set up the gradient hessian overlap matrices
+  double E0 = 0.0, stddev, rt = 0;
+  int norbs = Determinant::norbs;
+  Eigen::VectorXd grad;
+  Eigen::MatrixXd Hessian, Smatrix;
 
 
-  //Setup CPS wavefunctions
-  std::vector<Correlator> nSiteCPS;
-  for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end();
-       it++) {
-    readCorrelator(it->second, it->first, nSiteCPS);
+  //perform the optimization
+  if (schd.wavefunctionType == "CPSSlater") {
+    CPSSlater wave; Walker walk;
+    wave.read();
+    int nvars = schd.uhf ? wave.getNumVariables() + 2 * norbs * norbs : wave.getNumVariables() + norbs * norbs;
+    grad = Eigen::VectorXd::Zero(nvars);
+    if (schd.doHessian)
+    {
+      Hessian = Eigen::MatrixXd::Zero(nvars + 1, nvars + 1);
+      Smatrix = Eigen::MatrixXd::Zero(nvars + 1, nvars + 1);
+    }
+
+    wave.initWalker(walk);
+    getStochasticGradientContinuousTime<CPSSlater, Walker>(wave, walk, E0, stddev, grad, rt, schd.stochasticIter, 0.5e-3);
   }
-  
-  vector<Determinant> detList; vector<double> ciExpansion;
 
-  if (boost::iequals(schd.determinantFile, "") )
+  //write the results
+  if (commrank == 0)
   {
-    detList.resize(1); ciExpansion.resize(1, 1.0);
-    for (int i=0; i<nalpha; i++)
-      detList[0].setoccA(i, true);
-    for (int i=0; i<nbeta; i++)
-      detList[0].setoccB(i, true);
-  }
-  else 
-  {
-    readDeterminants(schd.determinantFile, detList, ciExpansion);
-  }
-  //setup up wavefunction
-  CPSSlater wave(nSiteCPS, detList, ciExpansion);
+    std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
 
+    size_t size;
+    {
+      ifstream file("params.bin", ios::in | ios::binary | ios::ate);
+      size = file.tellg();
+    }
 
-  size_t size;
-  ifstream file ("params.bin", ios::in|ios::binary|ios::ate);
-  if (commrank == 0) {
-    size = file.tellg();
-  }
-#ifndef SERIAL
-  MPI_Bcast(&size, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-  Eigen::VectorXd vars = Eigen::VectorXd::Zero(size/sizeof(double));
-  if (commrank == 0) {
-    file.seekg (0, ios::beg);
-    file.read ( (char*)(&vars[0]), size);
+    ofstream file("grad.bin", ios::out | ios::binary);
+    file.write((char *)(&grad[0]), size);
     file.close();
-  }
 
-#ifndef SERIAL
-  MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
+    ofstream filee("E0.bin", ios::out | ios::binary);
+    filee.write((char *)(&E0), sizeof(double));
+    filee.close();
 
-  if ( (schd.uhf && vars.size() != wave.getNumVariables()+2*norbs*norbs) ||
-       (!schd.uhf && vars.size() != wave.getNumVariables()+norbs*norbs) ){
-    cout << "number of variables on disk: "<<vars.size()<<" is not equal to wfn parameters: "<<wave.getNumVariables()<<endl;
-    exit(0);
-  }
+    if (schd.doHessian)
+    {
+      ofstream hfile("hessian.bin", ios::out | ios::binary);
+      hfile.write((char *)(&Hessian(0, 0)), Hessian.rows() * Hessian.cols() * sizeof(double));
+      hfile.close();
 
-  wave.updateVariables(vars);
-  int numVars = wave.getNumVariables();
-
-  for (int i=0; i<norbs; i++) {
-    for (int j=0; j<norbs; j++) {
-      if (!schd.uhf) {
-	HforbsA(i,j) = vars[numVars + i *norbs + j];
-	HforbsB(i,j) = vars[numVars + i *norbs + j];
-      }
-      else {
-	HforbsA(i,j) = vars[numVars + i *norbs + j];
-	HforbsB(i,j) = vars[numVars + norbs*norbs + i *norbs + j];
-      }
+      ofstream sfile("smatrix.bin", ios::out | ios::binary);
+      sfile.write((char *)(&Smatrix(0, 0)), Hessian.rows() * Hessian.cols() * sizeof(double));
+      sfile.close();
     }
   }
+/*
+
+  //Setup Slater Determinants
+
 
   MatrixXd alpha(norbs, nalpha), beta(norbs, nbeta);
   alpha = HforbsA.block(0, 0, norbs, nalpha);
-  beta  = HforbsB.block(0, 0, norbs, nbeta );
-  MoDeterminant det(alpha, beta);
+  beta = HforbsB.block(0, 0, norbs, nbeta);
+  //MoDeterminant det(alpha, beta);
 
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(vars.size());
   Eigen::MatrixXd Hessian, Smatrix;
-  if (schd.doHessian) {
-    Hessian.resize(vars.size()+1, vars.size()+1);
-    Smatrix.resize(vars.size()+1, vars.size()+1);
-    Hessian.setZero(); Smatrix.setZero();
+  if (schd.doHessian)
+  {
+    Hessian.resize(vars.size() + 1, vars.size() + 1);
+    Smatrix.resize(vars.size() + 1, vars.size() + 1);
+    Hessian.setZero();
+    Smatrix.setZero();
   }
-  
+
   //if (commrank == 0)
-  //std::cout << format("Finished reading from disk: %8.2f\n") 
+  //std::cout << format("Finished reading from disk: %8.2f\n")
   //%( (getTime()-startofCalc));
-  
-  double E0=0.0, stddev, rt=0;
-  if (schd.deterministic) {
-    if (!schd.doHessian) {
+
+  double E0 = 0.0, stddev, rt = 0;
+  if (schd.deterministic)
+  {
+    if (!schd.doHessian)
+    {
       getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
       stddev = 0.0;
     }
-    else {
+    else
+    {
       getGradientHessianDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix);
       stddev = 0.0;
     }
   }
-  else {
+  else
+  {
     //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-    if (!schd.doHessian) 
-      getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-      //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+    if (!schd.doHessian) {
+      Walker walk;
+      initWalker<CPSSlater, Walker>(wave, walk, nalpha, nbeta, norbs);
+      getStochasticGradientContinuousTime<CPSSlater, Walker>(wave, walk, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
+    }
+    //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
     else
       getStochasticGradientHessianContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, Hessian, Smatrix, rt, schd.stochasticIter, 0.5e-3);
-
   }
 
   //for (int i=wave.getNumJastrowVariables(); i<wave.getNumVariables(); i++) {
   //grad[i] *= getParityForDiceToAlphaBeta(wave.determinants[i-wave.getNumJastrowVariables()]);
   //}
 
-  if (commrank == 0) {
-    std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") 
-      %E0 % stddev %(grad.norm()) %(rt)  %(schd.stochasticIter) %( (getTime()-startofCalc));
+  if (commrank == 0)
+  {
+    std::cout << format("%14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
 
     //cout << prof.SinglesTime<<"  "<<prof.SinglesCount<<endl;
     //cout << prof.DoubleTime<<"  "<<prof.DoubleCount<<endl;
 
-    ofstream file ("grad.bin", ios::out|ios::binary);
-    file.write ( (char*)(&grad[0]), size);
+    ofstream file("grad.bin", ios::out | ios::binary);
+    file.write((char *)(&grad[0]), size);
     file.close();
 
-    ofstream filee ("E0.bin", ios::out|ios::binary);
-    filee.write ( (char*)(&E0), sizeof(double));
+    ofstream filee("E0.bin", ios::out | ios::binary);
+    filee.write((char *)(&E0), sizeof(double));
     filee.close();
 
     if (schd.doHessian)
     {
       ofstream hfile("hessian.bin", ios::out | ios::binary);
-      hfile.write((char *)(&Hessian(0,0)), Hessian.rows()*Hessian.cols()*sizeof(double));
+      hfile.write((char *)(&Hessian(0, 0)), Hessian.rows() * Hessian.cols() * sizeof(double));
       hfile.close();
 
       ofstream sfile("smatrix.bin", ios::out | ios::binary);
-      sfile.write((char *)(&Smatrix(0,0)), Hessian.rows()*Hessian.cols()*sizeof(double));
+      sfile.write((char *)(&Smatrix(0, 0)), Hessian.rows() * Hessian.cols() * sizeof(double));
       sfile.close();
     }
   }
-
+*/
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
   return 0;

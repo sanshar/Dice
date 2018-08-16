@@ -203,10 +203,6 @@ void readGTensorIntegrals(vector<oneInt>& I1soc, int norbs, string fileprefix);
 int readNorbs(string fcidump);
 
 
-void readIntegrals(
-        string fcidump,
-        twoInt& I2, oneInt& I1,
-        int& nalpha, int& nbeta, int& norbs, double& coreE,
-        std::vector<int>& irrep);
+void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump);
 
 #endif

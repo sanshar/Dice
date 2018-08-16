@@ -20,7 +20,6 @@
 #define Wfn_HEADER_H
 #include <vector>
 #include <set>
-#include "MoDeterminants.h"
 #include "Determinants.h"
 #include "CPS.h"
 #include <boost/serialization/vector.hpp>
@@ -52,10 +51,11 @@ class CPSSlater  {
   vector<vector<int> >             orbitalToCPS;     //for each orbital all CPS that it belongs to
   vector<int>             workingVectorOfCPS;
 
-  CPSSlater( std::vector<Correlator> & pcpsArray,
-             std::vector<Determinant>& pdeterminants,
-             std::vector<double>     & pciExpansion
-	     );
+  typedef CPSSlater Wfntype;
+
+  CPSSlater();
+  void read();
+  void initWalker(Walker& walk);
 
 /**
  * Generates the determinant of overlap of the input determinant d and the
@@ -105,7 +105,7 @@ class CPSSlater  {
 			   Eigen::VectorXd& grad);
 
 
-  void OvlpRatioCI(Walker &walk, VectorXd &gradRatio,
+  void OvlpRatioCI(Walker &walk, Eigen::VectorXd &gradRatio,
 		   oneInt &I1, twoInt &I2, vector<int>& SingleIndices,
 		   vector<int>& DoubleIndices, twoIntHeatBathSHM& I2hb, 
 		   double & coreE, double factor);
@@ -120,7 +120,7 @@ class CPSSlater  {
  * overlaps of all d' connected to the determinant d (walk.d)
  */ 
   void HamAndOvlpGradient(Walker& walk,
-			  double& ovlp, double& ham, VectorXd& grad,
+			  double& ovlp, double& ham, Eigen::VectorXd& grad,
 			  oneInt& I1, twoInt& I2,
 			  twoIntHeatBathSHM& I2hb, double& coreE,
 			  vector<double>& ovlpRatio, vector<size_t>& excitation1,

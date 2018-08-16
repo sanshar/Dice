@@ -123,8 +123,8 @@ bool Walker::makeMove(CPSSlater& w) {
                           std::ref(generator));
 
   int norbs = Determinant::norbs,
-      nalpha = MoDeterminant::nalpha,
-      nbeta = MoDeterminant::nbeta;
+      nalpha = Determinant::nalpha,
+      nbeta = Determinant::nbeta;
 
   //pick a random occupied orbital
   int i = floor(random() * (nalpha + nbeta));
@@ -164,9 +164,9 @@ bool Walker::makeMovePropPsi(CPSSlater& w) {
   auto random = std::bind(std::uniform_real_distribution<double>(0,1),
 			  std::ref(generator));
 
-  int norbs = MoDeterminant::norbs,
-    nalpha = MoDeterminant::nalpha,
-    nbeta  = MoDeterminant::nbeta;
+  int norbs = Determinant::norbs,
+    nalpha = Determinant::nalpha,
+    nbeta  = Determinant::nbeta;
 
   //pick a random occupied orbital
   int i = floor( random()*(nalpha+nbeta) );

@@ -24,6 +24,7 @@
 #include "math.h"
 #include "boost/format.hpp"
 #include <fstream>
+#include "Determinants.h"
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -37,9 +38,7 @@ bool myfn(double i, double j) { return fabs(i)<fabs(j); }
 
 
 //=============================================================================
-void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, 
-		   int& nalpha, int& nbeta, int& norbs, double& coreE, 
-		   std::vector<int>& irrep) {
+void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
 //-----------------------------------------------------------------------------
     /*!
     Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
@@ -48,20 +47,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1,
 
         string fcidump:
             Name of the FCIDUMP file
-        twoInt& I2:
-            Two-electron tensor of the Hamiltonian (output)
-        oneInt& I1:
-            One-electron tensor of the Hamiltonian (output)
-        int& nalpha:
-            Number of alpha electrons (output)
-        int& nbeta:
-            Number of beta electrons (output)
-        int& norbs:
-            Number of orbitals (output)
-        double& coreE:
-            The core energy (output)
-        std::vector<int>& irrep:
-            Irrep of the orbitals (output)
     */
 //-----------------------------------------------------------------------------
 #ifndef SERIAL
@@ -72,8 +57,8 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1,
     cout << "Integral file "<<fcidump<<" does not exist!"<<endl;
     exit(0);
   }
-
-  int nelec, sz;
+  vector<int> irrep;
+  int nelec, sz, norbs, nalpha, nbeta;
 
 #ifndef SERIAL
   if (commrank == 0) {
@@ -221,6 +206,22 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1,
   mpi::broadcast(world, I2.zero, 0);
   mpi::broadcast(world, coreE, 0);
 #endif
+
+  Determinant::EffDetLen = (norbs) / 64 + 1;
+  Determinant::norbs = norbs;
+  Determinant::nalpha = nalpha;
+  Determinant::nbeta = nbeta;
+
+  //initialize the heatbath integrals
+  std::vector<int> allorbs;
+  for (int i = 0; i < norbs; i++)
+    allorbs.push_back(i);
+  twoIntHeatBath I2HB(1.e-10);
+
+  if (commrank == 0)
+    I2HB.constructClass(allorbs, I2, I1, norbs);
+  I2hb.constructClass(norbs, I2HB);
+
 } // end readIntegrals
 
 

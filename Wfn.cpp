@@ -26,6 +26,8 @@
 #include "input.h"
 #include "Profile.h"
 #include <fstream>
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -34,12 +36,42 @@
 
 using namespace Eigen;
 
-CPSSlater::CPSSlater(std::vector<Correlator> &pcpsArray,
-                     std::vector<Determinant> &pdeterminants,
-                     std::vector<double> &pciExpansion) : cpsArray(pcpsArray),
-                                                          determinants(pdeterminants),
-                                                          ciExpansion(pciExpansion)
-{
+CPSSlater::CPSSlater() {}
+
+void CPSSlater::read() {
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  HforbsA = MatrixXd::Zero(norbs, norbs);
+  HforbsB = MatrixXd::Zero(norbs, norbs);
+  readHF(HforbsA, HforbsB, schd.uhf);
+
+  //Setup CPS wavefunctions
+  std::vector<Correlator> nSiteCPS;
+  for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end();
+       it++)
+  {
+    readCorrelator(it->second, it->first, cpsArray);
+  }
+
+  //vector<Determinant> detList;
+  //vector<double> ciExpansion;
+
+  if (boost::iequals(schd.determinantFile, ""))
+  {
+    determinants.resize(1);
+    ciExpansion.resize(1, 1.0);
+    for (int i = 0; i < nalpha; i++)
+      determinants[0].setoccA(i, true);
+    for (int i = 0; i < nbeta; i++)
+      determinants[0].setoccB(i, true);
+  }
+  else
+  {
+    readDeterminants(schd.determinantFile, determinants, ciExpansion);
+  }
+
   int maxCPSSize = 0;
   orbitalToCPS.resize(Determinant::norbs);
   for (int i = 0; i < cpsArray.size(); i++)
@@ -52,7 +84,126 @@ CPSSlater::CPSSlater(std::vector<Correlator> &pcpsArray,
     if (orbitalToCPS[i].size() > maxCPSSize)
       maxCPSSize = orbitalToCPS[i].size();
   workingVectorOfCPS.resize(4 * maxCPSSize);
-};
+
+
+  size_t size;
+  ifstream file("params.bin", ios::in | ios::binary | ios::ate);
+  if (commrank == 0)
+  {
+    size = file.tellg();
+  }
+#ifndef SERIAL
+  MPI_Bcast(&size, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  Eigen::VectorXd vars = Eigen::VectorXd::Zero(size / sizeof(double));
+  if (commrank == 0)
+  {
+    file.seekg(0, ios::beg);
+    file.read((char *)(&vars[0]), size);
+    file.close();
+  }
+
+#ifndef SERIAL
+  MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+  if ((schd.uhf && vars.size() != getNumVariables() + 2 * norbs * norbs) ||
+      (!schd.uhf && vars.size() != getNumVariables() + norbs * norbs))
+  {
+    cout << "number of variables on disk: " << vars.size() << " is not equal to wfn parameters: " << getNumVariables() << endl;
+    exit(0);
+  }
+
+  updateVariables(vars);
+  int numVars = getNumVariables();
+
+  for (int i = 0; i < norbs; i++)
+  {
+    for (int j = 0; j < norbs; j++)
+    {
+      if (!schd.uhf)
+      {
+        HforbsA(i, j) = vars[numVars + i * norbs + j];
+        HforbsB(i, j) = vars[numVars + i * norbs + j];
+      }
+      else
+      {
+        HforbsA(i, j) = vars[numVars + i * norbs + j];
+        HforbsB(i, j) = vars[numVars + norbs * norbs + i * norbs + j];
+      }
+    }
+  }
+
+}
+
+void CPSSlater::initWalker(Walker& walk) {
+
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+	//initialize the walker
+	Determinant& d = walk.d;
+	bool readDeterminant = false;
+	char file[5000];
+
+	sprintf(file, "BestDeterminant.txt");
+
+	{
+		ifstream ofile(file);
+		if (ofile)
+			readDeterminant = true;
+	}
+	//readDeterminant = false;
+
+	if (!readDeterminant)
+	{
+
+		for (int i = 0; i < nalpha; i++)
+		{
+			int bestorb = 0;
+			double maxovlp = 0;
+			for (int j = 0; j < norbs; j++)
+			{
+				if (abs(HforbsA(i, j)) > maxovlp && !d.getoccA(j))
+				{
+					maxovlp = abs(HforbsA(i, j));
+					bestorb = j;
+				}
+			}
+			d.setoccA(bestorb, true);
+		}
+		for (int i = 0; i < nbeta; i++)
+		{
+			int bestorb = 0;
+			double maxovlp = 0;
+			for (int j = 0; j < norbs; j++)
+			{
+				if (abs(HforbsB(i, j)) > maxovlp && !d.getoccB(j))
+				{
+					bestorb = j;
+					maxovlp = abs(HforbsB(i, j));
+				}
+			}
+			d.setoccB(bestorb, true);
+		}
+	}
+	else
+	{
+		if (commrank == 0)
+		{
+			std::ifstream ifs(file, std::ios::binary);
+			boost::archive::binary_iarchive load(ifs);
+			load >> d;
+		}
+#ifndef SERIAL
+		MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+		MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+	}
+
+	walk.initUsingWave(*this);
+}
 
 void CPSSlater::getDetMatrix(Determinant &d, Eigen::MatrixXd &DetAlpha, Eigen::MatrixXd &DetBeta)
 {
@@ -217,11 +368,25 @@ double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant &dcop
   return cpsFactor;
 }
 
-void CPSSlater::OverlapWithGradient(Walker &w,
-                                    double &factor,
+void CPSSlater::OverlapWithGradient(Walker &walk,
+                                    double &ovlp,
                                     VectorXd &grad)
 {
-  OverlapWithGradient(w.d, factor, grad);
+  double factor = 1.0;
+  OverlapWithGradient(walk.d, factor, grad);
+
+  int numJastrowVariables = getNumJastrowVariables();
+  double detovlp = 0.;
+  for (int k = 0; k < ciExpansion.size(); k++)
+  {
+    grad(k + numJastrowVariables) += walk.alphaDet[k] * walk.betaDet[k] / ovlp;
+    detovlp += ciExpansion[k] * walk.alphaDet[k] * walk.betaDet[k];
+  }
+
+  if (determinants.size() <= 1 && schd.optimizeOrbs)
+  {
+    walk.OverlapWithGradient(*this, grad, detovlp);
+  }
 }
 
 void CPSSlater::OverlapWithGradient(Determinant &d,

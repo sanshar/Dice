@@ -42,6 +42,7 @@ private:
   {
     ar & restart & deterministic
       & tol & correlatorFiles
+      & wavefunctionType
       & davidsonPrecondition
       & diisSize
       & maxIter
@@ -79,8 +80,8 @@ public:
 
 
 //input file to define the correlator parts of the wavefunction
+  std::string wavefunctionType;
   std::map<int, std::string> correlatorFiles;
-
   std::string determinantFile;
 
 //Used in the stochastic calculation of E and PT evaluation
