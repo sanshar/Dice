@@ -1148,7 +1148,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     }
     }
 
-    MatrixXx HamFromHelper = MatrixXx::Zero(DetsSize, DetsSize);
+    /*MatrixXx HamFromHelper = MatrixXx::Zero(DetsSize, DetsSize);
     for (int i=0; i<DetsSize; i++) {
       for (int j=0; j<sparseHam.Helements[i].size(); j++) {
         HamFromHelper(i,sparseHam.connections[i][j])=sparseHam.Helements[i][j];
@@ -1165,7 +1165,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     }
 
     // Print out the hamiltonian matrix
-    /*if (commrank == 0) {
+    if (commrank == 0) {
       char file [5000];
       sprintf (file, "sparseHamFromHelper.txt", schd.prefix[0].c_str());
       std::ofstream ofs1(file, std::ios::out);

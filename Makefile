@@ -31,11 +31,11 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = g++
 		CC = g++
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif

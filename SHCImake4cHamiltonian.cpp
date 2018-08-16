@@ -73,6 +73,16 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
     Nminus1ToDetTemp[i] = Nminus1ToDet[i].size();
   }
 #ifndef SERIAL
+  MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nNminus1, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&nNminus2, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  if (comm_rank != 0) {
+    Nminus1ToDetTemp.resize(nNminus1);
+    Nminus2ToDetTemp.resize(nNminus2);
+  }
+  MPI_Bcast(&Nminus1ToDetTemp[0], nNminus1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&Nminus2ToDetTemp[0], nNminus2, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
   hHelpersSegment.truncate(totalMemory);

@@ -458,7 +458,7 @@ int main(int argc, char* argv[]) {
       Hmult2 H(sparseHam);
       //LinearSolver(H, E0[iroot], lambda[iroot], vdVector[iroot], ciroot, 1.e-5, false);
 #ifndef SERIAL
-      mpi::broadcast(world, lambda[i], 0);
+      //mpi::broadcast(world, lambda[i], 0);
 #endif
       MatrixXx s2RDM, twoRDM;
       s2RDM.setZero(norbs*norbs/4, norbs*norbs/4);
