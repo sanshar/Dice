@@ -85,6 +85,7 @@ void CPSSlater::read() {
   workingVectorOfCPS.resize(4 * maxCPSSize);
 
 
+  /*
   size_t size;
   ifstream file("params.bin", ios::in | ios::binary | ios::ate);
   if (commrank == 0)
@@ -106,8 +107,7 @@ void CPSSlater::read() {
   MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
-  if ((schd.uhf && vars.size() != getNumVariables() + 2 * norbs * norbs) ||
-      (!schd.uhf && vars.size() != getNumVariables() + norbs * norbs))
+  if (vars.size() != getNumVariables())
   {
     cout << "number of variables on disk: " << vars.size() << " is not equal to wfn parameters: " << getNumVariables() << endl;
     exit(0);
@@ -115,24 +115,7 @@ void CPSSlater::read() {
 
   updateVariables(vars);
   int numVars = getNumVariables();
-
-  for (int i = 0; i < norbs; i++)
-  {
-    for (int j = 0; j < norbs; j++)
-    {
-      if (!schd.uhf)
-      {
-        HforbsA(i, j) = vars[numVars + i * norbs + j];
-        HforbsB(i, j) = vars[numVars + i * norbs + j];
-      }
-      else
-      {
-        HforbsA(i, j) = vars[numVars + i * norbs + j];
-        HforbsB(i, j) = vars[numVars + norbs * norbs + i * norbs + j];
-      }
-    }
-  }
-
+  */
 }
 
 void CPSSlater::initWalker(CPSSlaterWalker& walk) {
@@ -268,39 +251,6 @@ double CPSSlater::Overlap(CPSSlaterWalker &walk)
   return ovlp * getOverlapWithDeterminants(walk);
 }
 
-/*
-double CPSSlater::getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d){
-  double cpsFactor = 1.0;
-  for (int n = 0; n < cpsArray.size(); n++)
-    for (int j = 0; j < cpsArray[n].asites.size(); j++)
-    {
-      if (cpsArray[n].asites[j] == i ||
-          cpsArray[n].asites[j] == a)
-      {
-        cpsFactor *= cpsArray[n].Overlap(dcopy) / cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-  return cpsFactor;
-}
-
-double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant& dcopy, Determinant& d){
-  double cpsFactor = 1.0;
-  for (int n = 0; n < cpsArray.size(); n++)
-    for (int k = 0; k < cpsArray[n].asites.size(); k++)
-    {
-      if (cpsArray[n].asites[k] == i ||
-          cpsArray[n].asites[k] == a ||
-          cpsArray[n].asites[k] == j ||
-          cpsArray[n].asites[k] == b )
-      {
-        cpsFactor *= cpsArray[n].Overlap(dcopy) / cpsArray[n].Overlap(d);
-        break;
-      }
-    }
-  return cpsFactor;
-}
-*/
 
 double CPSSlater::getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d)
 {
@@ -412,6 +362,7 @@ void CPSSlater::OverlapWithGradient(Determinant &d,
 void CPSSlater::printVariables()
 {
   long numVars = 0;
+  cout << "CPS"<<endl;
   for (int i = 0; i < cpsArray.size(); i++)
   {
     for (int j = 0; j < cpsArray[i].Variables.size(); j++)
@@ -421,15 +372,34 @@ void CPSSlater::printVariables()
     }
   }
 
+  cout << endl<<"CI-expansion"<<endl;
   for (int i = 0; i < determinants.size(); i++)
   {
     cout << "  " << ciExpansion[i];
   }
+
+  cout << endl<<"DeterminantA"<<endl;
+  int norbs = Determinant::norbs;
+  for (int i = 0; i < norbs; i++)
+    for (int j = 0; j < norbs; j++)
+      cout << "  " << HforbsA(i, j);
+
+  if (schd.uhf)
+  {
+    cout << endl
+         << "DeterminantB" << endl;
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < norbs; j++)
+        cout << "  " << HforbsB(i, j);
+  }
+
   cout << endl;
 }
 
 void CPSSlater::updateVariables(Eigen::VectorXd &v)
 {
+  int norbs = Determinant::norbs;
+
   long numVars = 0;
   for (int i = 0; i < cpsArray.size(); i++)
   {
@@ -444,6 +414,23 @@ void CPSSlater::updateVariables(Eigen::VectorXd &v)
   {
     ciExpansion[i] = v[numVars];
     numVars++;
+  }
+
+  for (int i = 0; i < norbs; i++)
+  {
+    for (int j = 0; j < norbs; j++)
+    {
+      if (!schd.uhf)
+      {
+        HforbsA(i, j) = v[numVars + i * norbs + j];
+        HforbsB(i, j) = v[numVars + i * norbs + j];
+      }
+      else
+      {
+        HforbsA(i, j) = v[numVars + i * norbs + j];
+        HforbsB(i, j) = v[numVars + norbs * norbs + i * norbs + j];
+      }
+    }
   }
 }
 
@@ -464,6 +451,11 @@ void orthogonalise(MatrixXd &m)
 
 void CPSSlater::getVariables(Eigen::VectorXd &v)
 {
+  int norbs = Determinant::norbs;
+  if (v.rows() != getNumVariables())
+  {
+    v = VectorXd::Zero(getNumVariables());
+  }
   long numVars = 0;
   for (int i = 0; i < cpsArray.size(); i++)
   {
@@ -478,16 +470,38 @@ void CPSSlater::getVariables(Eigen::VectorXd &v)
     v[numVars] = ciExpansion[i];
     numVars++;
   }
+
+  for (int i = 0; i < norbs; i++)
+  {
+    for (int j = 0; j < norbs; j++)
+    {
+      if (!schd.uhf)
+      {
+        v[numVars + i * norbs + j] = HforbsA(i, j);
+        v[numVars + i * norbs + j] = HforbsB(i, j);
+      }
+      else
+      {
+        v[numVars + i * norbs + j] = HforbsA(i, j);
+        v[numVars + norbs * norbs + i * norbs + j] = HforbsB(i, j);
+      }
+    }
+  }
 }
 
 long CPSSlater::getNumVariables()
 {
+  int norbs = Determinant::norbs;
   long numVars = 0;
   for (int i = 0; i < cpsArray.size(); i++)
     numVars += cpsArray[i].Variables.size();
 
   numVars += determinants.size();
-  //numVars+=det.norbs*det.nalpha+det.norbs*det.nbeta;
+  if (schd.uhf)
+    numVars += 2 * norbs * norbs;
+  else
+    numVars += norbs * norbs;
+
   return numVars;
 }
 

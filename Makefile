@@ -1,13 +1,13 @@
-USE_MPI = yes
-USE_INTEL = yes
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
-LIBIGL=/projects/sash2458/apps/libigl/include/
+USE_MPI = no
+USE_INTEL = no
+EIGEN=/Users/sandeepsharma/Academics/Programs/Eigen/
+BOOST=/opt/local/include
+LIBIGL=/Users/sandeepsharma/Academics/Programs/libigl/include/
 #EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
 #BOOST=/projects/anma2640/boost_1_66_0
 
-FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
-#FLAGS = -std=c++11  -g   -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+#FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++11  -g  -I./ -I./utils -I./optimizer/ -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 
 
@@ -50,9 +50,19 @@ endif
 
 SRC_VMC = VMC.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp evaluatePT.cpp
 
-SRC_sPT = StochasticPT.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp  Walker.cpp  evaluatePT.cpp
+SRC_sPT = StochasticPT.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wavefunctions/CPSSlater.cpp evaluateE.cpp Determinants.cpp  Walker.cpp  evaluatePT.cpp
 
-SRC_PythonInteface = PythonInterface.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp Davidson.cpp evaluatePT.cpp
+OBJ_PythonInterface = obj/PythonInterface.o \
+		obj/staticVariables.o \
+		obj/input.o \
+		obj/integral.o\
+		obj/SHCIshm.o \
+		obj/Determinants.o \
+		obj/CPSSlater.o \
+		obj/CPSSlaterWalker.o \
+		obj/CPS.o \
+		obj/evaluateE.o \
+		obj/Davidson.o 
 
 SRC_CI = ConfigurationInteraction.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp Davidson.cpp evaluatePT.cpp
 
@@ -62,40 +72,46 @@ OBJ_VMC+=obj/VMC.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/in
 
 OBJ_sPT+=obj/StochasticPT.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/evaluatePT.o
 
-OBJ_CI+=obj/ConfigurationInteraction.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/evaluatePT.o
+OBJ_CI+=obj/ConfigurationInteraction.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/evaluatePT.o obj/Davidson.o
 
-OBJ_PythonInterface+=obj/PythonInterface.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/Davidson.o
+#OBJ_PythonInterface+=obj/PythonInterface.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/CPSSlater.o obj/CPSSlaterWalker.o obj/evaluateE.o obj/Determinants.o obj/Davidson.o
 
 OBJ_GFMC+=obj/GFMC.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/Davidson.o
 
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
-obj_z/%.o: %.cpp  
-	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
+obj/%.o: Wavefunctions/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+obj/%.o: utils/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+obj/%.o: optimizer/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+obj/%.o: executables/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 
 
-all: PythonInterface sPT  GFMC CI
+all: bin/PythonInterface bin/sPT  bin/GFMC bin/CI
 
-GFMC	: $(OBJ_GFMC) 
-	$(CXX)   $(FLAGS) $(OPT) -o  GFMC $(OBJ_GFMC) $(LFLAGS)
+bin/GFMC	: $(OBJ_GFMC) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/GFMC $(OBJ_GFMC) $(LFLAGS)
 
-PythonInterface	: $(OBJ_PythonInterface) 
-	$(CXX)   $(FLAGS) $(OPT) -o  PythonInterface $(OBJ_PythonInterface) $(LFLAGS)
+bin/PythonInterface	: $(OBJ_PythonInterface) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/PythonInterface $(OBJ_PythonInterface) $(LFLAGS)
 
 
 VMC	: $(OBJ_VMC) 
-	$(CXX)   $(FLAGS) $(OPT) -o  VMC $(OBJ_VMC) $(LFLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) $(LFLAGS)
 
-sPT	: $(OBJ_sPT) 
-	$(CXX)   $(FLAGS) $(OPT) -o  sPT $(OBJ_sPT) $(LFLAGS)
+bin/sPT	: $(OBJ_sPT) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
 
-CI	: $(OBJ_CI) 
-	$(CXX)   $(FLAGS) $(OPT) -o  CI $(OBJ_CI) $(LFLAGS)
+bin/CI	: $(OBJ_CI) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/CI $(OBJ_CI) $(LFLAGS)
 
 VMC2	: $(OBJ_VMC) 
 	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
 
 clean :
-	find . -name "*.o"|xargs rm 2>/dev/null;rm -f VMC >/dev/null 2>&1
+	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1
 

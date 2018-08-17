@@ -57,7 +57,6 @@ double getTime();
 void   license();
 extern schedule schd;
 extern double startofCalc;
-extern MatrixXx HforbsA, HforbsB;
 
 extern Profile prof;
 

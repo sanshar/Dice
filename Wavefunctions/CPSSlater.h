@@ -42,77 +42,79 @@ class CPSSlater {
   void serialize(Archive & ar, const unsigned int version) {
     ar & cpsArray
        & determinants
-       & ciExpansion ;
+       & ciExpansion 
+       & HforbsA
+       & HforbsB;
   }
 
  public:
-  std::vector<Correlator> cpsArray    ;     //The jastrow factors
-  vector<Determinant>     determinants;     //The set of determinants
-  vector<double>          ciExpansion ;     //The ci expansion
-  vector<vector<int> >             orbitalToCPS;     //for each orbital all CPS that it belongs to
-  vector<int>             workingVectorOfCPS;
+   std::vector<Correlator> cpsArray; //The jastrow factors
+   vector<Determinant> determinants; //The set of determinants
+   vector<double> ciExpansion;       //The ci expansion
+   vector<vector<int>> orbitalToCPS; //for each orbital all CPS that it belongs to
+   vector<int> workingVectorOfCPS;
+   MatrixXx HforbsA, HforbsB;
 
-  typedef CPSSlater Wfntype;
+   typedef CPSSlater Wfntype;
 
-  CPSSlater();
-  void read();
-  void initWalker(CPSSlaterWalker& walk);
-  void initWalker(CPSSlaterWalker &walk, Determinant &d);
+   CPSSlater();
+   void read();
+   void initWalker(CPSSlaterWalker &walk);
+   void initWalker(CPSSlaterWalker &walk, Determinant &d);
 
-  /**
+   /**
  * Generates the determinant of overlap of the input determinant d and the
  * zeroth determinant determinants[0] in the wavefunction
  */
-  void getDetMatrix(Determinant&, Eigen::MatrixXd& alpha, Eigen::MatrixXd& beta);
+   void getDetMatrix(Determinant &, Eigen::MatrixXd &alpha, Eigen::MatrixXd &beta);
 
-/**
+   /**
  * This just generates the overlap of a walker with the
  * determinants in the ciExpansion
  */
-  double getOverlapWithDeterminants(CPSSlaterWalker& walk);
+   double getOverlapWithDeterminants(CPSSlaterWalker &walk);
 
-  /**
+   /**
    *This calculates the overlap of the walker with the
    *jastrow and the ciexpansion 
    */
-  double Overlap(CPSSlaterWalker& walk);
+   double Overlap(CPSSlaterWalker &walk);
 
-  /**
+   /**
    * This is expensive and is not recommended because 
    * one has to generate the overlap determinants w.r.t to the
    * ciExpansion from scratch
    */
-  double Overlap(Determinant&);
- 
-  double getJastrowFactor(int i, int a, Determinant& dcopy, Determinant& d);
-  double getJastrowFactor(int i, int j, int a, int b, Determinant& dcopy, Determinant& d);
+   double Overlap(Determinant &);
 
-  /**
+   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
+   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+
+   /**
    * This calculates the overlap of the determinant with the
    * gradient of the wavefunction w.r.t to the jastrow parameters,
    * divided by the overlap of the determinant to the wavefunction
    * <d|Psi_x>/<d|Psi>, where x is a jastrow parameter
    * Right now, the walker does not have any useful information to 
    * evaluate this efficiently
-   */ 
-  void OverlapWithGradient(Determinant&,
-			   double& factor,
-			   Eigen::VectorXd& grad);
+   */
+   void OverlapWithGradient(Determinant &,
+                            double &factor,
+                            Eigen::VectorXd &grad);
 
-  /**
+   /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)
-   */ 
-  void OverlapWithGradient(CPSSlaterWalker&,
-			   double& factor,
-			   Eigen::VectorXd& grad);
+   */
+   void OverlapWithGradient(CPSSlaterWalker &,
+                            double &factor,
+                            Eigen::VectorXd &grad);
 
+   void OvlpRatioCI(CPSSlaterWalker &walk, Eigen::VectorXd &gradRatio,
+                    oneInt &I1, twoInt &I2, vector<int> &SingleIndices,
+                    vector<int> &DoubleIndices, twoIntHeatBathSHM &I2hb,
+                    double &coreE, double factor);
 
-  void OvlpRatioCI(CPSSlaterWalker &walk, Eigen::VectorXd &gradRatio,
-		   oneInt &I1, twoInt &I2, vector<int>& SingleIndices,
-		   vector<int>& DoubleIndices, twoIntHeatBathSHM& I2hb, 
-		   double & coreE, double factor);
-
-/**
+   /**
  * Calculates the overlap, hamiltonian and gradient,
  * actually it only calculates 
  * ham      = hamiltonian/overlap
@@ -120,24 +122,23 @@ class CPSSlater {
  * 
  * it also is able to calculate the overlap_d'/overlap_d, the ratio of
  * overlaps of all d' connected to the determinant d (walk.d)
- */ 
-  void HamAndOvlpGradient(CPSSlaterWalker& walk,
-			  double& ovlp, double& ham, Eigen::VectorXd& grad,
-			  oneInt& I1, twoInt& I2,
-			  twoIntHeatBathSHM& I2hb, double& coreE,
-			  vector<double>& ovlpRatio, vector<size_t>& excitation1,
-			  vector<size_t>& excitation2, vector<double>& HijElement,
-			  int& nExcitations,
-        bool doGradient=true, bool fillExcitations=true);
+ */
+   void HamAndOvlpGradient(CPSSlaterWalker &walk,
+                           double &ovlp, double &ham, Eigen::VectorXd &grad,
+                           oneInt &I1, twoInt &I2,
+                           twoIntHeatBathSHM &I2hb, double &coreE,
+                           vector<double> &ovlpRatio, vector<size_t> &excitation1,
+                           vector<size_t> &excitation2, vector<double> &HijElement,
+                           int &nExcitations,
+                           bool doGradient = true, bool fillExcitations = true);
 
-
-  void getVariables(Eigen::VectorXd& v);
-  long getNumVariables();
-  long getNumJastrowVariables();
-  void updateVariables(Eigen::VectorXd& dv);
-  void printVariables();
-  void writeWave();
-  void readWave();
+   void getVariables(Eigen::VectorXd &v);
+   long getNumVariables();
+   long getNumJastrowVariables();
+   void updateVariables(Eigen::VectorXd &dv);
+   void printVariables();
+   void writeWave();
+   void readWave();
 
  
 };

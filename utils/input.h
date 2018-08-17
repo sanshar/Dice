@@ -26,7 +26,7 @@
 
 class Correlator;
 class Determinant;
-enum Method { sgd, nestorov, rmsprop, adam, amsgrad };
+enum Method { sgd, nestorov, rmsprop, adam, amsgrad, linearmethod };
 enum HAM {HUBBARD, ABINITIO};
 
 
@@ -43,19 +43,13 @@ private:
     ar & restart & deterministic
       & tol & correlatorFiles
       & wavefunctionType
-      & davidsonPrecondition
-      & diisSize
       & maxIter
       & printLevel
-      & gradientFactor
-      & mingradientFactor
+      & decay1
+      & decay2
       & method
       & stochasticIter
       & integralSampleSize
-      & momentum
-      & momentumDecay
-      & decay
-      & learningEpoch
       & seed
       & PTlambda
       & epsilon
@@ -98,18 +92,23 @@ public:
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
-  double tol;                          
+  double tol;  
+  double stepsize;
+  double decay1;
+  double decay2;   
+  int maxIter;                     
+  Method method;
+
+  /*
   bool davidsonPrecondition;
   int diisSize;
-  int maxIter;
   double gradientFactor;
   double mingradientFactor;
-  Method method;
   double momentum;
   double momentumDecay;
   double decay;
   int learningEpoch;
-
+  */
 
   //options for gfmc
   int nwalk;

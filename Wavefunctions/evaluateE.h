@@ -50,10 +50,13 @@ double calcTcorr(std::vector<double> &v);
 
 void generateAllDeterminants(vector<Determinant> &allDets, int norbs, int nalpha, int nbeta);
 
-template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Walker& walk, double &E0, int &nalpha, int &nbeta, int &norbs,
-                              oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
+template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Walker& walk, double &E0,
                               VectorXd &grad)
 {
+  int norbs = Determinant::norbs;
+	int nalpha = Determinant::nalpha;
+	int nbeta = Determinant::nbeta;
+
   vector<Determinant> allDets;
   generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
@@ -440,6 +443,37 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
 
 }
 
+template <typename Wfn, typename Walker>
+class getGradientWrapper
+{
+public:
+  Wfn &w;
+  Walker &walk;
+  int stochasticIter;
+  getGradientWrapper(Wfn &pw, Walker &pwalk, int niter) : w(pw), walk(pwalk)
+  {
+    stochasticIter = niter;
+  };
+
+  void getGradient(VectorXd &vars, VectorXd &grad, double &E0, double &stddev, double &rt, bool deterministic)
+  {
+    if (!deterministic)
+    {
+      w.updateVariables(vars);
+      w.initWalker(walk);
+      getStochasticGradientContinuousTime(w, walk, E0, stddev, grad, rt, stochasticIter, 0.5e-3);
+    }
+    else
+    {
+      w.updateVariables(vars);
+      w.initWalker(walk);
+      stddev = 0.0;
+      rt = 1.0;
+      getGradientDeterministic(w, walk, E0, grad);
+    }
+  };
+
+};
 #endif
 
 /*void getStochasticGradient(CPSSlater &w, double &E0, double &stddev,

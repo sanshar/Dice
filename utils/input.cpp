@@ -46,18 +46,15 @@ void readInput(string input, schedule& schd, bool print) {
 
     schd.deterministic = false;
     schd.restart = false;
-    schd.davidsonPrecondition = false;
-    schd.diisSize = 5;
+
     schd.maxIter = 50;
-    schd.gradientFactor = 0.001;
-    schd.mingradientFactor = 0.00001;
-    schd.method = rmsprop;
+    schd.method = amsgrad;
+    schd.decay2 = 0.001;
+    schd.decay1 = 0.1;
+    schd.stepsize = 0.001;
+
     schd.stochasticIter = 1e4;
     schd.integralSampleSize = 10;
-    schd.momentum = 0.9;
-    schd.momentumDecay = 0.001;
-    schd.decay = 0.9;
-    schd.learningEpoch = 10;
     schd.seed = getTime();
     schd.PTlambda = 0.;
     schd.epsilon = 1.e-7;
@@ -125,11 +122,11 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "screentol"))
         schd.screen = atof(tok[1].c_str());
 
-      else if (boost::iequals(ArgName, "momentum"))
-        schd.momentum = atof(tok[1].c_str());
+      else if (boost::iequals(ArgName, "decay1"))
+        schd.decay1 = atof(tok[1].c_str());
 
-      else if (boost::iequals(ArgName, "momentumDecay"))
-        schd.momentumDecay = atof(tok[1].c_str());
+      else if (boost::iequals(ArgName, "decay2"))
+        schd.decay2 = atof(tok[1].c_str());
 
       else if (boost::iequals(ArgName, "epsilon"))
         schd.epsilon = atof(tok[1].c_str());
@@ -137,23 +134,14 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "seed"))
         schd.seed = atof(tok[1].c_str());
 
-      else if (boost::iequals(ArgName, "decay"))
-        schd.decay = atof(tok[1].c_str());
-
-      else if (boost::iequals(ArgName, "learningepoch"))
-        schd.learningEpoch = atoi(tok[1].c_str());
+      else if (boost::iequals(ArgName, "stepsize"))
+        schd.stepsize = atof(tok[1].c_str());
 
       else if (boost::iequals(ArgName, "stochasticiter"))
         schd.stochasticIter = atoi(tok[1].c_str());
 
       else if (boost::iequals(ArgName, "integralsamplesize"))
         schd.integralSampleSize = atoi(tok[1].c_str());
-
-      else if (boost::iequals(ArgName, "gradientFactor"))
-        schd.gradientFactor = atof(tok[1].c_str());
-
-      else if (boost::iequals(ArgName, "mingradientFactor"))
-        schd.mingradientFactor = atof(tok[1].c_str());
 
       else if (boost::iequals(ArgName, "correlator"))
       {
@@ -166,15 +154,6 @@ void readInput(string input, schedule& schd, bool print) {
         schd.determinantFile = tok[1];
       }
 
-      else if (boost::iequals(ArgName, "Precondition"))
-      {
-        schd.davidsonPrecondition = true;
-      }
-
-      else if (boost::iequals(ArgName, "diisSize"))
-      {
-        schd.diisSize = atoi(tok[1].c_str());
-      }
 
       else if (boost::iequals(ArgName, "printLevel"))
       {
@@ -283,21 +262,25 @@ void readCorrelator(std::string input, int correlatorSize,
 
 void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, bool uhf) {
 
-  if (!uhf) {
-    ifstream dump("rhf.txt");
-    for (int i=0; i<HfmatrixA.rows(); i++)
-      for (int j=0; j<HfmatrixA.rows(); j++) {
-	dump >> HfmatrixA(i,j);
-	HfmatrixB(i,j) = HfmatrixA(i,j);
+  if (!uhf)
+  {
+    ifstream dump("hf.txt");
+    for (int i = 0; i < HfmatrixA.rows(); i++)
+      for (int j = 0; j < HfmatrixA.rows(); j++)
+      {
+        dump >> HfmatrixA(i, j);
+        HfmatrixB(i, j) = HfmatrixA(i, j);
       }
   }
-  else {
-    ifstream dump("uhf.txt");
-    for (int i=0; i<HfmatrixA.rows(); i++) {
-      for (int j=0; j<HfmatrixA.rows(); j++) 
-	dump >> HfmatrixA(i,j);
-      for (int j=0; j<HfmatrixB.rows(); j++) 
-	dump >> HfmatrixB(i,j);
+  else
+  {
+    ifstream dump("hf.txt");
+    for (int i = 0; i < HfmatrixA.rows(); i++)
+    {
+      for (int j = 0; j < HfmatrixA.rows(); j++)
+        dump >> HfmatrixA(i, j);
+      for (int j = 0; j < HfmatrixB.rows(); j++)
+        dump >> HfmatrixB(i, j);
     }
   }
 }
