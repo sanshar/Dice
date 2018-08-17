@@ -318,20 +318,6 @@ int main(int argc, char* argv[]) {
   }
 
   pout << endl;
-  pout << "DeltaE^2              ++              --"<< endl;
-  for (int i = 0; i < 3; i++)
-  for (int j = 0; j <= i; j++){
-    if (i == j) {
-      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",fpm[2*i],fpm[2*i+1]);
-    }
-    else if (i == 1){
-      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",dpm[0],dpm[1]);
-    }
-    else {
-      printf("%6d,%d",i,j);  printf("%16.12lf%16.12lf\n",dpm[2*j+2],dpm[2*j+3]);
-    }
-  }
-  pout << endl;
   pout << Gtensor<<endl;
 
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
@@ -340,7 +326,8 @@ int main(int argc, char* argv[]) {
   cout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
   cout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );
   cout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[2],0.5) % ((-ge+pow(eigensolver.eigenvalues()[2],0.5))*1.e6) );
-
+  cout <<endl<< "Corresponding eigenvectors :" << endl;
+  cout << eigensolver.eigenvectors() << endl;
   return 0;
 }
 

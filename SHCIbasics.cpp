@@ -1574,11 +1574,12 @@ void SHCIbasics::readHelperIntermediate(
   }
 }
 
+#ifdef Complex
 void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Dets, MatrixXx& ci1, double& E01,
 							MatrixXx&ci2, double& E02, int DetsSize, oneInt& I1, twoInt& I2,
 							twoIntHeatBathSHM& I2HB, vector<int>& irrep,
 							schedule& schd, double coreE, int nelec, int root,
-							std::complex<double>& EPT1, std::complex<double>& EPT2, std::complex<double>& EPT12,
+							CItype& EPT1, CItype& EPT2, CItype& EPT12,
 							std::vector<MatrixXx>& spinRDM) {
 
 #ifndef SERIAL
@@ -1602,17 +1603,8 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
   double energyEN = 0.0;
   int ntries = 1;
-  StitchDEH uniqueDEH;// changed
+  StitchDEH uniqueDEH;
 
-  // changed
-  // std::vector<Determinant> detscz; 
-  // std::vector<CItype> numerator1cz; 
-  // std::vector<CItype> numerator2cz; 
-  // std::vector<double> energycz;
-  // std::vector<Determinant>& dets_=detscz;
-  // std::vector<CItype>& numerator1_=numerator1cz;
-  // std::vector<CItype>& numerator2_=numerator2cz;
-  // std::vector<double>& energy_=energycz;
   int size = commsize, rank = commrank;
   vector<size_t> all_to_all(size * size, 0);
 
@@ -1656,10 +1648,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
     vector<double> atoaE(dsize);
     vector<int> atoaVarIndices;
     vector<size_t> atoaOrbDiff;
-    // if (schd.DoRDM || schd.doResponse) {
-    //   atoaVarIndices.resize(dsize);
-    //   atoaOrbDiff.resize(dsize);
-    // }
 
 #ifndef SERIAL
     vector<size_t> all_to_allCopy = all_to_all;
@@ -1677,10 +1665,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
       atoaNum[index] = Num->at(i);
       atoaNum2[index] = Num2->at(i);
       atoaE[index] = Energy->at(i);
-      // if (schd.DoRDM || schd.doResponse) {
-      //   atoaVarIndices[index] = var_indices->at(i);
-      //   atoaOrbDiff[index] = orbDifference->at(i);
-      // }
+
       counter[toProc]++;
     }
 
@@ -1727,10 +1712,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
 
     recvSize = recvSize == 0 ? 1 : recvSize;
     Det->resize(recvSize), Num->resize(recvSize), Num2->resize(recvSize), Energy->resize(recvSize);
-    // if (schd.DoRDM || schd.doResponse) {
-    //   var_indices->resize(recvSize);
-    //   orbDifference->resize(recvSize);
-    // }
 
 #ifndef SERIAL
     MPI_Alltoallv(&atoaNum.at(0), &sendcts[0], &senddisp[0], MPI_DOUBLE,
@@ -1745,16 +1726,6 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
     MPI_Alltoallv(&atoaDets.at(0).repr[0], &sendctsDets[0], &senddispDets[0],
                   MPI_DOUBLE, &(Det->at(0).repr[0]), &recvctsDets[0],
                   &recvdispDets[0], MPI_DOUBLE, MPI_COMM_WORLD);
-
-    // if (schd.DoRDM || schd.doResponse) {
-    //   MPI_Alltoallv(&atoaVarIndices.at(0), &sendctsVarDiff[0],
-    //                 &senddispVarDiff[0], MPI_INT, &(var_indices->at(0)),
-    //                 &recvctsVarDiff[0], &recvdispVarDiff[0], MPI_INT,
-    //                 MPI_COMM_WORLD);
-    //   MPI_Alltoallv(&atoaOrbDiff.at(0), &sendctsVarDiff[0], &senddispVarDiff[0],
-    //                 MPI_DOUBLE, &(orbDifference->at(0)), &recvctsVarDiff[0],
-    //                 &recvdispVarDiff[0], MPI_DOUBLE, MPI_COMM_WORLD);
-    // }
 #endif
     uniqueDEH.Num2->clear();
   }
@@ -1766,7 +1737,7 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   vector<CItype>& hasHEDNumerator2 = *uniqueDEH.Num2;
   vector<double>& hasHEDEnergy = *uniqueDEH.Energy;
 
-  std::complex<double> PTEnergy1 = 0.0, PTEnergy2 = 0.0, PTEnergy12 = 0.0; 
+  CItype PTEnergy1 = 0.0, PTEnergy2 = 0.0, PTEnergy12 = 0.0; 
     
   for (size_t i=0; i<hasHEDDets.size();i++) {
     PTEnergy1 += pow(abs(hasHEDNumerator[i]),2)/(E01-hasHEDEnergy[i]);
@@ -1778,4 +1749,4 @@ void SHCIbasics::DoPerturbativeDeterministicOffdiagonal(vector<Determinant>& Det
   EPT2 += PTEnergy2;
   EPT12 += PTEnergy12;
 }
-
+#endif
