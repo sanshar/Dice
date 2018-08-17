@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
       functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CPSSlater, CPSSlaterWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
     }
-    else if (schd.method = linearmethod) {
+    else if (schd.method == linearmethod) {
       
     }
   }

@@ -115,22 +115,23 @@ class CPSSlater {
                     double &coreE, double factor);
 
    /**
- * Calculates the overlap, hamiltonian and gradient,
+ * Calculates the overlap, hamiltonian,
  * actually it only calculates 
  * ham      = hamiltonian/overlap
- * gradient = gradient/overlap
  * 
  * it also is able to calculate the overlap_d'/overlap_d, the ratio of
  * overlaps of all d' connected to the determinant d (walk.d)
  */
-   void HamAndOvlpGradient(CPSSlaterWalker &walk,
-                           double &ovlp, double &ham, Eigen::VectorXd &grad,
-                           oneInt &I1, twoInt &I2,
-                           twoIntHeatBathSHM &I2hb, double &coreE,
-                           vector<double> &ovlpRatio, vector<size_t> &excitation1,
-                           vector<size_t> &excitation2, vector<double> &HijElement,
-                           int &nExcitations,
-                           bool doGradient = true, bool fillExcitations = true);
+   void HamAndOvlp(CPSSlaterWalker &walk,
+                   double &ovlp, double &ham, 
+                   vector<double> &ovlpRatio, vector<size_t> &excitation1,
+                   vector<size_t> &excitation2, vector<double> &HijElement,
+                   int &nExcitations, bool fillExcitations = true);
+
+  //d (<n|H|Psi>/<n|Psi>)/dc_i
+   void derivativeOfLocalEnergy(CPSSlaterWalker &,
+                              double &factor,
+                              Eigen::VectorXd &hamRatio);
 
    void getVariables(Eigen::VectorXd &v);
    long getNumVariables();

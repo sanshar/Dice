@@ -17,7 +17,7 @@ m_decay_mom1 = 0.1
 m_decay_mom2 = 0.001
 
 mpiprefix = " mpirun "
-executable = "/Users/sandeepsharma/Academics/Programs/VMC/PythonInterface"
+executable = "/Users/sandeepsharma/Academics/Programs/VMC/bin/PythonInterface"
 myargs = getopts(sys.argv)
 if '-i' in myargs:
    inFile = myargs['-i']

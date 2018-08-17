@@ -83,8 +83,8 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      w.HamAndOvlpGradient(walk, ovlp, ham, localgrad, I1, I2, I2hb, coreE, ovlpRatio,
-                           excitation1, excitation2, HijElements, nExcitations, false, false);
+      w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
+                  excitation1, excitation2, HijElements, nExcitations, false);
 
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
@@ -212,7 +212,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
 	nExcitations = 0;
 	E0 = 0.0;
-	w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
+	w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
 						 excitation1, excitation2, HijElements, nExcitations, false);
 	w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
@@ -266,9 +266,9 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 		walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
 
 		nExcitations = 0;
-		w.HamAndOvlpGradient(walk, ovlp, ham, localGrad, I1, I2, I2hb, coreE, ovlpRatio,
-							 excitation1, excitation2, HijElements, nExcitations, false);
-		w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+    w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
+                 excitation1, excitation2, HijElements, nExcitations, false);
+    w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
 		if (abs(ovlp) > bestOvlp)
 		{

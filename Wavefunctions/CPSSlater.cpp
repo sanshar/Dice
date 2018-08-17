@@ -84,38 +84,6 @@ void CPSSlater::read() {
       maxCPSSize = orbitalToCPS[i].size();
   workingVectorOfCPS.resize(4 * maxCPSSize);
 
-
-  /*
-  size_t size;
-  ifstream file("params.bin", ios::in | ios::binary | ios::ate);
-  if (commrank == 0)
-  {
-    size = file.tellg();
-  }
-#ifndef SERIAL
-  MPI_Bcast(&size, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-  Eigen::VectorXd vars = Eigen::VectorXd::Zero(size / sizeof(double));
-  if (commrank == 0)
-  {
-    file.seekg(0, ios::beg);
-    file.read((char *)(&vars[0]), size);
-    file.close();
-  }
-
-#ifndef SERIAL
-  MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  if (vars.size() != getNumVariables())
-  {
-    cout << "number of variables on disk: " << vars.size() << " is not equal to wfn parameters: " << getNumVariables() << endl;
-    exit(0);
-  }
-
-  updateVariables(vars);
-  int numVars = getNumVariables();
-  */
 }
 
 void CPSSlater::initWalker(CPSSlaterWalker& walk) {
@@ -641,18 +609,13 @@ void CPSSlater::OvlpRatioCI(CPSSlaterWalker &walk, VectorXd &gradRatio,
 }
 
 //<psi_t| (H-E0) |D>
-void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
-                                   double &ovlp, double &ham, VectorXd &grad,
-                                   oneInt &I1, twoInt &I2,
-                                   twoIntHeatBathSHM &I2hb, double &coreE,
-                                   vector<double> &ovlpRatio, vector<size_t> &excitation1,
-                                   vector<size_t> &excitation2, vector<double> &HijElements,
-                                   int &nExcitations,
-                                   bool doGradient, bool fillExcitations)
+void CPSSlater::HamAndOvlp(CPSSlaterWalker &walk,
+                           double &ovlp, double &ham, 
+                           vector<double> &ovlpRatio, vector<size_t> &excitation1,
+                           vector<size_t> &excitation2, vector<double> &HijElements,
+                           int &nExcitations, bool fillExcitations)
 {
-  //ovlpRatio.clear();
-  //excitation1.clear();
-  //excitation2.clear();
+
   int ovlpSize = ovlpRatio.size();
   nExcitations = 0;
 
@@ -679,22 +642,9 @@ void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
     for (int i = 0; i < cpsArray.size(); i++)
     {
       ovlp *= cpsArray[i].Overlap(d);
-      //cout << i<<"  "<<cpsArray[i].Overlap(d)<<endl;
     }
     ham = E0;
 
-    //cout << E0<<"  "<<ovlp<<endl;exit(0);
-
-    if (doGradient)
-    {
-      double factor = E0; //*detOverlap;
-      OverlapWithGradient(walk, factor, grad);
-      for (int i = 0; i < ciExpansion.size(); i++)
-      {
-        ciGrad0(i) = walk.alphaDet[i] * walk.betaDet[i] / detOverlap;
-        grad(numJastrow + i) += E0 * ciGrad0(i);
-      }
-    }
   }
   //cout << ham<<endl;
 
@@ -777,45 +727,11 @@ void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
 
             ham += ovlpdetcopy * tia;
 
-            //double ovlpdetcopy = localham / tia;
-            if (doGradient)
-            {
-              double factor = tia * ovlpdetcopy;
-              OverlapWithGradient(dcopy, factor, grad);
-
-              double parity = 1.0;
-              int tableIndexi, tableIndexa;
-              if (Alpha)
-              {
-                walk.d.parityA(A, I, parity);
-                tableIndexi = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), I) - walk.AlphaClosed.begin();
-                tableIndexa = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), A) - walk.AlphaOpen.begin();
-              }
-              else
-              {
-                walk.d.parityB(A, I, parity);
-                tableIndexi = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), I) - walk.BetaClosed.begin();
-                tableIndexa = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), A) - walk.BetaOpen.begin();
-              }
-              for (int i = 0; i < ciExpansion.size(); i++)
-              {
-                if (Alpha)
-                {
-                  grad(numJastrow + i) += tia * ciGrad0(i) * JastrowFactor * parity * walk.AlphaTable[i](tableIndexa, tableIndexi);
-                }
-                else
-                {
-                  grad(numJastrow + i) += tia * ciGrad0(i) * JastrowFactor * parity * walk.BetaTable[i](tableIndexa, tableIndexi);
-                }
-              }
-            }
-
             if (fillExcitations)
             {
               if (ovlpSize <= nExcitations)
               {
-                ovlpSize += 100000;
-                //ovlpSize += 1000;
+                ovlpSize += 1000000;
                 ovlpRatio.resize(ovlpSize);
                 excitation1.resize(ovlpSize);
                 excitation2.resize(ovlpSize);
@@ -827,11 +743,6 @@ void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
               excitation2[nExcitations] = 0;
               HijElements[nExcitations] = tia;
               nExcitations++;
-
-              //ovlpRatio  .push_back(ovlpdetcopy);
-              //excitation1.push_back(closed[i] * 2 * norbs + open[a]);
-              //excitation2.push_back(0);
-              //HijElements.push_back(tia);
             }
           }
         }
@@ -898,57 +809,6 @@ void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
           ham += localham;
 
           double ovlpdetcopy = localham / tiajb;
-          if (doGradient)
-          {
-            double factor = tiajb * ovlpdetcopy;
-            OverlapWithGradient(dcopy, factor, grad);
-            bool Alpha1 = closed[i] % 2 == 0, Alpha2 = closed[j] % 2 == 0;
-
-            int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
-            if (Alpha1)
-            {
-              tableIndexi = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), I) - walk.AlphaClosed.begin();
-              tableIndexa = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), A) - walk.AlphaOpen.begin();
-            }
-            else
-            {
-              tableIndexi = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), I) - walk.BetaClosed.begin();
-              tableIndexa = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), A) - walk.BetaOpen.begin();
-            }
-            if (Alpha2)
-            {
-              tableIndexj = std::lower_bound(walk.AlphaClosed.begin(), walk.AlphaClosed.end(), J) - walk.AlphaClosed.begin();
-              tableIndexb = std::lower_bound(walk.AlphaOpen.begin(), walk.AlphaOpen.end(), B) - walk.AlphaOpen.begin();
-            }
-            else
-            {
-              tableIndexj = std::lower_bound(walk.BetaClosed.begin(), walk.BetaClosed.end(), J) - walk.BetaClosed.begin();
-              tableIndexb = std::lower_bound(walk.BetaOpen.begin(), walk.BetaOpen.end(), B) - walk.BetaOpen.begin();
-            }
-            for (int i = 0; i < ciExpansion.size(); i++)
-            {
-              if (Alpha1 && Alpha2)
-              {
-                double factor = (walk.AlphaTable[i](tableIndexa, tableIndexi) * walk.AlphaTable[i](tableIndexb, tableIndexj) - walk.AlphaTable[i](tableIndexb, tableIndexi) * walk.AlphaTable[i](tableIndexa, tableIndexj));
-                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
-              }
-              else if (Alpha1 && !Alpha2)
-              {
-                double factor = walk.AlphaTable[i](tableIndexa, tableIndexi) * walk.BetaTable[i](tableIndexb, tableIndexj);
-                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
-              }
-              else if (!Alpha1 && Alpha2)
-              {
-                double factor = walk.BetaTable[i](tableIndexa, tableIndexi) * walk.AlphaTable[i](tableIndexb, tableIndexj);
-                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
-              }
-              else
-              {
-                double factor = (walk.BetaTable[i](tableIndexa, tableIndexi) * walk.BetaTable[i](tableIndexb, tableIndexj) - walk.BetaTable[i](tableIndexb, tableIndexi) * walk.BetaTable[i](tableIndexa, tableIndexj));
-                grad(numJastrow + i) += tiajb * ciGrad0(i) * JastrowFactor * factor;
-              }
-            }
-          }
 
           if (fillExcitations)
           {
@@ -967,16 +827,20 @@ void CPSSlater::HamAndOvlpGradient(CPSSlaterWalker &walk,
             HijElements[nExcitations] = tiajb;
             nExcitations++;
 
-            //ovlpRatio.push_back(ovlpdetcopy);
-            //excitation1.push_back(closed[i] * 2 * norbs + a);
-            //excitation2.push_back(closed[j] * 2 * norbs + b);
-            //HijElements.push_back(tiajb);
           }
         }
       }
     }
     prof.DoubleTime += getTime() - time;
   }
+}
+
+
+
+void CPSSlater::derivativeOfLocalEnergy (CPSSlaterWalker &walk,
+                                          double &factor, VectorXd& hamRatio)
+{
+  //NEEDS TO BE IMPLEMENTED
 }
 
 
