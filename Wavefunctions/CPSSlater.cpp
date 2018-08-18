@@ -19,7 +19,7 @@
 
 #include "integral.h"
 #include "CPS.h"
-#include "CPSSlaterWalker.h"
+#include "HFWalker.h"
 #include "CPSSlater.h"
 #include "global.h"
 #include "input.h"
@@ -86,7 +86,7 @@ void CPSSlater::read() {
 
 }
 
-void CPSSlater::initWalker(CPSSlaterWalker& walk) {
+void CPSSlater::initWalker(HFWalker& walk) {
 
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -155,7 +155,7 @@ void CPSSlater::initWalker(CPSSlaterWalker& walk) {
 	walk.initUsingWave(*this);
 }
 
-void CPSSlater::initWalker(CPSSlaterWalker& walk, Determinant& d) {
+void CPSSlater::initWalker(HFWalker& walk, Determinant& d) {
 
   walk.d = d;
 	walk.initUsingWave(*this);
@@ -188,7 +188,7 @@ void CPSSlater::getDetMatrix(Determinant &d, Eigen::MatrixXd &DetAlpha, Eigen::M
   return;
 }
 
-double CPSSlater::getOverlapWithDeterminants(CPSSlaterWalker &walk)
+double CPSSlater::getOverlapWithDeterminants(HFWalker &walk)
 {
   return walk.getDetOverlap(*this);
 }
@@ -206,7 +206,7 @@ double CPSSlater::Overlap(Determinant &d)
   return ovlp * DetAlpha.determinant() * DetBeta.determinant();
 }
 
-double CPSSlater::Overlap(CPSSlaterWalker &walk)
+double CPSSlater::Overlap(HFWalker &walk)
 {
   double ovlp = 1.0;
 
@@ -291,7 +291,7 @@ double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant &dcop
   return cpsFactor;
 }
 
-void CPSSlater::OverlapWithGradient(CPSSlaterWalker &walk,
+void CPSSlater::OverlapWithGradient(HFWalker &walk,
                                     double &ovlp,
                                     VectorXd &grad)
 {
@@ -517,7 +517,7 @@ void CPSSlater::readWave()
 
 //for a determinant |N> it updates the grad ratio vector
 // grad[i] += <N|Psi_i>/<N|Psi0> * factor
-void CPSSlater::OvlpRatioCI(CPSSlaterWalker &walk, VectorXd &gradRatio,
+void CPSSlater::OvlpRatioCI(HFWalker &walk, VectorXd &gradRatio,
                             oneInt &I1, twoInt &I2, vector<int> &SingleIndices,
                             vector<int>& DoubleIndices, twoIntHeatBathSHM &I2hb, 
 			    double &coreE, double factor)
@@ -609,7 +609,7 @@ void CPSSlater::OvlpRatioCI(CPSSlaterWalker &walk, VectorXd &gradRatio,
 }
 
 //<psi_t| (H-E0) |D>
-void CPSSlater::HamAndOvlp(CPSSlaterWalker &walk,
+void CPSSlater::HamAndOvlp(HFWalker &walk,
                            double &ovlp, double &ham, 
                            vector<double> &ovlpRatio, vector<size_t> &excitation1,
                            vector<size_t> &excitation2, vector<double> &HijElements,
@@ -837,7 +837,7 @@ void CPSSlater::HamAndOvlp(CPSSlaterWalker &walk,
 
 
 
-void CPSSlater::derivativeOfLocalEnergy (CPSSlaterWalker &walk,
+void CPSSlater::derivativeOfLocalEnergy (HFWalker &walk,
                                           double &factor, VectorXd& hamRatio)
 {
   //NEEDS TO BE IMPLEMENTED

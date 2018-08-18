@@ -28,7 +28,7 @@
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
-class CPSSlaterWalker;
+class HFWalker;
 
 
 /**
@@ -59,8 +59,8 @@ class CPSSlater {
 
    CPSSlater();
    void read();
-   void initWalker(CPSSlaterWalker &walk);
-   void initWalker(CPSSlaterWalker &walk, Determinant &d);
+   void initWalker(HFWalker &walk);
+   void initWalker(HFWalker &walk, Determinant &d);
 
    /**
  * Generates the determinant of overlap of the input determinant d and the
@@ -72,13 +72,13 @@ class CPSSlater {
  * This just generates the overlap of a walker with the
  * determinants in the ciExpansion
  */
-   double getOverlapWithDeterminants(CPSSlaterWalker &walk);
+   double getOverlapWithDeterminants(HFWalker &walk);
 
    /**
    *This calculates the overlap of the walker with the
    *jastrow and the ciexpansion 
    */
-   double Overlap(CPSSlaterWalker &walk);
+   double Overlap(HFWalker &walk);
 
    /**
    * This is expensive and is not recommended because 
@@ -105,11 +105,11 @@ class CPSSlater {
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)
    */
-   void OverlapWithGradient(CPSSlaterWalker &,
+   void OverlapWithGradient(HFWalker &,
                             double &factor,
                             Eigen::VectorXd &grad);
 
-   void OvlpRatioCI(CPSSlaterWalker &walk, Eigen::VectorXd &gradRatio,
+   void OvlpRatioCI(HFWalker &walk, Eigen::VectorXd &gradRatio,
                     oneInt &I1, twoInt &I2, vector<int> &SingleIndices,
                     vector<int> &DoubleIndices, twoIntHeatBathSHM &I2hb,
                     double &coreE, double factor);
@@ -122,14 +122,14 @@ class CPSSlater {
  * it also is able to calculate the overlap_d'/overlap_d, the ratio of
  * overlaps of all d' connected to the determinant d (walk.d)
  */
-   void HamAndOvlp(CPSSlaterWalker &walk,
+   void HamAndOvlp(HFWalker &walk,
                    double &ovlp, double &ham, 
                    vector<double> &ovlpRatio, vector<size_t> &excitation1,
                    vector<size_t> &excitation2, vector<double> &HijElement,
                    int &nExcitations, bool fillExcitations = true);
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
-   void derivativeOfLocalEnergy(CPSSlaterWalker &,
+   void derivativeOfLocalEnergy(HFWalker &,
                               double &factor,
                               Eigen::VectorXd &hamRatio);
 
@@ -140,8 +140,10 @@ class CPSSlater {
    void printVariables();
    void writeWave();
    void readWave();
-
- 
+   vector<Determinant> &getDeterminants() { return determinants; }
+   vector<double> &getciExpansion() { return ciExpansion; }
+   MatrixXd& getHforbsA() {return HforbsA;}
+   MatrixXd& getHforbsB() {return HforbsB;}
 };
 
 

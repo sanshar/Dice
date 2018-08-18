@@ -39,13 +39,14 @@
 #include "evaluateE.h"
 #include "Determinants.h"
 #include "CPSSlater.h"
-#include "CPSSlaterWalker.h"
+#include "HFWalker.h"
 #include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
 #include "math.h"
 #include "Profile.h"
 #include "amsgrad.h"
+#include "CIWavefunction.h"
 
 
 using namespace Eigen;
@@ -78,19 +79,32 @@ int main(int argc, char *argv[])
 
   //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
-    CPSSlater wave; CPSSlaterWalker walk;
+    CPSSlater wave; HFWalker walk;
     wave.read();
     VectorXd vars; wave.getVariables(vars);
 
-    getGradientWrapper<CPSSlater, CPSSlaterWalker> wrapper(wave, walk, schd.stochasticIter);
+    getGradientWrapper<CPSSlater, HFWalker> wrapper(wave, walk, schd.stochasticIter);
 
     if (schd.method == amsgrad) {
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
-      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CPSSlater, CPSSlaterWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
+      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CPSSlater, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
     }
     else if (schd.method == linearmethod) {
-      
+
+    }
+  }
+  else if (schd.wavefunctionType == "CICPSSlater") {
+    CIWavefunction<CPSSlater, HFWalker> wave;
+    HFWalker walk;
+    VectorXd vars; wave.getVariables(vars);
+
+    getGradientWrapper<CIWavefunction<CPSSlater, HFWalker>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
+
+    if (schd.method == amsgrad) {
+      AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
+      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
+      optimizer.optimize(vars, getStochasticGradient, schd.restart);
     }
   }
 

@@ -59,7 +59,7 @@ OBJ_PythonInterface = obj/PythonInterface.o \
 		obj/SHCIshm.o \
 		obj/Determinants.o \
 		obj/CPSSlater.o \
-		obj/CPSSlaterWalker.o \
+		obj/HFWalker.o \
 		obj/CPS.o \
 		obj/evaluateE.o \
 		obj/Davidson.o 
