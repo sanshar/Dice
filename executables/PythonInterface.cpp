@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
   //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
     CPSSlater wave; HFWalker walk;
-    wave.read();
+    wave.readDefault();
     VectorXd vars; wave.getVariables(vars);
 
     getGradientWrapper<CPSSlater, HFWalker> wrapper(wave, walk, schd.stochasticIter);
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
   }
   else if (schd.wavefunctionType == "CICPSSlater") {
     CIWavefunction<CPSSlater, HFWalker> wave;
+    wave.appendSinglesToOpList(); wave.appendScreenedDoublesToOpList(0.0);
     HFWalker walk;
     VectorXd vars; wave.getVariables(vars);
 

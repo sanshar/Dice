@@ -77,7 +77,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
     w.initWalker(walk, allDets[i]);
     //walk.initUsingWave(w);
     double ovlp = 0, ham = 0;
-
+    //cout << walk.d<<"  "<<walk.alphainv<<"  "<<walk.alphaDet[0]<<endl;
     {
       E0 = 0.;
       double scale = 1.0;
@@ -94,6 +94,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
     diagonalGrad += localdiagonalGrad * ovlp * ovlp;
     Overlap += ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
+    
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -213,7 +214,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 	nExcitations = 0;
 	E0 = 0.0;
 	w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
-						 excitation1, excitation2, HijElements, nExcitations, false);
+						 excitation1, excitation2, HijElements, nExcitations, true);
 	w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
 
@@ -246,6 +247,9 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
 		double Elocold = Eloc;
 
+    //exit(0);
+    //cout << walk.d<<"  "<<ham<<"  "<<Eloc<<"  "<<nextDet<<"  "<<nExcitations<<"  "<<deltaT<<endl;
+
 		double ratio = deltaT / cumdeltaT;
 		for (int i = 0; i < grad.rows(); i++)
 		{
@@ -267,7 +271,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
 		nExcitations = 0;
     w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
-                 excitation1, excitation2, HijElements, nExcitations, false);
+                 excitation1, excitation2, HijElements, nExcitations, true);
     w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
 		if (abs(ovlp) > bestOvlp)
@@ -471,6 +475,7 @@ public:
       rt = 1.0;
       getGradientDeterministic(w, walk, E0, grad);
     }
+    w.writeWave();
   };
 
 };

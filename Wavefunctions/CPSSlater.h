@@ -43,6 +43,8 @@ class CPSSlater {
     ar & cpsArray
        & determinants
        & ciExpansion 
+       & orbitalToCPS
+       & workingVectorOfCPS
        & HforbsA
        & HforbsB;
   }
@@ -58,7 +60,7 @@ class CPSSlater {
    typedef CPSSlater Wfntype;
 
    CPSSlater();
-   void read();
+   void readDefault();
    void initWalker(HFWalker &walk);
    void initWalker(HFWalker &walk, Determinant &d);
 

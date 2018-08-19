@@ -37,7 +37,7 @@ using namespace Eigen;
 
 CPSSlater::CPSSlater() {}
 
-void CPSSlater::read() {
+void CPSSlater::readDefault() {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
@@ -489,7 +489,7 @@ void CPSSlater::writeWave()
   {
     char file[5000];
     //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-    sprintf(file, "wave.bkp");
+    sprintf(file, "cpsslaterwave.bkp");
     std::ofstream outfs(file, std::ios::binary);
     boost::archive::binary_oarchive save(outfs);
     save << *this;
@@ -503,7 +503,7 @@ void CPSSlater::readWave()
   {
     char file[5000];
     //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-    sprintf(file, "wave.bkp");
+    sprintf(file, "cpsslaterwave.bkp");
     std::ifstream infs(file, std::ios::binary);
     boost::archive::binary_iarchive load(infs);
     load >> *this;
@@ -644,7 +644,7 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
       ovlp *= cpsArray[i].Overlap(d);
     }
     ham = E0;
-
+    //cout << ovlp <<"  "<<E0<<"  "<<ham<<endl;
   }
   //cout << ham<<endl;
 
@@ -727,6 +727,8 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
 
             ham += ovlpdetcopy * tia;
 
+                //cout << ovlpdetcopy <<"  "<<tia<<"  "<<ham<<endl;
+
             if (fillExcitations)
             {
               if (ovlpSize <= nExcitations)
@@ -807,6 +809,7 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
             localham += tiajb * walk.getDetFactorAB(J, I, B, A, *this, false) * JastrowFactor;
 
           ham += localham;
+          //cout << localham / tiajb <<"  "<<tiajb<<"  "<<ham<<endl;
 
           double ovlpdetcopy = localham / tiajb;
 

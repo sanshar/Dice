@@ -62,6 +62,26 @@ private:
     n = 2;
   }
 
+  bool apply(Determinant &dcopy)
+  {
+    bool valid = true;
+    for (int j = 0; j < n; j++)
+    {
+      if (dcopy.getocc(cre[j]) == true &&
+          dcopy.getocc(des[j]) == false )
+      {
+        dcopy.setocc(cre[j], false);
+        dcopy.setocc(des[j], true);
+      }
+      else
+      {
+        valid = false;
+        break;
+      }
+    }
+    return valid;
+  }
+
 };
 
 /**
@@ -89,10 +109,59 @@ public:
   std::vector<double> ciCoeffs;
 
   CIWavefunction() {
-    wave.read();
+    wave.readWave();
     oplist.resize(1);
-    ciCoeffs.resize(1, 0.0);
+    ciCoeffs.resize(1, 1.0);
   }
+
+  CIWavefunction(Wfn &w1, std::vector<Operator> &pop) : wave(w1), oplist(pop)
+  {
+    ciCoeffs.resize(oplist.size(), 0.0);
+    ciCoeffs[0] = 1.0;
+  };
+
+  void appendSinglesToOpList()
+  {
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < 2 * norbs; i++)
+      for (int j = 0; j < 2 * norbs; j++)
+      {
+        //if (I2hb.Singles(i, j) > schd.epsilon )
+        if (i % 2 == j % 2)
+        {
+          oplist.push_back(Operator(i, j));
+        }
+      }
+    ciCoeffs.resize(oplist.size(), 0.0);
+  }
+
+  void appendScreenedDoublesToOpList(double screen)
+  {
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < 2 * norbs; i++)
+    {
+      for (int j = i + 1; j < 2 * norbs; j++)
+      {
+        int pair = (j / 2) * (j / 2 + 1) / 2 + i / 2;
+
+        size_t start = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair] : I2hb.startingIndicesOppositeSpin[pair];
+        size_t end = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair + 1] : I2hb.startingIndicesOppositeSpin[pair + 1];
+        float *integrals = i % 2 == j % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+        short *orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+
+        for (size_t index = start; index < end; index++)
+        {
+          if (fabs(integrals[index]) < screen)
+            break;
+          int a = 2 * orbIndices[2 * index] + i % 2, b = 2 * orbIndices[2 * index] + j % 2;
+
+          oplist.push_back(Operator(i, j, a, b));
+        }
+      }
+    }
+    ciCoeffs.resize(oplist.size(), 0.0);
+  }
+
 
   void initWalker(Walker& walk) {
     wave.initWalker(walk);
@@ -101,13 +170,11 @@ public:
     wave.initWalker(walk, d);
   }  
 
-  CIWavefunction(Wfn &w1, std::vector<Operator> &pop) : wave(w1), oplist(pop)
-  {
-    ciCoeffs.resize(oplist.size(), 0.0);
-    ciCoeffs[0] = 1.0;
-  };
-
   void getVariables(VectorXd& vars) {
+    if (vars.rows() != getNumVariables())
+    {
+      vars = VectorXd::Zero(getNumVariables());
+    }
     for (int i=0; i<ciCoeffs.size(); i++)
       vars[i] = ciCoeffs[i];
   }
@@ -121,73 +188,71 @@ public:
     return ciCoeffs.size();
   }
 
+  double getovlpRatio(Walker &walk, Operator &op, Determinant &dcopy)
+  {
+    double ovlpdetcopy;
+    int excitationDistance = dcopy.ExcitationDistance(walk.d);
+
+    //cout << excitationDistance<<"  "<<dcopy<<"  "<<walk.d<<endl;
+    if (excitationDistance == 0)
+    {
+      ovlpdetcopy = 1.0;
+    }
+    //if there is a repeat of indices then sometimes a double
+    //excitation can only result in excitaiton distance of 1
+    else if (excitationDistance == 1)
+    {
+      int c1 = -1, d1 = -1;
+      if (dcopy.getocc(op.cre[0]) == false)
+        c1 = op.cre[0];
+      else
+        c1 = op.cre[1];
+
+      if (dcopy.getocc(op.des[0]) == true)
+        d1 = op.des[0];
+      else
+        d1 = op.des[1];
+
+      //cout << walk.d<<"  "<<dcopy<<"  "<<c1<<"  "<<d1<<endl;
+      double ovlpdetcopy = wave.getJastrowFactor(c1 / 2, d1 / 2, dcopy, walk.d);
+      if (c1 % 2 == 0)
+        ovlpdetcopy *= walk.getDetFactorA(c1 / 2, d1 / 2, wave, false);
+    }
+    else if (excitationDistance == 2)
+    {
+      int I = op.cre[0], J = op.cre[1], A = op.des[0], B = op.des[1];
+      double JastrowFactor = wave.getJastrowFactor(I / 2, J / 2, A / 2, B / 2, dcopy, walk.d);
+
+      bool doparity = false;
+      if (I % 2 == J % 2 && I % 2 == 0)
+        ovlpdetcopy = walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
+      else if (I % 2 == J % 2 && I % 2 == 1)
+        ovlpdetcopy = walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
+      else if (I % 2 != J % 2 && I % 2 == 0)
+        ovlpdetcopy = walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
+      else
+        ovlpdetcopy = walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity) * JastrowFactor;
+    }
+    else
+    {
+      cout << "higher than triple excitation not yet supported." << endl;
+      exit(0);
+    }
+    return ovlpdetcopy;
+  }
+
   double Overlap(Walker& walk) {
     double totalovlp = 0.0;
     double ovlp0 = wave.Overlap(walk);
 
     for (int i = 0; i < oplist.size(); i++)
     {
-      Determinant dcopy = walk.getDet();
+      Determinant dcopy = walk.d;
 
-      bool valid = true;
-      for (int j = 0; j < oplist[i].n; j++)
-      {
-        if (dcopy.getocc(oplist[i].cre[j]) == true &&
-            dcopy.getocc(oplist[i].des[j] == false))
-        {
-          dcopy.setocc(oplist[i].cre[j], false);
-          dcopy.setocc(oplist[i].des[j], true);
-        }
-        else
-        {
-          valid = false;
-          break;
-        }
-      }
+      bool valid = oplist[i].apply(dcopy);
 
       if (valid) {
-        double ovlpdetcopy;
-        int excitationDistance = dcopy.ExcitationDistance(walk.getDet());
-
-        if (excitationDistance == 0) {
-          ovlpdetcopy = 1.0;
-        }
-        //if there is a repeat of indices then sometimes a double
-        //excitation can only result in excitaiton distance of 1
-        if (excitationDistance == 1) {
-          int c1 = -1, d1 =-1;
-          if (dcopy.getocc(oplist[i].cre[0]) == false)
-            c1 = oplist[i].cre[0];
-          else
-            c1 = oplist[i].cre[1];
-
-          if (dcopy.getocc(oplist[i].des[0]) == true)
-            d1 = oplist[i].des[0];
-          else
-            d1 = oplist[i].des[1];
-
-          double ovlpdetcopy = wave.getJastrowFactor(c1 / 2, d1 / 2, dcopy, walk.d);
-          if (c1%2 == 0)
-            ovlpdetcopy *= walk.getDetFactorA(c1 / 2, d1 / 2, wave, false);
-        }
-        else if (excitationDistance == 2) {
-          int I = oplist[i].cre[0], J = oplist[i].cre[1], A = oplist[i].des[0], B = oplist[i].des[1]; 
-          double JastrowFactor = wave.getJastrowFactor(I / 2, J / 2, A / 2, B / 2, dcopy, walk.d);
-
-          bool doparity = false;
-          if (I % 2 == J % 2 && I % 2 == 0)
-            ovlpdetcopy = walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else if (I % 2 == J % 2 && I % 2 == 1)
-            ovlpdetcopy = walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else if (I % 2 != J % 2 && I % 2 == 0)
-            ovlpdetcopy = walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else
-            ovlpdetcopy = walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity) * JastrowFactor;
-        }
-        else {
-          cout <<"higher than triple excitation not yet supported."<<endl;
-          exit(0);
-        }
+        double ovlpdetcopy = getovlpRatio(walk, oplist[i], dcopy);
         totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
       }
     }
@@ -205,67 +270,12 @@ public:
 
     for (int i = 0; i < oplist.size(); i++)
     {
-      Determinant dcopy = walk.getDet();
+      Determinant dcopy = walk.d;
 
-      bool valid = true;
-      for (int j = 0; j < oplist[i].n; j++)
-      {
-        if (dcopy.getocc(oplist[i].cre[j]) == true &&
-            dcopy.getocc(oplist[i].des[j] == false))
-        {
-          dcopy.setocc(oplist[i].cre[j], false);
-          dcopy.setocc(oplist[i].des[j], true);
-        }
-        else
-        {
-          valid = false;
-          break;
-        }
-      }
+      bool valid = oplist[i].apply(dcopy);
 
       if (valid) {
-        double ovlpdetcopy;
-        int excitationDistance = dcopy.ExcitationDistance(walk.getDet());
-
-        if (excitationDistance == 0) {
-          ovlpdetcopy = 1.0;
-        }
-        //if there is a repeat of indices then sometimes a double
-        //excitation can only result in excitaiton distance of 1
-        if (excitationDistance == 1) {
-          int c1 = -1, d1 =-1;
-          if (dcopy.getocc(oplist[i].cre[0]) == false)
-            c1 = oplist[i].cre[0];
-          else
-            c1 = oplist[i].cre[1];
-
-          if (dcopy.getocc(oplist[i].des[0]) == true)
-            d1 = oplist[i].des[0];
-          else
-            d1 = oplist[i].des[1];
-
-          double ovlpdetcopy = wave.getJastrowFactor(c1 / 2, d1 / 2, dcopy, walk.d);
-          if (c1%2 == 0)
-            ovlpdetcopy *= walk.getDetFactorA(c1 / 2, d1 / 2, wave, false);
-        }
-        else if (excitationDistance == 2) {
-          int I = oplist[i].cre[0], J = oplist[i].cre[1], A = oplist[i].des[0], B = oplist[i].des[1]; 
-          double JastrowFactor = wave.getJastrowFactor(I / 2, J / 2, A / 2, B / 2, dcopy, walk.d);
-
-          bool doparity = false;
-          if (I % 2 == J % 2 && I % 2 == 0)
-            ovlpdetcopy = walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else if (I % 2 == J % 2 && I % 2 == 1)
-            ovlpdetcopy = walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else if (I % 2 != J % 2 && I % 2 == 0)
-            ovlpdetcopy = walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-          else
-            ovlpdetcopy = walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity) * JastrowFactor;
-        }
-        else {
-          cout <<"higher than triple excitation not yet supported."<<endl;
-          exit(0);
-        }
+        double ovlpdetcopy = getovlpRatio(walk, oplist[i], dcopy);
         gradcopy[i] += ovlpdetcopy;
       }
     }
@@ -305,6 +315,7 @@ public:
       double E0 = d.Energy(I1, I2, coreE);
       ovlp = Overlap(walk);
       ham = E0;
+      //cout << ovlp <<"  "<<ham<<endl;
     }
 
     //Single alpha-beta excitation
@@ -370,6 +381,8 @@ public:
               double ovlpdetcopy = Overlap(walkcopy);
               ham += ovlpdetcopy * tia / ovlp;
 
+              //cout << ovlpdetcopy/ovlp <<"  "<<tia<<"  "<<ham<<endl;
+
               if (fillExcitations)
               {
                 if (ovlpSize <= nExcitations)
@@ -381,7 +394,7 @@ public:
                   HijElements.resize(ovlpSize);
                 }
 
-                ovlpRatio[nExcitations] = ovlpdetcopy;
+                ovlpRatio[nExcitations] = ovlpdetcopy/ovlp;
                 excitation1[nExcitations] = closed[i] * 2 * norbs + open[a];
                 excitation2[nExcitations] = 0;
                 HijElements[nExcitations] = tia;
@@ -433,6 +446,7 @@ public:
             double tiajb = integrals[index];
 
             Walker walkcopy = walk;
+            //cout << walk.d<<"  "<<closed[i]<<"  "<<a<<"  "<<closed[j]<<"  "<<b<<endl;
             walkcopy.exciteWalker(wave, closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
             double ovlpdetcopy = Overlap(walkcopy);
 
@@ -442,12 +456,13 @@ public:
             else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
               walk.d.parityBB(I, J, A, B, parity); 
             else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-               {walk.d.parityA(I, A, parity) ; walk.d.parityB(J, B, parity);}
+               {walk.d.parityA(A, I, parity) ; walk.d.parityB(B, J, parity);}
             else
-               {walk.d.parityB(I, A,parity); walk.d.parityA(J, B, parity);}
+               {walk.d.parityB(A, I,parity); walk.d.parityA(B, J, parity);}
             
             ham += ovlpdetcopy * tiajb * parity / ovlp;
 
+            //cout << ovlpdetcopy/ovlp <<"  "<<parity<<"  "<<tiajb*parity<<"  "<<ham<<endl;
             if (fillExcitations)
             {
               if (ovlpSize <= nExcitations)
@@ -459,7 +474,7 @@ public:
                 HijElements.resize(ovlpSize);
               }
 
-              ovlpRatio[nExcitations] = ovlpdetcopy;
+              ovlpRatio[nExcitations] = ovlpdetcopy/ovlp;
               excitation1[nExcitations] = closed[i] * 2 * norbs + a;
               excitation2[nExcitations] = closed[j] * 2 * norbs + b;
               HijElements[nExcitations] = tiajb;
@@ -470,12 +485,45 @@ public:
       }
       prof.DoubleTime += getTime() - time;
     }
+    //exit(0);
   }
 
   vector<Determinant> &getDeterminants() { return wave.determinants; }
   vector<double> &getciExpansion() { return wave.ciExpansion; }
   MatrixXd& getHforbsA() {return wave.HforbsA;}
   MatrixXd& getHforbsB() {return wave.HforbsB;}
+
+  void writeWave()
+  {
+    if (commrank == 0)
+    {
+      char file[5000];
+      //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+      sprintf(file, "ciwave.bkp");
+      std::ofstream outfs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(outfs);
+      save << *this;
+      outfs.close();
+    }
+  }
+
+  void readWave()
+  {
+    if (commrank == 0)
+    {
+      char file[5000];
+      //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+      sprintf(file, "ciwave.bkp");
+      std::ifstream infs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(infs);
+      load >> *this;
+      infs.close();
+    }
+#ifndef SERIAL
+    boost::mpi::communicator world;
+    boost::mpi::broadcast(world, *this, 0);
+#endif
+  }
 };
 
 #endif
