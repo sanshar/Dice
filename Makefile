@@ -6,8 +6,8 @@ LIBIGL=/Users/sandeepsharma/Academics/Programs/libigl/include/
 #EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
 #BOOST=/projects/anma2640/boost_1_66_0
 
-#FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
-FLAGS = -std=c++11  -g  -I./ -I./utils -I./optimizer/ -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++11 -g  -O3  -I./ -I./utils -I./optimizer/ -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+#FLAGS = -std=c++11  -g  -I./ -I./utils -I./optimizer/ -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 
 
