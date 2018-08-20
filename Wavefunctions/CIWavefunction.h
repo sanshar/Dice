@@ -67,17 +67,15 @@ private:
     bool valid = true;
     for (int j = 0; j < n; j++)
     {
-      if (dcopy.getocc(cre[j]) == true &&
-          dcopy.getocc(des[j]) == false )
-      {
-        dcopy.setocc(cre[j], false);
-        dcopy.setocc(des[j], true);
-      }
+      if (dcopy.getocc(cre[j]) == true)
+	dcopy.setocc(cre[j], false);
       else
-      {
-        valid = false;
-        break;
-      }
+	return false;
+
+      if (dcopy.getocc(des[j]) == false)
+	dcopy.setocc(des[j], true);
+      else
+	return false;
     }
     return valid;
   }
@@ -193,13 +191,10 @@ public:
     double ovlpdetcopy;
     int excitationDistance = dcopy.ExcitationDistance(walk.d);
 
-    //cout << excitationDistance<<"  "<<dcopy<<"  "<<walk.d<<endl;
     if (excitationDistance == 0)
     {
       ovlpdetcopy = 1.0;
     }
-    //if there is a repeat of indices then sometimes a double
-    //excitation can only result in excitaiton distance of 1
     else if (excitationDistance == 1)
     {
       int c1 = -1, d1 = -1;
@@ -213,10 +208,12 @@ public:
       else
         d1 = op.des[1];
 
-      //cout << walk.d<<"  "<<dcopy<<"  "<<c1<<"  "<<d1<<endl;
-      double ovlpdetcopy = wave.getJastrowFactor(c1 / 2, d1 / 2, dcopy, walk.d);
+      ovlpdetcopy = wave.getJastrowFactor(c1 / 2, d1 / 2, dcopy, walk.d);
+
       if (c1 % 2 == 0)
         ovlpdetcopy *= walk.getDetFactorA(c1 / 2, d1 / 2, wave, false);
+      else
+        ovlpdetcopy *= walk.getDetFactorB(c1 / 2, d1 / 2, wave, false);
     }
     else if (excitationDistance == 2)
     {
@@ -315,7 +312,6 @@ public:
       double E0 = d.Energy(I1, I2, coreE);
       ovlp = Overlap(walk);
       ham = E0;
-      //cout << ovlp <<"  "<<ham<<endl;
     }
 
     //Single alpha-beta excitation
@@ -338,7 +334,12 @@ public:
             if (schd.Hamiltonian == HUBBARD)
             {
               tia = I1(2 * A, 2 * I);
-              doparity = false;
+              double sgn = 1.0;
+              if (Alpha)
+                d.parityA(A, I, sgn);
+              else
+                d.parityB(A, I, sgn);
+              tia *= sgn;
             }
             else
             {
@@ -380,8 +381,6 @@ public:
               walkcopy.exciteWalker(wave, closed[i]*2*norbs+open[a], 0, norbs);
               double ovlpdetcopy = Overlap(walkcopy);
               ham += ovlpdetcopy * tia / ovlp;
-
-              //cout << ovlpdetcopy/ovlp <<"  "<<tia<<"  "<<ham<<endl;
 
               if (fillExcitations)
               {
@@ -462,7 +461,6 @@ public:
             
             ham += ovlpdetcopy * tiajb * parity / ovlp;
 
-            //cout << ovlpdetcopy/ovlp <<"  "<<parity<<"  "<<tiajb*parity<<"  "<<ham<<endl;
             if (fillExcitations)
             {
               if (ovlpSize <= nExcitations)

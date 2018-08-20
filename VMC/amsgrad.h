@@ -27,6 +27,9 @@
 
 #ifndef SERIAL
 #include "mpi.h"
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
 #endif
 
 using namespace Eigen;
@@ -105,7 +108,9 @@ class AMSGrad
             if (commrank == 0)
                 read(vars);
 #ifndef SERIAL
-            mpi::broadcast(world, *this, 0);
+	    boost::mpi::communicator world;
+	    boost::mpi::broadcast(world, *this, 0);
+	    boost::mpi::broadcast(world, vars, 0);
 #endif
         }
         else if (mom1.rows() == 0)
@@ -119,8 +124,8 @@ class AMSGrad
         while (iter < maxIter)
         {
             double E0, stddev = 0.0, rt = 1.0;
-            
             getGradient(vars, grad, E0, stddev, rt);
+            write(vars);
 
             if (commrank == 0)
             {
@@ -139,7 +144,6 @@ class AMSGrad
             if (commrank == 0)
                 std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
             iter++;
-            write(vars);
         }
     }
 };
