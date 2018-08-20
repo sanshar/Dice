@@ -76,7 +76,7 @@ openmpi_ubuntu16_test:
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
     - cd tests/o2_omp1_det
     - ../../build/Dice
-    - mpirun -n 2 ../../build/Dice --allow-run-as-root
+    - mpirun -n 2 --allow-run-as-root ../../build/Dice
 
 openmpi_ubuntu17_test:
   stage: test
@@ -88,7 +88,7 @@ openmpi_ubuntu17_test:
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
     - cd tests/o2_omp1_det
     - ../../build/Dice
-    - mpirun -n 2 ../../build/Dice --allow-run-as-root
+    - mpirun -n 2 --allow-run-as-root ../../build/Dice
 
 mpich_ubuntu16_test:
   stage: test
@@ -100,7 +100,7 @@ mpich_ubuntu16_test:
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
     - cd tests/o2_omp1_det
     - ../../build/Dice
-    - mpirun -n 2 ../../build/Dice --allow-run-as-root
+    - mpirun -n 2 --allow-run-as-root ../../build/Dice
 
 mpich_ubuntu17_test:
   stage: test
@@ -112,4 +112,4 @@ mpich_ubuntu17_test:
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
     - cd tests/o2_omp1_det
     - ../../build/Dice
-    - mpirun -n 2 ../../build/Dice --allow-run-as-root
+    - mpirun -n 2 --allow-run-as-root ../../build/Dice 
