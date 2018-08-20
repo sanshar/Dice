@@ -13,7 +13,4 @@ schedule
 end
 deterministic 
 noio
-nroots 2 
 maxiter 9
-DoSpinRDM
-DoOneRDM

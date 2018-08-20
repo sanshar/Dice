@@ -136,7 +136,6 @@ int main(int argc, char* argv[]) {
 
 
   std::cout.precision(15);
-
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
@@ -145,7 +144,6 @@ int main(int argc, char* argv[]) {
     pout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
   }
-
   if (schd.doLCC) {
     //no nact was given in the input file
     if (schd.nact == 1000000) 
@@ -174,7 +172,6 @@ int main(int argc, char* argv[]) {
 
   //initialize the heatbath integral
   std::vector<int> allorbs;
-  
   //for (int i=0; i<norbs/2; i++)
   for (int i=0; i<norbs; i++)
     allorbs.push_back(i);
@@ -243,7 +240,7 @@ int main(int argc, char* argv[]) {
 #endif
   pout << "HF Energy: " << endl;
   pout << Dets[0].Energy(I1, I2, coreE) << endl;
-  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM, false);
+  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);

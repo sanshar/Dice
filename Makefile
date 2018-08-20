@@ -1,4 +1,4 @@
-USE_MPI = no
+USE_MPI = yes
 USE_INTEL = no
 EIGEN=/usr/include/eigen3
 BOOST=/home/xubo/software/boost_1_66_0

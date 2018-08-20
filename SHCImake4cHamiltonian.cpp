@@ -60,6 +60,8 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
   size_t totalMemory = 0;
   size_t nNminus2 = Nminus2.size();
   size_t nNminus1 = Nminus1.size();
+  pout << "size of Nminus1: " << nNminus1 << endl;
+  pout << "size of Nminus2: " << nNminus2 << endl;
   vector<int> Nminus2ToDetTemp(nNminus2, 0);
   vector<int> Nminus1ToDetTemp(nNminus1, 0);
   for (int i=0; i<nNminus2; i++) {
@@ -145,6 +147,7 @@ void SHCImake4cHamiltonian::SparseHam::makeFromHelper(
         int startIndex, int endIndex,
         int Norbs, oneInt& I1, twoInt& I2, double& coreE, bool DoRDM) 
 {
+  pout << "make hamiltonian" << endl;
   SHCImake4cHamiltonian::MakeHfromSMHelpers(helper.Nminus1ToDetSM, helper.Nminus1ToDetLen,
   helper.Nminus2ToDetSM, helper.Nminus2ToDetLen,
   SHMDets, startIndex, endIndex, diskio, *this, Norbs, I1, I2, coreE, DoRDM);
@@ -154,6 +157,7 @@ void SHCImake4cHamiltonian::HamHelper4c::PopulateHelpers(
         Determinant* SHMDets,
         int DetsSize, int startIndex)
 {
+  pout << "populate" << endl;
   SHCImake4cHamiltonian::PopulateHelperLists(
     Nminus1, Nminus1ToDet,
     Nminus2, Nminus2ToDet,
@@ -221,7 +225,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
   std::vector<std::vector<size_t>> & orbDifference = sparseHam.orbDifference;
 
   for (size_t k = StartIndex; k < EndIndex; k++) {
-    //if (k%(nprocs) != proc || k < max(StartIndex, offSet)) continue;
+    if (k%(nprocs) != proc || k < max(StartIndex, offSet)) continue;
     connections.push_back(vector<int>(1,k));
     CItype hij = Dets[k].Energy(I1, I2, coreE);
     Helements.push_back(vector<CItype>(1,hij));
@@ -230,30 +234,38 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
   for (int i = 0; i < Nminus1ToDetSM.size(); i++) {
     for (int j = 0; j<Nminus1ToDetLen[i]; j++) {
       for (int k = j+1; k<Nminus1ToDetLen[i]; k++) {
-        if (Nminus1ToDetSM[i][j] < StartIndex && Nminus1ToDetSM[i][k] < StartIndex) continue;
-        CItype hij = Hij(Dets[Nminus1ToDetSM[i][k]], Dets[Nminus1ToDetSM[i][j]], I1, I2, coreE, orbDiff);
+        int DetI = Nminus1ToDetSM[i][j];
+        int DetJ = Nminus1ToDetSM[i][k];
+        if (DetI < StartIndex && DetJ < StartIndex)     
+          continue;
+        if (DetI % nprocs != proc || DetI < 0) continue;
+        CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
         if (std::abs(hij) > 1.e-10) {
           //pout << Dets[Nminus1ToDetSM[i][j]].ExcitationDistance(Dets[Nminus1ToDetSM[i][k]]);
         //pout << "(" << Nminus1ToDetSM[i][j] << " " << Nminus1ToDetSM[i][k] << ")" << " " << hij.real() << " " << hij.imag() << endl;
-
-          connections[Nminus1ToDetSM[i][j]].push_back(Nminus1ToDetSM[i][k]);
-          Helements[Nminus1ToDetSM[i][j]].push_back(hij);
-          if (DoRDM) orbDifference[Nminus1ToDetSM[i][j]].push_back(orbDiff);
+          connections[DetI/nprocs].push_back(DetJ);
+          Helements[DetI/nprocs].push_back(hij);
+          if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
         }
       }
     }
   }
   for (int i = 0; i < Nminus2ToDetSM.size(); i++) {
+    if (i % nprocs != proc) continue;
     for (int j = 0; j<Nminus2ToDetLen[i]; j++) {
       for (int k=j+1; k<Nminus2ToDetLen[i]; k++) {
-        if (Nminus2ToDetSM[i][j] < StartIndex && Nminus2ToDetSM[i][k] < StartIndex) continue;
+        int DetI = Nminus2ToDetSM[i][j];
+        int DetJ = Nminus2ToDetSM[i][k];
+        if (DetI < StartIndex && DetJ < StartIndex)     
+          continue;
+        if (DetI % nprocs != proc || DetI < 0) continue;
         CItype hij = Hij(Dets[Nminus2ToDetSM[i][k]], Dets[Nminus2ToDetSM[i][j]], I1, I2, coreE, orbDiff);
         //pout  << hij << endl;
         if (std::abs(hij) > 1.e-10) {
           if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;
-          connections[Nminus2ToDetSM[i][j]].push_back(Nminus2ToDetSM[i][k]);
-          Helements[Nminus2ToDetSM[i][j]].push_back(hij);
-          if (DoRDM) orbDifference[Nminus2ToDetSM[i][j]].push_back(orbDiff);
+          connections[DetI/nprocs].push_back(Nminus2ToDetSM[i][k]);
+          Helements[DetI/nprocs].push_back(hij);
+          if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
         }
       }
     }

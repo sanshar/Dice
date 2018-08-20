@@ -930,25 +930,25 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //to do the seclection process
     if (schd.outputlevel > 0)
       pout << format("#-------------Iter=%4i---------------") % iter << endl;
-
+    pout << "iterstart" << endl;
     CItype *cMaxSHM;
     vector<CItype> cMax;
-    if (proc == 0)
-    {
+    pout << "resize" << endl;
+    if (proc == 0) {
       cMax.resize(ci[0].rows(), 0);
-      for (int j = 0; j < ci[0].rows(); j++)
-      {
+      for (int j = 0; j < ci[0].rows(); j++) {
         for (int i = 0; i < ci.size(); i++)
           cMax[j] += pow(abs(ci[i](j, 0)), 2);
         cMax[j] = pow(cMax[j], 0.5);
       }
     }
-
+    pout << "resize finish" << endl;
     SHMVecFromVecs(cMax, cMaxSHM, shcicMax, cMaxSegment, regioncMax);
+    pout << "SHMvec" << endl;
     cMax.clear();
 
     CItype zero = 0.0;
-
+    pout << "get determinant" << endl;
     for (int i = 0; i < SortedDetsSize; i++)
     {
       if (i % (commsize) != commrank)
@@ -986,7 +986,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #ifdef Complex
     uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
 #endif
-
+    pout << "mpi" << endl;
 #ifndef SERIAL
     for (int level = 0; level < ceil(log2(nprocs)); level++)
     {
@@ -1039,7 +1039,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //*************
 
 #endif
-
+    pout << "resize" << endl;
     //**********
     //Resize X0 and dets and sorteddets
     vector<MatrixXx> X0;
@@ -1217,11 +1217,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
       pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") % (iter) % (i) % schd.epsilon1[iter] % DetsSize % (E0[i] + coreEbkp) % (numIter) % (getTime() - startofCalc);
     if (E0.size() > 1)
       pout << endl;
-
-#ifndef SERIAL
-    MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
+    pout << "before converge" << endl;
     //the variational step has converged
     if (abs(E0[0] - prevE0) < schd.dE || iter == schd.epsilon1.size() - 1)
     {

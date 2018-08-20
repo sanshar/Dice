@@ -171,7 +171,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
         I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;
     } // while
     
-    //exit(0);
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Exchange *= 0.;
@@ -192,10 +191,12 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    cout << i << " " << maxIter << endl;
+    mpi::broadcast(world, &I2.store[i * maxint], maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, MPI_DOUBLE, 0);
+  mpi::broadcast(world, &I2.store[(maxIter)*maxint],
+                 I2memory - maxIter * maxint, 0);
   world.barrier();
 
   mpi::broadcast(world, I2.maxEntry, 0);

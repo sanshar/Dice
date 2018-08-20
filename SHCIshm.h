@@ -16,7 +16,10 @@ You should have received a copy of the GNU General Public License along with thi
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "global.h"
+#include "communicate.h"
+#include <iostream>
 using namespace Eigen;
+using namespace std;
 
 void initSHM();
 
@@ -27,6 +30,7 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 
   size_t totalMemory = 0;
   int comm_rank=0, comm_size=1;
+  pout << "mpi 1" << endl;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
@@ -34,24 +38,27 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
   
   if (comm_rank == 0) 
     totalMemory = vec.size()*sizeof(T);
+  pout << "mpi 2" << endl;
 #ifndef SERIAL
+  pout << MPI_DOUBLE << " " << MPI_COMM_WORLD << " " << &totalMemory << endl;
   MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-  
+  pout << "mpi 2" << endl;
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
   if (localrank == 0)
     memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
-  
+  pout << "mpi 3" << endl;
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  
+  pout << "after mpi3" << endl;
   if (comm_rank == 0) {
     for (size_t i=0; i<vec.size(); i++) 
       SHMvec[i] = vec[i];
   }
+  pout << "mpi 4" << endl;
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
@@ -59,6 +66,7 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
     long intdim  = totalMemory;
     long maxint  = 26843540; //mpi cannot transfer more than these number of doubles
     long maxIter = intdim/maxint;
+    pout << "mpi 5" << endl;
 #ifndef SERIAL
     MPI_Barrier(shmcomm);
     
@@ -71,6 +79,7 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
 #endif
   }
+  pout << "mpi 6" << endl;
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
