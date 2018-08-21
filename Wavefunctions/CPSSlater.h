@@ -29,7 +29,7 @@ class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
 class HFWalker;
-
+class workingArray;
 
 /**
 * This is the wavefunction, it is a product of the CPS and a linear combination of
@@ -57,7 +57,6 @@ class CPSSlater {
    vector<int> workingVectorOfCPS;
    MatrixXx HforbsA, HforbsB;
 
-   typedef CPSSlater Wfntype;
 
    CPSSlater();
    void readDefault();
@@ -111,11 +110,6 @@ class CPSSlater {
                             double &factor,
                             Eigen::VectorXd &grad);
 
-   void OvlpRatioCI(HFWalker &walk, Eigen::VectorXd &gradRatio,
-                    oneInt &I1, twoInt &I2, vector<int> &SingleIndices,
-                    vector<int> &DoubleIndices, twoIntHeatBathSHM &I2hb,
-                    double &coreE, double factor);
-
    /**
  * Calculates the overlap, hamiltonian,
  * actually it only calculates 
@@ -126,9 +120,7 @@ class CPSSlater {
  */
    void HamAndOvlp(HFWalker &walk,
                    double &ovlp, double &ham, 
-                   vector<double> &ovlpRatio, vector<size_t> &excitation1,
-                   vector<size_t> &excitation2, vector<double> &HijElement,
-                   int &nExcitations, bool fillExcitations = true);
+		   workingArray& work, bool fillExcitations = true);
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
    void derivativeOfLocalEnergy(HFWalker &,

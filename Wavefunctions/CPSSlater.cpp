@@ -24,6 +24,7 @@
 #include "global.h"
 #include "input.h"
 #include "Profile.h"
+#include "workingArray.h"
 #include <fstream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -515,113 +516,16 @@ void CPSSlater::readWave()
 #endif
 }
 
-//for a determinant |N> it updates the grad ratio vector
-// grad[i] += <N|Psi_i>/<N|Psi0> * factor
-void CPSSlater::OvlpRatioCI(HFWalker &walk, VectorXd &gradRatio,
-                            oneInt &I1, twoInt &I2, vector<int> &SingleIndices,
-                            vector<int>& DoubleIndices, twoIntHeatBathSHM &I2hb, 
-			    double &coreE, double factor)
-{
-  //<d|I^dag A |Psi0>
-  //|dcopy> = A^dag I|d>
-  int norbs = Determinant::norbs;
-  gradRatio[0] += factor;
-  int index = 0;
-  for (int i = 0; i < SingleIndices.size() / 2; i++)
-  {
-    int I = SingleIndices[2 * i], A = SingleIndices[2 * i + 1];
-
-    Determinant d = walk.d;
-    Determinant dcopy = walk.d;
-    index ++;
-
-    if (!d.getocc(I))
-      continue;
-    dcopy.setocc(I, false);
-    if (dcopy.getocc(A))
-      continue;
-    dcopy.setocc(A, true);
-
-    if (d == dcopy)  {
-      gradRatio[index] += factor;
-      continue;
-    }
-
-    bool doparity = false;
-    double JastrowFactor = getJastrowFactor(I / 2, A / 2, dcopy, d);
-    double ovlpdetcopy;
-
-    if (I % 2 == 0)
-      ovlpdetcopy = walk.getDetFactorA(I / 2, A / 2, *this, doparity) * JastrowFactor;
-    else
-      ovlpdetcopy = walk.getDetFactorB(I / 2, A / 2, *this, doparity) * JastrowFactor;
-
-    gradRatio[index] += factor * ovlpdetcopy; //<n|a_i^dag a_a|Psi0>/<n|Psi0>
-  }
-
-  //<n|  J^dag  B I^dag A|Psi0>/<n|Psi0>
-  for (int i = 0; i < DoubleIndices.size() / 4; i++)
-  {
-    int I = DoubleIndices[4 * i],     A = DoubleIndices[4 * i + 2];
-    int J = DoubleIndices[4 * i + 1], B = DoubleIndices[4 * i + 3];
-
-    index++;
-
-    Determinant d = walk.d;
-    Determinant dcopy = walk.d;
-
-    if (!d.getocc(J))
-      continue;
-    dcopy.setocc(J, false);
-    if (dcopy.getocc(B))
-      continue;
-    dcopy.setocc(B, true);
-
-    if (!d.getocc(I))
-      continue;
-    dcopy.setocc(I, false);
-    if (dcopy.getocc(A))
-      continue;
-    dcopy.setocc(A, true);
-
-    if (d == dcopy)  {
-      gradRatio[index] += factor;
-      continue;
-    }
-
-    bool doparity = false;
-    double JastrowFactor = getJastrowFactor(I / 2, J / 2, A / 2, B / 2, dcopy, d);
-    double ovlpdetcopy;
-
-    if (I % 2 == J % 2 && I % 2 == 0)
-      ovlpdetcopy = walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-    else if (I % 2 == J % 2 && I % 2 == 1)
-      ovlpdetcopy = walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-    else if (I % 2 != J % 2 && I % 2 == 0)
-      ovlpdetcopy = walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity) * JastrowFactor;
-    else
-      ovlpdetcopy = walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity) * JastrowFactor;
-
-    gradRatio[index] += factor * ovlpdetcopy; //<n|a_i^dag a_a|Psi0>/<n|Psi0>
-
-  }
-  //exit(0);
-}
 
 //<psi_t| (H-E0) |D>
 void CPSSlater::HamAndOvlp(HFWalker &walk,
                            double &ovlp, double &ham, 
-                           vector<double> &ovlpRatio, vector<size_t> &excitation1,
-                           vector<size_t> &excitation2, vector<double> &HijElements,
-                           int &nExcitations, bool fillExcitations)
+			   workingArray& work, bool fillExcitations)
 {
-
-  int ovlpSize = ovlpRatio.size();
-  nExcitations = 0;
+  work.init();
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;
-  //MatrixXd alphainv = walk.alphainv, betainv = walk.betainv;
 
   double detOverlap = walk.getDetOverlap(*this);
   Determinant &d = walk.d;
@@ -638,15 +542,15 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
   {
     double E0 = d.Energy(I1, I2, coreE);
     ovlp = detOverlap;
-    //cout << ovlp <<endl;
+
     for (int i = 0; i < cpsArray.size(); i++)
     {
       ovlp *= cpsArray[i].Overlap(d);
     }
     ham = E0;
-    //cout << ovlp <<"  "<<E0<<"  "<<ham<<endl;
+
   }
-  //cout << ham<<endl;
+
 
   //Single alpha-beta excitation
   {
@@ -721,31 +625,14 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
             double ovlpdetcopy;
             if (Alpha)
               ovlpdetcopy = walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
-            //localham += tia * walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
             else
               ovlpdetcopy = walk.getDetFactorB(I, A, *this, doparity) * JastrowFactor;
 
             ham += ovlpdetcopy * tia;
 
-                //cout << ovlpdetcopy <<"  "<<tia<<"  "<<ham<<endl;
-
             if (fillExcitations)
-            {
-              if (ovlpSize <= nExcitations)
-              {
-                ovlpSize += 1000000;
-                ovlpRatio.resize(ovlpSize);
-                excitation1.resize(ovlpSize);
-                excitation2.resize(ovlpSize);
-                HijElements.resize(ovlpSize);
-              }
-
-              ovlpRatio[nExcitations] = ovlpdetcopy;
-              excitation1[nExcitations] = closed[i] * 2 * norbs + open[a];
-              excitation2[nExcitations] = 0;
-              HijElements[nExcitations] = tia;
-              nExcitations++;
-            }
+	      work.appendValue(ovlpdetcopy, closed[i] * 2 * norbs + open[a],
+			       0, tia);
           }
         }
       }
@@ -814,23 +701,8 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
           double ovlpdetcopy = localham / tiajb;
 
           if (fillExcitations)
-          {
-            if (ovlpSize <= nExcitations)
-            {
-              ovlpSize += 100000;
-              ovlpRatio.resize(ovlpSize);
-              excitation1.resize(ovlpSize);
-              excitation2.resize(ovlpSize);
-              HijElements.resize(ovlpSize);
-            }
-
-            ovlpRatio[nExcitations] = ovlpdetcopy;
-            excitation1[nExcitations] = closed[i] * 2 * norbs + a;
-            excitation2[nExcitations] = closed[j] * 2 * norbs + b;
-            HijElements[nExcitations] = tiajb;
-            nExcitations++;
-
-          }
+	    work.appendValue(ovlpdetcopy, closed[i] * 2 * norbs + a,
+			     closed[j] * 2 * norbs + b, tiajb);
         }
       }
     }

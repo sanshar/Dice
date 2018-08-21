@@ -21,6 +21,7 @@
 #include <vector>
 #include <set>
 #include "Determinants.h"
+#include "workingArray.h"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
@@ -289,13 +290,9 @@ public:
 
   void HamAndOvlp(Walker &walk,
                   double &ovlp, double &ham,
-                  vector<double> &ovlpRatio, vector<size_t> &excitation1,
-                  vector<size_t> &excitation2, vector<double> &HijElements,
-                  int &nExcitations, bool fillExcitations = true)
+		  workingArray& work, bool fillExcitations = true)
   {
-
-    int ovlpSize = ovlpRatio.size();
-    nExcitations = 0;
+    work.init();
 
     double TINY = schd.screen;
     double THRESH = schd.epsilon;
@@ -319,7 +316,7 @@ public:
       double time = getTime();
       for (int i = 0; i < closed.size(); i++)
       {
-        for (int a = 0; a < open.size(); a++)
+	for (int a = 0; a < open.size(); a++)
         {
           if (closed[i] % 2 == open[a] % 2 && abs(I2hb.Singles(closed[i], open[a])) > THRESH)
           {
@@ -382,25 +379,9 @@ public:
               double ovlpdetcopy = Overlap(walkcopy);
               ham += ovlpdetcopy * tia / ovlp;
 
-              if (fillExcitations)
-              {
-                if (ovlpSize <= nExcitations)
-                {
-                  ovlpSize += 1000000;
-                  ovlpRatio.resize(ovlpSize);
-                  excitation1.resize(ovlpSize);
-                  excitation2.resize(ovlpSize);
-                  HijElements.resize(ovlpSize);
-                }
-
-                ovlpRatio[nExcitations] = ovlpdetcopy/ovlp;
-                excitation1[nExcitations] = closed[i] * 2 * norbs + open[a];
-                excitation2[nExcitations] = 0;
-                HijElements[nExcitations] = tia;
-                nExcitations++;
-
-
-              }
+	      if (fillExcitations)
+		work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a],
+				 0, tia);
             }
           }
         }
@@ -461,23 +442,9 @@ public:
             
             ham += ovlpdetcopy * tiajb * parity / ovlp;
 
-            if (fillExcitations)
-            {
-              if (ovlpSize <= nExcitations)
-              {
-                ovlpSize += 100000;
-                ovlpRatio.resize(ovlpSize);
-                excitation1.resize(ovlpSize);
-                excitation2.resize(ovlpSize);
-                HijElements.resize(ovlpSize);
-              }
-
-              ovlpRatio[nExcitations] = ovlpdetcopy/ovlp;
-              excitation1[nExcitations] = closed[i] * 2 * norbs + a;
-              excitation2[nExcitations] = closed[j] * 2 * norbs + b;
-              HijElements[nExcitations] = tiajb;
-              nExcitations++;
-            }
+	    if (fillExcitations)
+	      work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + a,
+			       closed[j] * 2 * norbs + b , tiajb);
           }
         }
       }

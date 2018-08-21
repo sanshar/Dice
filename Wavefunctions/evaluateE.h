@@ -21,6 +21,7 @@
 #include <Eigen/Dense>
 #include <vector>
 #include "Determinants.h"
+#include "workingArray.h"
 #include <iostream>
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
@@ -60,10 +61,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
   vector<Determinant> allDets;
   generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
-  vector<double> ovlpRatio;
-  vector<size_t> excitation1, excitation2;
-  vector<double> HijElements;
-  int nExcitations;
+  workingArray work;
 
   double Overlap = 0, Energy = 0;
   grad.setZero();
@@ -73,28 +71,24 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
-    //Walker walk(allDets[i]);
     w.initWalker(walk, allDets[i]);
-    //walk.initUsingWave(w);
     double ovlp = 0, ham = 0;
-    //cout << walk.d<<"  "<<walk.alphainv<<"  "<<walk.alphaDet[0]<<endl;
     {
       E0 = 0.;
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
-                  excitation1, excitation2, HijElements, nExcitations, false);
+      w.HamAndOvlp(walk, ovlp, ham, work, false);
 
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
     }
+    
     //grad += localgrad * ovlp * ovlp;
     grad += localdiagonalGrad * ham * ovlp * ovlp;
     diagonalGrad += localdiagonalGrad * ovlp * ovlp;
     Overlap += ovlp * ovlp;
     Energy += ham * ovlp * ovlp;
-    
   }
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -175,6 +169,94 @@ template<typename Wfn, typename Walker> void getGradientHessianDeterministic(Wfn
 }
 
 
+template<typename Wfn, typename Walker> 
+  void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
+					 double &rk, int niter, double targetError)
+{
+	int norbs = Determinant::norbs;
+	int nalpha = Determinant::nalpha;
+	int nbeta = Determinant::nbeta;
+
+	auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+							std::ref(generator));
+
+
+	workingArray work;
+
+	stddev = 1.e4;
+	int iter = 0;
+	double M1 = 0., S1 = 0., Eavg = 0.;
+	double Eloc = 0.;
+	double ham = 0., ovlp = 0.;
+	double scale = 1.0;
+
+	double bestOvlp = 0.;
+	Determinant bestDet = walk.getDet();
+
+	E0 = 0.0;
+	w.HamAndOvlp(walk, ovlp, ham, work);
+
+
+	int nstore = 1000000 / commsize;
+	int gradIter = min(nstore, niter);
+
+	std::vector<double> gradError(gradIter * commsize, 0);
+	double cumdeltaT = 0., cumdeltaT2 = 0.;
+
+	while (iter < niter && stddev > targetError)
+	{
+
+		double cumovlpRatio = 0;
+		//when using uniform probability 1./numConnection * max(1, pi/pj)
+		for (int i = 0; i < work.nExcitations; i++)
+		{
+			cumovlpRatio += abs(work.ovlpRatio[i]);
+			work.ovlpRatio[i] = cumovlpRatio;
+		}
+
+		//double deltaT = -log(random())/(cumovlpRatio);
+		double deltaT = 1.0 / (cumovlpRatio);
+		double nextDetRandom = random() * cumovlpRatio;
+		int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+									   nextDetRandom) -
+					  work.ovlpRatio.begin();
+
+		cumdeltaT += deltaT;
+		cumdeltaT2 += deltaT * deltaT;
+
+		double Elocold = Eloc;
+
+		double ratio = deltaT / cumdeltaT;
+		Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT); //running average of energy
+
+		S1 = S1 + (ham - Elocold) * (ham - Eloc);
+
+		if (iter < gradIter)
+			gradError[iter + commrank * gradIter] = ham;
+
+		iter++;
+
+		walk.updateWalker(w, work.excitation1[nextDet], work.excitation2[nextDet]);
+
+		w.HamAndOvlp(walk, ovlp, ham, work);
+	}
+
+#ifndef SERIAL
+	MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+	//if (commrank == 0)
+	rk = calcTcorr(gradError);
+
+	E0 = Eloc / commsize;
+
+	stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+#ifndef SERIAL
+	MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+}
+
 
 
 template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
@@ -189,12 +271,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 							std::ref(generator));
 
 
-	//int maxTerms =  3*(nalpha) * (nbeta) * (norbs-nalpha) * (norbs-nbeta);
-	int maxTerms = (nalpha) * (norbs - nalpha); //pick a small number that will be incremented later
-	vector<double> ovlpRatio(maxTerms);
-	vector<size_t> excitation1(maxTerms), excitation2(maxTerms);
-	vector<double> HijElements(maxTerms);
-	int nExcitations = 0;
+	workingArray work;
 
 	stddev = 1.e4;
 	int iter = 0;
@@ -211,10 +288,8 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 	double bestOvlp = 0.;
 	Determinant bestDet = walk.getDet();
 
-	nExcitations = 0;
 	E0 = 0.0;
-	w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
-						 excitation1, excitation2, HijElements, nExcitations, true);
+	w.HamAndOvlp(walk, ovlp, ham, work);
 	w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
 
@@ -229,26 +304,26 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
 		double cumovlpRatio = 0;
 		//when using uniform probability 1./numConnection * max(1, pi/pj)
-		for (int i = 0; i < nExcitations; i++)
+		for (int i = 0; i < work.nExcitations; i++)
 		{
-			cumovlpRatio += abs(ovlpRatio[i]);
-			ovlpRatio[i] = cumovlpRatio;
+			cumovlpRatio += abs(work.ovlpRatio[i]);
+			work.ovlpRatio[i] = cumovlpRatio;
 		}
 
 		//double deltaT = -log(random())/(cumovlpRatio);
 		double deltaT = 1.0 / (cumovlpRatio);
 		double nextDetRandom = random() * cumovlpRatio;
-		int nextDet = std::lower_bound(ovlpRatio.begin(), (ovlpRatio.begin() + nExcitations),
+		int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
 									   nextDetRandom) -
-					  ovlpRatio.begin();
+					  work.ovlpRatio.begin();
 
 		cumdeltaT += deltaT;
 		cumdeltaT2 += deltaT * deltaT;
 
 		double Elocold = Eloc;
 
-    //exit(0);
-    //cout << walk.d<<"  "<<ham<<"  "<<Eloc<<"  "<<nextDet<<"  "<<nExcitations<<"  "<<deltaT<<endl;
+		//exit(0);
+		//cout << walk.d<<"  "<<ham<<"  "<<Eloc<<endl;
 
 		double ratio = deltaT / cumdeltaT;
 		for (int i = 0; i < grad.rows(); i++)
@@ -267,12 +342,10 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
 		iter++;
 
-		walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
+		walk.updateWalker(w, work.excitation1[nextDet], work.excitation2[nextDet]);
 
-		nExcitations = 0;
-    w.HamAndOvlp(walk, ovlp, ham, ovlpRatio,
-                 excitation1, excitation2, HijElements, nExcitations, true);
-    w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+		w.HamAndOvlp(walk, ovlp, ham, work);
+		w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
 		if (abs(ovlp) > bestOvlp)
 		{
@@ -287,7 +360,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 	MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
+	//exit(0);
 	//if (commrank == 0)
 	rk = calcTcorr(gradError);
 

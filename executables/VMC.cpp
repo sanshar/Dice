@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
   if (schd.wavefunctionType == "CPSSlater") {
     CPSSlater wave; HFWalker walk;
     wave.readDefault();
+    if (schd.restart) wave.readWave();
     VectorXd vars; wave.getVariables(vars);
 
     getGradientWrapper<CPSSlater, HFWalker> wrapper(wave, walk, schd.stochasticIter);
