@@ -60,8 +60,6 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
   size_t totalMemory = 0;
   size_t nNminus2 = Nminus2.size();
   size_t nNminus1 = Nminus1.size();
-  pout << "size of Nminus1: " << nNminus1 << endl;
-  pout << "size of Nminus2: " << nNminus2 << endl;
   vector<int> Nminus2ToDetTemp(nNminus2, 0);
   vector<int> Nminus1ToDetTemp(nNminus1, 0);
   for (int i=0; i<nNminus2; i++) {
@@ -147,7 +145,6 @@ void SHCImake4cHamiltonian::SparseHam::makeFromHelper(
         int startIndex, int endIndex,
         int Norbs, oneInt& I1, twoInt& I2, double& coreE, bool DoRDM) 
 {
-  pout << "make hamiltonian" << endl;
   SHCImake4cHamiltonian::MakeHfromSMHelpers(helper.Nminus1ToDetSM, helper.Nminus1ToDetLen,
   helper.Nminus2ToDetSM, helper.Nminus2ToDetLen,
   SHMDets, startIndex, endIndex, diskio, *this, Norbs, I1, I2, coreE, DoRDM);
@@ -157,7 +154,6 @@ void SHCImake4cHamiltonian::HamHelper4c::PopulateHelpers(
         Determinant* SHMDets,
         int DetsSize, int startIndex)
 {
-  pout << "populate" << endl;
   SHCImake4cHamiltonian::PopulateHelperLists(
     Nminus1, Nminus1ToDet,
     Nminus2, Nminus2ToDet,

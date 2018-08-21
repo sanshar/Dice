@@ -238,9 +238,7 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   mpi::broadcast(world, ci, 0);
 #endif
-  pout << "HF Energy: " << endl;
-  pout << Dets[0].Energy(I1, I2, coreE) << endl;
-  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+  vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM, false);
 
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
