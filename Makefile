@@ -1,7 +1,7 @@
 USE_MPI = yes
 USE_INTEL = yes
-EIGEN=/projects/jasm3285/eigen/
-BOOST=/projects/jasm3285/boost_1_57_0
+EIGEN=/projects/xuwa0145/local/eigen/include/eigen3/
+BOOST=/projects/xuwa0145/tools/boost_1_66_0/
 #EIGEN=/projects/sash2458/apps/eigen/
 #BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen
