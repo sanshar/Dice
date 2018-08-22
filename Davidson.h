@@ -29,4 +29,10 @@ using namespace Eigen;
 using namespace std;
 
 double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& p, double tol, bool print);
+
+void GeneralizedEigen(MatrixXd& Hamiltonian, MatrixXd& Overlap, VectorXcd& eigenvalues, MatrixXcd& eigenvectors, VectorXd& betas);
+
+void SelfAdjointEigen(MatrixXd& Overlap, VectorXd& eigenvalues, MatrixXd& eigenvectors);
+
+void SolveEigen(MatrixXd& A, VectorXd& b, VectorXd& x);
 #endif
