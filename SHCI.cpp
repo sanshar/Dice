@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
 
   // Initialize
   initSHM();
-  license(argv);
+  if (commrank == 0) license(argv);
 
   // Read the input file
   string inputFile = "input.dat";
