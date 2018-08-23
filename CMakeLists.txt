@@ -1,11 +1,11 @@
 cmake_minimum_required (VERSION 3.0)
 
-################
-### Projects ###
-################
+###############
+### Project ###
+###############
 
 project (Dice)
-
+set (EXTERNAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/)
 
 ######################
 ### Compiler Flags ###
@@ -44,8 +44,7 @@ message( STATUS ${Boost_LIBRARY_DIRS})
 SET( EIGEN3_INCLUDE_DIR "$ENV{EIGEN3_INCLUDE_DIR}" )
 IF( NOT EIGEN3_INCLUDE_DIR )
   message(STATUS "ENV variable EIGEN3_INCLUDE_DIR not found. Using attached version of Eigen.")
-  SET( EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/ )
-  # find_package(Eigen3 REQUIRED)
+  SET( EIGEN3_INCLUDE_DIR ${EXTERNAL_INCLUDE_DIR} )
 ENDIF()
 include_directories(${EIGEN3_INCLUDE_DIR})
 message( STATUS ${EIGEN3_INCLUDE_DIR})
@@ -102,3 +101,15 @@ ELSE()
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
   target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
 ENDIF()
+
+###############
+### Testing ###
+###############
+
+# include(CTest) #adds option BUILD_TESTING (default ON)
+#
+# if(BUILD_TESTING)
+#    enable_testing()
+#    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/unittest)
+#    message(STATUS ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
+# endif()
