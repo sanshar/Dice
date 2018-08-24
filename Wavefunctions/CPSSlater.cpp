@@ -109,7 +109,7 @@ void CPSSlater::initWalker(HFWalker& walk) {
 
 	if (!readDeterminant)
 	{
-
+	  d = Determinant();
 		for (int i = 0; i < nalpha; i++)
 		{
 			int bestorb = 0;
@@ -220,6 +220,39 @@ double CPSSlater::Overlap(HFWalker &walk)
   return ovlp * getOverlapWithDeterminants(walk);
 }
 
+double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk, bool doparity) {
+  Determinant dcopy = walk.d;
+  dcopy.setocc(i, false);
+  dcopy.setocc(a, true);
+  double ovlpdetcopy = getJastrowFactor(i/2, a/2, dcopy, walk.d);
+  if (i % 2 == 0)
+    ovlpdetcopy *= walk.getDetFactorA(i / 2, a / 2, *this, doparity);
+  else
+    ovlpdetcopy *= walk.getDetFactorB(i / 2, a / 2, *this, doparity);
+
+  return ovlpdetcopy;
+}
+
+double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, bool doparity) {
+  Determinant dcopy = walk.d;
+  dcopy.setocc(I, false);
+  dcopy.setocc(J, false);
+  dcopy.setocc(A, true);
+  dcopy.setocc(B, true);
+  double ovlpdetcopy = getJastrowFactor(I/2, J/2, A/2, B/2, dcopy, walk.d);
+
+  if (I % 2 == J % 2 && I % 2 == 0)
+    ovlpdetcopy *= walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity);
+  else if (I % 2 == J % 2 && I % 2 == 1)
+    ovlpdetcopy *= walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity);
+  else if (I % 2 != J % 2 && I % 2 == 0)
+    ovlpdetcopy *= walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity);
+  else
+    ovlpdetcopy *= walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity);
+
+  return ovlpdetcopy;
+
+}
 
 double CPSSlater::getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d)
 {
