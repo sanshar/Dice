@@ -88,7 +88,7 @@ void CPSSlater::initWalker(HFWalker& walk) {
 
 	if (!readDeterminant)
 	{
-
+        d = Determinant();
 		for (int i = 0; i < nalpha; i++)
 		{
 			int bestorb = 0;
