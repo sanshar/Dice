@@ -47,14 +47,6 @@ void CPSSlater::readDefault() {
   HforbsB = MatrixXd::Zero(norbs, norbs);
   readHF(HforbsA, HforbsB, schd.uhf);
 
-  //Setup CPS wavefunctions
-  std::vector<Correlator> nSiteCPS;
-  for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end();
-       it++)
-  {
-    readCorrelator(it->second, it->first, cpsArray);
-  }
-
   //vector<Determinant> detList;
   //vector<double> ciExpansion;
 
@@ -71,19 +63,6 @@ void CPSSlater::readDefault() {
   {
     readDeterminants(schd.determinantFile, determinants, ciExpansion);
   }
-
-  int maxCPSSize = 0;
-  orbitalToCPS.resize(Determinant::norbs);
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].asites.size(); j++)
-      orbitalToCPS[cpsArray[i].asites[j]].push_back(i);
-  }
-
-  for (int i = 0; i < orbitalToCPS.size(); i++)
-    if (orbitalToCPS[i].size() > maxCPSSize)
-      maxCPSSize = orbitalToCPS[i].size();
-  workingVectorOfCPS.resize(4 * maxCPSSize);
 
 }
 
@@ -152,8 +131,9 @@ void CPSSlater::initWalker(HFWalker& walk) {
 		MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 	}
-
+    
 	walk.initUsingWave(*this);
+ 
 }
 
 void CPSSlater::initWalker(HFWalker& walk, Determinant& d) {
@@ -197,99 +177,25 @@ double CPSSlater::getOverlapWithDeterminants(HFWalker &walk)
 //This is expensive and not recommended
 double CPSSlater::Overlap(Determinant &d)
 {
-  double ovlp = 1.0;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    ovlp *= cpsArray[i].Overlap(d);
-  }
   Eigen::MatrixXd DetAlpha, DetBeta;
   getDetMatrix(d, DetAlpha, DetBeta);
-  return ovlp * DetAlpha.determinant() * DetBeta.determinant();
+  return cps.Overlap(d)  * DetAlpha.determinant() * DetBeta.determinant();
 }
 
 double CPSSlater::Overlap(HFWalker &walk)
 {
-  double ovlp = 1.0;
-
-  //Overlap with all the Correlators
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    ovlp *= cpsArray[i].Overlap(walk.d);
-  }
-
-  return ovlp * getOverlapWithDeterminants(walk);
+  return cps.Overlap(walk.d) * getOverlapWithDeterminants(walk);
 }
 
 
 double CPSSlater::getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d)
 {
-  double cpsFactor = 1.0;
-
-  int index = 0;
-  for (int x = 0; x < orbitalToCPS[i].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[i][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[a].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[a][x];
-    index++;
-  }
-  sort(workingVectorOfCPS.begin(), workingVectorOfCPS.begin() + index);
-
-  int prevIndex = -1;
-  for (int x = 0; x < index; x++)
-  {
-    if (workingVectorOfCPS[x] != prevIndex)
-    {
-      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
-      cpsFactor *= cpsArray[workingVectorOfCPS[x]].Overlap(dcopy) / cpsArray[workingVectorOfCPS[x]].Overlap(d);
-      prevIndex = workingVectorOfCPS[x];
-    }
-  }
-
-  return cpsFactor;
+  return cps.OverlapRatio(i, a, dcopy, d);
 }
 
 double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d)
 {
-  double cpsFactor = 1.0;
-
-  int index = 0;
-  for (int x = 0; x < orbitalToCPS[i].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[i][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[a].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[a][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[j].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[j][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[b].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[b][x];
-    index++;
-  }
-  sort(workingVectorOfCPS.begin(), workingVectorOfCPS.begin() + index);
-
-  int prevIndex = -1;
-  for (int x = 0; x < index; x++)
-  {
-    if (workingVectorOfCPS[x] != prevIndex)
-    {
-      cpsFactor *= cpsArray[workingVectorOfCPS[x]].Overlap(dcopy) / cpsArray[workingVectorOfCPS[x]].Overlap(d);
-      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
-      prevIndex = workingVectorOfCPS[x];
-    }
-  }
-  return cpsFactor;
+  return cps.OverlapRatio(i, a, dcopy, d);
 }
 
 void CPSSlater::OverlapWithGradient(HFWalker &walk,
@@ -297,7 +203,7 @@ void CPSSlater::OverlapWithGradient(HFWalker &walk,
                                     VectorXd &grad)
 {
   double factor = 1.0;
-  OverlapWithGradient(walk.d, factor, grad);
+  cps.OverlapWithGradient(walk.d, grad, factor);
 
   int numJastrowVariables = getNumJastrowVariables();
   double detovlp = walk.getDetOverlap(*this);
@@ -312,34 +218,10 @@ void CPSSlater::OverlapWithGradient(HFWalker &walk,
   }
 }
 
-void CPSSlater::OverlapWithGradient(Determinant &d,
-                                    double &factor,
-                                    VectorXd &grad)
-{
-
-  double ovlp = factor;
-  long startIndex = 0;
-
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    cpsArray[i].OverlapWithGradient(d, grad,
-                                    ovlp, startIndex);
-    startIndex += cpsArray[i].Variables.size();
-  }
-}
 
 void CPSSlater::printVariables()
 {
-  long numVars = 0;
-  cout << "CPS"<<endl;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].Variables.size(); j++)
-    {
-      cout << "  " << cpsArray[i].Variables[j];
-      numVars++;
-    }
-  }
+  cps.printVariables();
 
   cout << endl<<"CI-expansion"<<endl;
   for (int i = 0; i < determinants.size(); i++)
@@ -370,14 +252,8 @@ void CPSSlater::updateVariables(Eigen::VectorXd &v)
   int norbs = Determinant::norbs;
 
   long numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].Variables.size(); j++)
-    {
-      cpsArray[i].Variables[j] = v[numVars];
-      numVars++;
-    }
-  }
+  cps.updateVariables(v);
+  numVars += getNumJastrowVariables();
 
   for (int i = 0; i < determinants.size(); i++)
   {
@@ -426,14 +302,8 @@ void CPSSlater::getVariables(Eigen::VectorXd &v)
     v = VectorXd::Zero(getNumVariables());
   }
   long numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].Variables.size(); j++)
-    {
-      v[numVars] = cpsArray[i].Variables[j];
-      numVars++;
-    }
-  }
+  cps.getVariables(v);
+  numVars += getNumJastrowVariables();
   for (int i = 0; i < determinants.size(); i++)
   {
     v[numVars] = ciExpansion[i];
@@ -458,13 +328,18 @@ void CPSSlater::getVariables(Eigen::VectorXd &v)
   }
 }
 
+
+long CPSSlater::getNumJastrowVariables()
+{
+  return cps.getNumVariables();
+}
+//factor = <psi|w> * prefactor;
+
 long CPSSlater::getNumVariables()
 {
   int norbs = Determinant::norbs;
   long numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-    numVars += cpsArray[i].Variables.size();
-
+  numVars += getNumJastrowVariables();
   numVars += determinants.size();
   if (schd.uhf)
     numVars += 2 * norbs * norbs;
@@ -473,16 +348,6 @@ long CPSSlater::getNumVariables()
 
   return numVars;
 }
-
-long CPSSlater::getNumJastrowVariables()
-{
-  long numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-    numVars += cpsArray[i].Variables.size();
-
-  return numVars;
-}
-//factor = <psi|w> * prefactor;
 
 void CPSSlater::writeWave()
 {
@@ -542,11 +407,7 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
   {
     double E0 = d.Energy(I1, I2, coreE);
     ovlp = detOverlap;
-
-    for (int i = 0; i < cpsArray.size(); i++)
-    {
-      ovlp *= cpsArray[i].Overlap(d);
-    }
+    ovlp *= cps.Overlap(d);
     ham = E0;
 
   }

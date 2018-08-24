@@ -40,21 +40,17 @@ class CPSSlater {
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
-    ar & cpsArray
+    ar & cps
        & determinants
        & ciExpansion 
-       & orbitalToCPS
-       & workingVectorOfCPS
        & HforbsA
        & HforbsB;
   }
 
  public:
-   std::vector<Correlator> cpsArray; //The jastrow factors
+   CPS cps; //The jastrow factors
    vector<Determinant> determinants; //The set of determinants
    vector<double> ciExpansion;       //The ci expansion
-   vector<vector<int>> orbitalToCPS; //for each orbital all CPS that it belongs to
-   vector<int> workingVectorOfCPS;
    MatrixXx HforbsA, HforbsB;
 
 
@@ -91,17 +87,6 @@ class CPSSlater {
    double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
    double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
 
-   /**
-   * This calculates the overlap of the determinant with the
-   * gradient of the wavefunction w.r.t to the jastrow parameters,
-   * divided by the overlap of the determinant to the wavefunction
-   * <d|Psi_x>/<d|Psi>, where x is a jastrow parameter
-   * Right now, the walker does not have any useful information to 
-   * evaluate this efficiently
-   */
-   void OverlapWithGradient(Determinant &,
-                            double &factor,
-                            Eigen::VectorXd &grad);
 
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)

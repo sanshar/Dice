@@ -37,7 +37,7 @@
 #include "evaluatePT.h"
 #include "MoDeterminants.h"
 #include "Determinants.h"
-#include "CPS.h"
+#include "Correlator.h"
 #include "Wfn.h"
 #include "input.h"
 #include "integral.h"
