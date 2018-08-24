@@ -64,14 +64,14 @@ private:
       & fn_factor
       & nGeneration
       & excitationLevel;
-
+      & expCorrelator;
   }
 public:
 //General options
   bool restart;                          //option to restart calculation
   bool deterministic;                    //Performs a deterministic calculation   
   int printLevel;                        // How much stuff to print
-
+  bool expCorrelator;                    //exponential correlator parameters, to enforce positivity
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;

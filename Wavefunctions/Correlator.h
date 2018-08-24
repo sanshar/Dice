@@ -25,6 +25,8 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include "input.h"
+#include "global.h"
 
 class Determinant;
 
@@ -62,7 +64,10 @@ private:
     }
     std::sort(asites.begin(), asites.end());
     std::sort(bsites.begin(), bsites.end());
-    Variables.resize( pow(2,asites.size()+bsites.size()), iv);
+    if(!schd.expCorrelator) // exponential correlator coefficients 
+        Variables.resize( pow(2,asites.size()+bsites.size()), iv);
+    else 
+        Variables.resize( pow(2,asites.size()+bsites.size()), 0);
   }
 
 /**
