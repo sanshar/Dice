@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     doGFMCCT(wave, walk, ham);
   }
   else if (schd.wavefunctionType == "CICPSSlater") {
-    CIWavefunction<CPSSlater, HFWalker> wave; HFWalker walk;
+    CIWavefunction<CPSSlater, HFWalker, Operator> wave; HFWalker walk;
     wave.readWave(); wave.initWalker(walk);
 
     //calculate the energy as a initial guess for shift

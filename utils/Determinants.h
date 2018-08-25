@@ -355,6 +355,8 @@ void sampleSingleDoubleExcitation(Determinant& d,  oneInt& I1, twoInt& I2, twoIn
 
 void getOrbDiff(Determinant &bra, Determinant &ket, vector<int> &creA, vector<int> &desA,
                 vector<int> &creB, vector<int> &desB);
+void getOrbDiff(Determinant &bra, Determinant &ket, int &I, int &A);
+void getOrbDiff(Determinant &bra, Determinant &ket, int &I, int &J, int& A, int& B);
 
 double getParityForDiceToAlphaBeta(Determinant& det);
 #endif
