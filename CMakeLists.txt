@@ -105,11 +105,11 @@ ENDIF()
 ###############
 ### Testing ###
 ###############
-
+# 
 # include(CTest) #adds option BUILD_TESTING (default ON)
 #
 # if(BUILD_TESTING)
 #    enable_testing()
-#    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/unittest)
-#    message(STATUS ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
+#    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/unittests)
+#    message(STATUS ${CMAKE_CURRENT_SOURCE_DIR}/unittests)
 # endif()

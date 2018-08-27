@@ -31,11 +31,11 @@
 #include "Hmult.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
-#include "global.h"
 #include "SHCImakeHamiltonian.h"
 #include "SHCIrdm.h"
 #include "SHCItime.h"
 #include "boost/format.hpp"
+#include "global.h"
 #include "input.h"
 #include "integral.h"
 #ifndef SERIAL
@@ -53,7 +53,7 @@
 #include "communicate.h"
 
 #include "symmetry.h"
-MatrixXd symmetry::product_table;
+// MatrixXd symmetry::product_table;
 #include <algorithm>
 #include <boost/bind.hpp>
 

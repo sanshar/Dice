@@ -20,15 +20,15 @@
 #ifndef symmetry_HEADER_H
 #define symmetry_HEADER_H
 
-#include "global.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <Eigen/Dense>
+#include <algorithm>
+#include <boost/bind.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stdio.h>
-#include <stdlib.h>
-#include <algorithm>
-#include <boost/bind.hpp>
-#include <Eigen/Dense>
+#include "global.h"
 
 using namespace Eigen;
 using namespace std;
@@ -36,22 +36,23 @@ using namespace std;
 class oneInt;
 class Determinant;
 
-bool compareForSortingEnergies(const pair<double,int>& a,const pair<double,int>& b);
+bool compareForSortingEnergies(const pair<double, int>& a,
+                               const pair<double, int>& b);
 
 class symmetry {
-private:
-	// Full table for d2h and all subgroups
-	MatrixXd fullD2hTable;
+ private:
+  // Full table for d2h and all subgroups
+  MatrixXd fullD2hTable;
 
-public:
-	static MatrixXd product_table;       //product table for a given symmetry
-	string pointGroup;       //eg. d2h, c2
-	symmetry(string);       //product and sym is initialized
-	int getProduct(int,int);
-	int getProduct(vector<int>&);
-	int getSymmetry(char*, vector<int>&);
-	void estimateLowestEnergyDet( int, int, oneInt, vector<int>&, vector<int>&,
-	  Determinant& );
+ public:
+  MatrixXd product_table;  // product table for a given symmetry
+  string pointGroup;       // eg. d2h, c2
+  symmetry(string);        // product and sym is initialized
+  int getProduct(int, int);
+  int getProduct(vector<int>&);
+  int getSymmetry(char*, vector<int>&);
+  void estimateLowestEnergyDet(int, int, oneInt, vector<int>&, vector<int>&,
+                               Determinant&);
 };
 
 #endif
