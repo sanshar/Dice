@@ -64,10 +64,15 @@ private:
     }
     std::sort(asites.begin(), asites.end());
     std::sort(bsites.begin(), bsites.end());
-    if(!schd.expCorrelator) // exponential correlator coefficients 
+    if(!schd.expCorrelator)
+    {// exponential correlator coefficients 
         Variables.resize( pow(2,asites.size()+bsites.size()), iv);
-    else 
-        Variables.resize( pow(2,asites.size()+bsites.size()), 0);
+    }
+    else
+    {
+        Variables.resize( pow(2,asites.size()+bsites.size()), 0.0);
+        //Variables.resize( pow(2,asites.size()+bsites.size()), 1.0);
+    }
   }
 
 /**

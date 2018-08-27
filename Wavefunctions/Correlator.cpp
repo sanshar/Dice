@@ -36,11 +36,15 @@ void Correlator::OverlapWithGradient(const Determinant& d,
       index |= (one<< (n+bsites.size()));
     }
 
-  if(!schd.expCorrelator) 
+  if(!schd.expCorrelator)
+  {
       grad[index+startIndex] += ovlp/Variables[index];
-  else 
+  }
+  else
+  {
       grad[index+startIndex] += ovlp;
-  return ;
+      //grad[index+startIndex] += 2*ovlp/Variables[index];
+  }
 }
 
 double Correlator::Overlap(const Determinant& d) {
@@ -56,10 +60,15 @@ double Correlator::Overlap(const Determinant& d) {
     if (d.getoccA( asites[n]))
       index |= (one << (n+bsites.size()));
 
-  if(!schd.expCorrelator) 
+  if(!schd.expCorrelator)
+  {
       return Variables[index];
-  else 
+  }
+  else
+  {
       return exp(Variables[index]);
+      //return (Variables[index]*Variables[index]);
+  }
 }
 
 double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) {
@@ -81,10 +90,15 @@ double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) {
       index2 |= (one<< (n+bsites.size()));
   }
 
-  if(!schd.expCorrelator) 
+  if(!schd.expCorrelator)
+  {
       return Variables[index1]/Variables[index2];
-  else 
+  }
+  else
+  {
       return exp(Variables[index1]-Variables[index2]);
+      //return (Variables[index1]/Variables[index2]*Variables[index1]/Variables[index2]);
+  }
 }
 
 std::ostream& operator<<(std::ostream& os, const Correlator& c) {
