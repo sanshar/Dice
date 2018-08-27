@@ -292,7 +292,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
                                 + nonZeroIntegrals*sizeof(std::complex<double>));
   pairs                         = (short*)(startAddress
                                 + nonZeroIntegrals*sizeof(std::complex<double>)
-                                + norbs*norbs*sizeof(size_t));                            
+                                + norbs*(norbs + 1) / 2*sizeof(size_t));                            
 
   if (commrank == 0) {
     //startingIndicesSameSpin[0] = 0;

@@ -247,7 +247,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
     }
   }
   for (int i = 0; i < Nminus2ToDetSM.size(); i++) {
-    if (i % nprocs != proc) continue;
+    //if (i % nprocs != proc) continue;
     for (int j = 0; j<Nminus2ToDetLen[i]; j++) {
       for (int k=j+1; k<Nminus2ToDetLen[i]; k++) {
         int DetI = Nminus2ToDetSM[i][j];

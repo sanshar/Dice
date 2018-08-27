@@ -1,7 +1,7 @@
 USE_MPI = yes
-USE_INTEL = no
-EIGEN=/usr/include/eigen3
-BOOST=/home/xubo/software/boost_1_66_0
+USE_INTEL = yes
+EIGEN=/projects/xuwa0145/local/eigen/include/eigen3/
+BOOST=/projects/xuwa0145/tools/boost_1_66_0/
 #EIGEN=/projects/sash2458/apps/eigen/
 #BOOST=/projects/sash2458/apps/boost_1_57_0/
 #EIGEN=/home/mussard/softwares/eigen
@@ -17,11 +17,11 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lboost_mpi -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lrt
 	else
 		CXX = icpc
 		CC = icpc
-		LFLAGS = -L${BOOST}/stage_bla/lib -lboost_serialization -lrt
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lrt
 		FLAGS += -DSERIAL
 		DFLAGS += -DSERIAL
 	endif
