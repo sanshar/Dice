@@ -55,8 +55,7 @@ message( STATUS ${EIGEN3_INCLUDE_DIR})
 ###############
 
 set(DICE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Dice/) # TODO
-set(DICE_SOURCES
-  ${DICE_SOURCE_DIR}/SHCI.cpp
+set(DICE_LIB_SOURCES
   ${DICE_SOURCE_DIR}/SHCIbasics.cpp
   ${DICE_SOURCE_DIR}/Determinants.cpp
   ${DICE_SOURCE_DIR}/integral.cpp
@@ -72,21 +71,22 @@ set(DICE_SOURCES
   ${DICE_SOURCE_DIR}/symmetry.cpp
 )
 
-set(ZDICE2_SOURCES ${DICE_SOURCES}
-  ${DICE_SOURCE_DIR}/SOChelper.cpp
-  ${DICE_SOURCE_DIR}/new_anglib.cpp
-)
+add_library(dice SHARED ${DICE_LIB_SOURCES})
+
+# set(ZDICE2_SOURCES ${DICE_SOURCES}
+#   ${DICE_SOURCE_DIR}/SOChelper.cpp
+#   ${DICE_SOURCE_DIR}/new_anglib.cpp
+# )
 
 
 #####################
 ### Compilitation ###
 #####################
 
-add_executable(Dice ${DICE_SOURCES})
-add_executable(DiceSerial ${DICE_SOURCES})
-set_target_properties(DiceSerial PROPERTIES COMPILE_FLAGS "-DSERIAL")
-
-add_executable(ZDice2 ${ZDICE2_SOURCES})
+add_executable(Dice ${DICE_SOURCE_DIR}/SHCI.cpp)
+# add_executable(DiceSerial ${DICE_SOURCES})
+# set_target_properties(DiceSerial PROPERTIES COMPILE_FLAGS "-DSERIAL")
+# add_executable(ZDice2 ${ZDICE2_SOURCES})
 
 
 ###############
@@ -95,11 +95,11 @@ add_executable(ZDice2 ${ZDICE2_SOURCES})
 
 # Do not include -lrt on Mac OSX builds
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
-  target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
+  target_link_libraries(Dice dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
+  # target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
 ELSE()
-  target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
-  target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+  target_link_libraries(Dice dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+  # target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
 ENDIF()
 
 ###############
