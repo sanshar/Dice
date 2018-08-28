@@ -63,7 +63,7 @@ private:
       & tau
       & fn_factor
       & nGeneration
-      & excitationLevel;
+      & excitationLevel
       & expCorrelator;
   }
 public:
