@@ -492,6 +492,118 @@ void getOrbDiff(Determinant &bra, Determinant &ket, vector<int>& creA, vector<in
 }
 
 
+void getOrbDiff(Determinant &bra, Determinant &ket, int &I, int &A)
+{
+  I = -1; A = -1;
+  long u, b, k, one = 1;
+  
+  for (int i = 0; i < DetLen; i++)
+  {
+    u = bra.reprA[i] ^ ket.reprA[i];
+    b = u & bra.reprA[i]; //the cre bits
+    k = u & ket.reprA[i]; //the des bits
+    
+    while (b != 0)
+    {
+      int pos = __builtin_ffsl(b);
+      I = 2*(pos - 1 + i * 64);
+      b &= ~(one << (pos - 1));
+    }
+    while (k != 0)
+    {
+      int pos = __builtin_ffsl(k);
+      A = 2 * (pos - 1 + i * 64);
+      k &= ~(one << (pos - 1));
+    }
+  }
+
+  for (int i = 0; i < DetLen; i++)
+  {
+    u = bra.reprB[i] ^ ket.reprB[i];
+    b = u & bra.reprB[i]; //the cre bits
+    k = u & ket.reprB[i]; //the des bits
+    
+    while (b != 0)
+    {
+      int pos = __builtin_ffsl(b);
+      I = 2 * (pos - 1 + i * 64) + 1;
+      b &= ~(one << (pos - 1));
+    }
+    while (k != 0)
+    {
+      int pos = __builtin_ffsl(k);
+      A = 2 * (pos - 1 + i * 64) + 1;
+      k &= ~(one << (pos - 1));
+    }
+  }
+}
+
+
+void getOrbDiff(Determinant &bra, Determinant &ket, int &I, int &J, int& A, int& B)
+{
+  I = -1; A = -1; J = -1; B = -1;
+  long u, b, k, one = 1;
+  
+  for (int i = 0; i < DetLen; i++)
+  {
+    u = bra.reprA[i] ^ ket.reprA[i];
+    b = u & bra.reprA[i]; //the cre bits
+    k = u & ket.reprA[i]; //the des bits
+    
+    while (b != 0)
+    {
+      int pos = __builtin_ffsl(b);
+
+      if (I == -1)
+	I = 2*(pos - 1 + i * 64);
+      else
+	J = 2*(pos - 1 + i * 64);
+	
+      b &= ~(one << (pos - 1));
+    }
+    while (k != 0)
+    {
+      int pos = __builtin_ffsl(k);
+      if (A == -1)
+	A = 2*(pos - 1 + i * 64);
+      else
+	B = 2*(pos - 1 + i * 64);
+      //A = 2 * (pos - 1 + i * 64);
+      k &= ~(one << (pos - 1));
+    }
+  }
+
+  for (int i = 0; i < DetLen; i++)
+  {
+    u = bra.reprB[i] ^ ket.reprB[i];
+    b = u & bra.reprB[i]; //the cre bits
+    k = u & ket.reprB[i]; //the des bits
+    
+    while (b != 0)
+    {
+      int pos = __builtin_ffsl(b);
+
+      if (I == -1)
+	I = 2*(pos - 1 + i * 64) + 1;
+      else
+	J = 2*(pos - 1 + i * 64) + 1;
+
+      b &= ~(one << (pos - 1));
+    }
+    while (k != 0)
+    {
+      int pos = __builtin_ffsl(k);
+      if (A == -1)
+	A = 2*(pos - 1 + i * 64) + 1;
+      else
+	B = 2*(pos - 1 + i * 64) + 1;
+
+      k &= ~(one << (pos - 1));
+    }
+  }
+}
+
+
 double getParityForDiceToAlphaBeta(Determinant& det) 
 {
 	double parity = 1.0;

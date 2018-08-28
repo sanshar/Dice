@@ -84,6 +84,9 @@ class CPSSlater {
    */
    double Overlap(Determinant &);
 
+   double getOverlapFactor(int i, int a, HFWalker& w, bool doparity);
+   double getOverlapFactor(int i, int j, int a, int b, HFWalker& w, bool doparity);
+
    double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
    double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
 
