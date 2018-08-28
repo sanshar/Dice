@@ -899,7 +899,7 @@ void SHCImakeHamiltonian::MakeSMHelpers(
 
 //=============================================================================
 void SHCImakeHamiltonian::updateSOCconnections(
-    Determinant* Dets, int prevSize, int DetsSize, Determinant* SortedDets,
+    Determinant* Dets, int prevSize, int DetsSize, Determinant* SortedDets, 
     vector<vector<int>>& connections, vector<vector<size_t>>& orbDifference,
     vector<vector<CItype>>& Helements, int norbs, oneInt& int1, int nelec,
     bool includeSz) {

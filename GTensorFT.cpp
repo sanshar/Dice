@@ -155,6 +155,17 @@ int main(int argc, char* argv[]) {
   I2HBSHM.constructClass(norbs / 2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
+  // vector<MatrixXx> citmp(2 , MatrixXx::Zero(HFoccupied.size(), 1));
+  // vector<Determinant> Detstmp;
+  // vector<double> E0tmp = SHCIbasics::DoVariational(citmp, Detstmp, schd, I2, I2HBSHM,
+	// 					  irrep, I1, coreE, nelec, schd.DoRDM);
+  // for(int ii=0;ii<citmp.size();ii++)
+  // for(int jj=0;jj<citmp.size();jj++){
+  //   cout << citmp[ii][jj];
+  //   if(jj==citmp.size()-1) cout << endl;
+  // }
+  // exit(0);
+
 #ifndef SERIAL
   mpi::broadcast(world, I1, 0);
 #endif

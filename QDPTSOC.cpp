@@ -22,6 +22,7 @@
 #include <fstream>
 #include "Determinants.h"
 #include "SHCImakeHamiltonian.h"
+#include "SHCIshm.h"
 #include "input.h"
 #include "integral.h"
 #include "Hmult.h"
@@ -39,12 +40,15 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include "communicate.h"
 #include "SOChelper.h"
+#include "symmetry.h"
 
 using namespace Eigen;
 using namespace boost;
+using namespace SHCIbasics;
 int HalfDet::norbs = 1; //spin orbitals
 int Determinant::norbs = 1; //spin orbitals
 int Determinant::EffDetLen = 1;
@@ -58,13 +62,13 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-boost::interprocess::shared_memory_object int2Segment;
-boost::interprocess::mapped_region regionInt2;
-boost::interprocess::shared_memory_object int2SHMSegment;
-boost::interprocess::mapped_region regionInt2SHM;
-boost::interprocess::shared_memory_object hHelpersSegment;
-boost::interprocess::mapped_region regionHelpers;
-string shciHelper;
+// boost::interprocess::shared_memory_object int2Segment;
+// boost::interprocess::mapped_region regionInt2;
+// boost::interprocess::shared_memory_object int2SHMSegment;
+// boost::interprocess::mapped_region regionInt2SHM;
+// boost::interprocess::shared_memory_object hHelpersSegment;
+// boost::interprocess::mapped_region regionHelpers;
+// string shciHelper;
 
 
 void readInput(string input, vector<std::vector<int> >& occupied, schedule& schd);
@@ -76,28 +80,42 @@ int main(int argc, char* argv[]) {
   boost::mpi::communicator world;
 #endif
 
+  // Initialize
+  initSHM();
+
   //Read the input file
   std::vector<std::vector<int> > HFoccupied;
   schedule schd;
-  if (mpigetrank() == 0) readInput("input.dat", HFoccupied, schd);
+  string inputFile = "input.dat";
+  if (argc > 1) inputFile = string(argv[1]);
+cout << ")))";
+  if (commrank == 0) readInput(inputFile, HFoccupied, schd);
+
+cout << "!!!"; 
+  if(DetLen % 2 ==1) {
+    pout << "Change DetLen in global to an even number and recompile." << endl;
+    exit(0);
+  }
 
 #ifndef SERIAL
   mpi::broadcast(world, HFoccupied, 0);
   mpi::broadcast(world, schd, 0);
 #endif
+
+  // Time reversal symmetry
   if (HFoccupied[0].size()%2 != 0 && schd.Trev !=0) {
     pout << "Cannot use time reversal symmetry for odd electron system."<<endl;
     schd.Trev = 0;
   }
   Determinant::Trev = schd.Trev;
-  omp_set_num_threads(schd.num_thrds);
+  //omp_set_num_threads(schd.num_thrds);
 
   int nelec = HFoccupied[0].size();
 
 
   //set the random seed
   startofCalc=getTime();
-  srand(schd.randomSeed+mpigetrank());
+  srand(schd.randomSeed+commrank);
 
 
   int num_thrds;
@@ -108,19 +126,30 @@ int main(int argc, char* argv[]) {
   HalfDet::norbs = norbs; //spin orbitals
   Determinant::EffDetLen = norbs/64+1;
   Determinant::initLexicalOrder(nelec);
-  oneInt I1; I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
+  if (Determinant::EffDetLen >DetLen) {
+    cout << "change DetLen in global.h to " << Determinant::EffDetLen <<" and recompile " << endl;
+    exit(0);
+  }
+
+  oneInt I1; 
+  I1.store.resize(norbs*norbs, 0.0); 
+  I1.norbs = norbs;
   readSOCIntegrals(I1, norbs, "SOC");
+#ifndef SERIAL
+  mpi::broadcast(world, I1, 0);
+#endif
 
 
   //have the dets, ci coefficient and diagnoal on all processors
   vector<MatrixXd> ci;
-  std::vector<Determinant> Dets, SortedDets;
+  std::vector<Determinant> Dets;
   std::vector<double> Energy;
   MatrixXd diag;
+
   for (int i=0; i<schd.prefix.size(); i++)
   {
     char file [5000];
-    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[i].c_str(), mpigetrank() );
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[i].c_str(), commrank );
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
 
@@ -283,7 +312,7 @@ int main(int argc, char* argv[]) {
       rowIndex[j] = rowIndex[j-1]+Spin[j-1]+1;
   }
 
-  cout << str(boost::format("PERFORMING QDPTSOC with %s roots\n")%ci.size());
+  cout << str(boost::format("PERFORMING SOC with %s roots\n")%ci.size());
   for (int j=0; j<ci.size(); j++)
     cout << str(boost::format("State: %3d,  2S: %3d,  S^2: %8.2g,  dE: %10.2f\n")%j %Spin[j] %SpinSquare[j] %( (Energy[j]-Energy[0])*219470));
 
@@ -296,10 +325,43 @@ int main(int argc, char* argv[]) {
 
   //update the connections
   //this will just update the connections and Helements with the SOC integrals
-  std::vector<std::vector<int> > connections; connections.resize(Dets.size());
-  std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-  std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
-  SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, I1, nelec);
+ 
+  // std::vector<std::vector<int> > connections; connections.resize(Dets.size());
+  // std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
+  // std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
+  
+  int proc = 0, nprocs = 1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+
+  // Put determinants on the shared memory
+  Determinant *SHMDets, *SortedDets;
+  SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+  if (proc != 0) Dets.resize(0);
+  std::vector<Determinant> SortedDetsvec;  // only proc 1 has it
+  if (commrank == 0) {
+    SortedDetsvec = Dets;
+    std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
+  }
+  int SortedDetsSize = SortedDetsvec.size(), DetsSize = Dets.size();
+  SHMVecFromVecs(SortedDetsvec, SortedDets, shciSortedDets, SortedDetsSegment,
+                 regionSortedDets);
+  Dets.clear();
+  SortedDetsvec.clear();
+#ifndef SERIAL
+  mpi::broadcast(world, SortedDetsSize, 0);
+  mpi::broadcast(world, DetsSize, 0);
+#endif
+  SparseHam Sham1;
+  Sham1.connections.resize(Dets.size());
+  Sham1.Helements.resize(Dets.size());
+  Sham1.orbDifference.resize(Dets.size());
+
+  SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize, SortedDets, 
+                                        Sham1.connections, Sham1.orbDifference, Sham1.Helements, 
+                                        norbs, I1, nelec);
   pout <<"Updated connections."<<endl;
 
   // calculate the matrix elements <S1|SOC|S2>
@@ -307,7 +369,7 @@ int main(int argc, char* argv[]) {
     for (int j=i+1; j<ci.size(); j++) {
       int s1 = Spin[i], s2=Spin[j];
       SOChelper::calculateMatrixElements(s1, s2, Sz, rowIndex[i], rowIndex[j], ci[i], ci[j],
-					 connections, Helements, Hsubspace, Dets, norbs,
+					 Sham1.connections, Sham1.Helements, Hsubspace, Dets, norbs,
 					 beginS0, beginSp, beginSm);
     }
   }
@@ -363,29 +425,39 @@ int main(int argc, char* argv[]) {
 
     //First calcualte S
     for (int a=0; a<3; a++) {
-      std::vector<std::vector<int> > connections; connections.resize(Dets.size());
-      std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
-      std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
-
+      // std::vector<std::vector<int> > connections; connections.resize(Dets.size());
+      // std::vector<std::vector<CItype> > Helements;Helements.resize(Dets.size());
+      // std::vector<std::vector<size_t> > orbDifference; orbDifference.resize(Dets.size());
+      SparseHam Sham2;
+      Sham2.connections.resize(Dets.size());
+      Sham2.Helements.resize(Dets.size());
+      Sham2.orbDifference.resize(Dets.size());
+      
       oneInt LplusSInt;
+      
       LplusSInt.store.resize(norbs*norbs, 0.0);
       LplusSInt.norbs = norbs;
       for (int i=0; i<L[a].store.size(); i++)
-	LplusSInt.store[i] = 1.*L[a].store[i]+1.*S[a].store[i];
+	      LplusSInt.store[i] = 1.*L[a].store[i]+1.*S[a].store[i];
 
       //updateSOCconnections does not update the diagonal elements
       //these have to be done separately
       for (int i=0; i<Dets.size(); i++) {
-	connections[i].push_back(i);
-	CItype energy = 0.0;
-	for (int j=0; j<norbs; j++)
-	  if (Dets[i].getocc(j)) {
-	    energy += LplusSInt(j,j);
-	  }
-	Helements[i].push_back(energy);
+	      Sham2.connections[i].push_back(i);
+	      CItype energy = 0.0;
+	      for (int j=0; j<norbs; j++)
+	        if (Dets[i].getocc(j)) {
+	          energy += LplusSInt(j,j);
+	        }
+	      Sham2.Helements[i].push_back(energy);
       }
-      SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusSInt, nelec);
-      Hmult2 H(connections, Helements);
+      
+      SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+      DetsSize = Dets.size();
+      
+      SHCImakeHamiltonian::updateSOCconnections(SHMDets, 0, DetsSize,
+       SortedDets, Sham2.connections, Sham2.orbDifference, Sham2.Helements, norbs, LplusSInt, nelec);
+      Hmult2 H( Sham2);
       for (int j=0; j<ci.size(); j++) {//bra
 	for (int i=j; i<ci.size(); i++) {//ket
 	  for (int sz2=-Spin[j]; sz2<=Spin[j]; sz2+=2) {//bra Sz
@@ -406,7 +478,7 @@ int main(int argc, char* argv[]) {
 	      else
 		c1extended.block(0,0,ci[i].rows(),1) = 1.*ci[i];
 
-	      H(c1extended, Hc1);
+	      H(&c1extended(0,0), &Hc1(0,0));
 	      LplusS[a](rowIndex[j]+ (-sz2+Spin[j])/2, rowIndex[i] + (-sz1+Spin[i])/2) = (c2extended.adjoint()*Hc1)(0,0);
 	      LplusS[a](rowIndex[i]+ (-sz1+Spin[i])/2, rowIndex[j] + (-sz2+Spin[j])/2) = (Hc1.adjoint()*c2extended)(0,0);
 

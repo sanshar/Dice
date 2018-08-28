@@ -189,8 +189,7 @@ void MakeHfromHelpers(int*& BetaVecLen, vector<int*>& BetaVec,
                       std::vector<std::vector<size_t>>& orbDifference,
                       bool DoRDM = false);
 
-void updateSOCconnections(Determinant* Dets, int prevSize, int DetsSize,
-                          Determinant* SortedDets,
+void updateSOCconnections(Determinant* Dets, int prevSize, int DetsSize, Determinant * SortedDets,
                           vector<vector<int>>& connections,
                           vector<vector<size_t>>& orbDifference,
                           vector<vector<CItype>>& Helements, int norbs,

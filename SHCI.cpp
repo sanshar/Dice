@@ -171,12 +171,15 @@ int main(int argc, char* argv[]) {
 
   // Read the Hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2;
-  oneInt I1;
+  oneInt I1, SOC;
   int nelec;
   int norbs;
   double coreE = 0.0, eps;
   std::vector<int> irrep;
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
+  SOC.store.clear();
+  SOC.store.resize(2 * norbs * (2 * norbs), 0.0);
+  SOC.norbs = 2 * norbs;
 
   // Check
   if (HFoccupied[0].size() != nelec) {
@@ -215,6 +218,7 @@ int main(int argc, char* argv[]) {
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
   if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, SOC, norbs / 2);
   I2HBSHM.constructClass(norbs / 2, I2HB);
 
   int num_thrds;
@@ -228,9 +232,11 @@ int main(int argc, char* argv[]) {
   }
 #else
   if (schd.doSOC) {
-    readSOCIntegrals(I1, norbs, "SOC");
+    //readSOCIntegrals(I1, norbs, "SOC");
+    readSOCIntegrals(SOC, norbs, "SOC");
 #ifndef SERIAL
-    mpi::broadcast(world, I1, 0);
+    //mpi::broadcast(world, I1, 0);
+    mpi::broadcast(world, SOC, 0);
 #endif
   }
 #endif
@@ -427,9 +433,13 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
 	mpi::broadcast(world, ci, 0);
 #endif
-	SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
-	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
-	if (commrank != 0) {
+	//SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
+  SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[2], SHMDets, DetsSize, norbs, nelec);
+  for(int ii=0; ii<3; ii++)
+    cout << spinRDM[ii] <<endl;
+	//SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
+	SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
+  if (commrank != 0) {
 	  ci[0].resize(1,1);
 	  ci[1].resize(1,1);
 	}

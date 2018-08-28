@@ -458,3 +458,28 @@ void SOChelper::calculateMatrixElementsForgTensor(int spin1, int spin2, int Sz, 
     }
   return;
 }
+
+void SOChelper::doSocOffdiagonal(vector<MatrixXx>& ci, Determinant* Dets, oneInt SOC, int Detssize, int norbs, int nelec, vector<MatrixXx>& spinRDM)
+{
+  cout << "Calculating SOC Hamiltonian :" << endl;
+  MatrixXx Intermediate = MatrixXx::Zero(2,2);
+  for(int i=0; i<norbs; i++)
+  for(int j=0; j<norbs; j++){
+    Intermediate(0,0) += SOC(i,j)*spinRDM[0](i,j);
+    Intermediate(1,1) += SOC(i,j)*spinRDM[1](i,j);
+    Intermediate(0,1) += SOC(i,j)*spinRDM[2](i,j);
+  }
+  Intermediate(1,0) = conj(Intermediate(0,1));
+
+  
+  
+  SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate);
+  if (eigensolver.info() != Success) abort();
+
+  cout << Intermediate <<endl;
+  pout <<endl<< "SOC eigenvalues"<<endl;
+  pout << str(boost::format("soc1= %9.6f\n")%eigensolver.eigenvalues()[0] );
+  pout << str(boost::format("soc2= %9.6f\n")%eigensolver.eigenvalues()[1] );
+  
+
+}

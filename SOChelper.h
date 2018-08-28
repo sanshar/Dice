@@ -63,6 +63,9 @@ namespace SOChelper {
     void doGTensor(vector<MatrixXx>& ci, Determinant* Dets,
 		   vector<double>& E0, int Detssize, int norbs, 
 		   int nelec, vector<MatrixXx>& spinRDM);
+	void doSocOffdiagonal(vector<MatrixXx>& ci, Determinant* Dets,
+	       oneInt SOC, int Detssize, int norbs, int nelec,
+		   vector<MatrixXx>& spinRDM);
 };
 
 #endif
