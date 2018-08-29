@@ -74,12 +74,7 @@ openmpi_ubuntu16_test:
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - cd build
-    - make unit1
-    - make test
-    - cd ../tests/o2_omp1_det
-    - ../../build/Dice
-    - mpirun -n 2 --allow-run-as-root ../../build/Dice
+    - bash .gitlab-ci-test-and-cov.sh
 
 
 openmpi_ubuntu17_test:
@@ -90,12 +85,9 @@ openmpi_ubuntu17_test:
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - cd build
-    - make unit1
-    - make test
-    - cd ../tests/o2_omp1_det
-    - ../../build/Dice
-    - mpirun -n 2 --allow-run-as-root ../../build/Dice
+    - bash .gitlab-ci-test-and-cov.sh
+
+
 
 
 mpich_ubuntu16_test:
@@ -106,12 +98,7 @@ mpich_ubuntu16_test:
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - cd build
-    - make unit1
-    - make test
-    - cd ../tests/o2_omp1_det
-    - ../../build/Dice
-    - mpirun -n 2 --allow-run-as-root ../../build/Dice
+    - bash .gitlab-ci-test-and-cov.sh
 
 
 mpich_ubuntu17_test:
@@ -122,9 +109,4 @@ mpich_ubuntu17_test:
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - cd build
-    - make unit1
-    - make test
-    - cd ../tests/o2_omp1_det
-    - ../../build/Dice
-    - mpirun -n 2 --allow-run-as-root ../../build/Dice
+    - bash .gitlab-ci-test-and-cov.sh

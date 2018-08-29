@@ -6,6 +6,7 @@
 *.exe
 *.o
 *.so
+*.dSYM
 
 # Packages #
 ############
@@ -18,6 +19,23 @@
 #*.tar
 *.zip
 
+# CMake #
+#########
+*tcl
+build/*/*
+*CMakeCache.txt
+*CMakeFiles*
+*cmake
+build/Dice
+build/Makefile
+debug/*
+
+# Code Cov #
+############
+*.gcov
+*.gcno
+*.gcda
+
 # HTML Build #
 ##############
 #*docs/_build/*
@@ -28,3 +46,5 @@
 *.doctree
 *.bkp
 output*.dat
+*~
+.DS_Store

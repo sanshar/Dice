@@ -2,12 +2,11 @@
 
 // Let Catch provide main():
 #define CATCH_CONFIG_MAIN
-#include "symmetry.h"
 #include <catch.hpp>
 #include <string>
+#include "symmetry.h"
 
 TEST_CASE("Point Group Properties", "[symmetry]") {
-
   SECTION("D2h") {
     symmetry sym((std::string) "d2h");
 
@@ -20,9 +19,9 @@ TEST_CASE("Point Group Properties", "[symmetry]") {
     }
 
     // A few assorted products
-    REQUIRE(sym.getProduct(4, 6) == 7); // B1g * B2g = B3g
-    REQUIRE(sym.getProduct(4, 3) == 2); // B1g * B2u = B3u
-    REQUIRE(sym.getProduct(5, 3) == 7); // B1u * B2u = B3g
+    REQUIRE(sym.getProduct(4, 6) == 7);  // B1g * B2g = B3g
+    REQUIRE(sym.getProduct(4, 3) == 2);  // B1g * B2u = B3u
+    REQUIRE(sym.getProduct(5, 3) == 7);  // B1u * B2u = B3g
   }
 
   SECTION("C2v") {
@@ -88,6 +87,14 @@ mpicxx -std=c++11 -g -O3 -I/Users/jets/apps/Dice/External/Catch
 -L/Users/jets/apps/boost_1_67_0/stage/lib -o unit-symmetry unit-symmetry.cpp
 /Users/jets/apps/Dice/build/CMakeFiles/Dice.dir/Dice/symmetry.cpp.o -lboost_mpi
 -lboost_serialization  && ./unit-symmetry --success
+
+mpicxx -std=c++11 -g -O0 --fprofile-arcs -ftest-coverage
+-I/Users/jets/apps/Dice/External/Catch -I/Users/jets/apps/boost_1_67_0/
+-I/Users/jets/apps/eigen -L/Users/jets/apps/boost_1_67_0/stage/lib -o
+unit-symmetry unit-symmetry.cpp
+/Users/jets/apps/Dice/build/CMakeFiles/Dice.dir/Dice/symmetry.cpp.o -lboost_mpi
+-lboost_serialization  && ./unit-symmetry --success
+
 
 mpicxx -std=c++11 -g -O3 -I/home/jets/apps/test/Dice/External/Catch
 -I/home/jets/apps/boost_1_67_0/ -I/home/jets/apps/eigen
