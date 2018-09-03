@@ -81,6 +81,13 @@ TEST_CASE("Point Group Properties", "[symmetry]") {
   }
 }
 
+// TODO
+// TEST_CASE("Symmetry Functions", "[functions]") {
+//   SECTION("getSymmetry") {
+//
+//   }
+// }
+
 /*
 mpicxx -std=c++11 -g -O3 -I/Users/jets/apps/Dice/External/Catch
 -I/Users/jets/apps/boost_1_67_0/ -I/Users/jets/apps/eigen
