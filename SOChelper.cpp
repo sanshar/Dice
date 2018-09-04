@@ -473,13 +473,13 @@ void SOChelper::doSocOffdiagonal(vector<MatrixXx>& ci, Determinant* Dets, oneInt
 
   
   
-  SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate);
-  if (eigensolver.info() != Success) abort();
+  // SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate);
+  // if (eigensolver.info() != Success) abort();
 
   cout << Intermediate <<endl;
-  pout <<endl<< "SOC eigenvalues"<<endl;
-  pout << str(boost::format("soc1= %9.6f\n")%eigensolver.eigenvalues()[0] );
-  pout << str(boost::format("soc2= %9.6f\n")%eigensolver.eigenvalues()[1] );
+  // pout <<endl<< "SOC eigenvalues"<<endl;
+  // pout << str(boost::format("soc1= %9.6f\n")%eigensolver.eigenvalues()[0] );
+  // pout << str(boost::format("soc2= %9.6f\n")%eigensolver.eigenvalues()[1] );
   
 
 }

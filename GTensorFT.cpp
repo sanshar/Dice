@@ -155,44 +155,34 @@ int main(int argc, char* argv[]) {
   I2HBSHM.constructClass(norbs / 2, I2HB);
 
   readSOCIntegrals(I1, norbs, "SOC");
-  // vector<MatrixXx> citmp(2 , MatrixXx::Zero(HFoccupied.size(), 1));
-  // vector<Determinant> Detstmp;
-  // vector<double> E0tmp = SHCIbasics::DoVariational(citmp, Detstmp, schd, I2, I2HBSHM,
-	// 					  irrep, I1, coreE, nelec, schd.DoRDM);
-  // for(int ii=0;ii<citmp.size();ii++)
-  // for(int jj=0;jj<citmp.size();jj++){
-  //   cout << citmp[ii][jj];
-  //   if(jj==citmp.size()-1) cout << endl;
-  // }
-  // exit(0);
 
 #ifndef SERIAL
   mpi::broadcast(world, I1, 0);
 #endif
 
   //initialize L and S integrals
-  vector<oneInt> L(3), S(3);
+  vector<oneInt> LplusS(3);// L(3), S(3);
   for (int i=0; i<3; i++) {
-    L[i].store.resize(norbs*norbs, 0.0);
-    L[i].norbs = norbs;
+    LplusS[i].store.resize(norbs*norbs, 0.0);
+    LplusS[i].norbs = norbs;
 
-    S[i].store.resize(norbs*norbs, 0.0);
-    S[i].norbs = norbs;
+    // S[i].store.resize(norbs*norbs, 0.0);
+    // S[i].norbs = norbs;
   }
   //read L integrals
-  readGTensorIntegrals(L, norbs, "GTensor");
+  readGTensorIntegrals(LplusS, norbs, "GTensor");
 
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
-    S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
-    S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+    LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+    LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
 
-    S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
-    S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+    LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+    LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
 
-    S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
-    S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+    LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+    LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
   // std::cout.precision(15);
@@ -209,18 +199,45 @@ int main(int argc, char* argv[]) {
   for (int a=0; a<3; a++) {
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[a].store.at(i))*epsilon;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
+
+    // #####################################################################
+    // Print the 5 most important determinants and their weights
+    // #####################################################################
+    pout << "Printing most important determinants" << endl;
+    pout << format("%4s %10s  Determinant string") % ("Det") % ("weight")
+         << endl;
+    for (int root = 0; root < schd.nroots; root++) {
+      pout << format("State : %3i") % (root) << endl;
+      MatrixXx prevci = 1. * ci[root];
+      int num = max(100, schd.printBestDeterminants);
+      for (int i = 0; i < min(num, static_cast<int>(Dets.size())); i++) {
+        compAbs comp;
+        int m = distance(
+            &prevci(0, 0),
+            max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+        double parity = getParityForDiceToAlphaBeta(Dets[m]);
+#ifdef Complex
+        pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
+        pout << Dets[m] << endl;
+#else
+        pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
+        pout << Dets[m] << endl;
+#endif
+        // pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"
+        // "<<Dets[m]<<endl;
+        prevci(m, 0) = 0.0;
+      }
+    }  // end root
+    pout << std::flush;
 
     pout << ((E0[1]-E0[0])/epsilon -ge)*1e6<<"  "<<endl;
     int DetsSize = Dets.size();
     if (!schd.stochastic) {
       fpm[2*a] = pow(getdEusingDeterministicPT(Dets, ci, DetsSize,  E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
       pout << "PT" << fpm[2*a] << endl;
       pout << "D"  << pow(E0[1]-E0[0],2) << endl;
     }
@@ -230,22 +247,46 @@ int main(int argc, char* argv[]) {
 
     // pout << (sqrt(fpm[2*a])/epsilon - ge)*1e6<<endl;
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) -= 2.*(LplusS[a].store.at(i))*epsilon;
     }
 
     initDets(ci, Dets, schd, HFoccupied);
-    for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
-    }
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
     DetsSize = Dets.size();
 
+    // #####################################################################
+    // Print the 5 most important determinants and their weights
+    // #####################################################################
+    pout << "Printing most important determinants" << endl;
+    pout << format("%4s %10s  Determinant string") % ("Det") % ("weight")
+         << endl;
+    for (int root = 0; root < schd.nroots; root++) {
+      pout << format("State : %3i") % (root) << endl;
+      MatrixXx prevci = 1. * ci[root];
+      int num = max(20, schd.printBestDeterminants);
+      for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
+        compAbs comp;
+        int m = distance(
+            &prevci(0, 0),
+            max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+        double parity = getParityForDiceToAlphaBeta(Dets[m]);
+#ifdef Complex
+        pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
+        pout << Dets[m] << endl;
+#else
+        pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
+        pout << Dets[m] << endl;
+#endif
+        // pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"
+        // "<<Dets[m]<<endl;
+        prevci(m, 0) = 0.0;
+      }
+    }  // end root
+    pout << std::flush;
+
     if (!schd.stochastic) {
       fpm[2*a+1] = pow(getdEusingDeterministicPT(Dets, ci, DetsSize,  E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
       pout << "PT" << fpm[2*a+1] << endl;
       pout << "D"  << pow(E0[1]-E0[0],2) << endl;
     }
@@ -254,7 +295,7 @@ int main(int argc, char* argv[]) {
   
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[a].store.at(i))*epsilon;
     }
 
     Gtensor(a,a) = (fpm[2*a] + fpm[2*a+1])/(epsilon*epsilon)/2;
@@ -268,8 +309,8 @@ int main(int argc, char* argv[]) {
     double plusplus, minusminus;
     initDets(ci, Dets, schd, HFoccupied);
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (1.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[a].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[b].store.at(i))*epsilon;
     }
     vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 						  irrep, I1, coreE, nelec, schd.DoRDM);
@@ -277,9 +318,6 @@ int main(int argc, char* argv[]) {
 
     if (!schd.stochastic) {
       plusplus = pow(getdEusingDeterministicPT(Dets, ci, DetsSize,  E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);
       pout << "PT" << plusplus << endl;
       pout << "D"  << pow(E0[1]-E0[0],2) << endl;
     }
@@ -288,25 +326,19 @@ int main(int argc, char* argv[]) {
 
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (1.*L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (1.*L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) -= 2.*(LplusS[a].store.at(i))*epsilon;
+      I1.store.at(i) -= 2.*(LplusS[b].store.at(i))*epsilon;
     }
 
 
     initDets(ci, Dets, schd, HFoccupied);
-    for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) -= (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) -= (L[b].store.at(i)+S[b].store.at(i))*epsilon;
-    }
+
     E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM,
 				   irrep, I1, coreE, nelec, schd.DoRDM);
     DetsSize = Dets.size();
 
     if (!schd.stochastic) {
       minusminus = pow(getdEusingDeterministicPT(Dets, ci, DetsSize,  E0, I1, I2, I2HBSHM, irrep, schd, coreE, nelec),2);
-      // pout << "We can't support perturbation calculation now" << endl;
-      // pout << "Please change stochastic input to 1 to use varitianal energy directly." << endl;
-      // exit(0);    
       pout << "PT" << minusminus << endl;
       pout << "D"  << pow(E0[1]-E0[0],2) << endl;
     }
@@ -315,8 +347,8 @@ int main(int argc, char* argv[]) {
 
 
     for (int i=0; i<I1.store.size(); i++) {
-      I1.store.at(i) += (L[a].store.at(i)+S[a].store.at(i))*epsilon;
-      I1.store.at(i) += (L[b].store.at(i)+S[b].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[a].store.at(i))*epsilon;
+      I1.store.at(i) += (LplusS[b].store.at(i))*epsilon;
     }
 
     dpm[2*count] = plusplus;

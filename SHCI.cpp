@@ -232,10 +232,10 @@ int main(int argc, char* argv[]) {
   }
 #else
   if (schd.doSOC) {
-    //readSOCIntegrals(I1, norbs, "SOC");
+    readSOCIntegrals(I1, norbs, "SOC");
     readSOCIntegrals(SOC, norbs, "SOC");
 #ifndef SERIAL
-    //mpi::broadcast(world, I1, 0);
+    mpi::broadcast(world, I1, 0);
     mpi::broadcast(world, SOC, 0);
 #endif
   }
@@ -369,7 +369,7 @@ int main(int argc, char* argv[]) {
     for (int root = 0; root < schd.nroots; root++) {
       pout << format("State : %3i") % (root) << endl;
       MatrixXx prevci = 1. * ci[root];
-      int num = max(6, schd.printBestDeterminants);
+      int num = max(100, schd.printBestDeterminants);
       for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
         compAbs comp;
         int m = distance(
@@ -433,12 +433,16 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
 	mpi::broadcast(world, ci, 0);
 #endif
+  int tmp1=0,tmp2=1;
 	//SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
-  SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[2], SHMDets, DetsSize, norbs, nelec);
-  for(int ii=0; ii<3; ii++)
-    cout << spinRDM[ii] <<endl;
-	//SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
-	SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
+  SOChelper::calculateSpinRDM(spinRDM, ci[tmp1], ci[tmp2], SHMDets, DetsSize, norbs, nelec);
+  // cout << "We are doing SOC calculation instead of G-tensor calculation between " << tmp1 << "th and "
+  // << tmp2 << "th states to gain a 2 by 2 SOC Hamiltonian matrix" << endl;
+  // cout << endl;
+  // for(int ii=0; ii<3; ii++)
+  //   cout << spinRDM[ii] <<endl;
+	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
+	//SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
   if (commrank != 0) {
 	  ci[0].resize(1,1);
 	  ci[1].resize(1,1);
@@ -647,11 +651,13 @@ int main(int argc, char* argv[]) {
         SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
         s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
         SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+        //SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, s2RDMdisk);
+        //SHCIrdm::ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
       }
 
-      // pout << " response ";
-      // SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
-      // s2RDM);
+      pout << " response ";
+      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
+       s2RDM);
     }  // end if doResponse||DoRDM && RdmType && !stochastic...
 
     // #####################################################################
