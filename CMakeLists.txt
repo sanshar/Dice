@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
+message(STATUS "\n-- Setting up project build ...\n-- ")
 
 ###############
 ### Project ###
@@ -37,8 +38,8 @@ IF( NOT BOOST_ROOT )
 ENDIF()
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
-message( STATUS ${Boost_INCLUDE_DIRS})
-message( STATUS ${Boost_LIBRARY_DIRS})
+message( STATUS "Using Boost inlcude directory: ${Boost_INCLUDE_DIRS}")
+message( STATUS "Using Boost library directory: ${Boost_LIBRARY_DIRS}")
 
 # Get Eigen
 SET( EIGEN3_INCLUDE_DIR "$ENV{EIGEN3_INCLUDE_DIR}" )
@@ -47,7 +48,7 @@ IF( NOT EIGEN3_INCLUDE_DIR )
   SET( EIGEN3_INCLUDE_DIR ${EXTERNAL_INCLUDE_DIR} )
 ENDIF()
 include_directories(${EIGEN3_INCLUDE_DIR})
-message( STATUS ${EIGEN3_INCLUDE_DIR})
+message( STATUS "Using Eigen include directory: ${EIGEN3_INCLUDE_DIR}")
 
 
 ###############

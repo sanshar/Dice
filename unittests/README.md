@@ -1,6 +1,22 @@
 # Unit Testing
 
 (This README is a draft)
+## TODOs
+
+- Figure out what's going on with LexicalOrder in Determinants tests.
+- Add final test for symmetry.
+- Add initial tests for SHCIBasics.cpp
+- Add initial tests for integral.cpp
+- Add initial tests for input.cpp
+- Add initial tests for Davidson.cpp
+- Add initial tests for SHCIgetdeterminants.cpp
+- Add initial tests for SHCIsampledeterminants.cpp
+- Add initial tests for SHCIrdm.cpp
+- Add initial tests for SHCISortMpiUtils.cpp
+- Add initial tests for SHCImakeHamiltonian.cpp
+- Add initial tests for SHCIshm.cpp
+- Add initial tests for LCC.cpp
+
 
 ## With CMake/CTest
 

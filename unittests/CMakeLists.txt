@@ -1,3 +1,6 @@
+# Print test message
+message(STATUS "\n-- Setting up tests ...\n-- ")
+
 # Make Symmetry Library
 include_directories(${EXTERNAL_INCLUDE_DIR}/Catch/)
 include_directories(${DICE_SOURCE_DIR})
@@ -38,12 +41,3 @@ foreach(file ${TEST_SOURCES})
   add_test(NAME ${testcase} COMMAND ${testcase} --success)
 
 endforeach()
-
-
-# $ pwd
-# build
-# $ mkdir coverage
-# $ cd coverage
-# $ gcov ../../Dice/symmetry.cpp --object-file ../unittests/CMakeFiles/unit1.dir/__/Dice/ | grep -B 1 "symmetry.cpp.gcov"
-# Lines executed:49.54% of 216
-# /Users/jets/apps/Dice/Dice/symmetry.cpp:creating 'symmetry.cpp.gcov'

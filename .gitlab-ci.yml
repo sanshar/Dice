@@ -4,73 +4,14 @@
 
 stages:
   - build
-  - test
 
 #################
 # Build Configs #
 #################
 
-openmpi_ubuntu16:
-  stage: build
-  image: ubuntu:16.04
-  artifacts:
-    untracked: true
-  script:
-    - apt-get -qq update
-    - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - export CXX=mpicxx
-    - mkdir -p build && cd build
-    - cmake ..
-    - make -j Dice
-
-openmpi_ubuntu17:
-  stage: build
-  image: ubuntu:17.10
-  artifacts:
-    untracked: true
-  script:
-    - apt-get -qq update
-    - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
-    - export CXX=mpicxx
-    - mkdir -p build && cd build
-    - cmake ..
-    - make -j Dice
-
-mpich_ubuntu16:
-  stage: build
-  image: ubuntu:16.04
-  artifacts:
-    untracked: true
-  script:
-    - apt-get -qq update
-    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - export CXX=mpicxx
-    - mkdir -p build && cd build
-    - cmake ..
-    - make -j Dice
-
-mpich_ubuntu17:
-  stage: build
-  image: ubuntu:17.10
-  artifacts:
-    untracked: true
-  script:
-    - apt-get -qq update
-    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
-    - export CXX=mpicxx
-    - mkdir -p build && cd build
-    - cmake ..
-    - make -j Dice
-
-#########
-# Tests #
-#########
-
 openmpi_ubuntu16_test:
-  stage: test
+  stage: build
   image: ubuntu:16.04
-  dependencies:
-    - openmpi_ubuntu16
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
@@ -78,10 +19,8 @@ openmpi_ubuntu16_test:
 
 
 openmpi_ubuntu17_test:
-  stage: test
+  stage: build
   # image: ubuntu:17.10
-  dependencies:
-    - openmpi_ubuntu17
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake
@@ -91,10 +30,8 @@ openmpi_ubuntu17_test:
 
 
 mpich_ubuntu16_test:
-  stage: test
+  stage: build
   image: ubuntu:16.04
-  dependencies:
-    - mpich_ubuntu16
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake
@@ -102,10 +39,8 @@ mpich_ubuntu16_test:
 
 
 mpich_ubuntu17_test:
-  stage: test
+  stage: build
   # image: ubuntu:17.10
-  dependencies:
-    - mpich_ubuntu17
   script:
     - apt-get -qq update
     - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake

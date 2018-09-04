@@ -87,25 +87,3 @@ TEST_CASE("Point Group Properties", "[symmetry]") {
 //
 //   }
 // }
-
-/*
-mpicxx -std=c++11 -g -O3 -I/Users/jets/apps/Dice/External/Catch
--I/Users/jets/apps/boost_1_67_0/ -I/Users/jets/apps/eigen
--L/Users/jets/apps/boost_1_67_0/stage/lib -o unit-symmetry unit-symmetry.cpp
-/Users/jets/apps/Dice/build/CMakeFiles/Dice.dir/Dice/symmetry.cpp.o -lboost_mpi
--lboost_serialization  && ./unit-symmetry --success
-
-mpicxx -std=c++11 -g -O0 --fprofile-arcs -ftest-coverage
--I/Users/jets/apps/Dice/External/Catch -I/Users/jets/apps/boost_1_67_0/
--I/Users/jets/apps/eigen -L/Users/jets/apps/boost_1_67_0/stage/lib -o
-unit-symmetry unit-symmetry.cpp
-/Users/jets/apps/Dice/build/CMakeFiles/Dice.dir/Dice/symmetry.cpp.o -lboost_mpi
--lboost_serialization  && ./unit-symmetry --success
-
-
-mpicxx -std=c++11 -g -O3 -I/home/jets/apps/test/Dice/External/Catch
--I/home/jets/apps/boost_1_67_0/ -I/home/jets/apps/eigen
--L/home/jets/apps/boost_1_67_0/stage/lib -o unit-symmetry unit-symmetry.cpp
-/home/jets/apps/test/Dice/build/CMakeFiles/Dice.dir/Dice/symmetry.cpp.o
--lboost_mpi -lboost_serialization  && ./unit-symmetry --success
-*/
