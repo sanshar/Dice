@@ -114,8 +114,8 @@ template<typename Wfn, typename Walker>
     {
       //if sy,x is > 0 then add include contribution to the diagonal
       if (work.HijElement[i]*work.ovlpRatio[i] > 0.0) {
-	Ewalk += work.HijElement[i]*work.ovlpRatio[i] * fn_factor;
-	cumHij += (fn_factor-1.0)*abs(work.HijElement[i]*work.ovlpRatio[i]); 
+	Ewalk += work.HijElement[i]*work.ovlpRatio[i] * (1+fn_factor);
+	cumHij += fn_factor*abs(work.HijElement[i]*work.ovlpRatio[i]); 
 	cumHijElements[i] = cumHij; 
       }
       else {
