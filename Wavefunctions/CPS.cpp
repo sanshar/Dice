@@ -169,12 +169,12 @@ void CPS::updateVariables(Eigen::VectorXd &v)
 
 void CPS::printVariables()
 {
-  cout << "CPS"<<endl;
+  cout << "CPS"<< endl;
   for (int i = 0; i < cpsArray.size(); i++)
   {
     for (int j = 0; j < cpsArray[i].Variables.size(); j++)
     {
-      cout << "  " << cpsArray[i].Variables[j];
+      cout << "  " << cpsArray[i].Variables[j] << endl;
     }
   }
 }

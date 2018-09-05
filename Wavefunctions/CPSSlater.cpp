@@ -259,22 +259,26 @@ void CPSSlater::printVariables()
   cout << endl<<"CI-expansion"<<endl;
   for (int i = 0; i < determinants.size(); i++)
   {
-    cout << "  " << ciExpansion[i];
+    cout << "  " << ciExpansion[i] << endl;
   }
 
   cout << endl<<"DeterminantA"<<endl;
   int norbs = Determinant::norbs;
-  for (int i = 0; i < norbs; i++)
+  for (int i = 0; i < norbs; i++) {
     for (int j = 0; j < norbs; j++)
       cout << "  " << HforbsA(i, j);
+    cout << endl;
+  }
 
   if (schd.uhf)
   {
     cout << endl
          << "DeterminantB" << endl;
-    for (int i = 0; i < norbs; i++)
+    for (int i = 0; i < norbs; i++) {
       for (int j = 0; j < norbs; j++)
         cout << "  " << HforbsB(i, j);
+      cout << endl;
+    }
   }
 
   cout << endl;
