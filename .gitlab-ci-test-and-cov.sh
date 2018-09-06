@@ -1,5 +1,6 @@
 # Build unit tests
 cd build
+cmake ..
 make -j all
 make test
 
