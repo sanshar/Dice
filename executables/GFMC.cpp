@@ -40,6 +40,8 @@
 #include "Determinants.h"
 #include "CPSSlater.h"
 #include "HFWalker.h"
+#include "CPSGHFSlater.h"
+#include "GHFWalker.h"
 #include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
@@ -78,6 +80,20 @@ int main(int argc, char *argv[])
   if (schd.wavefunctionType == "CPSSlater") {
     //initialize wavefunction
     CPSSlater wave; HFWalker walk;
+    wave.readWave(); wave.initWalker(walk);
+
+    //calculate the energy as a initial guess for shift
+    double ham, stddev, rk;
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    work.clear();
+    if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
+
+    //do the GFMC continous time
+    doGFMCCT(wave, walk, ham);
+  }
+  if (schd.wavefunctionType == "CPSGHFSlater") {
+    //initialize wavefunction
+    CPSGHFSlater wave; GHFWalker walk;
     wave.readWave(); wave.initWalker(walk);
 
     //calculate the energy as a initial guess for shift

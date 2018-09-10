@@ -55,6 +55,8 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/Determinants.o \
 	obj/CPSSlater.o \
 	obj/HFWalker.o \
+	obj/CPSGHFSlater.o \
+	obj/GHFWalker.o \
 	obj/CPS.o \
 	obj/Correlator.o \
     obj/evaluateE.o 
@@ -67,6 +69,8 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/Determinants.o \
 	obj/CPSSlater.o \
 	obj/HFWalker.o \
+	obj/CPSGHFSlater.o \
+	obj/GHFWalker.o \
 	obj/evaluateE.o \
 	obj/CPS.o \
 	obj/Correlator.o

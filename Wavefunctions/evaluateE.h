@@ -38,6 +38,7 @@ using namespace std;
 class Walker;
 class Wfn;
 class CPSSlater;
+class CPSGHFSlater;
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
@@ -78,8 +79,12 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      w.HamAndOvlp(walk, ovlp, ham, work, false);
+      //cout << walk.d << endl << endl;
+      //cout << walk.AlphaTable[0] << endl << endl;
+      //cout << walk.BetaTable[0] << endl << endl;
 
+      w.HamAndOvlp(walk, ovlp, ham, work, false);
+      //cout << ham << "  " << ovlp << endl << endl;
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
     }

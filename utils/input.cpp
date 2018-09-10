@@ -130,6 +130,9 @@ void readInput(string input, schedule& schd, bool print) {
 
 	  else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
+	  
+      else if (boost::iequals(ArgName, "ghf"))
+	    schd.wavefunctionType = "CPSGHFSlater";
 
 	  else if (boost::iequals(ArgName, "tol"))
 	    schd.tol = atof(tok[1].c_str());
