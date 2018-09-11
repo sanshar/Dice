@@ -6,7 +6,7 @@ include_directories(${EXTERNAL_INCLUDE_DIR}/Catch/)
 include_directories(${DICE_SOURCE_DIR})
 
 # Set compiler flags for gcov
-set(CMAKE_CXX_FLAGS "-std=c++11 -g -O0 -w -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS "-std=c++11 -g -O0 -w -fprofile-arcs -ftest-coverage -DSERIAL")
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1) # *.cpp.o -> *.o
 
 # Gather all test sources in the unittests directory
@@ -26,7 +26,9 @@ foreach(file ${TEST_SOURCES})
   message(STATUS "Found source file for ${testcase}: ${src_file}")
 
   # Add executable for test (including source file)
-  add_executable(${testcase} ${file} ${src_file})
+  # TODO currently build SHCIshm.cpp into all test (rather than keep a list of
+  # files where it should included)
+  add_executable(${testcase} ${file} ${src_file} ${DICE_SOURCE_DIR}/SHCIshm.cpp)
 
   # Add linker flags (in case Boost is used in test)
   IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

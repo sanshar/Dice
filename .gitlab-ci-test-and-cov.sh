@@ -1,6 +1,9 @@
 # Build unit tests
 cd build
 cmake ..
+echo $PATH
+echo $LD_LIBRARY_PATH
+which mpicxx
 make -j all
 make test
 
