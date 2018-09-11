@@ -3,7 +3,7 @@ cd build
 cmake ..
 echo $PATH
 echo $LD_LIBRARY_PATH
-which mpicxx
+export CXX=mpicxx
 make -j all
 make test
 

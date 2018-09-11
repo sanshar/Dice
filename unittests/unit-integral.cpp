@@ -4,9 +4,6 @@
 #define CATCH_CONFIG_MAIN
 #include "SHCIshm.h"
 #include "integral.h"
-#include <boost/mpi.hpp>
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi/environment.hpp>
 #include <catch.hpp>
 #include <string>
 
