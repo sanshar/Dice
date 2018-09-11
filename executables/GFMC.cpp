@@ -118,6 +118,19 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
+  else if (schd.wavefunctionType == "CICPSGHFSlater") {
+    CIWavefunction<CPSGHFSlater, GHFWalker, Operator> wave; GHFWalker walk;
+    wave.readWave(); wave.initWalker(walk);
+
+    //calculate the energy as a initial guess for shift
+    double ham, stddev, rk;
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    work.clear();
+    if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
+
+    //do the GFMC continous time
+    doGFMCCT(wave, walk, ham);
+  }
 
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());

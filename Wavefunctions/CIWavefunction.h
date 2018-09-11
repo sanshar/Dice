@@ -595,6 +595,7 @@ template <typename Wfn, typename Walker, typename OpType>
   vector<double> &getciExpansion() { return wave.ciExpansion; }
   MatrixXd& getHforbsA() {return wave.HforbsA;}
   MatrixXd& getHforbsB() {return wave.HforbsB;}
+  MatrixXd& getGHFOrbs() {return wave.GHFOrbs;}
 
   void writeWave()
   {
