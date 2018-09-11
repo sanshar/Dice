@@ -13,13 +13,11 @@ set (EXTERNAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External/)
 ######################
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS "-std=c++11 -g -O3")
 
 IF ( CMAKE_BUILD_TYPE MATCHES Debug )
   message(WARNING "Using debug mode so no optimization will be used.")
   set( CMAKE_VERBOSE_MAKEFILE on )
-ELSE()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 ENDIF()
 
 
@@ -50,6 +48,8 @@ ENDIF()
 include_directories(${EIGEN3_INCLUDE_DIR})
 message( STATUS "Using Eigen include directory: ${EIGEN3_INCLUDE_DIR}")
 
+# Get OpenMP Flag
+find_package(OpenMP)
 
 ###############
 ### Sources ###
