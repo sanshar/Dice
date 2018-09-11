@@ -1,7 +1,7 @@
 correlator 2 twosite.txt
-maxIter 1000
+maxIter 5
 stochasticIter 10000
 
-deterministic
+#deterministic
 #restart
-seed 10
+seed 5

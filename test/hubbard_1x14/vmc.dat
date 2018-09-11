@@ -1,5 +1,6 @@
 correlator 3 threesite.txt
-stochasticIter 100000
-
+maxIter 10
+stochasticIter 10000
+seed 5
 #restart
 

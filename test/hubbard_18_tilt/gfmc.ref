@@ -1,0 +1,19 @@
+correlator 5 correlators.txt
+maxIter 100
+stochasticIter 2000
+epsilon 1.e-4
+uhf
+hubbard
+seed 5
+
+
+nwalk 500
+tau 0.1
+ngeneration 50
+fixednodefactor 1.0
+
+decay2 0.01
+stepsize 0.01
+
+Energy of VMC wavefunction: -16.2068(0.0577358)
+      50   -16.88259405    -16.88259405    -16.88259405         711   1006.37     -16.90627523       6.65
