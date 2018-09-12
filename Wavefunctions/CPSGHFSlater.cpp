@@ -36,7 +36,7 @@
 
 using namespace Eigen;
 
-CPSGHFSlater::CPSGHFSlater() {}
+CPSGHFSlater::CPSGHFSlater() { readDefault();}
 
 void CPSGHFSlater::readDefault() {
   int norbs = Determinant::norbs;
@@ -193,6 +193,33 @@ double CPSGHFSlater::getOverlapWithDeterminants(GHFWalker &walk)
 double CPSGHFSlater::Overlap(GHFWalker &walk)
 {
   return cps.Overlap(walk.d) * getOverlapWithDeterminants(walk);
+}
+
+double CPSGHFSlater::getOverlapFactor(GHFWalker& walk, Determinant& dcopy, bool doparity) {
+  double ovlpdetcopy;
+  int excitationDistance = dcopy.ExcitationDistance(walk.d);
+  
+  if (excitationDistance == 0)
+  {
+    ovlpdetcopy = 1.0;
+  }
+  else if (excitationDistance == 1)
+  {
+    int I, A;
+    getOrbDiff(walk.d, dcopy, I, A);
+    ovlpdetcopy = getOverlapFactor(I, A, walk, doparity);
+  }
+  else if (excitationDistance == 2)
+  {
+    int I, J, A, B;
+    getOrbDiff(walk.d, dcopy, I, J, A, B);
+    ovlpdetcopy = getOverlapFactor(I, J, A, B, walk, doparity);
+  }
+  else
+  {
+    cout << "higher than triple excitation not yet supported." << endl;
+    exit(0);
+  }
 }
 
 double CPSGHFSlater::getOverlapFactor(int i, int a, GHFWalker& walk, bool doparity) {

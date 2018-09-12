@@ -591,10 +591,12 @@ template <typename Wfn, typename Walker, typename OpType>
     }
   }
 
-  vector<Determinant> &getDeterminants() { return wave.determinants; }
-  vector<double> &getciExpansion() { return wave.ciExpansion; }
-  MatrixXd& getHforbsA() {return wave.HforbsA;}
-  MatrixXd& getHforbsB() {return wave.HforbsB;}
+  vector<Determinant> &getDeterminants() { return wave.getDeterminants(); }
+  vector<double> &getciExpansion() { return wave.getciExpansion(); }
+
+  MatrixXd& getHforbsA() {return wave.getHforbsA();}
+  MatrixXd& getHforbsB() {return wave.getHforbsB();}
+  MatrixXd& getGHForbs() {return wave.getGHFOrbs();}
 
   void writeWave()
   {

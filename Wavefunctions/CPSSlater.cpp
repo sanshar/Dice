@@ -36,7 +36,7 @@
 
 using namespace Eigen;
 
-CPSSlater::CPSSlater() {}
+CPSSlater::CPSSlater() { readDefault();}
 
 void CPSSlater::readDefault() {
   int norbs = Determinant::norbs;
@@ -185,6 +185,33 @@ double CPSSlater::Overlap(Determinant &d)
 double CPSSlater::Overlap(HFWalker &walk)
 {
   return cps.Overlap(walk.d) * getOverlapWithDeterminants(walk);
+}
+
+double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool doparity) {
+  double ovlpdetcopy;
+  int excitationDistance = dcopy.ExcitationDistance(walk.d);
+  
+  if (excitationDistance == 0)
+  {
+    ovlpdetcopy = 1.0;
+  }
+  else if (excitationDistance == 1)
+  {
+    int I, A;
+    getOrbDiff(walk.d, dcopy, I, A);
+    ovlpdetcopy = getOverlapFactor(I, A, walk, doparity);
+  }
+  else if (excitationDistance == 2)
+  {
+    int I, J, A, B;
+    getOrbDiff(walk.d, dcopy, I, J, A, B);
+    ovlpdetcopy = getOverlapFactor(I, J, A, B, walk, doparity);
+  }
+  else
+  {
+    cout << "higher than triple excitation not yet supported." << endl;
+    exit(0);
+  }
 }
 
 double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk, bool doparity) {

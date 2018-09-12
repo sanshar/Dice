@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
   //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
     CPSSlater wave; HFWalker walk;
-    wave.readDefault();
     if (schd.restart) wave.readWave();
     VectorXd vars; wave.getVariables(vars);
 
@@ -99,7 +98,6 @@ int main(int argc, char *argv[])
   }
   else if (schd.wavefunctionType == "CPSGHFSlater") {
     CPSGHFSlater wave; GHFWalker walk;
-    wave.readDefault();
     if (schd.restart) wave.readWave();
     VectorXd vars; wave.getVariables(vars);
 
