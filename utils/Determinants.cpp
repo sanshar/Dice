@@ -117,6 +117,37 @@ CItype Determinant::Hij_2ExciteAB(int& a, int& i, int& b, int& j, oneInt&I1, two
 }
 
 
+CItype Determinant::Hij_1ExciteScreened(int& a, int& i, twoIntHeatBathSHM& I2hb, double& TINY, bool doparity) {
+
+  double tia = I1(a, i);
+  int X = max(i/2, a/2), Y = min(i/2, a/2);
+  int pairIndex = X * (X + 1) / 2 + Y;
+  size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
+  size_t end = I2hb.startingIndicesSingleIntegrals[pairIndex + 1];
+  float *integrals = I2hb.singleIntegrals;
+  short *orbIndices = I2hb.singleIntegralsPairs;
+  for (size_t index = start; index < end; index++)
+  {
+    if (fabs(integrals[index]) < TINY)
+      break;
+    int j = orbIndices[2 * index];
+    if (i % 2 == 1 && j % 2 == 1)
+      j--;
+    else if (i % 2 == 1 && j % 2 == 0)
+      j++;
+    
+    if (getocc(j) )
+      tia += integrals[index];
+    //cout << tia<<"  "<<j<<" -- "<<integrals[index]<<endl;
+  }
+
+  double sgn = 1.0;
+  int A = a/2, I = i/2;
+  if (doparity && i%2 == 0) parityA(A, I, sgn);
+  else if (doparity && i%2 == 1) parityB(A, I, sgn);
+  return tia*sgn;
+}
+
 
 //=============================================================================
 CItype Determinant::Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity) {

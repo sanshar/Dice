@@ -110,17 +110,17 @@ void readInput(string input, schedule& schd, bool print) {
           else if (boost::iequals(ArgName, "expCorrelator"))
 	    schd.expCorrelator = true;
 
-	  else if (boost::iequals(ArgName, "adam"))
-	    schd.method = adam;
+	  //else if (boost::iequals(ArgName, "adam"))
+          //schd.method = adam;
 
 	  else if (boost::iequals(ArgName, "sgd"))
 	    schd.method = sgd;
 
-	  else if (boost::iequals(ArgName, "nestorov"))
-	    schd.method = nestorov;
+	  //else if (boost::iequals(ArgName, "nestorov"))
+          //schd.method = nestorov;
 
-	  else if (boost::iequals(ArgName, "rmsprop"))
-	    schd.method = rmsprop;
+	  //else if (boost::iequals(ArgName, "rmsprop"))
+          //schd.method = rmsprop;
 
 	  else if (boost::iequals(ArgName, "ptlambda"))
 	    schd.PTlambda = atof(tok[1].c_str());
@@ -128,6 +128,9 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "amsgrad"))
 	    schd.method = amsgrad;
 
+	  else if (boost::iequals(ArgName, "sr"))
+	    schd.method = sr;
+          
 	  else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
 	  
