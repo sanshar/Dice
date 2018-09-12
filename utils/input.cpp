@@ -107,7 +107,7 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "deterministic"))
 	    schd.deterministic = true;
 	  
-      else if (boost::iequals(ArgName, "expCorrelator"))
+          else if (boost::iequals(ArgName, "expCorrelator"))
 	    schd.expCorrelator = true;
 
 	  else if (boost::iequals(ArgName, "adam"))
@@ -131,7 +131,7 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
 	  
-      else if (boost::iequals(ArgName, "ghf"))
+          else if (boost::iequals(ArgName, "ghf"))
 	    schd.wavefunctionType = "CPSGHFSlater";
 
 	  else if (boost::iequals(ArgName, "tol"))
