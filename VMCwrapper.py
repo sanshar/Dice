@@ -237,7 +237,6 @@ if (sr):
 	wrt += dw
 if (gd):
     for i in range(maxIter):
-	print "I work"
 	grad = d_loss_wrt_pars(wrt)
 	wrt -= T * grad
 else :        
