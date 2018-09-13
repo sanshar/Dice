@@ -6,17 +6,7 @@
 #include <catch.hpp>
 #include <string>
 
-// // Defining static variables
-// int norbs = 10; // Spin orbs
-// int nalpha = 3;
-// int nbeta = 2;
-// int nelec = nalpha + nbeta;
-// int Determinant::norbs = norbs; // spin orbitals
-// int HalfDet::norbs = norbs;     // spin orbitals
-// int Determinant::EffDetLen = norbs / 64 + 1;
-// char Determinant::Trev = 0; // Time reversal
-// Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic>
-// Determinant::LexicalOrder;
+// Defining static variables
 int HalfDet::norbs = 1;     // spin orbitals
 int Determinant::norbs = 1; // spin orbitals
 int Determinant::EffDetLen = 1;
@@ -33,8 +23,6 @@ TEST_CASE("Simple Determinants Function", "[determinants]") {
   HalfDet::norbs = norbs;     // spin orbitals
   Determinant::EffDetLen = norbs / 64 + 1;
   Determinant::Trev = 0; // Time reversal
-  // Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic>
-  // Determinant::LexicalOrder;
 
   // Initialize dets
   Determinant::initLexicalOrder(nelec);
