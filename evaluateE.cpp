@@ -587,7 +587,7 @@ void getStochasticGradientContinuousTime(CPSSlater &w, double &E0, double &stdde
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
-  
+ //std::cout << "evaluateE: " << commrank << " " << commsize << "\n"<<std::endl<<std::flush;
   //initialize the walker
   Determinant d;
   bool readDeterminant = false;
@@ -1098,6 +1098,7 @@ void getStochasticGradientHessianContinuousTime(CPSSlater &w, double &E0, double
   }
   
 #ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Hessian(0,0)), Hessian.rows()*Hessian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Smatrix.rows()*Smatrix.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);

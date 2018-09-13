@@ -68,9 +68,10 @@ private:
       & tau
       & fn_factor
       & nGeneration
-      & excitationLevel;
-      & optvar;
-
+      & excitationLevel
+      & optvar
+      & gd
+      & sr;
   }
 public:
 //General options
@@ -96,6 +97,8 @@ public:
   bool optimizeOrbs;
   HAM Hamiltonian;
   bool optvar;
+  bool sr;
+  bool gd;
 
 //Deprecated options for optimizers
 //because now we just use the python implementation

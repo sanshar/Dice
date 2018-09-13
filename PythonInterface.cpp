@@ -65,11 +65,11 @@ int main(int argc, char* argv[]) {
   string inputFile = "input.dat";
   if (argc > 1)
     inputFile = string(argv[1]);
+
   if (commrank == 0) readInput(inputFile, schd, false);
 #ifndef SERIAL
   mpi::broadcast(world, schd, 0);
 #endif
-
   generator = std::mt19937(schd.seed+commrank);
   //generator = std::mt19937(commrank);
 
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
 
   Eigen::VectorXd grad = Eigen::VectorXd::Zero(vars.size());
   Eigen::MatrixXd Hessian, Smatrix;
-  if (schd.doHessian) {
+  if (schd.doHessian || schd.sr) {
     Hessian.resize(vars.size()+1, vars.size()+1);
     Smatrix.resize(vars.size()+1, vars.size()+1);
     Hessian.setZero(); Smatrix.setZero();
@@ -187,7 +187,7 @@ int main(int argc, char* argv[]) {
   double variance = 0.;
   double E0=0.0, stddev, rt=0;
   if (schd.deterministic) {
-    if (!schd.doHessian) {
+    if (!schd.doHessian && !schd.sr) {
       getGradientDeterministic(wave, E0, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad);
       stddev = 0.0;
     }
@@ -197,15 +197,12 @@ int main(int argc, char* argv[]) {
     }
   }
   else {
-    //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-    if (!schd.doHessian)  {
+    if (!schd.doHessian && !schd.sr)  {
       if (schd.optvar) {
-      std::cout << schd.optvar << std::endl;
        getStochasticVarianceGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, variance, rt, schd.stochasticIter, 0.5e-3);
       }
       else {
       getStochasticGradientContinuousTime(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
-      //getStochasticGradient(wave, E0, stddev, nalpha, nbeta, norbs, I1, I2, I2HBSHM, coreE, grad, rt, schd.stochasticIter, 0.5e-3);
       }
     }
     else {
@@ -241,7 +238,7 @@ int main(int argc, char* argv[]) {
     filee.write ( (char*)(&E0), sizeof(double));
     filee.close();
 
-    if (schd.doHessian)
+    if (schd.doHessian || schd.sr)
     {
       ofstream hfile("hessian.bin", ios::out | ios::binary);
       hfile.write((char *)(&Hessian(0,0)), Hessian.rows()*Hessian.cols()*sizeof(double));

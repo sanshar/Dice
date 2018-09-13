@@ -70,6 +70,8 @@ void readInput(string input, schedule& schd, bool print) {
   schd.nGeneration            = 30.0;
   schd.excitationLevel        = 1;
   schd.optvar 		      = false;
+  schd.sr		      = false;
+  schd.gd		      = false;
 
   while (dump.good()) {
 
@@ -211,7 +213,12 @@ void readInput(string input, schedule& schd, bool print) {
     else if (boost::iequals(ArgName, "optvar"             )) {
       schd.optvar = true;
     }
-
+    else if (boost::iequals(ArgName, "sr"                 )) {
+	schd.sr = true;
+    }
+    else if (boost::iequals(ArgName, "gd"               )) {
+	schd.gd = true;
+	}
     else {
       cout << "cannot read option "<<ArgName<<endl;
       exit(0);
