@@ -192,6 +192,7 @@ class Determinant {
   void parityAA(int& i, int& j, int& a, int& b, double& sgn);
   void parityBB(int& i, int& j, int& a, int& b, double& sgn);
 
+  CItype Hij_1ExciteScreened(int& a, int& i, twoIntHeatBathSHM& Ishm, double& TINY, bool doparity = true);
   CItype Hij_1ExciteA(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity=true);
   CItype Hij_1ExciteB(int& a, int& i, oneInt&I1, twoInt& I2, bool doparity=true);
 

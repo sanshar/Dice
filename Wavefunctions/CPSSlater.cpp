@@ -493,58 +493,21 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
           Determinant dcopy = d;
           bool Alpha = closed[i] % 2 == 0 ? true : false;
 
-          bool doparity = true;
+          bool doparity = false;
           if (schd.Hamiltonian == HUBBARD)
-          {
             tia = I1(2 * A, 2 * I);
-            doparity = false;
-          }
-          else
-          {
-            tia = I1(2 * A, 2 * I);
-            int X = max(I, A), Y = min(I, A);
-            int pairIndex = X * (X + 1) / 2 + Y;
-            size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
-            size_t end = I2hb.startingIndicesSingleIntegrals[pairIndex + 1];
-            float *integrals = I2hb.singleIntegrals;
-            short *orbIndices = I2hb.singleIntegralsPairs;
-            for (size_t index = start; index < end; index++)
-            {
-              if (fabs(integrals[index]) < TINY)
-                break;
-              int j = orbIndices[2 * index];
-              if (closed[i] % 2 == 1 && j % 2 == 1)
-                j--;
-              else if (closed[i] % 2 == 1 && j % 2 == 0)
-                j++;
-
-              if (d.getocc(j))
-              {
-                tia += integrals[index];
-              }
-              //cout << tia<<"  "<<a<<"  "<<integrals[index]<<endl;
-            }
-            double sgn = 1.0;
-            if (Alpha)
-              d.parityA(A, I, sgn);
-            else
-              d.parityB(A, I, sgn);
-            tia *= sgn;
+          else {
+            //doparity = true;
+            tia = d.Hij_1ExciteScreened(open[a], closed[i], I2hb, TINY, doparity);
+            //cout << tia <<"  "<<tia2<<endl;
           }
 
+          
           double localham = 0.0;
           if (abs(tia) > THRESH)
           {
-            if (Alpha)
-            {
-              dcopy.setoccA(I, false);
-              dcopy.setoccA(A, true);
-            }
-            else
-            {
-              dcopy.setoccB(I, false);
-              dcopy.setoccB(A, true);
-            }
+            dcopy.setocc(closed[i], false);
+            dcopy.setocc(open[a], true);
 
             double JastrowFactor = getJastrowFactor(I, A, dcopy, d);
             double ovlpdetcopy;

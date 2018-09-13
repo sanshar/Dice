@@ -26,7 +26,7 @@
 
 class Correlator;
 class Determinant;
-enum Method { sgd, nestorov, rmsprop, adam, amsgrad, linearmethod };
+enum Method { sgd, amsgrad, sr, linearmethod };
 enum HAM {HUBBARD, ABINITIO};
 
 
