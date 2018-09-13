@@ -255,7 +255,7 @@ double CPSSlater::getJastrowFactor(int i, int a, Determinant &dcopy, Determinant
 
 double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d)
 {
-  return cps.OverlapRatio(i, a, dcopy, d);
+  return cps.OverlapRatio(i, j, a, b, dcopy, d);
 }
 
 void CPSSlater::OverlapWithGradient(HFWalker &walk,
