@@ -107,7 +107,7 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "deterministic"))
 	    schd.deterministic = true;
 	  
-      else if (boost::iequals(ArgName, "expCorrelator"))
+          else if (boost::iequals(ArgName, "expCorrelator"))
 	    schd.expCorrelator = true;
 
 	  else if (boost::iequals(ArgName, "adam"))

@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
   //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
     CPSSlater wave; HFWalker walk;
-    wave.readDefault();
     if (schd.restart) wave.readWave();
     VectorXd vars; wave.getVariables(vars);
 
@@ -99,7 +98,6 @@ int main(int argc, char *argv[])
   }
   else if (schd.wavefunctionType == "CPSGHFSlater") {
     CPSGHFSlater wave; GHFWalker walk;
-    wave.readDefault();
     if (schd.restart) wave.readWave();
     VectorXd vars; wave.getVariables(vars);
 
@@ -129,7 +127,7 @@ int main(int argc, char *argv[])
       //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      if (commrank == 0) wave.printVariables();
+      //if (commrank == 0) wave.printVariables();
     }
   }
   else if (schd.wavefunctionType == "CICPSGHFSlater") {
@@ -147,7 +145,7 @@ int main(int argc, char *argv[])
       //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSGHFSlater, GHFWalker, SpinFreeOperator>, GHFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      if (commrank == 0) wave.printVariables();
+      //if (commrank == 0) wave.printVariables();
     }
   }
 

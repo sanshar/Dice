@@ -46,15 +46,25 @@ class CPSGHFSlater {
        & GHFOrbs;
   }
 
- public:
-   CPS cps; //The jastrow factors
+  CPS cps; //The jastrow factors
    vector<Determinant> determinants; //The set of determinants
    vector<double> ciExpansion;       //The ci expansion
    MatrixXx GHFOrbs;
 
+   void readDefault();
+   /**
+ * This just generates the overlap of a walker with the
+ * determinants in the ciExpansion
+ */
+   double getOverlapWithDeterminants(GHFWalker &walk);
+
+  double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
+  double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+
+
+ public:
 
    CPSGHFSlater();
-   void readDefault();
    void initWalker(GHFWalker &walk);
    void initWalker(GHFWalker &walk, Determinant &d);
 
@@ -64,11 +74,6 @@ class CPSGHFSlater {
  */
   // void getDetMatrix(Determinant &, Eigen::MatrixXd &alpha, Eigen::MatrixXd &beta);
 
-   /**
- * This just generates the overlap of a walker with the
- * determinants in the ciExpansion
- */
-   double getOverlapWithDeterminants(GHFWalker &walk);
 
    /**
    *This calculates the overlap of the walker with the
@@ -83,11 +88,9 @@ class CPSGHFSlater {
    */
    double Overlap(Determinant &);
 
-   double getOverlapFactor(int i, int a, GHFWalker& w, bool doparity);
-   double getOverlapFactor(int i, int j, int a, int b, GHFWalker& w, bool doparity);
-
-   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
-   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+  double getOverlapFactor(GHFWalker& w, Determinant& dcopy, bool doparity=false);
+  double getOverlapFactor(int i, int a, GHFWalker& w, bool doparity);
+  double getOverlapFactor(int i, int j, int a, int b, GHFWalker& w, bool doparity);
 
 
    /**
