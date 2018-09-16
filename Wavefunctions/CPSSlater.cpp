@@ -25,6 +25,7 @@
 #include "input.h"
 #include "Profile.h"
 #include "workingArray.h"
+#include "Slater.h"
 #include <fstream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -36,155 +37,29 @@
 
 using namespace Eigen;
 
-CPSSlater::CPSSlater() { readDefault();}
-
-void CPSSlater::readDefault() {
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  HforbsA = MatrixXd::Zero(norbs, norbs);
-  HforbsB = MatrixXd::Zero(norbs, norbs);
-  readHF(HforbsA, HforbsB, schd.uhf);
-
-  //vector<Determinant> detList;
-  //vector<double> ciExpansion;
-
-  if (boost::iequals(schd.determinantFile, ""))
-  {
-    determinants.resize(1);
-    ciExpansion.resize(1, 1.0);
-    for (int i = 0; i < nalpha; i++)
-      determinants[0].setoccA(i, true);
-    for (int i = 0; i < nbeta; i++)
-      determinants[0].setoccB(i, true);
-  }
-  else
-  {
-    readDeterminants(schd.determinantFile, determinants, ciExpansion);
-  }
-
-}
+CPSSlater::CPSSlater() {
+  //cps, slater will read their respective default values
+  ;}
 
 void CPSSlater::initWalker(HFWalker& walk) {
 
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-	//initialize the walker
-	Determinant& d = walk.d;
-	bool readDeterminant = false;
-	char file[5000];
-
-	sprintf(file, "BestDeterminant.txt");
-
-	{
-		ifstream ofile(file);
-		if (ofile)
-			readDeterminant = true;
-	}
-	//readDeterminant = false;
-
-	if (!readDeterminant)
-	{
-	  d = Determinant();
-                    for (int i = 0; i < nalpha; i++)
-		{
-			int bestorb = 0;
-			double maxovlp = 0;
-			for (int j = 0; j < norbs; j++)
-			{
-				if (abs(HforbsA(i, j)) > maxovlp && !d.getoccA(j))
-				{
-					maxovlp = abs(HforbsA(i, j));
-					bestorb = j;
-				}
-			}
-			d.setoccA(bestorb, true);
-		}
-		for (int i = 0; i < nbeta; i++)
-		{
-			int bestorb = 0;
-			double maxovlp = 0;
-			for (int j = 0; j < norbs; j++)
-			{
-				if (abs(HforbsB(i, j)) > maxovlp && !d.getoccB(j))
-				{
-					bestorb = j;
-					maxovlp = abs(HforbsB(i, j));
-				}
-			}
-			d.setoccB(bestorb, true);
-		}
-	}
-	else
-	{
-		if (commrank == 0)
-		{
-			std::ifstream ifs(file, std::ios::binary);
-			boost::archive::binary_iarchive load(ifs);
-			load >> d;
-		}
-#ifndef SERIAL
-		MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-		MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-	}
-    
-	walk.initUsingWave(*this);
- 
+  slater.initWalker(walk);
 }
 
 void CPSSlater::initWalker(HFWalker& walk, Determinant& d) {
-
-  walk.d = d;
-	walk.initUsingWave(*this);
+  slater.initWalker(walk, d);
 }
 
-void CPSSlater::getDetMatrix(Determinant &d, Eigen::MatrixXd &DetAlpha, Eigen::MatrixXd &DetBeta)
-{
-  //alpha and beta orbitals of the walker determinant d
-  std::vector<int> alpha, beta;
-  d.getAlphaBeta(alpha, beta);
-  int nalpha = alpha.size(), nbeta = beta.size();
-
-  //alpha and beta orbitals of the reference determinant
-  std::vector<int> alphaRef, betaRef;
-  determinants[0].getAlphaBeta(alphaRef, betaRef);
-
-  DetAlpha = MatrixXd::Zero(nalpha, nalpha);
-  DetBeta = MatrixXd::Zero(nbeta, nbeta);
-
-  //<psi1 | psi2> = det(phi1^dag phi2)
-  //in out case psi1 is a simple occupation number determ inant
-  for (int i = 0; i < nalpha; i++)
-    for (int j = 0; j < nalpha; j++)
-      DetAlpha(i, j) = HforbsA(alpha[i], alphaRef[j]);
-
-  for (int i = 0; i < nbeta; i++)
-    for (int j = 0; j < nbeta; j++)
-      DetBeta(i, j) = HforbsB(beta[i], betaRef[j]);
-
-  return;
-}
-
-double CPSSlater::getOverlapWithDeterminants(HFWalker &walk)
-{
-  return walk.getDetOverlap(*this);
-}
 
 //This is expensive and not recommended
 double CPSSlater::Overlap(Determinant &d)
 {
-  Eigen::MatrixXd DetAlpha, DetBeta;
-  getDetMatrix(d, DetAlpha, DetBeta);
-  return cps.Overlap(d)  * DetAlpha.determinant() * DetBeta.determinant();
+  return cps.Overlap(d)  * slater.Overlap(d);
 }
 
 double CPSSlater::Overlap(HFWalker &walk)
 {
-  return cps.Overlap(walk.d) * getOverlapWithDeterminants(walk);
+  return cps.Overlap(walk.d) * slater.Overlap(walk);
 }
 
 double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool doparity) {
@@ -198,13 +73,13 @@ double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool dopa
   else if (excitationDistance == 1)
   {
     int I, A;
-    getOrbDiff(walk.d, dcopy, I, A);
+    getDifferenceInOccupation(walk.d, dcopy, I, A);
     ovlpdetcopy = getOverlapFactor(I, A, walk, doparity);
   }
   else if (excitationDistance == 2)
   {
     int I, J, A, B;
-    getOrbDiff(walk.d, dcopy, I, J, A, B);
+    getDifferenceInOccupation(walk.d, dcopy, I, J, A, B);
     ovlpdetcopy = getOverlapFactor(I, J, A, B, walk, doparity);
   }
   else
@@ -212,50 +87,27 @@ double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool dopa
     cout << "higher than triple excitation not yet supported." << endl;
     exit(0);
   }
+  return ovlpdetcopy;
 }
 
 double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk, bool doparity) {
   Determinant dcopy = walk.d;
   dcopy.setocc(i, false);
   dcopy.setocc(a, true);
-  double ovlpdetcopy = getJastrowFactor(i/2, a/2, dcopy, walk.d);
-  if (i % 2 == 0)
-    ovlpdetcopy *= walk.getDetFactorA(i / 2, a / 2, *this, doparity);
-  else
-    ovlpdetcopy *= walk.getDetFactorB(i / 2, a / 2, *this, doparity);
-
-  return ovlpdetcopy;
+  return cps.OverlapRatio(i/2, a/2, dcopy, walk.d) * slater.OverlapRatio(i, a, walk, doparity); 
 }
 
 double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, bool doparity) {
+  //singleexcitation
+  if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
+  
   Determinant dcopy = walk.d;
   dcopy.setocc(I, false);
   dcopy.setocc(J, false);
   dcopy.setocc(A, true);
   dcopy.setocc(B, true);
-  double ovlpdetcopy = getJastrowFactor(I/2, J/2, A/2, B/2, dcopy, walk.d);
-
-  if (I % 2 == J % 2 && I % 2 == 0)
-    ovlpdetcopy *= walk.getDetFactorA(I / 2, J / 2, A / 2, B / 2, *this, doparity);
-  else if (I % 2 == J % 2 && I % 2 == 1)
-    ovlpdetcopy *= walk.getDetFactorB(I / 2, J / 2, A / 2, B / 2, *this, doparity);
-  else if (I % 2 != J % 2 && I % 2 == 0)
-    ovlpdetcopy *= walk.getDetFactorAB(I / 2, J / 2, A / 2, B / 2, *this, doparity);
-  else
-    ovlpdetcopy *= walk.getDetFactorAB(J / 2, I / 2, B / 2, A / 2, *this, doparity);
-
-  return ovlpdetcopy;
-
-}
-
-double CPSSlater::getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d)
-{
-  return cps.OverlapRatio(i, a, dcopy, d);
-}
-
-double CPSSlater::getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d)
-{
-  return cps.OverlapRatio(i, j, a, b, dcopy, d);
+  return cps.OverlapRatio(I/2, J/2, A/2, B/2, dcopy, walk.d)
+      * slater.OverlapRatio(I, J, A, B, walk, doparity);
 }
 
 void CPSSlater::OverlapWithGradient(HFWalker &walk,
@@ -265,131 +117,33 @@ void CPSSlater::OverlapWithGradient(HFWalker &walk,
   double factor = 1.0;
   cps.OverlapWithGradient(walk.d, grad, factor);
 
-  int numJastrowVariables = getNumJastrowVariables();
-  double detovlp = walk.getDetOverlap(*this);
-  for (int k = 0; k < ciExpansion.size(); k++)
-  {
-    grad(k + numJastrowVariables) += walk.alphaDet[k] * walk.betaDet[k] / detovlp;
-  }
-
-  if (determinants.size() <= 1 && schd.optimizeOrbs)
-  {
-    walk.OverlapWithGradient(*this, grad, detovlp);
-  }
+  Eigen::VectorBlock<VectorXd> gradtail = grad.tail(grad.rows()-cps.getNumVariables());
+  slater.OverlapWithGradient(walk, ovlp, gradtail);
 }
 
 
 void CPSSlater::printVariables()
 {
   cps.printVariables();
-
-  cout << endl<<"CI-expansion"<<endl;
-  for (int i = 0; i < determinants.size(); i++)
-  {
-    cout << "  " << ciExpansion[i] << endl;
-  }
-
-  cout << endl<<"DeterminantA"<<endl;
-  int norbs = Determinant::norbs;
-  for (int i = 0; i < norbs; i++) {
-    for (int j = 0; j < norbs; j++)
-      cout << "  " << HforbsA(i, j);
-    cout << endl;
-  }
-
-  if (schd.uhf)
-  {
-    cout << endl
-         << "DeterminantB" << endl;
-    for (int i = 0; i < norbs; i++) {
-      for (int j = 0; j < norbs; j++)
-        cout << "  " << HforbsB(i, j);
-      cout << endl;
-    }
-  }
-
-  cout << endl;
+  slater.printVariables();
 }
 
 void CPSSlater::updateVariables(Eigen::VectorXd &v)
 {
-  int norbs = Determinant::norbs;
-
-  long numVars = 0;
   cps.updateVariables(v);
-  numVars += getNumJastrowVariables();
 
-  for (int i = 0; i < determinants.size(); i++)
-  {
-    ciExpansion[i] = v[numVars];
-    numVars++;
-  }
-
-  for (int i = 0; i < norbs; i++)
-  {
-    for (int j = 0; j < norbs; j++)
-    {
-      if (!schd.uhf)
-      {
-        HforbsA(i, j) = v[numVars + i * norbs + j];
-        HforbsB(i, j) = v[numVars + i * norbs + j];
-      }
-      else
-      {
-        HforbsA(i, j) = v[numVars + i * norbs + j];
-        HforbsB(i, j) = v[numVars + norbs * norbs + i * norbs + j];
-      }
-    }
-  }
-}
-
-void orthogonalise(MatrixXd &m)
-{
-
-  for (int i = 0; i < m.cols(); i++)
-  {
-    for (int j = 0; j < i; j++)
-    {
-      double ovlp = m.col(i).transpose() * m.col(j);
-      double norm = m.col(j).transpose() * m.col(j);
-      m.col(i) = m.col(i) - ovlp / norm * m.col(j);
-    }
-    m.col(i) = m.col(i) / pow(m.col(i).transpose() * m.col(i), 0.5);
-  }
+  Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows()-cps.getNumVariables());
+  slater.updateVariables(vtail);
 }
 
 void CPSSlater::getVariables(Eigen::VectorXd &v)
 {
-  int norbs = Determinant::norbs;
   if (v.rows() != getNumVariables())
-  {
     v = VectorXd::Zero(getNumVariables());
-  }
-  long numVars = 0;
-  cps.getVariables(v);
-  numVars += getNumJastrowVariables();
-  for (int i = 0; i < determinants.size(); i++)
-  {
-    v[numVars] = ciExpansion[i];
-    numVars++;
-  }
 
-  for (int i = 0; i < norbs; i++)
-  {
-    for (int j = 0; j < norbs; j++)
-    {
-      if (!schd.uhf)
-      {
-        v[numVars + i * norbs + j] = HforbsA(i, j);
-        v[numVars + i * norbs + j] = HforbsB(i, j);
-      }
-      else
-      {
-        v[numVars + i * norbs + j] = HforbsA(i, j);
-        v[numVars + norbs * norbs + i * norbs + j] = HforbsB(i, j);
-      }
-    }
-  }
+  cps.getVariables(v);
+  Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows()-cps.getNumVariables());
+  slater.getVariables(vtail);
 }
 
 
@@ -404,11 +158,7 @@ long CPSSlater::getNumVariables()
   int norbs = Determinant::norbs;
   long numVars = 0;
   numVars += getNumJastrowVariables();
-  numVars += determinants.size();
-  if (schd.uhf)
-    numVars += 2 * norbs * norbs;
-  else
-    numVars += norbs * norbs;
+  numVars += slater.getNumVariables();
 
   return numVars;
 }
@@ -447,154 +197,38 @@ void CPSSlater::readWave()
 
 
 //<psi_t| (H-E0) |D>
+
 void CPSSlater::HamAndOvlp(HFWalker &walk,
                            double &ovlp, double &ham, 
 			   workingArray& work, bool fillExcitations)
 {
-  work.init();
-
-  double TINY = schd.screen;
-  double THRESH = schd.epsilon;
-
-  double detOverlap = walk.getDetOverlap(*this);
-  Determinant &d = walk.d;
-
+  work.setCounterToZero();
   int norbs = Determinant::norbs;
-  vector<int> closed;
-  vector<int> open;
-  d.getOpenClosed(open, closed);
 
-  size_t numJastrow = getNumJastrowVariables();
-  VectorXd ciGrad0(ciExpansion.size());
-  ciGrad0.setZero(); //this is <d|Psi_x>/<d|Psi> for x= ci-coeffs
-  //noexcitation
-  {
-    double E0 = d.Energy(I1, I2, coreE);
-    ovlp = detOverlap;
-    ovlp *= cps.Overlap(d);
-    ham = E0;
-
-  }
+  ovlp = Overlap(walk);
+  ham = walk.d.Energy(I1, I2, coreE); 
 
 
-  //Single alpha-beta excitation
-  {
-    double time = getTime();
-    for (int i = 0; i < closed.size(); i++)
-    {
-      for (int a = 0; a < open.size(); a++)
-      {
-        if (closed[i] % 2 == open[a] % 2 && abs(I2hb.Singles(closed[i], open[a])) > THRESH)
-        {
-          prof.SinglesCount++;
+  generateAllScreenedSingleExcitation(walk.d, schd.screen, schd.epsilon,
+                                      work, false);  
+  generateAllScreenedDoubleExcitation(walk.d, schd.screen, schd.epsilon,
+                                      work, false);  
 
-          int I = closed[i] / 2, A = open[a] / 2;
-          double tia = 0;
-          Determinant dcopy = d;
-          bool Alpha = closed[i] % 2 == 0 ? true : false;
+  //loop over all the screened excitations
+  for (int i=0; i<work.nExcitations; i++) {
+    int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+    double tia = work.HijElement[i];
+    
+    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
 
-          bool doparity = false;
-          if (schd.Hamiltonian == HUBBARD)
-            tia = I1(2 * A, 2 * I);
-          else {
-            //doparity = true;
-            tia = d.Hij_1ExciteScreened(open[a], closed[i], I2hb, TINY, doparity);
-            //cout << tia <<"  "<<tia2<<endl;
-          }
+    //calculate the ovlpRatio
+    double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
 
-          
-          double localham = 0.0;
-          if (abs(tia) > THRESH)
-          {
-            dcopy.setocc(closed[i], false);
-            dcopy.setocc(open[a], true);
+    //add contribution to the hamiltonian value
+    ham += tia * ovlpRatio;
 
-            double JastrowFactor = getJastrowFactor(I, A, dcopy, d);
-            double ovlpdetcopy;
-            if (Alpha)
-              ovlpdetcopy = walk.getDetFactorA(I, A, *this, doparity) * JastrowFactor;
-            else
-              ovlpdetcopy = walk.getDetFactorB(I, A, *this, doparity) * JastrowFactor;
-
-            ham += ovlpdetcopy * tia;
-
-            if (fillExcitations)
-	      work.appendValue(ovlpdetcopy, closed[i] * 2 * norbs + open[a],
-			       0, tia);
-          }
-        }
-      }
-    }
-    prof.SinglesTime += getTime() - time;
-  }
-
-  if (schd.Hamiltonian == HUBBARD)
-    return;
-
-  //Double excitation
-  {
-    double time = getTime();
-
-    int nclosed = closed.size();
-    for (int ij = 0; ij < nclosed * nclosed; ij++)
-    {
-      int i = ij / nclosed, j = ij % nclosed;
-      if (i <= j)
-        continue;
-      int I = closed[i] / 2, J = closed[j] / 2;
-      int X = max(I, J), Y = min(I, J);
-
-      int pairIndex = X * (X + 1) / 2 + Y;
-      size_t start = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
-      size_t end = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex + 1] : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
-      float *integrals = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-      short *orbIndices = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
-
-      // for all HCI integrals
-      for (size_t index = start; index < end; index++)
-      {
-        // if we are going below the criterion, break
-        if (fabs(integrals[index]) < THRESH)
-          break;
-
-        // otherwise: generate the determinant corresponding to the current excitation
-        int a = 2 * orbIndices[2 * index] + closed[i] % 2, b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
-        if (!(d.getocc(a) || d.getocc(b)))
-        {
-          prof.DoubleCount++;
-          Determinant dcopy = d;
-          double localham = 0.0;
-          double tiajb = integrals[index];
-
-          dcopy.setocc(closed[i], false);
-          dcopy.setocc(a, true);
-          dcopy.setocc(closed[j], false);
-          dcopy.setocc(b, true);
-
-          int A = a / 2, B = b / 2;
-          int type = 0; //0 = AA, 1 = BB, 2 = AB, 3 = BA
-          double JastrowFactor = getJastrowFactor(I, J, A, B, dcopy, d);
-          if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 0)
-            localham += tiajb * walk.getDetFactorA(I, J, A, B, *this, false) * JastrowFactor;
-          else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
-            localham += tiajb * walk.getDetFactorB(I, J, A, B, *this, false) * JastrowFactor;
-          else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-            localham += tiajb * walk.getDetFactorAB(I, J, A, B, *this, false) * JastrowFactor;
-          else
-            localham += tiajb * walk.getDetFactorAB(J, I, B, A, *this, false) * JastrowFactor;
-
-          ham += localham;
-          //cout << localham / tiajb <<"  "<<tiajb<<"  "<<ham<<endl;
-
-          double ovlpdetcopy = localham / tiajb;
-
-          if (fillExcitations)
-	    work.appendValue(ovlpdetcopy, closed[i] * 2 * norbs + a,
-			     closed[j] * 2 * norbs + b, tiajb);
-        }
-      }
-    }
-    prof.DoubleTime += getTime() - time;
+    work.ovlpRatio[i] = ovlpRatio;
   }
 }
 

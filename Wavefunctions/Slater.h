@@ -16,13 +16,11 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef CPSSlater_HEADER_H
-#define CPSSlater_HEADER_H
+#ifndef Slater_HEADER_H
+#define Slater_HEADER_H
 #include <vector>
 #include <set>
 #include "Determinants.h"
-#include "CPS.h"
-#include "Slater.h"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 
@@ -32,30 +30,38 @@ class twoIntHeatBathSHM;
 class HFWalker;
 class workingArray;
 
+enum HartreeFock {Restricted, UnRestricted, Generalized};
+
 /**
 * This is the wavefunction, it is a product of the CPS and a linear combination of
 * slater determinants
 */
-class CPSSlater {
+class Slater {
  private:
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
-    ar & cps
-       & slater;
+    ar & determinants
+       & ciExpansion 
+        & HforbsA
+        & HforbsB;
   }
 
+  HartreeFock hftype;
+  vector<Determinant> determinants; //The set of determinants
+  vector<double> ciExpansion;       //The ci expansion
+
+  MatrixXx HforbsA, HforbsB;
+
   
-  CPS cps; //The jastrow factors
-  Slater slater;
+  void readDefault();
 
-  double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
-  double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
-
-
+  void getDetMatrix(Determinant &, Eigen::MatrixXd &alpha, Eigen::MatrixXd &beta);
+  void readBestDeterminant(Determinant&);
+  void guessBestDeterminant(Determinant&);
  public:
 
-   CPSSlater();
+   Slater();
    void initWalker(HFWalker &walk);
    void initWalker(HFWalker &walk, Determinant &d);
 
@@ -74,46 +80,35 @@ class CPSSlater {
    */
   double Overlap(Determinant &);
 
-  double getOverlapFactor(HFWalker& w, Determinant& dcopy, bool doparity=false);
-  double getOverlapFactor(int i, int a, HFWalker& w, bool doparity);
-  double getOverlapFactor(int i, int j, int a, int b, HFWalker& w, bool doparity);
+  double OverlapRatio(int i, int a, HFWalker& w, bool doparity);
+  double OverlapRatio(int i, int j, int a, int b, HFWalker& w, bool doparity);
 
 
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)
    */
-   void OverlapWithGradient(HFWalker &,
-                            double &factor,
-                            Eigen::VectorXd &grad);
-
-   /**
- * Calculates the overlap, hamiltonian,
- * actually it only calculates 
- * ham      = hamiltonian/overlap
- * 
- * it also is able to calculate the overlap_d'/overlap_d, the ratio of
- * overlaps of all d' connected to the determinant d (walk.d)
- */
-   void HamAndOvlp(HFWalker &walk,
-                   double &ovlp, double &ham, 
-		   workingArray& work, bool fillExcitations = true);
+  void OverlapWithGradient(HFWalker & walk,
+                           double &factor,
+                           Eigen::VectorBlock<VectorXd> &grad);
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
    void derivativeOfLocalEnergy(HFWalker &,
                               double &factor,
                               Eigen::VectorXd &hamRatio);
 
-   void getVariables(Eigen::VectorXd &v);
-   long getNumVariables();
-   long getNumJastrowVariables();
-   void updateVariables(Eigen::VectorXd &dv);
-   void printVariables();
-   void writeWave();
-   void readWave();
-  vector<Determinant> &getDeterminants() { return slater.getDeterminants(); }
-  vector<double> &getciExpansion() { return slater.getciExpansion(); }
-  MatrixXd& getHforbsA() {return slater.getHforbsA();}
-  MatrixXd& getHforbsB() {return slater.getHforbsB();}
+  void getVariables(Eigen::VectorBlock<VectorXd> &v);
+
+  long getNumVariables();
+
+  void updateVariables(Eigen::VectorBlock<VectorXd> &v);
+
+  void printVariables();
+  void writeWave();
+  void readWave();
+  vector<Determinant> &getDeterminants() { return determinants; }
+  vector<double> &getciExpansion() { return ciExpansion; }
+  MatrixXd& getHforbsA() {return HforbsA;}
+  MatrixXd& getHforbsB() {return HforbsB;}
 };
 
 

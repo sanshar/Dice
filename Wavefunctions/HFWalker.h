@@ -143,7 +143,7 @@ public:
       }
       else
       {
-        getOrbDiff(w.getDeterminants()[i], w.getDeterminants()[0], creA, desA, creB, desB);
+        getDifferenceInOccupation(w.getDeterminants()[i], w.getDeterminants()[0], creA, desA, creB, desB);
         double alphaParity = w.getDeterminants()[0].parityA(creA, desA);
         double betaParity = w.getDeterminants()[0].parityB(creB, desB);
         calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[i], creA, desA, RowAlpha, alphaRef0, w.getHforbsA());
@@ -167,6 +167,9 @@ public:
     //exit(0);
   }
 
+
+
+  
   template <typename Wfn>
   double getDetOverlap(Wfn &w)
   {
@@ -225,6 +228,27 @@ public:
   //ith occupied and ath unoccupied
 
   template <typename Wfn>
+  double getDetFactor(int i, int a, Wfn &w, bool doparity) {
+    if (i % 2 == 0)
+      return getDetFactorA(i / 2, a / 2, w, doparity);
+    else
+      return getDetFactorB(i / 2, a / 2, w, doparity);
+  }
+
+  template <typename Wfn>
+  double getDetFactor(int I, int J, int A, int B, Wfn &w, bool doparity) {
+    if (I % 2 == J % 2 && I % 2 == 0)
+      return getDetFactorA(I / 2, J / 2, A / 2, B / 2, w, doparity);
+    else if (I % 2 == J % 2 && I % 2 == 1)
+      return getDetFactorB(I / 2, J / 2, A / 2, B / 2, w, doparity);
+    else if (I % 2 != J % 2 && I % 2 == 0)
+      return getDetFactorAB(I / 2, J / 2, A / 2, B / 2, w, doparity);
+    else
+      return getDetFactorAB(J / 2, I / 2, B / 2, A / 2, w, doparity);
+  }
+
+  
+  template <typename Wfn>
   double getDetFactorA(int i, int a, Wfn &w, bool doparity)
   {
     int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
@@ -232,17 +256,16 @@ public:
 
     double p = 1.;
     if (doparity)
-      d.parityA(a, i, p);
-
+      p *= d.parityA(a, i);
+    
     double detFactorNum = 0.0;
     double detFactorDen = 0.0;
-    for (int i = 0; i < w.getDeterminants().size(); i++)
+    for (int I = 0; I < w.getDeterminants().size(); I++)
     {
-      double factor = AlphaTable[i](tableIndexa, tableIndexi);
-      detFactorNum += w.getciExpansion()[i] * factor * alphaDet[i] * betaDet[i];
-      detFactorDen += w.getciExpansion()[i] * alphaDet[i] * betaDet[i];
+      double factor = AlphaTable[I](tableIndexa, tableIndexi);
+      detFactorNum += w.getciExpansion()[I] * factor * alphaDet[I] * betaDet[I];
+      detFactorDen += w.getciExpansion()[I] * alphaDet[I] * betaDet[I];
     }
-
     return p * detFactorNum / detFactorDen;
   }
 
@@ -254,7 +277,7 @@ public:
 
     double p = 1.;
     if (doparity)
-      d.parityB(a, i, p);
+      p *= d.parityB(a, i);
 
     double detFactorNum = 0.0;
     double detFactorDen = 0.0;
@@ -374,7 +397,7 @@ public:
     for (int i = 0; i < iArray.size(); i++)
     {
       if (doparity)
-        dcopy.parityB(aArray[i], iArray[i], p);
+        p *= dcopy.parityB(aArray[i], iArray[i]);
 
       dcopy.setoccB(iArray[i], false);
       dcopy.setoccB(aArray[i], true);
@@ -390,7 +413,7 @@ public:
   {
 
     double p = 1.0;
-    d.parityA(a, i, p);
+    p *= d.parityA(a, i);
 
     int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
     int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
@@ -432,7 +455,7 @@ public:
       vector<int> alphaRef, betaRef;
       w.getDeterminants()[x].getAlphaBeta(alphaRef, betaRef);
 
-      getOrbDiff(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
+      getDifferenceInOccupation(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
       double alphaParity = w.getDeterminants()[0].parityA(creA, desA);
       calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0, w.getHforbsA());
       alphaDet[x] *= alphaParity;
@@ -450,10 +473,10 @@ public:
 
     double p = 1.0;
     Determinant dcopy = d;
-    dcopy.parityA(a, i, p);
+    p *= dcopy.parityA(a, i);
     dcopy.setoccA(i, false);
     dcopy.setoccA(a, true);
-    dcopy.parityA(b, j, p);
+    p *= dcopy.parityA(b, j);
     dcopy.setoccA(j, false);
     dcopy.setoccA(b, true);
 
@@ -495,7 +518,7 @@ public:
       vector<int> alphaRef, betaRef;
       w.getDeterminants()[x].getAlphaBeta(alphaRef, betaRef);
 
-      getOrbDiff(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
+      getDifferenceInOccupation(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
       double alphaParity = w.getDeterminants()[0].parityA(creA, desA);
       calculateInverseDeterminantWithColumnChange(alphainv, alphaDet[0], alphainvCurrent, alphaDet[x], creA, desA, RowAlpha, alphaRef0, w.getHforbsA());
       alphaDet[x] *= alphaParity;
@@ -512,7 +535,7 @@ public:
   {
 
     double p = 1.0;
-    d.parityB(a, i, p);
+    p *= d.parityB(a, i);
 
     int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
     int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
@@ -554,7 +577,7 @@ public:
       vector<int> alphaRef, betaRef;
       w.getDeterminants()[x].getAlphaBeta(alphaRef, betaRef);
 
-      getOrbDiff(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
+      getDifferenceInOccupation(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
       double betaParity = w.getDeterminants()[0].parityB(creB, desB);
       calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0, w.getHforbsB());
       betaDet[x] *= betaParity;
@@ -572,10 +595,10 @@ public:
 
     double p = 1.0;
     Determinant dcopy = d;
-    dcopy.parityB(a, i, p);
+    p *= dcopy.parityB(a, i);
     dcopy.setoccB(i, false);
     dcopy.setoccB(a, true);
-    dcopy.parityB(b, j, p);
+    p *= dcopy.parityB(b, j);
     dcopy.setoccB(j, false);
     dcopy.setoccB(b, true);
 
@@ -620,7 +643,7 @@ public:
       vector<int> alphaRef, betaRef;
       w.getDeterminants()[x].getAlphaBeta(alphaRef, betaRef);
 
-      getOrbDiff(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
+      getDifferenceInOccupation(w.getDeterminants()[x], w.getDeterminants()[0], creA, desA, creB, desB);
       double betaParity = w.getDeterminants()[0].parityB(creB, desB);
       calculateInverseDeterminantWithColumnChange(betainv, betaDet[0], betainvCurrent, betaDet[x], creB, desB, RowBeta, betaRef0, w.getHforbsB());
       betaDet[x] *= betaParity;
@@ -696,7 +719,7 @@ public:
   template <typename Wfn>
   void OverlapWithGradient(Wfn &w, Eigen::VectorXd &grad, double detovlp)
   {
-    int numJastrowVariables = w.getNumJastrowVariables();
+
     int norbs = Determinant::norbs;
     HFWalker &walk = *this;
 
@@ -714,8 +737,7 @@ public:
           {
             if (ddet.getoccA(l))
             {
-              grad(numJastrowVariables + w.getciExpansion().size() + k * norbs + l) += w.getciExpansion()[det] * walk.alphainv(L, KA) * walk.alphaDet[det] * walk.betaDet[det] / detovlp;
-              //grad(w.getNumJastrowVariables() + w.getciExpansion().size() + k*norbs+l) += walk.alphainv(L, KA);
+              grad(k * norbs + l) += w.getciExpansion()[det] * walk.alphainv(L, KA) * walk.alphaDet[det] * walk.betaDet[det] / detovlp;
               L++;
             }
           }
@@ -734,10 +756,9 @@ public:
             if (ddet.getoccB(l))
             {
               if (schd.uhf)
-                grad(numJastrowVariables + w.getciExpansion().size() + norbs * norbs + k * norbs + l) += w.getciExpansion()[det] * walk.alphaDet[det] * walk.betaDet[det] * walk.betainv(L, KB) / detovlp;
+                grad(norbs * norbs + k * norbs + l) += w.getciExpansion()[det] * walk.alphaDet[det] * walk.betaDet[det] * walk.betainv(L, KB) / detovlp;
               else
-                grad(numJastrowVariables + w.getciExpansion().size() + k * norbs + l) += w.getciExpansion()[det] * walk.alphaDet[det] * walk.betaDet[det] * walk.betainv(L, KB) / detovlp;
-              //grad(w.getNumJastrowVariables() + w.getciExpansion().size() + k*norbs+l) += walk.betainv(L, KB);
+                grad(k * norbs + l) += w.getciExpansion()[det] * walk.alphaDet[det] * walk.betaDet[det] * walk.betainv(L, KB) / detovlp;
               L++;
             }
           }

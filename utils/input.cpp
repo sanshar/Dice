@@ -137,7 +137,7 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "cicpsghfslater"))
 	    schd.wavefunctionType = "CICPSGHFSlater";
       
-      else if (boost::iequals(ArgName, "ghf"))
+          else if (boost::iequals(ArgName, "ghf"))
 	    schd.wavefunctionType = "CPSGHFSlater";
 
 	  else if (boost::iequals(ArgName, "tol"))
@@ -248,6 +248,10 @@ void readInput(string input, schedule& schd, bool print) {
 #endif
 }
 
+void readCorrelator(const std::pair<int, std::string>& p,
+		    std::vector<Correlator>& correlators) {
+  readCorrelator(p.second, p.first, correlators);
+}
 
 void readCorrelator(std::string input, int correlatorSize,
 		    std::vector<Correlator>& correlators) {
@@ -287,9 +291,9 @@ void readCorrelator(std::string input, int correlatorSize,
 
 void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, bool uhf) {
 
+  ifstream dump("hf.txt");
   if (!uhf)
     {
-      ifstream dump("hf.txt");
       for (int i = 0; i < HfmatrixA.rows(); i++)
 	for (int j = 0; j < HfmatrixA.rows(); j++)
 	  {

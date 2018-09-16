@@ -467,3 +467,15 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 } // end twoIntHeatBathSHM::constructClass
 
 
+void twoIntHeatBathSHM::getIntegralArray(int i, int j, const float* &integrals,
+                                         const short* &orbIndices, size_t& numIntegrals) const {
+  int I = i / 2, J = j / 2;
+  int X = max(I, J), Y = min(I, J);
+
+  int pairIndex     = X * (X + 1) / 2 + Y;
+  size_t start      = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+  size_t end        = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pairIndex + 1] : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
+  integrals  = i % 2 == j % 2 ? I2hb.sameSpinIntegrals+start : I2hb.oppositeSpinIntegrals+start;
+  orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs+2*start : I2hb.oppositeSpinPairs+2*start;
+  numIntegrals = end-start;
+}

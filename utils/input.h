@@ -158,6 +158,9 @@ void readInput(const std::string input, schedule& schd, bool print=true);
 void readCorrelator(std::string input, int correlatorSize,
 		    std::vector<Correlator>& correlators);
 
+void readCorrelator(const std::pair<int, std::string>& p,
+		    std::vector<Correlator>& correlators);
+
 
 /**
  * We are just reading the set of determinants and their ci coefficients

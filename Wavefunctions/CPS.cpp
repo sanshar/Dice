@@ -23,151 +23,136 @@
 
 using namespace Eigen;
 
+CPS::CPS () {    
 
-double CPS::Overlap(const Determinant &d)
-{
-  double ovlp = 1.0;
+  for(const auto& p : schd.correlatorFiles) readCorrelator(p, this->cpsArray);
+  
+  generateMapFromOrbitalToCorrelators();
+};
 
-  //Overlap with all the Correlators
+CPS::CPS (std::vector<Correlator>& pcpsArray) : cpsArray(pcpsArray) {
+  generateMapFromOrbitalToCorrelators();
+};
+
+
+void CPS::generateMapFromOrbitalToCorrelators() {
+
   for (int i = 0; i < cpsArray.size(); i++)
   {
-    ovlp *= cpsArray[i].Overlap(d);
-  }
+    for (int j = 0; j < cpsArray[i].asites.size(); j++) {
+      int orbital = cpsArray[i].asites[j];
+      mapFromOrbitalToCorrelator[orbital].push_back(i);
+    }
+  } 
+}
 
+double CPS::Overlap(const Determinant &d) const
+{
+  double ovlp = 1.0;
+  for (const auto& c : cpsArray) ovlp *= c.Overlap(d);
   return ovlp;
 }
 
 
-double CPS::OverlapRatio (const Determinant &d1, const Determinant &d2) {
-    double overlapRatio = 1.0;
-    for (int i=0; i < cpsArray.size(); i++) {
-        overlapRatio *= cpsArray[i].Overlap(d1)/cpsArray[i].Overlap(d2);
-    };
-    return overlapRatio;
+double CPS::OverlapRatio (const Determinant &d1, const Determinant &d2) const {
+  double ovlp = 1.0;
+  for (const auto& c : cpsArray) ovlp *= c.Overlap(d1)/c.Overlap(d2);
+  return ovlp;
 }
 
 
-double CPS::OverlapRatio(int i, int a, Determinant &dcopy, Determinant &d)
+double CPS::OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const
 {
-  double cpsFactor = 1.0;
+  vector<int> commonCorrelators;
+  
+  copy(mapFromOrbitalToCorrelator.find(i)->second.begin(),
+       mapFromOrbitalToCorrelator.find(i)->second.end(),
+       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator.find(a)->second.begin(),
+       mapFromOrbitalToCorrelator.find(a)->second.end(),
+       back_inserter(commonCorrelators));
 
-  int index = 0;
-  for (int x = 0; x < orbitalToCPS[i].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[i][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[a].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[a][x];
-    index++;
-  }
-  sort(workingVectorOfCPS.begin(), workingVectorOfCPS.begin() + index);
 
-  int prevIndex = -1;
-  for (int x = 0; x < index; x++)
-  {
-    if (workingVectorOfCPS[x] != prevIndex)
-    {
-      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
-      cpsFactor *= cpsArray[workingVectorOfCPS[x]].Overlap(dcopy) / cpsArray[workingVectorOfCPS[x]].Overlap(d);
-      prevIndex = workingVectorOfCPS[x];
-    }
-  }
+  sort(commonCorrelators.begin(), commonCorrelators.end() );
+  commonCorrelators.erase( unique( commonCorrelators.begin(), commonCorrelators.end() ),
+                           commonCorrelators.end() );
 
-  return cpsFactor;
+  double ovlp = 1.0;
+  for (const auto& i : commonCorrelators)
+    ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
+  return ovlp;
 }
 
-double CPS::OverlapRatio(int i, int j, int a, int b, Determinant &dcopy, Determinant &d)
+double CPS::OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const
 {
-  double cpsFactor = 1.0;
+  vector<int> commonCorrelators;
+  
+  copy(mapFromOrbitalToCorrelator.find(i)->second.begin(),
+       mapFromOrbitalToCorrelator.find(i)->second.end(),
+       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator.find(a)->second.begin(),
+       mapFromOrbitalToCorrelator.find(a)->second.end(),
+       back_inserter(commonCorrelators));
 
-  int index = 0;
-  for (int x = 0; x < orbitalToCPS[i].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[i][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[a].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[a][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[j].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[j][x];
-    index++;
-  }
-  for (int x = 0; x < orbitalToCPS[b].size(); x++)
-  {
-    workingVectorOfCPS[index] = orbitalToCPS[b][x];
-    index++;
-  }
-  sort(workingVectorOfCPS.begin(), workingVectorOfCPS.begin() + index);
+  copy(mapFromOrbitalToCorrelator.find(j)->second.begin(),
+       mapFromOrbitalToCorrelator.find(j)->second.end(),
+       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator.find(b)->second.begin(),
+       mapFromOrbitalToCorrelator.find(b)->second.end(),
+       back_inserter(commonCorrelators));
 
-  int prevIndex = -1;
-  for (int x = 0; x < index; x++)
-  {
-    if (workingVectorOfCPS[x] != prevIndex)
-    {
-      cpsFactor *= cpsArray[workingVectorOfCPS[x]].Overlap(dcopy) / cpsArray[workingVectorOfCPS[x]].Overlap(d);
-      //cpsFactor *= cpsArray[ workingVectorOfCPS[x] ].OverlapRatio(dcopy,d);
-      prevIndex = workingVectorOfCPS[x];
-    }
-  }
-  return cpsFactor;
+
+  sort(commonCorrelators.begin(), commonCorrelators.end() );
+  commonCorrelators.erase( unique( commonCorrelators.begin(), commonCorrelators.end() ),
+                           commonCorrelators.end() );
+  
+  double ovlp = 1.0;
+  for (const auto& i : commonCorrelators)
+    ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
+  return ovlp;
 }
 
 void CPS::OverlapWithGradient(const Determinant& d, 
-				     VectorXd& grad,
-				     const double& ovlp) {
+                              VectorXd& grad,
+                              const double& ovlp) const {
   
   long startIndex = 0;
-
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    cpsArray[i].OverlapWithGradient(d, grad,
-                                    ovlp, startIndex);
-    startIndex += cpsArray[i].Variables.size();
+  for (const auto& c : cpsArray) {
+    c.OverlapWithGradient(d, grad, ovlp, startIndex);
+    startIndex += c.Variables.size();
   }
 }
 
-long CPS::getNumVariables()
+long CPS::getNumVariables() const
 {
   long numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-    numVars += cpsArray[i].Variables.size();
-
-  return numVars;
+  return std::accumulate(cpsArray.begin(), cpsArray.end(), numVars,
+                         [](long a, const Correlator& c)
+                         {return a + c.Variables.size();}
+                         );
 }
 
-void CPS::getVariables(Eigen::VectorXd &v)
+
+void CPS::getVariables(Eigen::VectorXd &v) const
 {
   int numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].Variables.size(); j++)
-    {
-      v[numVars] = cpsArray[i].Variables[j];
-      numVars++;
-    }
+  for (const auto& c : cpsArray) {
+    std::copy(c.Variables.begin(), c.Variables.end(), &v[numVars]);
+    numVars+= c.Variables.size();
   }
 }
 
-void CPS::updateVariables(Eigen::VectorXd &v)
+void CPS::updateVariables(const Eigen::VectorXd &v)
 {
   int numVars = 0;
-  for (int i = 0; i < cpsArray.size(); i++)
-  {
-    for (int j = 0; j < cpsArray[i].Variables.size(); j++)
-    {
-      cpsArray[i].Variables[j] = v[numVars];
-      numVars++;
-    }
+  for (auto& c : cpsArray) {
+    for (int j=0; j<c.Variables.size(); j++)
+      c.Variables[j] = v[numVars+j];
+    numVars+= c.Variables.size();
   }
 }
 
-void CPS::printVariables()
+void CPS::printVariables() const
 {
   cout << "CPS"<< endl;
   for (int i = 0; i < cpsArray.size(); i++)

@@ -206,13 +206,13 @@ double CPSGHFSlater::getOverlapFactor(GHFWalker& walk, Determinant& dcopy, bool 
   else if (excitationDistance == 1)
   {
     int I, A;
-    getOrbDiff(walk.d, dcopy, I, A);
+    getDifferenceInOccupation(walk.d, dcopy, I, A);
     ovlpdetcopy = getOverlapFactor(I, A, walk, doparity);
   }
   else if (excitationDistance == 2)
   {
     int I, J, A, B;
-    getOrbDiff(walk.d, dcopy, I, J, A, B);
+    getDifferenceInOccupation(walk.d, dcopy, I, J, A, B);
     ovlpdetcopy = getOverlapFactor(I, J, A, B, walk, doparity);
   }
   else
@@ -428,7 +428,7 @@ void CPSGHFSlater::HamAndOvlp(GHFWalker &walk,
                            double &ovlp, double &ham, 
 			   workingArray& work, bool fillExcitations)
 {
-  work.init();
+  work.setCounterToZero();
 
   double TINY = schd.screen;
   double THRESH = schd.epsilon;

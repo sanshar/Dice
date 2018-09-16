@@ -35,120 +35,75 @@
  * CPS is a product of correlators 
  */
 class CPS {
-    private:
-        friend class boost::serialization::access;
-        template<class Archive>
-            void serialize (Archive & ar, const unsigned int version) {
-                ar & cpsArray
-                   & orbitalToCPS
-                   & workingVectorOfCPS;
-            }
-    public:
-        std::vector<Correlator> cpsArray;  
-        vector<vector<int>> orbitalToCPS; //for each orbital all coorelators that it belongs to
-        vector<int> workingVectorOfCPS;
+ private:
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize (Archive & ar, const unsigned int version) {
+    ar & cpsArray
+        & mapFromOrbitalToCorrelator
+        & commonCorrelators;
+  }
+ public:
+  std::vector<Correlator> cpsArray;  
 
-        //reads correlator file and makes cpsArray, orbitalToCPS
-        CPS () {    
-            for (auto it = schd.correlatorFiles.begin(); it != schd.correlatorFiles.end(); it++) {
-                readCorrelator(it->second, it->first, cpsArray);
-            }
-            
-            int maxCPSSize = 0;
-            orbitalToCPS.resize(Determinant::norbs);
-            for (int i = 0; i < cpsArray.size(); i++) {
-                for (int j = 0; j < cpsArray[i].asites.size(); j++)
-                    orbitalToCPS[cpsArray[i].asites[j]].push_back(i);
-            }
-            for (int i = 0; i < orbitalToCPS.size(); i++)
-              if (orbitalToCPS[i].size() > maxCPSSize)
-                maxCPSSize = orbitalToCPS[i].size();
-            workingVectorOfCPS.resize(4 * maxCPSSize);
-        };
+  map<int, vector<int>> mapFromOrbitalToCorrelator;
+  vector<int> commonCorrelators;
+  
+  //reads correlator file and makes cpsArray, orbitalToCPS
+  CPS ();
+  CPS (std::vector<Correlator>& pcpsArray);
 
-        /*
-         * construct using correlator vector
-         */
-        CPS (std::vector<Correlator>& pcpsArray) : cpsArray(pcpsArray) {
-            orbitalToCPS.resize(Determinant::norbs);
-            for (int i = 0; i < cpsArray.size(); i++)
-            {
-              for (int j = 0; j < cpsArray[i].asites.size(); j++)
-                orbitalToCPS[cpsArray[i].asites[j]].push_back(i);
-            } 
-            
-            int maxCPSSize = 0;
-            orbitalToCPS.resize(Determinant::norbs);
-            for (int i = 0; i < cpsArray.size(); i++) {
-                for (int j = 0; j < cpsArray[i].asites.size(); j++)
-                    orbitalToCPS[cpsArray[i].asites[j]].push_back(i);
-            }
-            for (int i = 0; i < orbitalToCPS.size(); i++)
-              if (orbitalToCPS[i].size() > maxCPSSize)
-                maxCPSSize = orbitalToCPS[i].size();
-            workingVectorOfCPS.resize(4 * maxCPSSize);
-        };
+  void generateMapFromOrbitalToCorrelators();
 
-        /*
-        * Takes an occupation number representation of a determinant
-        * in the local orbital basis and calculates the overlap with
-        * the CPS
-        * PARAMS:
-        * 
-        * Determinant: the occupation number representation as an input
-        * 
-        * RETURN:
-        * <d|CPS>
-        */
-         double Overlap(const Determinant& d);
+  double Overlap(const Determinant& d) const ;
 
-        /*
-        * Takes an occupation number representation of two determinants
-        * in the local orbital basis and calculates the ratio of overlaps 
-        * <d1|CPS>/<d2|CPS>
-        * PARAMS:
-        * 
-        * Determinant: the occupation number representation of dets
-        * 
-        * RETURN:
-        * <d1|CPS>/<d2|CPS>
-        *
-        */
-         double OverlapRatio(const Determinant& d1, const Determinant& d2);
+  /*
+   * Takes an occupation number representation of two determinants
+   * in the local orbital basis and calculates the ratio of overlaps 
+   * <d1|CPS>/<d2|CPS>
+   * PARAMS:
+   * 
+   * Determinant: the occupation number representation of dets
+   * 
+   * RETURN:
+   * <d1|CPS>/<d2|CPS>
+   *
+   */
+  double OverlapRatio(const Determinant& d1, const Determinant& d2) const ;
 
-        /*
-         * return ratio of overlaps of CPS with d and (i->a,j->b)excited-d (=dcopy)
-         */
-        double OverlapRatio(int i, int a, Determinant &dcopy, Determinant &d);
-        double OverlapRatio(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+  /*
+   * return ratio of overlaps of CPS with d and (i->a,j->b)excited-d (=dcopy)
+   */
+  double OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const ;
+  double OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const;
 
-        /*
-        * Takes an occupation number representation of a determinant
-        * in the local orbital basis and calculates the overlap 
-        * the CPS and also the overlap of the determinant
-        * with respect to the tangent vector w.r.t to all the 
-        * parameters in the wavefuncion
-        * 
-        * PARAMS:
-        * 
-        * Determinant: the occupation number representation of the determinant
-        * grad       : the vector of the gradient. This vector is long and contains
-        *              the space for storing gradients with respect to all the parameters
-        *              in the wavefunction and not just this CPS and so the index startIndex
-        *              is needed to indentify at what index should we start populating the
-        *              gradient w.r.t to this CPS in the vector
-        * ovlp       : <d|CPS>
-        * startIndex : The location in the vector gradient from where to start populating
-        *              the gradient w.r.t to the current Correlator
-        */
-         void   OverlapWithGradient  (const Determinant& d, 
-           		                         Eigen::VectorXd& grad,
-                             			   const double& ovlp);
+  /*
+   * Takes an occupation number representation of a determinant
+   * in the local orbital basis and calculates the overlap 
+   * the CPS and also the overlap of the determinant
+   * with respect to the tangent vector w.r.t to all the 
+   * parameters in the wavefuncion
+   * 
+   * PARAMS:
+   * 
+   * Determinant: the occupation number representation of the determinant
+   * grad       : the vector of the gradient. This vector is long and contains
+   *              the space for storing gradients with respect to all the parameters
+   *              in the wavefunction and not just this CPS and so the index startIndex
+   *              is needed to indentify at what index should we start populating the
+   *              gradient w.r.t to this CPS in the vector
+   * ovlp       : <d|CPS>
+   * startIndex : The location in the vector gradient from where to start populating
+   *              the gradient w.r.t to the current Correlator
+   */
+  void   OverlapWithGradient  (const Determinant& d, 
+                               Eigen::VectorXd& grad,
+                               const double& ovlp) const;
 
-         void getVariables(Eigen::VectorXd &v);
-         long getNumVariables();
-         void updateVariables(Eigen::VectorXd &v);
-         void printVariables();
+  void getVariables(Eigen::VectorXd &v) const ;
+  long getNumVariables() const;
+  void updateVariables(const Eigen::VectorXd &v);
+  void printVariables() const;
 };
 
 

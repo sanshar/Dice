@@ -22,6 +22,7 @@
 #include <set>
 #include "Determinants.h"
 #include "workingArray.h"
+#include "excitationOperators.h"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
@@ -33,233 +34,6 @@ class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
 class CPSSlaterWalker;
-
-class Operator {
- private:
-  friend class boost::serialization::access;
-  template <class Archive>
-    void serialize(Archive &ar, const unsigned int version)
-    {
-      ar & cre
-	& des
-	& n
-	& nops;
-    }
-
- public:
-  
-  std::array<short, 4> cre;
-  std::array<short, 4> des;
-  int n;
-  int nops;
-
- Operator() : cre ({0,0,0,0}), des ({0,0,0,0}) { 
-    n = 0;
-    nops = 1;
-  }
-
-  //a1^\dag i1
- Operator(short a1, short i1) : cre ({a1}), des ({i1}) {
-    n = 1;
-    nops = 1;
-  }
-
-  //a2^\dag i2 a1^\dag i1
- Operator(short a1, short a2, short i1, short i2) :cre ({a2, a1}), des ({i2, i1}) {
-    n = 2;
-    nops = 1;
-  }
-
-  friend ostream& operator << (ostream& os, Operator& o) {
-    for (int i=0; i<o.n; i++)
-      os<<o.cre[i]<<" "<<o.des[i]<<"    ";
-    return os;
-  }
-
-  bool apply(Determinant &dcopy, int op)
-  {
-    bool valid = true;
-    for (int j = 0; j < n; j++)
-      {
-	if (dcopy.getocc(cre[j]) == true)
-	  dcopy.setocc(cre[j], false);
-	else
-	  return false;
-
-	if (dcopy.getocc(des[j]) == false)
-	  dcopy.setocc(des[j], true);
-	else
-	  return false;
-      }
-    return valid;
-  }
-
-  static void populateSinglesToOpList(vector<Operator>& oplist) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < 2 * norbs; i++)
-      for (int j = 0; j < 2 * norbs; j++)
-	{
-	  //if (I2hb.Singles(i, j) > schd.epsilon )
-	  if (i % 2 == j % 2)
-	    {
-	      oplist.push_back(Operator(i, j));
-	    }
-	}
-  }
-
-  static void populateScreenedDoublesToOpList(vector<Operator>& oplist, double screen) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < 2 * norbs; i++)
-      {
-	for (int j = i + 1; j < 2 * norbs; j++)
-	  {
-	    int pair = (j / 2) * (j / 2 + 1) / 2 + i / 2;
-
-	    size_t start = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair] : I2hb.startingIndicesOppositeSpin[pair];
-	    size_t end = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair + 1] : I2hb.startingIndicesOppositeSpin[pair + 1];
-	    float *integrals = i % 2 == j % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-	    short *orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
-
-	    for (size_t index = start; index < end; index++)
-	      {
-		if (fabs(integrals[index]) < screen)
-		  break;
-		int a = 2 * orbIndices[2 * index] + i % 2, b = 2 * orbIndices[2 * index + 1] + j % 2;
-		//cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  spin orbs "<<integrals[index]<<endl;
-
-		oplist.push_back(Operator(i, j, a, b));
-	      }
-	  }
-      }
-
-  }
-};
-
-
-class SpinFreeOperator {
- private:
-  friend class boost::serialization::access;
-  template <class Archive>
-    void serialize(Archive &ar, const unsigned int version)
-    {
-      ar & ops
-	& nops;
-    }
-
- public:
-
-  vector<Operator> ops;
-  int nops;
-
-  SpinFreeOperator() { 
-    ops.push_back(Operator());
-    nops = 1;
-  }
-
-  //a1^\dag i1
-  SpinFreeOperator(short a1, short i1) {
-    ops.push_back(Operator(2*a1, 2*i1));
-    ops.push_back(Operator(2*a1+1, 2*i1+1));
-    nops = 2;
-  }
-
-  //a2^\dag i2 a1^\dag i1
-  SpinFreeOperator(short a1, short a2, short i1, short i2) {
-    if (a1 == a2 && a1 == i1 && a1 == i2) {
-      ops.push_back(Operator(2*a1+1, 2*a2, 2*i1+1, 2*i2));
-      ops.push_back(Operator(2*a1, 2*a2+1, 2*i1, 2*i2+1));
-      nops = 2;
-    }
-    else {
-      ops.push_back(Operator(2*a1, 2*a2, 2*i1, 2*i2));
-      ops.push_back(Operator(2*a1+1, 2*a2, 2*i1+1, 2*i2));
-      ops.push_back(Operator(2*a1, 2*a2+1, 2*i1, 2*i2+1));
-      ops.push_back(Operator(2*a1+1, 2*a2+1, 2*i1+1, 2*i2+1));
-      nops = 4;
-    }
-  }
-
-  friend ostream& operator << (ostream& os, const SpinFreeOperator& o) {
-    for (int i=0; i<o.ops[0].n; i++)
-      os<<o.ops[0].cre[i]/2<<" "<<o.ops[0].des[i]/2<<"    ";
-    return os;
-  }
-
-  bool apply(Determinant &dcopy, int op)
-  {
-    return ops[op].apply(dcopy, op);
-  }
-
-  static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i <  norbs; i++)
-      for (int j = 0; j <  norbs; j++)
-	{
-	  oplist.push_back(SpinFreeOperator(i, j));
-	}
-  }
-
-  static void populateScreenedDoublesToOpList(vector<SpinFreeOperator>& oplist, double screen) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < norbs; i++)
-      {
-	for (int j = i; j < norbs; j++)
-	  {
-
-	    /*
-	    for (int a = 0; a<norbs; a++)
-	      for (int b = 0; b<norbs; b++) 
-		oplist.push_back(SpinFreeOperator(i, a, j, b));
-	    */
-
-	    int pair = (j) * (j + 1) / 2 + i ;
-
-	    set<std::pair<int, int> > UniqueSpatialIndices;
-	    if (j != i) { //same spin
-	      size_t start = I2hb.startingIndicesSameSpin[pair] ;
-	      size_t end = I2hb.startingIndicesSameSpin[pair + 1];
-	      float *integrals = I2hb.sameSpinIntegrals ;
-	      short *orbIndices = I2hb.sameSpinPairs ;
-	      
-	      for (size_t index = start; index < end; index++)
-		{
-		  if (fabs(integrals[index]) < screen)
-		    break;
-		  int a = orbIndices[2 * index], b = orbIndices[2 * index + 1];
-		  //cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  same spin "<<integrals[index]<<endl;
-		  UniqueSpatialIndices.insert(std::pair<int, int>(a,b));
-		}
-	    }
-
-	    { //opposite spin
-	      size_t start = I2hb.startingIndicesOppositeSpin[pair];
-	      size_t end = I2hb.startingIndicesOppositeSpin[pair + 1];
-	      float *integrals = I2hb.oppositeSpinIntegrals;
-	      short *orbIndices = I2hb.oppositeSpinPairs;
-	      
-	      for (size_t index = start; index < end; index++)
-		{
-		  if (fabs(integrals[index]) < screen)
-		    break;
-		  int a = orbIndices[2 * index], b = orbIndices[2 * index + 1];
-		  //cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  opp spin "<<integrals[index]<<endl;
-		  UniqueSpatialIndices.insert(std::pair<int, int>(a,b));
-		}		
-	    }
-
-	    for (auto it = UniqueSpatialIndices.begin(); 
-		 it != UniqueSpatialIndices.end(); it++) {
-
-	      int a = it->first, b = it->second;
-	      oplist.push_back(SpinFreeOperator(a, b, i, j));
-
-	    }
-
-	  }
-      }
-  }
-
-};
 
 
 /**
@@ -343,7 +117,21 @@ template <typename Wfn, typename Walker, typename OpType>
     return ciCoeffs.size();
   }
 
-  double getovlpRatio(Walker &walk, Determinant &dcopy)
+  double getOverlapFactor(int I, int J, int A, int B, Walker& walk, bool doparity=false) {
+    int norbs = Determinant::norbs;
+    if (J == 0 && B == 0) {
+      Walker walkcopy = walk;
+      walkcopy.exciteWalker(wave, I*2*norbs+A, 0, norbs);
+      return Overlap(walkcopy)/Overlap(walk);
+    }
+    else {
+      Walker walkcopy = walk;
+      walkcopy.exciteWalker(wave, I*2*norbs+A, J*2*norbs+B, norbs);
+      return Overlap(walkcopy)/Overlap(walk);
+    }
+  }
+  
+  double calculateOverlapWithUnderlyingWave(Walker &walk, Determinant &dcopy)
   {
     double ovlpdetcopy;
     int excitationDistance = dcopy.ExcitationDistance(walk.d);
@@ -355,13 +143,13 @@ template <typename Wfn, typename Walker, typename OpType>
     else if (excitationDistance == 1)
       {
 	int I, A;
-	getOrbDiff(walk.d, dcopy, I, A);
+	getDifferenceInOccupation(walk.d, dcopy, I, A);
 	ovlpdetcopy = wave.getOverlapFactor(I, A, walk, false);
       }
     else if (excitationDistance == 2)
       {
 	int I, J, A, B;
-	getOrbDiff(walk.d, dcopy, I, J, A, B);
+	getDifferenceInOccupation(walk.d, dcopy, I, J, A, B);
 	bool doparity = false;
 
 	//cout << I<<"  "<<J<<"  "<<A<<"  "<<B<<endl;
@@ -386,8 +174,7 @@ template <typename Wfn, typename Walker, typename OpType>
 	  bool valid = oplist[i].apply(dcopy, j);
 
 	  if (valid) {
-	    //cout << i<<" -  "<<oplist[i].ops[j]<<"  "<<walk.d<<"  "<<dcopy<<endl;
-	    double ovlpdetcopy = getovlpRatio(walk, dcopy);
+	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
 	    totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
 	  }
 	}
@@ -412,7 +199,7 @@ template <typename Wfn, typename Walker, typename OpType>
 	  bool valid = oplist[i].apply(dcopy, j);
 
 	  if (valid) {
-	    double ovlpdetcopy = getovlpRatio(walk, dcopy);
+	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
 	    gradcopy[i] += ovlpdetcopy;
 	  }
 	}
@@ -428,11 +215,12 @@ template <typename Wfn, typename Walker, typename OpType>
     return totalOvlp;
   }
 
+  
   void HamAndOvlp(Walker &walk,
 		  double &ovlp, double &ham,
 		  workingArray& work, bool fillExcitations = true)
   {
-    work.init();
+    work.setCounterToZero();
 
     double TINY = schd.screen;
     double THRESH = schd.epsilon;
@@ -473,9 +261,9 @@ template <typename Wfn, typename Walker, typename OpType>
 		      tia = I1(2 * A, 2 * I);
 		      double sgn = 1.0;
 		      if (Alpha)
-			d.parityA(A, I, sgn);
+			sgn *= d.parityA(A, I);
 		      else
-			d.parityB(A, I, sgn);
+			sgn *= d.parityB(A, I);
 		      tia *= sgn;
 		    }
 		  else
@@ -505,9 +293,9 @@ template <typename Wfn, typename Walker, typename OpType>
 			}
 		      double sgn = 1.0;
 		      if (Alpha)
-			d.parityA(A, I, sgn);
+			sgn *= d.parityA(A, I);
 		      else
-			d.parityB(A, I, sgn);
+			sgn *= d.parityB(A, I);
 		      tia *= sgn;
 		    }
 
@@ -519,13 +307,15 @@ template <typename Wfn, typename Walker, typename OpType>
 		      double ovlpdetcopy = Overlap(walkcopy);
 		      ham += ovlpdetcopy * tia / ovlp;
 
-		      if (fillExcitations)
+		      if (fillExcitations) {
+                        cout << closed[i]/2<<"  "<<open[a]/2<<"  0  0  "<<ovlpdetcopy<<"  "<<tia<<endl;
 			work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a],
 					 0, tia);
-		    }
-		}
-	    }
-	}
+                      }
+                    }
+                }
+            }
+        }
       prof.SinglesTime += getTime() - time;
     }
 
@@ -571,20 +361,22 @@ template <typename Wfn, typename Walker, typename OpType>
 
 		  double parity = 1.0;
 		  if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 0)
-		    walk.d.parityAA(I, J, A, B, parity); 
+		    parity = walk.d.parityAA(I, J, A, B); 
 		  else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
-		    walk.d.parityBB(I, J, A, B, parity); 
+		    parity = walk.d.parityBB(I, J, A, B); 
 		  else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-		    {walk.d.parityA(A, I, parity) ; walk.d.parityB(B, J, parity);}
+		    {parity = walk.d.parityA(A, I) * walk.d.parityB(B, J);}
 		  else
-		    {walk.d.parityB(A, I,parity); walk.d.parityA(B, J, parity);}
+                    {parity = walk.d.parityB(A, I) * walk.d.parityA(B, J);}
             
 		  ham += ovlpdetcopy * tiajb * parity / ovlp;
 
-		  if (fillExcitations)
+		  if (fillExcitations) {
+                    cout << closed[i]/2<<"  "<<a/2<<"  "<<closed[j]/2<<"  "<<b/2<<"  "<<ovlpdetcopy<<"  "<<tiajb<<endl;
 		    work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + a,
 				     closed[j] * 2 * norbs + b , tiajb);
-		}
+                  }
+                }
 	    }
 	}
       prof.DoubleTime += getTime() - time;

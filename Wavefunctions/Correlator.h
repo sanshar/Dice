@@ -86,7 +86,7 @@ private:
  * RETURN:
  * <d|correlator>
  */
-  double Overlap              (const Determinant& d);
+  double Overlap              (const Determinant& d) const;
 
 /**
  * Takes an occupation number representation of two determinants
@@ -99,7 +99,7 @@ private:
  * RETURN:
  * <d1|correlator>/<d2|correlator>
  */
-  double OverlapRatio(const Determinant& d1, const Determinant& d2);
+  double OverlapRatio(const Determinant& d1, const Determinant& d2) const;
 
 /**
  * Takes an occupation number representation of a determinant
@@ -121,9 +121,9 @@ private:
  *              the gradient w.r.t to the current correlator
  */
   void   OverlapWithGradient  (const Determinant& d, 
-			                         Eigen::VectorXd& grad,
-                      			   const double& ovlp,
-                      			   const long& startIndex);
+                               Eigen::VectorXd& grad,
+                               const double& ovlp,
+                               const long& startIndex) const;
 
   friend std::ostream& operator<<(std::ostream& os, const Correlator& c); 
 };

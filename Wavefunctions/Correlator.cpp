@@ -24,7 +24,7 @@ using namespace Eigen;
 void Correlator::OverlapWithGradient(const Determinant& d, 
 				     VectorXd& grad,
 				     const double& ovlp,
-				     const long& startIndex) {
+				     const long& startIndex) const {
   
   long index=0, one=1, index2=0;
   for (int n=0; n<bsites.size(); n++)
@@ -47,7 +47,7 @@ void Correlator::OverlapWithGradient(const Determinant& d,
   }
 }
 
-double Correlator::Overlap(const Determinant& d) {
+double Correlator::Overlap(const Determinant& d) const {
 
   double Coefficient = 0.0;
 
@@ -71,7 +71,7 @@ double Correlator::Overlap(const Determinant& d) {
   }
 }
 
-double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) {
+double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) const {
 
   double Coefficient = 0.0;
 
@@ -96,8 +96,7 @@ double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) {
   }
   else
   {
-      return exp(Variables[index1]-Variables[index2]);
-      //return (Variables[index1]/Variables[index2]*Variables[index1]/Variables[index2]);
+    return exp(Variables[index1]-Variables[index2]);
   }
 }
 

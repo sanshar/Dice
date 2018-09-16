@@ -60,7 +60,7 @@ struct workingArray {
     nExcitations++;
   }
 
-  void init() {
+  void setCounterToZero() {
     nExcitations = 0;
   }
 

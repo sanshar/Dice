@@ -238,7 +238,7 @@ public:
 
     double p = 1.;
     if (doparity)
-      d.parityA(a, i, p);
+      p *= d.parityA(a, i);
 
     double detFactorNum = 0.0;
     double detFactorDen = 0.0;
@@ -260,7 +260,7 @@ public:
 
     double p = 1.;
     if (doparity)
-      d.parityB(a, i, p);
+      p *= d.parityB(a, i);
 
     double detFactorNum = 0.0;
     double detFactorDen = 0.0;
@@ -350,7 +350,7 @@ public:
     for (int i = 0; i < iArray.size(); i++)
     {
       if (doparity)
-        dcopy.parityA(aArray[i], iArray[i], p);
+        p *= dcopy.parityA(aArray[i], iArray[i]);
 
       dcopy.setoccA(iArray[i], false);
       dcopy.setoccA(aArray[i], true);
@@ -380,7 +380,7 @@ public:
     for (int i = 0; i < iArray.size(); i++)
     {
       if (doparity)
-        dcopy.parityB(aArray[i], iArray[i], p);
+        p *= dcopy.parityB(aArray[i], iArray[i]);
 
       dcopy.setoccB(iArray[i], false);
       dcopy.setoccB(aArray[i], true);
@@ -432,7 +432,7 @@ public:
   {
 
     double p = 1.0;
-    d.parityA(a, i, p);
+    p *= d.parityA(a, i);
 
     int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), i) - AlphaClosed.begin();
     int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), a) - AlphaOpen.begin();
@@ -478,10 +478,10 @@ public:
 
     double p = 1.0;
     Determinant dcopy = d;
-    dcopy.parityA(a, i, p);
+    p *= dcopy.parityA(a, i);
     dcopy.setoccA(i, false);
     dcopy.setoccA(a, true);
-    dcopy.parityA(b, j, p);
+    p *= dcopy.parityA(b, j);
     dcopy.setoccA(j, false);
     dcopy.setoccA(b, true);
 
@@ -525,8 +525,7 @@ public:
   void updateB(int i, int a, Wfn &w)
   {
 
-    double p = 1.0;
-    d.parityB(a, i, p);
+    double p = d.parityB(a, i);
 
     int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), i) - BetaClosed.begin();
     int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), a) - BetaOpen.begin();
@@ -572,10 +571,10 @@ public:
 
     double p = 1.0;
     Determinant dcopy = d;
-    dcopy.parityB(a, i, p);
+    p *= dcopy.parityB(a, i);
     dcopy.setoccB(i, false);
     dcopy.setoccB(a, true);
-    dcopy.parityB(b, j, p);
+    p *= dcopy.parityB(b, j);
     dcopy.setoccB(j, false);
     dcopy.setoccB(b, true);
 
