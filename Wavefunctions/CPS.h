@@ -46,7 +46,7 @@ class CPS {
  public:
   std::vector<Correlator> cpsArray;  
 
-  map<int, vector<int>> mapFromOrbitalToCorrelator;
+  vector<vector<int>> mapFromOrbitalToCorrelator;
   vector<int> commonCorrelators;
   
   //reads correlator file and makes cpsArray, orbitalToCPS

@@ -19,7 +19,7 @@
 #include "CPS.h"
 #include "Correlator.h"
 #include "Determinants.h"
-
+#include <boost/container/static_vector.hpp>
 
 using namespace Eigen;
 
@@ -37,6 +37,9 @@ CPS::CPS (std::vector<Correlator>& pcpsArray) : cpsArray(pcpsArray) {
 
 void CPS::generateMapFromOrbitalToCorrelators() {
 
+  int norbs = Determinant::norbs;
+  mapFromOrbitalToCorrelator.resize(norbs);
+  
   for (int i = 0; i < cpsArray.size(); i++)
   {
     for (int j = 0; j < cpsArray[i].asites.size(); j++) {
@@ -63,53 +66,59 @@ double CPS::OverlapRatio (const Determinant &d1, const Determinant &d2) const {
 
 double CPS::OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const
 {
-  vector<int> commonCorrelators;
+  //boost::container::static_vector<int, 100> commonCorrelators;
+  vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
+  common.resize(0);
   
-  copy(mapFromOrbitalToCorrelator.find(i)->second.begin(),
-       mapFromOrbitalToCorrelator.find(i)->second.end(),
-       back_inserter(commonCorrelators));
-  copy(mapFromOrbitalToCorrelator.find(a)->second.begin(),
-       mapFromOrbitalToCorrelator.find(a)->second.end(),
-       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator[i].begin(),
+       mapFromOrbitalToCorrelator[i].end(),
+       back_inserter(common));
+  copy(mapFromOrbitalToCorrelator[a].begin(),
+       mapFromOrbitalToCorrelator[a].end(),
+       back_inserter(common));
 
 
-  sort(commonCorrelators.begin(), commonCorrelators.end() );
-  commonCorrelators.erase( unique( commonCorrelators.begin(), commonCorrelators.end() ),
-                           commonCorrelators.end() );
+  sort(common.begin(), common.end() );
+  common.erase( unique( common.begin(), common.end() ),
+                           common.end() );
 
   double ovlp = 1.0;
-  for (const auto& i : commonCorrelators)
+  for (const auto& i : common)
     ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
   return ovlp;
+
 }
 
 double CPS::OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const
 {
-  vector<int> commonCorrelators;
+  //boost::container::static_vector<int, 100> common;
+  vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
+  common.resize(0);
   
-  copy(mapFromOrbitalToCorrelator.find(i)->second.begin(),
-       mapFromOrbitalToCorrelator.find(i)->second.end(),
-       back_inserter(commonCorrelators));
-  copy(mapFromOrbitalToCorrelator.find(a)->second.begin(),
-       mapFromOrbitalToCorrelator.find(a)->second.end(),
-       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator[i].begin(),
+       mapFromOrbitalToCorrelator[i].end(),
+       back_inserter(common));
+  copy(mapFromOrbitalToCorrelator[a].begin(),
+       mapFromOrbitalToCorrelator[a].end(),
+       back_inserter(common));
 
-  copy(mapFromOrbitalToCorrelator.find(j)->second.begin(),
-       mapFromOrbitalToCorrelator.find(j)->second.end(),
-       back_inserter(commonCorrelators));
-  copy(mapFromOrbitalToCorrelator.find(b)->second.begin(),
-       mapFromOrbitalToCorrelator.find(b)->second.end(),
-       back_inserter(commonCorrelators));
+  copy(mapFromOrbitalToCorrelator[j].begin(),
+       mapFromOrbitalToCorrelator[j].end(),
+       back_inserter(common));
+  copy(mapFromOrbitalToCorrelator[b].begin(),
+       mapFromOrbitalToCorrelator[b].end(),
+       back_inserter(common));
 
 
-  sort(commonCorrelators.begin(), commonCorrelators.end() );
-  commonCorrelators.erase( unique( commonCorrelators.begin(), commonCorrelators.end() ),
-                           commonCorrelators.end() );
+  sort(common.begin(), common.end() );
+  common.erase( unique( common.begin(), common.end() ),
+                           common.end() );
   
   double ovlp = 1.0;
-  for (const auto& i : commonCorrelators)
+  for (const auto& i : common)
     ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
   return ovlp;
+
 }
 
 void CPS::OverlapWithGradient(const Determinant& d, 
