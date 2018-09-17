@@ -291,9 +291,9 @@ void readCorrelator(std::string input, int correlatorSize,
 
 void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, bool uhf) {
 
-  ifstream dump("hf.txt");
   if (!uhf)
     {
+      ifstream dump("hf.txt");
       for (int i = 0; i < HfmatrixA.rows(); i++)
 	for (int j = 0; j < HfmatrixA.rows(); j++)
 	  {

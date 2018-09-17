@@ -209,9 +209,9 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
   ham = walk.d.Energy(I1, I2, coreE); 
 
 
-  generateAllScreenedSingleExcitation(walk.d, schd.screen, schd.epsilon,
+  generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
                                       work, false);  
-  generateAllScreenedDoubleExcitation(walk.d, schd.screen, schd.epsilon,
+  generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
                                       work, false);  
 
   //loop over all the screened excitations

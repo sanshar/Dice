@@ -748,7 +748,7 @@ double getParityForDiceToAlphaBeta(const Determinant& det)
 
 
 void generateAllScreenedSingleExcitation(const Determinant& d,
-                                         const double& screen,
+                                         const double& THRESH,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity) {
@@ -760,13 +760,14 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   for (int i = 0; i < closed.size(); i++) {
     for (int a = 0; a < open.size(); a++) {
       if (closed[i] % 2 == open[a] % 2 &&
-          abs(I2hb.Singles(closed[i], open[a])) > screen)
+          abs(I2hb.Singles(closed[i], open[a])) > THRESH)
       {
         int I = closed[i] / 2, A = open[a] / 2;
+
         const double tia = d.Hij_1ExciteScreened(open[a], closed[i], I2hb,
                                                  TINY, doparity);
         
-        if (abs(tia) > screen) {
+        if (abs(tia) > THRESH) {
           work.appendValue(0., closed[i]*2*norbs+open[a], 0, tia);
         }
       }
@@ -776,7 +777,7 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
 }
 
 void generateAllScreenedDoubleExcitation(const Determinant& d,
-                                         const double& screen,
+                                         const double& THRESH,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity) {
@@ -797,7 +798,7 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
       for (size_t index = 0; index < numIntegrals; index++)
       {
         // if we are going below the criterion, break
-        if (fabs(integrals[index]) < screen)
+        if (fabs(integrals[index]) < THRESH)
           break;
         
         // otherwise: generate the determinant corresponding to the current excitation
