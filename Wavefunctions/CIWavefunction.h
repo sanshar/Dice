@@ -117,7 +117,7 @@ class Operator {
 	  if (i % 2 == j % 2)
 	    {
 	      oplist.push_back(Operator(i, j));
-	      hamElements.push_back(I2hb.Singles(i, j));
+	      hamElements.push_back(I1(i, j));
 	    }
 	}
   }
@@ -730,7 +730,9 @@ template <typename Wfn, typename Walker>
   }
 
   void printVariables() {
-    cout << alpha << endl;
+    cout << "alpha  " << alpha << endl;
+    //for (int i=0; i<this->oplist.size(); i++)
+    //  cout << this->oplist[i] << "  " << this->ciCoeffs[i] << endl;
   }
 
   void updateVariables(VectorXd& vars) {
@@ -768,7 +770,6 @@ template <typename Wfn, typename Walker>
 			     Eigen::VectorXd &grad)
   {
 
-    //cout << "alpha" << "  " << alpha << endl;
     double num = 0.; 
     for (int i=1; i<this->oplist.size(); i++)
       {
@@ -784,8 +785,8 @@ template <typename Wfn, typename Walker>
 	}
       }
 
-    grad[0] += num/(num + 1);
-    return (num + 1);
+    grad[0] += num/(alpha * num + 1);
+    return (alpha * num + 1);
   }
   
   void HamAndOvlp(Walker &walk,
