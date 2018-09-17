@@ -958,7 +958,7 @@ template <typename Wfn, typename Walker>
       {
 	char file[5000];
 	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	sprintf(file, "lanzoswave.bkp");
+	sprintf(file, "lanczoswave.bkp");
 	std::ofstream outfs(file, std::ios::binary);
 	boost::archive::binary_oarchive save(outfs);
 	save << *this;
