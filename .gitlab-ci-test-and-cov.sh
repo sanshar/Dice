@@ -2,7 +2,7 @@
 cd build
 export CXX=mpicxx
 cmake ..
-make -j Dice
+make Dice
 make test-Determinants
 make test-integral
 make test-symmetry

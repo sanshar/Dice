@@ -2,7 +2,7 @@
 message(STATUS "\n-- Setting up tests ...\n-- ")
 
 # Make Symmetry Library
-include_directories(${EXTERNAL_INCLUDE_DIR}/Catch/)
+include_directories(${EXTERNAL_DIR}/Catch2/single_include/catch2)
 include_directories(${DICE_SOURCE_DIR})
 
 # Set compiler flags for gcov
