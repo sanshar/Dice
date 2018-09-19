@@ -42,8 +42,6 @@ inline int CountNonZeroBits (long x)
 }
 
 
-
-
 /**
 * This is the occupation number representation of a Determinants
 * with alpha, beta strings
@@ -131,6 +129,17 @@ class Determinant {
 
 };
 
+//instead of storing memory in bits it uses 1 integer per bit
+//so it is clearly very exepnsive. This is only used during computations
+class BigDeterminant {  
+ public:
+  vector<char> occupation;
+  BigDeterminant(Determinant& d);
+  BigDeterminant(BigDeterminant& d) : occupation(d.occupation){};
+  const char& operator[] (int j) const ;
+  char& operator[] (int j) ;
+};
+
 
 CItype Hij(const Determinant& bra, const Determinant& ket,
            const oneInt& I1, const twoInt& I2, const double& coreE);
@@ -155,4 +164,5 @@ void generateAllScreenedSingleExcitation(const Determinant& det,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity = false);
+
 #endif

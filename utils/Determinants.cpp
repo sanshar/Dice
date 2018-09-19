@@ -28,6 +28,22 @@
 using namespace std;
 using namespace Eigen;
 
+BigDeterminant::BigDeterminant(Determinant& d) {
+  int norbs = Determinant::norbs;
+  occupation.resize(2*norbs, 0);
+  for (int i=0; i<2*norbs; i++)
+    if (d.getocc(i)) occupation[i] = 1;
+}
+
+const char& BigDeterminant::operator[] (int j) const
+{
+  return occupation[j];
+}
+
+char& BigDeterminant::operator[] (int j)
+{
+  return occupation[j];
+}
 
 Determinant::Determinant() {
   for (int i=0; i<DetLen; i++) {

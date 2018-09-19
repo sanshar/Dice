@@ -47,6 +47,10 @@ void CPS::generateMapFromOrbitalToCorrelators() {
       mapFromOrbitalToCorrelator[orbital].push_back(i);
     }
   } 
+
+  for (int i = 0; i < norbs; i++)
+    std::sort(mapFromOrbitalToCorrelator[i].begin(),
+              mapFromOrbitalToCorrelator[i].end());
 }
 
 double CPS::Overlap(const Determinant &d) const
@@ -70,23 +74,24 @@ double CPS::OverlapRatio(int i, int a, const Determinant &dcopy, const Determina
   vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
   common.resize(0);
   
-  copy(mapFromOrbitalToCorrelator[i].begin(),
-       mapFromOrbitalToCorrelator[i].end(),
-       back_inserter(common));
-  copy(mapFromOrbitalToCorrelator[a].begin(),
-       mapFromOrbitalToCorrelator[a].end(),
-       back_inserter(common));
+  merge(mapFromOrbitalToCorrelator[i].begin(),
+        mapFromOrbitalToCorrelator[i].end(),
+        mapFromOrbitalToCorrelator[a].begin(),
+        mapFromOrbitalToCorrelator[a].end(),
+        back_inserter(common));
 
 
   sort(common.begin(), common.end() );
-  common.erase( unique( common.begin(), common.end() ),
-                           common.end() );
 
   double ovlp = 1.0;
+  int previ = -1;
   for (const auto& i : common)
-    ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
-  return ovlp;
+    if (i != previ) {
+      ovlp *= cpsArray[i].OverlapRatio(dcopy,d);
+      previ = i;
+    }
 
+  return ovlp;
 }
 
 double CPS::OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const
@@ -95,28 +100,124 @@ double CPS::OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, c
   vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
   common.resize(0);
   
-  copy(mapFromOrbitalToCorrelator[i].begin(),
-       mapFromOrbitalToCorrelator[i].end(),
-       back_inserter(common));
-  copy(mapFromOrbitalToCorrelator[a].begin(),
-       mapFromOrbitalToCorrelator[a].end(),
-       back_inserter(common));
+  merge(mapFromOrbitalToCorrelator[i].begin(),
+        mapFromOrbitalToCorrelator[i].end(),
+        mapFromOrbitalToCorrelator[a].begin(),
+        mapFromOrbitalToCorrelator[a].end(),
+        back_inserter(common));
 
-  copy(mapFromOrbitalToCorrelator[j].begin(),
-       mapFromOrbitalToCorrelator[j].end(),
-       back_inserter(common));
-  copy(mapFromOrbitalToCorrelator[b].begin(),
-       mapFromOrbitalToCorrelator[b].end(),
-       back_inserter(common));
+  int middlesize = common.size();  
+  merge(mapFromOrbitalToCorrelator[j].begin(),
+        mapFromOrbitalToCorrelator[j].end(),
+        mapFromOrbitalToCorrelator[b].begin(),
+        mapFromOrbitalToCorrelator[b].end(),
+        back_inserter(common));
+
+
+  //The following is an ugly code but is used because it is faster than the alternative.
+  //Essentially common has elements 0...middlesize sorted and elements
+  //middlesize..end sorted as well. The loop below find unique elements
+  //in the entire common vector.
+  double ovlp = 1.0;
+  int previ = -1;
+  for (int i=0,j=middlesize; i<middlesize || j<common.size(); ) {
+    if (common[i] < common[j] ) {
+      if (common[i] <= previ) 
+        i++;
+      else {
+        int I = common[i];
+        ovlp *= cpsArray[I].OverlapRatio(dcopy,d);
+        i++; previ = I;
+      }
+    }
+    else {
+      if (common[j] <= previ) 
+        j++;
+      else {
+        int J = common[j];
+        ovlp *= cpsArray[J].OverlapRatio(dcopy,d);
+        j++; previ = J;
+      }     
+    }
+  }
+  return ovlp;
+
+}
+
+
+double CPS::OverlapRatio(int i, int a, const BigDeterminant &dcopy, const BigDeterminant &d) const
+{
+  //boost::container::static_vector<int, 100> commonCorrelators;
+  vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
+  common.resize(0);
+  
+  merge(mapFromOrbitalToCorrelator[i].begin(),
+        mapFromOrbitalToCorrelator[i].end(),
+        mapFromOrbitalToCorrelator[a].begin(),
+        mapFromOrbitalToCorrelator[a].end(),
+        back_inserter(common));
 
 
   sort(common.begin(), common.end() );
-  common.erase( unique( common.begin(), common.end() ),
-                           common.end() );
-  
+
   double ovlp = 1.0;
+  int previ = -1;
   for (const auto& i : common)
-    ovlp *= cpsArray[i].Overlap(dcopy)/cpsArray[i].Overlap(d);
+    if (i != previ) {
+      ovlp *= cpsArray[i].OverlapRatio(dcopy,d);
+      previ = i;
+    }
+
+  return ovlp;
+
+}
+
+double CPS::OverlapRatio(int i, int j, int a, int b, const BigDeterminant &dcopy, const BigDeterminant &d) const
+{
+  //boost::container::static_vector<int, 100> common;
+  vector<int>& common = const_cast<vector<int>&>(commonCorrelators);
+  common.resize(0);
+  
+  merge(mapFromOrbitalToCorrelator[i].begin(),
+        mapFromOrbitalToCorrelator[i].end(),
+        mapFromOrbitalToCorrelator[a].begin(),
+        mapFromOrbitalToCorrelator[a].end(),
+        back_inserter(common));
+
+  int middlesize = common.size();
+  merge(mapFromOrbitalToCorrelator[j].begin(),
+        mapFromOrbitalToCorrelator[j].end(),
+        mapFromOrbitalToCorrelator[b].begin(),
+        mapFromOrbitalToCorrelator[b].end(),
+        back_inserter(common));
+
+  //The following is an ugly code but is used because it is faster than the alternative.
+  //Essentially common has elements 0...middlesize sorted and elements
+  //middlesize..end sorted as well. The loop below find unique elements
+  //in the entire common vector.
+  double ovlp = 1.0;
+  int previ = -1;
+  for (int i=0,j=middlesize; i<middlesize || j<common.size(); ) {
+    if (common[i] < common[j] ) {
+      if (common[i] <= previ) 
+        i++;
+      else {
+        int I = common[i];
+        ovlp *= cpsArray[I].OverlapRatio(dcopy,d);
+        i++; previ = I;
+      }
+    }
+    else {
+      if (common[j] <= previ) 
+        j++;
+      else {
+        int J = common[j];
+        ovlp *= cpsArray[J].OverlapRatio(dcopy,d);
+        j++; previ = J;
+      }     
+    }
+  }
+
   return ovlp;
 
 }
