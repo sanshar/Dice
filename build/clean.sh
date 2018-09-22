@@ -1,1 +1,1 @@
-rm -rf CMake* CTest* unittest/* *tcl *cmake
+rm -rf CMake* CTest* unittest/* *tcl *cmake Dice Makefile
