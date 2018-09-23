@@ -16,6 +16,5 @@ gcov ../../Dice/Determinants.cpp --object-file ../unittests/CMakeFiles/test-Dete
 gcov ../../Dice/integral.cpp --object-file ../unittests/CMakeFiles/test-integral.dir/__/Dice/ | grep -B 1 "integral.cpp.gcov"
 
 # Functional Tests
-cd ../../tests/o2_omp1_det
-../../build/Dice
-mpirun -n 2 --allow-run-as-root ../../build/Dice
+cd ../../tests/
+./runSmallTests.sh

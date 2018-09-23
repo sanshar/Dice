@@ -4,8 +4,8 @@
 printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
-MPICOMMAND="mpirun -np 28"
-HCIPATH="../../Dice"
+MPICOMMAND="mpirun -np 2"
+HCIPATH="../../build/Dice"
 here=`pwd`
 
 # O2 SHCI tests.

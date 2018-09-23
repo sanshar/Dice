@@ -30,6 +30,10 @@ build/Dice
 build/Makefile
 debug/*
 
+# External #
+############
+External/*
+
 # Code Cov #
 ############
 *.gcov

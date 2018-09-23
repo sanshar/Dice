@@ -8,6 +8,8 @@ message(STATUS "\n-- Finding compilers ...\n-- ")
 project (Dice)
 set (EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External)
 
+
+
 ######################
 ### Compiler Flags ###
 ######################
@@ -20,6 +22,10 @@ IF ( CMAKE_BUILD_TYPE MATCHES Debug )
   set( CMAKE_VERBOSE_MAKEFILE on )
 ENDIF()
 
+# Get OpenMP Flag
+find_package(OpenMP)
+
+
 
 ###################
 ### Dependecies ###
@@ -29,10 +35,11 @@ message(STATUS "\n-- Finding dependencies ...\n-- ")
 # For some external project macros
 include(ExternalProject)
 
-### Boost ###
+### Boost ######################################################################
 set( BOOST_ROOT "$ENV{BOOST_ROOT}" )
 IF( NOT BOOST_ROOT )
-  message(STATUS "ENV variable BOOST_ROOT not found. Using find_package to locate Boost.")
+  message(STATUS
+  "ENV variable BOOST_ROOT not found. Using find_package to locate Boost.")
 ENDIF()
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -40,26 +47,33 @@ message( STATUS "Using Boost inlcude directory: ${Boost_INCLUDE_DIRS}")
 message( STATUS "Using Boost library directory: ${Boost_LIBRARY_DIRS}")
 
 
-### Eigen ###
-SET( EIGEN3_INCLUDE_DIR "$ENV{EIGEN3_INCLUDE_DIR}" )
-IF( NOT EIGEN3_INCLUDE_DIR )
-  message(STATUS "ENV variable EIGEN3_INCLUDE_DIR not found. Creating external project for Eigen.")
-  ExternalProject_Add(
-    eigen_project
-    SOURCE_DIR "${EXTERNAL_DIR}/eigen"
-    URL "https://github.com/eigenteam/eigen-git-mirror/archive/3.3.5.tar.gz"
-    URL_HASH MD5=305eed19157335016bde9b4d57ee3d35
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+### Eigen ######################################################################
+ExternalProject_Add(
+  eigen_project
+  SOURCE_DIR "${EXTERNAL_DIR}/eigen"
+  URL "https://github.com/eigenteam/eigen-git-mirror/archive/3.3.5.tar.gz"
+  URL_HASH MD5=305eed19157335016bde9b4d57ee3d35
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
 )
-SET( EIGEN3_INCLUDE_DIR ${EXTERNAL_DIR}/eigen )
-ENDIF()
+ExternalProject_Get_Property(eigen_project SOURCE_DIR)
+set( EIGEN3_INCLUDE_DIR ${EXTERNAL_DIR}/eigen )
 include_directories(${EIGEN3_INCLUDE_DIR})
 message( STATUS "Using Eigen include directory: ${EIGEN3_INCLUDE_DIR}")
 
-# Get OpenMP Flag
-find_package(OpenMP)
+
+### Catch2 #####################################################################
+if (NOT EXISTS "${EXTERNAL_DIR}/Catch2/catch2/catch.hpp")
+  file(DOWNLOAD
+    "https://github.com/catchorg/Catch2/releases/download/v2.4.0/catch.hpp"
+    "${EXTERNAL_DIR}/Catch2/catch2/catch.hpp")
+endif()
+set(CATCH2_INCLUDE_DIR ${EXTERNAL_DIR}/Catch2/catch2)
+add_library(Catch2 INTERFACE)
+target_include_directories(Catch2 INTERFACE ${CATCH2_INCLUDE_DIR})
+
+
 
 ###############
 ### Sources ###
@@ -91,14 +105,17 @@ set(DICE_SOURCES
 # )
 
 
+
 #####################
 ### Compilitation ###
 #####################
 
 add_executable(Dice ${DICE_SOURCES})
+add_dependencies(Dice eigen_project)
 # add_executable(DiceSerial ${DICE_SOURCES})
 # set_target_properties(DiceSerial PROPERTIES COMPILE_FLAGS "-DSERIAL")
 # add_executable(ZDice2 ${ZDICE2_SOURCES})
+
 
 
 ###############
@@ -113,6 +130,8 @@ ELSE()
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
   # target_link_libraries(ZDice2 -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
 ENDIF()
+
+
 
 ###############
 ### Testing ###
