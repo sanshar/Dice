@@ -36,6 +36,8 @@
 #include "global.h"
 #include "input.h"
 
+enum HartreeFock {Restricted, UnRestricted, Generalized};
+
 using namespace Eigen;
 
 Slater::Slater() 
@@ -60,18 +62,18 @@ void Slater::initHforbs()
   int size; //dimension of the mo coeff matrix
   //initialize hftype and hforbs
   if (schd.hf == "rhf") {
-    //hftype = HartreeFock::Restricted;
-    hftype = 0;
+    hftype = HartreeFock::Restricted;
+    //hftype = 0;
     size = norbs;
   }
   else if (schd.hf == "uhf") {
-    //hftype = HartreeFock::UnRestricted;
-    hftype = 1;
+    hftype = HartreeFock::UnRestricted;
+    //hftype = 1;
     size = norbs;
   }
   else if (schd.hf == "ghf") {
-    //hftype = HartreeFock::Generalized;
-    hftype = 2;
+    hftype = HartreeFock::Generalized;
+    //hftype = 2;
     size = 2*norbs;
   }
   HforbsA = MatrixXd::Zero(size, size);
@@ -144,13 +146,13 @@ void Slater::OverlapWithGradient(HFWalker & walk,
   if (determinants.size() <= 1 && schd.optimizeOrbs) {
     //if (hftype == UnRestricted)
     VectorXd gradOrbitals;
-    if (hftype == 1) {
+    if (hftype == UnRestricted) {
       gradOrbitals = VectorXd::Zero(2*HforbsA.rows()*HforbsA.rows());
       walk.OverlapWithGradient(*this, gradOrbitals, detovlp);
     }
     else {
       gradOrbitals = VectorXd::Zero(HforbsA.rows()*HforbsA.rows());
-      if (hftype == 0) walk.OverlapWithGradient(*this, gradOrbitals, detovlp);
+      if (hftype == Restricted) walk.OverlapWithGradient(*this, gradOrbitals, detovlp);
       else walk.OverlapWithGradientGhf(*this, gradOrbitals, detovlp);
     }
     for (int i=0; i<gradOrbitals.size(); i++)
@@ -164,8 +166,8 @@ void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v)
   for (int i = 0; i < determinants.size(); i++)
     v[i] = ciExpansion[i];
   int numDeterminants = determinants.size();
-  //if (hftype == Generalized)
-  if (hftype == 2) {
+  if (hftype == Generalized) {
+  //if (hftype == 2) {
     for (int i = 0; i < 2*norbs; i++) {
       for (int j = 0; j < 2*norbs; j++) 
           v[numDeterminants + 2 * i * norbs + j] = HforbsA(i, j);
@@ -174,8 +176,8 @@ void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v)
   else {
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j < norbs; j++) {
-        //if (hftype == Restricted)
-        if (hftype == 0) {
+        if (hftype == Restricted) {
+        //if (hftype == 0) {
           v[numDeterminants + i * norbs + j] = HforbsA(i, j);
           //v[numDeterminants + i * norbs + j] = HforbsB(i, j);
         }
@@ -192,8 +194,8 @@ long Slater::getNumVariables()
 {
   long numVars = 0;
   numVars += determinants.size();
-  //if (hftype == UnRestricted)
-  if (hftype == 1)
+  if (hftype == UnRestricted)
+  //if (hftype == 1)
     numVars += 2 * HforbsA.rows() * HforbsA.rows();
   else
     numVars += HforbsA.rows() * HforbsA.rows();
@@ -206,8 +208,8 @@ void Slater::updateVariables(Eigen::VectorBlock<VectorXd> &v)
   for (int i = 0; i < determinants.size(); i++)
     ciExpansion[i] = v[i];
   int numDeterminants = determinants.size();
-  //if (hftype == Generalized)
-  if (hftype == 2) {
+  if (hftype == Generalized) {
+  //if (hftype == 2) {
     for (int i = 0; i < 2*norbs; i++) {
       for (int j = 0; j < 2*norbs; j++) {
           HforbsA(i, j) = v[numDeterminants + 2 * i * norbs + j];
@@ -218,8 +220,8 @@ void Slater::updateVariables(Eigen::VectorBlock<VectorXd> &v)
   else {
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j < norbs; j++) {
-        //if (hftype == Restricted)
-        if (hftype == 0) {
+        if (hftype == Restricted) {
+        //if (hftype == 0) {
           HforbsA(i, j) = v[numDeterminants + i * norbs + j];
           HforbsB(i, j) = v[numDeterminants + i * norbs + j];
         }
@@ -245,8 +247,8 @@ void Slater::printVariables()
       cout << "  " << HforbsA(i, j);
     cout << endl;
   }
-  //if (hftype == UnRestricted)
-  if (hftype == 1) {
+  if (hftype == UnRestricted) {
+  //if (hftype == 1) {
     cout << endl
          << "DeterminantB" << endl;
     for (int i = 0; i < HforbsB.rows(); i++) {

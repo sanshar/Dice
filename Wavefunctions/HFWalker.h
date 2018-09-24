@@ -22,10 +22,11 @@
 #include "Determinants.h"
 #include <array>
 
+enum HartreeFock;
+
 using namespace Eigen;
 
 class Slater;
-//enum class HartreeFock {Restricted, UnRestricted, Generalized};
 
 //used to efficiently get overlaps when using a slater determinant reference
 //in all arrays, first object referes to alpha spins and the second to beta
@@ -34,7 +35,7 @@ class HFWalkerHelper
 {
 
 public:
-  int hftype;                           //hftype same as that in slater
+  HartreeFock hftype;                           //hftype same as that in slater
   array<MatrixXd, 2> thetaInv;          //inverse of the theta matrix
   vector<array<double, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
   array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker

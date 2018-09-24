@@ -25,6 +25,8 @@
 #include "input.h"
 #include "global.h"
 
+enum HartreeFock {Restricted, UnRestricted, Generalized};
+
 using namespace Eigen;
 
 HFWalkerHelper::HFWalkerHelper(Slater &w, Determinant &d) 
@@ -49,7 +51,7 @@ HFWalkerHelper::HFWalkerHelper(Slater &w, Determinant &d)
   rTable.resize(w.getNumOfDets());
   thetaDet.resize(w.getNumOfDets());
   
-  if (hftype == 2) {
+  if (hftype == Generalized) {
     initInvDetsTablesGhf(w);
   }
   else {
@@ -368,7 +370,7 @@ void HFWalker::update(int i, int a, bool sz, Slater &w)
   p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
-  if (helper.hftype == 2) {
+  if (helper.hftype == Generalized) {
     int norbs = Determinant::norbs;
     vector<int> cre{ a + sz * norbs }, des{ i + sz * norbs };
     helper.excitationUpdateGhf(w, cre, des, sz, p, d);
@@ -390,7 +392,7 @@ void HFWalker::update(int i, int j, int a, int b, bool sz, Slater &w)
   p *= d.parity(b, j, sz);
   d.setocc(j, sz, false);
   d.setocc(b, sz, true);
-  if (helper.hftype == 2) {
+  if (helper.hftype == Generalized) {
     int norbs = Determinant::norbs;
     vector<int> cre{ a + sz * norbs, b + sz * norbs }, des{ i + sz * norbs, j + sz * norbs };
     helper.excitationUpdateGhf(w, cre, des, sz, p, d);
@@ -476,7 +478,7 @@ void HFWalker::OverlapWithGradient(Slater &w, Eigen::VectorXd &grad, double deto
         int L = 0;
         for (int l = 0; l < norbs; l++) {
           if (refDet.getoccB(l)) {
-            if (helper.hftype == 1)
+            if (helper.hftype == UnRestricted)
               grad(norbs * norbs + k * norbs + l) += w.getciExpansion()[det] * helper.thetaInv[1](L, KB) * helper.thetaDet[det][0] * helper.thetaDet[det][1] / detovlp;
             else
               grad(k * norbs + l) += w.getciExpansion()[det] * helper.thetaInv[1](L, KB) * helper.thetaDet[det][0] * helper.thetaDet[det][1] / detovlp;

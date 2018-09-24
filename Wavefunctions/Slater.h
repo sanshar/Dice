@@ -30,7 +30,7 @@ class twoIntHeatBathSHM;
 class Determinant;
 class HFWalker;
 class workingArray;
-//enum class HartreeFock;
+enum HartreeFock;
 
 /**
 * This is the wavefunction, it is a linear combination of
@@ -51,7 +51,7 @@ class Slater {
   
  public:
   
-   int hftype;               //r/u/ghf
+   HartreeFock hftype;                       //r/u/ghf
    vector<Determinant> determinants; //The set of determinants 
    vector<double> ciExpansion;       //The ci expansion
    MatrixXx HforbsA, HforbsB;        //mo coeffs, HforbsA=HforbsB for r/ghf
