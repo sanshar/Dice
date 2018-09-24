@@ -17,4 +17,4 @@ gcov ../../Dice/integral.cpp --object-file ../unittests/CMakeFiles/test-integral
 
 # Functional Tests
 cd ../../tests/
-./runSmallTests.sh
+./runCITests.sh
