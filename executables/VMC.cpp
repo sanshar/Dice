@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
       //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      if (commrank == 0) wave.printVariables();
+      //if (commrank == 0) wave.printVariables();
     }
     else if (schd.method == sgd) {
       SGD optimizer(schd.stepsize, schd.maxIter);
