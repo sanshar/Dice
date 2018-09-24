@@ -29,6 +29,7 @@
 #include "global.h"
 
 class Determinant;
+class BigDeterminant;
 
 /**
  * A correlator contains a tuple of local sites and contains
@@ -87,6 +88,7 @@ private:
  * <d|correlator>
  */
   double Overlap              (const Determinant& d) const;
+  double Overlap              (const BigDeterminant& d) const;
 
 /**
  * Takes an occupation number representation of two determinants
@@ -100,6 +102,7 @@ private:
  * <d1|correlator>/<d2|correlator>
  */
   double OverlapRatio(const Determinant& d1, const Determinant& d2) const;
+  double OverlapRatio(const BigDeterminant& d1, const BigDeterminant& d2) const;
 
 /**
  * Takes an occupation number representation of a determinant

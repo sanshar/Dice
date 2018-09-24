@@ -77,6 +77,9 @@ class CPS {
   double OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const ;
   double OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const;
 
+  double OverlapRatio(int i, int a, const BigDeterminant &dcopy, const BigDeterminant &d) const ;
+  double OverlapRatio(int i, int j, int a, int b, const BigDeterminant &dcopy, const BigDeterminant &d) const;
+
   /*
    * Takes an occupation number representation of a determinant
    * in the local orbital basis and calculates the overlap 

@@ -69,6 +69,12 @@ class CPSSlater {
   double getOverlapFactor(int i, int a, HFWalker& w, bool doparity);
   double getOverlapFactor(int i, int j, int a, int b, HFWalker& w, bool doparity);
 
+  double getOverlapFactor(int i, int a, HFWalker& w, BigDeterminant& d,
+                          BigDeterminant& dcopy, bool doparity);
+  double getOverlapFactor(int i, int j, int a, int b, HFWalker& w,
+                          BigDeterminant& d, BigDeterminant& dcopy,
+                          bool doparity);
+
 
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)

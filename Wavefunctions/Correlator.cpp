@@ -26,16 +26,17 @@ void Correlator::OverlapWithGradient(const Determinant& d,
 				     const double& ovlp,
 				     const long& startIndex) const {
   
+  int asize = asites.size();
   long index=0, one=1, index2=0;
-  for (int n=0; n<bsites.size(); n++)
+  for (int n=0; n<asize; n++)
+    if (d.getoccA( asites[n])) {
+      index |= (one<< (n+asize));
+    }
+
+  for (int n=0; n<asize; n++)
     if (d.getoccB( bsites[n])) {
       index |= (one<< (n));
     }
-  for (int n=0; n<asites.size(); n++)
-    if (d.getoccA( asites[n])) {
-      index |= (one<< (n+bsites.size()));
-    }
-
   if(!schd.expCorrelator)
   {
       grad[index+startIndex] += ovlp/Variables[index];
@@ -47,19 +48,46 @@ void Correlator::OverlapWithGradient(const Determinant& d,
   }
 }
 
+double Correlator::Overlap(const BigDeterminant& d) const {
+
+  double Coefficient = 0.0;
+  int asize = asites.size();
+
+  long index=0, one=1;
+  for (int n=0; n<asize; n++)
+    if (d [2*asites[n]] == 1)
+      index |= (one << (n+asize));
+
+  for (int n=0; n<asize; n++)
+    if (d [2*bsites[n]+1] == 1)
+      index |= (one<<(n));
+  
+
+  if(!schd.expCorrelator)
+  {
+      return Variables[index];
+  }
+  else
+  {
+      return exp(Variables[index]);
+      //return (Variables[index]*Variables[index]);
+  }
+}
+
 double Correlator::Overlap(const Determinant& d) const {
 
   double Coefficient = 0.0;
+  int asize = asites.size();
 
   long index=0, one=1;
-  for (int n=0; n<bsites.size(); n++)
-    if (d.getoccB( bsites[n]))
-      index |= (one<<n);
-  
-  for (int n=0; n<asites.size(); n++)
+  for (int n=0; n<asize; n++)
     if (d.getoccA( asites[n]))
-      index |= (one << (n+bsites.size()));
+      index |= (one << (n+asize));
 
+  for (int n=0; n<asize; n++)
+    if (d.getoccB( bsites[n]))
+      index |= (one<< (n));
+  
   if(!schd.expCorrelator)
   {
       return Variables[index];
@@ -74,22 +102,52 @@ double Correlator::Overlap(const Determinant& d) const {
 double Correlator::OverlapRatio(const Determinant& d1, const Determinant& d2) const {
 
   double Coefficient = 0.0;
-
+  int asize = asites.size();
+  
   long index1=0, index2=0, one=1;
-  for (int n=0; n<bsites.size(); n++) {
+  for (int n=0; n<asize; n++) {
+    if (d1.getoccA( asites[n]))
+      index1 |= (one<< (n+asize));
+    if (d2.getoccA( asites[n]))
+      index2 |= (one<< (n+asize));
+  }
+  for (int n=0; n<asize; n++) {
     if (d1.getoccB( bsites[n]))
-      index1 |= (one<<n);
+      index1 |= (one<< (n));
     if (d2.getoccB( bsites[n]))
-      index2 |= (one<<n);
+      index2 |= (one<< (n));
   }
   
-  for (int n=0; n<asites.size(); n++) {
-    if (d1.getoccA( asites[n]))
-      index1 |= (one<< (n+bsites.size()));
-    if (d2.getoccA( asites[n]))
-      index2 |= (one<< (n+bsites.size()));
+  if(!schd.expCorrelator)
+  {
+      return Variables[index1]/Variables[index2];
   }
+  else
+  {
+    return exp(Variables[index1]-Variables[index2]);
+  }
+}
 
+
+double Correlator::OverlapRatio(const BigDeterminant& d1, const BigDeterminant& d2) const {
+
+  double Coefficient = 0.0;
+  int asize = asites.size();
+
+  long index1=0, index2=0, one=1;
+  for (int n=0; n<asize; n++) {
+    if (d1[2*asites[n]] == 1)
+      index1 |= (one<< (n+asize));
+    if (d2[2*asites[n]] == 1)
+      index2 |= (one<< (n+asize));
+  }
+  for (int n=0; n<asize; n++) {
+    if (d1[2*bsites[n]+1] == 1)
+      index1 |= (one<< (n));
+    if (d2[2*bsites[n]+1] == 1)
+      index2 |= (one<< (n));
+  }
+  
   if(!schd.expCorrelator)
   {
       return Variables[index1]/Variables[index2];
