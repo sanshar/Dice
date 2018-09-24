@@ -59,6 +59,24 @@ void Determinant::getOpenClosed( std::vector<int>& open, std::vector<int>& close
   }
 }
 
+void Determinant::getOpenClosed( bool sz, std::vector<int>& open, std::vector<int>& closed) const {
+  
+  for (int i=0; i<norbs; i++) 
+  {
+    if (sz==0)
+    {
+      if ( getoccA(i)) closed.push_back(i);
+      else open.push_back(i);
+    }
+    else
+    {
+      if ( getoccB(i)) closed.push_back(i);
+      else open.push_back(i);
+    }
+  }
+
+}
+
 void Determinant::getOpenClosedAlphaBeta( std::vector<int>& openAlpha,
                                           std::vector<int>& closedAlpha,
                                           std::vector<int>& openBeta,
@@ -72,6 +90,15 @@ void Determinant::getOpenClosedAlphaBeta( std::vector<int>& openAlpha,
   }
 }
 
+void Determinant::getClosedAlphaBeta( std::vector<int>& closedAlpha,
+                                      std::vector<int>& closedBeta ) const 
+{
+  for (int i=0; i<norbs; i++) {
+    if ( getoccA(i)) closedAlpha.push_back(i);
+    if ( getoccB(i)) closedBeta.push_back(i);
+  }
+}
+
 void Determinant::getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) const {
   for (int i=0; i<64*EffDetLen; i++) {
     if (getoccA(i)) alpha.push_back(i);
@@ -79,6 +106,21 @@ void Determinant::getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) 
   }
 }
 
+void Determinant::getClosed( bool sz, std::vector<int>& closed) const {
+  
+  for (int i=0; i<norbs; i++) 
+  {
+    if (sz==0)
+    {
+      if ( getoccA(i)) closed.push_back(i);
+    }
+    else
+    {
+      if ( getoccB(i)) closed.push_back(i);
+    }
+  }
+
+}
 
 int Determinant::getNbetaBefore(int i) const {
   int occ = 0;
@@ -111,6 +153,11 @@ double Determinant::parityA(const int& a, const int& i) const {
   if (i < a) parity *= 1.;
     
   return parity;
+}
+
+double Determinant::parity(const int& a, const int& i, const bool& sz) const {
+  if (sz == 0) return parityA(a, i);
+  else return parityB(a, i);
 }
 
 double Determinant::parityB(const int& a, const int& i) const {
@@ -150,6 +197,12 @@ double Determinant::parityB(const vector<int>& aArray, const vector<int>& iArray
     dcopy.setoccB(aArray[i], true);
   }
   return p;
+}
+
+double Determinant::parity(const vector<int>& aArray, const vector<int>& iArray, bool sz) const
+{
+  if (sz==0) return parityA(aArray, iArray);
+  else return parityB(aArray, iArray);
 }
 
 int Determinant::Noccupied() const {
@@ -245,9 +298,19 @@ void Determinant::setocc(int i, bool occ)  {
   else return setoccB(i/2, occ);
 }
 
+void Determinant::setocc(int i, bool sz, bool occ)  {
+  if (sz == 0) return setoccA(i, occ);
+  else return setoccB(i, occ);
+}
+
 bool Determinant::getocc(int i) const {
   if (i%2 == 0) return getoccA(i/2);
   else return getoccB(i/2);
+}
+
+bool Determinant::getocc(int i, bool sz) const {
+  if (sz == 0) return getoccA(i);
+  else return getoccB(i);
 }
 
 //get the occupation of the ith orbital
@@ -615,6 +678,66 @@ void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
   }
 }
 
+void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
+                               vector<int>& cre, vector<int>& des,
+                               bool sz)
+{
+  std::fill(cre.begin(), cre.end(), -1);
+  std::fill(des.begin(), des.end(), -1);
+
+  int ncre = 0, ndes = 0;
+  long u, b, k, one = 1;
+
+  if (sz == 0)
+  {
+    for (int i = 0; i < DetLen; i++)
+    {
+      u = bra.reprA[i] ^ ket.reprA[i];
+      b = u & bra.reprA[i]; //the cre bits
+      k = u & ket.reprA[i]; //the des bits
+
+      while (b != 0)
+      {
+        int pos = __builtin_ffsl(b);
+        cre[ncre] = pos - 1 + i * 64;
+        ncre++;
+        b &= ~(one << (pos - 1));
+      }
+      while (k != 0)
+      {
+        int pos = __builtin_ffsl(k);
+        des[ndes] = pos - 1 + i * 64;
+        ndes++;
+        k &= ~(one << (pos - 1));
+      }
+    }
+  }
+
+  else
+  {
+    for (int i = 0; i < DetLen; i++)
+    {
+      u = bra.reprB[i] ^ ket.reprB[i];
+      b = u & bra.reprB[i]; //the cre bits
+      k = u & ket.reprB[i]; //the des bits
+
+      while (b != 0)
+      {
+        int pos = __builtin_ffsl(b);
+        cre[ncre] = pos - 1 + i * 64;
+        ncre++;
+        b &= ~(one << (pos - 1));
+      }
+      while (k != 0)
+      {
+        int pos = __builtin_ffsl(k);
+        des[ndes] = pos - 1 + i * 64;
+        ndes++;
+        k &= ~(one << (pos - 1));
+      }
+    }
+  }
+}
 
 void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket, int &I, int &A)
 {

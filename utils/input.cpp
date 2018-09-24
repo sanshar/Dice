@@ -71,7 +71,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.determinantFile = "";
       schd.wavefunctionType = "CPSSlater";
       schd.doHessian = false;
-      schd.uhf = false;
+      schd.hf = "rhf";
       schd.optimizeOrbs = true;
       schd.Hamiltonian = ABINITIO;
       schd.nwalk = 100;
@@ -134,12 +134,6 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
 	  
-	  else if (boost::iequals(ArgName, "cicpsghfslater"))
-	    schd.wavefunctionType = "CICPSGHFSlater";
-      
-          else if (boost::iequals(ArgName, "ghf"))
-	    schd.wavefunctionType = "CPSGHFSlater";
-
 	  else if (boost::iequals(ArgName, "tol"))
 	    schd.tol = atof(tok[1].c_str());
 
@@ -193,10 +187,20 @@ void readInput(string input, schedule& schd, bool print) {
 	    {
 	      schd.doHessian = true;
 	    }
+	  
+      else if (boost::iequals(ArgName, "rhf"))
+	    {
+	      schd.hf = "rhf";
+	    }
 
 	  else if (boost::iequals(ArgName, "uhf"))
 	    {
-	      schd.uhf = true;
+	      schd.hf = "uhf";
+	    }
+	  
+      else if (boost::iequals(ArgName, "ghf"))
+	    {
+	      schd.hf = "ghf";
 	    }
 
 	  else if (boost::iequals(ArgName, "dontoptimizeorbs"))
@@ -289,20 +293,18 @@ void readCorrelator(std::string input, int correlatorSize,
 }
 
 
-void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, bool uhf) {
-
-  if (!uhf)
-    {
-      ifstream dump("hf.txt");
-      for (int i = 0; i < HfmatrixA.rows(); i++)
-	for (int j = 0; j < HfmatrixA.rows(); j++)
-	  {
-	    dump >> HfmatrixA(i, j);
+void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, std::string hf) 
+{
+  if (hf == "rhf" || hf == "ghf") {
+    ifstream dump("hf.txt");
+    for (int i = 0; i < HfmatrixA.rows(); i++) {
+      for (int j = 0; j < HfmatrixA.rows(); j++){
+        dump >> HfmatrixA(i, j);
 	    HfmatrixB(i, j) = HfmatrixA(i, j);
-	  }
+      }
     }
-  else
-    {
+  }
+  else {
       ifstream dump("hf.txt");
       for (int i = 0; i < HfmatrixA.rows(); i++)
 	{

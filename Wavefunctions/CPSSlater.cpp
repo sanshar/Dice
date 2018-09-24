@@ -17,15 +17,6 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "integral.h"
-#include "CPS.h"
-#include "HFWalker.h"
-#include "CPSSlater.h"
-#include "global.h"
-#include "input.h"
-#include "Profile.h"
-#include "workingArray.h"
-#include "Slater.h"
 #include <fstream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -35,26 +26,31 @@
 #include <boost/mpi.hpp>
 #endif
 
+#include "Determinants.h"
+#include "integral.h"
+#include "CPS.h"
+#include "HFWalker.h"
+#include "CPSSlater.h"
+#include "global.h"
+#include "input.h"
+#include "Profile.h"
+#include "workingArray.h"
+#include "Slater.h"
+
 using namespace Eigen;
 
 CPSSlater::CPSSlater() {
   //cps, slater will read their respective default values
   ;}
 
-void CPSSlater::initWalker(HFWalker& walk) {
-
+void CPSSlater::initWalker(HFWalker &walk)
+{
   slater.initWalker(walk);
 }
 
-void CPSSlater::initWalker(HFWalker& walk, Determinant& d) {
-  slater.initWalker(walk, d);
-}
-
-
-//This is expensive and not recommended
-double CPSSlater::Overlap(Determinant &d)
+void CPSSlater::initWalker(HFWalker &walk, Determinant &d)
 {
-  return cps.Overlap(d)  * slater.Overlap(d);
+  slater.initWalker(walk, d);
 }
 
 double CPSSlater::Overlap(HFWalker &walk)
@@ -131,7 +127,6 @@ void CPSSlater::printVariables()
 void CPSSlater::updateVariables(Eigen::VectorXd &v)
 {
   cps.updateVariables(v);
-
   Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows()-cps.getNumVariables());
   slater.updateVariables(vtail);
 }
@@ -240,4 +235,9 @@ void CPSSlater::derivativeOfLocalEnergy (HFWalker &walk,
   //NEEDS TO BE IMPLEMENTED
 }
 
+//This is expensive and not recommended
+//double CPSSlater::Overlap(Determinant &d)
+//{
+//  return cps.Overlap(d)  * slater.Overlap(d);
+//}
 

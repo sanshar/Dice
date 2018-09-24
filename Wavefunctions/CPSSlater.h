@@ -20,17 +20,18 @@
 #define CPSSlater_HEADER_H
 #include <vector>
 #include <set>
-#include "Determinants.h"
-#include "CPS.h"
-#include "Slater.h"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
+#include "Slater.h"
+#include "CPS.h"
 
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
-class HFWalker;
 class workingArray;
+class Determinant;
+class HFWalker;
+
 
 /**
 * This is the wavefunction, it is a product of the CPS and a linear combination of
@@ -45,21 +46,17 @@ class CPSSlater {
        & slater;
   }
 
-  
-  CPS cps; //The jastrow factors
-  Slater slater;
-
-  double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
-  double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
-
-
  public:
+   CPS cps; //The jastrow factors
+   Slater slater; //reference
+
+   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
+   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+   Slater& getRef() { return slater; }
 
    CPSSlater();
    void initWalker(HFWalker &walk);
    void initWalker(HFWalker &walk, Determinant &d);
-
-
 
    /**
    *This calculates the overlap of the walker with the
@@ -67,12 +64,6 @@ class CPSSlater {
    */
    double Overlap(HFWalker &walk);
 
-   /**
-   * This is expensive and is not recommended because 
-   * one has to generate the overlap determinants w.r.t to the
-   * ciExpansion from scratch
-   */
-  double Overlap(Determinant &);
 
   double getOverlapFactor(HFWalker& w, Determinant& dcopy, bool doparity=false);
   double getOverlapFactor(int i, int a, HFWalker& w, bool doparity);
@@ -110,10 +101,13 @@ class CPSSlater {
    void printVariables();
    void writeWave();
    void readWave();
-  vector<Determinant> &getDeterminants() { return slater.getDeterminants(); }
-  vector<double> &getciExpansion() { return slater.getciExpansion(); }
-  MatrixXd& getHforbsA() {return slater.getHforbsA();}
-  MatrixXd& getHforbsB() {return slater.getHforbsB();}
+   
+   /**
+   * This is expensive and is not recommended because 
+   * one has to generate the overlap determinants w.r.t to the
+   * ciExpansion from scratch
+   */
+  //double Overlap(Determinant &);
 };
 
 

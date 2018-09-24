@@ -34,7 +34,7 @@ class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
 class CPSSlaterWalker;
-
+class Slater;
 
 /**
  * This is the wavefunction, that extends a given wavefunction by doing
@@ -73,6 +73,8 @@ template <typename Wfn, typename Walker, typename OpType>
     ciCoeffs[0] = 1.0;
   }
 
+  Slater& getRef() { return wave.getRef(); }
+
   void appendSinglesToOpList()
   {
     OpType::populateSinglesToOpList(oplist);
@@ -85,20 +87,9 @@ template <typename Wfn, typename Walker, typename OpType>
     ciCoeffs.resize(oplist.size(), 0.0);
   }
 
-
-  void initWalker(Walker& walk) {
-    wave.initWalker(walk);
-  }  
-
-  void initWalker(Walker& walk, Determinant& d) {
-    wave.initWalker(walk, d);
-  }  
-
   void getVariables(VectorXd& vars) {
     if (vars.rows() != getNumVariables())
-      {
-	vars = VectorXd::Zero(getNumVariables());
-      }
+      vars = VectorXd::Zero(getNumVariables());
     for (int i=0; i<ciCoeffs.size(); i++)
       vars[i] = ciCoeffs[i];
   }
@@ -121,12 +112,12 @@ template <typename Wfn, typename Walker, typename OpType>
     int norbs = Determinant::norbs;
     if (J == 0 && B == 0) {
       Walker walkcopy = walk;
-      walkcopy.exciteWalker(wave, I*2*norbs+A, 0, norbs);
+      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, 0, norbs);
       return Overlap(walkcopy)/Overlap(walk);
     }
     else {
       Walker walkcopy = walk;
-      walkcopy.exciteWalker(wave, I*2*norbs+A, J*2*norbs+B, norbs);
+      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, J*2*norbs+B, norbs);
       return Overlap(walkcopy)/Overlap(walk);
     }
   }
@@ -303,12 +294,12 @@ template <typename Wfn, typename Walker, typename OpType>
 		  if (abs(tia) > THRESH)
 		    {
 		      Walker walkcopy = walk;
-		      walkcopy.exciteWalker(wave, closed[i]*2*norbs+open[a], 0, norbs);
+		      walkcopy.exciteWalker(wave.getRef(), closed[i]*2*norbs+open[a], 0, norbs);
 		      double ovlpdetcopy = Overlap(walkcopy);
 		      ham += ovlpdetcopy * tia / ovlp;
 
 		      if (fillExcitations) {
-                        cout << closed[i]/2<<"  "<<open[a]/2<<"  0  0  "<<ovlpdetcopy<<"  "<<tia<<endl;
+                        //cout << closed[i]/2<<"  "<<open[a]/2<<"  0  0  "<<ovlpdetcopy<<"  "<<tia<<endl;
 			work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a],
 					 0, tia);
                       }
@@ -356,7 +347,7 @@ template <typename Wfn, typename Walker, typename OpType>
 		  double tiajb = integrals[index];
 
 		  Walker walkcopy = walk;
-		  walkcopy.exciteWalker(wave, closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
+		  walkcopy.exciteWalker(wave.getRef(), closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
 		  double ovlpdetcopy = Overlap(walkcopy);
 
 		  double parity = 1.0;
@@ -383,12 +374,15 @@ template <typename Wfn, typename Walker, typename OpType>
     }
   }
 
-  vector<Determinant> &getDeterminants() { return wave.getDeterminants(); }
-  vector<double> &getciExpansion() { return wave.getciExpansion(); }
-
-  MatrixXd& getHforbsA() {return wave.getHforbsA();}
-  MatrixXd& getHforbsB() {return wave.getHforbsB();}
-  MatrixXd& getGHFOrbs() {return wave.getGHFOrbs();}
+  void initWalker(Walker& walk)
+  {
+    wave.initWalker(walk);
+  }
+  
+  void initWalker(Walker& walk, Determinant& d)
+  {
+    wave.initWalker(walk, d);
+  }
 
   void writeWave()
   {

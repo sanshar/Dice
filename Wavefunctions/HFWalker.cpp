@@ -16,148 +16,524 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <boost/archive/binary_iarchive.hpp>
+
 #include "HFWalker.h"
+#include "Slater.h"
+#include "ShermanMorrisonWoodbury.h"
+#include "input.h"
 #include "global.h"
-#include <algorithm>
 
 using namespace Eigen;
 
-
-
-void HFWalker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
-                                                                  MatrixXd &inverseOut, double &detValueOut,
-                                                                  vector<int> &cre, vector<int> &des,
-                                                                  Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                                  vector<int> &ColIn, MatrixXd &Hforbs)
+HFWalkerHelper::HFWalkerHelper(Slater &w, Determinant &d) 
 {
-  int ncre = 0, ndes = 0;
-  for (int i = 0; i < cre.size(); i++)
-    if (cre[i] != -1)
-      ncre++;
-  for (int i = 0; i < des.size(); i++)
-    if (des[i] != -1)
-      ndes++;
-  if (ncre == 0)
-  {
-    inverseOut = inverseIn;
-    detValueOut = detValueIn;
-    return;
+  hftype = w.hftype;
+ 
+  //fill the spin strings for the walker and the zeroth reference det
+  fillOpenClosedOrbs(d);
+  //Eigen::Map<VectorXi> v1(&closedOrbs[0][0], closedOrbs[0].size());
+  //Eigen::Map<VectorXi> v2(&closedOrbs[1][0], closedOrbs[1].size());
+  //Eigen::Map<VectorXi> v3(&openOrbs[0][0], openOrbs[0].size());
+  //Eigen::Map<VectorXi> v4(&openOrbs[1][0], openOrbs[1].size());
+  //cout << d << endl << endl;
+  //cout << "alphaClosed\n" << v1 << endl << endl;
+  //cout << "betaClosed\n" << v2 << endl << endl;
+  //cout << "alphaopen const before init\n" << v3 << endl << endl;
+  //cout << "betaopen\n" << v4 << endl << endl;
+  closedOrbsRef[0].clear();
+  closedOrbsRef[1].clear();
+  w.getDeterminants()[0].getClosedAlphaBeta(closedOrbsRef[0], closedOrbsRef[1]);
+  
+  rTable.resize(w.getNumOfDets());
+  thetaDet.resize(w.getNumOfDets());
+  
+  if (hftype == 2) {
+    initInvDetsTablesGhf(w);
   }
-
-  Eigen::Map<VectorXi> ColCre(&cre[0], ncre);
-  Eigen::Map<VectorXi> ColDes(&des[0], ndes);
-
-  MatrixXd newCol, oldCol;
-  igl::slice(Hforbs, RowVec, ColCre, newCol);
-  igl::slice(Hforbs, RowVec, ColDes, oldCol);
-  newCol = newCol - oldCol;
-
-  MatrixXd vT = MatrixXd::Zero(ncre, ColIn.size());
-  vector<int> ColOutWrong = ColIn;
-  for (int i = 0; i < ndes; i++)
-  {
-    int index = std::lower_bound(ColIn.begin(), ColIn.end(), des[i]) - ColIn.begin();
-    vT(i, index) = 1.0;
-    ColOutWrong[index] = cre[i];
+  else {
+    initInvDetsTables(w);
   }
-
-  //igl::slice(inverseIn, ColCre, 1, vTinverseIn);
-  MatrixXd vTinverseIn = vT * inverseIn;
-
-  MatrixXd Id = MatrixXd::Identity(ncre, ncre);
-  MatrixXd detFactor = Id + vTinverseIn * newCol;
-  MatrixXd detFactorInv, inverseOutWrong;
-
-  Eigen::FullPivLU<MatrixXd> lub(detFactor);
-  if (lub.isInvertible())
-  {
-    detFactorInv = lub.inverse();
-    inverseOutWrong = inverseIn - ((inverseIn * newCol) * detFactorInv) * (vTinverseIn);
-    detValueOut = detValueIn * detFactor.determinant();
-  }
-  else
-  {
-    MatrixXd originalOrbs;
-    Eigen::Map<VectorXi> Col(&ColIn[0], ColIn.size());
-    igl::slice(Hforbs, RowVec, Col, originalOrbs);
-    MatrixXd newOrbs = originalOrbs + newCol * vT;
-    inverseOutWrong = newOrbs.inverse();
-    detValueOut = newOrbs.determinant();
-  }
-
-  //now we need to reorder the inverse to correct the order of rows
-  std::vector<int> order(ColOutWrong.size()), ccopy = ColOutWrong;
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&ccopy](size_t i1, size_t i2) { return ccopy[i1] < ccopy[i2]; });
-  Eigen::Map<VectorXi> orderVec(&order[0], order.size());
-  igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
 }
 
-void HFWalker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
-                                                               MatrixXd &inverseOut, double &detValueOut,
-                                                               vector<int> &cre, vector<int> &des,
-                                                               Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                               vector<int> &RowIn, MatrixXd &Hforbs)
+void HFWalkerHelper::fillOpenClosedOrbs(Determinant &d)
 {
-  int ncre = 0, ndes = 0;
-  for (int i = 0; i < cre.size(); i++)
-    if (cre[i] != -1)
-      ncre++;
-  for (int i = 0; i < des.size(); i++)
-    if (des[i] != -1)
-      ndes++;
-  if (ncre == 0)
-  {
-    inverseOut = inverseIn;
-    detValueOut = detValueIn;
-    return;
+  openOrbs[0].clear();
+  openOrbs[1].clear();
+  closedOrbs[0].clear();
+  closedOrbs[1].clear();
+  d.getOpenClosedAlphaBeta(openOrbs[0], closedOrbs[0], openOrbs[1], closedOrbs[1]);
+  Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
+}
+
+void HFWalkerHelper::makeTable(Slater &w, MatrixXd& inv, Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz)
+{
+  Map<VectorXi> rowOpen(&openOrbs[sz][0], openOrbs[sz].size());
+  rTable[detIndex][sz] = MatrixXd::Zero(openOrbs[sz].size(), closedOrbs[sz].size()); 
+  MatrixXd HfopenTheta;
+  igl::slice(w.getHforbs(sz), rowOpen, colClosed, HfopenTheta);
+  rTable[detIndex][sz] = HfopenTheta * inv;
+}
+
+void HFWalkerHelper::calcOtherDetsTables(Slater& w, bool sz)
+{
+  Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
+  vector<int> cre(closedOrbs[sz].size(), -1), des(closedOrbs[sz].size(), -1);
+  for (int x = 1; x < w.getNumOfDets(); x++) {
+    MatrixXd invCurrent;
+    vector<int> ref;
+    w.getDeterminants()[x].getClosed(sz, ref);
+    Eigen::Map<VectorXi> colClosed(&ref[0], ref.size());
+    getDifferenceInOccupation(w.getDeterminants()[x], w.getDeterminants()[0], cre, des, sz);
+    double parity = w.getDeterminants()[0].parity(cre, des, sz);
+    calculateInverseDeterminantWithColumnChange(thetaInv[sz], thetaDet[0][sz], invCurrent, thetaDet[x][sz], cre, des, rowClosed, closedOrbsRef[sz], w.getHforbs(sz));
+    thetaDet[x][sz] *= parity;
+    makeTable(w, invCurrent, colClosed, x, sz);
   }
+}
 
-  Eigen::Map<VectorXi> RowCre(&cre[0], ncre);
-  Eigen::Map<VectorXi> RowDes(&des[0], ndes);
-
-  MatrixXd newRow, oldRow;
-  igl::slice(Hforbs, RowCre, ColVec, newRow);
-  igl::slice(Hforbs, RowDes, ColVec, oldRow);
-  newRow = newRow - oldRow;
-
-  MatrixXd U = MatrixXd::Zero(ColVec.rows(), ncre);
-  vector<int> RowOutWrong = RowIn;
-  for (int i = 0; i < ndes; i++)
-  {
-    int index = std::lower_bound(RowIn.begin(), RowIn.end(), des[i]) - RowIn.begin();
-    U(index, i) = 1.0;
-    RowOutWrong[index] = cre[i];
+//commenting out calcotherdetstables, uncomment for multidet
+void HFWalkerHelper::initInvDetsTables(Slater &w)
+{
+  for (int sz = 0; sz < 2; sz++) {
+    Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
+    Eigen::Map<VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
+    MatrixXd theta;
+    igl::slice(w.getHforbs(sz), rowClosed, colClosed, theta); 
+    Eigen::FullPivLU<MatrixXd> lua(theta);
+    if (lua.isInvertible()) {
+      thetaInv[sz] = lua.inverse();
+      thetaDet[0][sz] = lua.determinant();
+    }
+    else {
+      cout << sz << " overlap with determinant not invertible" << endl;
+      exit(0);
+    }
+    makeTable(w, thetaInv[sz], colClosed, 0, sz);
+    //calcOtherDetsTables(w, sz);
   }
-  //igl::slice(inverseIn, VectorXi::LinSpaced(RowIn.size(), 0, RowIn.size() + 1), RowDes, inverseInU);
-  MatrixXd inverseInU = inverseIn * U;
-  MatrixXd Id = MatrixXd::Identity(ncre, ncre);
-  MatrixXd detFactor = Id + newRow * inverseInU;
-  MatrixXd detFactorInv, inverseOutWrong;
+}
 
-  Eigen::FullPivLU<MatrixXd> lub(detFactor);
-  if (lub.isInvertible())
+void HFWalkerHelper::concatenateGhf(vector<int>& v1, vector<int>& v2, vector<int>& result)
+{
+  int norbs = Determinant::norbs;
+  result.clear();
+  result = v1;
+  result.insert(result.end(), v2.begin(), v2.end());    
+  for (int j = v1.size(); j < v1.size() + v2.size(); j++)
+      result[j] += norbs;
+}
+
+void HFWalkerHelper::makeTableGhf(Slater &w, Eigen::Map<VectorXi>& colTheta)
+{
+  int norbs = Determinant::norbs;
+  
+  rTable[0][0] = MatrixXd::Zero(openOrbs[0].size(), closedOrbs[0].size()); 
+  MatrixXd ghfOpenAlpha; 
+  Eigen::Map<VectorXi> rowAlphaOpen(&openOrbs[0][0], openOrbs[0].size());
+  igl::slice(w.getHforbs(), rowAlphaOpen, colTheta, ghfOpenAlpha);
+  rTable[0][0] = ghfOpenAlpha * thetaInv[0].block(0, 0, ghfOpenAlpha.cols(), closedOrbs[0].size());
+
+  rTable[0][1] = MatrixXd::Zero(openOrbs[1].size(), closedOrbs[1].size()); 
+  MatrixXd ghfOpenBeta;
+  Eigen::VectorXi rowBetaOpen = VectorXi::Zero(openOrbs[1].size());
+  for (int j = 0; j < openOrbs[1].size(); j++)
+    rowBetaOpen[j] = openOrbs[1][j] + norbs;
+  igl::slice(w.getHforbs(), rowBetaOpen, colTheta, ghfOpenBeta);
+  rTable[0][1] = ghfOpenBeta * thetaInv[0].block(0, closedOrbs[0].size(), ghfOpenBeta.cols(), closedOrbs[1].size());
+}
+
+void HFWalkerHelper::initInvDetsTablesGhf(Slater &w)
+{
+  vector<int> workingVec0, workingVec1;
+  concatenateGhf(closedOrbs[0], closedOrbs[1], workingVec0);
+  Eigen::Map<VectorXi> rowTheta(&workingVec0[0], workingVec0.size());
+  //cout << "row\n" << rowTheta << endl << endl;
+  concatenateGhf(closedOrbsRef[0], closedOrbsRef[1], workingVec1);
+  Eigen::Map<VectorXi> colTheta(&workingVec1[0], workingVec1.size());
+  
+  MatrixXd theta;
+  igl::slice(w.getHforbs(), rowTheta, colTheta, theta); 
+  Eigen::FullPivLU<MatrixXd> lua(theta);
+  if (lua.isInvertible()) {
+    thetaInv[0] = lua.inverse();
+    thetaDet[0][0] = lua.determinant();
+  }
+  else {
+    //cout << "0\n" << closedOrbs[0] << endl << endl;
+    //cout << "1\n" << closedOrbs[1] << endl << endl;
+    Eigen::Map<VectorXi> v1(&closedOrbs[0][0], closedOrbs[0].size());
+    Eigen::Map<VectorXi> v2(&closedOrbs[1][0], closedOrbs[1].size());
+    cout << "alphaClosed\n" << v1 << endl << endl;
+    cout << "betaClosed\n" << v2 << endl << endl;
+    cout << "col\n" << colTheta << endl << endl;
+    //cout << "hforbs\n" << w.getHforbsA() << endl << endl;
+    cout << theta << endl << endl;
+    cout << "overlap with theta determinant not invertible" << endl;
+    exit(0);
+  }
+  thetaDet[0][1] = 1.;
+  makeTableGhf(w, colTheta);
+}
+
+//commenting out calcotherdetstables, uncomment for multidet
+void HFWalkerHelper::excitationUpdate(Slater &w, vector<int>& cre, vector<int> des, bool sz, double parity, Determinant& excitedDet)
+{
+  MatrixXd invOld = thetaInv[sz];
+  double detOld = thetaDet[0][sz];
+  Eigen::Map<Eigen::VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
+  calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv[sz], thetaDet[0][sz], cre, des, colClosed, closedOrbs[sz], w.getHforbs(sz));
+  thetaDet[0][sz] *= parity;
+  fillOpenClosedOrbs(excitedDet);
+  makeTable(w, thetaInv[sz], colClosed, 0, sz);
+  //calcOtherDetsTables(w, sz);
+}
+
+void HFWalkerHelper::excitationUpdateGhf(Slater &w, vector<int>& cre, vector<int> des, bool sz, double parity, Determinant& excitedDet)
+{
+  vector<int> colVec;
+  concatenateGhf(closedOrbsRef[0], closedOrbsRef[1], colVec);
+  Eigen::Map<VectorXi> colTheta(&colVec[0], colVec.size());
+  vector<int> rowIn;
+  concatenateGhf(closedOrbs[0], closedOrbs[1], rowIn);
+  MatrixXd invOld = thetaInv[0];
+  double detOld = thetaDet[0][0];
+  //Eigen::Map<VectorXi> rowAlphaOpen(&openOrbs[0][0], openOrbs.size());
+  //cout << "excitation alphaopen\n" << rowAlphaOpen << endl << endl;
+  calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv[0], thetaDet[0][0], cre, des, colTheta, rowIn, w.getHforbs());
+  thetaDet[0][0] *= parity;
+  fillOpenClosedOrbs(excitedDet);
+  makeTableGhf(w, colTheta);
+}
+
+void HFWalkerHelper::getRelIndices(int i, int &relI, int a, int &relA, bool sz) 
+{
+  relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
+  relA = std::lower_bound(openOrbs[sz].begin(), openOrbs[sz].end(), a) - openOrbs[sz].begin();
+}
+
+//HFWalker::HFWalker(Determinant &pd) : d(pd){};
+
+HFWalker::HFWalker(Slater &w) 
+{
+  initDet(w.getHforbsA(), w.getHforbsB());
+  helper = HFWalkerHelper(w, d);
+}
+
+HFWalker::HFWalker(Slater &w, Determinant &pd) : d(pd), helper(w, pd) {}; 
+
+void HFWalker::readBestDeterminant(Determinant& d) 
+{
+  if (commrank == 0) {
+    char file[5000];
+    sprintf(file, "BestDeterminant.txt");
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+    load >> d;
+  }
+#ifndef SERIAL
+  MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+}
+
+/**
+ * makes det based on mo coeffs 
+ */
+void HFWalker::guessBestDeterminant(Determinant& d, Eigen::MatrixXd& HforbsA, Eigen::MatrixXd& HforbsB) 
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  d = Determinant();
+  for (int i = 0; i < nalpha; i++) {
+    int bestorb = 0;
+    double maxovlp = 0;
+    for (int j = 0; j < norbs; j++) {
+      if (abs(HforbsA(i, j)) > maxovlp && !d.getoccA(j)) {
+        maxovlp = abs(HforbsA(i, j));
+        bestorb = j;
+      }
+    }
+    d.setoccA(bestorb, true);
+  }
+  for (int i = 0; i < nbeta; i++) {
+    int bestorb = 0;
+    double maxovlp = 0;
+    for (int j = 0; j < norbs; j++) {
+      if (schd.hf == "rhf" || schd.hf == "uhf") {
+        if (abs(HforbsB(i, j)) > maxovlp && !d.getoccB(j)) {
+          bestorb = j;
+          maxovlp = abs(HforbsB(i, j));
+        }
+      }
+      else {
+        if (abs(HforbsB(i+norbs, j)) > maxovlp && !d.getoccB(j)) {
+          bestorb = j;
+          maxovlp = abs(HforbsB(i+norbs, j));
+        }
+      }
+    }
+    d.setoccB(bestorb, true);
+  }
+}
+
+void HFWalker::initDet(MatrixXd& HforbsA, MatrixXd& HforbsB) 
+{
+  bool readDeterminant = false;
+  char file[5000];
+  sprintf(file, "BestDeterminant.txt");
+
   {
-    detFactorInv = lub.inverse();
-    inverseOutWrong = inverseIn - ((inverseInU)*detFactorInv) * (newRow * inverseIn);
-    detValueOut = detValueIn * detFactor.determinant();
+    ifstream ofile(file);
+    if (ofile)
+      readDeterminant = true;
+  }
+  if (readDeterminant)
+    readBestDeterminant(d);
+  else
+    guessBestDeterminant(d, HforbsA, HforbsB);
+}
+
+double HFWalker::getDetOverlap(Slater &w)
+{
+  double ovlp = 0.0;
+  for (int i = 0; i < helper.thetaDet.size(); i++) {
+    ovlp += w.getciExpansion()[i] * helper.thetaDet[i][0] * helper.thetaDet[i][1];
+  }
+  return ovlp;
+}
+
+double HFWalker::getDetFactor(int i, int a, Slater &w) {
+  if (i % 2 == 0)
+    return getDetFactor(i / 2, a / 2, 0, w);
+  else                                   
+    return getDetFactor(i / 2, a / 2, 1, w);
+}
+
+double HFWalker::getDetFactor(int I, int J, int A, int B, Slater &w) {
+  if (I % 2 == J % 2 && I % 2 == 0)
+    return getDetFactor(I / 2, J / 2, A / 2, B / 2, 0, 0, w);
+  else if (I % 2 == J % 2 && I % 2 == 1)                  
+    return getDetFactor(I / 2, J / 2, A / 2, B / 2, 1, 1, w);
+  else if (I % 2 != J % 2 && I % 2 == 0)                  
+    return getDetFactor(I / 2, J / 2, A / 2, B / 2, 0, 1, w);
+  else                                                    
+    return getDetFactor(I / 2, J / 2, A / 2, B / 2, 1, 0, w);
+}
+
+double HFWalker::getDetFactor(int i, int a, bool sz, Slater &w)
+{
+  int tableIndexi, tableIndexa;
+  helper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
+
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int j = 0; j < w.getDeterminants().size(); j++)
+  {
+    double factor = helper.rTable[j][sz](tableIndexa, tableIndexi);
+    detFactorNum += w.getciExpansion()[j] * factor * helper.thetaDet[j][0] * helper.thetaDet[j][1];
+    detFactorDen += w.getciExpansion()[j] * helper.thetaDet[j][0] * helper.thetaDet[j][1];
+  }
+  return detFactorNum / detFactorDen;
+}
+
+double HFWalker::getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, Slater &w)
+{
+  int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
+  helper.getRelIndices(i, tableIndexi, a, tableIndexa, sz1); 
+  helper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2) ;
+
+  double detFactorNum = 0.0;
+  double detFactorDen = 0.0;
+  for (int j = 0; j < w.getDeterminants().size(); j++)
+  {
+    double factor;
+    if (sz1 == sz2)
+      factor = helper.rTable[j][sz1](tableIndexa, tableIndexi) * helper.rTable[j][sz1](tableIndexb, tableIndexj) 
+          - helper.rTable[j][sz1](tableIndexb, tableIndexi) *helper.rTable[j][sz1](tableIndexa, tableIndexj);
+    else
+      factor = helper.rTable[j][sz1](tableIndexa, tableIndexi) * helper.rTable[j][sz2](tableIndexb, tableIndexj);
+    detFactorNum += w.getciExpansion()[j] * factor * helper.thetaDet[j][0] * helper.thetaDet[j][1];
+    detFactorDen += w.getciExpansion()[j] * helper.thetaDet[j][0] * helper.thetaDet[j][1];
+  }
+  return detFactorNum / detFactorDen;
+}
+
+void HFWalker::update(int i, int a, bool sz, Slater &w)
+{
+  double p = 1.0;
+  p *= d.parity(a, i, sz);
+  d.setocc(i, sz, false);
+  d.setocc(a, sz, true);
+  if (helper.hftype == 2) {
+    int norbs = Determinant::norbs;
+    vector<int> cre{ a + sz * norbs }, des{ i + sz * norbs };
+    helper.excitationUpdateGhf(w, cre, des, sz, p, d);
   }
   else
   {
-    MatrixXd originalOrbs;
-    Eigen::Map<VectorXi> Row(&RowIn[0], RowIn.size());
-    igl::slice(Hforbs, Row, ColVec, originalOrbs);
-    MatrixXd newOrbs = originalOrbs + U * newRow;
-    inverseOutWrong = newOrbs.inverse();
-    detValueOut = newOrbs.determinant();
+    vector<int> cre{ a }, des{ i };
+    helper.excitationUpdate(w, cre, des, sz, p, d);
   }
+}
 
-  //now we need to reorder the inverse to correct the order of rows
-  std::vector<int> order(RowOutWrong.size()), rcopy = RowOutWrong;
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
-  Eigen::Map<VectorXi> orderVec(&order[0], order.size());
-  igl::slice(inverseOutWrong, VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows()), orderVec, inverseOut);
+void HFWalker::update(int i, int j, int a, int b, bool sz, Slater &w)
+{
+  double p = 1.0;
+  Determinant dcopy = d;
+  p *= d.parity(a, i, sz);
+  d.setocc(i, sz, false);
+  d.setocc(a, sz, true);
+  p *= d.parity(b, j, sz);
+  d.setocc(j, sz, false);
+  d.setocc(b, sz, true);
+  if (helper.hftype == 2) {
+    int norbs = Determinant::norbs;
+    vector<int> cre{ a + sz * norbs, b + sz * norbs }, des{ i + sz * norbs, j + sz * norbs };
+    helper.excitationUpdateGhf(w, cre, des, sz, p, d);
+  }
+  else {
+    vector<int> cre{ a, b }, des{ i, j };
+    helper.excitationUpdate(w, cre, des, sz, p, d);
+  }
+}
+
+void HFWalker::updateWalker(Slater& w, int ex1, int ex2)
+{
+  int norbs = Determinant::norbs;
+  int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+  if (I % 2 == J % 2 && ex2 != 0) {
+    if (I % 2 == 1) {
+      update(I / 2, J / 2, A / 2, B / 2, 1, w);
+    }
+    else {
+      update(I / 2, J / 2, A / 2, B / 2, 0, w);
+    }
+  }
+  else {
+    if (I % 2 == 0)
+      update(I / 2, A / 2, 0, w);
+    else
+      update(I / 2, A / 2, 1, w);
+
+    if (ex2 != 0) {
+      if (J % 2 == 1) {
+        update(J / 2, B / 2, 1, w);
+      }
+      else {
+        update(J / 2, B / 2, 0, w);
+      }
+    }
+  }
+}
+
+void HFWalker::exciteWalker(Slater& w, int excite1, int excite2, int norbs)
+{
+  int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
+
+  if (I1 % 2 == 0)
+    update(I1 / 2, A1 / 2, 0, w);
+  else
+    update(I1 / 2, A1 / 2, 1, w);
+
+  if (excite2 != 0) {
+    int I2 = excite2 / (2 * norbs), A2 = excite2 % (2 * norbs);
+    if (I2 % 2 == 0)
+      update(I2 / 2, A2 / 2, 0, w);
+    else
+      update(I2 / 2, A2 / 2, 1, w);
+  }
+}
+
+void HFWalker::OverlapWithGradient(Slater &w, Eigen::VectorXd &grad, double detovlp)
+{
+  int norbs = Determinant::norbs;
+  Determinant walkerDet = d;
+
+  //K and L are relative row and col indices
+  int KA = 0, KB = 0;
+  for (int k = 0; k < norbs; k++) { //walker indices on the row
+    if (walkerDet.getoccA(k)) {
+      for (int det = 0; det < w.getDeterminants().size(); det++) {
+        Determinant refDet = w.getDeterminants()[det];
+        int L = 0;
+        for (int l = 0; l < norbs; l++) {
+          if (refDet.getoccA(l)) {
+            grad(k * norbs + l) += w.getciExpansion()[det] * helper.thetaInv[0](L, KA) * helper.thetaDet[det][0] * helper.thetaDet[det][1] / detovlp;
+            L++;
+          }
+        }
+      }
+      KA++;
+    }
+    if (walkerDet.getoccB(k)) {
+      for (int det = 0; det < w.getDeterminants().size(); det++) {
+        Determinant refDet = w.getDeterminants()[det];
+        int L = 0;
+        for (int l = 0; l < norbs; l++) {
+          if (refDet.getoccB(l)) {
+            if (helper.hftype == 1)
+              grad(norbs * norbs + k * norbs + l) += w.getciExpansion()[det] * helper.thetaInv[1](L, KB) * helper.thetaDet[det][0] * helper.thetaDet[det][1] / detovlp;
+            else
+              grad(k * norbs + l) += w.getciExpansion()[det] * helper.thetaInv[1](L, KB) * helper.thetaDet[det][0] * helper.thetaDet[det][1] / detovlp;
+            L++;
+          }
+        }
+      }
+      KB++;
+    }
+  }
+}
+
+void HFWalker::OverlapWithGradientGhf(Slater &w, Eigen::VectorXd &grad, double detovlp)
+{
+  int norbs = Determinant::norbs;
+  Determinant walkerDet = d;
+  Determinant refDet = w.getDeterminants()[0];
+
+  //K and L are relative row and col indices
+  int K = 0;
+  for (int k = 0; k < norbs; k++) { //walker indices on the row
+    if (walkerDet.getoccA(k)) {
+      int L = 0;
+      for (int l = 0; l < norbs; l++) {
+        if (refDet.getoccA(l)) {
+          grad(2 * k * norbs + l) += helper.thetaInv[0](L, K) * helper.thetaDet[0][0] / detovlp;
+          L++;
+        }
+      }
+      for (int l = 0; l < norbs; l++) {
+        if (refDet.getoccB(l)) {
+          grad(2 * k * norbs + norbs + l) += helper.thetaInv[0](L, K) * helper.thetaDet[0][0] / detovlp;
+          //grad(w.getNumJastrowVariables() + w.getciExpansion().size() + k*norbs+l) += walk.alphainv(L, KA);
+          L++;
+        }
+      }
+      K++;
+    }
+  }
+  for (int k = 0; k < norbs; k++) { //walker indices on the row
+    if (walkerDet.getoccB(k)) {
+      int L = 0;
+      for (int l = 0; l < norbs; l++) {
+        if (refDet.getoccA(l)) {
+          grad(2 * norbs * norbs +  2 * k * norbs + l) += helper.thetaDet[0][0] * helper.thetaInv[0](L, K) / detovlp;
+          L++;
+        }
+      }
+      for (int l = 0; l < norbs; l++) {
+        if (refDet.getoccB(l)) {
+          grad(2 * norbs * norbs +  2 * k * norbs + norbs + l) += helper.thetaDet[0][0] * helper.thetaInv[0](L, K) / detovlp;
+          L++;
+        }
+      }
+      K++;
+    }
+  }
 }
 
 /*bool HFWalker::makeMove(CPSSlater &w)
@@ -242,5 +618,65 @@ bool HFWalker::makeMovePropPsi(CPSSlater &w)
   }
 
   return false;
+}
+
+template <typename Wfn>
+double getDetFactorA(vector<int> &iArray, vector<int> &aArray, Wfn &w, bool doparity)
+{
+  MatrixXd localDet = MatrixXd::Zero(aArray.size(), iArray.size());
+  for (int i = 0; i < iArray.size(); i++)
+  {
+    int tableIndexi = std::lower_bound(AlphaClosed.begin(), AlphaClosed.end(), iArray[i]) - AlphaClosed.begin();
+    for (int a = 0; a < aArray.size(); a++)
+    {
+      int tableIndexa = std::lower_bound(AlphaOpen.begin(), AlphaOpen.end(), aArray[a]) - AlphaOpen.begin();
+      localDet(i, a) = AlphaTable[0](tableIndexi, tableIndexa);
+    }
+  }
+
+  double p = 1.;
+  Determinant dcopy = d;
+  for (int i = 0; i < iArray.size(); i++)
+  {
+    if (doparity)
+      dcopy.parityA(aArray[i], iArray[i], p);
+
+    dcopy.setoccA(iArray[i], false);
+    dcopy.setoccA(aArray[i], true);
+  }
+
+  double cpsFactor = 1.0;
+
+  return p * cpsFactor * localDet.determinant();
+}
+
+template <typename Wfn>
+double getDetFactorB(vector<int> &iArray, vector<int> &aArray, Wfn &w, bool doparity)
+{
+  MatrixXd localDet = MatrixXd::Zero(aArray.size(), iArray.size());
+  for (int i = 0; i < iArray.size(); i++)
+  {
+    int tableIndexi = std::lower_bound(BetaClosed.begin(), BetaClosed.end(), iArray[i]) - BetaClosed.begin();
+    for (int a = 0; a < aArray.size(); a++)
+    {
+      int tableIndexa = std::lower_bound(BetaOpen.begin(), BetaOpen.end(), aArray[a]) - BetaOpen.begin();
+      localDet(i, a) = BetaTable[0](tableIndexi, tableIndexa);
+    }
+  }
+
+  double p = 1.;
+  Determinant dcopy = d;
+  for (int i = 0; i < iArray.size(); i++)
+  {
+    if (doparity)
+      p *= dcopy.parityB(aArray[i], iArray[i]);
+
+    dcopy.setoccB(iArray[i], false);
+    dcopy.setoccB(aArray[i], true);
+  }
+
+  double cpsFactor = 1.0;
+
+  return p * cpsFactor * localDet.determinant();
 }
 */
