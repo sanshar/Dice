@@ -68,7 +68,6 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localgrad = VectorXd::Zero(grad.rows());
-  w.printVariables();
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
