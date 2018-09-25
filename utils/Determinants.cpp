@@ -932,13 +932,14 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;
       I2hb.getIntegralArray(closed[i], closed[j], integrals, orbIndices, numIntegrals);
-      
+      size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
       // for all HCI integrals
-      for (size_t index = 0; index < numIntegrals; index++)
+      for (size_t index = 0; index < numLargeIntegrals; index++)
       {
         // if we are going below the criterion, break
-        if (fabs(integrals[index]) < THRESH)
-          break;
+        //if (fabs(integrals[index]) < THRESH)
+        //  break;
         
         // otherwise: generate the determinant corresponding to the current excitation
         int a = 2 * orbIndices[2 * index] + closed[i] % 2,

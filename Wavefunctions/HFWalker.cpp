@@ -196,8 +196,10 @@ void HFWalkerHelper::excitationUpdateGhf(const Slater &w, vector<int>& cre, vect
 
 void HFWalkerHelper::getRelIndices(int i, int &relI, int a, int &relA, bool sz) const 
 {
-  relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
-  relA = std::lower_bound(openOrbs[sz].begin(), openOrbs[sz].end(), a) - openOrbs[sz].begin();
+  //relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
+  //relA = std::lower_bound(openOrbs[sz].begin(), openOrbs[sz].end(), a) - openOrbs[sz].begin();
+  relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin();
+  relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin();
 }
 
 //HFWalker::HFWalker(Determinant &pd) : d(pd){};
