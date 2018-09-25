@@ -66,48 +66,48 @@ class Slater {
     * constructor
     */
    Slater();
-   void initWalker(HFWalker &walk);
-   void initWalker(HFWalker &walk, Determinant &d);
+   void initWalker(HFWalker &walk) const;
+   void initWalker(HFWalker &walk, const Determinant &d) const;
 
    /**
     * This calculates the overlap of the walker with the
     * the reference
     */
-   double Overlap(HFWalker &walk);
+   double Overlap(const HFWalker &walk) const;
 
    /**
     *  returns < m | Psi0 >/< w.d | Psi0 >, where m is obtained by exciting the walker with 
     * spin orbital excitations i->a, j->b
     */
-   double OverlapRatio(int i, int a, HFWalker& w, bool doparity);
-   double OverlapRatio(int i, int j, int a, int b, HFWalker& w, bool doparity);
+   double OverlapRatio(int i, int a, const HFWalker& w, bool doparity) const;
+   double OverlapRatio(int i, int j, int a, int b, const HFWalker& w, bool doparity) const;
 
    /**
     * This basically calls the overlapwithgradient(determinant, factor, grad)
     * fills grad with wfn derivatives w.r.t. ci coeffs and mo coeffs 
     */
-   void OverlapWithGradient(HFWalker & walk,
-                           double &factor,
-                           Eigen::VectorBlock<VectorXd> &grad);
+   void OverlapWithGradient(const HFWalker & walk,
+                           const double &factor,
+                           Eigen::VectorBlock<VectorXd> &grad) const;
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
-   void derivativeOfLocalEnergy(HFWalker &,
-                              double &factor,
-                              Eigen::VectorXd &hamRatio);
+   void derivativeOfLocalEnergy(const HFWalker &,
+                              const double &factor,
+                              Eigen::VectorXd &hamRatio) const;
 
   //variables are ordered as:
   //cicoeffs of the reference multidet expansion, followed by hforbs (row major)
   //in case of uhf all alpha first followed by beta
-  void getVariables(Eigen::VectorBlock<VectorXd> &v);
-  long getNumVariables();
-  void updateVariables(Eigen::VectorBlock<VectorXd> &v);
-  void printVariables();
-  vector<Determinant> &getDeterminants() { return determinants; }
-  int getNumOfDets() {return determinants.size();}
-  vector<double> &getciExpansion() { return ciExpansion; }
-  MatrixXd& getHforbsA() { return HforbsA;}
-  MatrixXd& getHforbsB() {return HforbsB;}
-  MatrixXd& getHforbs(bool sz = 0) { if(sz == 0) return HforbsA; else return HforbsB;}
+  void getVariables(Eigen::VectorBlock<VectorXd> &v) const;
+  long getNumVariables() const;
+  void updateVariables(const Eigen::VectorBlock<VectorXd> &v);
+  void printVariables() const;
+  const vector<Determinant> &getDeterminants() const { return determinants; }
+  int getNumOfDets() const {return determinants.size();}
+  const vector<double> &getciExpansion() const { return ciExpansion; }
+  const MatrixXd& getHforbsA() const { return HforbsA;}
+  const MatrixXd& getHforbsB() const  {return HforbsB;}
+  const MatrixXd& getHforbs(bool sz = 0) const { if(sz == 0) return HforbsA; else return HforbsB;}
   
   //void writeWave();
   //void readWave();

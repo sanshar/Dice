@@ -46,37 +46,37 @@ public:
   /**
    * constructor
    */
-  HFWalkerHelper(Slater &w, Determinant &d);
+  HFWalkerHelper(const Slater &w, const Determinant &d);
   HFWalkerHelper() {};
 
   //fills open closed orbs 
-  void fillOpenClosedOrbs(Determinant &d);
+  void fillOpenClosedOrbs(const Determinant &d);
 
   //makes rtable using inverse
-  void makeTable(Slater &w, MatrixXd& inv, Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz);
+  void makeTable(const Slater &w, const MatrixXd& inv, const Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz);
   
   //used for multidet calculations, to be used only after inv is calculated
-  void calcOtherDetsTables(Slater& w, bool sz);
+  void calcOtherDetsTables(const Slater& w, bool sz);
 
   //initializes inverse, dets and tables 
-  void initInvDetsTables(Slater &w);
+  void initInvDetsTables(const Slater &w);
   
   //concatenates v1 and v2 and adds norbs to v2
-  void concatenateGhf(vector<int>& v1, vector<int>& v2, vector<int>& result);
+  void concatenateGhf(const vector<int>& v1, const vector<int>& v2, vector<int>& result) const;
   
   //makes rtable using inverse
-  void makeTableGhf(Slater &w, Eigen::Map<VectorXi>& colTheta);
+  void makeTableGhf(const Slater &w, const Eigen::Map<VectorXi>& colTheta);
   
   //initializes inverse, dets and tables 
-  void initInvDetsTablesGhf(Slater &w);
+  void initInvDetsTablesGhf(const Slater &w);
 
   //updates helpers for excitation in the det given by cre and des
-  void excitationUpdate(Slater &w, vector<int>& cre, vector<int> des, bool sz, double parity, Determinant& excitedDet);
+  void excitationUpdate(const Slater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet);
   
-  void excitationUpdateGhf(Slater &w, vector<int>& cre, vector<int> des, bool sz, double parity, Determinant& excitedDet);
+  void excitationUpdateGhf(const Slater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet);
   
   //gets relative indices used in the tables relI (i th occupied) and relA (a th unoccupied) for excitation i -> a with spin sz
-  void getRelIndices(int i, int &relI, int a, int &relA, bool sz); 
+  void getRelIndices(int i, int &relI, int a, int &relA, bool sz) const; 
 
 };
 
@@ -105,53 +105,53 @@ public:
   //HFWalker(Determinant &pd);
   HFWalker() {};
 
-  HFWalker(Slater &w); 
+  HFWalker(const Slater &w); 
     
-  HFWalker(Slater &w, Determinant &pd);
+  HFWalker(const Slater &w, const Determinant &pd);
 
   /**
    * reads dets from 'BesetDeterminant.txt'
    */
-  void readBestDeterminant(Determinant& d);
+  void readBestDeterminant(Determinant& d) const;
 
   /**
    * makes det based on mo coeffs 
    */
-  void guessBestDeterminant(Determinant& d, Eigen::MatrixXd& HforbsA, Eigen::MatrixXd& HforbsB); 
+  void guessBestDeterminant(Determinant& d, const Eigen::MatrixXd& HforbsA, const Eigen::MatrixXd& HforbsB) const; 
 
-  void initDet(MatrixXd& HforbsA, MatrixXd& HforbsB); 
+  void initDet(const MatrixXd& HforbsA, const MatrixXd& HforbsB); 
   
-  Determinant &getDet() { return d; }
+  const Determinant &getDet() const { return d; }
   
   //overlap with i th det in the wavefunction
-  double getIndividualDetOverlap(int i) { return helper.thetaDet[i][0] * helper.thetaDet[i][1]; }
+  double getIndividualDetOverlap(int i) const { return helper.thetaDet[i][0] * helper.thetaDet[i][1]; }
   
   //get overlap with the reference
-  double getDetOverlap(Slater &w);
+  double getDetOverlap(const Slater &w) const;
   
   //returns < m | Psi0 >/< d | Psi0 >, where m is obtained by exciting the walker with 
   // spin orbital excitations i->a, j->b
-  double getDetFactor(int i, int a, Slater &w); 
-  double getDetFactor(int I, int J, int A, int B, Slater &w); 
+  double getDetFactor(int i, int a, const Slater &w) const; 
+  double getDetFactor(int I, int J, int A, int B, const Slater &w) const; 
   
   //i, j, a, b are spatial orbitals
-  double getDetFactor(int i, int a, bool sz, Slater &w);
-  double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, Slater &w);
+  double getDetFactor(int i, int a, bool sz, const Slater &w) const;
+  double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Slater &w) const;
 
   //updates det and helpers afterspatial orb excitations i->a, j->b with spin sz
-  void update(int i, int a, bool sz, Slater &w);
-  void update(int i, int j, int a, int b, bool sz, Slater &w);
+  void update(int i, int a, bool sz, const Slater &w);
+  void update(int i, int j, int a, int b, bool sz, const Slater &w);
  
   //ex1 and ex2 are spin related indices
-  void updateWalker(Slater& w, int ex1, int ex2);
-  void exciteWalker(Slater& w, int excite1, int excite2, int norbs);
+  void updateWalker(const Slater& w, int ex1, int ex2);
+  void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
 
   bool operator<(const HFWalker &w) const { return d < w.d; }
   bool operator==(const HFWalker &w) const { return d == w.d; }
 
   //calc ovelap wih gradient wrt orbitals in slater
-  void OverlapWithGradient(Slater &w, Eigen::VectorXd &grad, double detovlp);
-  void OverlapWithGradientGhf(Slater &w, Eigen::VectorXd &grad, double detovlp);
+  void OverlapWithGradient(const Slater &w, Eigen::VectorXd &grad, double detovlp) const;
+  void OverlapWithGradientGhf(const Slater &w, Eigen::VectorXd &grad, double detovlp) const;
 };
 
 #endif

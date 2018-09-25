@@ -46,12 +46,12 @@ Slater::Slater()
   initDets();
 }
 
-void Slater::initWalker(HFWalker &walk) 
+void Slater::initWalker(HFWalker &walk) const 
 {
   walk = HFWalker(*this);
 }
 
-void Slater::initWalker(HFWalker &walk, Determinant &d)
+void Slater::initWalker(HFWalker &walk, const Determinant &d) const
 {
   walk = HFWalker(*this, d);
 }
@@ -118,26 +118,26 @@ void Slater::initDets()
 }
 
 
-double Slater::Overlap(HFWalker &walk)
+double Slater::Overlap(const HFWalker &walk) const
 {
   return walk.getDetOverlap(*this);
 }
 
-double Slater::OverlapRatio(int i, int a, HFWalker& walk, bool doparity) 
+double Slater::OverlapRatio(int i, int a, const HFWalker& walk, bool doparity) const 
 {
   return walk.getDetFactor(i, a, *this);
 }
 
-double Slater::OverlapRatio(int I, int J, int A, int B, HFWalker& walk, bool doparity) 
+double Slater::OverlapRatio(int I, int J, int A, int B, const HFWalker& walk, bool doparity) const 
 {
   //single excitation
   if (J == 0 && B == 0) return OverlapRatio(I, A, walk, doparity);  
   return walk.getDetFactor(I, J, A, B, *this);
 }
 
-void Slater::OverlapWithGradient(HFWalker & walk,
-                                 double &factor,
-                                 Eigen::VectorBlock<VectorXd> &grad) 
+void Slater::OverlapWithGradient(const HFWalker & walk,
+                                 const double &factor,
+                                 Eigen::VectorBlock<VectorXd> &grad) const
 {  
   int norbs = Determinant::norbs;
   double detovlp = walk.getDetOverlap(*this);
@@ -160,7 +160,7 @@ void Slater::OverlapWithGradient(HFWalker & walk,
   }
 }
 
-void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v) 
+void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 { 
   int norbs = Determinant::norbs;  
   for (int i = 0; i < determinants.size(); i++)
@@ -190,7 +190,7 @@ void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v)
   }
 }
 
-long Slater::getNumVariables()
+long Slater::getNumVariables() const
 {
   long numVars = 0;
   numVars += determinants.size();
@@ -202,7 +202,7 @@ long Slater::getNumVariables()
   return numVars;
 }
 
-void Slater::updateVariables(Eigen::VectorBlock<VectorXd> &v) 
+void Slater::updateVariables(const Eigen::VectorBlock<VectorXd> &v) 
 {  
   int norbs = Determinant::norbs;  
   for (int i = 0; i < determinants.size(); i++)
@@ -234,7 +234,7 @@ void Slater::updateVariables(Eigen::VectorBlock<VectorXd> &v)
   }
 }
 
-void Slater::printVariables()
+void Slater::printVariables() const
 {
   cout << endl<<"CI-expansion"<<endl;
   for (int i = 0; i < determinants.size(); i++) {

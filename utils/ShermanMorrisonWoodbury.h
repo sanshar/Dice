@@ -35,11 +35,11 @@ using namespace Eigen;
  * incoming and outgoing matrices. ColIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
+void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, const double &detValueIn,
                                                                   MatrixXd &inverseOut, double &detValueOut,
-                                                                  vector<int> &cre, vector<int> &des,
-                                                                  Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                                  vector<int> &ColIn, MatrixXd &Hforbs)
+                                                                  vector<int>& cre, vector<int>& des,
+                                                                  const Eigen::Map<Eigen::VectorXi> &RowVec,
+                                                                  vector<int> &ColIn, const MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
@@ -113,11 +113,11 @@ void calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &de
  * incoming and outgoing matrices. RowIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
+void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const double &detValueIn,
                                                                MatrixXd &inverseOut, double &detValueOut,
-                                                               vector<int> &cre, vector<int> &des,
-                                                               Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                               vector<int> &RowIn, MatrixXd &Hforbs)
+                                                               vector<int>& cre, vector<int>& des,
+                                                               const Eigen::Map<Eigen::VectorXi> &ColVec,
+                                                               vector<int> &RowIn, const MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
