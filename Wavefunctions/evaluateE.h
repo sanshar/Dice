@@ -669,7 +669,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
 
     iter++;
 
-    walk.updateWalker(w, work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
     localdiagonalGrad.setZero();
     w.HamAndOvlp(walk, ovlp, ham, work);
