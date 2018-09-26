@@ -49,6 +49,7 @@
 #include "Profile.h"
 #include "amsgrad.h"
 #include "sgd.h"
+#include "sr.h"
 #include "CIWavefunction.h"
 
 
@@ -57,6 +58,7 @@ using namespace boost;
 using namespace std;
 
 typedef boost::function<void (VectorXd&, VectorXd&, double&, double&, double&)> functor1;
+typedef boost::function<void (VectorXd&, VectorXd&, MatrixXd&, double&, double&, double&)> functor2;
 
 int main(int argc, char *argv[])
 {
@@ -88,14 +90,19 @@ int main(int argc, char *argv[])
 
     getGradientWrapper<CPSSlater, HFWalker> wrapper(wave, walk, schd.stochasticIter);
     functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CPSSlater, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
+    functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<CPSSlater, HFWalker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, schd.deterministic);
 
-    if (schd.method == amsgrad) {
+    if (schd.method == amsgrad || schd.method == amsgrad_sgd) {
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
     }
     else if (schd.method == sgd) {
       SGD optimizer(schd.stepsize, schd.maxIter);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
+    }
+    else if (schd.method == sr) {
+      SR optimizer(schd.stepsize, schd.maxIter);
+      optimizer.optimize(vars, getStochasticGradientMetric, schd.restart);
     }
     else if (schd.method == linearmethod) {
 
