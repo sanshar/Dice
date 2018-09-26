@@ -57,6 +57,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.expCorrelator = false;
 
       schd.maxIter = 50;
+      schd._sgdIter = 1;
       schd.method = amsgrad;
       schd.decay2 = 0.001;
       schd.decay1 = 0.1;
@@ -130,6 +131,12 @@ void readInput(string input, schedule& schd, bool print) {
 
 	  else if (boost::iequals(ArgName, "sr"))
 	    schd.method = sr;
+
+	  else if (boost::iequals(ArgName, "amsgrad_sgd"))
+          {
+	    schd.method = amsgrad_sgd;
+            schd._sgdIter = atoi(tok[1].c_str());
+          }
           
 	  else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";

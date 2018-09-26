@@ -26,7 +26,7 @@
 
 class Correlator;
 class Determinant;
-enum Method { sgd, amsgrad, sr, linearmethod };
+enum Method { sgd, amsgrad, amsgrad_sgd, sr, linearmethod };
 enum HAM {HUBBARD, ABINITIO};
 
 
@@ -49,6 +49,7 @@ private:
       & decay2
       & method
       & stochasticIter
+      & _sgdIter
       & integralSampleSize
       & seed
       & PTlambda
@@ -97,6 +98,7 @@ public:
   double decay1;
   double decay2;   
   int maxIter;                     
+  int _sgdIter;
   Method method;
 
   /*

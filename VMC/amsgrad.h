@@ -133,7 +133,21 @@ class AMSGrad
                 {
                     mom1[i] = decay_mom1 * grad[i] + (1. - decay_mom1) * mom1[i];
                     mom2[i] = max(mom2[i], decay_mom2 * grad[i]*grad[i] + (1. - decay_mom2) * mom2[i]);   
-                    vars[i] -= stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);
+                    if (schd.method == amsgrad)
+                    {
+                        vars[i] -= stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);
+                    }
+                    else if(schd.method == amsgrad_sgd)
+                    {
+                        if (iter < schd._sgdIter)
+                        {
+                            vars[i] -= 1.0 * grad[i];
+                        }
+                        else
+                        {
+                            vars[i] -= stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);
+                        }
+                    }                        
                 }
             }
 
