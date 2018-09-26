@@ -16,19 +16,30 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "GHFWalker.h"
-#include "global.h"
+#ifndef smw_HEADER_H
+#define smw_HEADER_H
+
 #include <algorithm>
+#include <Eigen/Dense>
+#include "igl/slice.h"
+#include "igl/slice_into.h"
 
 using namespace Eigen;
 
-
-
-void GHFWalker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn, double &detValueIn,
+/**
+ * This takes an inverse and determinant of a matrix formed by a subset of
+ * columns and rows of Hforbs
+ * and generates the new inverse and determinant 
+ * by replacing cols with incides des with those with indices cre
+ * RowVec is the set of row indices that are common to both in the 
+ * incoming and outgoing matrices. ColIn are the column indices
+ * of the incoming matrix. 
+ */
+void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, const double &detValueIn,
                                                                   MatrixXd &inverseOut, double &detValueOut,
-                                                                  vector<int> &cre, vector<int> &des,
-                                                                  Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                                  vector<int> &ColIn, MatrixXd &Hforbs)
+                                                                  vector<int>& cre, vector<int>& des,
+                                                                  const Eigen::Map<Eigen::VectorXi> &RowVec,
+                                                                  vector<int> &ColIn, const MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
@@ -93,11 +104,20 @@ void GHFWalker::calculateInverseDeterminantWithColumnChange(MatrixXd &inverseIn,
   igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
 }
 
-void GHFWalker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, double &detValueIn,
+/**
+ * This takes an inverse and determinant of a matrix formed by a subset of
+ * columns and rows of Hforbs
+ * and generates the new inverse and determinant 
+ * by replacing rows with incides des with those with indices des
+ * ColVec is the set of col indices that are common to both in the 
+ * incoming and outgoing matrices. RowIn are the column indices
+ * of the incoming matrix. 
+ */
+void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const double &detValueIn,
                                                                MatrixXd &inverseOut, double &detValueOut,
-                                                               vector<int> &cre, vector<int> &des,
-                                                               Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                               vector<int> &RowIn, MatrixXd &Hforbs)
+                                                               vector<int>& cre, vector<int>& des,
+                                                               const Eigen::Map<Eigen::VectorXi> &ColVec,
+                                                               vector<int> &RowIn, const MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
@@ -160,87 +180,4 @@ void GHFWalker::calculateInverseDeterminantWithRowChange(MatrixXd &inverseIn, do
   igl::slice(inverseOutWrong, VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows()), orderVec, inverseOut);
 }
 
-/*bool HFWalker::makeMove(CPSSlater &w)
-{
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
-
-  int norbs = Determinant::norbs,
-      nalpha = Determinant::nalpha,
-      nbeta = Determinant::nbeta;
-
-  //pick a random occupied orbital
-  int i = floor(random() * (nalpha + nbeta));
-  if (i < nalpha)
-  {
-    int a = floor(random() * (norbs - nalpha));
-    int I = AlphaClosed[i];
-    int A = AlphaOpen[a];
-    double detfactor = getDetFactorA(I, A, w);
-    //cout << i<<"   "<<a<<"   "<<detfactor<<endl;
-    if (pow(detfactor, 2) > random())
-    {
-      updateA(I, A, w);
-      return true;
-    }
-  }
-  else
-  {
-    i = i - nalpha;
-    int a = floor(random() * (norbs - nbeta));
-    int I = BetaClosed[i];
-    int A = BetaOpen[a];
-    double detfactor = getDetFactorB(I, A, w);
-    //cout << i<<"   "<<a<<"   "<<detfactor<<endl;
-    if (pow(detfactor, 2) > random())
-    {
-      updateB(I, A, w);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool HFWalker::makeMovePropPsi(CPSSlater &w)
-{
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
-
-  int norbs = Determinant::norbs,
-      nalpha = Determinant::nalpha,
-      nbeta = Determinant::nbeta;
-
-  //pick a random occupied orbital
-  int i = floor(random() * (nalpha + nbeta));
-  if (i < nalpha)
-  {
-    int a = floor(random() * (norbs - nalpha));
-    int I = AlphaClosed[i];
-    int A = AlphaOpen[a];
-    double detfactor = getDetFactorA(I, A, w);
-
-    if (abs(detfactor) > random())
-    {
-      updateA(I, A, w);
-      return true;
-    }
-  }
-  else
-  {
-    i = i - nalpha;
-    int a = floor(random() * (norbs - nbeta));
-    int I = BetaClosed[i];
-    int A = BetaOpen[a];
-    double detfactor = getDetFactorB(I, A, w);
-
-    if (abs(detfactor) > random())
-    {
-      updateB(I, A, w);
-      return true;
-    }
-  }
-
-  return false;
-}
-*/
+#endif

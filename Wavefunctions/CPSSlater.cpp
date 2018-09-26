@@ -17,15 +17,6 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "integral.h"
-#include "CPS.h"
-#include "HFWalker.h"
-#include "CPSSlater.h"
-#include "global.h"
-#include "input.h"
-#include "Profile.h"
-#include "workingArray.h"
-#include "Slater.h"
 #include <fstream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -35,26 +26,31 @@
 #include <boost/mpi.hpp>
 #endif
 
+#include "Determinants.h"
+#include "integral.h"
+#include "CPS.h"
+#include "HFWalker.h"
+#include "CPSSlater.h"
+#include "global.h"
+#include "input.h"
+#include "Profile.h"
+#include "workingArray.h"
+#include "Slater.h"
+
 using namespace Eigen;
 
 CPSSlater::CPSSlater() {
   //cps, slater will read their respective default values
   ;}
 
-void CPSSlater::initWalker(HFWalker& walk) {
-
+void CPSSlater::initWalker(HFWalker &walk)
+{
   slater.initWalker(walk);
 }
 
-void CPSSlater::initWalker(HFWalker& walk, Determinant& d) {
-  slater.initWalker(walk, d);
-}
-
-
-//This is expensive and not recommended
-double CPSSlater::Overlap(Determinant &d)
+void CPSSlater::initWalker(HFWalker &walk, Determinant &d)
 {
-  return cps.Overlap(d)  * slater.Overlap(d);
+  slater.initWalker(walk, d);
 }
 
 double CPSSlater::Overlap(HFWalker &walk)
@@ -97,6 +93,19 @@ double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk, bool doparity) 
   return cps.OverlapRatio(i/2, a/2, dcopy, walk.d) * slater.OverlapRatio(i, a, walk, doparity); 
 }
 
+double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk,
+                                   BigDeterminant& dbig,
+                                   BigDeterminant& dbigcopy,
+                                   bool doparity) {
+
+  dbigcopy[i] = 0; dbigcopy[a] = 1;
+  double ovlpRatio = slater.OverlapRatio(i, a, walk, doparity);
+  ovlpRatio *= cps.OverlapRatio(i/2, a/2, dbigcopy, dbig);
+  dbigcopy[i] = 1; dbigcopy[a] = 0;
+
+  return ovlpRatio;
+}
+
 double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, bool doparity) {
   //singleexcitation
   if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
@@ -108,6 +117,21 @@ double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, b
   dcopy.setocc(B, true);
   return cps.OverlapRatio(I/2, J/2, A/2, B/2, dcopy, walk.d)
       * slater.OverlapRatio(I, J, A, B, walk, doparity);
+}
+
+double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk,
+                                   BigDeterminant& dbig,
+                                   BigDeterminant& dbigcopy,
+                                   bool doparity) {
+  //singleexcitation
+  if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, dbig, dbigcopy, doparity);
+  
+  dbigcopy[I] = 0; dbigcopy[A] = 1; dbigcopy[J] = 0; dbigcopy[B] = 1;
+  double ovlpRatio = slater.OverlapRatio(I, J, A, B, walk, false);
+  ovlpRatio *= cps.OverlapRatio(I/2, J/2, A/2, B/2, dbigcopy, dbig);
+  dbigcopy[I] = 1; dbigcopy[A] = 0; dbigcopy[J] = 1; dbigcopy[B] = 0;
+
+  return ovlpRatio;
 }
 
 void CPSSlater::OverlapWithGradient(HFWalker &walk,
@@ -131,7 +155,6 @@ void CPSSlater::printVariables()
 void CPSSlater::updateVariables(Eigen::VectorXd &v)
 {
   cps.updateVariables(v);
-
   Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows()-cps.getNumVariables());
   slater.updateVariables(vtail);
 }
@@ -209,6 +232,9 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
   ham = walk.d.Energy(I1, I2, coreE); 
 
 
+  BigDeterminant dbig(walk.d);
+  BigDeterminant dbigcopy = dbig;
+  
   generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
                                       work, false);  
   generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
@@ -222,9 +248,29 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
     int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
     int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
 
-    //calculate the ovlpRatio
-    double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+    //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+    double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
+    /*
+    double ovlpRatio = 1.0;
+    if (ex2 != 0) {
+      //Determinant dcopy = walk.d;
+      //dcopy.setocc(I, false); dcopy.setocc(A, true);
+      //dcopy.setocc(J, false); dcopy.setocc(B, true);
+      dbigcopy[I] = 0; dbigcopy[A] = 1; dbigcopy[J] = 0; dbigcopy[B] = 1;
+      ovlpRatio = slater.OverlapRatio(I, J, A, B, walk, false);
+      ovlpRatio *= cps.OverlapRatio(I/2, J/2, A/2, B/2, dbigcopy, dbig);
+      dbigcopy[I] = 1; dbigcopy[A] = 0; dbigcopy[J] = 1; dbigcopy[B] = 0;
+    }
+    else {
+      //Determinant dcopy = walk.d;
+      dbigcopy[I] = 0; dbigcopy[A] = 1;
+      //dcopy.setocc(I, false); dcopy.setocc(A, true);
+      ovlpRatio = slater.OverlapRatio(I, A, walk, false);
+      ovlpRatio *= cps.OverlapRatio(I/2, A/2, dbigcopy, dbig);
+      dbigcopy[I] = 1; dbigcopy[A] = 0;
+    }
+    */
     //add contribution to the hamiltonian value
     ham += tia * ovlpRatio;
 
@@ -240,4 +286,9 @@ void CPSSlater::derivativeOfLocalEnergy (HFWalker &walk,
   //NEEDS TO BE IMPLEMENTED
 }
 
+//This is expensive and not recommended
+//double CPSSlater::Overlap(Determinant &d)
+//{
+//  return cps.Overlap(d)  * slater.Overlap(d);
+//}
 

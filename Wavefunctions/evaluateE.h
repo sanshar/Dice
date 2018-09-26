@@ -38,7 +38,6 @@ using namespace std;
 class Walker;
 class Wfn;
 class CPSSlater;
-class CPSGHFSlater;
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
@@ -80,13 +79,17 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       localgrad.setZero();
       localdiagonalGrad.setZero();
       //cout << walk.d << endl << endl;
-      //cout << walk.AlphaTable[0] << endl << endl;
-      //cout << walk.BetaTable[0] << endl << endl;
+      //cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
+      //cout << "betaaTable\n" << walk.helper.rTable[0][1] << endl << endl;
+      //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
+      //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
+      //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
 
       w.HamAndOvlp(walk, ovlp, ham, work, false);
       //cout << ham << "  " << ovlp << endl << endl;
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+      //cout << "grad\n" << localdiagonalGrad << endl << endl;
     }
     
     //grad += localgrad * ovlp * ovlp;
@@ -296,7 +299,7 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 
     iter++;
 
-    walk.updateWalker(w, work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
     w.HamAndOvlp(walk, ovlp, ham, work);
   }
@@ -349,9 +352,17 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
   Determinant bestDet = walk.getDet();
 
   E0 = 0.0;
+  //cout << "wfn slater " << w.slater.determinants[0] << endl;
+  //cout << "walker " << walk.d << endl << endl;
+  //cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
+  //cout << "betaaTable\n" << walk.helper.rTable[0][1] << endl << endl;
+  //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
+  //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
+  //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
   w.HamAndOvlp(walk, ovlp, ham, work);
+  //cout << ham << "  " << ovlp << endl << endl;
   w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
-
+  
 
   int nstore = 1000000 / commsize;
   int gradIter = min(nstore, niter);
@@ -402,7 +413,11 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
 
     iter++;
 
-    walk.updateWalker(w, work.excitation1[nextDet], work.excitation2[nextDet]);
+    //cout << "before  " << walk.d << endl;
+    //cout << "hftype  " << w.getRef().hftype << endl;
+    //cout << w.getRef().determinants[0] << endl;
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    //cout << "after  " << walk.d << endl;
 
     w.HamAndOvlp(walk, ovlp, ham, work);
     w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
@@ -529,7 +544,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
 
     iter++;
 
-    walk.updateWalker(w, excitation1[nextDet], excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), excitation1[nextDet], excitation2[nextDet]);
 
     nExcitations = 0;
     

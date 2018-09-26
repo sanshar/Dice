@@ -6,6 +6,7 @@ printf "======================================================\n"
 MPICOMMAND="mpirun -np 4"
 VMCPATH="../../bin/VMC vmc.dat"
 CIPATH="../../bin/VMC ci.dat"
+LANCZOSPATH="../../bin/VMC lanczos.dat"
 GFMCPATH="../../bin/GFMC gfmc.dat"
 here=`pwd`
 tol=1.0e-7
@@ -13,11 +14,35 @@ clean=0
 
 # VMC tests
 
+cd $here/hubbard_1x10
+../clean.sh
+printf "...running hubbard_1x10\n"
+$MPICOMMAND $VMCPATH > vmc.out
+python ../testEnergy.py 'vmc' $tol
+printf "...running hubbard_1x10 lanczos\n"
+$MPICOMMAND $LANCZOSPATH > lanczos.out
+python ../testEnergy.py 'lanczos' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
+cd $here/hubbard_1x10ghf
+../clean.sh
+printf "...running hubbard_1x10 ghf\n"
+$MPICOMMAND $VMCPATH > vmc.out
+python ../testEnergy.py 'vmc' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
 cd $here/hubbard_1x14
 ../clean.sh
 printf "...running hubbard_1x14\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python ../testEnergy.py 'vmc' $tol
+printf "...running hubbard_1x14 ci\n"
 $MPICOMMAND $CIPATH > ci.out
 python ../testEnergy.py 'ci' $tol
 if [ $clean == 1 ]

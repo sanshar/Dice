@@ -42,8 +42,6 @@ inline int CountNonZeroBits (long x)
 }
 
 
-
-
 /**
 * This is the occupation number representation of a Determinants
 * with alpha, beta strings
@@ -77,18 +75,23 @@ class Determinant {
   //mutates the Determinant
   void setoccA(int i, bool occ);
   void setoccB(int i, bool occ);
-  void setocc(int i, bool occ) ;
-
+  void setocc(int i, bool occ) ; //i is the spin orbital index
+  void setocc(int i, bool sz, bool occ) ; //i is the spatial orbital index, sz=0 for alpha, =1 for beta
   
-  bool getocc(int i) const ;
+  bool getocc(int i) const ;//i is the spin orbital index
+  bool getocc(int i, bool sz) const ;//i is the spatial orbital index 
   bool getoccA(int i) const ;
   bool getoccB(int i) const;
-  void getOpenClosed( std::vector<int>& open, std::vector<int>& closed) const;
+  void getOpenClosed( std::vector<int>& open, std::vector<int>& closed) const;//gets spin orbitals
+  void getOpenClosed( bool sz, std::vector<int>& open, std::vector<int>& closed) const;//gets spatial orbitals
   void getOpenClosedAlphaBeta( std::vector<int>& openAlpha,
                                std::vector<int>& closedAlpha,
                                std::vector<int>& openBeta,
                                std::vector<int>& closedBeta ) const;
+  void getClosedAlphaBeta( std::vector<int>& closedAlpha,
+                           std::vector<int>& closedBeta ) const;
   void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) const;
+  void getClosed(bool sz, std::vector<int>& closed) const;
   int getNbetaBefore(int i) const;
   int getNalphaBefore(int i) const;
   int Noccupied() const;
@@ -98,8 +101,10 @@ class Determinant {
   
   double parityA(const int& a, const int& i) const;
   double parityB(const int& a, const int& i) const;
+  double parity(const int& a, const int& i, const bool& sz) const;
   double parityA(const vector<int>& aArray, const vector<int>& iArray) const ;
   double parityB(const vector<int>& aArray, const vector<int>& iArray) const ;
+  double parity(const vector<int>& aArray, const vector<int>& iArray, bool sz) const ;
   double parityAA(const int& i, const int& j, const int& a, const int& b) const ;
   double parityBB(const int& i, const int& j, const int& a, const int& b) const ;
 
@@ -131,6 +136,17 @@ class Determinant {
 
 };
 
+//instead of storing memory in bits it uses 1 integer per bit
+//so it is clearly very exepnsive. This is only used during computations
+class BigDeterminant {  
+ public:
+  vector<char> occupation;
+  BigDeterminant(Determinant& d);
+  BigDeterminant(BigDeterminant& d) : occupation(d.occupation){};
+  const char& operator[] (int j) const ;
+  char& operator[] (int j) ;
+};
+
 
 CItype Hij(const Determinant& bra, const Determinant& ket,
            const oneInt& I1, const twoInt& I2, const double& coreE);
@@ -138,6 +154,9 @@ CItype Hij(const Determinant& bra, const Determinant& ket,
 void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
                                vector<int> &creA, vector<int> &desA,
                                vector<int> &creB, vector<int> &desB);
+void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
+                               vector<int> &cre, vector<int> &des,
+                               bool sz);
 void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket, int &I, int &A);
 void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
                                int &I, int &J, int& A, int& B);
@@ -155,4 +174,5 @@ void generateAllScreenedSingleExcitation(const Determinant& det,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity = false);
+
 #endif

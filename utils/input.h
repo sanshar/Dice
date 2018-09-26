@@ -57,7 +57,7 @@ private:
       & screen
       & determinantFile
       & doHessian
-      & uhf
+      & hf
       & optimizeOrbs
       & Hamiltonian
       & nwalk
@@ -87,7 +87,7 @@ public:
   double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals
   double screen;                         //This is the screening parameter, any integral below this is ignored
   bool doHessian;                        //This calcules the Hessian and overlap for the linear method
-  bool uhf;
+  std::string hf;
   bool optimizeOrbs;
   HAM Hamiltonian;
 
@@ -123,13 +123,13 @@ public:
 };
 
 /**
- * This just gives the matrix of MO coefficients, right now
- * we just assume RHF determinant, but later this can be generalized to 
+ * This reads the matrix of MO coefficients from 'hf.txt'
  * an alpha and a beta matrix
  * params:
- *   Matrix:  this is the matrix of the mo coefficients
+ *   Matrices: matrices of the mo coefficients (nxn for rhf and uhf, 2nx2n for ghf)
+ *   hf string: rhf, uhf or ghf
  */
-void readHF(Eigen::MatrixXd& hforbsA, Eigen::MatrixXd& hforbsB, bool uhf);
+void readHF(Eigen::MatrixXd& hforbsA, Eigen::MatrixXd& hforbsB, std::string hf);
 
 /**
  * Reads the input file which by default is input.dat, but can be anything

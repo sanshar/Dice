@@ -101,6 +101,21 @@ class Operator {
 	    }
 	}
   }
+  
+  //used in Lanczos
+  static void populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements) {
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < 2 * norbs; i++)
+      for (int j = 0; j < 2 * norbs; j++)
+	{
+	  //if (I2hb.Singles(i, j) > schd.epsilon )
+	  if (i % 2 == j % 2)
+	    {
+	      oplist.push_back(Operator(i, j));
+	      hamElements.push_back(I1(i, j));
+	    }
+	}
+  }
 
   static void populateScreenedDoublesToOpList(vector<Operator>& oplist, double screen) {
     int norbs = Determinant::norbs;
@@ -128,6 +143,35 @@ class Operator {
       }
 
   }
+
+  //used in Lanczos
+  static void populateScreenedDoublesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen) {
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < 2 * norbs; i++)
+      {
+	for (int j = i + 1; j < 2 * norbs; j++)
+	  {
+	    int pair = (j / 2) * (j / 2 + 1) / 2 + i / 2;
+
+	    size_t start = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair] : I2hb.startingIndicesOppositeSpin[pair];
+	    size_t end = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair + 1] : I2hb.startingIndicesOppositeSpin[pair + 1];
+	    float *integrals = i % 2 == j % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+	    short *orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+
+	    for (size_t index = start; index < end; index++)
+	      {
+		if (fabs(integrals[index]) < screen)
+		  break;
+		int a = 2 * orbIndices[2 * index] + i % 2, b = 2 * orbIndices[2 * index + 1] + j % 2;
+		//cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  spin orbs "<<integrals[index]<<endl;
+
+		oplist.push_back(Operator(i, j, a, b));
+		hamElements.push_back(integrals[index]);
+	      }
+	  }
+      }
+  }
+
 };
 
 

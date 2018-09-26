@@ -1,0 +1,6 @@
+correlator 2 correlators.txt
+maxIter 10
+stochasticIter 10000
+ghf
+hubbard
+seed 5
