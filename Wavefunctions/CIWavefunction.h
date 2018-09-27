@@ -457,55 +457,57 @@ template <typename Wfn, typename Walker>
     //ciCoeffs.resize(oplist.size(), 0.0);
   }
 
-  void initWalker(Walker& walk) {
-    this->wave.initWalker(walk);
-  }  
+  //void initWalker(Walker& walk) {
+  //  this->wave.initWalker(walk);
+  //}  
 
-  void initWalker(Walker& walk, Determinant& d) {
-    this->wave.initWalker(walk, d);
-  }  
+  //void initWalker(Walker& walk, Determinant& d) {
+  //  this->wave.initWalker(walk, d);
+  //}  
 
-  void getVariables(VectorXd& vars) {
-    if (vars.rows() != getNumVariables())
-      {
-	vars = VectorXd::Zero(getNumVariables());
-      }
-      vars[0] = alpha;
+  void getVariables(VectorXd& vars) 
+  {
+    if (vars.rows() != getNumVariables()) 
+      vars = VectorXd::Zero(getNumVariables());
+    vars[0] = alpha;
   }
 
-  void printVariables() {
+  void printVariables() 
+  {
     cout << "alpha  " << alpha << endl;
     //for (int i=0; i<this->oplist.size(); i++)
     //  cout << this->oplist[i] << "  " << this->ciCoeffs[i] << endl;
   }
 
-  void updateVariables(VectorXd& vars) {
+  void updateVariables(VectorXd& vars) 
+  {
     alpha = vars[0];
   }
 
-  long getNumVariables() {
+  long getNumVariables() 
+  {
     return 1;
   }
   
-  double Overlap(Walker& walk) {
+  double Overlap(Walker& walk) 
+  {
     double totalovlp = 0.0;
     double ovlp0 = this->wave.Overlap(walk);
     totalovlp += ovlp0;
     //cout << "totalovlp   " << totalovlp << endl;
 
-    for (int i=1; i<this->oplist.size(); i++)
-      {
-	for (int j=0; j<this->oplist[i].nops; j++) {
-	  Determinant dcopy = walk.d;
-	  bool valid =this-> oplist[i].apply(dcopy, j);
+    for (int i=1; i<this->oplist.size(); i++) {
+      for (int j=0; j<this->oplist[i].nops; j++) {
+	    Determinant dcopy = walk.d;
+	    bool valid =this-> oplist[i].apply(dcopy, j);
 
-	  if (valid) {
-	    //cout << i<<" -  "<<oplist[i].ops[j]<<"  "<<walk.d<<"  "<<dcopy<<endl;
-	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
-	    totalovlp += alpha * this->ciCoeffs[i] * ovlpdetcopy * ovlp0;
-	  }
-	}
+	    if (valid) {
+	      //cout << i<<" -  "<<oplist[i].ops[j]<<"  "<<walk.d<<"  "<<dcopy<<endl;
+	      double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
+	      totalovlp += alpha * this->ciCoeffs[i] * ovlpdetcopy * ovlp0;
+	    }
       }
+    }
     return totalovlp;
   }
 
@@ -534,8 +536,8 @@ template <typename Wfn, typename Walker>
   }
   
   void HamAndOvlp(Walker &walk,
-		  double &ovlp, double &ham,
-		  workingArray& work, bool fillExcitations = true)
+    	  double &ovlp, double &ham,
+    	  workingArray& work, bool fillExcitations = true)
   {
     work.setCounterToZero();
 
@@ -560,76 +562,76 @@ template <typename Wfn, typename Walker>
     {
       double time = getTime();
       for (int i = 0; i < closed.size(); i++)
-	{
-	  for (int a = 0; a < open.size(); a++)
-	    {
-	      if (closed[i] % 2 == open[a] % 2 && abs(I2hb.Singles(closed[i], open[a])) > THRESH)
-		{
-		  prof.SinglesCount++;
+    {
+      for (int a = 0; a < open.size(); a++)
+        {
+          if (closed[i] % 2 == open[a] % 2 && abs(I2hb.Singles(closed[i], open[a])) > THRESH)
+    	{
+    	  prof.SinglesCount++;
 
-		  int I = closed[i] / 2, A = open[a] / 2;
-		  double tia = 0;
-		  Determinant dcopy = d;
-		  bool Alpha = closed[i] % 2 == 0 ? true : false;
+    	  int I = closed[i] / 2, A = open[a] / 2;
+    	  double tia = 0;
+    	  Determinant dcopy = d;
+    	  bool Alpha = closed[i] % 2 == 0 ? true : false;
 
-		  bool doparity = true;
-		  if (schd.Hamiltonian == HUBBARD)
-		    {
-		      tia = I1(2 * A, 2 * I);
-		      double sgn = 1.0;
-		      if (Alpha)
+    	  bool doparity = true;
+    	  if (schd.Hamiltonian == HUBBARD)
+    	    {
+    	      tia = I1(2 * A, 2 * I);
+    	      double sgn = 1.0;
+    	      if (Alpha)
                 sgn *= d.parityA(A, I);
-		      else
+    	      else
                 sgn *= d.parityB(A, I);
-		      tia *= sgn;
-		    }
-		  else
-		    {
-		      tia = I1(2 * A, 2 * I);
-		      int X = max(I, A), Y = min(I, A);
-		      int pairIndex = X * (X + 1) / 2 + Y;
-		      size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
-		      size_t end = I2hb.startingIndicesSingleIntegrals[pairIndex + 1];
-		      float *integrals = I2hb.singleIntegrals;
-		      short *orbIndices = I2hb.singleIntegralsPairs;
-		      for (size_t index = start; index < end; index++)
-			{
-			  if (fabs(integrals[index]) < TINY)
-			    break;
-			  int j = orbIndices[2 * index];
-			  if (closed[i] % 2 == 1 && j % 2 == 1)
-			    j--;
-			  else if (closed[i] % 2 == 1 && j % 2 == 0)
-			    j++;
+    	      tia *= sgn;
+    	    }
+    	  else
+    	    {
+    	      tia = I1(2 * A, 2 * I);
+    	      int X = max(I, A), Y = min(I, A);
+    	      int pairIndex = X * (X + 1) / 2 + Y;
+    	      size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
+    	      size_t end = I2hb.startingIndicesSingleIntegrals[pairIndex + 1];
+    	      float *integrals = I2hb.singleIntegrals;
+    	      short *orbIndices = I2hb.singleIntegralsPairs;
+    	      for (size_t index = start; index < end; index++)
+    		{
+    		  if (fabs(integrals[index]) < TINY)
+    		    break;
+    		  int j = orbIndices[2 * index];
+    		  if (closed[i] % 2 == 1 && j % 2 == 1)
+    		    j--;
+    		  else if (closed[i] % 2 == 1 && j % 2 == 0)
+    		    j++;
 
-			  if (d.getocc(j))
-			    {
-			      tia += integrals[index];
-			    }
-			  //cout << tia<<"  "<<a<<"  "<<integrals[index]<<endl;
-			}
-		      double sgn = 1.0;
-		      if (Alpha)
+    		  if (d.getocc(j))
+    		    {
+    		      tia += integrals[index];
+    		    }
+    		  //cout << tia<<"  "<<a<<"  "<<integrals[index]<<endl;
+    		}
+    	      double sgn = 1.0;
+    	      if (Alpha)
                 sgn *= d.parityA(A, I);
-		      else
+    	      else
                 sgn *= d.parityB(A, I);
-		      tia *= sgn;
-		    }
+    	      tia *= sgn;
+    	    }
 
-		  double localham = 0.0;
-		  if (abs(tia) > THRESH)
-		    {
-		      Walker walkcopy = walk;
-		      walkcopy.exciteWalker(this->wave.getRef(), closed[i]*2*norbs+open[a], 0, norbs);
-		      double ovlpdetcopy = Overlap(walkcopy);
-		      ham += ovlpdetcopy * tia / ovlp;
+    	  double localham = 0.0;
+    	  if (abs(tia) > THRESH)
+    	    {
+    	      Walker walkcopy = walk;
+    	      walkcopy.exciteWalker(this->wave.getRef(), closed[i]*2*norbs+open[a], 0, norbs);
+    	      double ovlpdetcopy = Overlap(walkcopy);
+    	      ham += ovlpdetcopy * tia / ovlp;
 
-		      if (fillExcitations)
+    	      if (fillExcitations)
                 work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a], 0, tia);
-		    }
-		}
-	    }
-	}
+    	    }
+    	}
+        }
+    }
       prof.SinglesTime += getTime() - time;
     }
 
@@ -642,55 +644,55 @@ template <typename Wfn, typename Walker>
 
       int nclosed = closed.size();
       for (int ij = 0; ij < nclosed * nclosed; ij++)
-	{
-	  int i = ij / nclosed, j = ij % nclosed;
-	  if (i <= j)
-	    continue;
-	  int I = closed[i] / 2, J = closed[j] / 2;
-	  int X = max(I, J), Y = min(I, J);
+    {
+      int i = ij / nclosed, j = ij % nclosed;
+      if (i <= j)
+        continue;
+      int I = closed[i] / 2, J = closed[j] / 2;
+      int X = max(I, J), Y = min(I, J);
 
-	  int pairIndex = X * (X + 1) / 2 + Y;
-	  size_t start = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
-	  size_t end = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex + 1] : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
-	  float *integrals = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-	  short *orbIndices = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
+      int pairIndex = X * (X + 1) / 2 + Y;
+      size_t start = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex] : I2hb.startingIndicesOppositeSpin[pairIndex];
+      size_t end = closed[i] % 2 == closed[j] % 2 ? I2hb.startingIndicesSameSpin[pairIndex + 1] : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
+      float *integrals = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+      short *orbIndices = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
 
-	  // for all HCI integrals
-	  for (size_t index = start; index < end; index++)
-	    {
-	      // if we are going below the criterion, break
-	      if (fabs(integrals[index]) < THRESH)
-		break;
+      // for all HCI integrals
+      for (size_t index = start; index < end; index++)
+        {
+          // if we are going below the criterion, break
+          if (fabs(integrals[index]) < THRESH)
+    	break;
 
-	      // otherwise: generate the determinant corresponding to the current excitation
-	      int a = 2 * orbIndices[2 * index] + closed[i] % 2, b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
-	      if (!(d.getocc(a) || d.getocc(b)))
-		{
-		  int A = a / 2, B = b / 2;
-		  double tiajb = integrals[index];
+          // otherwise: generate the determinant corresponding to the current excitation
+          int a = 2 * orbIndices[2 * index] + closed[i] % 2, b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+          if (!(d.getocc(a) || d.getocc(b)))
+    	{
+    	  int A = a / 2, B = b / 2;
+    	  double tiajb = integrals[index];
 
-		  Walker walkcopy = walk;
-		  walkcopy.exciteWalker(this->wave.getRef(), closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
-		  double ovlpdetcopy = Overlap(walkcopy);
+    	  Walker walkcopy = walk;
+    	  walkcopy.exciteWalker(this->wave.getRef(), closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
+    	  double ovlpdetcopy = Overlap(walkcopy);
 
-		  double parity = 1.0;
-		  if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 0)
-		    parity = walk.d.parityAA(I, J, A, B); 
-		  else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
-		    parity = walk.d.parityBB(I, J, A, B); 
-		  else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-		    parity = walk.d.parityA(A, I) * walk.d.parityB(B, J);
-		  else
-		    parity = walk.d.parityB(A, I) * walk.d.parityA(B, J);
+    	  double parity = 1.0;
+    	  if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 0)
+    	    parity = walk.d.parityAA(I, J, A, B); 
+    	  else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
+    	    parity = walk.d.parityBB(I, J, A, B); 
+    	  else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
+    	    parity = walk.d.parityA(A, I) * walk.d.parityB(B, J);
+    	  else
+    	    parity = walk.d.parityB(A, I) * walk.d.parityA(B, J);
             
-		  ham += ovlpdetcopy * tiajb * parity / ovlp;
+    	  ham += ovlpdetcopy * tiajb * parity / ovlp;
 
-		  if (fillExcitations)
-		    work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + a,
-				     closed[j] * 2 * norbs + b , tiajb);
-		}
-	    }
-	}
+    	  if (fillExcitations)
+    	    work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + a,
+    			     closed[j] * 2 * norbs + b , tiajb);
+    	}
+        }
+    }
       prof.DoubleTime += getTime() - time;
     }
   }
