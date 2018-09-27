@@ -954,3 +954,29 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
   }
 
 }
+
+bool applyExcitation(int a, int b, int k, int l, Determinant& dcopy) {
+  bool valid = true;
+
+  if (dcopy.getocc(l) == true)
+    dcopy.setocc(l, false);
+  else
+    return false;
+
+  if (dcopy.getocc(b) == false)
+    dcopy.setocc(b, true);
+  else
+    return false;
+  
+  if (dcopy.getocc(k) == true)
+    dcopy.setocc(k, false);
+  else
+    return false;
+
+  if (dcopy.getocc(a) == false)
+    dcopy.setocc(a, true);
+  else
+    return false;
+  
+  return valid;
+}

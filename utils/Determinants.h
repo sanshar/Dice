@@ -148,6 +148,11 @@ class BigDeterminant {
 };
 
 
+//note some of i, j, k, l might be repeats
+//and some its possible that the determinant might get killed
+//the return value tell us whether the determinant is killed
+bool applyExcitation(int a, int b, int k, int l, Determinant& dcopy);
+
 CItype Hij(const Determinant& bra, const Determinant& ket,
            const oneInt& I1, const twoInt& I2, const double& coreE);
 

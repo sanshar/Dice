@@ -89,18 +89,6 @@ class Operator {
     return valid;
   }
 
-  static void populateSinglesToOpList(vector<Operator>& oplist) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < 2 * norbs; i++)
-      for (int j = 0; j < 2 * norbs; j++)
-	{
-	  //if (I2hb.Singles(i, j) > schd.epsilon )
-	  if (i % 2 == j % 2)
-	    {
-	      oplist.push_back(Operator(i, j));
-	    }
-	}
-  }
   
   //used in Lanczos
   static void populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements) {
@@ -117,32 +105,6 @@ class Operator {
 	}
   }
 
-  static void populateScreenedDoublesToOpList(vector<Operator>& oplist, double screen) {
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < 2 * norbs; i++)
-      {
-	for (int j = i + 1; j < 2 * norbs; j++)
-	  {
-	    int pair = (j / 2) * (j / 2 + 1) / 2 + i / 2;
-
-	    size_t start = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair] : I2hb.startingIndicesOppositeSpin[pair];
-	    size_t end = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pair + 1] : I2hb.startingIndicesOppositeSpin[pair + 1];
-	    float *integrals = i % 2 == j % 2 ? I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-	    short *orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs : I2hb.oppositeSpinPairs;
-
-	    for (size_t index = start; index < end; index++)
-	      {
-		if (fabs(integrals[index]) < screen)
-		  break;
-		int a = 2 * orbIndices[2 * index] + i % 2, b = 2 * orbIndices[2 * index + 1] + j % 2;
-		//cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  spin orbs "<<integrals[index]<<endl;
-
-		oplist.push_back(Operator(i, j, a, b));
-	      }
-	  }
-      }
-
-  }
 
   //used in Lanczos
   static void populateScreenedDoublesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen) {
@@ -229,31 +191,28 @@ class SpinFreeOperator {
     return ops[op].apply(dcopy, op);
   }
 
-  static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist) {
+
+  static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements) {
     int norbs = Determinant::norbs;
-    for (int i = 0; i <  norbs; i++)
-      for (int j = 0; j <  norbs; j++)
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < norbs; j++)
 	{
-	  oplist.push_back(SpinFreeOperator(i, j));
+          oplist.push_back(SpinFreeOperator(i, j));
+          hamElements.push_back(I1(2*i, 2*j));
 	}
   }
-
-  static void populateScreenedDoublesToOpList(vector<SpinFreeOperator>& oplist, double screen) {
+  
+  static void populateScreenedDoublesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements, double screen) {
     int norbs = Determinant::norbs;
     for (int i = 0; i < norbs; i++)
       {
 	for (int j = i; j < norbs; j++)
 	  {
-
-	    /*
-	    for (int a = 0; a<norbs; a++)
-	      for (int b = 0; b<norbs; b++) 
-		oplist.push_back(SpinFreeOperator(i, a, j, b));
-	    */
-
 	    int pair = (j) * (j + 1) / 2 + i ;
 
 	    set<std::pair<int, int> > UniqueSpatialIndices;
+            vector<double> uniqueHamElements;
+            
 	    if (j != i) { //same spin
 	      size_t start = I2hb.startingIndicesSameSpin[pair] ;
 	      size_t end = I2hb.startingIndicesSameSpin[pair + 1];
@@ -267,6 +226,7 @@ class SpinFreeOperator {
 		  int a = orbIndices[2 * index], b = orbIndices[2 * index + 1];
 		  //cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  same spin "<<integrals[index]<<endl;
 		  UniqueSpatialIndices.insert(std::pair<int, int>(a,b));
+                  uniqueHamElements.push_back(integrals[index]);
 		}
 	    }
 
@@ -283,20 +243,24 @@ class SpinFreeOperator {
 		  int a = orbIndices[2 * index], b = orbIndices[2 * index + 1];
 		  //cout << i<<"  "<<j<<"  "<<a<<"  "<<b<<"  opp spin "<<integrals[index]<<endl;
 		  UniqueSpatialIndices.insert(std::pair<int, int>(a,b));
+                  uniqueHamElements.push_back(integrals[index]);
 		}		
 	    }
 
+            int index = 0;
 	    for (auto it = UniqueSpatialIndices.begin(); 
 		 it != UniqueSpatialIndices.end(); it++) {
 
 	      int a = it->first, b = it->second;
 	      oplist.push_back(SpinFreeOperator(a, b, i, j));
-
+              hamElements.push_back(uniqueHamElements[index]);
+              index++;
 	    }
 
 	  }
       }
   }
+
 
 };
 
