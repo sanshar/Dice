@@ -19,9 +19,7 @@
 
 #ifndef CPS_HEADER_H
 #define CPS_HEADER_H
-#include "input.h"
 #include "Correlator.h"
-#include "Determinants.h"
 #include <Eigen/Dense>
 #include <vector>
 #include <iostream>
@@ -30,6 +28,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
+class Determinant;
 
 /*
  * CPS is a product of correlators 
@@ -45,18 +44,18 @@ class CPS {
   }
  public:
   std::vector<Correlator> cpsArray;  
-
-  vector<vector<int>> mapFromOrbitalToCorrelator;
-  vector<int> commonCorrelators;
+  
+  std::vector<std::vector<int>> mapFromOrbitalToCorrelator;
+  std::vector<int> commonCorrelators;
   
   //reads correlator file and makes cpsArray, orbitalToCPS
   CPS ();
   CPS (std::vector<Correlator>& pcpsArray);
-
+  
   void generateMapFromOrbitalToCorrelators();
-
+  
   double Overlap(const Determinant& d) const ;
-
+  
   /*
    * Takes an occupation number representation of two determinants
    * in the local orbital basis and calculates the ratio of overlaps 
@@ -70,16 +69,16 @@ class CPS {
    *
    */
   double OverlapRatio(const Determinant& d1, const Determinant& d2) const ;
-
+  
   /*
    * return ratio of overlaps of CPS with d and (i->a,j->b)excited-d (=dcopy)
    */
   double OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const ;
   double OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const;
-
+  
   double OverlapRatio(int i, int a, const BigDeterminant &dcopy, const BigDeterminant &d) const ;
   double OverlapRatio(int i, int j, int a, int b, const BigDeterminant &dcopy, const BigDeterminant &d) const;
-
+  
   /*
    * Takes an occupation number representation of a determinant
    * in the local orbital basis and calculates the overlap 

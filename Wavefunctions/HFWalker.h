@@ -20,65 +20,13 @@
 #define Walker_HEADER_H
 
 #include "Determinants.h"
+#include "HFWalkerHelper.h"
 #include <array>
-
-enum HartreeFock;
 
 using namespace Eigen;
 
 class Slater;
-
-//used to efficiently get overlaps when using a slater determinant reference
-//in all arrays, first object referes to alpha spins and the second to beta
-//in case of ghf, second object of thetaInv is empty, that of thetaDet is 1 
-class HFWalkerHelper
-{
-
-public:
-  HartreeFock hftype;                           //hftype same as that in slater
-  array<MatrixXd, 2> thetaInv;          //inverse of the theta matrix
-  vector<array<double, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
-  array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
-  array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-  array<vector<int>, 2> closedOrbsRef;  //set of closed orbitals in the reference (zeroth det)
-  vector<array<MatrixXd, 2>> rTable;    //table used for efficiently, vector for multidet
-  
-  /**
-   * constructor
-   */
-  HFWalkerHelper(const Slater &w, const Determinant &d);
-  HFWalkerHelper() {};
-
-  //fills open closed orbs 
-  void fillOpenClosedOrbs(const Determinant &d);
-
-  //makes rtable using inverse
-  void makeTable(const Slater &w, const MatrixXd& inv, const Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz);
-  
-  //used for multidet calculations, to be used only after inv is calculated
-  void calcOtherDetsTables(const Slater& w, bool sz);
-
-  //initializes inverse, dets and tables 
-  void initInvDetsTables(const Slater &w);
-  
-  //concatenates v1 and v2 and adds norbs to v2
-  void concatenateGhf(const vector<int>& v1, const vector<int>& v2, vector<int>& result) const;
-  
-  //makes rtable using inverse
-  void makeTableGhf(const Slater &w, const Eigen::Map<VectorXi>& colTheta);
-  
-  //initializes inverse, dets and tables 
-  void initInvDetsTablesGhf(const Slater &w);
-
-  //updates helpers for excitation in the det given by cre and des
-  void excitationUpdate(const Slater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet);
-  
-  void excitationUpdateGhf(const Slater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet);
-  
-  //gets relative indices used in the tables relI (i th occupied) and relA (a th unoccupied) for excitation i -> a with spin sz
-  void getRelIndices(int i, int &relI, int a, int &relA, bool sz) const; 
-
-};
+class CPSSlater;
 
 /**
 * Is essentially a single determinant used in the VMC/DMC simulation
@@ -92,22 +40,22 @@ public:
 *
 **/
 
-class HFWalker
+struct HFWalker
 {
 
-public:
   Determinant d; //The current determinant
-  HFWalkerHelper helper;  
+  HFWalkerHelper helper;  //allinformation about the slaterDeterminant
 
-  /**
-   * constructors
-   */
-  //HFWalker(Determinant &pd);
   HFWalker() {};
 
   HFWalker(const Slater &w); 
     
   HFWalker(const Slater &w, const Determinant &pd);
+
+  //ex1 and ex2 are spin related indices
+  void updateWalker(const Slater& w, int ex1, int ex2);
+  void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
+
 
   /**
    * reads dets from 'BesetDeterminant.txt'
@@ -142,10 +90,6 @@ public:
   void update(int i, int a, bool sz, const Slater &w);
   void update(int i, int j, int a, int b, bool sz, const Slater &w);
  
-  //ex1 and ex2 are spin related indices
-  void updateWalker(const Slater& w, int ex1, int ex2);
-  void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
-
   bool operator<(const HFWalker &w) const { return d < w.d; }
   bool operator==(const HFWalker &w) const { return d == w.d; }
 

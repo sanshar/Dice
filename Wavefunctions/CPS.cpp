@@ -20,6 +20,7 @@
 #include "Correlator.h"
 #include "Determinants.h"
 #include <boost/container/static_vector.hpp>
+#include "input.h"
 
 using namespace Eigen;
 

@@ -45,18 +45,13 @@
 #include "SHCIshm.h"
 #include "math.h"
 #include "Profile.h"
-#include "amsgrad.h"
-#include "sgd.h"
-#include "sr.h"
 #include "CIWavefunction.h"
-
+#include "runVMC.h"
 
 using namespace Eigen;
 using namespace boost;
 using namespace std;
 
-typedef boost::function<void (VectorXd&, VectorXd&, double&, double&, double&)> functor1;
-typedef boost::function<void (VectorXd&, VectorXd&, MatrixXd&, double&, double&, double&)> functor2;
 
 int main(int argc, char *argv[])
 {
@@ -83,76 +78,20 @@ int main(int argc, char *argv[])
   //calculate the hessian/gradient
   if (schd.wavefunctionType == "CPSSlater") {
     CPSSlater wave; HFWalker walk;
-    if (schd.restart) wave.readWave();
-    VectorXd vars; wave.getVariables(vars);
-
-    getGradientWrapper<CPSSlater, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-    functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CPSSlater, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-    functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<CPSSlater, HFWalker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, schd.deterministic);
-
-    if (schd.method == amsgrad || schd.method == amsgrad_sgd) {
-      AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-    }
-    else if (schd.method == sgd) {
-      SGD optimizer(schd.stepsize, schd.maxIter);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-    }
-    else if (schd.method == sr) {
-      SR optimizer(schd.stepsize, schd.maxIter);
-      optimizer.optimize(vars, getStochasticGradientMetric, schd.restart);
-    }
-    else if (schd.method == linearmethod) {
-
-    }
+    runVMC(wave, walk);
   }
   
   else if (schd.wavefunctionType == "CICPSSlater") {
-    //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
-    CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator> wave;
+    CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator> wave; HFWalker walk;
     wave.appendSinglesToOpList(); wave.appendScreenedDoublesToOpList(0.0);
-    HFWalker walk;
-    VectorXd vars; wave.getVariables(vars);
-
-    //getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-    getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-
-    if (schd.method == amsgrad) {
-      AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
-      //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      //if (commrank == 0) wave.printVariables();
-    }
-    else if (schd.method == sgd) {
-      SGD optimizer(schd.stepsize, schd.maxIter);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-    }
+    runVMC(wave, walk);
   }
 
   else if (schd.wavefunctionType == "LanczosCPSSlater") {
-    //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
-    Lanczos<CPSSlater, HFWalker> wave;
+    Lanczos<CPSSlater, HFWalker> wave; HFWalker walk;
     wave.appendSinglesToOpList(); wave.appendScreenedDoublesToOpList(0.0);
-    HFWalker walk;
-    VectorXd vars; wave.getVariables(vars);
-
-    //getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-    getGradientWrapper<Lanczos<CPSSlater, HFWalker>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<Lanczos<CPSSlater, HFWalker>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-
-    if (schd.method == amsgrad) {
-      AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
-      //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      //if (commrank == 0) wave.printVariables();
-    }
-    else if (schd.method == sgd) {
-      SGD optimizer(schd.stepsize, schd.maxIter);
-      optimizer.optimize(vars, getStochasticGradient, schd.restart);
-    }
+    runVMC(wave, walk);
   }
-
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

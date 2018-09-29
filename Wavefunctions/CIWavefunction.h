@@ -89,6 +89,7 @@ template <typename Wfn, typename Walker, typename OpType>
   void appendScreenedDoublesToOpList(double screen)
   {
     OpType::populateScreenedDoublesToOpList(oplist, ciCoeffs, screen);
+    //OpType::populateDoublesToOpList(oplist, ciCoeffs);
     ciCoeffs.clear(); ciCoeffs.resize(oplist.size(), 0.0); ciCoeffs[0] = 1.;
   }
 

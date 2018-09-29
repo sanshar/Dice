@@ -35,7 +35,7 @@
 #include "input.h"
 #include "Profile.h"
 #include "workingArray.h"
-#include "Slater.h"
+
 
 using namespace Eigen;
 
