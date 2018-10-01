@@ -30,7 +30,8 @@ class Slater;
 
 //used to efficiently get overlaps when using a slater determinant reference
 //in all arrays, first object referes to alpha spins and the second to beta
-//in case of ghf, second object of thetaInv is empty, that of thetaDet is 1 
+//in case of ghf, second object of thetaInv is empty, that of thetaDet is 1,
+//that of rTable is the same as first
 class HFWalkerHelper
 {
 
