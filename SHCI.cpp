@@ -364,7 +364,7 @@ int main(int argc, char* argv[]) {
     for (int root = 0; root < schd.nroots; root++) {
       pout << format("State : %3i") % (root) << endl;
       MatrixXx prevci = 1. * ci[root];
-      int num = max(100, schd.printBestDeterminants);
+      int num = max(5, schd.printBestDeterminants);
       for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
         compAbs comp;
         int m = distance(
@@ -428,17 +428,18 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
 	mpi::broadcast(world, ci, 0);
 #endif
-  int tmp1=0,tmp2=1;
 	//SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
   const int nspin = schd.nspin;
   //SpinRDM
-  vector<MatrixXx> spinRDM(nspin*(nspin+1)/2, MatrixXx::Zero(norbs, norbs));
+  pout << "rdm calculation" << endl;
+  vector<MatrixXx> spinRDM((nspin+2)*(nspin+1)/2, MatrixXx::Zero(norbs, norbs));
   SOChelper::calculateSpinRDM(spinRDM, ci, SHMDets, DetsSize, norbs, nelec, nspin);
   // cout << "We are doing SOC calculation instead of G-tensor calculation between " << tmp1 << "th and "
   // << tmp2 << "th states to gain a 2 by 2 SOC Hamiltonian matrix" << endl;
   // cout << endl;
   // for(int ii=0; ii<3; ii++)
   //   cout << spinRDM[ii] <<endl;
+  pout << "gtensor calculation" << endl;
 	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM, nspin);
 	//SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
   if (commrank != 0) {

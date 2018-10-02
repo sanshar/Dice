@@ -68,9 +68,9 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, vector<MatrixXx>& ci
     int nopen = norbs-nclosed;
 
     for (int i=0; i<nclosed; i++){
-      for (int p=0; p<nspin; p++) {
+      for (int p=0; p<=nspin; p++) {
         for (int q=0; q<=p; q++) {
-          spinRDM[p*(p-1)/2 + q](closed[i],closed[i] += conj(civector[p](x,0)))*civector[q](x,0);
+          spinRDM[p*(p+1)/2 + q](closed[i],closed[i]) += conj(civector[p](x,0))*civector[q](x,0);
         }
       }
     }
@@ -90,11 +90,11 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, vector<MatrixXx>& ci
       if (it != SortedDets.end() ) {
 	int y = it->second;
 	if (y != x) {
-    for (int p=0; p<nspin; p++) {
-      for (int q=0; q<=p; q++) {
-        spinRDM[p*(p-1)/2 + q](open[a],closed[i] += conj(civector[p](x,0)))*civector[q](x,0)*sgn;
-      }
-    }
+          for (int p=0; p<=nspin; p++) {
+            for (int q=0; q<=p; q++) {
+              spinRDM[p*(p+1)/2 + q](open[a],closed[i]) += conj(civector[p](y,0))*civector[q](x,0)*sgn;
+            }
+          }
 	}
       }
     }
@@ -118,7 +118,6 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
     cout << "Quitting the g-tensor calcualtion"<<endl;
     exit(0);
   }
-
   //initialize L and S integrals
   vector<oneInt> L(3), LplusS(3);
   for (int i=0; i<3; i++) {
@@ -137,7 +136,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
 #endif
 
   //generate S integrals
-  double ge = 2.002319304;
+  const double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
     LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
     LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
@@ -149,24 +148,30 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
     LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
-  for (int a=0; a<3; a++)
-    for (int i=0; i<norbs; i++)
-      for (int j=0; j<norbs; j++)
+  for (int a=0; a<3; a++) {
+    for (int i=0; i<norbs; i++) {
+      for (int j=0; j<norbs; j++) {
 	LplusS[a](i,j) += L[a](i,j);
-
+      }
+    }
+  }
   //The  La+ge Sa matrices where a is x,y,z
-  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(nspin,nspin));
+  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(nspin+1,nspin+1));
 
   //calcualte S+L
   for (int a=0; a<3; a++) {
     for (int i=0; i<norbs; i++) {
       for (int j=0; j<norbs; j++) {
-        for (int k=0; k<nspin; k++) {
-          for int l=0; l<nspin; l++) {
+        for (int k=0; k<=nspin; k++) {
+          for (int l=0; l<=nspin; l++) {
             if (k>=l)
-              Intermediate[a](k,l) = (LplusS[a](i,j))*spinRDM[k*(k-1)/2+l](i,j);
+              Intermediate[a](k,l) += -0.5*(LplusS[a](i,j)*(spinRDM[k*(k+1)/2+l](i,j)));
+              //if (std::abs(LplusS[a](i,j)*spinRDM[k*(k+1)/2+l](i,j))>1.0e-5)
+                //pout << spinRDM[k*(k+1)/2+l](i,j) << " "<< k << " " << l << " " << i << "  " << j << " " << LplusS[a](i,j) << endl;
             else
-              Intermediate[a](k,l) = (LplusS[a](i,j))*conj(spinRDM[l*(l-1)/2+k](i,j));
+              Intermediate[a](k,l) += -0.5*conj((LplusS[a](i,j)*spinRDM[l*(l+1)/2+k](i,j)));
+              //if (std::abs(LplusS[a](i,j)*spinRDM[l*(l+1)/2+k](i,j))>1.0e-5) 
+                //pout << spinRDM[l*(l+1)/2+k](i,j) << " "<< k << " " << l << " " << i << "  " << j << " " << LplusS[a](i,j) << endl;
           }
         }
       }
@@ -174,32 +179,55 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
     //SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[a]);
     //if (eigensolver.info() != Success) abort();
   }
-
-  MatrixXx temp = MatrixXx::Zero(3,3);
-  for (int i=0; i<=3; ++i) {
-    for (int j=0; j<=3; ++j) {
-      for (int k=0; k <= nspin; ++k) {
-        for (int l=0; l<=nspin; ++l) {
-          temp(i, k) += 0.5*Intermediate[i](k,l)*Intermediate[i](l,k);
-        }
+  for (int a=0; a<3; a++) {
+    for(int i=0;i<norbs;i++) {
+      for(int j=0;j<norbs;j++) {
+        //pout << LplusS[a](i,j) << " ";
       }
+    //pout << endl;
     }
   }
-
-  for (int i=0; i<3; ++i) {
-    for (int j=0; j<=3; ++j) {
-      pout << temp(i, j) << " "
+  for (int a=0; a<3; a++) {
+    for(int i=0;i<norbs;i++) {
+      for(int j=0;j<norbs;j++) {
+        //pout << spinRDM[a](i,j) << " ";
+      }
+    //pout << endl;
     }
-    pout << "; " << endl; 
+  }
+  for (int a=0; a<3; a++) {
+    pout << endl;
+    for (int i=0; i<=nspin; i++) {
+      for (int j=0; j<=nspin; j++) {
+        //pout << Intermediate[a](i,j) << " ";
+      }
+    //pout << endl;
+    }
+  } 
+  const double factor = 12.0 / (nspin * (0.5*nspin+1.0) * (nspin+1.0));
+  pout << "calculate a tensor" << endl;
+  MatrixXx temp = MatrixXx::Zero(3,3);
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      temp(i,j) = 2.0*factor*(Intermediate[i].adjoint()*Intermediate[j]).trace(); 
+    }
+  }
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      //pout << temp(i, j) << " ";
+    }
+    //pout << "; " << endl; 
   }
 
   SelfAdjointEigenSolver<MatrixXx> solver(temp);
   if (solver.info() != Success) abort();
 
-  auto aeig = vector<double>(solver.eigenvalues()[0], solver.eigenvalues()[1], solver.eigenvalues()[2]); 
-  assert(aeig[0]>=0.0 && aeig[i]>=0.0 && aeig[2]>=0.0);
+  vector<double> aeig(3, 0.0);
+  aeig[0] = solver.eigenvalues()[0];
+  aeig[1] = solver.eigenvalues()[1];
+  aeig[2] = solver.eigenvalues()[2]; 
+  //assert(aeig[0]>=0.0 && aeig[1]>=0.0 && aeig[2]>=0.0);
 
-  const double factor = 12.0 / (nspin * (0.5*nspin+1.0) * (nspin+1.0));
   //MatrixXx Gtensor = MatrixXx::Zero(3,3);
 
   //for (int i=0; i<3; i++)
@@ -210,13 +238,12 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
   //SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   //if (eigensolver.info() != Success) abort();
   vector<double> gtensor(3, 0.0);
-  for (int i=0, i<3; i++)
-    gtensor[i] = 2.0*sqrt(aeig*factor);
+  for (int i=0; i<3; i++)
+    gtensor[i] = sqrt(aeig[i]);
   pout <<endl<< "Gtensor eigenvalues"<<endl;
-  pout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%gtensor[0] % ((-ge+gtensor[0]*1.e6) );
-  pout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%gtensor[1] % ((-ge+gtensor[1]*1.e6) )
-  pout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%gtensor[2] % ((-ge+gtensor[2]*1.e6) )
-
+  pout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%gtensor[0] % ((-ge+gtensor[0])*1.e6) );
+  pout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%gtensor[1] % ((-ge+gtensor[1])*1.e6) );
+  pout << str(boost::format("g3= %9.6f,  shift: %6.0f\n")%gtensor[2] % ((-ge+gtensor[2])*1.e6) );
 }
 
 //GTENSOR IS NOT WORKING NOW

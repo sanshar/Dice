@@ -116,6 +116,7 @@ public:
   bool singleList;
   bool io;
   int nroots;
+  int nspin;
   int nPTiter;
   bool DoRDM;
   bool DoSpinRDM;

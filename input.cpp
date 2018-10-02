@@ -62,7 +62,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.singleList = true;
   schd.io = true;
   schd.nroots = 1;
-  schd.nspin = 10000; //set to be ridiculously large value to see whether a value has been set for it.
+  schd.nspin = 1000; //set to be ridiculously large value to see whether a value has been set for it.
   schd.nPTiter = 1000000;
   schd.DoRDM = false;
   schd.DoSpinRDM = false;
@@ -305,9 +305,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       exit(0);
     }
   }
-
-  if (nspin == 1000)
-    nspin = nroots - 1;
+  cout << schd.nspin << endl;
+  if (schd.nspin == 1000)
+    schd.nspin = schd.nroots - 1;
     
   if (maxiter < sweep_iter[sweep_iter.size()-1]) {
     cout << "maxiter should be greater than last entry of sweep_iter" << endl;
