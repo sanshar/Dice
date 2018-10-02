@@ -417,7 +417,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     // SpinRDM
-    vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
+    //vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
     // SOC
 #ifdef Complex
     if (schd.doSOC) {
@@ -430,13 +430,16 @@ int main(int argc, char* argv[]) {
 #endif
   int tmp1=0,tmp2=1;
 	//SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
-  SOChelper::calculateSpinRDM(spinRDM, ci[tmp1], ci[tmp2], SHMDets, DetsSize, norbs, nelec);
+  const int nspin = schd.nspin;
+  //SpinRDM
+  vector<MatrixXx> spinRDM(nspin*(nspin+1)/2, MatrixXx::Zero(norbs, norbs));
+  SOChelper::calculateSpinRDM(spinRDM, ci, SHMDets, DetsSize, norbs, nelec, nspin);
   // cout << "We are doing SOC calculation instead of G-tensor calculation between " << tmp1 << "th and "
   // << tmp2 << "th states to gain a 2 by 2 SOC Hamiltonian matrix" << endl;
   // cout << endl;
   // for(int ii=0; ii<3; ii++)
   //   cout << spinRDM[ii] <<endl;
-	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
+	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM, nspin);
 	//SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
   if (commrank != 0) {
 	  ci[0].resize(1,1);

@@ -27,7 +27,7 @@ using namespace Eigen;
 class Determinant;
 
 namespace SOChelper {
-  void calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2,
+  void calculateSpinRDM(vector<MatrixXx>& spinRDM, vector<MatrixXx>& civector,
 			Determinant* Dets1, int Detssize, int norbs, int nelec);
 
   void getSplus(const MatrixXx& c2, MatrixXx& c2splus,
