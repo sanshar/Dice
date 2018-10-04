@@ -182,9 +182,9 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
   for (int a=0; a<3; a++) {
     for(int i=0;i<norbs;i++) {
       for(int j=0;j<norbs;j++) {
-        //pout << LplusS[a](i,j) << " ";
+        pout << LplusS[a](i,j) << " ";
       }
-    //pout << endl;
+    pout << endl;
     }
   }
   for (int a=0; a<3; a++) {
@@ -199,12 +199,13 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
     pout << endl;
     for (int i=0; i<=nspin; i++) {
       for (int j=0; j<=nspin; j++) {
-        //pout << Intermediate[a](i,j) << " ";
+        pout << Intermediate[a](i,j) << " ";
       }
-    //pout << endl;
+    pout << endl;
     }
   } 
   const double factor = 12.0 / (nspin * (0.5*nspin+1.0) * (nspin+1.0));
+  pout << "coefficient : " << factor << endl;
   pout << "calculate a tensor" << endl;
   MatrixXx temp = MatrixXx::Zero(3,3);
   for (int i=0; i<3; ++i) {
@@ -214,9 +215,9 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
   }
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
-      //pout << temp(i, j) << " ";
+      pout << temp(i, j) << " ";
     }
-    //pout << "; " << endl; 
+    pout << "; " << endl; 
   }
 
   SelfAdjointEigenSolver<MatrixXx> solver(temp);

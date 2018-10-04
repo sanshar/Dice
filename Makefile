@@ -3,11 +3,11 @@
 ##########################
 
 USE_MPI = yes
-USE_INTEL = no
+USE_INTEL = yes
 USING_OSX = no
 
-EIGEN=/usr/include/eigen3
-BOOST=/home/warlocat/Download/boost_1_67_0
+EIGEN=/home/xuwa0145/tools/eigen
+BOOST=/home/xuwa0145/tools/boost_1_66_0
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
@@ -84,7 +84,7 @@ obj_z/%.o: %.cpp
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 
 
-all: Dice ZDice2 GTensorFT # stats QDPTSOC GTensorFT GTensorFT2
+all: Dice ZDice2 # stats QDPTSOC GTensorFT GTensorFT2
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats

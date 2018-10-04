@@ -977,6 +977,11 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
     } // end j
   }   // end i
 
+#ifdef Complex
+  twoRDM = twoRDM.real();
+  s2RDM = s2RDM.real();
+#endif
+
 #ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0, 0), twoRDM.rows() * twoRDM.cols(),
@@ -1070,6 +1075,11 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
       }
     }
   }
+
+#ifdef Complex
+  oneRDM = oneRDM.real();
+  s1RDM = s1RDM.real();
+#endif
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0, 0), s1RDM.rows() * s1RDM.cols(),
