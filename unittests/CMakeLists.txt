@@ -13,7 +13,7 @@ message(STATUS "\n-- Setting up tests ...\n-- ")
 
 # Set compiler flags for gcov
 set(CMAKE_CXX_STANDARD 11) # TODO
-set(CMAKE_CXX_FLAGS "-g -O0 -w -fprofile-arcs -ftest-coverage -DSERIAL")
+set(CMAKE_CXX_FLAGS "-g -O0 -w -fprofile-arcs -ftest-coverage -fPIC -DSERIAL")
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1) # *.cpp.o -> *.o
 
 
@@ -46,8 +46,8 @@ file(GLOB TEST_SOURCES *.cpp)
 foreach(file ${TEST_SOURCES})
   get_filename_component(file_basename ${file} NAME_WE)
 
-  # Convert unit-file1.cpp to test-file1 (creates test name)
-  string(REGEX REPLACE "unit-([^$]+)" "test-\\1" testcase ${file_basename})
+  # Convert unit-file1.cpp to unittest-file1 (creates test name)
+  string(REGEX REPLACE "unit-([^$]+)" "unit-\\1" testcase ${file_basename})
   message(STATUS ${testcase})
 
   # Convert unit-file1.cpp to ../Dice/file.cpp (creates path to source file)
