@@ -104,12 +104,8 @@ void AGP::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
       //pairMat(j, i) = pairMat(i,j);  
     }
   }
-  //cout << "before\n" << endl;
-  //printVariables();
-  //MatrixXd transpose = pairMat.transpose();
-  //pairMat = (pairMat + transpose)/2;
-  //cout << "after\n" << endl;
-  //printVariables();
+  MatrixXd transpose = pairMat.transpose();
+  pairMat = (pairMat + transpose)/2;
 }
 
 void AGP::printVariables() const
