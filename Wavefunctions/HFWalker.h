@@ -16,8 +16,8 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef Walker_HEADER_H
-#define Walker_HEADER_H
+#ifndef HFWalker_HEADER_H
+#define HFWalker_HEADER_H
 
 #include "Determinants.h"
 #include <array>
@@ -149,6 +149,7 @@ public:
 
   bool operator<(const HFWalker &w) const { return d < w.d; }
   bool operator==(const HFWalker &w) const { return d == w.d; }
+  friend ostream& operator<<(ostream& os, const HFWalker& walk);
 
   //calc ovelap wih gradient wrt orbitals in slater
   void OverlapWithGradient(const Slater &w, Eigen::VectorXd &grad, double detovlp) const;

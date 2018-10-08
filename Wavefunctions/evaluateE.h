@@ -78,15 +78,10 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      //cout << walk.d << endl << endl;
-      //cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
-      //cout << "betaaTable\n" << walk.helper.rTable[0][1] << endl << endl;
-      //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
-      //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
-      //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
+      //cout << walk << endl;
 
       w.HamAndOvlp(walk, ovlp, ham, work, false);
-      //cout << ham << "  " << ovlp << endl << endl;
+      //cout <<"ham  " << ham << " ovlp  " << ovlp << endl << endl;
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
       //cout << "grad\n" << localdiagonalGrad << endl << endl;
@@ -107,6 +102,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
 
   E0 = Energy / Overlap;
   grad = (grad - E0 * diagonalGrad) / Overlap;
+  //cout << "totalGrad\n" << grad << endl << endl;
 }
 
 //<psi_t| (H-E0) |psi>
@@ -304,6 +300,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime
   //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
   //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
   //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
+  //cout << walk << endl << endl;
   w.HamAndOvlp(walk, ovlp, ham, work);
   //cout << ham << "  " << ovlp << endl << endl;
   w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
@@ -564,6 +561,7 @@ class getGradientWrapper
     {
       w.updateVariables(vars);
       w.initWalker(walk);
+      //w.printVariables();
       stddev = 0.0;
       rt = 1.0;
       getGradientDeterministic(w, walk, E0, grad);

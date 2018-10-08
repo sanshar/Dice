@@ -58,6 +58,7 @@ private:
       & doHessian
       & hf
       & optimizeOrbs
+      & optimizeCps
       & Hamiltonian
       & nwalk
       & tau
@@ -88,6 +89,7 @@ public:
   bool doHessian;                        //This calcules the Hessian and overlap for the linear method
   std::string hf;
   bool optimizeOrbs;
+  bool optimizeCps;
   HAM Hamiltonian;
 
 //Deprecated options for optimizers
@@ -128,6 +130,13 @@ public:
  *   hf string: rhf, uhf or ghf
  */
 void readHF(Eigen::MatrixXd& hforbsA, Eigen::MatrixXd& hforbsB, std::string hf);
+
+/**
+ * This reads the pairing matrix from 'pairMat.txt'
+ * params:
+ *   Matrix: matrix to be read into
+ */
+void readPairMat(Eigen::MatrixXd& pairMat);
 
 /**
  * Reads the input file which by default is input.dat, but can be anything

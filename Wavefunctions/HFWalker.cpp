@@ -57,7 +57,6 @@ void HFWalkerHelper::fillOpenClosedOrbs(const Determinant &d)
   closedOrbs[0].clear();
   closedOrbs[1].clear();
   d.getOpenClosedAlphaBeta(openOrbs[0], closedOrbs[0], openOrbs[1], closedOrbs[1]);
-  Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
 }
 
 void HFWalkerHelper::makeTable(const Slater &w, const MatrixXd& inv, const Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz)
@@ -165,6 +164,8 @@ void HFWalkerHelper::excitationUpdate(const Slater &w, vector<int>& cre, vector<
   MatrixXd invOld = thetaInv[sz];
   double detOld = thetaDet[0][sz];
   Eigen::Map<Eigen::VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
+  //cout << "colClosed\n" << colClosed << endl << endl;
+  //cout << "cre " << cre[0] << " des " << des[0] << endl << endl;
   calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv[sz], thetaDet[0][sz], cre, des, colClosed, closedOrbs[sz], w.getHforbs(sz));
   thetaDet[0][sz] *= parity;
   fillOpenClosedOrbs(excitedDet);
@@ -520,6 +521,15 @@ void HFWalker::OverlapWithGradientGhf(const Slater &w, Eigen::VectorXd &grad, do
       K++;
     }
   }
+}
+
+ostream& operator<<(ostream& os, const HFWalker& walk) {
+  cout << walk.d << endl << endl;
+  cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
+  cout << "betaTable\n" << walk.helper.rTable[0][1] << endl << endl;
+  cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
+  cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
+  cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
 }
 
 /*bool HFWalker::makeMove(CPSSlater &w)
