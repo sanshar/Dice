@@ -349,10 +349,10 @@ double HFWalker::getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, co
   return detFactorNum / detFactorDen;
 }
 
-void HFWalker::update(int i, int a, bool sz, const Slater &w)
+void HFWalker::update(int i, int a, bool sz, const Slater &w, bool doparity)
 {
   double p = 1.0;
-  p *= d.parity(a, i, sz);
+  if (doparity) p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
   if (helper.hftype == Generalized) {
@@ -367,14 +367,14 @@ void HFWalker::update(int i, int a, bool sz, const Slater &w)
   }
 }
 
-void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w)
+void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w, bool doparity)
 {
   double p = 1.0;
   Determinant dcopy = d;
-  p *= d.parity(a, i, sz);
+  if (doparity) p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
-  p *= d.parity(b, j, sz);
+  if (doparity) p *= d.parity(b, j, sz);
   d.setocc(j, sz, false);
   d.setocc(b, sz, true);
   if (helper.hftype == Generalized) {
@@ -388,31 +388,31 @@ void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w)
   }
 }
 
-void HFWalker::updateWalker(const Slater& w, int ex1, int ex2)
+void HFWalker::updateWalker(const Slater& w, int ex1, int ex2, bool doparity)
 {
   int norbs = Determinant::norbs;
   int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
   int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
   if (I % 2 == J % 2 && ex2 != 0) {
     if (I % 2 == 1) {
-      update(I / 2, J / 2, A / 2, B / 2, 1, w);
+      update(I / 2, J / 2, A / 2, B / 2, 1, w, doparity);
     }
     else {
-      update(I / 2, J / 2, A / 2, B / 2, 0, w);
+      update(I / 2, J / 2, A / 2, B / 2, 0, w, doparity);
     }
   }
   else {
     if (I % 2 == 0)
-      update(I / 2, A / 2, 0, w);
+      update(I / 2, A / 2, 0, w, doparity);
     else
-      update(I / 2, A / 2, 1, w);
+      update(I / 2, A / 2, 1, w, doparity);
 
     if (ex2 != 0) {
       if (J % 2 == 1) {
-        update(J / 2, B / 2, 1, w);
+        update(J / 2, B / 2, 1, w, doparity);
       }
       else {
-        update(J / 2, B / 2, 0, w);
+        update(J / 2, B / 2, 0, w, doparity);
       }
     }
   }

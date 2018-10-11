@@ -51,7 +51,6 @@
 #include "sgd.h"
 #include "CIWavefunction.h"
 
-
 using namespace Eigen;
 using namespace boost;
 using namespace std;
@@ -133,11 +132,11 @@ int main(int argc, char *argv[])
 
     //getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
     getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
-      functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
+    functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, SpinFreeOperator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
+    //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
 
     if (schd.method == amsgrad) {
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
-      //functor1 getStochasticGradient = boost::bind(&getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
       //if (commrank == 0) wave.printVariables();
     }
@@ -149,21 +148,37 @@ int main(int argc, char *argv[])
 
   else if (schd.wavefunctionType == "LanczosCPSSlater") {
     //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
-    Lanczos<CPSSlater, HFWalker> wave;
-    wave.appendSinglesToOpList(); wave.appendScreenedDoublesToOpList(0.0);
-    HFWalker walk;
-    VectorXd vars; wave.getVariables(vars);
-    
-    vector<double> alpha{0., 0.1, 0.2, -0.1, -0.2}; 
-    vector<double> Ealpha{0., 0., 0., 0., 0.}; 
-    double stddev, rk;
-    for (int i = 0; i < alpha.size(); i++) {
-      vars[0] = alpha[i];
-      wave.updateVariables(vars);
-      wave.initWalker(walk);
-      getStochasticEnergyContinuousTime(wave, walk, Ealpha[i], stddev, rk, schd.stochasticIter, 1.e-5);
-      if (commrank == 0) cout << alpha[i] << "   " << Ealpha[i] << "   " << stddev << endl;
+    CPSSlater wave; HFWalker walk;
+    wave.readWave();
+    wave.initWalker(walk); 
+    Eigen::VectorXd stddev = Eigen::VectorXd::Zero(6);
+    //Eigen::VectorXd rk = Eigen::VectorXd::Zero(6);
+    double rk = 0;
+    Eigen::VectorXd lanczosCoeffs = Eigen::VectorXd::Zero(6);
+    double alpha = 0.1;
+    if (schd.deterministic) getLanczosCoeffsDeterministic(wave, walk, alpha, lanczosCoeffs);
+    else getLanczosCoeffsContinuousTime(wave, walk, alpha, lanczosCoeffs, stddev, rk, schd.stochasticIter, 1.e-5);
+    //getLanczosMatrixContinuousTime(wave, walk, lanczosMat, stddev, rk, schd.stochasticIter, 1.e-5);
+    if (commrank == 0) {
+      cout << "lanczosCoeffs\n";
+      cout << lanczosCoeffs << endl;
+      cout << "stddev\n";
+      cout << stddev << endl;
+      cout << "rk\n";
+      cout << rk << endl;
+      //cout << "rk\n" << rk << endl << endl;
+      //cout << "stddev\n" << stddev << endl << endl;
     }
+    //vector<double> alpha{0., 0.1, 0.2, -0.1, -0.2}; 
+    //vector<double> Ealpha{0., 0., 0., 0., 0.}; 
+    //double stddev, rk;
+    //for (int i = 0; i < alpha.size(); i++) {
+    //  vars[0] = alpha[i];
+    //  wave.updateVariables(vars);
+    //  wave.initWalker(walk);
+    //  getStochasticEnergyContinuousTime(wave, walk, Ealpha[i], stddev, rk, schd.stochasticIter, 1.e-5);
+    //  if (commrank == 0) cout << alpha[i] << "   " << Ealpha[i] << "   " << stddev << endl;
+    //}
 
     //getGradientWrapper<CIWavefunction<CPSSlater, HFWalker, Operator>, HFWalker> wrapper(wave, walk, schd.stochasticIter);
     //getGradientWrapper<Lanczos<CPSSlater, HFWalker>, HFWalker> wrapper(wave, walk, schd.stochasticIter);

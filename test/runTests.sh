@@ -19,9 +19,9 @@ cd $here/hubbard_1x10
 printf "...running hubbard_1x10\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python ../testEnergy.py 'vmc' $tol
-printf "...running hubbard_1x10 lanczos\n"
-$MPICOMMAND $LANCZOSPATH > lanczos.out
-python ../testEnergy.py 'lanczos' $tol
+#printf "...running hubbard_1x10 lanczos\n"
+#$MPICOMMAND $LANCZOSPATH > lanczos.out
+#python ../testEnergy.py 'lanczos' $tol
 if [ $clean == 1 ]
 then    
     ../clean.sh

@@ -225,21 +225,20 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
                            double &ovlp, double &ham, 
 			   workingArray& work, bool fillExcitations)
 {
-  work.setCounterToZero();
   int norbs = Determinant::norbs;
 
   ovlp = Overlap(walk);
   ham = walk.d.Energy(I1, I2, coreE); 
 
-
   BigDeterminant dbig(walk.d);
   BigDeterminant dbigcopy = dbig;
-  
+ 
+  work.setCounterToZero();
   generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
                                       work, false);  
   generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
-                                      work, false);  
-
+                                        work, false);  
+  
   //loop over all the screened excitations
   for (int i=0; i<work.nExcitations; i++) {
     int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
@@ -278,6 +277,45 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
   }
 }
 
+void CPSSlater::HamAndOvlpLanczos(HFWalker &walk,
+                           Eigen::VectorXd &lanczosCoeffsSample, double &ovlpSample, 
+			   workingArray& work, double &alpha)
+{
+  work.setCounterToZero();
+  int norbs = Determinant::norbs;
+
+  double el0 = 0., el1 = 0., ovlp0 = 0., ovlp1 = 0.;
+  HamAndOvlp(walk, ovlp0, el0, work);
+  std::vector<double> ovlp{0., 0., 0.};
+  ovlp[0] = ovlp0;
+  ovlp[1] = el0 * ovlp0;
+  ovlp[2] = ovlp[0] + alpha * ovlp[1];
+  lanczosCoeffsSample[0] = ovlp[0] * ovlp[0] * el0 / (ovlp[2] * ovlp[2]); 
+  lanczosCoeffsSample[1] = ovlp[0] * ovlp[1] * el0 / (ovlp[2] * ovlp[2]);
+  el1 = walk.d.Energy(I1, I2, coreE);
+
+  //cout << "E0  " << el1 << endl;
+  //loop over all the screened excitations
+  for (int i=0; i<work.nExcitations; i++) {
+    double tia = work.HijElement[i];
+    HFWalker walkCopy = walk;
+    walkCopy.updateWalker(slater, work.excitation1[i], work.excitation2[i], false);
+    workingArray work1;
+    work1.setCounterToZero();
+    HamAndOvlp(walkCopy, ovlp0, el0, work1);
+    ovlp1 = el0 * ovlp0;
+    //cout << walkCopy;
+    el1 += tia * ovlp1 / ovlp[1];
+    //cout << "ovlp0  " << ovlp0 << "  el0  " << el0 << "  ovlp1  " << ovlp1 << "  " << tia << endl;
+    work.ovlpRatio[i] = (ovlp0 + alpha * ovlp1) / ovlp[2];
+  }
+
+  lanczosCoeffsSample[2] = ovlp[1] * ovlp[1] * el1 / (ovlp[2] * ovlp[2]);
+  lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
+  lanczosCoeffsSample[4] = ovlp[0] * ovlp[1] / (ovlp[2] * ovlp[2]);
+  lanczosCoeffsSample[5] = ovlp[1] * ovlp[1] / (ovlp[2] * ovlp[2]);
+  ovlpSample = ovlp[2];
+}
 
 
 void CPSSlater::derivativeOfLocalEnergy (HFWalker &walk,

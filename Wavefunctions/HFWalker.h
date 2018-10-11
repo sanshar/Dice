@@ -140,11 +140,11 @@ public:
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Slater &w) const;
 
   //updates det and helpers afterspatial orb excitations i->a, j->b with spin sz
-  void update(int i, int a, bool sz, const Slater &w);
-  void update(int i, int j, int a, int b, bool sz, const Slater &w);
+  void update(int i, int a, bool sz, const Slater &w, bool doparity = true);
+  void update(int i, int j, int a, int b, bool sz, const Slater &w, bool doparity = true);
  
   //ex1 and ex2 are spin related indices
-  void updateWalker(const Slater& w, int ex1, int ex2);
+  void updateWalker(const Slater& w, int ex1, int ex2, bool doparity = true);
   void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
 
   bool operator<(const HFWalker &w) const { return d < w.d; }

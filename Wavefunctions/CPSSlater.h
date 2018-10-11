@@ -84,18 +84,26 @@ class CPSSlater {
                             Eigen::VectorXd &grad);
 
    /**
- * Calculates the overlap, hamiltonian,
- * actually it only calculates 
- * ham      = hamiltonian/overlap
- * 
- * it also is able to calculate the overlap_d'/overlap_d, the ratio of
- * overlaps of all d' connected to the determinant d (walk.d)
- */
+   * Calculates the overlap, hamiltonian,
+   * actually it only calculates 
+   * ham      = hamiltonian/overlap
+   * 
+   * it also is able to calculate the overlap_d'/overlap_d, the ratio of
+   * overlaps of all d' connected to the determinant d (walk.d)
+   */
    void HamAndOvlp(HFWalker &walk,
                    double &ovlp, double &ham, 
 		   workingArray& work, bool fillExcitations = true);
 
-  //d (<n|H|Psi>/<n|Psi>)/dc_i
+   /**
+   * used in Lanczos calculation
+   * Calculates overlaps (ovlp), modified local energies for the lanczos matrix (ham)
+   */
+   void HamAndOvlpLanczos(HFWalker &walk,
+                   Eigen::VectorXd &lanczosCoeffsSample, double &ovlpSample, 
+		   workingArray& work, double &alpha);
+  
+   //d (<n|H|Psi>/<n|Psi>)/dc_i
    void derivativeOfLocalEnergy(HFWalker &,
                               double &factor,
                               Eigen::VectorXd &hamRatio);
