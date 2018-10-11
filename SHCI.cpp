@@ -228,10 +228,10 @@ int main(int argc, char* argv[]) {
 #else
   if (schd.doSOC) {
     readSOCIntegrals(I1, norbs, "SOC");
-    readSOCIntegrals(SOC, norbs, "SOC");
+    // readSOCIntegrals(SOC, norbs, "SOC");
 #ifndef SERIAL
     mpi::broadcast(world, I1, 0);
-    mpi::broadcast(world, SOC, 0);
+    // mpi::broadcast(world, SOC, 0);
 #endif
   }
 #endif
@@ -350,7 +350,8 @@ int main(int argc, char* argv[]) {
       FILE* f = fopen(efile.c_str(), "wb");
       for (int j = 0; j < E0.size(); ++j) {
         // pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
-        fwrite(&E0[j], 1, sizeof(CItype), f);
+        // fwrite(&E0[j], 1, sizeof(CItype), f);
+        fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
     }
@@ -652,9 +653,9 @@ int main(int argc, char* argv[]) {
         SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
       }
 
-      // pout << " response ";
-      // SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
-      // s2RDM);
+      pout << " response ";
+      SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
+      s2RDM);
     }  // end if doResponse||DoRDM && RdmType && !stochastic...
 
     // #####################################################################

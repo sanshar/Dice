@@ -513,10 +513,18 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
         for (int n2 = 0; n2 < nSpatOrbs; n2++)
           for (int n3 = 0; n3 < nSpatOrbs; n3++)
             for (int n4 = 0; n4 < nSpatOrbs; n4++) {
-              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
+              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6){
+                #ifdef Complex
+                ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
+                           n1 % n2 % n3 % n4 %
+                           s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4).real());
+                #else
                 ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
                            n1 % n2 % n3 % n4 %
                            s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4));
+                #endif
+              }
+              
             }
       ofs.close();
     }
