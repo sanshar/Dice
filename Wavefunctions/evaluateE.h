@@ -182,19 +182,19 @@ void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::V
   vector<Determinant> allDets;
   generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
-  workingArray work;
+  workingArray work, moreWork;
 
   double overlapTot = 0.; 
-  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(6);
+  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(4);
   //w.printVariables();
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
     w.initWalker(walk, allDets[i]);
-    Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(6);
+    Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(4);
     double overlapSample = 0.;
     //cout << walk;
-    w.HamAndOvlpLanczos(walk, coeffsSample, overlapSample, work, alpha);
+    w.HamAndOvlpLanczos(walk, coeffsSample, overlapSample, work, moreWork, alpha);
     //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
     //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
     
@@ -205,7 +205,7 @@ void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::V
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   lanczosCoeffs = coeffs / overlapTot;
@@ -300,7 +300,7 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 
 template<typename Wfn, typename Walker> 
 void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::VectorXd &lanczosCoeffs, Eigen::VectorXd &stddev,
-                                       double &rk, int niter, double targetError)
+                                       Eigen::VectorXd &rk, int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -310,27 +310,46 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
                           std::ref(generator));
 
   int iter = 0;
-  Eigen::VectorXd S1 = Eigen::VectorXd::Zero(6);
-  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(6);
-  Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(6);
+  Eigen::VectorXd S1 = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(4);
   double ovlpSample = 0.;
 
   double bestOvlp = 0.;
   Determinant bestDet = walk.getDet();
 
-  workingArray work;
-  w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, alpha);
+  workingArray work, moreWork;
+  w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
 
   int nstore = 1000000 / commsize;
   int gradIter = min(nstore, niter);
 
-  //std::vector<std::vector<double>> gradError;
-  //gradError.resize(6);
-  std::vector<double> gradError(gradIter * commsize, 0.);
+  std::vector<std::vector<double>> gradError;
+  gradError.resize(4);
+  //std::vector<double> gradError(gradIter * commsize, 0.);
   
-  //for (int i = 0; i < 6; i++)
-  //  gradError[i] = std::vector<double>(gradIter * commsize, 0.);
+  for (int i = 0; i < 4; i++)
+    gradError[i] = std::vector<double>(gradIter * commsize, 0.);
   double cumdeltaT = 0.;
+  
+  int transIter = 0, nTransIter = 1000;
+
+  while (transIter < nTransIter) {
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < work.nExcitations; i++) {
+      cumovlpRatio += abs(work.ovlpRatio[i]);
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
+
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                   nextDetRandom) - work.ovlpRatio.begin();
+
+    transIter++;
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+  }
 
   while (iter < niter) {
     double cumovlpRatio = 0;
@@ -349,29 +368,34 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
     cumdeltaT += deltaT;
     double ratio = deltaT / cumdeltaT;
     Eigen::VectorXd coeffsOld = coeffs;
-    coeffs = coeffs + ratio * (coeffsSample - coeffs);
-    S1 = S1 + (coeffsSample - coeffsOld).cwiseProduct(coeffsSample - coeffs);
+    coeffs += ratio * (coeffsSample - coeffs);
+    S1 += (coeffsSample - coeffsOld).cwiseProduct(coeffsSample - coeffs);
 
     if (iter < gradIter) {
-    //  for (int i = 0; i < 6; i++) 
-        gradError[iter + commrank * gradIter] = coeffs[0];
+      for (int i = 0; i < 4; i++) 
+        gradError[i][iter + commrank * gradIter] = coeffsSample[i];
     }
 
     iter++;
 
     walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
-    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, alpha);
+    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
   }
+  
 
 #ifndef SERIAL
-  //for (int i = 0; i < 6; i++) 
-    MPI_Allreduce(MPI_IN_PLACE, &(gradError), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 6, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0][0]), gradError[0].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[1][0]), gradError[1].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[2][0]), gradError[2].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[3][0]), gradError[3].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  rk = calcTcorr(gradError);
-  for (int i = 0; i < 6; i++) { 
-    stddev[i] = sqrt(S1[i] * rk / (niter - 1) / niter / commsize);
+  for (int i = 0; i < 4; i++)
+    rk[i] = calcTcorr(gradError[i]);
+
+  for (int i = 0; i < 4; i++) { 
+    stddev[i] = sqrt(S1[i] * rk[i] / (niter - 1) / niter / commsize);
   }
 
   lanczosCoeffs = coeffs / commsize;

@@ -279,7 +279,7 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
 
 void CPSSlater::HamAndOvlpLanczos(HFWalker &walk,
                            Eigen::VectorXd &lanczosCoeffsSample, double &ovlpSample, 
-			   workingArray& work, double &alpha)
+			   workingArray& work, workingArray& moreWork, double &alpha)
 {
   work.setCounterToZero();
   int norbs = Determinant::norbs;
@@ -294,15 +294,15 @@ void CPSSlater::HamAndOvlpLanczos(HFWalker &walk,
   lanczosCoeffsSample[1] = ovlp[0] * ovlp[1] * el0 / (ovlp[2] * ovlp[2]);
   el1 = walk.d.Energy(I1, I2, coreE);
 
+  //workingArray work1;
   //cout << "E0  " << el1 << endl;
   //loop over all the screened excitations
   for (int i=0; i<work.nExcitations; i++) {
     double tia = work.HijElement[i];
     HFWalker walkCopy = walk;
     walkCopy.updateWalker(slater, work.excitation1[i], work.excitation2[i], false);
-    workingArray work1;
-    work1.setCounterToZero();
-    HamAndOvlp(walkCopy, ovlp0, el0, work1);
+    moreWork.setCounterToZero();
+    HamAndOvlp(walkCopy, ovlp0, el0, moreWork);
     ovlp1 = el0 * ovlp0;
     //cout << walkCopy;
     el1 += tia * ovlp1 / ovlp[1];
@@ -312,8 +312,6 @@ void CPSSlater::HamAndOvlpLanczos(HFWalker &walk,
 
   lanczosCoeffsSample[2] = ovlp[1] * ovlp[1] * el1 / (ovlp[2] * ovlp[2]);
   lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
-  lanczosCoeffsSample[4] = ovlp[0] * ovlp[1] / (ovlp[2] * ovlp[2]);
-  lanczosCoeffsSample[5] = ovlp[1] * ovlp[1] / (ovlp[2] * ovlp[2]);
   ovlpSample = ovlp[2];
 }
 

@@ -151,10 +151,10 @@ int main(int argc, char *argv[])
     CPSSlater wave; HFWalker walk;
     wave.readWave();
     wave.initWalker(walk); 
-    Eigen::VectorXd stddev = Eigen::VectorXd::Zero(6);
-    //Eigen::VectorXd rk = Eigen::VectorXd::Zero(6);
-    double rk = 0;
-    Eigen::VectorXd lanczosCoeffs = Eigen::VectorXd::Zero(6);
+    Eigen::VectorXd stddev = Eigen::VectorXd::Zero(4);
+    Eigen::VectorXd rk = Eigen::VectorXd::Zero(4);
+    //double rk = 0;
+    Eigen::VectorXd lanczosCoeffs = Eigen::VectorXd::Zero(4);
     double alpha = 0.1;
     if (schd.deterministic) getLanczosCoeffsDeterministic(wave, walk, alpha, lanczosCoeffs);
     else getLanczosCoeffsContinuousTime(wave, walk, alpha, lanczosCoeffs, stddev, rk, schd.stochasticIter, 1.e-5);

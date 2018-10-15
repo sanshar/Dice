@@ -101,7 +101,7 @@ class CPSSlater {
    */
    void HamAndOvlpLanczos(HFWalker &walk,
                    Eigen::VectorXd &lanczosCoeffsSample, double &ovlpSample, 
-		   workingArray& work, double &alpha);
+		   workingArray& work, workingArray& moreWork, double &alpha);
   
    //d (<n|H|Psi>/<n|Psi>)/dc_i
    void derivativeOfLocalEnergy(HFWalker &,
