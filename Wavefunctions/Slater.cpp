@@ -36,7 +36,6 @@
 #include "global.h"
 #include "input.h"
 
-enum HartreeFock {Restricted, UnRestricted, Generalized};
 
 using namespace Eigen;
 
@@ -45,6 +44,8 @@ Slater::Slater()
   initHforbs();
   initDets();
 }
+
+int Slater::getNumOfDets() const {return determinants.size();}
 
 void Slater::initWalker(HFWalker &walk) const 
 {

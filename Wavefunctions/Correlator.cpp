@@ -18,11 +18,32 @@
 */
 #include "Correlator.h"
 #include "Determinants.h"
+#include "global.h"
+#include <vector>
+#include "input.h"
 
-using namespace Eigen;
+Correlator::Correlator (std::vector<int>& pasites,
+                        std::vector<int>& pbsites,
+                        double iv) : asites(pasites), bsites(pbsites) {
+  if (asites.size()+bsites.size() > 20) {
+    std::cout << "Cannot handle correlators of size greater than 20."<<std::endl;
+    exit(0);
+  }
+  std::sort(asites.begin(), asites.end());
+  std::sort(bsites.begin(), bsites.end());
+  if(!schd.expCorrelator)
+  {// exponential correlator coefficients 
+    Variables.resize( pow(2,asites.size()+bsites.size()), iv);
+  }
+  else
+  {
+    Variables.resize( pow(2,asites.size()+bsites.size()), 0.0);
+    //Variables.resize( pow(2,asites.size()+bsites.size()), 1.0);
+  }
+}
 
 void Correlator::OverlapWithGradient(const Determinant& d, 
-				     VectorXd& grad,
+				     Eigen::VectorXd& grad,
 				     const double& ovlp,
 				     const long& startIndex) const {
   

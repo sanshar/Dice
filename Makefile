@@ -1,12 +1,13 @@
 USE_MPI = yes
 USE_INTEL = yes
+#EIGEN=/projects/sash2458/apps/eigen/
+#BOOST=/projects/sash2458/apps/boost_1_57_0/
+#LIBIGL=/projects/sash2458/apps/libigl/include/
 EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
 BOOST=/projects/anma2640/boost_1_66_0
 LIBIGL=/projects/anma2640/local/lib/libigl/include/
-#EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
-#BOOST=/projects/anma2640/boost_1_66_0
 
-FLAGS = -std=c++11 -g  -O3  -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++14 -g  -O3  -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 #FLAGS = -std=c++11  -g  -I./ -I./utils -I./optimizer/ -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 
@@ -60,9 +61,11 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/CPSAGP.o \
 	obj/AGPWalker.o \
 	obj/CPS.o \
+	obj/excitationOperators.o\
 	obj/Correlator.o \
-    obj/evaluateE.o \
-	obj/ShermanMorrisonWoodbury.o
+	obj/HFWalkerHelper.o\
+	obj/ShermanMorrisonWoodbury.o\
+	obj/evaluateE.o 
 
 
 OBJ_GFMC = obj/staticVariables.o \
@@ -78,8 +81,10 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/AGPWalker.o \
 	obj/evaluateE.o \
 	obj/CPS.o \
-	obj/Correlator.o \
-	obj/ShermanMorrisonWoodbury.o
+	obj/excitationOperators.o\
+	obj/HFWalkerHelper.o\
+	obj/ShermanMorrisonWoodbury.o\
+	obj/Correlator.o
 
 
 obj/%.o: %.cpp  

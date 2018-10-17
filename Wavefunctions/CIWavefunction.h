@@ -16,6 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
+
 #ifndef CIWavefunction_HEADER_H
 #define CIWavefunction_HEADER_H
 #include <vector>
@@ -58,6 +59,7 @@ template <typename Wfn, typename Walker, typename OpType>
 	& ciCoeffs;
     }
 
+  
  public:
   Wfn wave;
   std::vector<OpType> oplist;
@@ -75,18 +77,20 @@ template <typename Wfn, typename Walker, typename OpType>
     ciCoeffs[0] = 1.0;
   }
 
+
   Slater& getRef() { return wave.getRef(); }
 
   void appendSinglesToOpList()
   {
-    OpType::populateSinglesToOpList(oplist);
+    OpType::populateSinglesToOpList(oplist, ciCoeffs);
     ciCoeffs.resize(oplist.size(), 0.0);
   }
 
   void appendScreenedDoublesToOpList(double screen)
   {
-    OpType::populateScreenedDoublesToOpList(oplist, screen);
-    ciCoeffs.resize(oplist.size(), 0.0);
+    OpType::populateScreenedDoublesToOpList(oplist, ciCoeffs, screen);
+    //OpType::populateDoublesToOpList(oplist, ciCoeffs);
+    ciCoeffs.clear(); ciCoeffs.resize(oplist.size(), 0.0); ciCoeffs[0] = 1.;
   }
 
   void getVariables(VectorXd& vars) {
@@ -110,21 +114,7 @@ template <typename Wfn, typename Walker, typename OpType>
     return ciCoeffs.size();
   }
 
-  double getOverlapFactor(int I, int J, int A, int B, Walker& walk, bool doparity=false) {
-    int norbs = Determinant::norbs;
-    if (J == 0 && B == 0) {
-      Walker walkcopy = walk;
-      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, 0, norbs);
-      return Overlap(walkcopy)/Overlap(walk);
-    }
-    else {
-      Walker walkcopy = walk;
-      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, J*2*norbs+B, norbs);
-      return Overlap(walkcopy)/Overlap(walk);
-    }
-  }
-  
-  double calculateOverlapWithUnderlyingWave(Walker &walk, Determinant &dcopy)
+  double calculateOverlapRatioWithUnderlyingWave(Walker &walk, Determinant &dcopy)
   {
     double ovlpdetcopy;
     int excitationDistance = dcopy.ExcitationDistance(walk.d);
@@ -156,6 +146,21 @@ template <typename Wfn, typename Walker, typename OpType>
     return ovlpdetcopy;
   }
 
+
+  double getOverlapFactor(int I, int J, int A, int B, Walker& walk, bool doparity=false) {
+    int norbs = Determinant::norbs;
+    if (J == 0 && B == 0) {
+      Walker walkcopy = walk;
+      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, 0, norbs);
+      return Overlap(walkcopy)/Overlap(walk);
+    }
+    else {
+      Walker walkcopy = walk;
+      walkcopy.exciteWalker(wave.getRef(), I*2*norbs+A, J*2*norbs+B, norbs);
+      return Overlap(walkcopy)/Overlap(walk);
+    }
+  }
+  
   double Overlap(Walker& walk) {
     double totalovlp = 0.0;
     double ovlp0 = wave.Overlap(walk);
@@ -167,7 +172,7 @@ template <typename Wfn, typename Walker, typename OpType>
 	  bool valid = oplist[i].apply(dcopy, j);
 
 	  if (valid) {
-	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
+	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
 	    totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
 	  }
 	}
@@ -192,7 +197,7 @@ template <typename Wfn, typename Walker, typename OpType>
 	  bool valid = oplist[i].apply(dcopy, j);
 
 	  if (valid) {
-	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
+	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
 	    gradcopy[i] += ovlpdetcopy;
 	  }
 	}
@@ -208,6 +213,194 @@ template <typename Wfn, typename Walker, typename OpType>
     return totalOvlp;
   }
 
+
+  void HamAndOvlp(HFWalker &walk,
+                  double &ovlp, double &ham, 
+                  workingArray& work, bool fillExcitations=true)
+  {
+    work.setCounterToZero();
+    int norbs = Determinant::norbs;
+
+    ovlp = Overlap(walk);
+    ham = walk.d.Energy(I1, I2, coreE); 
+
+
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, true);  
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, true);  
+
+    //loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+    
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      Walker walkcopy = walk;
+      walkcopy.exciteWalker(wave.getRef(), ex1, ex2, norbs);
+      double ovlpdetcopy = Overlap(walkcopy);
+
+      ham += tia * ovlpdetcopy / ovlp;
+      work.ovlpRatio[i] = ovlpdetcopy/ovlp;
+    }
+  }
+
+  void initWalker(Walker& walk)
+  {
+    wave.initWalker(walk);
+  }
+  
+  void initWalker(Walker& walk, Determinant& d)
+  {
+    wave.initWalker(walk, d);
+  }
+
+  void writeWave()
+  {
+    if (commrank == 0)
+      {
+	char file[5000];
+	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+	sprintf(file, "ciwave.bkp");
+	std::ofstream outfs(file, std::ios::binary);
+	boost::archive::binary_oarchive save(outfs);
+	save << *this;
+	outfs.close();
+      }
+  }
+
+  void readWave()
+  {
+    if (commrank == 0)
+      {
+	char file[5000];
+	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
+	sprintf(file, "ciwave.bkp");
+	std::ifstream infs(file, std::ios::binary);
+	boost::archive::binary_iarchive load(infs);
+	load >> *this;
+	infs.close();
+      }
+  }
+
+};
+
+
+template <typename Wfn, typename Walker>
+  class Lanczos : public CIWavefunction<Wfn, Walker, Operator>
+{
+ private:
+  friend class boost::serialization::access;
+  template <class Archive>
+    void serialize(Archive &ar, const unsigned int version)
+    {
+      ar  & boost::serialization::base_object<CIWavefunction<Wfn, Walker, Operator>>(*this)
+	& alpha;
+    }
+
+ public:
+  double alpha;
+
+  Lanczos()
+  {
+    CIWavefunction<Wfn, Walker, Operator>();
+    alpha = 0.;
+  }
+
+  Lanczos(Wfn &w1, std::vector<Operator> &pop, double alpha0) : alpha(alpha0)
+  {
+    CIWavefunction<Wfn, Walker, Operator>(w1, pop);
+  }
+
+  void appendSinglesToOpList()
+  {
+    Operator::populateSinglesToOpList(this->oplist, this->ciCoeffs);
+    //ciCoeffs.resize(oplist.size(), 0.0);
+  }
+
+  void appendScreenedDoublesToOpList(double screen)
+  {
+    Operator::populateScreenedDoublesToOpList(this->oplist, this->ciCoeffs, screen);
+    //ciCoeffs.resize(oplist.size(), 0.0);
+  }
+
+  void initWalker(Walker& walk) {
+    this->wave.initWalker(walk);
+  }  
+
+  void initWalker(Walker& walk, Determinant& d) {
+    this->wave.initWalker(walk, d);
+  }  
+
+  void getVariables(VectorXd& vars) {
+    if (vars.rows() != getNumVariables())
+      {
+	vars = VectorXd::Zero(getNumVariables());
+      }
+      vars[0] = alpha;
+  }
+
+  void printVariables() {
+    cout << "alpha  " << alpha << endl;
+    //for (int i=0; i<this->oplist.size(); i++)
+    //  cout << this->oplist[i] << "  " << this->ciCoeffs[i] << endl;
+  }
+
+  void updateVariables(VectorXd& vars) {
+    alpha = vars[0];
+  }
+
+  long getNumVariables() {
+    return 1;
+  }
+  
+  double Overlap(Walker& walk) {
+    double totalovlp = 0.0;
+    double ovlp0 = this->wave.Overlap(walk);
+    totalovlp += ovlp0;
+    //cout << "totalovlp   " << totalovlp << endl;
+
+    for (int i=1; i<this->oplist.size(); i++)
+      {
+	for (int j=0; j<this->oplist[i].nops; j++) {
+	  Determinant dcopy = walk.d;
+	  bool valid =this-> oplist[i].apply(dcopy, j);
+
+	  if (valid) {
+	    //cout << i<<" -  "<<oplist[i].ops[j]<<"  "<<walk.d<<"  "<<dcopy<<endl;
+	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+	    totalovlp += alpha * this->ciCoeffs[i] * ovlpdetcopy * ovlp0;
+	  }
+	}
+      }
+    return totalovlp;
+  }
+
+  double OverlapWithGradient(Walker &walk,
+			     double &factor,
+			     Eigen::VectorXd &grad)
+  {
+
+    double num = 0.; 
+    for (int i=1; i<this->oplist.size(); i++)
+      {
+	for (int j=0; j<this->oplist[i].nops; j++) {
+	  Determinant dcopy = walk.d;
+	  
+	  bool valid = this->oplist[i].apply(dcopy, j);
+
+	  if (valid) {
+	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+	    num += this->ciCoeffs[i] * ovlpdetcopy;
+	  }
+	}
+      }
+
+    grad[0] += num/(alpha * num + 1);
+    return (alpha * num + 1);
+  }
   
   void HamAndOvlp(Walker &walk,
 		  double &ovlp, double &ham,
@@ -254,9 +447,9 @@ template <typename Wfn, typename Walker, typename OpType>
 		      tia = I1(2 * A, 2 * I);
 		      double sgn = 1.0;
 		      if (Alpha)
-			sgn *= d.parityA(A, I);
+                sgn *= d.parityA(A, I);
 		      else
-			sgn *= d.parityB(A, I);
+                sgn *= d.parityB(A, I);
 		      tia *= sgn;
 		    }
 		  else
@@ -286,9 +479,9 @@ template <typename Wfn, typename Walker, typename OpType>
 			}
 		      double sgn = 1.0;
 		      if (Alpha)
-			sgn *= d.parityA(A, I);
+                sgn *= d.parityA(A, I);
 		      else
-			sgn *= d.parityB(A, I);
+                sgn *= d.parityB(A, I);
 		      tia *= sgn;
 		    }
 
@@ -296,19 +489,16 @@ template <typename Wfn, typename Walker, typename OpType>
 		  if (abs(tia) > THRESH)
 		    {
 		      Walker walkcopy = walk;
-		      walkcopy.exciteWalker(wave.getRef(), closed[i]*2*norbs+open[a], 0, norbs);
+		      walkcopy.exciteWalker(this->wave.getRef(), closed[i]*2*norbs+open[a], 0, norbs);
 		      double ovlpdetcopy = Overlap(walkcopy);
 		      ham += ovlpdetcopy * tia / ovlp;
 
-		      if (fillExcitations) {
-                        //cout << closed[i]/2<<"  "<<open[a]/2<<"  0  0  "<<ovlpdetcopy<<"  "<<tia<<endl;
-			work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a],
-					 0, tia);
-                      }
-                    }
-                }
-            }
-        }
+		      if (fillExcitations)
+                work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + open[a], 0, tia);
+		    }
+		}
+	    }
+	}
       prof.SinglesTime += getTime() - time;
     }
 
@@ -349,7 +539,7 @@ template <typename Wfn, typename Walker, typename OpType>
 		  double tiajb = integrals[index];
 
 		  Walker walkcopy = walk;
-		  walkcopy.exciteWalker(wave.getRef(), closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
+		  walkcopy.exciteWalker(this->wave.getRef(), closed[i] * 2 * norbs + a, closed[j] * 2 * norbs + b, norbs);
 		  double ovlpdetcopy = Overlap(walkcopy);
 
 		  double parity = 1.0;
@@ -358,33 +548,22 @@ template <typename Wfn, typename Walker, typename OpType>
 		  else if (closed[i] % 2 == closed[j] % 2 && closed[i] % 2 == 1)
 		    parity = walk.d.parityBB(I, J, A, B); 
 		  else if (closed[i] % 2 != closed[j] % 2 && closed[i] % 2 == 0)
-		    {parity = walk.d.parityA(A, I) * walk.d.parityB(B, J);}
+		    parity = walk.d.parityA(A, I) * walk.d.parityB(B, J);
 		  else
-                    {parity = walk.d.parityB(A, I) * walk.d.parityA(B, J);}
+		    parity = walk.d.parityB(A, I) * walk.d.parityA(B, J);
             
 		  ham += ovlpdetcopy * tiajb * parity / ovlp;
 
-		  if (fillExcitations) {
-                    cout << closed[i]/2<<"  "<<a/2<<"  "<<closed[j]/2<<"  "<<b/2<<"  "<<ovlpdetcopy<<"  "<<tiajb<<endl;
+		  if (fillExcitations)
 		    work.appendValue(ovlpdetcopy/ovlp, closed[i] * 2 * norbs + a,
 				     closed[j] * 2 * norbs + b , tiajb);
-                  }
-                }
+		}
 	    }
 	}
       prof.DoubleTime += getTime() - time;
     }
   }
 
-  void initWalker(Walker& walk)
-  {
-    wave.initWalker(walk);
-  }
-  
-  void initWalker(Walker& walk, Determinant& d)
-  {
-    wave.initWalker(walk, d);
-  }
 
   void writeWave()
   {
@@ -392,7 +571,7 @@ template <typename Wfn, typename Walker, typename OpType>
       {
 	char file[5000];
 	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	sprintf(file, "ciwave.bkp");
+	sprintf(file, "lanczoswave.bkp");
 	std::ofstream outfs(file, std::ios::binary);
 	boost::archive::binary_oarchive save(outfs);
 	save << *this;
@@ -406,7 +585,7 @@ template <typename Wfn, typename Walker, typename OpType>
       {
 	char file[5000];
 	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	sprintf(file, "ciwave.bkp");
+	sprintf(file, "lanczoswave.bkp");
 	std::ifstream infs(file, std::ios::binary);
 	boost::archive::binary_iarchive load(infs);
 	load >> *this;
@@ -418,217 +597,4 @@ template <typename Wfn, typename Walker, typename OpType>
 #endif
   }
 };
-
-//template <typename Wfn, typename Walker>
-//  class Lanczos : public CIWavefunction<Wfn, Walker, NormalOperator>
-//{
-// private:
-//  friend class boost::serialization::access;
-//  template <class Archive>
-//    void serialize(Archive &ar, const unsigned int version)
-//    {
-//      ar  & boost::serialization::base_object<CIWavefunction<Wfn, Walker, NormalOperator>>(*this)
-//	& alpha;
-//    }
-//
-// public:
-//  double alpha;
-//
-//  Lanczos()
-//  {
-//    CIWavefunction<Wfn, Walker, NormalOperator>();
-//    this->ciCoeffs.push_back(coreE);
-//    this->oplist.push_back(NormalOperator());
-//    alpha = 0.1;
-//  }
-//
-//  Lanczos(Wfn &w1, std::vector<NormalOperator> &pop, double alpha0) : alpha(alpha0)
-//  {
-//    CIWavefunction<Wfn, Walker, NormalOperator>(w1, pop);
-//    this->ciCoeffs.push_back(coreE);
-//    this->oplist.push_back(NormalOperator());
-//  }
-//
-//  void appendSinglesToOpList()
-//  {
-//    Operator::populateSinglesToOpList(this->oplist, this->ciCoeffs);
-//    //ciCoeffs.resize(oplist.size(), 0.0);
-//  }
-//
-//  void appendScreenedDoublesToOpList(double screen)
-//  {
-//    Operator::populateScreenedDoublesToOpList(this->oplist, this->ciCoeffs, screen);
-//    //ciCoeffs.resize(oplist.size(), 0.0);
-//  }
-//
-//  //void initWalker(Walker& walk) {
-//  //  this->wave.initWalker(walk);
-//  //}  
-//
-//  //void initWalker(Walker& walk, Determinant& d) {
-//  //  this->wave.initWalker(walk, d);
-//  //}  
-//
-//  void getVariables(VectorXd& vars) 
-//  {
-//    if (vars.rows() != getNumVariables()) 
-//      vars = VectorXd::Zero(getNumVariables());
-//    vars[0] = alpha;
-//  }
-//
-//  void printVariables() 
-//  {
-//    cout << "alpha  " << alpha << endl;
-//    cout << "ciCoeffs\n";
-//    for (int i=0; i<this->oplist.size(); i++)
-//      cout << this->oplist[i] << "  " << this->ciCoeffs[i] << endl;
-//    cout << endl;
-//  }
-//
-//  void updateVariables(VectorXd& vars) 
-//  {
-//    alpha = vars[0];
-//  }
-//
-//  long getNumVariables() 
-//  {
-//    return 1;
-//  }
-// 
-//  double Overlap1(Walker &walk, double &ovlp0)
-//  {
-//    double totalovlp = 0.0;
-//    //cout << "totalovlp   " << totalovlp << endl;
-//
-//    for (int i = 1; i < this->oplist.size(); i++) {
-//      for (int j = 0; j < this->oplist[i].nops; j++) {
-//	    Determinant dcopy = walk.d;
-//	    bool valid = this-> oplist[i].apply(dcopy, j);
-//
-//	    if (valid) {
-//	      //cout << i<<" -  "<<oplist[i].ops[j]<<"  "<<walk.d<<"  "<<dcopy<<endl;
-//	      double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
-//	      cout << i << " -  " << this->oplist[i] << "  " << dcopy << endl;
-//          cout << this->ciCoeffs[i] << "   " << ovlpdetcopy << "  " << ovlp0 << endl;
-//	      totalovlp += this->ciCoeffs[i] * ovlpdetcopy * ovlp0;
-//	    }
-//      }
-//    }
-//    return totalovlp;
-//  }
-//   
-//
-//  double Overlap(Walker& walk) 
-//  {
-//    double ovlp0 = this->wave.Overlap(walk);
-//    double ovlp1 = Overlap1(walk, ovlp0);
-//    double totalOvlp = ovlp0 + alpha * ovlp1;
-//    return totalovlp;
-//  }
-//
-//  double OverlapWithGradient(Walker &walk,
-//			     double &factor,
-//			     Eigen::VectorXd &grad)
-//  {
-//
-//    double num = 0.; 
-//    for (int i=1; i<this->oplist.size(); i++)
-//      {
-//	for (int j=0; j<this->oplist[i].nops; j++) {
-//	  Determinant dcopy = walk.d;
-//	  
-//	  bool valid = this->oplist[i].apply(dcopy, j);
-//
-//	  if (valid) {
-//	    double ovlpdetcopy = calculateOverlapWithUnderlyingWave(walk, dcopy);
-//	    num += this->ciCoeffs[i] * ovlpdetcopy;
-//	  }
-//	}
-//      }
-//
-//    grad[0] += num/(alpha * num + 1);
-//    return (alpha * num + 1);
-//  }
-//  
-//  void HamAndOvlp(Walker &walk,
-//    	  std::vector<double> &ovlp, std::vector<double> &ham,
-//    	  workingArray& work, bool fillExcitations = true)
-//  {
-//    work.setCounterToZero();
-//
-//    double TINY = schd.screen;
-//    double THRESH = schd.epsilon;
-//
-//    Determinant &d = walk.d;
-//
-//    int norbs = Determinant::norbs;
-//    double el0 = 0., el1 = 0.;
-//    
-//    double E0 = d.Energy(I1, I2, coreE);
-//    ovlp[0] = this->wave.Overlap(walk); 
-//    ovlp[1] = Overlap1(walk, ovlp[0]);
-//    ovlp[2] = ovlp[0] + alpha * ovlp[1];
-//    cout << "hamandovlp\n" << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << "  " << E0 << endl << endl;
-//    el0 = E0;
-//    el1 = E0;
-//    
-//    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
-//                                        work, false);  
-//    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
-//                                      work, false);  
-//
-//    //loop over all the screened excitations
-//    for (int i=0; i<work.nExcitations; i++) {
-//      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
-//      double tia = work.HijElement[i];
-//      
-//      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-//      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-//
-//      //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
-//      double ovlpRatio0 = this->wave.getOverlapFactor(I, J, A, B, walk, false);
-//
-//      ham += tia * ovlpRatio;
-//
-//      work.ovlpRatio[i] = ovlpRatio;
-//    }
-//    
-//    ham[0] = el0 * ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
-//    ham[1] = el0 * ovlp[0] * ovlp[1] / (ovlp[2] * ovlp[2]);
-//    ham[2] = el1 * ovlp[1] * ovlp[1] / (ovlp[2] * ovlp[2]);
-//  }
-//
-//
-//  void writeWave()
-//  {
-//    if (commrank == 0)
-//      {
-//	char file[5000];
-//	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-//	sprintf(file, "lanczoswave.bkp");
-//	std::ofstream outfs(file, std::ios::binary);
-//	boost::archive::binary_oarchive save(outfs);
-//	save << *this;
-//	outfs.close();
-//      }
-//  }
-//
-//  void readWave()
-//  {
-//    if (commrank == 0)
-//      {
-//	char file[5000];
-//	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-//	sprintf(file, "lanczoswave.bkp");
-//	std::ifstream infs(file, std::ios::binary);
-//	boost::archive::binary_iarchive load(infs);
-//	load >> *this;
-//	infs.close();
-//      }
-//#ifndef SERIAL
-//    boost::mpi::communicator world;
-//    boost::mpi::broadcast(world, *this, 0);
-//#endif
-//  }
-//};
 #endif

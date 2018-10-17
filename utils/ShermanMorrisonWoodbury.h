@@ -22,7 +22,7 @@
 #include <Eigen/Dense>
 #include "igl/slice.h"
 #include "igl/slice_into.h"
-
+#include <vector>
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
