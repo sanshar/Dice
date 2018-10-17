@@ -50,38 +50,38 @@ class CPSSlater {
    CPS cps; //The jastrow factors
    Slater slater; //reference
 
-   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
-   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d) const ;
+   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d) const;
    Slater& getRef() { return slater; }
 
    CPSSlater();
-   void initWalker(HFWalker &walk);
-   void initWalker(HFWalker &walk, Determinant &d);
+   void initWalker(HFWalker &walk) const ;
+   void initWalker(HFWalker &walk, Determinant &d) const;
 
    /**
    *This calculates the overlap of the walker with the
    *jastrow and the ciexpansion 
    */
-   double Overlap(HFWalker &walk);
+   double Overlap(const HFWalker &walk) const ;
 
 
-  double getOverlapFactor(HFWalker& w, Determinant& dcopy, bool doparity=false);
-  double getOverlapFactor(int i, int a, HFWalker& w, bool doparity);
-  double getOverlapFactor(int i, int j, int a, int b, HFWalker& w, bool doparity);
+  double getOverlapFactor(const HFWalker& w, Determinant& dcopy, bool doparity=false) const ;
+  double getOverlapFactor(int i, int a, const HFWalker& w, bool doparity) const ;
+  double getOverlapFactor(int i, int j, int a, int b, const HFWalker& w, bool doparity) const ;
 
-  double getOverlapFactor(int i, int a, HFWalker& w, BigDeterminant& d,
-                          BigDeterminant& dcopy, bool doparity);
-  double getOverlapFactor(int i, int j, int a, int b, HFWalker& w,
+  double getOverlapFactor(int i, int a, const HFWalker& w, BigDeterminant& d,
+                          BigDeterminant& dcopy, bool doparity) const ;
+  double getOverlapFactor(int i, int j, int a, int b, const HFWalker& w,
                           BigDeterminant& d, BigDeterminant& dcopy,
-                          bool doparity);
+                          bool doparity) const ;
 
 
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)
    */
-   void OverlapWithGradient(HFWalker &,
+   void OverlapWithGradient(const HFWalker &,
                             double &factor,
-                            Eigen::VectorXd &grad);
+                            Eigen::VectorXd &grad) const ;
 
    /**
  * Calculates the overlap, hamiltonian,
@@ -91,21 +91,21 @@ class CPSSlater {
  * it also is able to calculate the overlap_d'/overlap_d, the ratio of
  * overlaps of all d' connected to the determinant d (walk.d)
  */
-   void HamAndOvlp(HFWalker &walk,
+   void HamAndOvlp(const HFWalker &walk,
                    double &ovlp, double &ham, 
-		   workingArray& work, bool fillExcitations = true);
+		   workingArray& work, bool fillExcitations = true) const ;
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
-   void derivativeOfLocalEnergy(HFWalker &,
-                              double &factor,
-                              Eigen::VectorXd &hamRatio);
+   void derivativeOfLocalEnergy(const HFWalker &,
+                                double &factor,
+                                Eigen::VectorXd &hamRatio) const ;
 
-   void getVariables(Eigen::VectorXd &v);
-   long getNumVariables();
-   long getNumJastrowVariables();
+   void getVariables(Eigen::VectorXd &v) const ;
+   long getNumVariables() const ;
+   long getNumJastrowVariables() const ;
    void updateVariables(Eigen::VectorXd &dv);
-   void printVariables();
-   void writeWave();
+   void printVariables() const ;
+   void writeWave() const ;
    void readWave();
    
    /**

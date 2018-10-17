@@ -28,7 +28,7 @@
 using namespace std;
 using namespace Eigen;
 
-BigDeterminant::BigDeterminant(Determinant& d) {
+BigDeterminant::BigDeterminant(const Determinant& d) {
   int norbs = Determinant::norbs;
   occupation.resize(2*norbs, 0);
   for (int i=0; i<2*norbs; i++)

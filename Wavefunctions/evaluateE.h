@@ -322,9 +322,10 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 
 
 
-template<typename Wfn, typename Walker> void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
-										 Eigen::VectorXd &grad, double &rk,
-										 int niter, double targetError)
+template<typename Wfn, typename Walker>
+void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
+                                         Eigen::VectorXd &grad, double &rk,
+                                         int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;

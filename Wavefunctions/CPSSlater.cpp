@@ -43,22 +43,22 @@ CPSSlater::CPSSlater() {
   //cps, slater will read their respective default values
   ;}
 
-void CPSSlater::initWalker(HFWalker &walk)
+void CPSSlater::initWalker(HFWalker &walk) const
 {
   slater.initWalker(walk);
 }
 
-void CPSSlater::initWalker(HFWalker &walk, Determinant &d)
+void CPSSlater::initWalker(HFWalker &walk, Determinant &d) const 
 {
   slater.initWalker(walk, d);
 }
 
-double CPSSlater::Overlap(HFWalker &walk)
+double CPSSlater::Overlap(const HFWalker &walk) const
 {
   return cps.Overlap(walk.d) * slater.Overlap(walk);
 }
 
-double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool doparity) {
+double CPSSlater::getOverlapFactor(const HFWalker& walk, Determinant& dcopy, bool doparity) const {
   double ovlpdetcopy;
   int excitationDistance = dcopy.ExcitationDistance(walk.d);
   
@@ -86,17 +86,17 @@ double CPSSlater::getOverlapFactor(HFWalker& walk, Determinant& dcopy, bool dopa
   return ovlpdetcopy;
 }
 
-double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk, bool doparity) {
+double CPSSlater::getOverlapFactor(int i, int a, const HFWalker& walk, bool doparity) const {
   Determinant dcopy = walk.d;
   dcopy.setocc(i, false);
   dcopy.setocc(a, true);
   return cps.OverlapRatio(i/2, a/2, dcopy, walk.d) * slater.OverlapRatio(i, a, walk, doparity); 
 }
 
-double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk,
+double CPSSlater::getOverlapFactor(int i, int a, const HFWalker& walk,
                                    BigDeterminant& dbig,
                                    BigDeterminant& dbigcopy,
-                                   bool doparity) {
+                                   bool doparity) const {
 
   dbigcopy[i] = 0; dbigcopy[a] = 1;
   double ovlpRatio = slater.OverlapRatio(i, a, walk, doparity);
@@ -106,7 +106,7 @@ double CPSSlater::getOverlapFactor(int i, int a, HFWalker& walk,
   return ovlpRatio;
 }
 
-double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, bool doparity) {
+double CPSSlater::getOverlapFactor(int I, int J, int A, int B, const HFWalker& walk, bool doparity) const {
   //singleexcitation
   if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
   
@@ -119,10 +119,10 @@ double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk, b
       * slater.OverlapRatio(I, J, A, B, walk, doparity);
 }
 
-double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk,
+double CPSSlater::getOverlapFactor(int I, int J, int A, int B, const HFWalker& walk,
                                    BigDeterminant& dbig,
                                    BigDeterminant& dbigcopy,
-                                   bool doparity) {
+                                   bool doparity) const {
   //singleexcitation
   if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, dbig, dbigcopy, doparity);
   
@@ -134,9 +134,9 @@ double CPSSlater::getOverlapFactor(int I, int J, int A, int B, HFWalker& walk,
   return ovlpRatio;
 }
 
-void CPSSlater::OverlapWithGradient(HFWalker &walk,
+void CPSSlater::OverlapWithGradient(const HFWalker &walk,
                                     double &ovlp,
-                                    VectorXd &grad)
+                                    VectorXd &grad) const
 {
   double factor = 1.0;
   cps.OverlapWithGradient(walk.d, grad, factor);
@@ -146,20 +146,20 @@ void CPSSlater::OverlapWithGradient(HFWalker &walk,
 }
 
 
-void CPSSlater::printVariables()
+void CPSSlater::printVariables() const
 {
   cps.printVariables();
   slater.printVariables();
 }
 
-void CPSSlater::updateVariables(Eigen::VectorXd &v)
+void CPSSlater::updateVariables(Eigen::VectorXd &v) 
 {
   cps.updateVariables(v);
   Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows()-cps.getNumVariables());
   slater.updateVariables(vtail);
 }
 
-void CPSSlater::getVariables(Eigen::VectorXd &v)
+void CPSSlater::getVariables(Eigen::VectorXd &v) const
 {
   if (v.rows() != getNumVariables())
     v = VectorXd::Zero(getNumVariables());
@@ -170,13 +170,13 @@ void CPSSlater::getVariables(Eigen::VectorXd &v)
 }
 
 
-long CPSSlater::getNumJastrowVariables()
+long CPSSlater::getNumJastrowVariables() const
 {
   return cps.getNumVariables();
 }
 //factor = <psi|w> * prefactor;
 
-long CPSSlater::getNumVariables()
+long CPSSlater::getNumVariables() const
 {
   int norbs = Determinant::norbs;
   long numVars = 0;
@@ -186,7 +186,7 @@ long CPSSlater::getNumVariables()
   return numVars;
 }
 
-void CPSSlater::writeWave()
+void CPSSlater::writeWave() const
 {
   if (commrank == 0)
   {
@@ -221,9 +221,9 @@ void CPSSlater::readWave()
 
 //<psi_t| (H-E0) |D>
 
-void CPSSlater::HamAndOvlp(HFWalker &walk,
+void CPSSlater::HamAndOvlp(const HFWalker &walk,
                            double &ovlp, double &ham, 
-			   workingArray& work, bool fillExcitations)
+			   workingArray& work, bool fillExcitations) const
 {
   work.setCounterToZero();
   int norbs = Determinant::norbs;
@@ -280,8 +280,8 @@ void CPSSlater::HamAndOvlp(HFWalker &walk,
 
 
 
-void CPSSlater::derivativeOfLocalEnergy (HFWalker &walk,
-                                          double &factor, VectorXd& hamRatio)
+void CPSSlater::derivativeOfLocalEnergy (const HFWalker &walk,
+                                         double &factor, VectorXd& hamRatio) const
 {
   //NEEDS TO BE IMPLEMENTED
 }

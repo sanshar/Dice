@@ -141,8 +141,8 @@ class Determinant {
 class BigDeterminant {  
  public:
   vector<char> occupation;
-  BigDeterminant(Determinant& d);
-  BigDeterminant(BigDeterminant& d) : occupation(d.occupation){};
+  BigDeterminant(const Determinant& d);
+  BigDeterminant(const BigDeterminant& d) : occupation(d.occupation){};
   const char& operator[] (int j) const ;
   char& operator[] (int j) ;
 };
