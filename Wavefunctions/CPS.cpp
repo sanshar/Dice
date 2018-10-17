@@ -227,10 +227,12 @@ void CPS::OverlapWithGradient(const Determinant& d,
                               VectorXd& grad,
                               const double& ovlp) const {
   
-  long startIndex = 0;
-  for (const auto& c : cpsArray) {
-    c.OverlapWithGradient(d, grad, ovlp, startIndex);
-    startIndex += c.Variables.size();
+  if (schd.optimizeCps) {
+    long startIndex = 0;
+    for (const auto& c : cpsArray) {
+      c.OverlapWithGradient(d, grad, ovlp, startIndex);
+      startIndex += c.Variables.size();
+    }
   }
 }
 

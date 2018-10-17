@@ -78,15 +78,10 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      //cout << walk.d << endl << endl;
-      //cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
-      //cout << "betaaTable\n" << walk.helper.rTable[0][1] << endl << endl;
-      //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
-      //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
-      //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
+      //cout << walk << endl;
 
       w.HamAndOvlp(walk, ovlp, ham, work, false);
-      //cout << ham << "  " << ovlp << endl << endl;
+      //cout <<"ham  " << ham << " ovlp  " << ovlp << endl << endl;
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
       //cout << "grad\n" << localdiagonalGrad << endl << endl;
@@ -107,6 +102,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
 
   E0 = Energy / Overlap;
   grad = (grad - E0 * diagonalGrad) / Overlap;
+  //cout << "totalGrad\n" << grad << endl << endl;
 }
 
 //<psi_t| (H-E0) |psi>
@@ -174,6 +170,45 @@ template<typename Wfn, typename Walker> void getGradientHessianDeterministic(Wfn
   Smatrix(0,0) = 1.0;
   Hessian(0,0) = E0;
 
+}
+
+template<typename Wfn, typename Walker> 
+void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::VectorXd &lanczosCoeffs)
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  vector<Determinant> allDets;
+  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+
+  workingArray work, moreWork;
+
+  double overlapTot = 0.; 
+  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(4);
+  //w.printVariables();
+
+  for (int i = commrank; i < allDets.size(); i += commsize)
+  {
+    w.initWalker(walk, allDets[i]);
+    Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(4);
+    double overlapSample = 0.;
+    //cout << walk;
+    w.HamAndOvlpLanczos(walk, coeffsSample, overlapSample, work, moreWork, alpha);
+    //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
+    //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
+    
+    //grad += localgrad * ovlp * ovlp;
+    overlapTot += overlapSample * overlapSample;
+    coeffs += (overlapSample * overlapSample) * coeffsSample;
+  }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  lanczosCoeffs = coeffs / overlapTot;
 }
 
 template<typename Wfn, typename Walker> void getGradientMetricDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad, MatrixXd &Smatrix)
@@ -300,7 +335,6 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
     iter++;
 
     walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
-
     w.HamAndOvlp(walk, ovlp, ham, work);
   }
 
@@ -320,6 +354,109 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 #endif
 }
 
+template<typename Wfn, typename Walker> 
+void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::VectorXd &lanczosCoeffs, Eigen::VectorXd &stddev,
+                                       Eigen::VectorXd &rk, int niter, double targetError)
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
+
+  int iter = 0;
+  Eigen::VectorXd S1 = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd coeffs = Eigen::VectorXd::Zero(4);
+  Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(4);
+  double ovlpSample = 0.;
+
+  double bestOvlp = 0.;
+  Determinant bestDet = walk.getDet();
+
+  workingArray work, moreWork;
+  w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+
+  int nstore = 1000000 / commsize;
+  int gradIter = min(nstore, niter);
+
+  std::vector<std::vector<double>> gradError;
+  gradError.resize(4);
+  //std::vector<double> gradError(gradIter * commsize, 0.);
+  
+  for (int i = 0; i < 4; i++)
+    gradError[i] = std::vector<double>(gradIter * commsize, 0.);
+  double cumdeltaT = 0.;
+  
+  int transIter = 0, nTransIter = 1000;
+
+  while (transIter < nTransIter) {
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < work.nExcitations; i++) {
+      cumovlpRatio += abs(work.ovlpRatio[i]);
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
+
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                   nextDetRandom) - work.ovlpRatio.begin();
+
+    transIter++;
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+  }
+
+  while (iter < niter) {
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < work.nExcitations; i++) {
+      cumovlpRatio += abs(work.ovlpRatio[i]);
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
+
+    //double deltaT = -log(random())/(cumovlpRatio);
+    double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                   nextDetRandom) - work.ovlpRatio.begin();
+
+    cumdeltaT += deltaT;
+    double ratio = deltaT / cumdeltaT;
+    Eigen::VectorXd coeffsOld = coeffs;
+    coeffs += ratio * (coeffsSample - coeffs);
+    S1 += (coeffsSample - coeffsOld).cwiseProduct(coeffsSample - coeffs);
+
+    if (iter < gradIter) {
+      for (int i = 0; i < 4; i++) 
+        gradError[i][iter + commrank * gradIter] = coeffsSample[i];
+    }
+
+    iter++;
+
+    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+  }
+  
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0][0]), gradError[0].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[1][0]), gradError[1].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[2][0]), gradError[2].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[3][0]), gradError[3].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  for (int i = 0; i < 4; i++)
+    rk[i] = calcTcorr(gradError[i]);
+
+  for (int i = 0; i < 4; i++) { 
+    stddev[i] = sqrt(S1[i] * rk[i] / (niter - 1) / niter / commsize);
+  }
+
+  lanczosCoeffs = coeffs / commsize;
+
+}
 
 
 template<typename Wfn, typename Walker>
@@ -360,6 +497,7 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
   //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
   //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
   //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
+  //cout << walk << endl << endl;
   w.HamAndOvlp(walk, ovlp, ham, work);
   //cout << ham << "  " << ovlp << endl << endl;
   w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
@@ -739,6 +877,7 @@ class getGradientWrapper
     {
       w.updateVariables(vars);
       w.initWalker(walk);
+      //w.printVariables();
       stddev = 0.0;
       rt = 1.0;
       getGradientDeterministic(w, walk, E0, grad);

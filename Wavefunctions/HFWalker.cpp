@@ -168,7 +168,7 @@ double HFWalker::getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, co
   for (int j = 0; j < w.getDeterminants().size(); j++)
   {
     double factor;
-    if (sz1 == sz2)
+    if (sz1 == sz2 || helper.hftype == 2)
       factor = helper.rTable[j][sz1](tableIndexa, tableIndexi) * helper.rTable[j][sz1](tableIndexb, tableIndexj) 
           - helper.rTable[j][sz1](tableIndexb, tableIndexi) *helper.rTable[j][sz1](tableIndexa, tableIndexj);
     else
@@ -179,10 +179,10 @@ double HFWalker::getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, co
   return detFactorNum / detFactorDen;
 }
 
-void HFWalker::update(int i, int a, bool sz, const Slater &w)
+void HFWalker::update(int i, int a, bool sz, const Slater &w, bool doparity)
 {
   double p = 1.0;
-  p *= d.parity(a, i, sz);
+  if (doparity) p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
   if (helper.hftype == Generalized) {
@@ -197,14 +197,14 @@ void HFWalker::update(int i, int a, bool sz, const Slater &w)
   }
 }
 
-void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w)
+void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w, bool doparity)
 {
   double p = 1.0;
   Determinant dcopy = d;
-  p *= d.parity(a, i, sz);
+  if (doparity) p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
-  p *= d.parity(b, j, sz);
+  if (doparity) p *= d.parity(b, j, sz);
   d.setocc(j, sz, false);
   d.setocc(b, sz, true);
   if (helper.hftype == Generalized) {
@@ -218,31 +218,31 @@ void HFWalker::update(int i, int j, int a, int b, bool sz, const Slater &w)
   }
 }
 
-void HFWalker::updateWalker(const Slater& w, int ex1, int ex2)
+void HFWalker::updateWalker(const Slater& w, int ex1, int ex2, bool doparity)
 {
   int norbs = Determinant::norbs;
   int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
   int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
   if (I % 2 == J % 2 && ex2 != 0) {
     if (I % 2 == 1) {
-      update(I / 2, J / 2, A / 2, B / 2, 1, w);
+      update(I / 2, J / 2, A / 2, B / 2, 1, w, doparity);
     }
     else {
-      update(I / 2, J / 2, A / 2, B / 2, 0, w);
+      update(I / 2, J / 2, A / 2, B / 2, 0, w, doparity);
     }
   }
   else {
     if (I % 2 == 0)
-      update(I / 2, A / 2, 0, w);
+      update(I / 2, A / 2, 0, w, doparity);
     else
-      update(I / 2, A / 2, 1, w);
+      update(I / 2, A / 2, 1, w, doparity);
 
     if (ex2 != 0) {
       if (J % 2 == 1) {
-        update(J / 2, B / 2, 1, w);
+        update(J / 2, B / 2, 1, w, doparity);
       }
       else {
-        update(J / 2, B / 2, 0, w);
+        update(J / 2, B / 2, 0, w, doparity);
       }
     }
   }
@@ -351,6 +351,15 @@ void HFWalker::OverlapWithGradientGhf(const Slater &w, Eigen::VectorXd &grad, do
       K++;
     }
   }
+}
+
+ostream& operator<<(ostream& os, const HFWalker& walk) {
+  cout << walk.d << endl << endl;
+  cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
+  cout << "betaTable\n" << walk.helper.rTable[0][1] << endl << endl;
+  cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
+  cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
+  cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
 }
 
 /*bool HFWalker::makeMove(CPSSlater &w)

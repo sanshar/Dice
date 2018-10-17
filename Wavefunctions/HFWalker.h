@@ -16,8 +16,8 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef Walker_HEADER_H
-#define Walker_HEADER_H
+#ifndef HFWalker_HEADER_H
+#define HFWalker_HEADER_H
 
 #include "Determinants.h"
 #include "HFWalkerHelper.h"
@@ -52,10 +52,6 @@ struct HFWalker
     
   HFWalker(const Slater &w, const Determinant &pd);
 
-  //ex1 and ex2 are spin related indices
-  void updateWalker(const Slater& w, int ex1, int ex2);
-  void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
-
 
   /**
    * reads dets from 'BesetDeterminant.txt'
@@ -87,11 +83,16 @@ struct HFWalker
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Slater &w) const;
 
   //updates det and helpers afterspatial orb excitations i->a, j->b with spin sz
-  void update(int i, int a, bool sz, const Slater &w);
-  void update(int i, int j, int a, int b, bool sz, const Slater &w);
+  void update(int i, int a, bool sz, const Slater &w, bool doparity = true);
+  void update(int i, int j, int a, int b, bool sz, const Slater &w, bool doparity = true);
  
+  //ex1 and ex2 are spin related indices
+  void updateWalker(const Slater& w, int ex1, int ex2, bool doparity = true);
+  void exciteWalker(const Slater& w, int excite1, int excite2, int norbs);
+
   bool operator<(const HFWalker &w) const { return d < w.d; }
   bool operator==(const HFWalker &w) const { return d == w.d; }
+  friend ostream& operator<<(ostream& os, const HFWalker& walk);
 
   //calc ovelap wih gradient wrt orbitals in slater
   void OverlapWithGradient(const Slater &w, Eigen::VectorXd &grad, double detovlp) const;

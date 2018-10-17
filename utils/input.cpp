@@ -74,6 +74,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.doHessian = false;
       schd.hf = "rhf";
       schd.optimizeOrbs = true;
+      schd.optimizeCps = true;
       schd.Hamiltonian = ABINITIO;
       schd.nwalk = 100;
       schd.tau = 0.001;
@@ -131,6 +132,7 @@ void readInput(string input, schedule& schd, bool print) {
 
 	  else if (boost::iequals(ArgName, "sr"))
 	    schd.method = sr;
+	  
 
 	  else if (boost::iequals(ArgName, "amsgrad_sgd"))
           {
@@ -138,7 +140,10 @@ void readInput(string input, schedule& schd, bool print) {
             schd._sgdIter = atoi(tok[1].c_str());
           }
           
-	  else if (boost::iequals(ArgName, "cicpsslater"))
+      else if (boost::iequals(ArgName, "agp"))
+	    schd.wavefunctionType = "CPSAGP";
+	  
+      else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
 	  
       else if (boost::iequals(ArgName, "lanczos"))
@@ -216,6 +221,11 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "dontoptimizeorbs"))
 	    {
 	      schd.optimizeOrbs = false;
+	    }
+	  
+      else if (boost::iequals(ArgName, "dontoptimizecps"))
+	    {
+	      schd.optimizeCps = false;
 	    }
 
 	  else if (boost::iequals(ArgName, "hubbard"))
@@ -324,6 +334,16 @@ void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, std::string hf)
 	    dump >> HfmatrixB(i, j);
 	}
     }
+}
+
+void readPairMat(MatrixXd& pairMat) 
+{
+  ifstream dump("pairMat.txt");
+  for (int i = 0; i < pairMat.rows(); i++) {
+    for (int j = 0; j < pairMat.rows(); j++){
+      dump >> pairMat(i, j);
+    }
+  }
 }
 
 void readDeterminants(std::string input, vector<Determinant> &determinants,

@@ -16,13 +16,13 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef CPSSlater_HEADER_H
-#define CPSSlater_HEADER_H
+#ifndef CPSAGP_HEADER_H
+#define CPSAGP_HEADER_H
 #include <vector>
 #include <set>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include "Slater.h"
+#include "AGP.h"
 #include "CPS.h"
 
 class oneInt;
@@ -30,58 +30,58 @@ class twoInt;
 class twoIntHeatBathSHM;
 class workingArray;
 class Determinant;
-class HFWalker;
+class AGPWalker;
 
 
 /**
 * This is the wavefunction, it is a product of the CPS and a linear combination of
-* slater determinants
+* agp determinants
 */
-class CPSSlater {
+class CPSAGP {
  private:
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     ar & cps
-       & slater;
+       & agp;
   }
 
  public:
    CPS cps; //The jastrow factors
-   Slater slater; //reference
+   AGP agp; //reference
 
-   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d) const ;
-   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d) const;
-   Slater& getRef() { return slater; }
+   double getJastrowFactor(int i, int a, Determinant &dcopy, Determinant &d);
+   double getJastrowFactor(int i, int j, int a, int b, Determinant &dcopy, Determinant &d);
+   AGP& getRef() { return agp; }
 
-   CPSSlater();
-   void initWalker(HFWalker &walk) const ;
-   void initWalker(HFWalker &walk, Determinant &d) const;
+   CPSAGP();
+   void initWalker(AGPWalker &walk);
+   void initWalker(AGPWalker &walk, Determinant &d);
 
    /**
    *This calculates the overlap of the walker with the
    *jastrow and the ciexpansion 
    */
-   double Overlap(const HFWalker &walk) const ;
+   double Overlap(AGPWalker &walk);
 
 
-  double getOverlapFactor(const HFWalker& w, Determinant& dcopy, bool doparity=false) const ;
-  double getOverlapFactor(int i, int a, const HFWalker& w, bool doparity) const ;
-  double getOverlapFactor(int i, int j, int a, int b, const HFWalker& w, bool doparity) const ;
+  double getOverlapFactor(AGPWalker& w, Determinant& dcopy, bool doparity=false);
+  double getOverlapFactor(int i, int a, AGPWalker& w, bool doparity);
+  double getOverlapFactor(int i, int j, int a, int b, AGPWalker& w, bool doparity);
 
-  double getOverlapFactor(int i, int a, const HFWalker& w, BigDeterminant& d,
-                          BigDeterminant& dcopy, bool doparity) const ;
-  double getOverlapFactor(int i, int j, int a, int b, const HFWalker& w,
+  double getOverlapFactor(int i, int a, AGPWalker& w, BigDeterminant& d,
+                          BigDeterminant& dcopy, bool doparity);
+  double getOverlapFactor(int i, int j, int a, int b, AGPWalker& w,
                           BigDeterminant& d, BigDeterminant& dcopy,
-                          bool doparity) const ;
+                          bool doparity);
 
 
    /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)
    */
-   void OverlapWithGradient(const HFWalker &,
+   void OverlapWithGradient(AGPWalker &,
                             double &factor,
-                            Eigen::VectorXd &grad) const ;
+                            Eigen::VectorXd &grad);
 
    /**
  * Calculates the overlap, hamiltonian,
@@ -91,30 +91,21 @@ class CPSSlater {
  * it also is able to calculate the overlap_d'/overlap_d, the ratio of
  * overlaps of all d' connected to the determinant d (walk.d)
  */
-   void HamAndOvlp(const HFWalker &walk,
+   void HamAndOvlp(AGPWalker &walk,
                    double &ovlp, double &ham, 
-		   workingArray& work, bool fillExcitations = true) const ;
-
+		   workingArray& work, bool fillExcitations = true);
 
   //d (<n|H|Psi>/<n|Psi>)/dc_i
-   void derivativeOfLocalEnergy(const HFWalker &,
-                                double &factor,
-                                Eigen::VectorXd &hamRatio) const ;
-   /**
-   * used in Lanczos calculation
-   * Calculates overlaps (ovlp), modified local energies for the lanczos matrix (ham)
-   */
-   void HamAndOvlpLanczos(HFWalker &walk,
-                   Eigen::VectorXd &lanczosCoeffsSample, double &ovlpSample, 
-		   workingArray& work, workingArray& moreWork, double &alpha);
-  
+   void derivativeOfLocalEnergy(AGPWalker &,
+                              double &factor,
+                              Eigen::VectorXd &hamRatio);
 
-   void getVariables(Eigen::VectorXd &v) const ;
-   long getNumVariables() const ;
-   long getNumJastrowVariables() const ;
+   void getVariables(Eigen::VectorXd &v);
+   long getNumVariables();
+   long getNumJastrowVariables();
    void updateVariables(Eigen::VectorXd &dv);
-   void printVariables() const ;
-   void writeWave() const ;
+   void printVariables();
+   void writeWave();
    void readWave();
    
    /**

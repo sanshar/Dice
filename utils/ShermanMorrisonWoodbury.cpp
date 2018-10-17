@@ -17,9 +17,9 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
+#include <numeric>
 #include "ShermanMorrisonWoodbury.h"
-
-using namespace Eigen;
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
@@ -30,11 +30,11 @@ using namespace Eigen;
  * incoming and outgoing matrices. ColIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, const double &detValueIn,
-                                                                  MatrixXd &inverseOut, double &detValueOut,
-                                                                  vector<int>& cre, vector<int>& des,
+void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
+                                                                  Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                                  std::vector<int>& cre, std::vector<int>& des,
                                                                   const Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                                  vector<int> &ColIn, const MatrixXd &Hforbs)
+                                                                  std::vector<int> &ColIn, const Eigen::MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
@@ -50,16 +50,16 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
     return;
   }
 
-  Eigen::Map<VectorXi> ColCre(&cre[0], ncre);
-  Eigen::Map<VectorXi> ColDes(&des[0], ndes);
+  Eigen::Map<Eigen::VectorXi> ColCre(&cre[0], ncre);
+  Eigen::Map<Eigen::VectorXi> ColDes(&des[0], ndes);
 
-  MatrixXd newCol, oldCol;
+  Eigen::MatrixXd newCol, oldCol;
   igl::slice(Hforbs, RowVec, ColCre, newCol);
   igl::slice(Hforbs, RowVec, ColDes, oldCol);
   newCol = newCol - oldCol;
 
-  MatrixXd vT = MatrixXd::Zero(ncre, ColIn.size());
-  vector<int> ColOutWrong = ColIn;
+  Eigen::MatrixXd vT = Eigen::MatrixXd::Zero(ncre, ColIn.size());
+  std::vector<int> ColOutWrong = ColIn;
   for (int i = 0; i < ndes; i++)
   {
     int index = std::lower_bound(ColIn.begin(), ColIn.end(), des[i]) - ColIn.begin();
@@ -68,13 +68,13 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
   }
 
   //igl::slice(inverseIn, ColCre, 1, vTinverseIn);
-  MatrixXd vTinverseIn = vT * inverseIn;
+  Eigen::MatrixXd vTinverseIn = vT * inverseIn;
 
-  MatrixXd Id = MatrixXd::Identity(ncre, ncre);
-  MatrixXd detFactor = Id + vTinverseIn * newCol;
-  MatrixXd detFactorInv, inverseOutWrong;
+  Eigen::MatrixXd Id = Eigen::MatrixXd::Identity(ncre, ncre);
+  Eigen::MatrixXd detFactor = Id + vTinverseIn * newCol;
+  Eigen::MatrixXd detFactorInv, inverseOutWrong;
 
-  Eigen::FullPivLU<MatrixXd> lub(detFactor);
+  Eigen::FullPivLU<Eigen::MatrixXd> lub(detFactor);
   if (lub.isInvertible())
   {
     detFactorInv = lub.inverse();
@@ -83,10 +83,10 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
   }
   else
   {
-    MatrixXd originalOrbs;
-    Eigen::Map<VectorXi> Col(&ColIn[0], ColIn.size());
+    Eigen::MatrixXd originalOrbs;
+    Eigen::Map<Eigen::VectorXi> Col(&ColIn[0], ColIn.size());
     igl::slice(Hforbs, RowVec, Col, originalOrbs);
-    MatrixXd newOrbs = originalOrbs + newCol * vT;
+    Eigen::MatrixXd newOrbs = originalOrbs + newCol * vT;
     inverseOutWrong = newOrbs.inverse();
     detValueOut = newOrbs.determinant();
   }
@@ -95,7 +95,7 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
   std::vector<int> order(ColOutWrong.size()), ccopy = ColOutWrong;
   std::iota(order.begin(), order.end(), 0);
   std::sort(order.begin(), order.end(), [&ccopy](size_t i1, size_t i2) { return ccopy[i1] < ccopy[i2]; });
-  Eigen::Map<VectorXi> orderVec(&order[0], order.size());
+  Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
   igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
 }
 
@@ -108,11 +108,11 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
  * incoming and outgoing matrices. RowIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const double &detValueIn,
-                                                               MatrixXd &inverseOut, double &detValueOut,
-                                                               vector<int>& cre, vector<int>& des,
+void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
+                                                               Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                               std::vector<int>& cre, std::vector<int>& des,
                                                                const Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                               vector<int> &RowIn, const MatrixXd &Hforbs)
+                                                               std::vector<int> &RowIn, const Eigen::MatrixXd &Hforbs)
 {
   int ncre = 0, ndes = 0;
   for (int i = 0; i < cre.size(); i++)
@@ -128,16 +128,16 @@ void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const d
     return;
   }
 
-  Eigen::Map<VectorXi> RowCre(&cre[0], ncre);
-  Eigen::Map<VectorXi> RowDes(&des[0], ndes);
+  Eigen::Map<Eigen::VectorXi> RowCre(&cre[0], ncre);
+  Eigen::Map<Eigen::VectorXi> RowDes(&des[0], ndes);
 
-  MatrixXd newRow, oldRow;
+  Eigen::MatrixXd newRow, oldRow;
   igl::slice(Hforbs, RowCre, ColVec, newRow);
   igl::slice(Hforbs, RowDes, ColVec, oldRow);
   newRow = newRow - oldRow;
 
-  MatrixXd U = MatrixXd::Zero(ColVec.rows(), ncre);
-  vector<int> RowOutWrong = RowIn;
+  Eigen::MatrixXd U = Eigen::MatrixXd::Zero(ColVec.rows(), ncre);
+  std::vector<int> RowOutWrong = RowIn;
   for (int i = 0; i < ndes; i++)
   {
     int index = std::lower_bound(RowIn.begin(), RowIn.end(), des[i]) - RowIn.begin();
@@ -145,12 +145,12 @@ void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const d
     RowOutWrong[index] = cre[i];
   }
   //igl::slice(inverseIn, VectorXi::LinSpaced(RowIn.size(), 0, RowIn.size() + 1), RowDes, inverseInU);
-  MatrixXd inverseInU = inverseIn * U;
-  MatrixXd Id = MatrixXd::Identity(ncre, ncre);
-  MatrixXd detFactor = Id + newRow * inverseInU;
-  MatrixXd detFactorInv, inverseOutWrong;
+  Eigen::MatrixXd inverseInU = inverseIn * U;
+  Eigen::MatrixXd Id = Eigen::MatrixXd::Identity(ncre, ncre);
+  Eigen::MatrixXd detFactor = Id + newRow * inverseInU;
+  Eigen::MatrixXd detFactorInv, inverseOutWrong;
 
-  Eigen::FullPivLU<MatrixXd> lub(detFactor);
+  Eigen::FullPivLU<Eigen::MatrixXd> lub(detFactor);
   if (lub.isInvertible())
   {
     detFactorInv = lub.inverse();
@@ -159,10 +159,10 @@ void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const d
   }
   else
   {
-    MatrixXd originalOrbs;
-    Eigen::Map<VectorXi> Row(&RowIn[0], RowIn.size());
+    Eigen::MatrixXd originalOrbs;
+    Eigen::Map<Eigen::VectorXi> Row(&RowIn[0], RowIn.size());
     igl::slice(Hforbs, Row, ColVec, originalOrbs);
-    MatrixXd newOrbs = originalOrbs + U * newRow;
+    Eigen::MatrixXd newOrbs = originalOrbs + U * newRow;
     inverseOutWrong = newOrbs.inverse();
     detValueOut = newOrbs.determinant();
   }
@@ -171,6 +171,7 @@ void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const d
   std::vector<int> order(RowOutWrong.size()), rcopy = RowOutWrong;
   std::iota(order.begin(), order.end(), 0);
   std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
-  Eigen::Map<VectorXi> orderVec(&order[0], order.size());
-  igl::slice(inverseOutWrong, VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows()), orderVec, inverseOut);
+  Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
+  igl::slice(inverseOutWrong, Eigen::VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows() - 1), orderVec, inverseOut);
 }
+

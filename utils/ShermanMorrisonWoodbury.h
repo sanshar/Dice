@@ -16,18 +16,13 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef smw_HEADER_H
-#define smw_HEADER_H
+#ifndef SMW_HEADER_H
+#define SMW_HEADER_H
 
-#include <algorithm>
 #include <Eigen/Dense>
 #include "igl/slice.h"
 #include "igl/slice_into.h"
 #include <vector>
-#include <numeric>
-
-using namespace Eigen;
-using namespace std;
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
@@ -38,11 +33,11 @@ using namespace std;
  * incoming and outgoing matrices. ColIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, const double &detValueIn,
-                                                 MatrixXd &inverseOut, double &detValueOut,
-                                                 vector<int>& cre, vector<int>& des,
-                                                 const Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                 vector<int> &ColIn, const MatrixXd &Hforbs);
+void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
+                                                                  Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                                  std::vector<int>& cre, std::vector<int>& des,
+                                                                  const Eigen::Map<Eigen::VectorXi> &RowVec,
+                                                                  std::vector<int> &ColIn, const Eigen::MatrixXd &Hforbs);
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
@@ -53,10 +48,10 @@ void calculateInverseDeterminantWithColumnChange(const MatrixXd &inverseIn, cons
  * incoming and outgoing matrices. RowIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithRowChange(const MatrixXd &inverseIn, const double &detValueIn,
-                                              MatrixXd &inverseOut, double &detValueOut,
-                                              vector<int>& cre, vector<int>& des,
-                                              const Eigen::Map<Eigen::VectorXi> &ColVec,
-                                              vector<int> &RowIn, const MatrixXd &Hforbs);
+void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
+                                                               Eigen::MatrixXd &inverseOut, double &detValueOut,
+                                                               std::vector<int>& cre, std::vector<int>& des,
+                                                               const Eigen::Map<Eigen::VectorXi> &ColVec,
+                                                               std::vector<int> &RowIn, const Eigen::MatrixXd &Hforbs);
 
 #endif
