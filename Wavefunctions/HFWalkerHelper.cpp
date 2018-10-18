@@ -118,21 +118,14 @@ void HFWalkerHelper::concatenateGhf(const vector<int>& v1, const vector<int>& v2
 
 void HFWalkerHelper::makeTableGhf(const Slater &w, const Eigen::Map<VectorXi>& colTheta)
 {
-  int norbs = Determinant::norbs;
-  
-  rTable[0][0] = MatrixXd::Zero(openOrbs[0].size(), closedOrbs[0].size()); 
-  MatrixXd ghfOpenAlpha; 
-  Eigen::Map<VectorXi> rowAlphaOpen(&openOrbs[0][0], openOrbs[0].size());
-  igl::slice(w.getHforbs(), rowAlphaOpen, colTheta, ghfOpenAlpha);
-  rTable[0][0] = ghfOpenAlpha * thetaInv[0].block(0, 0, ghfOpenAlpha.cols(), closedOrbs[0].size());
-
-  rTable[0][1] = MatrixXd::Zero(openOrbs[1].size(), closedOrbs[1].size()); 
-  MatrixXd ghfOpenBeta;
-  Eigen::VectorXi rowBetaOpen = VectorXi::Zero(openOrbs[1].size());
-  for (int j = 0; j < openOrbs[1].size(); j++)
-    rowBetaOpen[j] = openOrbs[1][j] + norbs;
-  igl::slice(w.getHforbs(), rowBetaOpen, colTheta, ghfOpenBeta);
-  rTable[0][1] = ghfOpenBeta * thetaInv[0].block(0, closedOrbs[0].size(), ghfOpenBeta.cols(), closedOrbs[1].size());
+  rTable[0][0] = MatrixXd::Zero(openOrbs[0].size() + openOrbs[1].size(), closedOrbs[0].size() + closedOrbs[1].size()); 
+  MatrixXd ghfOpen;
+  vector<int> rowVec;
+  concatenateGhf(openOrbs[0], openOrbs[1], rowVec);
+  Eigen::Map<VectorXi> rowOpen(&rowVec[0], rowVec.size());
+  igl::slice(w.getHforbs(), rowOpen, colTheta, ghfOpen);
+  rTable[0][0] = ghfOpen * thetaInv[0];
+  rTable[0][1] = rTable[0][0];
 }
 
 void HFWalkerHelper::initInvDetsTablesGhf(const Slater &w)
@@ -196,6 +189,8 @@ void HFWalkerHelper::getRelIndices(int i, int &relI, int a, int &relA, bool sz) 
 {
   //relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
   //relA = std::lower_bound(openOrbs[sz].begin(), openOrbs[sz].end(), a) - openOrbs[sz].begin();
-  relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin();
-  relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin();
+  int factor = 0;
+  if (hftype == 2 && sz != 0) factor = 1;
+  relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin() + factor * closedOrbs[0].size();
+  relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin() + factor * openOrbs[0].size();
 }
