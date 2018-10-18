@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     if (schd.method == amsgrad) {
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      if (commrank == 0) wave.printVariables();
+      //if (commrank == 0) wave.printVariables();
     }
     else if (schd.method == sgd) {
       SGD optimizer(schd.stepsize, schd.maxIter);
