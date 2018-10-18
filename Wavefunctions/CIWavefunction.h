@@ -283,6 +283,10 @@ template <typename Wfn, typename Walker, typename OpType>
 	load >> *this;
 	infs.close();
       }
+#ifndef SERIAL
+    boost::mpi::communicator world;
+    boost::mpi::broadcast(world, *this, 0);
+#endif
   }
 
 };
