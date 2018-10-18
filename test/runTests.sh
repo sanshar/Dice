@@ -37,6 +37,16 @@ then
     ../clean.sh
 fi
 
+cd $here/hubbard_1x10agp
+../clean.sh
+printf "...running hubbard_1x10 agp\n"
+$MPICOMMAND $VMCPATH > vmc.out
+python ../testEnergy.py 'vmc' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
 cd $here/hubbard_1x14
 ../clean.sh
 printf "...running hubbard_1x14\n"
@@ -106,6 +116,16 @@ fi
 cd $here/h20/
 ../clean.sh
 printf "...running h20\n"
+$MPICOMMAND $VMCPATH > vmc.out
+python ../testEnergy.py 'vmc' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
+cd $here/h20ghf/
+../clean.sh
+printf "...running h20 ghf\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python ../testEnergy.py 'vmc' $tol
 if [ $clean == 1 ]

@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     if (schd.method == amsgrad) {
       AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
       optimizer.optimize(vars, getStochasticGradient, schd.restart);
-      if (commrank == 0) wave.printVariables();
+      //if (commrank == 0) wave.printVariables();
     }
     else if (schd.method == sgd) {
       SGD optimizer(schd.stepsize, schd.maxIter);
@@ -125,6 +125,17 @@ int main(int argc, char *argv[])
     if (schd.deterministic) getLanczosCoeffsDeterministic(wave, walk, alpha, lanczosCoeffs);
     else getLanczosCoeffsContinuousTime(wave, walk, alpha, lanczosCoeffs, stddev, rk, schd.stochasticIter, 1.e-5);
     //getLanczosMatrixContinuousTime(wave, walk, lanczosMat, stddev, rk, schd.stochasticIter, 1.e-5);
+    double a = lanczosCoeffs[2]/lanczosCoeffs[3];
+    double b = lanczosCoeffs[1]/lanczosCoeffs[3];
+    double c = lanczosCoeffs[0]/lanczosCoeffs[3];
+    double delta = pow(a, 2) + 4 * pow(b, 3) - 6 * a * b * c - 3 * pow(b * c, 2) + 4 * a * pow(c, 3);
+    double numP = a - b * c + pow(delta, 0.5);
+    double numM = a - b * c - pow(delta, 0.5);
+    double denom = 2 * pow(b, 2) - 2 * a * c;
+    double alphaP = numP/denom;
+    double alphaM = numM/denom;
+    double eP = (a * pow(alphaP, 2) + 2 * b * alphaP + c) / (b * pow(alphaP, 2) + 2 * c * alphaP + 1);
+    double eM = (a * pow(alphaM, 2) + 2 * b * alphaM + c) / (b * pow(alphaM, 2) + 2 * c * alphaM + 1);
     if (commrank == 0) {
       cout << "lanczosCoeffs\n";
       cout << lanczosCoeffs << endl;
@@ -132,9 +143,12 @@ int main(int argc, char *argv[])
       cout << stddev << endl;
       cout << "rk\n";
       cout << rk << endl;
+      cout << "alpha(+/-)   " << alphaP << "   " << alphaM << endl;
+      cout << "energy(+/-)   " << eP << "   " << eM << endl;
       //cout << "rk\n" << rk << endl << endl;
       //cout << "stddev\n" << stddev << endl << endl;
     }
+
     //vector<double> alpha{0., 0.1, 0.2, -0.1, -0.2}; 
     //vector<double> Ealpha{0., 0., 0., 0., 0.}; 
     //double stddev, rk;
