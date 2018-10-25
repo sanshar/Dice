@@ -28,6 +28,7 @@
 #include <math.h>
 #include "global.h"
 #include "input.h"
+#include "statistics.h"
 
 #ifndef SERIAL
 #include "mpi.h"

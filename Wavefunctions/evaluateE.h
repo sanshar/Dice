@@ -22,6 +22,7 @@
 #include <vector>
 #include "Determinants.h"
 #include "workingArray.h"
+#include "statistics.h"
 #include <iostream>
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
@@ -299,6 +300,7 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
   int gradIter = min(nstore, niter);
 
   std::vector<double> gradError(gradIter * commsize, 0);
+  std::vector<double> tauError(gradIter * commsize, 0);
   double cumdeltaT = 0., cumdeltaT2 = 0.;
 
   while (iter < niter && stddev > targetError)
@@ -327,10 +329,13 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
     double ratio = deltaT / cumdeltaT;
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT); //running average of energy
 
-    S1 = S1 + (ham - Elocold) * (ham - Eloc);
+    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
+    {
       gradError[iter + commrank * gradIter] = ham;
+      tauError[iter + commrank * gradIter] = deltaT;
+    }
 
     iter++;
 
@@ -340,15 +345,21 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   //if (commrank == 0)
-  rk = calcTcorr(gradError);
+  vector<double> r_x, b_size;
+  blocking(b_size, r_x, gradError, tauError);
+  rk = corr_time(gradError.size(), b_size, r_x);
 
   E0 = Eloc / commsize;
-
-  stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  
+  S1 /= cumdeltaT;
+  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
+  stddev =  sqrt(rk * S1 / n_eff);
+  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
@@ -383,10 +394,11 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
   std::vector<std::vector<double>> gradError;
   gradError.resize(4);
   //std::vector<double> gradError(gradIter * commsize, 0.);
-  
+  vector<double> tauError(gradIter * commsize, 0.);
   for (int i = 0; i < 4; i++)
     gradError[i] = std::vector<double>(gradIter * commsize, 0.);
   double cumdeltaT = 0.;
+  double cumdeltaT2 = 0.;
   
   int transIter = 0, nTransIter = 1000;
 
@@ -422,12 +434,14 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
                                    nextDetRandom) - work.ovlpRatio.begin();
 
     cumdeltaT += deltaT;
+    cumdeltaT2 += deltaT * deltaT;
     double ratio = deltaT / cumdeltaT;
     Eigen::VectorXd coeffsOld = coeffs;
     coeffs += ratio * (coeffsSample - coeffs);
-    S1 += (coeffsSample - coeffsOld).cwiseProduct(coeffsSample - coeffs);
+    S1 += deltaT * (coeffsSample - coeffsOld).cwiseProduct(coeffsSample - coeffs);
 
     if (iter < gradIter) {
+      tauError[iter + commrank * gradIter] = deltaT;
       for (int i = 0; i < 4; i++) 
         gradError[i][iter + commrank * gradIter] = coeffsSample[i];
     }
@@ -444,14 +458,21 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[1][0]), gradError[1].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[2][0]), gradError[2].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[3][0]), gradError[3].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, coeffs.data(), 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   for (int i = 0; i < 4; i++)
-    rk[i] = calcTcorr(gradError[i]);
+  {
+    vector<double> b_size, r_x;
+    blocking(b_size, r_x, gradError[i], tauError);
+    rk[i] = corr_time(gradError.size(), b_size, r_x);
+    S1[i] /= cumdeltaT;
+  }
 
+  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
   for (int i = 0; i < 4; i++) { 
-    stddev[i] = sqrt(S1[i] * rk[i] / (niter - 1) / niter / commsize);
+    stddev[i] = sqrt(S1[i] * rk[i] / n_eff);
   }
 
   lanczosCoeffs = coeffs / commsize;
@@ -507,6 +528,7 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
   int gradIter = min(nstore, niter);
 
   std::vector<double> gradError(gradIter * commsize, 0);
+  std::vector<double> tauError(gradIter * commsize, 0);
   double cumdeltaT = 0., cumdeltaT2 = 0.;
 
   while (iter < niter && stddev > targetError)
@@ -545,11 +567,13 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
 
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT); //running average of energy
 
-    S1 = S1 + (ham - Elocold) * (ham - Eloc);
+    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
+    {
       gradError[iter + commrank * gradIter] = ham;
-
+      tauError[iter + commrank * gradIter] = deltaT;
+    }
     iter++;
 
     //cout << "before  " << walk.d << endl;
@@ -570,20 +594,27 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
   //exit(0);
   //if (commrank == 0)
-  rk = calcTcorr(gradError);
+  vector<double> b_size, r_x;
+  blocking(b_size, r_x, gradError, tauError);
+  rk = corr_time(gradError.size(), b_size, r_x);
+  //rk = calcTcorr(gradError);
 
   diagonalGrad /= (commsize);
   grad /= (commsize);
   E0 = Eloc / commsize;
   grad = grad - E0 * diagonalGrad;
 
-  stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
+  S1 /= cumdeltaT;
+  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  stddev = sqrt(S1 * rk / n_eff);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
@@ -642,6 +673,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
   int gradIter = min(nstore, niter);
 
   std::vector<double> gradError(gradIter*commsize, 0);
+  std::vector<double> tauError(gradIter*commsize, 0);
   double cumdeltaT = 0., cumdeltaT2 = 0.;
   while (iter < niter && stddev > targetError)
   {
@@ -676,10 +708,13 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
     Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
     Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
 
-    S1 = S1 + (ham - Elocold) * (ham - Eloc);
+    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
+    {
       gradError[iter + commrank*gradIter] = ham;
+      tauError[iter + commrank * gradIter] = deltaT;
+    }
 
     iter++;
 
@@ -702,6 +737,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
   
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Hessian(0,0)), Hessian.rows()*Hessian.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Smatrix.rows()*Smatrix.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -709,7 +745,10 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  rk = calcTcorr(gradError);
+  vector<double> b_size, r_x;
+  blocking(b_size,r_x,gradError,tauError);
+  rk = corr_time(gradError.size(), b_size, r_x);
+  //rk = calcTcorr(gradError);
 
   diagonalGrad /= (commsize);
   grad /= (commsize);
@@ -718,7 +757,9 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
   Hessian = Hessian/(commsize);
   Smatrix = Smatrix/(commsize);
 
-  stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  S1 /= cumdeltaT
+  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
+  stddev = sqrt(S1 * rk / n_eff);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
@@ -769,6 +810,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   int gradIter = min(nstore, niter);
 
   std::vector<double> gradError(gradIter * commsize, 0);
+  std::vector<double> tauError(gradIter * commsize, 0);
   double cumdeltaT = 0., cumdeltaT2 = 0.;
 
   while (iter < niter && stddev > targetError)
@@ -801,11 +843,13 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
     Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
     Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
 
-    S1 = S1 + (ham - Elocold) * (ham - Eloc);
+    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
 
     if (iter < gradIter)
+    {
       gradError[iter + commrank*gradIter] = ham;
-
+      tauError[iter + commrank * gradIter] = deltaT;
+    }
     iter++;
 
     walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
@@ -823,13 +867,17 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Smatrix.rows()*Smatrix.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-  rk = calcTcorr(gradError);
+  vector<double> r_x, b_size;
+  blocking(b_size, r_x, gradError, tauError);
+  rk = corr_time(gradError.size(), b_size, r_x);
+  //rk = calcTcorr(gradError);
 
   diagonalGrad /= (commsize);
   grad /= (commsize);
@@ -837,7 +885,10 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   grad = grad - E0 * diagonalGrad;
   Smatrix = Smatrix/(commsize);
 
-  stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  S1 /= cumdeltaT;
+  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
+  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
+  stddev = sqrt(S1 * rk / n_eff);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
