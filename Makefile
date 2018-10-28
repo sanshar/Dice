@@ -60,6 +60,9 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/AGP.o \
 	obj/CPSAGP.o \
 	obj/AGPWalker.o \
+	obj/Pfaffian.o \
+	obj/CPSPfaffian.o \
+	obj/PfaffianWalker.o \
 	obj/CPS.o \
 	obj/excitationOperators.o\
 	obj/Correlator.o \

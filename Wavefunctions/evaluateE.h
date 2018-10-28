@@ -490,13 +490,6 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
   Determinant bestDet = walk.getDet();
 
   E0 = 0.0;
-  //cout << "wfn slater " << w.slater.determinants[0] << endl;
-  //cout << "walker " << walk.d << endl << endl;
-  //cout << "alphaTable\n" << walk.helper.rTable[0][0] << endl << endl;
-  //cout << "betaaTable\n" << walk.helper.rTable[0][1] << endl << endl;
-  //cout << "dets\n" << walk.helper.thetaDet[0][0] << "  " << walk.helper.thetaDet[0][1] << endl << endl;
-  //cout << "alphaInv\n" << walk.helper.thetaInv[0] << endl << endl;
-  //cout << "betaInv\n" << walk.helper.thetaInv[1] << endl << endl;
   //cout << walk << endl << endl;
   w.HamAndOvlp(walk, ovlp, ham, work);
   //cout << ham << "  " << ovlp << endl << endl;
@@ -559,6 +552,9 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
     //cout << "after  " << walk.d << endl;
 
     w.HamAndOvlp(walk, ovlp, ham, work);
+    //cout << walk << endl;
+    //cout << "ham  " <<  ham << "  ovlp  " << ovlp << endl << endl;
+    
     w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
 
     if (abs(ovlp) > bestOvlp)

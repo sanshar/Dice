@@ -31,6 +31,7 @@ using namespace Eigen;
 PfaffianWalkerHelper::PfaffianWalkerHelper(const Pfaffian &w, const Determinant &d) 
 {
   //fill the spin strings for the walker and the zeroth reference det
+  //cout << "det    " << d << endl << endl;
   fillOpenClosedOrbs(d);
   initInvDetsTables(w);
 }
@@ -46,31 +47,58 @@ void PfaffianWalkerHelper::fillOpenClosedOrbs(const Determinant &d)
 
 void PfaffianWalkerHelper::makeTables(const Pfaffian &w)
 {
-  Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
-  Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-  MatrixXd openThetaAlpha; 
-  igl::slice(w.getPairMat(), rowOpen, colClosed, openThetaAlpha);
-  rTable[0] = openThetaAlpha * thetaInv; 
- 
-  Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
-  Map<VectorXi> colOpen(&openOrbs[1][0], openOrbs[1].size());
-  MatrixXd openThetaBeta; 
-  igl::slice(w.getPairMat(), rowClosed, colOpen, openThetaBeta);
-  MatrixXd betaTableTranspose = thetaInv * openThetaBeta; 
-  rTable[1] = betaTableTranspose.transpose(); 
-
-  MatrixXd openTheta;
-  igl::slice(w.getPairMat(), rowOpen, colOpen, openTheta);
-  MatrixXd rtc = rTable[0] * openThetaBeta;
-  rTable[2] = openTheta - rtc;
+  int norbs = Determinant::norbs;
+  int nopen = openOrbs[0].size() + openOrbs[1].size();
+  int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+  Map<VectorXi> openAlpha(&openOrbs[0][0], openOrbs[0].size());
+  Map<VectorXi> openBeta(&openOrbs[1][0], openOrbs[1].size());
+  //openBeta = (openBeta.array() + norbs).matrix();
+  VectorXi open(nopen);
+  open << openAlpha, (openBeta.array() + norbs).matrix();
+  //cout << "closed   " << closedOrbs[0][0] << "  " << closedOrbs[1][0] << endl << endl;
+  //cout << "open   " << openOrbs[0][0] << "  " << openOrbs[1][0] << endl << endl;
+  Map<VectorXi> closedAlpha(&closedOrbs[0][0], closedOrbs[0].size());
+  Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
+  //cout << "closedBeta before\n" << closedBeta << endl << endl;
+  //closedBeta = (closedBeta.array() + norbs).matrix();
+  //cout << "closedBeta after\n" << closedBeta << endl << endl;
+  VectorXi closed(nclosed);
+  closed << closedAlpha, (closedBeta.array() + norbs).matrix();
+   
+  fMat = MatrixXd::Zero(open.size() * closed.size(), closed.size());
+  //cout << "open\n" << open << endl << endl; 
+  //cout << "closed\n" << closed << endl << endl; 
+  for (int i = 0; i < closed.size(); i++) {
+    for (int a = 0; a < open.size(); a++) {
+      MatrixXd fRow;
+      VectorXi rowSlice(1);
+      rowSlice[0] = open[a];
+      VectorXi colSlice = closed;
+      colSlice(i) = open[a];
+      igl::slice(w.getPairMat(), rowSlice, colSlice, fRow);
+      fMat.block(i * open.size() + a, 0, 1, closed.size()) = fRow;
+      //cout << i << "   " << a << endl;
+      //cout << "rowSlice\n" << rowSlice << endl << endl; 
+      //cout << "colSlice\n" << colSlice << endl << endl; 
+      //cout << "fRow\n" << fRow << endl << endl;
+    }
+  }
+  
+  rTable[0] = fMat * thetaInv; 
+  rTable[1] = - rTable[0] * fMat.transpose(); 
 }
 
 void PfaffianWalkerHelper::initInvDetsTables(const Pfaffian &w)
 {
-  Eigen::Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
-  Eigen::Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
+  int norbs = Determinant::norbs;
+  int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+  Map<VectorXi> closedAlpha(&closedOrbs[0][0], closedOrbs[0].size());
+  Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
+  //closedBeta = (closedBeta.array() + norbs).matrix();
+  VectorXi closed(nclosed);
+  closed << closedAlpha, (closedBeta.array() + norbs).matrix();
   MatrixXd theta;
-  igl::slice(w.getPairMat(), rowClosed, colClosed, theta); 
+  igl::slice(w.getPairMat(), closed, closed, theta); 
   Eigen::FullPivLU<MatrixXd> lua(theta);
   if (lua.isInvertible()) {
     thetaInv = lua.inverse();
@@ -79,35 +107,51 @@ void PfaffianWalkerHelper::initInvDetsTables(const Pfaffian &w)
   else {
     cout << "pairMat\n" << w.getPairMat() << endl << endl;
     cout << "theta\n" << theta << endl << endl;
-    cout << "rowClosed\n" << rowClosed << endl << endl;
-    cout << "colClosed\n" << colClosed << endl << endl;
+    cout << "colClosed\n" << closed << endl << endl;
     cout << " overlap with determinant not invertible" << endl;
     exit(0);
   }
   makeTables(w);
 }
 
-void PfaffianWalkerHelper::excitationUpdate(const Pfaffian &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet)
+void PfaffianWalkerHelper::excitationUpdate(const Pfaffian &w, int i, int a, bool sz, double parity, const Determinant& excitedDet)
 {
+  int tableIndexi, tableIndexa;
+  getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
+  int norbs = Determinant::norbs;
+  int nopen = openOrbs[0].size() + openOrbs[1].size();
+  int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+  Map<VectorXi> closedAlpha(&closedOrbs[0][0], closedOrbs[0].size());
+  Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
+  VectorXi closed(nclosed);
+  closed << closedAlpha, (closedBeta.array() + norbs).matrix();
+  
+  Matrix2d cInv;
+  cInv << 0, -1,
+         1, 0;
+  MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
+  bMat(tableIndexi, 1) = 1;
+  VectorXi colSlice(1);
+  colSlice[0] = i + sz * norbs;
+  MatrixXd thetaSlice;
+  igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
+  bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
   MatrixXd invOld = thetaInv;
-  double detOld = thetaDet;
-  if (sz == 0) {
-    Eigen::Map<Eigen::VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-    calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv, thetaDet, cre, des, colClosed, closedOrbs[0], w.getPairMat());
-  }
-  if (sz == 1) {
-    Eigen::Map<Eigen::VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
-    calculateInverseDeterminantWithColumnChange(invOld, detOld, thetaInv, thetaDet, cre, des, rowClosed, closedOrbs[1], w.getPairMat());
-  }
-  thetaDet *= parity;
+  MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
+  
+  thetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
+  thetaPfaff = rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+  thetaPfaff *= parity;
   fillOpenClosedOrbs(excitedDet);
   makeTables(w);
 }
 
 void PfaffianWalkerHelper::getRelIndices(int i, int &relI, int a, int &relA, bool sz) const 
 {
-  relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin();
-  relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin();
+  int factor = 0;
+  if (sz != 0) factor = 1;
+  relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin() + factor * closedOrbs[0].size();
+  relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin() + factor * openOrbs[0].size();
 }
 
 PfaffianWalker::PfaffianWalker(const Pfaffian &w) 
@@ -163,7 +207,7 @@ void PfaffianWalker::initDet(const MatrixXd& pairMat)
 
 double PfaffianWalker::getDetOverlap(const Pfaffian &w) const
 {
-  return helper.thetaDet;
+  return helper.thetaPfaff;
 }
 
 double PfaffianWalker::getDetFactor(int i, int a, const Pfaffian &w) const 
@@ -188,31 +232,37 @@ double PfaffianWalker::getDetFactor(int I, int J, int A, int B, const Pfaffian &
 
 double PfaffianWalker::getDetFactor(int i, int a, bool sz, const Pfaffian &w) const
 {
+  int nopen = helper.openOrbs[0].size() + helper.openOrbs[1].size();
   int tableIndexi, tableIndexa;
   helper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
-  return helper.rTable[sz](tableIndexa, tableIndexi);
+  return helper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
 }
 
 double PfaffianWalker::getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Pfaffian &w) const
 {
+  int norbs = Determinant::norbs;
+  int nopen = helper.openOrbs[0].size() + helper.openOrbs[1].size();
   int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
   helper.getRelIndices(i, tableIndexi, a, tableIndexa, sz1); 
   helper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2) ;
-
-  double factor;
-  if (sz1 == sz2)
-    factor = helper.rTable[sz1](tableIndexa, tableIndexi) * helper.rTable[sz1](tableIndexb, tableIndexj) 
-        - helper.rTable[sz1](tableIndexb, tableIndexi) *helper.rTable[sz1](tableIndexa, tableIndexj);
-  else
-    if (sz1 == 0) {
-      factor = helper.rTable[sz1](tableIndexa, tableIndexi) * helper.rTable[sz2](tableIndexb, tableIndexj) 
-      + helper.thetaInv(tableIndexj, tableIndexi) * helper.rTable[2](tableIndexa, tableIndexb);
-    }
-    else {
-      factor = helper.rTable[sz1](tableIndexa, tableIndexi) * helper.rTable[sz2](tableIndexb, tableIndexj) 
-      + helper.thetaInv(tableIndexi, tableIndexj) * helper.rTable[2](tableIndexb, tableIndexa);
-    }
-  return factor;
+  //cout << "nopen  " << nopen << endl;
+  //cout << "sz1  " << sz1 << "  ti  " << tableIndexi << "  ta  " << tableIndexa  << endl;
+  //cout << "sz2  " << sz2 << "  tj  " << tableIndexj << "  tb  " << tableIndexb  << endl;
+  double summand1, summand2, crossTerm;
+  if (tableIndexi < tableIndexj) {
+    crossTerm = (w.getPairMat())(b + sz2 * norbs, a + sz1 * norbs);
+    summand1 = helper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) * helper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) 
+        - helper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi) * helper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj);
+    summand2 = helper.thetaInv(tableIndexi, tableIndexj) * (helper.rTable[1](tableIndexi * nopen + tableIndexa, tableIndexj * nopen + tableIndexb) + crossTerm);
+  }
+  else { 
+    crossTerm = (w.getPairMat())(a + sz1 * norbs, b + sz2 * norbs);
+    summand1 = helper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) * helper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) 
+        - helper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj) * helper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi);
+    summand2 = helper.thetaInv(tableIndexj, tableIndexi) * (helper.rTable[1](tableIndexj * nopen + tableIndexb, tableIndexi * nopen + tableIndexa) + crossTerm);
+  }
+  //cout << "double   " << crossTerm << "   " << summand1 << "  " << summand2 << endl; 
+  return summand1 + summand2;
 }
 
 void PfaffianWalker::update(int i, int a, bool sz, const Pfaffian &w)
@@ -221,22 +271,7 @@ void PfaffianWalker::update(int i, int a, bool sz, const Pfaffian &w)
   p *= d.parity(a, i, sz);
   d.setocc(i, sz, false);
   d.setocc(a, sz, true);
-  vector<int> cre{ a }, des{ i };
-  helper.excitationUpdate(w, cre, des, sz, p, d);
-}
-
-void PfaffianWalker::update(int i, int j, int a, int b, bool sz, const Pfaffian &w)
-{
-  double p = 1.0;
-  Determinant dcopy = d;
-  p *= d.parity(a, i, sz);
-  d.setocc(i, sz, false);
-  d.setocc(a, sz, true);
-  p *= d.parity(b, j, sz);
-  d.setocc(j, sz, false);
-  d.setocc(b, sz, true);
-  vector<int> cre{ a, b }, des{ i, j };
-  helper.excitationUpdate(w, cre, des, sz, p, d);
+  helper.excitationUpdate(w, i, a, sz, p, d);
 }
 
 void PfaffianWalker::updateWalker(const Pfaffian& w, int ex1, int ex2)
@@ -244,28 +279,17 @@ void PfaffianWalker::updateWalker(const Pfaffian& w, int ex1, int ex2)
   int norbs = Determinant::norbs;
   int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
   int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-  if (I % 2 == J % 2 && ex2 != 0) {
-    if (I % 2 == 1) {
-      update(I / 2, J / 2, A / 2, B / 2, 1, w);
-    }
-    else {
-      update(I / 2, J / 2, A / 2, B / 2, 0, w);
-    }
-  }
-  else {
-    if (I % 2 == 0)
-      update(I / 2, A / 2, 0, w);
-    else
-      update(I / 2, A / 2, 1, w);
+  
+  if (I % 2 == 0)
+    update(I / 2, A / 2, 0, w);
+  else
+    update(I / 2, A / 2, 1, w);
 
-    if (ex2 != 0) {
-      if (J % 2 == 1) {
-        update(J / 2, B / 2, 1, w);
-      }
-      else {
-        update(J / 2, B / 2, 0, w);
-      }
-    }
+  if (ex2 != 0) {
+    if (J % 2 == 1) 
+      update(J / 2, B / 2, 1, w);
+    else 
+      update(J / 2, B / 2, 0, w);
   }
 }
 
@@ -298,8 +322,32 @@ void PfaffianWalker::OverlapWithGradient(const Pfaffian &w, Eigen::VectorBlock<V
     if (walkerDet.getoccA(k)) {
       int L = 0;
       for (int l = 0; l < norbs; l++) {
+        if (walkerDet.getoccA(l)) {
+          grad(2 * k * norbs + l) += helper.thetaInv(L, K) / 2;
+          L++;
+        }
+      }
+      for (int l = 0; l < norbs; l++) {
         if (walkerDet.getoccB(l)) {
-          grad(k * norbs + l) += helper.thetaInv(L, K) ;
+          grad(2 * k * norbs + norbs + l) += helper.thetaInv(L, K) / 2;
+          L++;
+        }
+      }
+      K++;
+    }
+  }
+  for (int k = 0; k < norbs; k++) { //walker indices on the row
+    if (walkerDet.getoccB(k)) {
+      int L = 0;
+      for (int l = 0; l < norbs; l++) {
+        if (walkerDet.getoccA(l)) {
+          grad(2 * norbs * norbs + 2 * k * norbs + l) += helper.thetaInv(L, K) / 2;
+          L++;
+        }
+      }
+      for (int l = 0; l < norbs; l++) {
+        if (walkerDet.getoccB(l)) {
+          grad(2 * norbs * norbs + 2 * k * norbs + norbs + l) += helper.thetaInv(L, K) / 2;
           L++;
         }
       }
@@ -310,9 +358,9 @@ void PfaffianWalker::OverlapWithGradient(const Pfaffian &w, Eigen::VectorBlock<V
 
 ostream& operator<<(ostream& os, const PfaffianWalker& walk) {
   cout << walk.d << endl << endl;
-  cout << "alphaTable\n" << walk.helper.rTable[0] << endl << endl;
-  cout << "betaTable\n" << walk.helper.rTable[1] << endl << endl;
-  cout << "thirdTable\n" << walk.helper.rTable[2] << endl << endl;
-  cout << "dets\n" << walk.helper.thetaDet << endl << endl;
+  cout << "fMat\n" << walk.helper.fMat << endl << endl;
+  cout << "fThetaInv\n" << walk.helper.rTable[0] << endl << endl;
+  cout << "fThetaInvf\n" << walk.helper.rTable[1] << endl << endl;
+  cout << "pfaff\n" << walk.helper.thetaPfaff << endl << endl;
   cout << "thetaInv\n" << walk.helper.thetaInv << endl << endl;
 }

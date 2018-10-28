@@ -42,7 +42,7 @@ Pfaffian::Pfaffian()
 {
   int norbs = Determinant::norbs;
   //pairMat = MatrixXd::Identity(norbs, norbs) + MatrixXd::Random(norbs, norbs);
-  pairMat = MatrixXd::Zero(norbs, norbs);
+  pairMat = MatrixXd::Zero(2 * norbs, 2 * norbs);
   readPairMat(pairMat);
 }
 

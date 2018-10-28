@@ -22,7 +22,7 @@
 #include <Eigen/Dense>
 #include "igl/slice.h"
 #include "igl/slice_into.h"
-#include <vector>
+
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
@@ -53,5 +53,8 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXd &inverseIn, 
                                                                std::vector<int>& cre, std::vector<int>& des,
                                                                const Eigen::Map<Eigen::VectorXi> &ColVec,
                                                                std::vector<int> &RowIn, const Eigen::MatrixXd &Hforbs);
+
+double calcPfaffian(const Eigen::MatrixXd &mat); 
+
 
 #endif

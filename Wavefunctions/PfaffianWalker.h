@@ -36,7 +36,8 @@ public:
   array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
   array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
   array<MatrixXd, 2> rTable;            //table used for efficiently
-  
+  MatrixXd fMat;
+
   /**
    * constructor
    */
@@ -53,7 +54,7 @@ public:
   void initInvDetsTables(const Pfaffian &w);
   
   //updates helpers for excitation in the det given by cre and des
-  void excitationUpdate(const Pfaffian &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet);
+  void excitationUpdate(const Pfaffian &w, int i, int a, bool sz, double parity, const Determinant& excitedDet);
   
   //gets relative indices used in the tables relI (i th occupied) and relA (a th unoccupied) for excitation i -> a with spin sz
   void getRelIndices(int i, int &relI, int a, int &relA, bool sz) const; 
@@ -117,7 +118,6 @@ public:
 
   //updates det and helpers afterspatial orb excitations i->a, j->b with spin sz
   void update(int i, int a, bool sz, const Pfaffian &w);
-  void update(int i, int j, int a, int b, bool sz, const Pfaffian &w);
  
   //ex1 and ex2 are spin related indices
   void updateWalker(const Pfaffian& w, int ex1, int ex2);

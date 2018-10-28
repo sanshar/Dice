@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <Eigen/Eigenvalues>
 #include "ShermanMorrisonWoodbury.h"
 
 /**
@@ -173,5 +174,20 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXd &inverseIn, 
   std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
   Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
   igl::slice(inverseOutWrong, Eigen::VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows() - 1), orderVec, inverseOut);
+}
+
+
+double calcPfaffian(const Eigen::MatrixXd &mat)
+{
+  //if (mat.rows() % 2 == 1) return 0.;
+  Eigen::HessenbergDecomposition<Eigen::MatrixXd> hd(mat);
+  Eigen::MatrixXd triDiag = hd.matrixH();
+  double pfaffian = 1.;
+  int i = 0;
+  while (i < mat.rows() - 1) {
+    pfaffian *= triDiag(i, i+1);
+    i++; i++;
+  }
+  return pfaffian;
 }
 
