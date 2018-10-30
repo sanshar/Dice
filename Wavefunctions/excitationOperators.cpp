@@ -64,13 +64,13 @@ bool Operator::apply(Determinant &dcopy, int op)
 
   
 //used in Lanczos
-void Operator::populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements) {
+void Operator::populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen) {
   int norbs = Determinant::norbs;
   for (int i = 0; i < 2 * norbs; i++)
     for (int j = 0; j < 2 * norbs; j++)
     {
       //if (I2hb.Singles(i, j) > schd.epsilon )
-      if (i % 2 == j % 2)
+      if (i % 2 == j % 2 && abs(I2hb.Singles(i,j)) > screen)
       {
         oplist.push_back(Operator(i, j));
         hamElements.push_back(I1(i, j));
@@ -166,11 +166,12 @@ bool SpinFreeOperator::apply(Determinant &dcopy, int op)
 }
 
 
-void SpinFreeOperator::populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements) {
+void SpinFreeOperator::populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements, double screen) {
   int norbs = Determinant::norbs;
   for (int i = 0; i < norbs; i++)
     for (int j = 0; j < norbs; j++)
     {
+      if (abs(I2hb.Singles(2*i, 2*j)) < screen) continue;
       oplist.push_back(SpinFreeOperator(i, j));
       hamElements.push_back(I1(2*i, 2*j));
     }

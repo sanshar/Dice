@@ -36,13 +36,9 @@
 using namespace Eigen;
 using namespace std;
 
-class Walker;
-class Wfn;
-class CPSSlater;
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
-class MoDeterminant;
 
 //generate all the alpha or beta strings
 void comb(int N, int K, std::vector<std::vector<int>> &combinations);
@@ -51,6 +47,46 @@ void comb(int N, int K, std::vector<std::vector<int>> &combinations);
 double calcTcorr(std::vector<double> &v);
 
 void generateAllDeterminants(vector<Determinant> &allDets, int norbs, int nalpha, int nbeta);
+
+template<typename Wfn, typename Walker> void getEnergyDeterministic(Wfn &w, Walker& walk, double &E0)
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  vector<Determinant> allDets;
+  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+
+  workingArray work;
+
+  double Overlap = 0, Energy = 0;
+
+
+  for (int i = commrank; i < allDets.size(); i += commsize)
+  {
+    w.initWalker(walk, allDets[i]);
+    double ovlp = 0, ham = 0;
+    {
+      E0 = 0.;
+      double scale = 1.0;
+
+
+      w.HamAndOvlp(walk, ovlp, ham, work, false);
+    }
+    
+    //grad += localgrad * ovlp * ovlp;
+    Overlap += ovlp * ovlp;
+    Energy += ham * ovlp * ovlp;
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  E0 = Energy / Overlap;
+
+
+}
 
 template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Walker& walk, double &E0,
                                                                       VectorXd &grad)
@@ -339,7 +375,7 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 
     iter++;
 
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     w.HamAndOvlp(walk, ovlp, ham, work);
   }
 
@@ -415,7 +451,7 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
                                    nextDetRandom) - work.ovlpRatio.begin();
 
     transIter++;
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
   }
 
@@ -448,7 +484,7 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
 
     iter++;
 
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
   }
   
@@ -572,7 +608,7 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
     //cout << "before  " << walk.d << endl;
     //cout << "hftype  " << w.getRef().hftype << endl;
     //cout << w.getRef().determinants[0] << endl;
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     //cout << "after  " << walk.d << endl;
 
     w.HamAndOvlp(walk, ovlp, ham, work);
@@ -714,7 +750,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
 
     iter++;
 
-    walk.updateWalker(w.getRef(), excitation1[nextDet], excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), excitation1[nextDet], excitation2[nextDet]);
 
     nExcitations = 0;
     
@@ -848,7 +884,7 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
     }
     iter++;
 
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
     localdiagonalGrad.setZero();
     w.HamAndOvlp(walk, ovlp, ham, work);

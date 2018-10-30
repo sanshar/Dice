@@ -140,17 +140,56 @@ void readInput(string input, schedule& schd, bool print) {
             schd._sgdIter = atoi(tok[1].c_str());
           }
           
-      else if (boost::iequals(ArgName, "agp"))
-	    schd.wavefunctionType = "CPSAGP";
+      else if (boost::iequals(ArgName, "jastrowslater"))
+	    schd.wavefunctionType = "JastrowSlater";
       
-      else if (boost::iequals(ArgName, "pfaffian"))
-	    schd.wavefunctionType = "CPSPfaffian";
-	  
       else if (boost::iequals(ArgName, "cicpsslater"))
 	    schd.wavefunctionType = "CICPSSlater";
-	  
-      else if (boost::iequals(ArgName, "lanczos"))
+      
+      else if (boost::iequals(ArgName, "cijastrowslater"))
+	    schd.wavefunctionType = "CIJastrowSlater";
+      
+      else if (boost::iequals(ArgName, "lanczoscpsslater"))
 	    schd.wavefunctionType = "LanczosCPSSlater";
+      
+      else if (boost::iequals(ArgName, "lanczosjastrowslater"))
+	    schd.wavefunctionType = "LanczosJastrowSlater";
+      
+      else if (boost::iequals(ArgName, "cpsagp"))
+	    schd.wavefunctionType = "CPSAGP";
+      
+      else if (boost::iequals(ArgName, "jastrowagp"))
+	    schd.wavefunctionType = "JastrowAGP";
+      
+      else if (boost::iequals(ArgName, "cicpsagp"))
+	    schd.wavefunctionType = "CICPSAGP";
+      
+      else if (boost::iequals(ArgName, "cijastrowagp"))
+	    schd.wavefunctionType = "CIJastrowAGP";
+      
+      else if (boost::iequals(ArgName, "lanczoscpsagp"))
+	    schd.wavefunctionType = "LanczosCPSAGP";
+      
+      else if (boost::iequals(ArgName, "lanczosjastrowagp"))
+	    schd.wavefunctionType = "LanczosJastrowAGP";
+      
+      else if (boost::iequals(ArgName, "cpspfaffian"))
+	    schd.wavefunctionType = "CPSPfaffian";
+      
+      else if (boost::iequals(ArgName, "jastrowpfaffian"))
+	    schd.wavefunctionType = "JastrowPfaffian";
+      
+      else if (boost::iequals(ArgName, "cicpspfaffian"))
+	    schd.wavefunctionType = "CICPSPfaffian";
+      
+      else if (boost::iequals(ArgName, "cijastrowpfaffian"))
+	    schd.wavefunctionType = "CIJastrowPfaffian";
+      
+      else if (boost::iequals(ArgName, "lanczoscpspfaffian"))
+	    schd.wavefunctionType = "LanczosCPSPfaffian";
+      
+      else if (boost::iequals(ArgName, "lanczosjastrowpfaffian"))
+	    schd.wavefunctionType = "LanczosJastrowPfaffian";
 	  
 	  else if (boost::iequals(ArgName, "tol"))
 	    schd.tol = atof(tok[1].c_str());

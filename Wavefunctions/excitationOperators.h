@@ -60,7 +60,7 @@ class Operator {
 
   bool apply(Determinant &dcopy, int op);
 
-  static void populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements);
+  static void populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen=0.0);
 
   static void populateScreenedDoublesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen);
 
@@ -232,7 +232,7 @@ class SpinFreeOperator {
 
   bool apply(Determinant &dcopy, int op);
 
-  static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements);
+  static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements, double screen =0.0);
   
   static void populateScreenedDoublesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements, double screen);
   

@@ -26,12 +26,19 @@ using namespace Eigen;
 
 CPS::CPS () {    
 
-  for(const auto& p : schd.correlatorFiles) readCorrelator(p, this->cpsArray);
+  twoSiteOrSmaller = true;
+  for(const auto& p : schd.correlatorFiles) {
+    if (p.first > 2) twoSiteOrSmaller = false;
+    readCorrelator(p, this->cpsArray);
+  }
   
   generateMapFromOrbitalToCorrelators();
 };
 
 CPS::CPS (std::vector<Correlator>& pcpsArray) : cpsArray(pcpsArray) {
+  twoSiteOrSmaller = true;
+  for (const auto& p : pcpsArray)
+    if (p.asites.size() > 2) twoSiteOrSmaller = false;
   generateMapFromOrbitalToCorrelators();
 };
 

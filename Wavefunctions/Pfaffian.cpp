@@ -31,7 +31,6 @@
 #include "igl/slice_into.h"
 
 #include "Determinants.h"
-#include "PfaffianWalker.h"
 #include "Pfaffian.h"
 #include "global.h"
 #include "input.h"
@@ -44,40 +43,6 @@ Pfaffian::Pfaffian()
   //pairMat = MatrixXd::Identity(norbs, norbs) + MatrixXd::Random(norbs, norbs);
   pairMat = MatrixXd::Zero(2 * norbs, 2 * norbs);
   readPairMat(pairMat);
-}
-
-void Pfaffian::initWalker(PfaffianWalker &walk) const 
-{
-  walk = PfaffianWalker(*this);
-}
-
-void Pfaffian::initWalker(PfaffianWalker &walk, const Determinant &d) const
-{
-  walk = PfaffianWalker(*this, d);
-}
-
-double Pfaffian::Overlap(const PfaffianWalker &walk) const
-{
-  return walk.getDetOverlap(*this);
-}
-
-double Pfaffian::OverlapRatio(int i, int a, const PfaffianWalker& walk, bool doparity) const 
-{
-  return walk.getDetFactor(i, a, *this);
-}
-
-double Pfaffian::OverlapRatio(int I, int J, int A, int B, const PfaffianWalker& walk, bool doparity) const 
-{
-  //single excitation
-  if (J == 0 && B == 0) return OverlapRatio(I, A, walk, doparity);  
-  return walk.getDetFactor(I, J, A, B, *this);
-}
-
-void Pfaffian::OverlapWithGradient(const PfaffianWalker & walk,
-                                 const double &factor,
-                                 Eigen::VectorBlock<VectorXd> &grad) const
-{  
-  walk.OverlapWithGradient(*this, grad, 1.0);
 }
 
 void Pfaffian::getVariables(Eigen::VectorBlock<VectorXd> &v) const

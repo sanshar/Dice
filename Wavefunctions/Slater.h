@@ -28,7 +28,6 @@
 class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
-class HFWalker;
 class workingArray;
 enum HartreeFock {Restricted, UnRestricted, Generalized};
 
@@ -67,34 +66,9 @@ class Slater {
    * constructor
    */
   Slater();
-  void initWalker(HFWalker &walk) const;
-  void initWalker(HFWalker &walk, const Determinant &d) const;
+  //void initWalker(HFWalker &walk) const;
+  //void initWalker(HFWalker &walk, const Determinant &d) const;
 
-  /**
-   * This calculates the overlap of the walker with the
-   * the reference
-   */
-  double Overlap(const HFWalker &walk) const;
-
-  /**
-   *  returns < m | Psi0 >/< w.d | Psi0 >, where m is obtained by exciting the walker with 
-   * spin orbital excitations i->a, j->b
-   */
-  double OverlapRatio(int i, int a, const HFWalker& w, bool doparity) const;
-  double OverlapRatio(int i, int j, int a, int b, const HFWalker& w, bool doparity) const;
-
-  /**
-   * This basically calls the overlapwithgradient(determinant, factor, grad)
-   * fills grad with wfn derivatives w.r.t. ci coeffs and mo coeffs 
-   */
-  void OverlapWithGradient(const HFWalker & walk,
-                           const double &factor,
-                           Eigen::VectorBlock<Eigen::VectorXd> &grad) const;
-
-  //d (<n|H|Psi>/<n|Psi>)/dc_i
-  void derivativeOfLocalEnergy(const HFWalker &,
-                               const double &factor,
-                               Eigen::VectorXd &hamRatio) const;
 
   //variables are ordered as:
   //cicoeffs of the reference multidet expansion, followed by hforbs (row major)
@@ -104,12 +78,13 @@ class Slater {
   void updateVariables(const Eigen::VectorBlock<Eigen::VectorXd> &v);
   void printVariables() const;
   const std::vector<Determinant> &getDeterminants() const { return determinants; }
-int getNumOfDets() const;
+  int getNumOfDets() const;
   const std::vector<double> &getciExpansion() const { return ciExpansion; }
   const Eigen::MatrixXd& getHforbsA() const { return HforbsA;}
   const Eigen::MatrixXd& getHforbsB() const  {return HforbsB;}
   const Eigen::MatrixXd& getHforbs(bool sz = 0) const { if(sz == 0) return HforbsA; else return HforbsB;}
-    
+
+  string getfileName() const {return "Slater";};
     //void writeWave();
     //void readWave();
     //void getDetMatrix(Determinant &, Eigen::MatrixXd &alpha, Eigen::MatrixXd &beta);//don't know how to extend to ghf, also non-essential

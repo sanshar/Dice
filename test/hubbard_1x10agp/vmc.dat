@@ -1,6 +1,6 @@
 correlator 2 correlators.txt
 maxIter 5
 stochasticIter 10000
-agp
+cpsagp
 hubbard
 seed 5

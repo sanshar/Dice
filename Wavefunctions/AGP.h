@@ -28,8 +28,9 @@ class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
 class Determinant;
-class AGPWalker;
 class workingArray;
+
+using namespace Eigen;
 
 /**
 * This is the wavefunction, it is a linear combination of
@@ -52,34 +53,7 @@ class AGP {
     * constructor
     */
    AGP();
-   void initWalker(AGPWalker &walk) const;
-   void initWalker(AGPWalker &walk, const Determinant &d) const;
 
-   /**
-    * This calculates the overlap of the walker with the
-    * the reference
-    */
-   double Overlap(const AGPWalker &walk) const;
-
-   /**
-    *  returns < m | Psi0 >/< w.d | Psi0 >, where m is obtained by exciting the walker with 
-    * spin orbital excitations i->a, j->b
-    */
-   double OverlapRatio(int i, int a, const AGPWalker& w, bool doparity) const;
-   double OverlapRatio(int i, int j, int a, int b, const AGPWalker& w, bool doparity) const;
-
-   /**
-    * This basically calls the overlapwithgradient(determinant, factor, grad)
-    * fills grad with wfn derivatives w.r.t. ci coeffs and mo coeffs 
-    */
-   void OverlapWithGradient(const AGPWalker & walk,
-                           const double &factor,
-                           Eigen::VectorBlock<VectorXd> &grad) const;
-
-  //d (<n|H|Psi>/<n|Psi>)/dc_i
-   void derivativeOfLocalEnergy(const AGPWalker &,
-                              const double &factor,
-                              Eigen::VectorXd &hamRatio) const;
 
   //variables are ordered as:
   //cicoeffs of the reference multidet expansion, followed by hforbs (row major)
@@ -89,6 +63,7 @@ class AGP {
   void updateVariables(const Eigen::VectorBlock<VectorXd> &v);
   void printVariables() const;
   const MatrixXd& getPairMat() const { return pairMat;}
+  string getfileName() const {return "AGP";};
   
 };
 

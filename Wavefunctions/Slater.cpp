@@ -31,7 +31,6 @@
 #include "igl/slice_into.h"
 
 #include "Determinants.h"
-#include "HFWalker.h"
 #include "Slater.h"
 #include "global.h"
 #include "input.h"
@@ -47,15 +46,15 @@ Slater::Slater()
 
 int Slater::getNumOfDets() const {return determinants.size();}
 
-void Slater::initWalker(HFWalker &walk) const 
-{
-  walk = HFWalker(*this);
-}
+//void Slater::initWalker(HFWalker &walk) const 
+//{
+//walk = HFWalker(*this);
+//}
 
-void Slater::initWalker(HFWalker &walk, const Determinant &d) const
-{
-  walk = HFWalker(*this, d);
-}
+//void Slater::initWalker(HFWalker &walk, const Determinant &d) const
+//{
+//walk = HFWalker(*this, d);
+//}
 
 void Slater::initHforbs() 
 {
@@ -118,7 +117,7 @@ void Slater::initDets()
   }
 }
 
-
+/*
 double Slater::Overlap(const HFWalker &walk) const
 {
   return walk.getDetOverlap(*this);
@@ -160,7 +159,7 @@ void Slater::OverlapWithGradient(const HFWalker & walk,
       grad[ciExpansion.size() + i] += gradOrbitals[i];
   }
 }
-
+*/
 void Slater::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 { 
   int norbs = Determinant::norbs;  

@@ -31,7 +31,6 @@
 #include "igl/slice_into.h"
 
 #include "Determinants.h"
-#include "AGPWalker.h"
 #include "AGP.h"
 #include "global.h"
 #include "input.h"
@@ -44,40 +43,6 @@ AGP::AGP()
   //pairMat = MatrixXd::Identity(norbs, norbs) + MatrixXd::Random(norbs, norbs);
   pairMat = MatrixXd::Zero(norbs, norbs);
   readPairMat(pairMat);
-}
-
-void AGP::initWalker(AGPWalker &walk) const 
-{
-  walk = AGPWalker(*this);
-}
-
-void AGP::initWalker(AGPWalker &walk, const Determinant &d) const
-{
-  walk = AGPWalker(*this, d);
-}
-
-double AGP::Overlap(const AGPWalker &walk) const
-{
-  return walk.getDetOverlap(*this);
-}
-
-double AGP::OverlapRatio(int i, int a, const AGPWalker& walk, bool doparity) const 
-{
-  return walk.getDetFactor(i, a, *this);
-}
-
-double AGP::OverlapRatio(int I, int J, int A, int B, const AGPWalker& walk, bool doparity) const 
-{
-  //single excitation
-  if (J == 0 && B == 0) return OverlapRatio(I, A, walk, doparity);  
-  return walk.getDetFactor(I, J, A, B, *this);
-}
-
-void AGP::OverlapWithGradient(const AGPWalker & walk,
-                                 const double &factor,
-                                 Eigen::VectorBlock<VectorXd> &grad) const
-{  
-  walk.OverlapWithGradient(*this, grad, 1.0);
 }
 
 void AGP::getVariables(Eigen::VectorBlock<VectorXd> &v) const

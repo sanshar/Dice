@@ -82,7 +82,7 @@ template<typename Walker, typename Wfn>
 				   (work.ovlpRatio.begin()+work.nExcitations),
                                    nextDetRandom) - work.ovlpRatio.begin();
 
-    walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
   }
 };
 
@@ -137,7 +137,7 @@ template<typename Wfn, typename Walker>
       int nextDet = std::lower_bound(cumHijElements.begin(), 
 				     (cumHijElements.begin() + work.nExcitations),
 				     nextDetRandom) - cumHijElements.begin();    
-      walk.updateWalker(w.getRef(), work.excitation1[nextDet], work.excitation2[nextDet]);
+      walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     }
     
   }
