@@ -57,13 +57,14 @@ class AMSGrad
 
     int maxIter;
     int iter;
+    int avgIter;
 
     VectorXd mom1;
     VectorXd mom2;
 
     AMSGrad(double pstepsize=0.001,
              double pdecay_mom1=0.1, double pdecay_mom2=0.001,  
-            int pmaxIter=1000) : stepsize(pstepsize), decay_mom1(pdecay_mom1), decay_mom2(pdecay_mom2), maxIter(pmaxIter)
+            int pmaxIter=1000, int pavgIter=0) : stepsize(pstepsize), decay_mom1(pdecay_mom1), decay_mom2(pdecay_mom2), maxIter(pmaxIter), avgIter(pavgIter)
     {
         iter = 0;
     }
@@ -120,6 +121,7 @@ class AMSGrad
         }
 
         VectorXd grad = VectorXd::Zero(vars.rows());
+        VectorXd avgVars = VectorXd::Zero(vars.rows());
 
         while (iter < maxIter)
         {
@@ -157,7 +159,19 @@ class AMSGrad
 
             if (commrank == 0)
                 std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+            if (maxIter - iter <= avgIter) avgVars += vars;
             iter++;
+        }
+        
+        if (avgIter != 0) {
+          avgVars = avgVars/avgIter;
+          write(avgVars);
+          double E0, stddev = 0.0, rt = 1.0;
+          getGradient(avgVars, grad, E0, stddev, rt);
+          if (commrank == 0) {
+            std::cout << "Average over last " << avgIter << " iterations" << endl;
+            std::cout << format("0 %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n")  % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+          }
         }
     }
 };

@@ -44,6 +44,7 @@ private:
       & tol & correlatorFiles
       & wavefunctionType
       & maxIter
+      & avgIter
       & printLevel
       & decay1
       & decay2
@@ -100,6 +101,7 @@ public:
   double decay1;
   double decay2;   
   int maxIter;                     
+  int avgIter;                     
   int _sgdIter;
   Method method;
 

@@ -57,6 +57,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.expCorrelator = false;
 
       schd.maxIter = 50;
+      schd.avgIter = 0;
       schd._sgdIter = 1;
       schd.method = amsgrad;
       schd.decay2 = 0.001;
@@ -239,7 +240,12 @@ void readInput(string input, schedule& schd, bool print) {
 	    {
 	      schd.maxIter = atoi(tok[1].c_str());
 	    }
-
+	  
+      else if (boost::iequals(ArgName, "avgiter"))
+	    {
+	      schd.avgIter = atoi(tok[1].c_str());
+	    }
+	  
 	  else if (boost::iequals(ArgName, "doHessian"))
 	    {
 	      schd.doHessian = true;
