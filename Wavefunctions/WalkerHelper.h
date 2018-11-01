@@ -330,6 +330,9 @@ class WalkerHelper<Pfaffian>
     WalkerHelper(const Pfaffian &w, const Determinant &d) 
     {
       fillOpenClosedOrbs(d);
+      int nopen = openOrbs[0].size() + openOrbs[1].size();
+      int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+      fMat = MatrixXd::Zero(nopen * nclosed, nclosed);
       initInvDetsTables(w);
     }
     
@@ -356,14 +359,13 @@ class WalkerHelper<Pfaffian>
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
        
-      fMat = MatrixXd::Zero(open.size() * closed.size(), closed.size());
+      MatrixXd fRow;
       for (int i = 0; i < closed.size(); i++) {
         for (int a = 0; a < open.size(); a++) {
-          MatrixXd fRow;
           VectorXi rowSlice(1);
-          rowSlice[0] = open[a];
           VectorXi colSlice = closed;
-          colSlice(i) = open[a];
+          rowSlice[0] = open[a];
+          colSlice[i] = open[a];
           igl::slice(w.getPairMat(), rowSlice, colSlice, fRow);
           fMat.block(i * open.size() + a, 0, 1, closed.size()) = fRow;
         }
