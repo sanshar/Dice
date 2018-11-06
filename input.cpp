@@ -68,6 +68,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoSpinRDM = false;
   schd.quasiQ = false;
   schd.doSOC = false;
+  schd.doZeeman = false;
   schd.doSOCQDPT = false;
   schd.randomSeed = getTime();
   schd.doGtensor = false;
@@ -101,7 +102,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
-
+  schd.externalMagneticField = 1.0e-4;
   while (dump.good()) {
 
     std::string
@@ -175,8 +176,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       if (tok.size() == 2)
         schd.extrapolationFactor = atoi(tok[1].c_str());
     }
-    else if (boost::iequals(ArgName, "dosoc"))
+    else if (boost::iequals(ArgName, "DoSOC"))
       schd.doSOC=true;
+    else if (boost::iequals(ArgName, "DoZeeman"))
+      schd.doZeeman=true;
     else if (boost::iequals(ArgName, "algorithm"))
       schd.algorithm=atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "doresponse"))  {
@@ -272,6 +275,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.prefix.push_back(tok[1]);
     else if ( boost::iequals(ArgName, "pointGroup") )
       schd.pointGroup = tok[1];
+    else if ( boost::iequals(ArgName, "externalMagneticField") )
+      schd.externalMagneticField = atof(tok[1].c_str());
     else if ( boost::iequals(ArgName, "spin") )
       schd.spin = atoi(tok[1].c_str());
     else if ( boost::iequals(ArgName, "irrep") )

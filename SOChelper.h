@@ -30,6 +30,8 @@ namespace SOChelper {
   void calculateSpinRDM(vector<MatrixXx>& spinRDM, vector<MatrixXx>& civector,
 			Determinant* Dets1, int Detssize, int norbs, int nele, const int nspin);
 
+  void calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2,
+			Determinant* Dets1, int Detssize, int norbs, int nele);
   void getSplus(const MatrixXx& c2, MatrixXx& c2splus,
 		vector<Determinant>& Dets, vector<Determinant>::iterator& beginS0,
 		vector<Determinant>::iterator& beginSp,
@@ -58,6 +60,9 @@ namespace SOChelper {
 				 vector<Determinant>::iterator& beginSp,
 				 vector<Determinant>::iterator& beginSm) ;
 
+    void doGTensor(vector<MatrixXx>& ci, Determinant* Dets,
+		   vector<double>& E0, int Detssize, int norbs, 
+		   int nelec, vector<MatrixXx>& spinRDM);
     void doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets,
 		   vector<double>& E0, int norbs, int nelec);
     void doGTensor(vector<MatrixXx>& ci, Determinant* Dets,

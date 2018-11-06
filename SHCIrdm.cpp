@@ -393,7 +393,7 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
 
     for (int n1 = 0; n1 < nSpatOrbs; n1++) {
       for (int n2 = 0; n2 < nSpatOrbs; n2++) {
-        if (fabs(s1RDM(n1, n2)) > 1.e-6) {
+        if (std::abs(s1RDM(n1, n2)) > 1.e-6) {
           ofs << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 %
                      s1RDM(n1, n2));
         }
@@ -513,10 +513,16 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
         for (int n2 = 0; n2 < nSpatOrbs; n2++)
           for (int n3 = 0; n3 < nSpatOrbs; n3++)
             for (int n4 = 0; n4 < nSpatOrbs; n4++) {
-              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
+              if (abs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
+#ifndef Complex
                 ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
                            n1 % n2 % n3 % n4 %
                            s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4));
+#else
+                ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
+                           n1 % n2 % n3 % n4 %
+                           s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4).real());
+#endif
             }
       ofs.close();
     }
@@ -536,7 +542,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << s2RDM;
-      // ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
+      //ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
     }
 
   } // end commrank
@@ -869,7 +875,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
           Pointer to determinants in wavefunction.
       int DetsSize:
           Number of determinants in wavefunction.
-      CItype *cibr:
+      CItype *cibra:
           Pointer to the ci coefficients for the bra.
       CItype *ciket:
           Pointer to the ci coefficients for the ket.
@@ -909,7 +915,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
       } // end n1 n2
 
     for (int j = 1; j < connections[i / commsize].size(); j++) {
-      // if (i == connections[i/commsize][j]) continue;
+      if (i == connections[i/commsize][j]) continue;
       int d0 = orbDifference[i / commsize][j] % norbs;
       int c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
 
@@ -924,6 +930,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
           if (closed[n1] == c0)
             continue; // TODO REMOVE
           Dets[i].parity(min(d0, c0), max(d0, c0), sgn);
+          //pout<<a<<b<<I<<J<<" "<<c0<<" "<<d0<<" "<<Dets[i]<<" "<<Dets[connections[i/commsize][j]]<<" "<<localConj::conj(cibra[connections[i/commsize][j]])<<" "<<ciket[i]<<endl;
           if (!((closed[n1] > c0 && closed[n1] > d0) ||
                 (closed[n1] < c0 && closed[n1] < d0)))
             sgn *= -1.;
@@ -932,18 +939,18 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
                 sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
                 ciket[i];
             twoRDM(I * (I + 1) / 2 + J, a * (a + 1) / 2 + b) +=
-                sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
-                cibra[i];
+                sgn * (ciket[connections[i / commsize][j]]) *
+                localConj::conj(cibra[i]);
           }
+        CItype tmp = localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+        //if (c0%2==0 && d0%2==0) tmp=localConj::conj(tmp);
           populateSpatialRDM(
               a, b, I, J, s2RDM,
-              sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
-                  ciket[i],
+              sgn * tmp,
               nSpatOrbs);
           populateSpatialRDM(
               I, J, a, b, s2RDM,
-              sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
-                  cibra[i],
+              sgn * localConj::conj(tmp),
               nSpatOrbs);
         } // end n1
 
@@ -965,12 +972,12 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
         populateSpatialRDM(
             c1, c0, d1, d0, s2RDM,
             sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
-                ciket[i],
+                (ciket[i]),
             nSpatOrbs);
         populateSpatialRDM(
             d1, d0, c1, c0, s2RDM,
-            sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
-                cibra[i],
+            sgn * (ciket[connections[i / commsize][j]]) *
+                localConj::conj(cibra[i]),
             nSpatOrbs);
       } // end if
 
@@ -978,8 +985,8 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
   }   // end i
 
 #ifdef Complex
-  twoRDM = twoRDM.real();
-  s2RDM = s2RDM.real();
+  //twoRDM = twoRDM.real();
+  //s2RDM = s2RDM.real();
 #endif
 
 #ifndef SERIAL
@@ -1058,20 +1065,25 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
           0) { // only single excitation
         double sgn = 1.0;
         Dets[i].parity(min(c0, d0), max(c0, d0), sgn);
-
+        //if (c0 > d0) sgn *= -1.;
+        double tmp = 1.0;
+        Dets[i].parity(c0, d0, tmp);
         oneRDM(c0, d0) += sgn *
                           localConj::conj(cibra[connections[i / commsize][j]]) *
                           ciket[i];
         oneRDM(d0, c0) += sgn *
-                          localConj::conj(cibra[connections[i / commsize][j]]) *
-                          ciket[i];
+                          (cibra[connections[i / commsize][j]]) *
+                          localConj::conj(ciket[i]);
+        CItype val = localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+        //if (c0%2==0 && d0%2==0) val = localConj::conj(val);
+        s1RDM(c0/2, d0/2) +=
+            sgn * val;
+        s1RDM(d0/2, c0/2) +=
+            sgn * localConj::conj(val);
 
-        s1RDM(c0 / 2, d0 / 2) +=
-            sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
-            ciket[i];
-        s1RDM(d0 / 2, c0 / 2) +=
-            sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
-            ciket[i];
+        //pout <<s1RDM(0,0) << " " << s1RDM(0,1) << endl << s1RDM(1,0) << " " << s1RDM(1,1) << endl;
+	//pout << Dets[i] << Dets[connections[i/commsize][j]]<<endl;
+        //pout<<c0<<" "<<d0<<" "<<c0/2<<" "<<d0/2<<" "<<sgn<<" "<<cibra[connections[i/commsize][j]]<<" "<<ciket[i]<<" "<<sgn * localConj::conj(cibra[connections[i / commsize][j]]) *(ciket[i])<<endl;
       }
     }
   }
@@ -1231,24 +1243,32 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt &I1,
         oneRDM(p, q) +=
             twoRDM(p * norbs + r, q * norbs + r) / (1. * nelec - 1.);
 
-#pragma omp parallel for reduction(+ : onebody)
+//#pragma omp parallel for reduction(+ : onebody)
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
 #ifdef Complex
-      onebody += (I1(2 * p, 2 * q) * oneRDM(p, q)).real();
+      {
+        onebody += (I1(2 * p, 2 * q) * oneRDM(p, q)).real();
+//cout << "one int : " << p << " " << q << endl;
+//cout << oneRDM(p,q) << " " << I1(2*p, 2*q) << endl;
+//cout << onebody << endl;
+      }
 #else
       onebody += I1(2 * p, 2 * q) * oneRDM(p, q);
 #endif
 
-#pragma omp parallel for reduction(+ : twobody)
+//#pragma omp parallel for reduction(+ : twobody)
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
       for (int r = 0; r < norbs; r++)
         for (int s = 0; s < norbs; s++)
 #ifdef Complex
-          twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
+          {twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                       I2(2 * p, 2 * r, 2 * q, 2 * s))
                          .real(); // 2-body term
+//cout << "two int: "<<p<<q<<r<<s<<" ";
+//cout << twoRDM(p*norbs+q,r*norbs+s) << " " << I2(2*p,2*r,2*q,2*s) << endl;
+}
 #else
           twobody += 0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                      I2(2 * p, 2 * r, 2 * q, 2 * s); // 2-body term

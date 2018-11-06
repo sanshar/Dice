@@ -126,6 +126,7 @@ public:
   bool doSOCQDPT;
   unsigned int randomSeed;
   bool doGtensor;
+  bool doZeeman;
   string integralFile;
   bool doResponse;
   string responseFile;
@@ -154,6 +155,7 @@ public:
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
+  double externalMagneticField;
 };
 
 #endif

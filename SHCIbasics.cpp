@@ -874,6 +874,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
     readVariationalResult(iterstart, ci, Dets, sparseHam, E0, converged, schd,
                           helper2);
 
+// Print the Hamiltonian matrix
+if (schd.outputlevel == -1) {
+  for (int i=0; i<Dets.size(); i++) {
+    pout << Dets[i] << " : " << endl;
+    for (int j=0; j<sparseHam.connections[i].size(); j++)
+      pout << Dets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << endl; 
+  }
+}
     // after reading restart put dets on shared memory
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     DetsSize = Dets.size();
@@ -900,10 +908,24 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
       sparseHam.clear();
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2,
                                coreE, schd.DoRDM || schd.DoOneRDM);
+#ifdef Complex
+    SHCImakeHamiltonian::updateSOCconnections(
+        SHMDets, 0, DetsSize, SortedDets, sparseHam.connections,
+        sparseHam.orbDifference, sparseHam.Helements, norbs, I1, nelec, false);
+#endif
+// Print the Hamiltonian matrix
+if (schd.outputlevel == -1) {
+  pout << endl;
+  for (int i=0; i<DetsSize; i++) {
+    pout << SHMDets[i] << " : " << endl;
+    for (int j=0; j<sparseHam.connections[i].size(); j++)
+      pout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << endl; 
+  }
+}
     }
 
     for (int i = 0; i < E0.size(); i++)
-      pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n") %
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %10.2f\n") %
                   (iterstart) % (i) % schd.epsilon1[iterstart] % DetsSize %
                   (E0[i] + coreEbkp) % (getTime() - startofCalc);
 
@@ -1153,6 +1175,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
     if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
     int numIter = 0;
 
+// Print the Hamiltonian matrix
+if (schd.outputlevel == -1) {
+  for (int i=0; i<DetsSize; i++) {
+    pout << SHMDets[i] << " : " << endl;
+    for (int j=0; j<sparseHam.connections[i].size(); j++)
+      pout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << endl; 
+  }
+}
     // do the davidson calculation
     if (schd.DavidsonType == DIRECT)
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots + 2,
@@ -1211,6 +1241,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
+// Print the Hamiltonian matrix
+if (schd.outputlevel == -1) {
+  for (int i=0; i<DetsSize; i++) {
+    pout << Dets[i] << " : " << endl;
+    for (int j=0; j<sparseHam.connections[i].size(); j++)
+      pout << Dets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << endl; 
+  }
+}
       writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd,
                              helper2);
 
@@ -1223,7 +1261,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
 
       if (schd.DoOneRDM) {
         pout << "\nCalculating 1-RDM" << endl;
-        for (int i = 0; i < schd.nroots; i++) {
+        for (int i = 0; i < 1; i++) {
           MatrixXx s1RDM, oneRDM;
           oneRDM = MatrixXx::Zero(norbs, norbs);
           s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
@@ -1245,7 +1283,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
         pout << "\nCalculating 2-RDM" << endl;
         int trev = Determinant::Trev;
         Determinant::Trev = 0;
-        for (int i = 0; i < schd.nroots; i++) {
+        for (int i = 0; i < 1; i++) {
           CItype* SHMci;
           SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment,
                            regionDavidson);
@@ -1344,6 +1382,14 @@ void SHCIbasics::writeVariationalResult(
     pout << format("#Begin writing variational wf %29.2f\n") %
                 (getTime() - startofCalc);
 
+// Print the Hamiltonian matrix
+  pout << Dets.size() << endl;
+  for (int i=0; i<6; i++) {
+    pout << "test" << endl;
+    pout << Dets[i] << " : " << endl;
+    for (int j=0; j<connections[i].size(); j++)
+      pout << Dets[connections[i][j]] << Helements[i][j] << endl; 
+  }
   {
     char file[5000];
     sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
@@ -1508,7 +1554,7 @@ void SHCIbasics::readVariationalResult(
     load >> converged;
   }
 
-  /*
+  
   if (schd.DavidsonType != DIRECT)
   {
     char file [5000];
@@ -1516,9 +1562,9 @@ void SHCIbasics::readVariationalResult(
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     load >> sparseHam.connections >> sparseHam.Helements
-  >>sparseHam.orbDifference;
+         >> sparseHam.orbDifference;
   }
-  */
+  
 
   if (commrank == 0) {
     char file[5000];

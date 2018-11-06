@@ -229,6 +229,34 @@ int main(int argc, char* argv[]) {
   if (schd.doSOC) {
     readSOCIntegrals(I1, norbs, "SOC");
     readSOCIntegrals(SOC, norbs, "SOC");
+    if (schd.doZeeman) {
+      pout << "dozeeman" << endl;
+      vector<oneInt> LplusS(3);
+      for (int i=0; i<3; i++) {
+        LplusS[i].store.resize(norbs*norbs, 0.0);
+        LplusS[i].norbs = norbs;
+      }
+      readGTensorIntegrals(LplusS, norbs, "GTensor");
+      pout << "GTensor integral read" << endl;  
+      double ge = 2.002319304;
+      for (int a=1; a<norbs/2+1; a++) {
+        LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+        LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+
+        LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+        LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+
+        LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+        LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+      }
+      double epsilon = schd.externalMagneticField;
+      pout << "manipulate oneInt" << endl;
+      for (int a=0; a<3; a++) {
+        for (int i=0; i<I1.store.size(); i++) {
+          I1.store.at(i) += (LplusS[a].store.at(i))*epsilon;
+        }
+      }
+    }
 #ifndef SERIAL
     mpi::broadcast(world, I1, 0);
     mpi::broadcast(world, SOC, 0);
@@ -350,7 +378,7 @@ int main(int argc, char* argv[]) {
       FILE* f = fopen(efile.c_str(), "wb");
       for (int j = 0; j < E0.size(); ++j) {
         // pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
-        fwrite(&E0[j], 1, sizeof(CItype), f);
+        fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
     }
@@ -372,8 +400,9 @@ int main(int argc, char* argv[]) {
             max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
         double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
 #ifdef Complex
-        pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
-        pout << SHMDets[m] << endl;
+        //pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
+        pout << format("%4i %20g ") %(i)%(prevci(m, 0));
+        pout << SHMDets[m] << SHMDets[m].Energy(I1,I2,coreE) << endl;
 #else
         pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
         pout << SHMDets[m] << endl;
@@ -432,15 +461,16 @@ int main(int argc, char* argv[]) {
   const int nspin = schd.nspin;
   //SpinRDM
   pout << "rdm calculation" << endl;
-  vector<MatrixXx> spinRDM((nspin+2)*(nspin+1)/2, MatrixXx::Zero(norbs, norbs));
-  SOChelper::calculateSpinRDM(spinRDM, ci, SHMDets, DetsSize, norbs, nelec, nspin);
+  vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
+  pout << "calculate RDM" << endl;
+  SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
   // cout << "We are doing SOC calculation instead of G-tensor calculation between " << tmp1 << "th and "
   // << tmp2 << "th states to gain a 2 by 2 SOC Hamiltonian matrix" << endl;
   // cout << endl;
   // for(int ii=0; ii<3; ii++)
   //   cout << spinRDM[ii] <<endl;
   pout << "gtensor calculation" << endl;
-	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM, nspin);
+	SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
 	//SOChelper::doSocOffdiagonal(ci, SHMDets, SOC, DetsSize, norbs, nelec, spinRDM);
   if (commrank != 0) {
 	  ci[0].resize(1,1);
@@ -653,7 +683,6 @@ int main(int argc, char* argv[]) {
       }
 
       // pout << " response ";
-      // SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
       // s2RDM);
     }  // end if doResponse||DoRDM && RdmType && !stochastic...
 
