@@ -143,7 +143,7 @@ class AMSGrad
                     {
                         if (iter < schd._sgdIter)
                         {
-                            vars[i] -= 1.0 * grad[i];
+                            vars[i] -= 0.1 * grad[i];
                         }
                         else
                         {

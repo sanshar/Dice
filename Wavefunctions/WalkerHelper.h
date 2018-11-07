@@ -404,31 +404,38 @@ class WalkerHelper<Pfaffian>
     {
       int tableIndexi, tableIndexa;
       getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
+      fillOpenClosedOrbs(excitedDet);//this should not be here when using fast inverse update
       int norbs = Determinant::norbs;
       int nopen = openOrbs[0].size() + openOrbs[1].size();
       int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+      thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      thetaPfaff *= parity;
       Map<VectorXi> closedAlpha(&closedOrbs[0][0], closedOrbs[0].size());
       Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
+      MatrixXd theta;
+      igl::slice(w.getPairMat(), closed, closed, theta); 
+      Eigen::FullPivLU<MatrixXd> lua(theta);
+      thetaInv = lua.inverse();
       
-      Matrix2d cInv;
-      cInv << 0, -1,
-             1, 0;
-      MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
-      bMat(tableIndexi, 1) = 1;
-      VectorXi colSlice(1);
-      colSlice[0] = i + sz * norbs;
-      MatrixXd thetaSlice;
-      igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
-      bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
-      MatrixXd invOld = thetaInv;
-      MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
-      
-      thetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
-      thetaPfaff = rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-      thetaPfaff *= parity;
-      fillOpenClosedOrbs(excitedDet);
+      //Matrix2d cInv;
+      //cInv << 0, -1,
+      //       1, 0;
+      //MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
+      //bMat(tableIndexi, 1) = 1;
+      //VectorXi colSlice(1);
+      //colSlice[0] = i + sz * norbs;
+      //MatrixXd thetaSlice;
+      //igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
+      //bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
+      //MatrixXd invOld = thetaInv;
+      //MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
+      //
+      //thetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
+      //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      //thetaPfaff *= parity;
+      //fillOpenClosedOrbs(excitedDet);
       makeTables(w);
     }
     

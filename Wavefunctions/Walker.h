@@ -409,13 +409,13 @@ struct Walker<Corr, Slater> {
     }
   }
 
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "alphaTable\n" << refHelper.rTable[0][0] << endl << endl;
-    os << "betaTable\n" << refHelper.rTable[0][1] << endl << endl;
-    os << "dets\n" << refHelper.thetaDet[0][0] << "  " << walk.refHelper.thetaDet[0][1] << endl << endl;
-    os << "alphaInv\n" << refHelper.thetaInv[0] << endl << endl;
-    os << "betaInv\n" << refHelper.thetaInv[1] << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, Slater>& w) {
+    os << w.d << endl << endl;
+    os << "alphaTable\n" << w.refHelper.rTable[0][0] << endl << endl;
+    os << "betaTable\n" << w.refHelper.rTable[0][1] << endl << endl;
+    os << "dets\n" << w.refHelper.thetaDet[0][0] << "  " << w.refHelper.thetaDet[0][1] << endl << endl;
+    os << "alphaInv\n" << w.refHelper.thetaInv[0] << endl << endl;
+    os << "betaInv\n" << w.refHelper.thetaInv[1] << endl << endl;
     return os;
   }
 
@@ -632,13 +632,13 @@ struct Walker<Corr, AGP> {
     }
   }
   
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "alphaTable\n" << refHelper.rTable[0] << endl << endl;
-    os << "betaTable\n" << refHelper.rTable[1] << endl << endl;
-    os << "thirdTable\n" << refHelper.rTable[2] << endl << endl;
-    os << "dets\n" << refHelper.thetaDet << endl << endl;
-    os << "thetaInv\n" << refHelper.thetaInv << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, AGP>& w) {
+    os << w.d << endl << endl;
+    os << "alphaTable\n" << w.refHelper.rTable[0] << endl << endl;
+    os << "betaTable\n" << w.refHelper.rTable[1] << endl << endl;
+    os << "thirdTable\n" << w.refHelper.rTable[2] << endl << endl;
+    os << "dets\n" << w.refHelper.thetaDet << endl << endl;
+    os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;
   }
 
@@ -858,13 +858,13 @@ struct Walker<Corr, Pfaffian> {
     }
   }
   
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "fMat\n" << refHelper.fMat << endl << endl;
-    os << "fThetaInv\n" << refHelper.rTable[0] << endl << endl;
-    os << "fThetaInvf\n" << refHelper.rTable[1] << endl << endl;
-    os << "pfaff\n" << refHelper.thetaPfaff << endl << endl;
-    os << "thetaInv\n" << refHelper.thetaInv << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, Pfaffian>& w) {
+    os << w.d << endl << endl;
+    os << "fMat\n" << w.refHelper.fMat << endl << endl;
+    os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
+    os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
+    os << "pfaff\n" << w.refHelper.thetaPfaff << endl << endl;
+    os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;
   }
 

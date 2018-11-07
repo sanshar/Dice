@@ -100,6 +100,19 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
+  if (schd.wavefunctionType == "JastrowPfaffian") {
+    //initialize wavefunction
+    CorrelatedWavefunction<Jastrow, Pfaffian> wave; Walker<Jastrow, Pfaffian> walk;
+    wave.readWave(); wave.initWalker(walk);
+
+    //calculate the energy as a initial guess for shift
+    double ham, stddev, rk;
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
+
+    //do the GFMC continous time
+    doGFMCCT(wave, walk, ham);
+  }
   else if (schd.wavefunctionType == "CICPSSlater") {
     CIWavefunction<CorrelatedWavefunction<CPS, Slater>,
                    Walker<CPS, Slater>,
