@@ -322,7 +322,7 @@ class WalkerHelper<Pfaffian>
     double thetaPfaff;                      //determinant of the theta matrix
     array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
     array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    array<MatrixXd, 2> rTable;            //table used for efficiently
+    //array<MatrixXd, 2> rTable;            //table used for efficiently
     MatrixXd fMat;
 
     WalkerHelper() {};
@@ -333,8 +333,8 @@ class WalkerHelper<Pfaffian>
       int nopen = openOrbs[0].size() + openOrbs[1].size();
       int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
       fMat = MatrixXd::Zero(nopen * nclosed, nclosed);
-      rTable[0] = MatrixXd::Zero(nopen * nclosed, nclosed);
-      rTable[1] = MatrixXd::Zero(nopen * nclosed, nopen * nclosed);
+      //rTable[0] = MatrixXd::Zero(nopen * nclosed, nclosed);
+      //rTable[1] = MatrixXd::Zero(nopen * nclosed, nopen * nclosed);
       initInvDetsTables(w);
     }
     
@@ -373,8 +373,8 @@ class WalkerHelper<Pfaffian>
         }
       }
       
-      rTable[0] = fMat * thetaInv; 
-      rTable[1] = - rTable[0] * fMat.transpose(); 
+      //rTable[0] = fMat * thetaInv; 
+      //rTable[1] = - rTable[0] * fMat.transpose(); 
     }
     
     void initInvDetsTables(const Pfaffian &w)
@@ -436,7 +436,9 @@ class WalkerHelper<Pfaffian>
       Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
       igl::slice(shuffledThetaInv, orderVec, orderVec, thetaInv);
       
-      thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      double pfaffRatio = fMat.row(tableIndexi * nopen + tableIndexa) * invOld.col(tableIndexi);
+      thetaPfaff = thetaPfaff * pfaffRatio;
       thetaPfaff *= parity;
       fillOpenClosedOrbs(excitedDet);
       makeTables(w);
