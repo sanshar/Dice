@@ -333,6 +333,8 @@ class WalkerHelper<Pfaffian>
       int nopen = openOrbs[0].size() + openOrbs[1].size();
       int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
       fMat = MatrixXd::Zero(nopen * nclosed, nclosed);
+      rTable[0] = MatrixXd::Zero(nopen * nclosed, nclosed);
+      rTable[1] = MatrixXd::Zero(nopen * nclosed, nopen * nclosed);
       initInvDetsTables(w);
     }
     
@@ -360,10 +362,10 @@ class WalkerHelper<Pfaffian>
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
        
       MatrixXd fRow;
+      VectorXi rowSlice(1), colSlice(nclosed);
       for (int i = 0; i < closed.size(); i++) {
         for (int a = 0; a < open.size(); a++) {
-          VectorXi rowSlice(1);
-          VectorXi colSlice = closed;
+          colSlice = closed;
           rowSlice[0] = open[a];
           colSlice[i] = open[a];
           igl::slice(w.getPairMat(), rowSlice, colSlice, fRow);
@@ -404,38 +406,39 @@ class WalkerHelper<Pfaffian>
     {
       int tableIndexi, tableIndexa;
       getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
-      fillOpenClosedOrbs(excitedDet);//this should not be here when using fast inverse update
       int norbs = Determinant::norbs;
       int nopen = openOrbs[0].size() + openOrbs[1].size();
       int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
-      thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-      thetaPfaff *= parity;
       Map<VectorXi> closedAlpha(&closedOrbs[0][0], closedOrbs[0].size());
       Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
-      MatrixXd theta;
-      igl::slice(w.getPairMat(), closed, closed, theta); 
-      Eigen::FullPivLU<MatrixXd> lua(theta);
-      thetaInv = lua.inverse();
       
-      //Matrix2d cInv;
-      //cInv << 0, -1,
-      //       1, 0;
-      //MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
-      //bMat(tableIndexi, 1) = 1;
-      //VectorXi colSlice(1);
-      //colSlice[0] = i + sz * norbs;
-      //MatrixXd thetaSlice;
-      //igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
-      //bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
-      //MatrixXd invOld = thetaInv;
-      //MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
-      //
-      //thetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
-      //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-      //thetaPfaff *= parity;
-      //fillOpenClosedOrbs(excitedDet);
+      Matrix2d cInv;
+      cInv << 0, -1,
+             1, 0;
+      MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
+      bMat(tableIndexi, 1) = 1;
+      VectorXi colSlice(1);
+      colSlice[0] = i + sz * norbs;
+      MatrixXd thetaSlice;
+      igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
+      bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
+      MatrixXd invOld = thetaInv;
+      MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
+      MatrixXd shuffledThetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
+      
+      closed[tableIndexi] = a + sz * norbs; 
+      std::vector<int> order(closed.size());
+      auto rcopy = closed;
+      std::iota(order.begin(), order.end(), 0);
+      std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
+      Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
+      igl::slice(shuffledThetaInv, orderVec, orderVec, thetaInv);
+      
+      thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      thetaPfaff *= parity;
+      fillOpenClosedOrbs(excitedDet);
       makeTables(w);
     }
     

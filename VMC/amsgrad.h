@@ -24,7 +24,7 @@
 #include "global.h"
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
-
+#include <math.h>
 #ifndef SERIAL
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -122,12 +122,16 @@ class AMSGrad
 
         VectorXd grad = VectorXd::Zero(vars.rows());
         VectorXd avgVars = VectorXd::Zero(vars.rows());
+        VectorXd deltaVars = VectorXd::Zero(vars.rows());
 
+        double stepNorm = 0., angle = 0.;
         while (iter < maxIter)
         {
             double E0, stddev = 0.0, rt = 1.0;
             getGradient(vars, grad, E0, stddev, rt);
             write(vars);
+            double oldNorm = stepNorm, dotProduct = 0.;
+            stepNorm = 0.;
 
             if (commrank == 0)
             {
@@ -137,7 +141,11 @@ class AMSGrad
                     mom2[i] = max(mom2[i], decay_mom2 * grad[i]*grad[i] + (1. - decay_mom2) * mom2[i]);   
                     if (schd.method == amsgrad)
                     {
-                        vars[i] -= stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);
+                      double delta = stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);  
+                      vars[i] -= delta;
+                      stepNorm += delta * delta;
+                      dotProduct += delta * deltaVars[i];
+                      deltaVars[i] = delta;
                     }
                     else if(schd.method == amsgrad_sgd)
                     {
@@ -151,6 +159,8 @@ class AMSGrad
                         }
                     }                        
                 }
+                stepNorm = pow(stepNorm, 0.5);
+                if (oldNorm != 0) angle = acos(dotProduct/stepNorm/oldNorm) * 180 / 3.14159265;
             }
 
 #ifndef SERIAL
@@ -158,7 +168,7 @@ class AMSGrad
 #endif
 
             if (commrank == 0)
-                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i  %6.6f %8.2f %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % (stepNorm) %(angle) % ((getTime() - startofCalc));
             if (maxIter - iter <= avgIter) avgVars += vars;
             iter++;
         }
