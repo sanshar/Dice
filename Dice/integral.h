@@ -20,7 +20,6 @@
 */
 #ifndef INTEGRAL_HEADER_H
 #define INTEGRAL_HEADER_H
-#include "iowrapper.h"
 #include <Eigen/Dense>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <iostream>
@@ -28,6 +27,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "iowrapper.h"
 
 using namespace std;
 using namespace Eigen;
@@ -35,7 +35,7 @@ using namespace Eigen;
 bool myfn(double i, double j);
 
 class compAbs {
-public:
+ public:
   bool operator()(const float &a, const float &b) const {
     return fabs(a) < fabs(b);
   }
@@ -45,14 +45,14 @@ public:
 };
 
 class oneInt {
-private:
+ private:
   friend class boost::serialization::access;
   template <class Archive>
   void serialize(Archive &ar, const unsigned int version) {
     ar &store &norbs;
   }
 
-public:
+ public:
   std::vector<CItype> store;
   int norbs;
   // I explicitly store all elements of the matrix
@@ -63,14 +63,14 @@ public:
 };
 
 class twoInt {
-private:
+ private:
   friend class boost::serialization::access;
   template <class Archive>
   void serialize(Archive &ar, const unsigned int version) {
     ar &maxEntry &Direct &Exchange &zero &norbs &ksym;
   }
 
-public:
+ public:
   double *store;
   double maxEntry;
   MatrixXd Direct, Exchange;
@@ -80,8 +80,7 @@ public:
   twoInt() : zero(0.0), maxEntry(100.) {}
   inline double &operator()(int i, int j, int k, int l) {
     zero = 0.0;
-    if (!((i % 2 == j % 2) && (k % 2 == l % 2)))
-      return zero;
+    if (!((i % 2 == j % 2) && (k % 2 == l % 2))) return zero;
     int I = i / 2;
     int J = j / 2;
     int K = k / 2;
@@ -101,7 +100,7 @@ public:
 };
 
 class twoIntHeatBath {
-public:
+ public:
   // i,j,a,b are spatial orbitals
   // first pair is i,j (i>j)
   // the map contains a list of integral which are equal to (ia|jb) where a,b
@@ -148,7 +147,7 @@ public:
               // make_pair<int,int>(a,b);
             }
           }
-      } // ij
+      }  // ij
 
     Singles = MatrixXd::Zero(2 * norbs, 2 * norbs);
     for (int i = 0; i < 2 * norbs; i++)
@@ -159,11 +158,11 @@ public:
             Singles(i, a) = std::abs(I2(i, a, j, j) - I2(i, j, j, a));
         }
       }
-  } // end constructClass
+  }  // end constructClass
 };
 
 class twoIntHeatBathSHM {
-public:
+ public:
   float *sameSpinIntegrals;
   float *oppositeSpinIntegrals;
   size_t *startingIndicesSameSpin;
