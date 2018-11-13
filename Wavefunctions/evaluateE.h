@@ -824,7 +824,8 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   double Eloc = 0.;
   double ham = 0., ovlp = 0.;
   grad.setZero();
-  Smatrix.setZero();
+  Smatrix = MatrixXd::Zero(grad.size() + 1, grad.size() + 1);
+  //Smatrix.setZero();
   VectorXd localGrad = grad;
   double scale = 1.0;
 
@@ -871,9 +872,15 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
     grad = grad + deltaT * (localdiagonalGrad * ham - grad) / (cumdeltaT); //running average of grad
     Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
 
-    Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() - Smatrix.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
-    Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
-    Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
+    //Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() - Smatrix.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
+    //Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
+    //Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
+    
+    Smatrix = (1 - deltaT / cumdeltaT) * Smatrix;
+    localdiagonalGrad = pow(deltaT/cumdeltaT, 0.5) * localdiagonalGrad;
+    VectorXd appended(grad.rows() + 1);
+    appended << pow(deltaT/cumdeltaT, 0.5), localdiagonalGrad;
+    Smatrix.noalias() += appended * appended.transpose();
 
     S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
 
