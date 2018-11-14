@@ -28,6 +28,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <algorithm>
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -646,11 +647,269 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
   double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
   S1 /= cumdeltaT;
   //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
-  stddev = sqrt(S1 * rk / n_eff);
+  stddev = sqrt((S1 * rk / n_eff));
+/*
+  cout << "sample variance: " << S1 << endl;
+  cout << "sample size: " << n_eff << endl;
+  cout << "rk: " << rk << endl;
+*/
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
+  if (commrank == 0)
+  {
+    char file[5000];
+    sprintf(file, "BestDeterminant.txt");
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << bestDet;
+  }
+}
+
+class MetHelper
+{
+  public: 
+  int norbs;
+  vector<double> a, b; //all occ alpha/beta orbs of cdet
+  vector<double> sa, sb; //all singly occ alpha/beta orbs of cdet
+  vector<double> ua, ub; //all unocc alpha/beta orbs of cdet
+
+  MetHelper(Determinant &d)
+  {
+    norbs = Determinant::norbs;
+    for (int i = 0; i < norbs; i++)
+    {
+      bool alpha = d.getoccA(i);
+      bool beta = d.getoccB(i);
+      if (alpha) a.push_back(i);
+      else ua.push_back(i);
+      if (beta) b.push_back(i);
+      else ub.push_back(i);
+      if (alpha && !beta) sa.push_back(i);
+      if (beta && !alpha) sb.push_back(i);
+    }
+  }
+
+  double TotalMoves()
+  {
+    return (double) (a.size() * ua.size() + b.size() * ub.size() + sa.size() * sb.size());
+  }
+  double AlphaMoves()
+  {
+    return (double) (a.size() * ua.size());
+  }
+  double BetaMoves()
+  {
+    return (double) (b.size() * ub.size());
+  }
+  double DoubleMoves()
+  {
+    return (double) (sa.size() * sb.size());
+  }
+};
+
+template<typename Wfn, typename Walker>
+void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &stddev, Eigen::VectorXd &grad, double &rk, int niter)
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+  workingArray work;
+  stddev = 0.0;
+  E0 = 0.0;
+  int iter = 0;
+  double S1 = 0.0, Eloc = 0.0, ovlp = 0.0;
+  int numVars = grad.rows();
+  grad.setZero();
+  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
+  VectorXd grad_ratio = VectorXd::Zero(numVars);
+  int nstore = 1000000 / commsize;
+  int gradIter = min(nstore, niter);
+  std::vector<double> gradError(gradIter * commsize, 0);
+  double bestOvlp = 0.0;
+  Determinant bestDet = walk.getDet();
+  enum Move
+  {
+    Amove,
+    Bmove,
+    Dmove
+  };
+  bool calcEloc = true;
+  int nAMoves = 0;
+  /*
+  std::vector<double> e, t;
+  double weight;
+  */
+  while (iter < niter)
+  {
+    if (calcEloc)
+    {
+      grad_ratio.setZero();
+      w.HamAndOvlp(walk, ovlp, Eloc, work);
+      w.OverlapWithGradient(walk, ovlp, grad_ratio);
+    }
+    for (int i = 0; i < grad.rows(); i++)
+    {
+      grad_ratio_bar[i] += grad_ratio[i];
+      grad[i] += grad_ratio[i] * Eloc;;
+    }
+    double E0old = E0;
+    E0 = E0 + (Eloc - E0) / (iter + 1);
+    S1 = S1 + (Eloc - E0old) * (Eloc - E0);
+    if (iter < gradIter)
+    {
+      gradError[iter + commrank * gradIter] = Eloc;
+    }
+    Determinant cdet = walk.getDet();  
+    Determinant pdet = cdet;
+    Move move;
+    MetHelper C(cdet);
+    double P_a = C.AlphaMoves() / C.TotalMoves();
+    double P_b = C.BetaMoves() / C.TotalMoves();
+    double P_d = C.DoubleMoves() / C.TotalMoves();
+    double rand = random();
+    if (rand < P_a) 
+    {
+      move = Amove;
+    }
+    else if (rand < (P_b + P_a)) 
+    {
+      move = Bmove;
+    }
+    else if (rand < (P_d + P_a + P_b))
+    {
+      move = Dmove;
+    }
+
+    int orb1, orb2;
+    double pdetOvercdet;
+    if (move == Amove)
+    {
+      orb1 = C.a[(int) (random() * C.a.size())];
+      orb2 = C.ua[(int) (random() * C.ua.size())];
+      pdet.setoccA(orb1, false);
+      pdet.setoccA(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1, 0, 2*orb2, 0, walk, false);
+    }
+    else if (move == Bmove)
+    {
+      orb1 = C.b[(int) (random() * C.b.size())];
+      orb2 = C.ub[(int) (random() * C.ub.size())];
+      pdet.setoccB(orb1, false);
+      pdet.setoccB(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1+1, 0, 2*orb2+1, 0, walk, false);
+    }
+    else if (move == Dmove)
+    {
+      orb1 = C.sa[(int) (random() * C.sa.size())];
+      orb2 = C.sb[(int) (random() * C.sb.size())];
+      pdet.setoccA(orb1, false);
+      pdet.setoccB(orb2, false);
+      pdet.setoccB(orb1, true);
+      pdet.setoccA(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
+    }
+    MetHelper P(pdet);
+    double T_C = 1.0 / C.TotalMoves();
+    double T_P = 1.0 / P.TotalMoves();
+    double P_pdetOvercdet = pow(pdetOvercdet, 2.0);
+    //double P_pdetOvercdet = abs(pde tOvercdet);
+    double accept = min(1.0, (T_P * P_pdetOvercdet) / T_C);
+    //cout << 'h' << endl;
+    if (random() < accept)
+    {
+      /*
+      e.push_back(Eloc);
+      t.push_back(weight);
+      weight = 1.0;
+      */
+      nAMoves += 1;
+      calcEloc = true;
+      if (move == Amove)
+      {
+        walk.update(orb1, orb2, 0, w.getRef(), w.getCorr());
+      }
+      else if (move == Bmove)
+      {
+        walk.update(orb1, orb2, 1, w.getRef(), w.getCorr());
+      }
+      else if (move == Dmove)
+      {
+        walk.update(orb1, orb2, 0, w.getRef(), w.getCorr());
+        walk.update(orb2, orb1, 1, w.getRef(), w.getCorr());
+      }
+    }
+    else
+    {
+      calcEloc = false;
+      //weight += 1.0;
+    }
+    iter++;
+    if (abs(ovlp) > bestOvlp)
+    {
+      bestOvlp = abs(ovlp);
+      bestDet = walk.getDet();
+    }
+  }
+  grad_ratio_bar /= niter;
+  grad /= niter;
+  S1 /= niter;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &E0, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &nAMoves, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+#endif
+/*
+//pseudo weights
+  vector<double> C;
+  corr_func(C, e, t);
+  cout << "\t Pseudo data" << endl;
+  cout << "\t mean: " << average(e, t) << endl;
+  double tau = corr_time(C); 
+  cout << "\t autocorrelation time: " << tau << endl;
+  cout << "\t sample variance: " << variance(e,t) << endl;
+  cout << "\t n_eff: " << n_eff(t) << endl;
+  cout << "\t average variance: " << (variance(e, t) * tau / n_eff(t)) << endl;
+  ofstream file("pseudo.txt");
+  for (int i = 0; i < e.size(); i++)
+  {
+    file << e[i] << " \t" << t[i] << endl;
+  }
+  file.close();
+*/
+//blocking
+  vector<double> b_size, r_x;
+  blocking(b_size, r_x, gradError);
+  rk = corr_time(gradError.size(), b_size, r_x);
+  write_block(b_size, r_x);
+/*
+  cout << "block rk: " << rk << endl;
+//correlation function
+  vector<double> c;
+  corr_func(c, gradError);
+  rk = corr_time(c);
+  cout << "brute force rk: " << rk << endl;
+  write_corr_func(c);
+  cout << "sample variance: " << S1 << endl;
+  cout << "sample size: " << niter * commsize << endl;
+  cout << "Fraction of accepted moves: " << fracAmoves << endl;
+*/
+  grad_ratio_bar /= (commsize);
+  grad /= (commsize);
+  E0 /= commsize;
+  grad = (grad - E0 * grad_ratio_bar);
+  double n = niter * commsize;
+  double fracAmoves = ((double) nAMoves)/ n;
+  stddev = sqrt(S1 * rk / n);
+#ifndef SERIAL
+  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
   if (commrank == 0)
   {
     char file[5000];
@@ -943,24 +1202,30 @@ class getGradientWrapper
   Wfn &w;
   Walker &walk;
   int stochasticIter;
-  getGradientWrapper(Wfn &pw, Walker &pwalk, int niter) : w(pw), walk(pwalk)
+  bool ctmc;
+  getGradientWrapper(Wfn &pw, Walker &pwalk, int niter, bool pctmc) : w(pw), walk(pwalk)
   {
     stochasticIter = niter;
+    ctmc = pctmc;
   };
 
   void getGradient(VectorXd &vars, VectorXd &grad, double &E0, double &stddev, double &rt, bool deterministic)
   {
+    w.updateVariables(vars);
+    w.initWalker(walk);
     if (!deterministic)
     {
-      w.updateVariables(vars);
-      w.initWalker(walk);
-      getStochasticGradientContinuousTime(w, walk, E0, stddev, grad, rt, stochasticIter, 0.5e-3);
+      if (ctmc)
+      {
+        getStochasticGradientContinuousTime(w, walk, E0, stddev, grad, rt, stochasticIter, 0.5e-3);
+      }
+      else
+      {
+        getStochasticGradientMetropolis(w, walk, E0, stddev, grad, rt, stochasticIter);
+      }
     }
     else
     {
-      w.updateVariables(vars);
-      w.initWalker(walk);
-      //w.printVariables();
       stddev = 0.0;
       rt = 1.0;
       getGradientDeterministic(w, walk, E0, grad);
