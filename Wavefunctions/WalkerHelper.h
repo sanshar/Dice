@@ -322,7 +322,7 @@ class WalkerHelper<Pfaffian>
     double thetaPfaff;                      //determinant of the theta matrix
     array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
     array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    array<MatrixXd, 2> rTable;            //table used for efficiently
+    //array<MatrixXd, 2> rTable;            //table used for efficiently
     MatrixXd fMat;
 
     WalkerHelper() {};
@@ -330,6 +330,11 @@ class WalkerHelper<Pfaffian>
     WalkerHelper(const Pfaffian &w, const Determinant &d) 
     {
       fillOpenClosedOrbs(d);
+      int nopen = openOrbs[0].size() + openOrbs[1].size();
+      int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
+      fMat = MatrixXd::Zero(nopen * nclosed, nclosed);
+      //rTable[0] = MatrixXd::Zero(nopen * nclosed, nclosed);
+      //rTable[1] = MatrixXd::Zero(nopen * nclosed, nopen * nclosed);
       initInvDetsTables(w);
     }
     
@@ -356,21 +361,20 @@ class WalkerHelper<Pfaffian>
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
        
-      fMat = MatrixXd::Zero(open.size() * closed.size(), closed.size());
+      MatrixXd fRow;
+      VectorXi rowSlice(1), colSlice(nclosed);
       for (int i = 0; i < closed.size(); i++) {
         for (int a = 0; a < open.size(); a++) {
-          MatrixXd fRow;
-          VectorXi rowSlice(1);
+          colSlice = closed;
           rowSlice[0] = open[a];
-          VectorXi colSlice = closed;
-          colSlice(i) = open[a];
+          colSlice[i] = open[a];
           igl::slice(w.getPairMat(), rowSlice, colSlice, fRow);
           fMat.block(i * open.size() + a, 0, 1, closed.size()) = fRow;
         }
       }
       
-      rTable[0] = fMat * thetaInv; 
-      rTable[1] = - rTable[0] * fMat.transpose(); 
+      //rTable[0] = fMat * thetaInv; 
+      //rTable[1] = - rTable[0] * fMat.transpose(); 
     }
     
     void initInvDetsTables(const Pfaffian &w)
@@ -422,9 +426,19 @@ class WalkerHelper<Pfaffian>
       bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
       MatrixXd invOld = thetaInv;
       MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
+      MatrixXd shuffledThetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
       
-      thetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
-      thetaPfaff = rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      closed[tableIndexi] = a + sz * norbs; 
+      std::vector<int> order(closed.size());
+      auto rcopy = closed;
+      std::iota(order.begin(), order.end(), 0);
+      std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
+      Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
+      igl::slice(shuffledThetaInv, orderVec, orderVec, thetaInv);
+      
+      //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+      double pfaffRatio = fMat.row(tableIndexi * nopen + tableIndexa) * invOld.col(tableIndexi);
+      thetaPfaff = thetaPfaff * pfaffRatio;
       thetaPfaff *= parity;
       fillOpenClosedOrbs(excitedDet);
       makeTables(w);

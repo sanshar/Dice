@@ -409,13 +409,13 @@ struct Walker<Corr, Slater> {
     }
   }
 
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "alphaTable\n" << refHelper.rTable[0][0] << endl << endl;
-    os << "betaTable\n" << refHelper.rTable[0][1] << endl << endl;
-    os << "dets\n" << refHelper.thetaDet[0][0] << "  " << walk.refHelper.thetaDet[0][1] << endl << endl;
-    os << "alphaInv\n" << refHelper.thetaInv[0] << endl << endl;
-    os << "betaInv\n" << refHelper.thetaInv[1] << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, Slater>& w) {
+    os << w.d << endl << endl;
+    os << "alphaTable\n" << w.refHelper.rTable[0][0] << endl << endl;
+    os << "betaTable\n" << w.refHelper.rTable[0][1] << endl << endl;
+    os << "dets\n" << w.refHelper.thetaDet[0][0] << "  " << w.refHelper.thetaDet[0][1] << endl << endl;
+    os << "alphaInv\n" << w.refHelper.thetaInv[0] << endl << endl;
+    os << "betaInv\n" << w.refHelper.thetaInv[1] << endl << endl;
     return os;
   }
 
@@ -632,13 +632,13 @@ struct Walker<Corr, AGP> {
     }
   }
   
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "alphaTable\n" << refHelper.rTable[0] << endl << endl;
-    os << "betaTable\n" << refHelper.rTable[1] << endl << endl;
-    os << "thirdTable\n" << refHelper.rTable[2] << endl << endl;
-    os << "dets\n" << refHelper.thetaDet << endl << endl;
-    os << "thetaInv\n" << refHelper.thetaInv << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, AGP>& w) {
+    os << w.d << endl << endl;
+    os << "alphaTable\n" << w.refHelper.rTable[0] << endl << endl;
+    os << "betaTable\n" << w.refHelper.rTable[1] << endl << endl;
+    os << "thirdTable\n" << w.refHelper.rTable[2] << endl << endl;
+    os << "dets\n" << w.refHelper.thetaDet << endl << endl;
+    os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;
   }
 
@@ -736,7 +736,8 @@ struct Walker<Corr, Pfaffian> {
     int nopen = refHelper.openOrbs[0].size() + refHelper.openOrbs[1].size();
     int tableIndexi, tableIndexa;
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
-    return refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+    //return refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
+    return refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
   }
   
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Pfaffian &ref) const
@@ -745,22 +746,36 @@ struct Walker<Corr, Pfaffian> {
     int nopen = refHelper.openOrbs[0].size() + refHelper.openOrbs[1].size();
     int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz1); 
-    refHelper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2) ;
+    refHelper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2);
     //cout << "nopen  " << nopen << endl;
     //cout << "sz1  " << sz1 << "  ti  " << tableIndexi << "  ta  " << tableIndexa  << endl;
     //cout << "sz2  " << sz2 << "  tj  " << tableIndexj << "  tb  " << tableIndexb  << endl;
     double summand1, summand2, crossTerm;
     if (tableIndexi < tableIndexj) {
       crossTerm = (ref.getPairMat())(b + sz2 * norbs, a + sz1 * norbs);
-      summand1 = refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) 
-          - refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj);
-      summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (refHelper.rTable[1](tableIndexi * nopen + tableIndexa, tableIndexj * nopen + tableIndexb) + crossTerm);
+      //summand1 = refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) 
+      //    - refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj);
+      //summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (refHelper.rTable[1](tableIndexi * nopen + tableIndexa, tableIndexj * nopen + tableIndexb) + crossTerm);
+      double term1 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      double term2 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      double term3 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      double term4 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      summand1 = term1 * term2 - term3 * term4;
+      double term5 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexj * nopen + tableIndexb));
+      summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (term5 + crossTerm);
     }
     else { 
       crossTerm = (ref.getPairMat())(a + sz1 * norbs, b + sz2 * norbs);
-      summand1 = refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) 
-          - refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi);
-      summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (refHelper.rTable[1](tableIndexj * nopen + tableIndexb, tableIndexi * nopen + tableIndexa) + crossTerm);
+      //summand1 = refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) 
+      //    - refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi);
+      //summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (refHelper.rTable[1](tableIndexj * nopen + tableIndexb, tableIndexi * nopen + tableIndexa) + crossTerm);
+      double term1 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      double term2 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      double term3 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      double term4 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      summand1 = term1 * term2 - term3 * term4;
+      double term5 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexi * nopen + tableIndexa));
+      summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (term5 + crossTerm);
     }
     //cout << "double   " << crossTerm << "   " << summand1 << "  " << summand2 << endl; 
     return summand1 + summand2;
@@ -858,13 +873,13 @@ struct Walker<Corr, Pfaffian> {
     }
   }
   
-  ostream& operator<<(ostream& os) {
-    os << d << endl << endl;
-    os << "fMat\n" << refHelper.fMat << endl << endl;
-    os << "fThetaInv\n" << refHelper.rTable[0] << endl << endl;
-    os << "fThetaInvf\n" << refHelper.rTable[1] << endl << endl;
-    os << "pfaff\n" << refHelper.thetaPfaff << endl << endl;
-    os << "thetaInv\n" << refHelper.thetaInv << endl << endl;
+  friend ostream& operator<<(ostream& os, const Walker<Corr, Pfaffian>& w) {
+    os << w.d << endl << endl;
+    os << "fMat\n" << w.refHelper.fMat << endl << endl;
+    os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
+    os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
+    os << "pfaff\n" << w.refHelper.thetaPfaff << endl << endl;
+    os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;
   }
 

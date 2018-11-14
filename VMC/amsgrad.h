@@ -24,7 +24,7 @@
 #include "global.h"
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
-
+#include <math.h>
 #ifndef SERIAL
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -57,13 +57,14 @@ class AMSGrad
 
     int maxIter;
     int iter;
+    int avgIter;
 
     VectorXd mom1;
     VectorXd mom2;
 
     AMSGrad(double pstepsize=0.001,
              double pdecay_mom1=0.1, double pdecay_mom2=0.001,  
-            int pmaxIter=1000) : stepsize(pstepsize), decay_mom1(pdecay_mom1), decay_mom2(pdecay_mom2), maxIter(pmaxIter)
+            int pmaxIter=1000, int pavgIter=0) : stepsize(pstepsize), decay_mom1(pdecay_mom1), decay_mom2(pdecay_mom2), maxIter(pmaxIter), avgIter(pavgIter)
     {
         iter = 0;
     }
@@ -120,12 +121,17 @@ class AMSGrad
         }
 
         VectorXd grad = VectorXd::Zero(vars.rows());
+        VectorXd avgVars = VectorXd::Zero(vars.rows());
+        VectorXd deltaVars = VectorXd::Zero(vars.rows());
 
+        double stepNorm = 0., angle = 0.;
         while (iter < maxIter)
         {
             double E0, stddev = 0.0, rt = 1.0;
             getGradient(vars, grad, E0, stddev, rt);
             write(vars);
+            double oldNorm = stepNorm, dotProduct = 0.;
+            stepNorm = 0.;
 
             if (commrank == 0)
             {
@@ -135,13 +141,17 @@ class AMSGrad
                     mom2[i] = max(mom2[i], decay_mom2 * grad[i]*grad[i] + (1. - decay_mom2) * mom2[i]);   
                     if (schd.method == amsgrad)
                     {
-                        vars[i] -= stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);
+                      double delta = stepsize * mom1[i] / (pow(mom2[i], 0.5) + 1.e-8);  
+                      vars[i] -= delta;
+                      stepNorm += delta * delta;
+                      dotProduct += delta * deltaVars[i];
+                      deltaVars[i] = delta;
                     }
                     else if(schd.method == amsgrad_sgd)
                     {
                         if (iter < schd._sgdIter)
                         {
-                            vars[i] -= 1.0 * grad[i];
+                            vars[i] -= 0.1 * grad[i];
                         }
                         else
                         {
@@ -149,6 +159,8 @@ class AMSGrad
                         }
                     }                        
                 }
+                stepNorm = pow(stepNorm, 0.5);
+                if (oldNorm != 0) angle = acos(dotProduct/stepNorm/oldNorm) * 180 / 3.14159265;
             }
 
 #ifndef SERIAL
@@ -156,8 +168,20 @@ class AMSGrad
 #endif
 
             if (commrank == 0)
-                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i  %6.6f %8.2f %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % (stepNorm) %(angle) % ((getTime() - startofCalc));
+            if (maxIter - iter <= avgIter) avgVars += vars;
             iter++;
+        }
+        
+        if (avgIter != 0) {
+          avgVars = avgVars/avgIter;
+          write(avgVars);
+          double E0, stddev = 0.0, rt = 1.0;
+          getGradient(avgVars, grad, E0, stddev, rt);
+          if (commrank == 0) {
+            std::cout << "Average over last " << avgIter << " iterations" << endl;
+            std::cout << format("0 %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n")  % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+          }
         }
     }
 };

@@ -38,7 +38,7 @@ void runVMC(Wave& wave, Walker& walk) {
   functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<Wave, Walker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, schd.deterministic);
 
   if (schd.method == amsgrad || schd.method == amsgrad_sgd) {
-    AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter);
+    AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter, schd.avgIter);
     optimizer.optimize(vars, getStochasticGradient, schd.restart);
   }
   else if (schd.method == sgd) {

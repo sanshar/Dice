@@ -242,6 +242,7 @@ struct CorrelatedWavefunction {
                                         work, false);  
   
     //loop over all the screened excitations
+    //cout << "eloc excitations" << endl;
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       double tia = work.HijElement[i];
@@ -253,6 +254,7 @@ struct CorrelatedWavefunction {
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham += tia * ovlpRatio;
+      //cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
 
       work.ovlpRatio[i] = ovlpRatio;
     }
