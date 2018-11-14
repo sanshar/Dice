@@ -20,6 +20,7 @@
 #include "Correlator.h"
 #include "Determinants.h"
 #include <boost/container/static_vector.hpp>
+#include <fstream>
 #include "input.h"
 
 using namespace Eigen;
@@ -27,6 +28,19 @@ using namespace Eigen;
 Jastrow::Jastrow () {    
   int norbs = Determinant::norbs;
   SpinCorrelator = MatrixXd::Constant(2*norbs, 2*norbs, 1.);
+  bool readJastrow = false;
+  char file[5000];
+  sprintf(file, "Jastrow.txt");
+  ifstream ofile(file);
+  if (ofile)
+    readJastrow = true;
+  if (readJastrow) {
+    for (int i = 0; i < SpinCorrelator.rows(); i++) {
+      for (int j = 0; j < SpinCorrelator.rows(); j++){
+        ofile >> SpinCorrelator(i, j);
+      }
+    }
+  }
 };
 
 
@@ -113,7 +127,8 @@ void Jastrow::updateVariables(const Eigen::VectorXd &v)
 void Jastrow::printVariables() const
 {
   cout << "Jastrow"<< endl;
-  for (int i=0; i<SpinCorrelator.rows(); i++)
-    for (int j=0; j<=i; j++)
-      cout << SpinCorrelator(i,j);
+  //for (int i=0; i<SpinCorrelator.rows(); i++)
+  //  for (int j=0; j<=i; j++)
+  //    cout << SpinCorrelator(i,j);
+  cout << SpinCorrelator << endl << endl;
 }

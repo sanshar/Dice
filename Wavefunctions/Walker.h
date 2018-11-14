@@ -227,7 +227,7 @@ struct Walker<Corr, Slater> {
       refHelper.excitationUpdate(ref, cre, des, sz, p, d);
     }
 
-    corrHelper.updateHelper(corr, d);
+    corrHelper.updateHelper(corr, d, i, a, sz);
   }
 
   void update(int i, int j, int a, int b, bool sz, const Slater &ref, const Corr& corr, bool doparity = true)
@@ -249,7 +249,7 @@ struct Walker<Corr, Slater> {
       vector<int> cre{ a, b }, des{ i, j };
       refHelper.excitationUpdate(ref, cre, des, sz, p, d);
     }
-    corrHelper.updateHelper(corr, d);
+    corrHelper.updateHelper(corr, d, i, j, a, b, sz);
   }
 
   void updateWalker(const Slater &ref, const Corr& corr, int ex1, int ex2, bool doparity = true)
@@ -545,7 +545,7 @@ struct Walker<Corr, AGP> {
     d.setocc(a, sz, true);
     vector<int> cre{ a }, des{ i };
     refHelper.excitationUpdate(ref, cre, des, sz, p, d);
-    corrHelper.updateHelper(corr, d);
+    corrHelper.updateHelper(corr, d, i, a, sz);
   }
   
   void update(int i, int j, int a, int b, bool sz, const AGP &ref, const Corr &corr, bool doparity = true)
@@ -560,7 +560,7 @@ struct Walker<Corr, AGP> {
     d.setocc(b, sz, true);
     vector<int> cre{ a, b }, des{ i, j };
     refHelper.excitationUpdate(ref, cre, des, sz, p, d);
-    corrHelper.updateHelper(corr, d);
+    corrHelper.updateHelper(corr, d, i, j, a, b, sz);
   }
   
   void updateWalker(const AGP& ref, const Corr &corr, int ex1, int ex2, bool doparity = true)
@@ -788,7 +788,7 @@ struct Walker<Corr, Pfaffian> {
     d.setocc(i, sz, false);
     d.setocc(a, sz, true);
     refHelper.excitationUpdate(ref, i, a, sz, p, d);
-    corrHelper.updateHelper(corr, d);
+    corrHelper.updateHelper(corr, d, i, a, sz);
   }
   
   void updateWalker(const Pfaffian& ref, const Corr &corr, int ex1, int ex2, bool doparity = true)

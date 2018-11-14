@@ -184,6 +184,14 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
+  else if (schd.wavefunctionType == "test") {
+    CorrelatedWavefunction<Gutzwiller, Slater> wave; Walker<Gutzwiller, Slater> walk;
+    runVMC(wave, walk);
+    wave.readWave();
+    if (commrank == 0) wave.printVariables();
+    //runVMC(wave, walk);
+  }
+  
   //else if (schd.wavefunctionType == "LanczosCPSSlater") {
   //  //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
   //  CPSSlater wave; HFWalker walk;

@@ -60,6 +60,7 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/AGP.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
+	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/Correlator.o \
 	obj/ShermanMorrisonWoodbury.o\
@@ -76,6 +77,7 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/Slater.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
+	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/evaluateE.o \
 	obj/excitationOperators.o\

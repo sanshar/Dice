@@ -28,6 +28,7 @@
 #include "Pfaffian.h"
 #include "CPS.h"
 #include "Jastrow.h"
+#include "Gutzwiller.h"
 
 template<typename Reference>
 class WalkerHelper {
@@ -466,7 +467,7 @@ class WalkerHelper<CPS>
   WalkerHelper(const CPS& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
     intermediateForEachSpinOrb.resize(norbs*2);
-    updateHelper(cps, d);
+    updateHelper(cps, d, 0, 0, 0);
 
     if (cps.twoSiteOrSmaller) {
       vector<int> initial(norbs, -1);
@@ -485,7 +486,25 @@ class WalkerHelper<CPS>
     }
   }
 
-  void updateHelper(const CPS& cps, const Determinant& d) {
+  //these update functions are really init functions
+  void updateHelper(const CPS& cps, const Determinant& d, int l, int a, bool sz) {
+    int norbs = Determinant::norbs;
+
+    for (int i=0; i<2*norbs; i++) {
+      intermediateForEachSpinOrb[i] = 1.0;
+    
+      Determinant dcopy1 = d, dcopy2 = d;
+      dcopy1.setocc(i, true);  //make sure this is occupied
+      dcopy2.setocc(i, false); //make sure this is unoccupied
+    
+      const vector<int>& cpsContainingi = cps.mapFromOrbitalToCorrelator[i/2];
+      for (const auto& j : cpsContainingi) {
+        intermediateForEachSpinOrb[i] *= cps.cpsArray[j].OverlapRatio(dcopy1, dcopy2);
+      }
+    }
+  }
+  
+  void updateHelper(const CPS& cps, const Determinant& d, int l, int m, int a, int b, bool sz) {
     int norbs = Determinant::norbs;
 
     for (int i=0; i<2*norbs; i++) {
@@ -631,10 +650,10 @@ class WalkerHelper<Jastrow>
   WalkerHelper(const Jastrow& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
     intermediateForEachSpinOrb.resize(norbs*2);
-    updateHelper(cps, d);
+    initHelper(cps, d);
   }
 
-  void updateHelper(const Jastrow& cps, const Determinant& d) {
+  void initHelper(const Jastrow& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
 
     vector<int> closed;
@@ -649,6 +668,30 @@ class WalkerHelper<Jastrow>
           intermediateForEachSpinOrb[i] *= cps(i, closed[j]);
     }
   }
+  
+  void updateHelper(const Jastrow& cps, const Determinant& d, int i, int a, bool sz) {
+    i = 2 * i + sz; a = 2 * a + sz;
+    int norbs = Determinant::norbs;
+    for (int l = 0; l < 2 * norbs; l++) 
+      intermediateForEachSpinOrb[l] *= cps(l, a) / cps(l, i);
+    intermediateForEachSpinOrb[i] *= cps(i, i);
+    intermediateForEachSpinOrb[a] /= cps(a, a);
+    //initHelper(cps, d);
+  }
+  
+  void updateHelper(const Jastrow& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
+    i = 2 * i + sz; a = 2 * a + sz;
+    j = 2 * j + sz; b = 2 * b + sz;
+    int norbs = Determinant::norbs;
+    for (int l = 0; l < 2 * norbs; l++) 
+      intermediateForEachSpinOrb[l] *= cps(l, a) * cps(l, b) / cps(l, i) / cps(l, j);
+    intermediateForEachSpinOrb[i] *= cps(i, i);
+    intermediateForEachSpinOrb[a] /= cps(a, a);
+    intermediateForEachSpinOrb[j] *= cps(j, j);
+    intermediateForEachSpinOrb[b] /= cps(b, b);
+    //initHelper(cps, d);
+  }
+
 
   double OverlapRatio(int i, int a, const Jastrow& cps,
                       const Determinant &dcopy, const Determinant &d) const
@@ -662,6 +705,46 @@ class WalkerHelper<Jastrow>
     return intermediateForEachSpinOrb[a]*intermediateForEachSpinOrb[b]*cps(a,b)*cps(i,j)
         /intermediateForEachSpinOrb[i]/intermediateForEachSpinOrb[j]/
         cps(i,a)/cps(j,a)/cps(i,b)/cps(j,b);
+  }
+};  
+
+template<>
+class WalkerHelper<Gutzwiller>
+{
+ public:
+  std::vector<double> doublyOccupiedOrbs;
+
+  WalkerHelper() {};
+  WalkerHelper(const Gutzwiller& gutz, const Determinant& d) {
+    updateHelper(gutz, d, 0, 0, 0);
+  }
+
+  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int a, bool sz) {
+    doublyOccupiedOrbs.clear();
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < norbs; i++) {
+      if (d.getoccA(i) && d.getoccB(i)) doublyOccupiedOrbs.push_back(i);
+    }
+  }
+  
+  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int j, int a, int b, bool sz) {
+    doublyOccupiedOrbs.clear();
+    int norbs = Determinant::norbs;
+    for (int i = 0; i < norbs; i++) {
+      if (d.getoccA(i) && d.getoccB(i)) doublyOccupiedOrbs.push_back(i);
+    }
+  }
+
+  double OverlapRatio(int i, int a, const Gutzwiller& gutz,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return gutz.OverlapRatio(dcopy, d);
+  }
+  
+  double OverlapRatio(int i, int j, int a, int b, const Gutzwiller& gutz,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return gutz.OverlapRatio(dcopy, d);
   }
 };  
 
