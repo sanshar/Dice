@@ -82,6 +82,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.fn_factor = 1.0;
       schd.nGeneration = 30.0;
       schd.excitationLevel = 1;
+      schd.ctmc = true;
 
       while (dump.good())
 	{
@@ -191,6 +192,10 @@ void readInput(string input, schedule& schd, bool print) {
       
       else if (boost::iequals(ArgName, "lanczosjastrowpfaffian"))
 	    schd.wavefunctionType = "LanczosJastrowPfaffian";
+      else if (boost::iequals(ArgName, "ctmc"))
+	    schd.ctmc = true;
+      else if (boost::iequals(ArgName, "metropolis"))
+	    schd.ctmc = false;
 	  
 	  else if (boost::iequals(ArgName, "tol"))
 	    schd.tol = atof(tok[1].c_str());

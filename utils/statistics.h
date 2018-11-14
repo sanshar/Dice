@@ -20,7 +20,7 @@ double average(vector<double> &x);
 
 
 //calculates effective sample size for weighted data sets. For unweighted data, will just return the size of the data set
-double n_eff(vector<double> &x, vector<double> &w);
+double n_eff(vector<double> &w);
 
 
 //variance function, takes advantage of bessel's correction
@@ -54,7 +54,7 @@ void write_corr_func(vector<double> &c);
 //Output: b_size - block size per iteration, r_t - autocorrelation time per iteration
 void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x, vector<double> &w);
 
-void blocking(vector<double> b_size, vector<double> r_t, vector<double> x);
+void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x);
 
 
 //autocorrelation time: given blocking data, finds autocorrelation time based on the criteria: (block size)^3 > 2 * (number of original data points) * (autocorrelation time)^2

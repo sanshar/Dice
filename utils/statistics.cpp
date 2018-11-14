@@ -29,10 +29,10 @@ double average(vector<double> &x)
 }
 
 //calculates effective sample size for weighted data sets. For unweighted data, will just return the size of the data set
-double n_eff(vector<double> &x, vector<double> &w)
+double n_eff(vector<double> &w)
 {
     double n_eff, W = 0.0, W_2 = 0.0;
-    int n = x.size();
+    int n = w.size();
     for (int i = 0; i < n; i++)
     {
         W += w[i];
@@ -78,7 +78,7 @@ void corr_func(vector<double> &c, vector<double> &x, vector<double> &w)
     double x_bar = average(x,w);
     double var = variance(x,w);
     int n = x.size();
-    int l = min(n - 1, 200);
+    int l = min(n - 1, 1000);
     double norm;
     c.assign(l, 0.0);
     c[0] = 1.0;
@@ -167,7 +167,7 @@ void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x, ve
     }
 }
 
-void blocking(vector<double> b_size, vector<double> r_t, vector<double> x)
+void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x)
 {
     vector<double> w(x.size(), 1.0);
     blocking(b_size, r_t, x, w);

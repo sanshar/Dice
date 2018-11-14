@@ -62,6 +62,7 @@ private:
       & optimizeOrbs
       & optimizeCps
       & Hamiltonian
+      & ctmc
       & nwalk
       & tau
       & fn_factor
@@ -104,6 +105,7 @@ public:
   int avgIter;                     
   int _sgdIter;
   Method method;
+  bool ctmc;
 
   /*
   bool davidsonPrecondition;
