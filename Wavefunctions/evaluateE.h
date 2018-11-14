@@ -772,21 +772,39 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &s
     double P_b = C.BetaMoves() / C.TotalMoves();
     double P_d = C.DoubleMoves() / C.TotalMoves();
     double rand = random();
+    int orb1, orb2;
+    double pdetOvercdet;
     if (rand < P_a) 
     {
       move = Amove;
+      orb1 = C.a[(int) (random() * C.a.size())];
+      orb2 = C.ua[(int) (random() * C.ua.size())];
+      pdet.setoccA(orb1, false);
+      pdet.setoccA(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1, 0, 2*orb2, 0, walk, false);
     }
     else if (rand < (P_b + P_a)) 
     {
       move = Bmove;
+      orb1 = C.b[(int) (random() * C.b.size())];
+      orb2 = C.ub[(int) (random() * C.ub.size())];
+      pdet.setoccB(orb1, false);
+      pdet.setoccB(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1+1, 0, 2*orb2+1, 0, walk, false);
     }
     else if (rand < (P_d + P_a + P_b))
     {
       move = Dmove;
+      orb1 = C.sa[(int) (random() * C.sa.size())];
+      orb2 = C.sb[(int) (random() * C.sb.size())];
+      pdet.setoccA(orb1, false);
+      pdet.setoccB(orb2, false);
+      pdet.setoccB(orb1, true);
+      pdet.setoccA(orb2, true);
+      pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
     }
 
-    int orb1, orb2;
-    double pdetOvercdet;
+    /*
     if (move == Amove)
     {
       orb1 = C.a[(int) (random() * C.a.size())];
@@ -813,13 +831,12 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &s
       pdet.setoccA(orb2, true);
       pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
     }
+    */
     MetHelper P(pdet);
     double T_C = 1.0 / C.TotalMoves();
     double T_P = 1.0 / P.TotalMoves();
     double P_pdetOvercdet = pow(pdetOvercdet, 2.0);
-    //double P_pdetOvercdet = abs(pde tOvercdet);
     double accept = min(1.0, (T_P * P_pdetOvercdet) / T_C);
-    //cout << 'h' << endl;
     if (random() < accept)
     {
       /*
