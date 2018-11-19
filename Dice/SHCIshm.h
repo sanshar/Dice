@@ -1,22 +1,20 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
-  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
-
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
   This file is part of DICE.
-
-  This program is free software: you can redistribute it and/or modify it under
-  the terms of the GNU General Public License as published by the Free Software
-  Foundation, either version 3 of the License, or (at your option) any later
-  version.
-
-  This program is distributed in the hope that it will be useful, but WITHOUT
-  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-  FOR A PARTICULAR PURPOSE.
-
+  
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation, 
+  either version 3 of the License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
   See the GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  this program. If not, see <http://www.gnu.org/licenses/>.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
+  If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef SHCI_SHM_H
 #define SHCI_SHM_H
@@ -30,7 +28,7 @@ using namespace Eigen;
 void initSHM();
 
 template <typename T>
-void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
+void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname, 
 		    boost::interprocess::shared_memory_object& SHMsegment,
 		    boost::interprocess::mapped_region& SHMregion) {
 
@@ -40,25 +38,25 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
   MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 #endif
-
-  if (comm_rank == 0)
+  
+  if (comm_rank == 0) 
     totalMemory = vec.size()*sizeof(T);
 #ifndef SERIAL
   MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-
+  
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
   if (localrank == 0)
     memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
-
+  
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
+  
   if (comm_rank == 0) {
-    for (size_t i=0; i<vec.size(); i++)
+    for (size_t i=0; i<vec.size(); i++) 
       SHMvec[i] = vec[i];
   }
 #ifndef SERIAL
@@ -70,13 +68,13 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
     long maxIter = intdim/maxint;
 #ifndef SERIAL
     MPI_Barrier(shmcomm);
-
+    
     char* shrdMem = static_cast<char*>(SHMregion.get_address());
     for (int i=0; i<maxIter; i++) {
       MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, shmcomm);
       MPI_Barrier(shmcomm);
     }
-
+    
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
 #endif
   }
@@ -90,7 +88,7 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 
 
 template <typename T>
-void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
+void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname, 
 		    boost::interprocess::shared_memory_object& SHMsegment,
 		    boost::interprocess::mapped_region& SHMregion) {
 
@@ -101,25 +99,25 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
   MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 #endif
-
-  if (comm_rank == 0)
+  
+  if (comm_rank == 0) 
     totalMemory = vecsize*sizeof(T);
 #ifndef SERIAL
   MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-
+  
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
   if (localrank == 0)
     memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
-
+  
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
+  
   if (comm_rank == 0) {
-    for (size_t i=0; i<vecsize; i++)
+    for (size_t i=0; i<vecsize; i++) 
       SHMvec[i] = vec[i];
   }
 #ifndef SERIAL
@@ -131,13 +129,13 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
     long maxIter = intdim/maxint;
 #ifndef SERIAL
     MPI_Barrier(shmcomm);
-
+    
     char* shrdMem = static_cast<char*>(SHMregion.get_address());
     for (int i=0; i<maxIter; i++) {
       MPI_Bcast  ( shrdMem+i*maxint,       maxint,                       MPI_CHAR, 0, shmcomm);
       MPI_Barrier(shmcomm);
     }
-
+    
     MPI_Bcast  ( shrdMem+(maxIter)*maxint, totalMemory - maxIter*maxint, MPI_CHAR, 0, shmcomm);
 #endif
   }

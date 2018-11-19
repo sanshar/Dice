@@ -18,7 +18,18 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#include "Davidson.h"
+#include "Determinants.h"
+#include "Hmult.h"
+#include "SHCISortMpiUtils.h"
+#include "SHCIbasics.h"
+#include "SHCIgetdeterminants.h"
 #include "SHCIrdm.h"
+#include "SHCIsampledeterminants.h"
+#include "boost/format.hpp"
+#include "input.h"
+#include "integral.h"
+#include "math.h"
 #include <algorithm>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -31,17 +42,6 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "Davidson.h"
-#include "Determinants.h"
-#include "Hmult.h"
-#include "SHCISortMpiUtils.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
-#include "SHCIsampledeterminants.h"
-#include "boost/format.hpp"
-#include "input.h"
-#include "integral.h"
-#include "math.h"
 
 #ifndef SERIAL
 #include <boost/mpi.hpp>
@@ -63,7 +63,7 @@ CItype conj(CItype a) {
   return a;
 #endif
 }
-};  // namespace localConj
+}; // namespace localConj
 
 //=============================================================================
 // TODO Ask Sandeep about this.
@@ -123,7 +123,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
 
   // diagonal element
   for (size_t k = 0; k < EndIndex; k++) {
-    if (k % (nprocs) != proc) continue;
+    if (k % (nprocs) != proc)
+      continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
@@ -147,7 +148,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
       int Astring = i, Bstring = AlphaMajorToBeta[i][ii],
           DetI = AlphaMajorToDet[i][ii];
 
-      if ((std::abs(DetI) - 1) % nprocs != proc) continue;
+      if ((std::abs(DetI) - 1) % nprocs != proc)
+        continue;
 
       vector<int> closed(nelec, 0);
       vector<int> open(norbs - nelec, 0);
@@ -164,7 +166,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
         if (index != -1) {
           int DetJ = BetaMajorToDet[Bstring][index];
 
-          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          if (std::abs(DetJ) >= std::abs(DetI))
+            continue;
           Determinant dj = Dets[abs(DetJ) - 1];
           size_t orbDiff;
           getOrbDiff(dj, di, orbDiff);
@@ -174,7 +177,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
             double sgn = 1.0;
             int a = max(closed[n1], c0), b = min(closed[n1], c0),
                 I = max(closed[n1], d0), J = min(closed[n1], d0);
-            if (closed[n1] == d0) continue;
+            if (closed[n1] == d0)
+              continue;
             di.parity(min(d0, c0), max(d0, c0), sgn);
             if (!((closed[n1] > c0 && closed[n1] > d0) ||
                   (closed[n1] < c0 && closed[n1] < d0)))
@@ -202,7 +206,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
         for (int k = 0; k < SinglesFromBLen; k++) {
           int &Bsingle = SinglesFromBeta[Bstring][k];
 
-          if (SearchStartIndex >= AlphaToBetaLen) break;
+          if (SearchStartIndex >= AlphaToBetaLen)
+            break;
 
           int index = SearchStartIndex;
           for (; index < AlphaToBetaLen &&
@@ -216,7 +221,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
             int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
             // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
             // max(offSet, StartIndex)) continue;
-            if (std::abs(DetJ) >= std::abs(DetI)) continue;
+            if (std::abs(DetJ) >= std::abs(DetI))
+              continue;
             Determinant dj = Dets[abs(DetJ) - 1];
             size_t orbDiff;
             getOrbDiff(dj, di, orbDiff);
@@ -252,7 +258,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
 
         if (index != -1) {
           int DetJ = AlphaMajorToDet[Astring][index];
-          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          if (std::abs(DetJ) >= std::abs(DetI))
+            continue;
           Determinant dj = Dets[abs(DetJ) - 1];
 
           size_t orbDiff;
@@ -265,7 +272,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
             double sgn = 1.0;
             int a = max(closed[n1], c0), b = min(closed[n1], c0),
                 I = max(closed[n1], d0), J = min(closed[n1], d0);
-            if (closed[n1] == d0) continue;
+            if (closed[n1] == d0)
+              continue;
             di.parity(min(d0, c0), max(d0, c0), sgn);
             if (!((closed[n1] > c0 && closed[n1] > d0) ||
                   (closed[n1] < c0 && closed[n1] < d0)))
@@ -288,7 +296,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
         // if (std::abs(DetJ) < StartIndex) continue;
         // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
         // max(offSet, StartIndex)) continue;
-        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        if (std::abs(DetJ) >= std::abs(DetI))
+          continue;
         Determinant dj = Dets[abs(DetJ) - 1];
 
         if (dj.ExcitationDistance(di) == 2) {
@@ -319,7 +328,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
         // if (std::abs(DetJ) < StartIndex) continue;
         // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
         // max(offSet, StartIndex)) continue;
-        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        if (std::abs(DetJ) >= std::abs(DetI))
+          continue;
 
         Determinant dj = Dets[abs(DetJ) - 1];
         if (di.ExcitationDistance(dj) == 2) {
@@ -405,7 +415,7 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
       }
     }
     ofs2.close();
-  }  // end if commrank
+  } // end if commrank
 }
 
 //=============================================================================
@@ -529,12 +539,12 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       // ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
     }
 
-  }  // end commrank
+  } // end commrank
 }
 
 void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
                        int root, size_t norbs) {
-  int nSpatOrbs = norbs / 2;  // pow(s3RDM.rows(),1/3.0);
+  int nSpatOrbs = norbs / 2; // pow(s3RDM.rows(),1/3.0);
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
 
   if (commrank == 0) {
@@ -589,7 +599,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
       save << threeRDM;
     }
 
-  }  // commrank
+  } // commrank
 }
 
 void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM,
@@ -651,7 +661,7 @@ void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM,
       save << s4RDM;
     }
 
-  }  // commrank
+  } // commrank
 }
 
 //=============================================================================
@@ -744,7 +754,7 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
       int d0 = uniqueOrbDiff[k][i] % norbs,
           c0 = (uniqueOrbDiff[k][i] / norbs) % norbs;
 
-      if (uniqueOrbDiff[k][i] / norbs / norbs == 0) {  // single excitation
+      if (uniqueOrbDiff[k][i] / norbs / norbs == 0) { // single excitation
         vector<int> closed(nelec, 0);
         vector<int> open(norbs - nelec, 0);
         Dets[uniqueVarIndices[k][i]].getOpenClosed(open, closed);
@@ -752,7 +762,8 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
           double sgn = 1.0;
           int a = max(closed[n1], c0), b = min(closed[n1], c0),
               I = max(closed[n1], d0), J = min(closed[n1], d0);
-          if (closed[n1] == d0) continue;
+          if (closed[n1] == d0)
+            continue;
           uniqueDets[k].parity(min(d0, c0), max(d0, c0), sgn);
           // Dets[uniqueVarIndices[k][i]].parity(min(d0,c0), max(d0,c0),sgn);
           if (!((closed[n1] > c0 && closed[n1] > d0) ||
@@ -776,17 +787,19 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
                                  ci[uniqueVarIndices[k][i]] /
                                  (E0 - uniqueEnergy[k]),
                              nSpatOrbs);
-        }     // for n1
-      }       // single
-      else {  // double excitation
+        }    // for n1
+      }      // single
+      else { // double excitation
         int d1 = (uniqueOrbDiff[k][i] / norbs / norbs) % norbs,
             c1 = (uniqueOrbDiff[k][i] / norbs / norbs / norbs) % norbs;
         double sgn = 1.0;
         uniqueDets[k].parity(c1, c0, d1, d0, sgn);
         // Dets[uniqueVarIndices[k][i]].parity(d1,d0,c1,c0,sgn);
         int P = max(c1, c0), Q = min(c1, c0), R = max(d1, d0), S = min(d1, d0);
-        if (P != c0) sgn *= -1;
-        if (Q != d0) sgn *= -1;
+        if (P != c0)
+          sgn *= -1;
+        if (Q != d0)
+          sgn *= -1;
 
         if (schd.DoSpinRDM) {
           twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) +=
@@ -807,9 +820,9 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
                                ci[uniqueVarIndices[k][i]] /
                                (E0 - uniqueEnergy[k]),
                            nSpatOrbs);
-      }  // If
-    }    // i in variational connections to PT det k
-  }      // k in PT dets
+      } // If
+    }   // i in variational connections to PT det k
+  }     // k in PT dets
 
 #ifndef SERIAL
   if (schd.DoSpinRDM)
@@ -877,7 +890,8 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
   int nSpatOrbs = norbs / 2;
 
   for (int i = 0; i < DetsSize; i++) {
-    if (i % commsize != commrank) continue;
+    if (i % commsize != commrank)
+      continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
@@ -892,7 +906,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
               localConj::conj(cibra[i]) * ciket[i];
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM,
                            localConj::conj(cibra[i]) * ciket[i], nSpatOrbs);
-      }  // end n1 n2
+      } // end n1 n2
 
     for (int j = 1; j < connections[i / commsize].size(); j++) {
       // if (i == connections[i/commsize][j]) continue;
@@ -900,13 +914,15 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
       int c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
 
       if (orbDifference[i / commsize][j] / norbs / norbs ==
-          0) {  // only single excitation
+          0) { // only single excitation
         for (int n1 = 0; n1 < nelec; n1++) {
           double sgn = 1.0;
           int a = max(closed[n1], c0), b = min(closed[n1], c0),
               I = max(closed[n1], d0), J = min(closed[n1], d0);
-          if (closed[n1] == d0) continue;
-          if (closed[n1] == c0) continue;  // TODO REMOVE
+          if (closed[n1] == d0)
+            continue;
+          if (closed[n1] == c0)
+            continue; // TODO REMOVE
           Dets[i].parity(min(d0, c0), max(d0, c0), sgn);
           if (!((closed[n1] > c0 && closed[n1] > d0) ||
                 (closed[n1] < c0 && closed[n1] < d0)))
@@ -929,7 +945,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
               sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
                   cibra[i],
               nSpatOrbs);
-        }  // end n1
+        } // end n1
 
       } else {
         int d1 = (orbDifference[i / commsize][j] / norbs / norbs) % norbs;
@@ -956,10 +972,10 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
             sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
                 cibra[i],
             nSpatOrbs);
-      }  // end if
+      } // end if
 
-    }  // end j
-  }    // end i
+    } // end j
+  }   // end i
 
 #ifndef SERIAL
   if (schd.DoSpinRDM)
@@ -1016,7 +1032,8 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
 
   //#pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < DetsSize; i++) {
-    if (i % commsize != commrank) continue;
+    if (i % commsize != commrank)
+      continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
@@ -1033,7 +1050,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
       int d0 = orbDifference[i / commsize][j] % norbs,
           c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
       if (orbDifference[i / commsize][j] / norbs / norbs ==
-          0) {  // only single excitation
+          0) { // only single excitation
         double sgn = 1.0;
         Dets[i].parity(min(c0, d0), max(c0, d0), sgn);
 
@@ -1117,8 +1134,10 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
         int P = max(p, r), R1 = min(p, r);
         int Q = max(q, r), R2 = min(q, r);
         double sgn = 1.;
-        if (P != p) sgn *= -1;
-        if (Q != q) sgn *= -1;
+        if (P != p)
+          sgn *= -1;
+        if (Q != q)
+          sgn *= -1;
         oneRDM(p, q) += sgn *
                         twoRDM(P * (P + 1) / 2 + R1, Q * (Q + 1) / 2 + R2) /
                         (nelec - 1.);
@@ -1143,17 +1162,19 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
           int P = max(p, q), Q = min(p, q);
           int R = max(r, s), S = min(r, s);
           double sgn = 1;
-          if (P != p) sgn *= -1;
-          if (R != r) sgn *= -1;
+          if (P != p)
+            sgn *= -1;
+          if (R != r)
+            sgn *= -1;
 #ifdef Complex
           twobody +=
               (sgn * 0.5 * twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
                I2(p, r, q, s))
-                  .real();  // 2-body term
+                  .real(); // 2-body term
 #else
           twobody += sgn * 0.5 *
                      twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
-                     I2(p, r, q, s);  // 2-body term
+                     I2(p, r, q, s); // 2-body term
 #endif
         }
 
@@ -1217,10 +1238,10 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt &I1,
 #ifdef Complex
           twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                       I2(2 * p, 2 * r, 2 * q, 2 * s))
-                         .real();  // 2-body term
+                         .real(); // 2-body term
 #else
           twobody += 0.5 * twoRDM(p * norbs + q, r * norbs + s) *
-                     I2(2 * p, 2 * r, 2 * q, 2 * s);  // 2-body term
+                     I2(2 * p, 2 * r, 2 * q, 2 * s); // 2-body term
 #endif
 
   energy += onebody + twobody;
@@ -1326,10 +1347,11 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
 
   // Pairs of determinants
   for (int b = 0; b < DetsSize; b++) {
-    if (b % commsize != commrank) continue;
-    Determinant DetsB = Dets[b];  // Necessary for MPI
+    if (b % commsize != commrank)
+      continue;
+    Determinant DetsB = Dets[b]; // Necessary for MPI
     for (int k = 0; k < DetsSize; k++) {
-      Determinant DetsK = Dets[k];  // Necessary for MPI
+      Determinant DetsK = Dets[k]; // Necessary for MPI
 
       // Distances and unique indexes
       int dist = DetsB.ExcitationDistance(DetsK);
@@ -1366,20 +1388,21 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         for (int x = 0; x < nelec; x++) {
           cs[2] = closed[x];
           ds[0] = closed[x];
-          if (closed[x] == ds[1] || closed[x] == ds[2]) continue;
+          if (closed[x] == ds[1] || closed[x] == ds[2])
+            continue;
           if (closed[x] == cs[0] || closed[x] == cs[1])
-            continue;  // TODO CHECK W/ SS
+            continue; // TODO CHECK W/ SS
 
           // Gamma = c0 c1 c2 d0 d1 d2
           double sgn = 1.0;
-          DetsK.parity(ds[2], ds[1], cs[0], cs[1], sgn);  // TOOD
+          DetsK.parity(ds[2], ds[1], cs[0], cs[1], sgn); // TOOD
 
           if (schd.DoSpinRDM)
             popSpin3RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), norbs,
                         threeRDM);
           popSpatial3RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), norbs,
                          s3RDM);
-        }  // end x
+        } // end x
       }
 
       // D=1
@@ -1397,26 +1420,28 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         for (int x = 0; x < nelec; x++) {
           cs[1] = closed[x];
           ds[1] = closed[x];
-          if (closed[x] == cs[0] || closed[x] == ds[2]) continue;
+          if (closed[x] == cs[0] || closed[x] == ds[2])
+            continue;
           for (int y = 0; y < x; y++) {
             cs[2] = closed[y];
             ds[0] = closed[y];
-            if (closed[y] == ds[1] || closed[y] == ds[2]) continue;
+            if (closed[y] == ds[1] || closed[y] == ds[2])
+              continue;
             if (closed[y] == cs[0] || closed[y] == cs[1])
-              continue;  // TODO CHECK W/ SS
+              continue; // TODO CHECK W/ SS
 
             // Gamma = c0 c1 c2 d0 d1 d2
             double sgn = 1.0;
             DetsK.parity(min(cs[0], ds[2]), max(cs[0], ds[2]),
-                         sgn);  // TODO Update repop order
+                         sgn); // TODO Update repop order
 
             if (schd.DoSpinRDM)
               popSpin3RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), norbs,
                           threeRDM);
             popSpatial3RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), norbs,
                            s3RDM);
-          }  // end y
-        }    // end x
+          } // end y
+        }   // end x
       }
 
       // D=0
@@ -1447,13 +1472,13 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                             threeRDM);
               popSpatial3RDM(cs, ds, real(conj(cibra[b]) * ciket[k]), norbs,
                              s3RDM);
-            }  // end z
-          }    // end y
-        }      // end x
+            } // end z
+          }   // end y
+        }     // end x
 
-      }  // end if dist
-    }    // end k
-  }      // end b
+      } // end if dist
+    }   // end k
+  }     // end b
 
 #ifndef SERIAL
   world.barrier();
@@ -1531,11 +1556,12 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
 #endif
 
   int norbs = Dets[0].norbs;
-  int nSOs = norbs / 2;  // Number of spatial orbitals
+  int nSOs = norbs / 2; // Number of spatial orbitals
 
   // Pairs of determinants
   for (int b = 0; b < DetsSize; b++) {
-    if (b % commsize != commrank) continue;
+    if (b % commsize != commrank)
+      continue;
     Determinant DetsB = Dets[b];
     for (int k = 0; k < DetsSize; k++) {
       Determinant DetsK = Dets[k];
@@ -1571,7 +1597,7 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         ds.push_back(0);
         ds[3] = ds[2];
         ds[2] = ds[1];
-        ds[1] = ds[0];  // Keep notation
+        ds[1] = ds[0]; // Keep notation
 
         for (int w = 0; w < nelec; w++) {
           cs[3] = closed[w];
@@ -1589,7 +1615,7 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                         fourRDM);
           popSpatial4RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), nSOs,
                          s4RDM);
-        }  // end w
+        } // end w
       }
 
       // D=2
@@ -1603,29 +1629,33 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         ds.push_back(0);
         ds.push_back(0);
         ds[3] = ds[1];
-        ds[2] = ds[0];  // Keep notation
+        ds[2] = ds[0]; // Keep notation
 
         for (int w = 0; w < nelec; w++) {
           cs[2] = closed[w];
           ds[1] = closed[w];
-          if (closed[w] == cs[0] || closed[w] == cs[1]) continue;
-          if (closed[w] == ds[3] || closed[w] == ds[2]) continue;
+          if (closed[w] == cs[0] || closed[w] == cs[1])
+            continue;
+          if (closed[w] == ds[3] || closed[w] == ds[2])
+            continue;
           for (int x = 0; x < w; x++) {
             cs[3] = closed[x];
             ds[0] = closed[x];
-            if (closed[x] == cs[0] || closed[x] == cs[1]) continue;
-            if (closed[x] == ds[3] || closed[x] == ds[2]) continue;
+            if (closed[x] == cs[0] || closed[x] == cs[1])
+              continue;
+            if (closed[x] == ds[3] || closed[x] == ds[2])
+              continue;
 
             double sgn = 1.0;
-            DetsK.parity(ds[3], ds[2], cs[0], cs[1], sgn);  // SS notation
+            DetsK.parity(ds[3], ds[2], cs[0], cs[1], sgn); // SS notation
 
             if (schd.DoSpinRDM)
               popSpin4RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), norbs,
                           fourRDM);
             popSpatial4RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]), nSOs,
                            s4RDM);
-          }  // end x
-        }    // end w
+          } // end x
+        }   // end w
       }
 
       // D=1
@@ -1640,33 +1670,36 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
         ds.push_back(0);
         ds.push_back(0);
         ds.push_back(0);
-        ds[3] = ds[0];  // Keep notation
+        ds[3] = ds[0]; // Keep notation
 
         for (int w = 0; w < nelec; w++) {
           cs[1] = closed[w];
           ds[2] = closed[w];
-          if (closed[w] == cs[0] || closed[w] == ds[3]) continue;
+          if (closed[w] == cs[0] || closed[w] == ds[3])
+            continue;
           for (int x = 0; x < w; x++) {
             cs[2] = closed[x];
             ds[1] = closed[x];
-            if (closed[x] == cs[0] || closed[x] == ds[3]) continue;
+            if (closed[x] == cs[0] || closed[x] == ds[3])
+              continue;
             for (int y = 0; y < x; y++) {
               cs[3] = closed[y];
               ds[0] = closed[y];
-              if (closed[y] == cs[0] || closed[y] == ds[3]) continue;
+              if (closed[y] == cs[0] || closed[y] == ds[3])
+                continue;
 
               double sgn = 1.0;
               DetsK.parity(min(ds[3], cs[0]), max(ds[3], cs[0]),
-                           sgn);  // SS notation
+                           sgn); // SS notation
 
               if (schd.DoSpinRDM)
                 popSpin4RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]),
                             norbs, fourRDM);
               popSpatial4RDM(cs, ds, sgn * real(conj(cibra[b]) * ciket[k]),
                              nSOs, s4RDM);
-            }  // end y
-          }    // end x
-        }      // end w
+            } // end y
+          }   // end x
+        }     // end w
       }
 
       // D=0
@@ -1701,14 +1734,14 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
                               fourRDM);
                 popSpatial4RDM(cs, ds, real(conj(cibra[b]) * ciket[k]), nSOs,
                                s4RDM);
-              }  // end z
-            }    // end y
-          }      // end x
-        }        // end w
+              } // end z
+            }   // end y
+          }     // end x
+        }       // end w
 
-      }  // end if dist
-    }    // end k
-  }      // end b
+      } // end if dist
+    }   // end k
+  }     // end b
 
 #ifndef SERIAL
   world.barrier();

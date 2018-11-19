@@ -1,31 +1,29 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
-  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
 
   This file is part of DICE.
 
-  This program is free software: you can redistribute it and/or modify it under
-  the terms of the GNU General Public License as published by the Free Software
-  Foundation, either version 3 of the License, or (at your option) any later
-  version.
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation,
+  either version 3 of the License, or (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful, but WITHOUT
-  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-  FOR A PARTICULAR PURPOSE.
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
   See the GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License along with
-  this program. If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License along with this program.
+  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "boost/format.hpp"
 #include "integral.h"
-#include <algorithm>
+#include <fstream>
+#include "math.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/serialization/vector.hpp>
-#include <fstream>
-#include "boost/format.hpp"
-#include "math.h"
 #include "string.h"
+#include <algorithm>
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -36,12 +34,14 @@
 
 using namespace boost;
 
-bool myfn(double i, double j) { return fabs(i) < fabs(j); }
+bool myfn(double i, double j) { return fabs(i)<fabs(j); }
+
+
 
 //=============================================================================
 void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
                    int &norbs, double &coreE, std::vector<int> &irrep) {
-  //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
   /*!
   Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
 
@@ -110,14 +110,14 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
         }
         index += 1;
       }
-    }  // while
+    } // while
 
     if (norbs == -1 || nelec == -1) {
       std::cout << "could not read the norbs or nelec" << std::endl;
       exit(0);
     }
     irrep.resize(norbs);
-  }  // commrank=0
+  } // commrank=0
 
 #ifndef SERIAL
   mpi::broadcast(world, nelec, 0);
@@ -127,9 +127,10 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
 #endif
 
   long npair = norbs * (norbs + 1) / 2;
-  if (I2.ksym) npair = norbs * norbs;
+  if (I2.ksym)
+    npair = norbs * norbs;
   I2.norbs = norbs;
-  size_t I2memory = npair * (npair + 1) / 2;  // memory in bytes
+  size_t I2memory = npair * (npair + 1) / 2; // memory in bytes
 
 #ifndef SERIAL
   world.barrier();
@@ -158,7 +159,8 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
       std::getline(dump, msg);
       trim(msg);
       boost::split(tok, msg, is_any_of(", \t"), token_compress_on);
-      if (tok.size() != 5) continue;
+      if (tok.size() != 5)
+        continue;
 
       double integral = atof(tok[0].c_str());
       int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str()),
@@ -167,16 +169,16 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
       if (a == b && b == c && c == d && d == 0) {
         coreE = integral;
       } else if (b == c && c == d && d == 0) {
-        continue;  // orbital energy
+        continue; // orbital energy
       } else if (c == d && d == 0) {
-        I1(2 * (a - 1), 2 * (b - 1)) = integral;          // alpha,alpha
-        I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) = integral;  // beta,beta
-        I1(2 * (b - 1), 2 * (a - 1)) = integral;          // alpha,alpha
-        I1(2 * (b - 1) + 1, 2 * (a - 1) + 1) = integral;  // beta,beta
+        I1(2 * (a - 1), 2 * (b - 1)) = integral;         // alpha,alpha
+        I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) = integral; // beta,beta
+        I1(2 * (b - 1), 2 * (a - 1)) = integral;         // alpha,alpha
+        I1(2 * (b - 1) + 1, 2 * (a - 1) + 1) = integral; // beta,beta
       } else {
         I2(2 * (a - 1), 2 * (b - 1), 2 * (c - 1), 2 * (d - 1)) = integral;
       }
-    }  // while
+    } // while
 
     // exit(0);
     I2.maxEntry =
@@ -191,14 +193,14 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
         I2.Direct(i, j) = I2(2 * i, 2 * i, 2 * j, 2 * j);
         I2.Exchange(i, j) = I2(2 * i, 2 * j, 2 * j, 2 * i);
       }
-  }  // commrank=0
+  } // commrank=0
 
 #ifndef SERIAL
   mpi::broadcast(world, I1, 0);
 
   long intdim = I2memory;
   long maxint =
-      26843540;  // mpi cannot transfer more than these number of doubles
+      26843540; // mpi cannot transfer more than these number of doubles
   long maxIter = intdim / maxint;
 
   world.barrier();
@@ -219,7 +221,7 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   mpi::broadcast(world, I2.zero, 0);
   mpi::broadcast(world, coreE, 0);
 #endif
-}  // end readIntegrals
+} // end readIntegrals
 
 //=============================================================================
 void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
@@ -240,7 +242,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
 #endif
 
   Singles = I2.Singles;
-  if (commrank != 0) Singles.resize(2 * norbs, 2 * norbs);
+  if (commrank != 0)
+    Singles.resize(2 * norbs, 2 * norbs);
 
 #ifndef SERIAL
   // MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(),
@@ -362,11 +365,11 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
         pairIter++;
       }
     I2.oppositeSpin.clear();
-  }  // commrank=0
+  } // commrank=0
 
   long intdim = memRequired;
   long maxint =
-      26843540;  // mpi cannot transfer more than these number of doubles
+      26843540; // mpi cannot transfer more than these number of doubles
   long maxIter = intdim / maxint;
 #ifndef SERIAL
   world.barrier();
@@ -382,7 +385,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
                  memRequired - maxIter * maxint, 0);
   world.barrier();
 #endif
-}  // end twoIntHeatBathSHM::constructClass
+} // end twoIntHeatBathSHM::constructClass
 
 #ifdef Complex
 //=============================================================================
@@ -423,7 +426,8 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
@@ -431,9 +435,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(0,integral/2.);  //beta alpha
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral / 2.);  // alpha beta
+            std::complex<double>(0, -integral / 2.); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(0, -integral / 2.);  // beta alpha
+            std::complex<double>(0, -integral / 2.); // beta alpha
       }
     }
 
@@ -456,14 +460,15 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(integral / 2., 0);  // alpha beta
+            std::complex<double>(integral / 2., 0); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(-integral / 2., 0);  // beta alpha
+            std::complex<double>(-integral / 2., 0); // beta alpha
         // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(integral/2.,0);  //beta alpha
@@ -489,21 +494,22 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral / 2);  // alpha, alpha
+            std::complex<double>(0, integral / 2); // alpha, alpha
         I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral / 2);  // beta, beta
+            std::complex<double>(0, -integral / 2); // beta, beta
         // I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha,
         // alpha I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2);
         // //beta, beta
       }
     }
-  }  // commrank=0
-}  // end readSOCIntegrals
+  } // commrank=0
+} // end readSOCIntegrals
 #endif
 
 #ifdef Complex
@@ -545,14 +551,15 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[0](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral);  // alpha alpha
+            std::complex<double>(0, integral); // alpha alpha
         I1[0](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral);  // beta beta
+            std::complex<double>(0, integral); // beta beta
       }
     }
 
@@ -575,14 +582,15 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[1](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral);  // alpha alpha
+            std::complex<double>(0, integral); // alpha alpha
         I1[1](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral);  // beta beta
+            std::complex<double>(0, integral); // beta beta
       }
     }
 
@@ -605,18 +613,19 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[2](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral);  // alpha alpha
+            std::complex<double>(0, integral); // alpha alpha
         I1[2](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral);  // beta beta
+            std::complex<double>(0, integral); // beta beta
       }
     }
-  }  // commrank=0
-}  // end readGTensorIntegrals
+  } // commrank=0
+} // end readGTensorIntegrals
 #endif
 
 //=============================================================================
@@ -657,4 +666,4 @@ int readNorbs(string fcidump) {
   mpi::broadcast(world, norbs, 0);
 #endif
   return norbs;
-}  // end readNorbs
+} // end readNorbs
