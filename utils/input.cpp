@@ -83,6 +83,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.nGeneration = 30.0;
       schd.excitationLevel = 1;
       schd.ctmc = true;
+      schd.cgIter = 15;
+      schd.sDiagShift = 0.01;
 
       while (dump.good())
 	{
@@ -134,7 +136,12 @@ void readInput(string input, schedule& schd, bool print) {
 
 	  else if (boost::iequals(ArgName, "sr"))
 	    schd.method = sr;
-	  
+
+          else if (boost::iequals(ArgName, "sDiagShift"))
+            schd.sDiagShift = atof(tok[1].c_str());
+
+          else if (boost::iequals(ArgName, "cgIter"))
+            schd.cgIter = atoi(tok[1].c_str());
 
 	  else if (boost::iequals(ArgName, "amsgrad_sgd"))
           {
@@ -387,6 +394,11 @@ void readHF(MatrixXd& HfmatrixA, MatrixXd& HfmatrixB, std::string hf)
 	    dump >> HfmatrixB(i, j);
 	}
     }
+  if (schd.optimizeOrbs) {
+    double scale = pow(1.*HfmatrixA.rows(), 0.5);
+    HfmatrixA += 1.e-2*MatrixXd::Random(HfmatrixA.rows(), HfmatrixA.cols())/scale;
+    HfmatrixB += 1.e-2*MatrixXd::Random(HfmatrixB.rows(), HfmatrixB.cols())/scale;
+  }
 }
 
 void readPairMat(MatrixXd& pairMat) 

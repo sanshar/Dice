@@ -40,12 +40,12 @@ class WalkerHelper<Slater>
 
  public:
   HartreeFock hftype;                           //hftype same as that in slater
-  array<MatrixXd, 2> thetaInv;          //inverse of the theta matrix
-  vector<array<double, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
-  array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
-  array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-  array<vector<int>, 2> closedOrbsRef;  //set of closed orbitals in the reference (zeroth det)
-  vector<array<MatrixXd, 2>> rTable;    //table used for efficiently, vector for multidet
+  std::array<MatrixXd, 2> thetaInv;          //inverse of the theta matrix
+  vector<std::array<double, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
+  std::array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
+  std::array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
+  std::array<vector<int>, 2> closedOrbsRef;  //set of closed orbitals in the reference (zeroth det)
+  vector<std::array<MatrixXd, 2>> rTable;    //table used for efficiently, vector for multidet
 
   WalkerHelper() {};
   
@@ -225,9 +225,9 @@ class WalkerHelper<AGP>
   public:
     MatrixXd thetaInv;                    //inverse of the theta matrix
     double thetaDet;                      //determinant of the theta matrix
-    array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
-    array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    array<MatrixXd, 3> rTable;            //table used for efficiently
+    std::array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
+    std::array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
+    std::array<MatrixXd, 3> rTable;            //table used for efficiently
 
     WalkerHelper() {};
     
@@ -321,9 +321,9 @@ class WalkerHelper<Pfaffian>
   public:
     MatrixXd thetaInv;                    //inverse of the theta matrix
     double thetaPfaff;                      //determinant of the theta matrix
-    array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
-    array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    //array<MatrixXd, 2> rTable;            //table used for efficiently
+    std::array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
+    std::array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
+    //std::array<MatrixXd, 2> rTable;            //table used for efficiently
     MatrixXd fMat;
 
     WalkerHelper() {};
