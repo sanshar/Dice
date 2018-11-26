@@ -29,6 +29,7 @@
 #include "global.h"
 #include "input.h"
 #include "statistics.h"
+#include "sr.h"
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -140,5 +141,3 @@ void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha
   alphaDets.clear();
   betaDets.clear();
 }
-
-//<psi_t| (H-E0) |psi>

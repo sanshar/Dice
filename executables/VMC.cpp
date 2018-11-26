@@ -28,7 +28,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #ifndef SERIAL
-//#include "mpi.h"
+#include "mpi.h"
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>

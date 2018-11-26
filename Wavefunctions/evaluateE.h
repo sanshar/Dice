@@ -23,6 +23,8 @@
 #include "Determinants.h"
 #include "workingArray.h"
 #include "statistics.h"
+#include "sr.h"
+#include "global.h"
 #include <iostream>
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
@@ -36,6 +38,7 @@
 
 using namespace Eigen;
 using namespace std;
+using namespace boost;
 
 class oneInt;
 class twoInt;
@@ -49,7 +52,8 @@ double calcTcorr(std::vector<double> &v);
 
 void generateAllDeterminants(vector<Determinant> &allDets, int norbs, int nalpha, int nbeta);
 
-template<typename Wfn, typename Walker> void getEnergyDeterministic(Wfn &w, Walker& walk, double &E0)
+template<typename Wfn, typename Walker>
+void getEnergyDeterministic(Wfn &w, Walker& walk, double &E0)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -83,14 +87,11 @@ template<typename Wfn, typename Walker> void getEnergyDeterministic(Wfn &w, Walk
   MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
   E0 = Energy / Overlap;
-
-
 }
 
-template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Walker& walk, double &E0,
-                                                                      VectorXd &grad)
+template<typename Wfn, typename Walker>
+void getGradientDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -143,10 +144,8 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
   //cout << "totalGrad\n" << grad << endl << endl;
 }
 
-//<psi_t| (H-E0) |psi>
-template<typename Wfn, typename Walker> void getGradientHessianDeterministic(Wfn &w, Walker& walk, double &E0, int &nalpha, int &nbeta, int &norbs,
-                                                                             oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
-                                                                             VectorXd &grad, MatrixXd& Hessian, MatrixXd &Smatrix)
+template<typename Wfn, typename Walker>
+void getGradientHessianDeterministic(Wfn &w, Walker& walk, double &E0, int &nalpha, int &nbeta, int &norbs, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, VectorXd &grad, MatrixXd& Hessian, MatrixXd &Smatrix)
 {
   vector<Determinant> allDets;
   generateAllDeterminants(allDets, norbs, nalpha, nbeta);
@@ -207,7 +206,6 @@ template<typename Wfn, typename Walker> void getGradientHessianDeterministic(Wfn
   Smatrix = Smatrix/Overlap;
   Smatrix(0,0) = 1.0;
   Hessian(0,0) = E0;
-
 }
 
 template<typename Wfn, typename Walker> 
@@ -249,9 +247,10 @@ void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::V
   lanczosCoeffs = coeffs / overlapTot;
 }
 
-template<typename Wfn, typename Walker> void getGradientMetricDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad, MatrixXd &Smatrix)
+template<typename Wfn, typename Walker>
+void getGradientMetricDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad, VectorXd &H, DirectMetric &S)
 {
-  
+  //cout << "1" << endl; 
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
@@ -263,51 +262,85 @@ template<typename Wfn, typename Walker> void getGradientMetricDeterministic(Wfn 
 
   double Overlap = 0.0, Energy = 0.0;
   grad.setZero();
-  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localgrad = VectorXd::Zero(grad.rows());
+  int numVars = grad.rows();
+  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
+  VectorXd grad_ratio = VectorXd::Zero(numVars);
+  S.T.setZero(allDets.size());
+  S.Vectors.setZero(numVars + 1, allDets.size());
+  H.setZero(numVars + 1);
+
+  //cout << "2" << endl; 
+/*
+  char sfile[50];
+  sprintf(sfile, "./Metric/sVectors%i.bin", commrank);
+  ofstream s(sfile, ios::binary);
+  char tfile[50];
+  sprintf(tfile, "./T/%i.bin", commrank);
+  ofstream t(tfile, ios::binary); 
+*/
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
     w.initWalker(walk, allDets[i]);
-    double ovlp = 0.0, ham = 0.0;
+    double ovlp = 0.0, Eloc = 0.0;
 
     {
       E0 = 0.;
       double scale = 1.0;
-      localgrad.setZero();
-      localdiagonalGrad.setZero();
-      w.HamAndOvlp(walk, ovlp, ham, work, false);
-      w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+      grad_ratio.setZero();
+      w.HamAndOvlp(walk, ovlp, Eloc, work, false);
+      w.OverlapWithGradient(walk, ovlp, grad_ratio);
     }
     //grad += localgrad * ovlp * ovlp;
-    grad += localdiagonalGrad * ham * ovlp * ovlp;
-    diagonalGrad += localdiagonalGrad * ovlp * ovlp;
+    grad += grad_ratio * Eloc * ovlp * ovlp;
+    grad_ratio_bar += grad_ratio * ovlp * ovlp;
     Overlap += ovlp * ovlp;
-    Energy += ham * ovlp * ovlp;
+    Energy += Eloc * ovlp * ovlp;
 
+    VectorXd appended(numVars + 1);
+    appended << 1.0, grad_ratio;
+/*
+    t << (ovlp * ovlp);
+    s << appended;
+*/
+    S.Vectors.col(i) = (appended);
+    S.T(i) = (ovlp * ovlp);
+/*
+    appended << 1.0, localdiagonalGrad;
+    S.Vectors.col(i) = appended;
+    S.T.push_back(ovlp * ovlp);
     Smatrix.block(1, 1, grad.rows(), grad.rows()) += localdiagonalGrad * localdiagonalGrad.transpose() * ovlp * ovlp;
     Smatrix.block(0, 1, 1, grad.rows()) += ovlp * ovlp * localdiagonalGrad.transpose();
     Smatrix.block(1, 0, grad.rows(), 1) += ovlp * ovlp * localdiagonalGrad;
+    */
   }
+  
+  //cout << "3" << endl; 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Smatrix.rows()*Smatrix.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, (S.T.data()), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, (S.Vectors.data()), S.Vectors.rows() * S.Vectors.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   E0 = Energy / Overlap;
-  grad = (grad - E0 * diagonalGrad) / Overlap;
-  Smatrix = Smatrix/Overlap;
-  Smatrix(0,0) = 1.0;
-
+  grad = (grad - E0 * grad_ratio_bar) / Overlap;
+  //Smatrix = Smatrix/Overlap;
+  //Smatrix(0,0) = 1.0;
+  VectorXd appended(numVars);
+  appended = grad_ratio_bar - schd.stepsize * grad;
+  H << 1.0, appended;
+  //cout << "4" << endl; 
+/*
+  s.close();
+  t.close();
+*/
 }
 
 template<typename Wfn, typename Walker> 
-void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
-                                       double &rk, int niter, double targetError)
+void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev, double &rk, int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -379,7 +412,6 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
     walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     w.HamAndOvlp(walk, ovlp, ham, work);
   }
-
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -392,8 +424,8 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
   rk = corr_time(gradError.size(), b_size, r_x);
 
   E0 = Eloc / commsize;
-  
   S1 /= cumdeltaT;
+
   double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
   stddev =  sqrt(rk * S1 / n_eff);
   //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
@@ -403,8 +435,7 @@ void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double 
 }
 
 template<typename Wfn, typename Walker> 
-void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::VectorXd &lanczosCoeffs, Eigen::VectorXd &stddev,
-                                       Eigen::VectorXd &rk, int niter, double targetError)
+void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::VectorXd &lanczosCoeffs, Eigen::VectorXd &stddev, Eigen::VectorXd &rk, int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -516,11 +547,8 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
 
 }
 
-
 template<typename Wfn, typename Walker>
-void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev,
-                                         Eigen::VectorXd &grad, double &rk,
-                                         int niter, double targetError)
+void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev, Eigen::VectorXd &grad, double &rk, int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -624,7 +652,6 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
       bestDet = walk.getDet();
     }
   }
-
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -638,7 +665,6 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
   blocking(b_size, r_x, gradError, tauError);
   rk = corr_time(gradError.size(), b_size, r_x);
   //rk = calcTcorr(gradError);
-
   diagonalGrad /= (commsize);
   grad /= (commsize);
   E0 = Eloc / commsize;
@@ -646,7 +672,6 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, doubl
 
   double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
   S1 /= cumdeltaT;
-  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
   stddev = sqrt((S1 * rk / n_eff));
 /*
   cout << "sample variance: " << S1 << endl;
@@ -803,35 +828,6 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &s
       pdet.setoccA(orb2, true);
       pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
     }
-
-    /*
-    if (move == Amove)
-    {
-      orb1 = C.a[(int) (random() * C.a.size())];
-      orb2 = C.ua[(int) (random() * C.ua.size())];
-      pdet.setoccA(orb1, false);
-      pdet.setoccA(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1, 0, 2*orb2, 0, walk, false);
-    }
-    else if (move == Bmove)
-    {
-      orb1 = C.b[(int) (random() * C.b.size())];
-      orb2 = C.ub[(int) (random() * C.ub.size())];
-      pdet.setoccB(orb1, false);
-      pdet.setoccB(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1+1, 0, 2*orb2+1, 0, walk, false);
-    }
-    else if (move == Dmove)
-    {
-      orb1 = C.sa[(int) (random() * C.sa.size())];
-      orb2 = C.sb[(int) (random() * C.sb.size())];
-      pdet.setoccA(orb1, false);
-      pdet.setoccB(orb2, false);
-      pdet.setoccB(orb1, true);
-      pdet.setoccA(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
-    }
-    */
     MetHelper P(pdet);
     double T_C = 1.0 / C.TotalMoves();
     double T_P = 1.0 / P.TotalMoves();
@@ -904,7 +900,7 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &s
   vector<double> b_size, r_x;
   blocking(b_size, r_x, gradError);
   rk = corr_time(gradError.size(), b_size, r_x);
-  write_block(b_size, r_x);
+  //write_block(b_size, r_x);
 /*
   cout << "block rk: " << rk << endl;
 //correlation function
@@ -937,10 +933,8 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &s
   }
 }
 
-template<typename Wfn, typename Walker> void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev,
-                                                                                        oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
-                                                                                        VectorXd &grad, MatrixXd& Hessian, MatrixXd& Smatrix, double &rk,
-                                                                                        int niter, double targetError)
+template<typename Wfn, typename Walker>
+void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, VectorXd &grad, MatrixXd& Hessian, MatrixXd& Smatrix, double &rk, int niter, double targetError)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -1023,7 +1017,6 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
       gradError[iter + commrank*gradIter] = ham;
       tauError[iter + commrank * gradIter] = deltaT;
     }
-
     iter++;
 
     walk.updateWalker(w.getRef(), w.getCorr(), excitation1[nextDet], excitation2[nextDet]);
@@ -1081,11 +1074,12 @@ template<typename Wfn, typename Walker> void getStochasticGradientHessianContinu
     boost::archive::binary_oarchive save(ofs);
     save << bestDet;
   }
-
 }
 
-template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev, VectorXd &grad, MatrixXd& Smatrix, double &rk, int niter, double targetError)
+template<typename Wfn, typename Walker>
+void getStochasticGradientMetricContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev, VectorXd &grad, VectorXd &H, DirectMetric &S, double &rk, int niter, double targetError)
 {
+  //cout << "a" << endl;
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
@@ -1097,23 +1091,18 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   stddev = 1.e4;
   int iter = 0;
   double M1 = 0., S1 = 0., Eavg = 0.;
-  double Eloc = 0.;
-  double ham = 0., ovlp = 0.;
-  grad.setZero();
-  Smatrix = MatrixXd::Zero(grad.size() + 1, grad.size() + 1);
-  //Smatrix.setZero();
-  VectorXd localGrad = grad;
-  double scale = 1.0;
+  double Eloc = 0., ovlp = 0.;
+  int numVars = grad.rows();
+  H = VectorXd::Zero(numVars + 1);
+  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
+  VectorXd grad_ratio = VectorXd::Zero(numVars);
 
-  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
-
-  double bestOvlp =0.;
-  Determinant bestDet=walk.getDet();
+  double bestOvlp = 0.0;
+  Determinant bestDet = walk.getDet();
 
   E0 = 0.0;
-  w.HamAndOvlp(walk, ovlp, ham, work);
-  w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+  w.HamAndOvlp(walk, ovlp, Eloc, work);
+  w.OverlapWithGradient(walk, ovlp, grad_ratio);
 
   int nstore = 1000000/commsize;
   int gradIter = min(nstore, niter);
@@ -1122,8 +1111,22 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
   std::vector<double> tauError(gradIter * commsize, 0);
   double cumdeltaT = 0., cumdeltaT2 = 0.;
 
+  S.T.setZero(niter);
+  S.Vectors.setZero(numVars + 1, niter);
+
+/*
+  char sfile[50];
+  sprintf(sfile, "./Metric/sVectors%i.bin", commrank);
+  ofstream s(sfile, ios::binary);
+  char tfile[50];
+  sprintf(tfile, "./T/%i.bin", commrank);
+  ofstream t(tfile, ios::binary); 
+*/
+
+  //cout << "b" << endl;
   while (iter < niter && stddev > targetError)
   {
+    //cout << "i" << endl;
 
     double cumovlpRatio = 0;
     //when using uniform probability 1./numConnection * max(1, pi/pj)
@@ -1132,82 +1135,95 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
       cumovlpRatio += abs(work.ovlpRatio[i]);
       work.ovlpRatio[i] = cumovlpRatio;
     }
+    //cout << "ii" << endl;
 
     //double deltaT = -log(random())/(cumovlpRatio);
     double deltaT = 1.0 / (cumovlpRatio);
     double nextDetRandom = random() * cumovlpRatio;
     int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations), nextDetRandom) - work.ovlpRatio.begin();
 
-
     cumdeltaT += deltaT;
     cumdeltaT2 += deltaT * deltaT;
 
-    double Elocold = Eloc;
+    double E0old = E0;
 
-    diagonalGrad = diagonalGrad + deltaT * (localdiagonalGrad - diagonalGrad) / (cumdeltaT);
-    grad = grad + deltaT * (localdiagonalGrad * ham - grad) / (cumdeltaT); //running average of grad
-    Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT);       //running average of energy
+    grad_ratio_bar += deltaT * (grad_ratio - grad_ratio_bar) / (cumdeltaT);
+    grad += deltaT * (grad_ratio * Eloc - grad) / (cumdeltaT); //running average of grad
+    E0 += deltaT * (Eloc - E0) / (cumdeltaT);       //running average of energy
+    //cout << "iii" << endl;
 
     //Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() - Smatrix.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
     //Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
     //Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
-    
-    Smatrix = (1 - deltaT / cumdeltaT) * Smatrix;
-    localdiagonalGrad = pow(deltaT/cumdeltaT, 0.5) * localdiagonalGrad;
-    VectorXd appended(grad.rows() + 1);
-    appended << pow(deltaT/cumdeltaT, 0.5), localdiagonalGrad;
-    Smatrix.noalias() += appended * appended.transpose();
+    VectorXd appended(numVars + 1);
+    appended << 1.0, grad_ratio;
+/*
+    t.write((char *)&deltaT, sizeof(double));
+    s.write((char *)appended.data(), appended.size() * sizeof(double));
+*/
 
-    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
+    //cout << "iiii" << endl;
+    S.T(iter) = deltaT;
+    S.Vectors.col(iter) = appended;
+
+    //Smatrix = (1 - deltaT / cumdeltaT) * Smatrix;
+    //localdiagonalGrad = pow(deltaT/cumdeltaT, 0.5) * localdiagonalGrad;
+    //VectorXd appended(grad.rows() + 1);
+    //appended << pow(deltaT/cumdeltaT, 0.5), localdiagonalGrad;
+    //Smatrix.noalias() += appended * appended.transpose();
+
+    S1 += deltaT * (Eloc - E0old) * (Eloc - E0);
 
     if (iter < gradIter)
     {
-      gradError[iter + commrank*gradIter] = ham;
+      gradError[iter + commrank * gradIter] = Eloc;
       tauError[iter + commrank * gradIter] = deltaT;
     }
     iter++;
 
     walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
-    localdiagonalGrad.setZero();
-    w.HamAndOvlp(walk, ovlp, ham, work);
-    w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
+    grad_ratio.setZero();
+    w.HamAndOvlp(walk, ovlp, Eloc, work);
+    w.OverlapWithGradient(walk, ovlp, grad_ratio);
+    //cout << "iiiii" << endl;
 
     if (abs(ovlp) > bestOvlp) {
       bestOvlp = abs(ovlp);
       bestDet = walk.getDet();
     }
-
   }
+  //cout << "c" << endl;
   
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Smatrix(0,0)), Smatrix.rows()*Smatrix.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &E0, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   vector<double> r_x, b_size;
   blocking(b_size, r_x, gradError, tauError);
   rk = corr_time(gradError.size(), b_size, r_x);
-  //rk = calcTcorr(gradError);
+  //write_block(b_size, r_x);
 
-  diagonalGrad /= (commsize);
+  grad_ratio_bar /= (commsize);
   grad /= (commsize);
-  E0 = Eloc / commsize;
-  grad = grad - E0 * diagonalGrad;
-  Smatrix = Smatrix/(commsize);
+  E0 /= commsize;
+
+  grad = grad - E0 * grad_ratio_bar;
+  
+  VectorXd appended(numVars);
+  appended = grad_ratio_bar - schd.stepsize * grad;
+  H << 1.0, appended;
 
   S1 /= cumdeltaT;
   double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
-  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
   stddev = sqrt(S1 * rk / n_eff);
 #ifndef SERIAL
   MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-  Smatrix(0,0) = 1.0;
 
   if (commrank == 0) {
     char file[5000];
@@ -1216,7 +1232,11 @@ template<typename Wfn, typename Walker> void getStochasticGradientMetricContinuo
     boost::archive::binary_oarchive save(ofs);
     save << bestDet;
   }
-
+/*
+  s.close();
+  t.close();
+*/
+  //cout << "d" << endl;
 }
 
 template <typename Wfn, typename Walker>
@@ -1257,23 +1277,21 @@ class getGradientWrapper
     w.writeWave();
   };
   
-  void getMetric(VectorXd &vars, VectorXd &grad, MatrixXd &Smatrix, double &E0, double &stddev, double &rt, bool deterministic)
+  void getMetric(VectorXd &vars, VectorXd &grad, VectorXd &H, DirectMetric &S, double &E0, double &stddev, double &rt, bool deterministic)
   {
-    if (!deterministic)
-    {
       w.updateVariables(vars);
       w.initWalker(walk);
-      getStochasticGradientMetricContinuousTime(w, walk, E0, stddev, grad, Smatrix, rt, stochasticIter, 0.5e-3);
-    }
-    else
-    {
-      w.updateVariables(vars);
-      w.initWalker(walk);
-      stddev = 0.0;
-      rt = 1.0;
-      getGradientMetricDeterministic(w, walk, E0, grad, Smatrix);
-    }
-    w.writeWave();
+      if (!deterministic)
+      {
+        getStochasticGradientMetricContinuousTime(w, walk, E0, stddev, grad, H, S, rt, stochasticIter, 0.5e-3);
+      }
+      else
+      {
+        stddev = 0.0;
+      	rt = 1.0;
+      	getGradientMetricDeterministic(w, walk, E0, grad, H, S);
+      }
+      w.writeWave();
   };
 
   void getHessian(VectorXd &vars, VectorXd &grad, MatrixXd &Hessian, MatrixXd &smatrix, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, double &rt, bool deterministic)
@@ -1296,12 +1314,3 @@ class getGradientWrapper
   };
 };
 #endif
-
-/*void getStochasticGradient(CPSSlater &w, double &E0, double &stddev,
-  int &nalpha, int &nbeta, int &norbs,
-  oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE,
-  Eigen::VectorXd &grad, double &rk,
-  int niter, double targetError);
-
-
-*/

@@ -40,10 +40,11 @@ using namespace std;
 class DirectMetric
 {
     public:
-    std::vector<double> T;
-    std::vector<VectorXd> Vectors;
-    VectorXd H;
-    //double Tau;
+    VectorXd T;
+    MatrixXd Vectors;
+    //std::vector<double> T;
+    //std::vector<VectorXd> Vectors;
+    //VectorXd H;
     double diagshift;
     MatrixXd S;
     DirectMetric(double _diagshift) : diagshift(_diagshift) {}
@@ -51,12 +52,12 @@ class DirectMetric
     void BuildMetric()
     {
       double Tau = 0.0;
-      int dim = Vectors[0].rows();
+      int dim = Vectors.col(0).rows();
       S = MatrixXd::Zero(dim, dim);
       for (int i = 0; i < Vectors.size(); i++)
       {
-        S += T[i] * Vectors[i] * Vectors[i].adjoint();
-        Tau += T[i];
+        S += T(i) * Vectors.col(i) * Vectors.col(i).adjoint();
+        Tau += T(i);
       }
 
 #ifndef SERIAL
@@ -80,13 +81,13 @@ class DirectMetric
       Ax = VectorXd::Zero(dim);
     else
       Ax.setZero();
-    for (int i = 0; i < Vectors.size(); i++)
+    for (int i = 0; i < Vectors.cols(); i++)
     {
-      double factor = x.dot(Vectors[i]) * T[i];
-      Ax += factor * Vectors[i];
+      //double factor = x.dot(Vectors[i]) * T[i];
+      double factor = Vectors.col(i).adjoint() * x;
+      Ax += T(i) * Vectors.col(i) * factor;
       Tau += T[i];
     }
-
 
 #ifndef SERIAL
       MPI_Allreduce(MPI_IN_PLACE, &(Ax(0)), Ax.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -94,7 +95,7 @@ class DirectMetric
 #endif
       Ax /= Tau;
 
-      Ax += 1.e-4 * x;
+      Ax += diagshift * x;
     } 
 };
 
@@ -165,7 +166,7 @@ class SR
 #endif
      }
      int numVars = vars.rows();
-     VectorXd grad, x, xguess;
+     VectorXd grad, x, H;
      DirectMetric s(schd.sDiagShift);
      double E0, stddev, rt;
      while (iter < maxIter)
@@ -175,12 +176,10 @@ class SR
        rt = 0.0;
        grad.setZero(numVars);
        x.setZero(numVars + 1);
-       xguess.setZero(numVars + 1);
-       s.H.setZero(numVars + 1);
+       H.setZero(numVars + 1);
 
-       getMetric(vars, grad, s, E0, stddev, rt);
+       getMetric(vars, grad, H, s, E0, stddev, rt);
        write(vars);
-
 
        /*
          FOR DEBUGGING PURPOSE
@@ -201,7 +200,7 @@ class SR
        //ConjGrad(s, s.H, xguess, schd.cgIter, x);
 
        x[0] = 1.0;
-       ConjGrad(s, s.H, schd.cgIter, x);
+       ConjGrad(s, H, schd.cgIter, x);
        
        for (int i = 0; i < vars.rows(); i++)
        {
