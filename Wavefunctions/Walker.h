@@ -613,21 +613,23 @@ struct Walker<Corr, AGP> {
   
   void OverlapWithGradient(const AGP &ref, Eigen::VectorBlock<VectorXd> &grad) const
   {
-    int norbs = Determinant::norbs;
-    Determinant walkerDet = d;
+    if (schd.optimizeOrbs) {
+      int norbs = Determinant::norbs;
+      Determinant walkerDet = d;
   
-    //K and L are relative row and col indices
-    int K = 0;
-    for (int k = 0; k < norbs; k++) { //walker indices on the row
-      if (walkerDet.getoccA(k)) {
-        int L = 0;
-        for (int l = 0; l < norbs; l++) {
-          if (walkerDet.getoccB(l)) {
-            grad(k * norbs + l) += refHelper.thetaInv(L, K) ;
-            L++;
+      //K and L are relative row and col indices
+      int K = 0;
+      for (int k = 0; k < norbs; k++) { //walker indices on the row
+        if (walkerDet.getoccA(k)) {
+          int L = 0;
+          for (int l = 0; l < norbs; l++) {
+            if (walkerDet.getoccB(l)) {
+              grad(k * norbs + l) += refHelper.thetaInv(L, K) ;
+              L++;
+            }
           }
+          K++;
         }
-        K++;
       }
     }
   }
@@ -830,45 +832,47 @@ struct Walker<Corr, Pfaffian> {
   
   void OverlapWithGradient(const Pfaffian &ref, Eigen::VectorBlock<VectorXd> &grad) const
   {
-    int norbs = Determinant::norbs;
-    Determinant walkerDet = d;
+    if (schd.optimizeOrbs) {
+      int norbs = Determinant::norbs;
+      Determinant walkerDet = d;
   
-    //K and L are relative row and col indices
-    int K = 0;
-    for (int k = 0; k < norbs; k++) { //walker indices on the row
-      if (walkerDet.getoccA(k)) {
-        int L = 0;
-        for (int l = 0; l < norbs; l++) {
-          if (walkerDet.getoccA(l)) {
-            grad(2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
-            L++;
+      //K and L are relative row and col indices
+      int K = 0;
+      for (int k = 0; k < norbs; k++) { //walker indices on the row
+        if (walkerDet.getoccA(k)) {
+          int L = 0;
+          for (int l = 0; l < norbs; l++) {
+            if (walkerDet.getoccA(l)) {
+              grad(2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
+              L++;
+            }
           }
-        }
-        for (int l = 0; l < norbs; l++) {
-          if (walkerDet.getoccB(l)) {
-            grad(2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
-            L++;
+          for (int l = 0; l < norbs; l++) {
+            if (walkerDet.getoccB(l)) {
+              grad(2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
+              L++;
+            }
           }
+          K++;
         }
-        K++;
       }
-    }
-    for (int k = 0; k < norbs; k++) { //walker indices on the row
-      if (walkerDet.getoccB(k)) {
-        int L = 0;
-        for (int l = 0; l < norbs; l++) {
-          if (walkerDet.getoccA(l)) {
-            grad(2 * norbs * norbs + 2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
-            L++;
+      for (int k = 0; k < norbs; k++) { //walker indices on the row
+        if (walkerDet.getoccB(k)) {
+          int L = 0;
+          for (int l = 0; l < norbs; l++) {
+            if (walkerDet.getoccA(l)) {
+              grad(2 * norbs * norbs + 2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
+              L++;
+            }
           }
-        }
-        for (int l = 0; l < norbs; l++) {
-          if (walkerDet.getoccB(l)) {
-            grad(2 * norbs * norbs + 2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
-            L++;
+          for (int l = 0; l < norbs; l++) {
+            if (walkerDet.getoccB(l)) {
+              grad(2 * norbs * norbs + 2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
+              L++;
+            }
           }
+          K++;
         }
-        K++;
       }
     }
   }

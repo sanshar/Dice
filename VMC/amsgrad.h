@@ -129,6 +129,7 @@ class AMSGrad
         {
             double E0, stddev = 0.0, rt = 1.0;
             getGradient(vars, grad, E0, stddev, rt);
+            //cout << grad << endl;
             write(vars);
             double oldNorm = stepNorm, dotProduct = 0.;
             stepNorm = 0.;
@@ -151,7 +152,7 @@ class AMSGrad
                     {
                         if (iter < schd._sgdIter)
                         {
-                            vars[i] -= 0.1 * grad[i];
+                            vars[i] -= stepsize * grad[i];
                         }
                         else
                         {

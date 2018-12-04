@@ -76,6 +76,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.hf = "rhf";
       schd.optimizeOrbs = true;
       schd.optimizeCps = true;
+      schd.printVars = false;
       schd.Hamiltonian = ABINITIO;
       schd.nwalk = 100;
       schd.tau = 0.001;
@@ -141,6 +142,18 @@ void readInput(string input, schedule& schd, bool print) {
 	    schd.method = amsgrad_sgd;
             schd._sgdIter = atoi(tok[1].c_str());
           }
+      
+      else if (boost::iequals(ArgName, "printvars"))
+	    schd.printVars = true;
+      
+      else if (boost::iequals(ArgName, "test"))
+	    schd.wavefunctionType = "test";
+      
+      else if (boost::iequals(ArgName, "gutzwillerslater"))
+	    schd.wavefunctionType = "GutzwillerSlater";
+      
+      else if (boost::iequals(ArgName, "gutzwillerpfaffian"))
+	    schd.wavefunctionType = "GutzwillerPfaffian";
           
       else if (boost::iequals(ArgName, "jastrowslater"))
 	    schd.wavefunctionType = "JastrowSlater";

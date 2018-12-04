@@ -75,6 +75,7 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/SHCIshm.o \
 	obj/Determinants.o \
 	obj/Slater.o \
+	obj/AGP.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
 	obj/Gutzwiller.o \

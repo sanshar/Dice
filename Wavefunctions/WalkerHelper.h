@@ -712,39 +712,52 @@ template<>
 class WalkerHelper<Gutzwiller>
 {
  public:
-  std::vector<double> doublyOccupiedOrbs;
 
   WalkerHelper() {};
-  WalkerHelper(const Gutzwiller& gutz, const Determinant& d) {
-    updateHelper(gutz, d, 0, 0, 0);
-  }
+  WalkerHelper(const Gutzwiller& gutz, const Determinant& d) {}
 
-  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int a, bool sz) {
-    doublyOccupiedOrbs.clear();
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < norbs; i++) {
-      if (d.getoccA(i) && d.getoccB(i)) doublyOccupiedOrbs.push_back(i);
-    }
-  }
+  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int a, bool sz) {}
   
-  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int j, int a, int b, bool sz) {
-    doublyOccupiedOrbs.clear();
-    int norbs = Determinant::norbs;
-    for (int i = 0; i < norbs; i++) {
-      if (d.getoccA(i) && d.getoccB(i)) doublyOccupiedOrbs.push_back(i);
-    }
-  }
+  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int j, int a, int b, bool sz) {}
 
   double OverlapRatio(int i, int a, const Gutzwiller& gutz,
                       const Determinant &dcopy, const Determinant &d) const
   {
-    return gutz.OverlapRatio(dcopy, d);
+    double ratio = 1;
+    if (i % 2 == 0) { 
+      if (d.getoccB(i/2)) ratio /= gutz.g(i/2);  
+      if (d.getoccB(a/2)) ratio *= gutz.g(a/2);
+    }
+    else { 
+      if (d.getoccA(i/2)) ratio /= gutz.g(i/2);  
+      if (d.getoccA(a/2)) ratio *= gutz.g(a/2);
+    }
+    return ratio;
+    //return gutz.OverlapRatio(dcopy, d);
   }
   
   double OverlapRatio(int i, int j, int a, int b, const Gutzwiller& gutz,
                       const Determinant &dcopy, const Determinant &d) const
   {
-    return gutz.OverlapRatio(dcopy, d);
+    double ratio = 1;
+    if (i % 2 == 0) { 
+      if (d.getoccB(i/2)) ratio /= gutz.g(i/2);  
+      if (d.getoccB(a/2)) ratio *= gutz.g(a/2);
+    }
+    else { 
+      if (d.getoccA(i/2)) ratio /= gutz.g(i/2);  
+      if (d.getoccA(a/2)) ratio *= gutz.g(a/2);
+    }
+    if (j % 2 == 0) { 
+      if (d.getoccB(j/2)) ratio /= gutz.g(j/2);  
+      if (d.getoccB(b/2)) ratio *= gutz.g(b/2);
+    }
+    else { 
+      if (d.getoccA(j/2)) ratio /= gutz.g(j/2);  
+      if (d.getoccA(b/2)) ratio *= gutz.g(b/2);
+    }
+    return ratio;
+    //return gutz.OverlapRatio(dcopy, d);
   }
 };  
 

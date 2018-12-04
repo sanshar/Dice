@@ -184,13 +184,34 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
-  else if (schd.wavefunctionType == "test") {
+  else if (schd.wavefunctionType == "GutzwillerSlater") {
     CorrelatedWavefunction<Gutzwiller, Slater> wave; Walker<Gutzwiller, Slater> walk;
     runVMC(wave, walk);
-    wave.readWave();
-    if (commrank == 0) wave.printVariables();
-    //runVMC(wave, walk);
   }
+  
+  else if (schd.wavefunctionType == "GutzwillerPfaffian") {
+    CorrelatedWavefunction<Gutzwiller, Pfaffian> wave; Walker<Gutzwiller, Pfaffian> walk;
+    runVMC(wave, walk);
+  }
+
+  else if (schd.wavefunctionType == "test") {
+    CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+    wave.readWave();
+    MatrixXd oneRdm0, oneRdm1, corr;
+    //getOneRdmDeterministic(wave, walk, oneRdm0, 0);
+    //getOneRdmDeterministic(wave, walk, oneRdm1, 1);
+    //getDensityCorrelationsDeterministic(wave, walk, corr);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm0, 0, schd.stochasticIter);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm1, 1, schd.stochasticIter);
+    getStochasticDensityCorrelationsContinuousTime(wave, walk, corr, schd.stochasticIter);
+    if (commrank == 0) {
+      cout << "oneRdm0\n" << oneRdm0 << endl << endl;
+      cout << "oneRdm1\n" << oneRdm1 << endl << endl;
+      cout << "Density correlations\n" << corr << endl << endl;
+    }
+  }
+
+
   
   //else if (schd.wavefunctionType == "LanczosCPSSlater") {
   //  //CIWavefunction<CPSSlater, HFWalker, Operator> wave;

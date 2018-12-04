@@ -61,6 +61,7 @@ private:
       & hf
       & optimizeOrbs
       & optimizeCps
+      & printVars
       & Hamiltonian
       & ctmc
       & nwalk
@@ -93,6 +94,7 @@ public:
   std::string hf;
   bool optimizeOrbs;
   bool optimizeCps;
+  bool printVars;
   HAM Hamiltonian;
 
 //Deprecated options for optimizers

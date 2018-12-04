@@ -20,12 +20,26 @@
 #include "Correlator.h"
 #include "Determinants.h"
 #include <boost/container/static_vector.hpp>
+#include <fstream>
 #include "input.h"
 
 using namespace Eigen;
 
 Gutzwiller::Gutzwiller () {    
-  g = VectorXd::Constant(Determinant::norbs, 1.);;
+  //g = (VectorXd::Constant(Determinant::norbs, 1.0) + VectorXd::Random(Determinant::norbs))/20;
+  int norbs = Determinant::norbs;
+  g = VectorXd::Constant(Determinant::norbs, 1.);
+  bool readGutz = false;
+  char file[5000];
+  sprintf(file, "Gutzwiller.txt");
+  ifstream ofile(file);
+  if (ofile)
+    readGutz = true;
+  if (readGutz) {
+    for (int i = 0; i < norbs; i++) {
+      ofile >> g(i);
+    }
+  }
 };
 
 
@@ -34,7 +48,7 @@ double Gutzwiller::Overlap(const Determinant &d) const
   int norbs = Determinant::norbs;
   double ovlp = 1.0;
   for (int i = 0; i < norbs; i++) {
-    if (d.getoccA(i) && d.getoccB(i)) ovlp *= exp(-g(i));
+    if (d.getoccA(i) && d.getoccB(i)) ovlp *= g(i);
   }
   return ovlp;
 }
@@ -61,7 +75,7 @@ void Gutzwiller::OverlapWithGradient(const Determinant& d,
   if (schd.optimizeCps) {
     int norbs = Determinant::norbs;
     for (int i = 0; i < norbs; i++) {
-      if (d.getoccA(i) && d.getoccB(i)) grad[i] = -1;
+      if (d.getoccA(i) && d.getoccB(i)) grad[i] = 1/g(i);
     }
   }
 }

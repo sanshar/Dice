@@ -52,6 +52,7 @@ void runVMC(Wave& wave, Walker& walk) {
   else if (schd.method == linearmethod) {
     
   }
+  if (schd.printVars && commrank==0) wave.printVariables();
   
 }
 
