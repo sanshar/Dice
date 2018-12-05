@@ -60,9 +60,9 @@ def test_restart():
 
     os.chdir("./restart")
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input2.dat > output2.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input2.dat > output2.dat", shell=True)
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input3.dat > output3.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input3.dat > output3.dat", shell=True)
     dtu.test_energy()
 
 
@@ -70,9 +70,9 @@ def test_restart_trev():
 
     os.chdir("./restart_trev")
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input2.dat > output2.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input2.dat > output2.dat", shell=True)
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input3.dat > output3.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input3.dat > output3.dat", shell=True)
     dtu.test_energy()
 
 
@@ -80,7 +80,7 @@ def test_fullrestart():
 
     os.chdir("./fullrestart")
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input2.dat > output2.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input2.dat > output2.dat", shell=True)
     subprocess.call(
-        "mpirun -np 2 ../../build/Dice input3.dat > output3.dat", shell=True)
+        "mpirun -np 1 ../../build/Dice input3.dat > output3.dat", shell=True)
     dtu.test_energy()

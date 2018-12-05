@@ -1,4 +1,8 @@
+# Install pytest
+pip install -U pytest
+
 # Build unit tests
+mkdir build
 cd build
 export CXX=mpicxx
 cmake ..
@@ -16,5 +20,5 @@ gcov ../../Dice/Determinants.cpp --object-file ../unittests/CMakeFiles/unit-Dete
 gcov ../../Dice/integral.cpp --object-file ../unittests/CMakeFiles/unit-integral.dir/__/Dice/ | grep -B 1 "integral.cpp.gcov"
 
 # Functional Tests
-# cd ../../tests/
-# ./runCITests.sh
+cd ../../tests/
+pytest -v test_small.py
