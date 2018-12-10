@@ -1,5 +1,5 @@
 # Install pytest
-pip install -U pytest
+python -m pip install -U pytest
 
 # Build unit tests
 mkdir build
