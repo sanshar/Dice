@@ -13,7 +13,8 @@ def run_and_collect(home_dir, test_dir):
     Runs /usr/bin/time on benchmark calculation and returns relevant info.
     """
 
-    command = '/usr/bin/time -l ../../build/Dice'
+    nproc = 12
+    command = '/usr/bin/time --verbose mpirun -np %d ../../build/Dice' % nproc
     cmd_list = command.split()
 
     # Go home first and then go to relative test directory
@@ -30,17 +31,24 @@ def run_and_collect(home_dir, test_dir):
     # Get data
     data = {}
 
-    lsplit = lines[0].split()
-    data[lsplit[1]] = float(lsplit[0])
-    data[lsplit[3]] = float(lsplit[2])
-    data[lsplit[5]] = float(lsplit[4])
-
     for i in range(1, len(lines)):
         lsplit = lines[i].split()
-        key = lsplit[1]
-        for tok in lsplit[2:]:
-            key += "_" + tok
-        val = float(lsplit[0])
+
+        if lsplit[0] == "Elapsed": continue
+
+        # Assemble dictionary key
+        raw_key = lsplit[0]
+        for tok in lsplit[1:-1]:
+            raw_key += "_" + tok
+
+        key = raw_key.strip(":")
+
+        # Convert value to float
+        try:
+            val = float(lsplit[-1])
+        except ValueError:
+            val = float(lsplit[-1][:-1])
+
         data[key] = val
 
     # Reset directory if test succeeds

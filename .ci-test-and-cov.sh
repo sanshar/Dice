@@ -5,7 +5,7 @@ python -m pip install -U pytest
 mkdir build
 cd build
 export CXX=mpicxx
-cmake ..
+cmake .. -DENABLE_TESTS=On
 make Dice
 make unit-Determinants
 make unit-integral
