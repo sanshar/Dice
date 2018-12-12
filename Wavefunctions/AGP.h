@@ -47,7 +47,7 @@ class AGP {
   
  public:
   
-   MatrixXx pairMat;        //pairing matrix, F_pq
+   MatrixXcd pairMat;        //pairing matrix, F_pq
 
    /**
     * constructor
@@ -62,7 +62,7 @@ class AGP {
   long getNumVariables() const;
   void updateVariables(const Eigen::VectorBlock<VectorXd> &v);
   void printVariables() const;
-  const MatrixXd& getPairMat() const { return pairMat;}
+  const MatrixXcd& getPairMat() const { return pairMat;}
   string getfileName() const {return "AGP";};
   
 };

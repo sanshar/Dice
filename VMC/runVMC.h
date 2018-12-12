@@ -23,6 +23,7 @@
 #include "evaluateE.h"
 #include "amsgrad.h"
 #include "sgd.h"
+#include "ftrl.h"
 #include "sr.h"
 
 using functor1 = boost::function<void (VectorXd&, VectorXd&, double&, double&, double&)>;
@@ -42,7 +43,11 @@ void runVMC(Wave& wave, Walker& walk) {
     optimizer.optimize(vars, getStochasticGradient, schd.restart);
   }
   else if (schd.method == sgd) {
-    SGD optimizer(schd.stepsize, schd.maxIter);
+    SGD optimizer(schd.stepsize, schd.momentum, schd.maxIter);
+    optimizer.optimize(vars, getStochasticGradient, schd.restart);
+  }
+  else if (schd.method == ftrl) {
+    SGD optimizer(schd.alpha, schd.beta, schd.maxIter);
     optimizer.optimize(vars, getStochasticGradient, schd.restart);
   }
   else if (schd.method == sr) {

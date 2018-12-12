@@ -254,7 +254,7 @@ struct CorrelatedWavefunction {
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham += tia * ovlpRatio;
-      //cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
+      if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
 
       work.ovlpRatio[i] = ovlpRatio;
     }

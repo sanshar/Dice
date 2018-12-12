@@ -40,12 +40,12 @@ class WalkerHelper<Slater>
 
  public:
   HartreeFock hftype;                           //hftype same as that in slater
-  array<MatrixXd, 2> thetaInv;          //inverse of the theta matrix
-  vector<array<double, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
+  array<MatrixXcd, 2> thetaInv;          //inverse of the theta matrix
+  vector<array<complex<double>, 2>> thetaDet;    //determinant of the theta matrix, vector for multidet
   array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
   array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
   array<vector<int>, 2> closedOrbsRef;  //set of closed orbitals in the reference (zeroth det)
-  vector<array<MatrixXd, 2>> rTable;    //table used for efficiently, vector for multidet
+  vector<array<MatrixXcd, 2>> rTable;    //table used for efficiently, vector for multidet
 
   WalkerHelper() {};
   
@@ -77,14 +77,13 @@ class WalkerHelper<Slater>
     closedOrbs[0].clear();
     closedOrbs[1].clear();
     d.getOpenClosedAlphaBeta(openOrbs[0], closedOrbs[0], openOrbs[1], closedOrbs[1]);
-    Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
   }
 
-  void makeTable(const Slater &w, const MatrixXd& inv, const Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz)
+  void makeTable(const Slater &w, const MatrixXcd& inv, const Eigen::Map<VectorXi>& colClosed, int detIndex, bool sz)
   {
     Map<VectorXi> rowOpen(&openOrbs[sz][0], openOrbs[sz].size());
-    rTable[detIndex][sz] = MatrixXd::Zero(openOrbs[sz].size(), closedOrbs[sz].size()); 
-    MatrixXd HfopenTheta;
+    rTable[detIndex][sz] = MatrixXcd::Zero(openOrbs[sz].size(), closedOrbs[sz].size()); 
+    MatrixXcd HfopenTheta;
     igl::slice(w.getHforbs(sz), rowOpen, colClosed, HfopenTheta);
     rTable[detIndex][sz] = HfopenTheta * inv;
   }
@@ -94,7 +93,7 @@ class WalkerHelper<Slater>
     Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
     vector<int> cre(closedOrbs[sz].size(), -1), des(closedOrbs[sz].size(), -1);
     for (int x = 1; x < w.getNumOfDets(); x++) {
-      MatrixXd invCurrent;
+      MatrixXcd invCurrent;
       vector<int> ref;
       w.getDeterminants()[x].getClosed(sz, ref);
       Eigen::Map<VectorXi> colClosed(&ref[0], ref.size());
@@ -112,9 +111,9 @@ class WalkerHelper<Slater>
     for (int sz = 0; sz < 2; sz++) {
       Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
       Eigen::Map<VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
-      MatrixXd theta;
+      MatrixXcd theta;
       igl::slice(w.getHforbs(sz), rowClosed, colClosed, theta); 
-      Eigen::FullPivLU<MatrixXd> lua(theta);
+      Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv[sz] = lua.inverse();
         thetaDet[0][sz] = lua.determinant();
@@ -140,8 +139,8 @@ class WalkerHelper<Slater>
 
   void makeTableGhf(const Slater &w, const Eigen::Map<VectorXi>& colTheta)
   {
-    rTable[0][0] = MatrixXd::Zero(openOrbs[0].size() + openOrbs[1].size(), closedOrbs[0].size() + closedOrbs[1].size()); 
-    MatrixXd ghfOpen;
+    rTable[0][0] = MatrixXcd::Zero(openOrbs[0].size() + openOrbs[1].size(), closedOrbs[0].size() + closedOrbs[1].size()); 
+    MatrixXcd ghfOpen;
     vector<int> rowVec;
     concatenateGhf(openOrbs[0], openOrbs[1], rowVec);
     Eigen::Map<VectorXi> rowOpen(&rowVec[0], rowVec.size());
@@ -158,9 +157,9 @@ class WalkerHelper<Slater>
     concatenateGhf(closedOrbsRef[0], closedOrbsRef[1], workingVec1);
     Eigen::Map<VectorXi> colTheta(&workingVec1[0], workingVec1.size());
   
-    MatrixXd theta;
+    MatrixXcd theta;
     igl::slice(w.getHforbs(), rowTheta, colTheta, theta); 
-    Eigen::FullPivLU<MatrixXd> lua(theta);
+    Eigen::FullPivLU<MatrixXcd> lua(theta);
     if (lua.isInvertible()) {
       thetaInv[0] = lua.inverse();
       thetaDet[0][0] = lua.determinant();
@@ -182,8 +181,8 @@ class WalkerHelper<Slater>
   //commenting out calcotherdetstables, uncomment for multidet
   void excitationUpdate(const Slater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet)
   {
-    MatrixXd invOld = thetaInv[sz];
-    double detOld = thetaDet[0][sz];
+    MatrixXcd invOld = thetaInv[sz];
+    std::complex<double> detOld = thetaDet[0][sz];
     Eigen::Map<Eigen::VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
     calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv[sz], thetaDet[0][sz], cre, des, colClosed, closedOrbs[sz], w.getHforbs(sz));
     thetaDet[0][sz] *= parity;
@@ -199,8 +198,8 @@ class WalkerHelper<Slater>
     Eigen::Map<VectorXi> colTheta(&colVec[0], colVec.size());
     vector<int> rowIn;
     concatenateGhf(closedOrbs[0], closedOrbs[1], rowIn);
-    MatrixXd invOld = thetaInv[0];
-    double detOld = thetaDet[0][0];
+    MatrixXcd invOld = thetaInv[0];
+    std::complex<double> detOld = thetaDet[0][0];
     calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv[0], thetaDet[0][0], cre, des, colTheta, rowIn, w.getHforbs());
     thetaDet[0][0] *= parity;
     fillOpenClosedOrbs(excitedDet);
@@ -223,11 +222,11 @@ template<>
 class WalkerHelper<AGP>
 {
   public:
-    MatrixXd thetaInv;                    //inverse of the theta matrix
-    double thetaDet;                      //determinant of the theta matrix
+    MatrixXcd thetaInv;                    //inverse of the theta matrix
+    std::complex<double> thetaDet;                      //determinant of the theta matrix
     array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
     array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    array<MatrixXd, 3> rTable;            //table used for efficiently
+    array<MatrixXcd, 3> rTable;            //table used for efficiently
 
     WalkerHelper() {};
     
@@ -251,20 +250,20 @@ class WalkerHelper<AGP>
     {
       Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
       Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-      MatrixXd openThetaAlpha; 
+      MatrixXcd openThetaAlpha; 
       igl::slice(w.getPairMat(), rowOpen, colClosed, openThetaAlpha);
       rTable[0] = openThetaAlpha * thetaInv; 
       
       Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
       Map<VectorXi> colOpen(&openOrbs[1][0], openOrbs[1].size());
-      MatrixXd openThetaBeta; 
+      MatrixXcd openThetaBeta; 
       igl::slice(w.getPairMat(), rowClosed, colOpen, openThetaBeta);
-      MatrixXd betaTableTranspose = thetaInv * openThetaBeta; 
+      MatrixXcd betaTableTranspose = thetaInv * openThetaBeta; 
       rTable[1] = betaTableTranspose.transpose(); 
     
-      MatrixXd openTheta;
+      MatrixXcd openTheta;
       igl::slice(w.getPairMat(), rowOpen, colOpen, openTheta);
-      MatrixXd rtc = rTable[0] * openThetaBeta;
+      MatrixXcd rtc = rTable[0] * openThetaBeta;
       rTable[2] = openTheta - rtc;
     }
     
@@ -272,9 +271,9 @@ class WalkerHelper<AGP>
     {
       Eigen::Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
       Eigen::Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-      MatrixXd theta;
+      MatrixXcd theta;
       igl::slice(w.getPairMat(), rowClosed, colClosed, theta); 
-      Eigen::FullPivLU<MatrixXd> lua(theta);
+      Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv = lua.inverse();
         thetaDet = lua.determinant();
@@ -292,8 +291,8 @@ class WalkerHelper<AGP>
     
     void excitationUpdate(const AGP &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet)
     {
-      MatrixXd invOld = thetaInv;
-      double detOld = thetaDet;
+      MatrixXcd invOld = thetaInv;
+      std::complex<double> detOld = thetaDet;
       if (sz == 0) {
         Eigen::Map<Eigen::VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
         calculateInverseDeterminantWithRowChange(invOld, detOld, thetaInv, thetaDet, cre, des, colClosed, closedOrbs[0], w.getPairMat());
@@ -319,12 +318,11 @@ template<>
 class WalkerHelper<Pfaffian>
 {
   public:
-    MatrixXd thetaInv;                    //inverse of the theta matrix
-    double thetaPfaff;                      //determinant of the theta matrix
+    MatrixXcd thetaInv;                    //inverse of the theta matrix
+    complex<double> thetaPfaff;                      //determinant of the theta matrix
     array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
     array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
-    //array<MatrixXd, 2> rTable;            //table used for efficiently
-    MatrixXd fMat;
+    MatrixXcd fMat;
 
     WalkerHelper() {};
     
@@ -333,9 +331,7 @@ class WalkerHelper<Pfaffian>
       fillOpenClosedOrbs(d);
       int nopen = openOrbs[0].size() + openOrbs[1].size();
       int nclosed = closedOrbs[0].size() + closedOrbs[1].size();
-      fMat = MatrixXd::Zero(nopen * nclosed, nclosed);
-      //rTable[0] = MatrixXd::Zero(nopen * nclosed, nclosed);
-      //rTable[1] = MatrixXd::Zero(nopen * nclosed, nopen * nclosed);
+      fMat = MatrixXcd::Zero(nopen * nclosed, nclosed);
       initInvDetsTables(w);
     }
     
@@ -362,7 +358,7 @@ class WalkerHelper<Pfaffian>
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
        
-      MatrixXd fRow;
+      MatrixXcd fRow;
       VectorXi rowSlice(1), colSlice(nclosed);
       for (int i = 0; i < closed.size(); i++) {
         for (int a = 0; a < open.size(); a++) {
@@ -386,9 +382,9 @@ class WalkerHelper<Pfaffian>
       Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
-      MatrixXd theta;
+      MatrixXcd theta;
       igl::slice(w.getPairMat(), closed, closed, theta); 
-      Eigen::FullPivLU<MatrixXd> lua(theta);
+      Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv = lua.inverse();
         thetaPfaff = calcPfaffian(theta);
@@ -415,19 +411,19 @@ class WalkerHelper<Pfaffian>
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
       
-      Matrix2d cInv;
+      MatrixXcd cInv(2,2);
       cInv << 0, -1,
              1, 0;
-      MatrixXd bMat = MatrixXd::Zero(nclosed, 2);
+      MatrixXcd bMat = MatrixXcd::Zero(nclosed, 2);
       bMat(tableIndexi, 1) = 1;
       VectorXi colSlice(1);
       colSlice[0] = i + sz * norbs;
-      MatrixXd thetaSlice;
+      MatrixXcd thetaSlice;
       igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
       bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
-      MatrixXd invOld = thetaInv;
-      MatrixXd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
-      MatrixXd shuffledThetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
+      MatrixXcd invOld = thetaInv;
+      MatrixXcd intermediate = (cInv + bMat.transpose() * invOld * bMat).inverse();
+      MatrixXcd shuffledThetaInv = invOld - invOld * bMat * intermediate * bMat.transpose() * invOld; 
       
       closed[tableIndexi] = a + sz * norbs; 
       std::vector<int> order(closed.size());
@@ -438,7 +434,7 @@ class WalkerHelper<Pfaffian>
       igl::slice(shuffledThetaInv, orderVec, orderVec, thetaInv);
       
       //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-      double pfaffRatio = fMat.row(tableIndexi * nopen + tableIndexa) * invOld.col(tableIndexi);
+      complex<double> pfaffRatio = fMat.row(tableIndexi * nopen + tableIndexa) * invOld.col(tableIndexi);
       thetaPfaff = thetaPfaff * pfaffRatio;
       thetaPfaff *= parity;
       fillOpenClosedOrbs(excitedDet);

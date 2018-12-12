@@ -54,7 +54,7 @@ class Slater {
   HartreeFock hftype;                       //r/u/ghf
   std::vector<Determinant> determinants; //The set of determinants 
   std::vector<double> ciExpansion;       //The ci expansion
-  Eigen::MatrixXd HforbsA, HforbsB;        //mo coeffs, HforbsA=HforbsB for r/ghf
+  Eigen::MatrixXcd HforbsA, HforbsB;        //mo coeffs, HforbsA=HforbsB for r/ghf
 
   //read mo coeffs fomr hf.txt
   void initHforbs();
@@ -62,16 +62,10 @@ class Slater {
   //init ref dets either by reading from a file or filling the first nelec orbs
   void initDets();
   
-  /**
-   * constructor
-   */
   Slater();
-  //void initWalker(HFWalker &walk) const;
-  //void initWalker(HFWalker &walk, const Determinant &d) const;
-
 
   //variables are ordered as:
-  //cicoeffs of the reference multidet expansion, followed by hforbs (row major)
+  //cicoeffs of the reference multidet expansion, followed by hforbs (row major): real and complex parts alternating
   //in case of uhf all alpha first followed by beta
   void getVariables(Eigen::VectorBlock<Eigen::VectorXd> &v) const;
   long getNumVariables() const;
@@ -80,22 +74,10 @@ class Slater {
   const std::vector<Determinant> &getDeterminants() const { return determinants; }
   int getNumOfDets() const;
   const std::vector<double> &getciExpansion() const { return ciExpansion; }
-  const Eigen::MatrixXd& getHforbsA() const { return HforbsA;}
-  const Eigen::MatrixXd& getHforbsB() const  {return HforbsB;}
-  const Eigen::MatrixXd& getHforbs(bool sz = 0) const { if(sz == 0) return HforbsA; else return HforbsB;}
-
+  const Eigen::MatrixXcd& getHforbsA() const { return HforbsA;}
+  const Eigen::MatrixXcd& getHforbsB() const  {return HforbsB;}
+  const Eigen::MatrixXcd& getHforbs(bool sz = 0) const { if(sz == 0) return HforbsA; else return HforbsB;}
   string getfileName() const {return "Slater";};
-    //void writeWave();
-    //void readWave();
-    //void getDetMatrix(Determinant &, Eigen::MatrixXd &alpha, Eigen::MatrixXd &beta);//don't know how to extend to ghf, also non-essential
-  
-    /**
-     * This is expensive and is not recommended because 
-     * one has to generate the overlap determinants w.r.t to the
-     * ciExpansion from scratch
-     * uses getdetmatrix, not used anywhere
-     */
-    //double Overlap(Determinant &);
 
 };
 

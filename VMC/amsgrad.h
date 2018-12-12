@@ -42,10 +42,7 @@ class AMSGrad
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-        ar & stepsize
-           & decay_mom1
-           & decay_mom2
-           & iter        
+       ar  & iter        
            & mom1
            & mom2;
     }

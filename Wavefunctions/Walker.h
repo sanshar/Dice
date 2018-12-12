@@ -56,7 +56,7 @@ struct Walker<Corr, Slater> {
   
   Walker(const Corr &corr, const Slater &ref) 
   {
-    initDet(ref.getHforbsA(), ref.getHforbsB());
+    initDet(ref.getHforbsA().real(), ref.getHforbsB().real());
     refHelper = WalkerHelper<Slater>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
@@ -140,14 +140,14 @@ struct Walker<Corr, Slater> {
 
   double getIndividualDetOverlap(int i) const
   {
-    return refHelper.thetaDet[i][0] * refHelper.thetaDet[i][1];
+    return (refHelper.thetaDet[i][0] * refHelper.thetaDet[i][1]).real();
   }
 
   double getDetOverlap(const Slater &ref) const
   {
     double ovlp = 0.0;
     for (int i = 0; i < refHelper.thetaDet.size(); i++) {
-      ovlp += ref.getciExpansion()[i] * refHelper.thetaDet[i][0] * refHelper.thetaDet[i][1];
+      ovlp += ref.getciExpansion()[i] * (refHelper.thetaDet[i][0] * refHelper.thetaDet[i][1]).real();
     }
     return ovlp;
   }
@@ -181,9 +181,9 @@ struct Walker<Corr, Slater> {
     double detFactorDen = 0.0;
     for (int j = 0; j < ref.getDeterminants().size(); j++)
     {
-      double factor = refHelper.rTable[j][sz](tableIndexa, tableIndexi);
-      detFactorNum += ref.getciExpansion()[j] * factor * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1];
-      detFactorDen += ref.getciExpansion()[j] * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1];
+      double factor = (refHelper.rTable[j][sz](tableIndexa, tableIndexi) * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real() /  getDetOverlap(ref);
+      detFactorNum += ref.getciExpansion()[j] * factor * (refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real();
+      detFactorDen += ref.getciExpansion()[j] * (refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real();
     }
     return detFactorNum / detFactorDen;
   }
@@ -200,12 +200,12 @@ struct Walker<Corr, Slater> {
     {
       double factor;
       if (sz1 == sz2 || refHelper.hftype == 2)
-        factor = refHelper.rTable[j][sz1](tableIndexa, tableIndexi) * refHelper.rTable[j][sz1](tableIndexb, tableIndexj) 
-            - refHelper.rTable[j][sz1](tableIndexb, tableIndexi) *refHelper.rTable[j][sz1](tableIndexa, tableIndexj);
+        factor =((refHelper.rTable[j][sz1](tableIndexa, tableIndexi) * refHelper.rTable[j][sz1](tableIndexb, tableIndexj) 
+            - refHelper.rTable[j][sz1](tableIndexb, tableIndexi) *refHelper.rTable[j][sz1](tableIndexa, tableIndexj)) * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real() / getDetOverlap(ref);
       else
-        factor = refHelper.rTable[j][sz1](tableIndexa, tableIndexi) * refHelper.rTable[j][sz2](tableIndexb, tableIndexj);
-      detFactorNum += ref.getciExpansion()[j] * factor * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1];
-      detFactorDen += ref.getciExpansion()[j] * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1];
+        factor = (refHelper.rTable[j][sz1](tableIndexa, tableIndexi) * refHelper.rTable[j][sz2](tableIndexb, tableIndexj) * refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real() / getDetOverlap(ref);
+      detFactorNum += ref.getciExpansion()[j] * factor * (refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real();
+      detFactorDen += ref.getciExpansion()[j] * (refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real();
     }
     return detFactorNum / detFactorDen;
   }
@@ -314,7 +314,8 @@ struct Walker<Corr, Slater> {
           int L = 0;
           for (int l = 0; l < norbs; l++) {
             if (refDet.getoccA(l)) {
-              grad(k * norbs + l) += ref.getciExpansion()[det] * refHelper.thetaInv[0](L, KA) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1] / detovlp;
+              grad(2 * k * norbs + 2 * l) += ref.getciExpansion()[det] * (refHelper.thetaInv[0](L, KA) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).real() /detovlp;
+              grad(2 * k * norbs + 2 * l + 1) += ref.getciExpansion()[det] * (- refHelper.thetaInv[0](L, KA) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).imag() /detovlp;
               L++;
             }
           }
@@ -327,10 +328,14 @@ struct Walker<Corr, Slater> {
           int L = 0;
           for (int l = 0; l < norbs; l++) {
             if (refDet.getoccB(l)) {
-              if (refHelper.hftype == UnRestricted)
-                grad(norbs * norbs + k * norbs + l) += ref.getciExpansion()[det] * refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1] / detovlp;
-              else
-                grad(k * norbs + l) += ref.getciExpansion()[det] * refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1] / detovlp;
+              if (refHelper.hftype == UnRestricted) {
+                grad(2 * norbs * norbs + 2 * k * norbs + 2 * l) += ref.getciExpansion()[det] * (refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).real() / detovlp;
+                grad(2 * norbs * norbs + 2 * k * norbs + 2 * l + 1) += ref.getciExpansion()[det] * (- refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).imag() / detovlp;
+              }
+              else {
+                grad(2 * k * norbs + 2 * l) += ref.getciExpansion()[det] * (refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).real() / detovlp;
+                grad(2 * k * norbs + 2 * l + 1) += ref.getciExpansion()[det] * (- refHelper.thetaInv[1](L, KB) * refHelper.thetaDet[det][0] * refHelper.thetaDet[det][1]).imag() / detovlp;
+              }
               L++;
             }
           }
@@ -353,14 +358,15 @@ struct Walker<Corr, Slater> {
         int L = 0;
         for (int l = 0; l < norbs; l++) {
           if (refDet.getoccA(l)) {
-            grad(2 * k * norbs + l) += refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0] / detovlp;
+            grad(4 * k * norbs + 2 * l) += (refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0]).real() / detovlp;
+            grad(4 * k * norbs + 2 * l + 1) += (- refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0]).imag() / detovlp;
             L++;
           }
         }
         for (int l = 0; l < norbs; l++) {
           if (refDet.getoccB(l)) {
-            grad(2 * k * norbs + norbs + l) += refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0] / detovlp;
-            //grad(w.getNumJastrowVariables() + w.getciExpansion().size() + k*norbs+l) += walk.alphainv(L, KA);
+            grad(4 * k * norbs + 2 * norbs + 2 * l) += (refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0]).real() / detovlp;
+            grad(4 * k * norbs + 2 * norbs + 2 * l + 1) += (- refHelper.thetaInv[0](L, K) * refHelper.thetaDet[0][0]).imag() / detovlp;
             L++;
           }
         }
@@ -372,13 +378,15 @@ struct Walker<Corr, Slater> {
         int L = 0;
         for (int l = 0; l < norbs; l++) {
           if (refDet.getoccA(l)) {
-            grad(2 * norbs * norbs +  2 * k * norbs + l) += refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K) / detovlp;
+            grad(4 * norbs * norbs +  4 * k * norbs + 2 * l) += (refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K)).real() / detovlp;
+            grad(4 * norbs * norbs +  4 * k * norbs + 2 * l + 1) += (- refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K)).imag() / detovlp;
             L++;
           } 
         }
         for (int l = 0; l < norbs; l++) {
           if (refDet.getoccB(l)) {
-            grad(2 * norbs * norbs +  2 * k * norbs + norbs + l) += refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K) / detovlp;
+            grad(4 * norbs * norbs +  4 * k * norbs + 2 * norbs + 2 * l) += (refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K)).real() / detovlp;
+            grad(4 * norbs * norbs +  4 * k * norbs + 2 * norbs + 2 * l + 1) += (- refHelper.thetaDet[0][0] * refHelper.thetaInv[0](L, K)).imag() / detovlp;
             L++;
           }
         }
@@ -396,11 +404,11 @@ struct Walker<Corr, Slater> {
       //if (hftype == UnRestricted)
       VectorXd gradOrbitals;
       if (ref.hftype == UnRestricted) {
-        gradOrbitals = VectorXd::Zero(2 * ref.HforbsA.rows() * ref.HforbsA.rows());
+        gradOrbitals = VectorXd::Zero(4 * ref.HforbsA.rows() * ref.HforbsA.rows());
         OverlapWithOrbGradient(ref, gradOrbitals, detovlp);
       }
       else {
-        gradOrbitals = VectorXd::Zero(ref.HforbsA.rows() * ref.HforbsA.rows());
+        gradOrbitals = VectorXd::Zero(2 * ref.HforbsA.rows() * ref.HforbsA.rows());
         if (ref.hftype == Restricted) OverlapWithOrbGradient(ref, gradOrbitals, detovlp);
         else OverlapWithOrbGradientGhf(ref, gradOrbitals, detovlp);
       }
@@ -432,7 +440,7 @@ struct Walker<Corr, AGP> {
   
   Walker(const Corr &corr, const AGP &ref) 
   {
-    initDet(ref.getPairMat());
+    initDet(ref.getPairMat().real());
     refHelper = WalkerHelper<AGP>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
@@ -485,7 +493,7 @@ struct Walker<Corr, AGP> {
   
   double getDetOverlap(const AGP &ref) const
   {
-    return refHelper.thetaDet;
+    return refHelper.thetaDet.real();
   }
   
   double getDetFactor(int i, int a, const AGP &ref) const 
@@ -512,7 +520,7 @@ struct Walker<Corr, AGP> {
   {
     int tableIndexi, tableIndexa;
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
-    return refHelper.rTable[sz](tableIndexa, tableIndexi);
+    return (refHelper.rTable[sz](tableIndexa, tableIndexi) * refHelper.thetaDet).real() / (refHelper.thetaDet).real();
   }
   
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const AGP &ref) const
@@ -521,7 +529,7 @@ struct Walker<Corr, AGP> {
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz1); 
     refHelper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2) ;
   
-    double factor;
+    complex<double> factor;
     if (sz1 == sz2)
       factor = refHelper.rTable[sz1](tableIndexa, tableIndexi) * refHelper.rTable[sz1](tableIndexb, tableIndexj) 
           - refHelper.rTable[sz1](tableIndexb, tableIndexi) *refHelper.rTable[sz1](tableIndexa, tableIndexj);
@@ -534,7 +542,7 @@ struct Walker<Corr, AGP> {
         factor = refHelper.rTable[sz1](tableIndexa, tableIndexi) * refHelper.rTable[sz2](tableIndexb, tableIndexj) 
         + refHelper.thetaInv(tableIndexi, tableIndexj) * refHelper.rTable[2](tableIndexb, tableIndexa);
       }
-    return factor;
+    return (factor * refHelper.thetaDet).real() / (refHelper.thetaDet).real();
   }
   
   void update(int i, int a, bool sz, const AGP &ref, const Corr &corr, bool doparity = true)
@@ -614,6 +622,7 @@ struct Walker<Corr, AGP> {
   void OverlapWithGradient(const AGP &ref, Eigen::VectorBlock<VectorXd> &grad) const
   {
     if (schd.optimizeOrbs) {
+      double detOvlp = getDetOverlap(ref);
       int norbs = Determinant::norbs;
       Determinant walkerDet = d;
   
@@ -624,7 +633,8 @@ struct Walker<Corr, AGP> {
           int L = 0;
           for (int l = 0; l < norbs; l++) {
             if (walkerDet.getoccB(l)) {
-              grad(k * norbs + l) += refHelper.thetaInv(L, K) ;
+              grad(2 * k * norbs + 2 * l) += (refHelper.thetaInv(L, K) * refHelper.thetaDet).real() / detOvlp ;
+              grad(2 * k * norbs + 2 * l + 1) += (- refHelper.thetaInv(L, K) * refHelper.thetaDet).imag() / detOvlp ;
               L++;
             }
           }
@@ -657,7 +667,7 @@ struct Walker<Corr, Pfaffian> {
   
   Walker(const Corr &corr, const Pfaffian &ref) 
   {
-    initDet(ref.getPairMat());
+    initDet(ref.getPairMat().real());
     refHelper = WalkerHelper<Pfaffian>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
@@ -710,7 +720,7 @@ struct Walker<Corr, Pfaffian> {
   
   double getDetOverlap(const Pfaffian &ref) const
   {
-    return refHelper.thetaPfaff;
+    return refHelper.thetaPfaff.real();
   }
   
   double getDetFactor(int i, int a, const Pfaffian &ref) const 
@@ -739,7 +749,7 @@ struct Walker<Corr, Pfaffian> {
     int tableIndexi, tableIndexa;
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
     //return refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-    return refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+    return ((refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi))(0,0) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
   }
   
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Pfaffian &ref) const
@@ -752,18 +762,18 @@ struct Walker<Corr, Pfaffian> {
     //cout << "nopen  " << nopen << endl;
     //cout << "sz1  " << sz1 << "  ti  " << tableIndexi << "  ta  " << tableIndexa  << endl;
     //cout << "sz2  " << sz2 << "  tj  " << tableIndexj << "  tb  " << tableIndexb  << endl;
-    double summand1, summand2, crossTerm;
+    complex<double> summand1, summand2, crossTerm;
     if (tableIndexi < tableIndexj) {
       crossTerm = (ref.getPairMat())(b + sz2 * norbs, a + sz1 * norbs);
       //summand1 = refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) 
       //    - refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj);
       //summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (refHelper.rTable[1](tableIndexi * nopen + tableIndexa, tableIndexj * nopen + tableIndexb) + crossTerm);
-      double term1 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
-      double term2 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
-      double term3 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
-      double term4 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      complex<double> term1 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      complex<double> term2 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      complex<double> term3 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      complex<double> term4 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
       summand1 = term1 * term2 - term3 * term4;
-      double term5 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexj * nopen + tableIndexb));
+      complex<double> term5 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexj * nopen + tableIndexb));
       summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (term5 + crossTerm);
     }
     else { 
@@ -771,16 +781,16 @@ struct Walker<Corr, Pfaffian> {
       //summand1 = refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) 
       //    - refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi);
       //summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (refHelper.rTable[1](tableIndexj * nopen + tableIndexb, tableIndexi * nopen + tableIndexa) + crossTerm);
-      double term1 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
-      double term2 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
-      double term3 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
-      double term4 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      complex<double> term1 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      complex<double> term2 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      complex<double> term3 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      complex<double> term4 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
       summand1 = term1 * term2 - term3 * term4;
-      double term5 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexi * nopen + tableIndexa));
+      complex<double> term5 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexi * nopen + tableIndexa));
       summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (term5 + crossTerm);
     }
     //cout << "double   " << crossTerm << "   " << summand1 << "  " << summand2 << endl; 
-    return summand1 + summand2;
+    return ((summand1 + summand2) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
   }
   
   void update(int i, int a, bool sz, const Pfaffian &ref, const Corr &corr, bool doparity = true)
@@ -835,7 +845,7 @@ struct Walker<Corr, Pfaffian> {
     if (schd.optimizeOrbs) {
       int norbs = Determinant::norbs;
       Determinant walkerDet = d;
-  
+      double detOvlp = getDetOverlap(ref);
       //K and L are relative row and col indices
       int K = 0;
       for (int k = 0; k < norbs; k++) { //walker indices on the row
@@ -843,13 +853,15 @@ struct Walker<Corr, Pfaffian> {
           int L = 0;
           for (int l = 0; l < norbs; l++) {
             if (walkerDet.getoccA(l)) {
-              grad(2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
+              grad(4 * k * norbs + 2 * l) += (refHelper.thetaInv(L, K) * refHelper.thetaPfaff).real() / detOvlp / 2;
+              grad(4 * k * norbs + 2 * l + 1) += (- refHelper.thetaInv(L, K) * refHelper.thetaPfaff).imag() / detOvlp / 2;
               L++;
             }
           }
           for (int l = 0; l < norbs; l++) {
             if (walkerDet.getoccB(l)) {
-              grad(2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
+              grad(4 * k * norbs + 2 * norbs + 2 * l) += (refHelper.thetaInv(L, K) * refHelper.thetaPfaff).real() / detOvlp / 2;
+              grad(4 * k * norbs + 2 * norbs + 2 * l + 1) += (- refHelper.thetaInv(L, K) * refHelper.thetaPfaff).imag() / detOvlp / 2;
               L++;
             }
           }
@@ -861,13 +873,15 @@ struct Walker<Corr, Pfaffian> {
           int L = 0;
           for (int l = 0; l < norbs; l++) {
             if (walkerDet.getoccA(l)) {
-              grad(2 * norbs * norbs + 2 * k * norbs + l) += refHelper.thetaInv(L, K) / 2;
+              grad(4 * norbs * norbs + 4 * k * norbs + 2 * l) += (refHelper.thetaInv(L, K) * refHelper.thetaPfaff).real() / detOvlp / 2;
+              grad(4 * norbs * norbs + 4 * k * norbs + 2 * l + 1) += (- refHelper.thetaInv(L, K) * refHelper.thetaPfaff).imag() / detOvlp / 2;
               L++;
             }
           }
           for (int l = 0; l < norbs; l++) {
             if (walkerDet.getoccB(l)) {
-              grad(2 * norbs * norbs + 2 * k * norbs + norbs + l) += refHelper.thetaInv(L, K) / 2;
+              grad(4 * norbs * norbs + 4 * k * norbs + 2 * norbs + 2 * l) += (refHelper.thetaInv(L, K) * refHelper.thetaPfaff).real() / detOvlp / 2;
+              grad(4 * norbs * norbs + 4 * k * norbs + 2 * norbs + 2 * l + 1) += (- refHelper.thetaInv(L, K) * refHelper.thetaPfaff).imag() / detOvlp / 2;
               L++;
             }
           }
@@ -880,8 +894,8 @@ struct Walker<Corr, Pfaffian> {
   friend ostream& operator<<(ostream& os, const Walker<Corr, Pfaffian>& w) {
     os << w.d << endl << endl;
     os << "fMat\n" << w.refHelper.fMat << endl << endl;
-    os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
-    os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
+    //os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
+    //os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
     os << "pfaff\n" << w.refHelper.thetaPfaff << endl << endl;
     os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;

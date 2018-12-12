@@ -33,11 +33,11 @@
  * incoming and outgoing matrices. ColIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
-                                                                  Eigen::MatrixXd &inverseOut, double &detValueOut,
+void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXcd &inverseIn, const std::complex<double> &detValueIn,
+                                                                  Eigen::MatrixXcd &inverseOut, std::complex<double> &detValueOut,
                                                                   std::vector<int>& cre, std::vector<int>& des,
                                                                   const Eigen::Map<Eigen::VectorXi> &RowVec,
-                                                                  std::vector<int> &ColIn, const Eigen::MatrixXd &Hforbs);
+                                                                  std::vector<int> &ColIn, const Eigen::MatrixXcd &Hforbs);
 
 /**
  * This takes an inverse and determinant of a matrix formed by a subset of
@@ -48,13 +48,17 @@ void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXd &inverseI
  * incoming and outgoing matrices. RowIn are the column indices
  * of the incoming matrix. 
  */
-void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXd &inverseIn, const double &detValueIn,
-                                                               Eigen::MatrixXd &inverseOut, double &detValueOut,
+void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXcd &inverseIn, const std::complex<double> &detValueIn,
+                                                               Eigen::MatrixXcd &inverseOut, std::complex<double> &detValueOut,
                                                                std::vector<int>& cre, std::vector<int>& des,
                                                                const Eigen::Map<Eigen::VectorXi> &ColVec,
-                                                               std::vector<int> &RowIn, const Eigen::MatrixXd &Hforbs);
+                                                               std::vector<int> &RowIn, const Eigen::MatrixXcd &Hforbs);
 
-double calcPfaffian(const Eigen::MatrixXd &mat); 
+
+//pfaffian of a real matrix using Hessenberg decomposition
+double calcPfaffianH(const Eigen::MatrixXd &mat); 
+//pfaffian of a complex matrix using Parlett-Reid algorithm
+std::complex<double> calcPfaffian(const Eigen::MatrixXcd &mat); 
 
 
 #endif

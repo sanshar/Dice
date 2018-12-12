@@ -179,6 +179,7 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
   VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
   VectorXd localgrad = VectorXd::Zero(grad.rows());
+  //w.printVariables();
 
   for (int i = commrank; i < allDets.size(); i += commsize)
   {
@@ -189,11 +190,10 @@ template<typename Wfn, typename Walker> void getGradientDeterministic(Wfn &w, Wa
       double scale = 1.0;
       localgrad.setZero();
       localdiagonalGrad.setZero();
-      //cout << walk << endl;
+      if (schd.debug) cout << walk << endl;
 
       w.HamAndOvlp(walk, ovlp, ham, work, false);
-      //cout <<"ham  " << ham << " ovlp  " << ovlp << endl << endl;
-      //cout << walk.d << "  ham  " << ham << "  ovlp  " << ovlp << endl << endl;
+      if (schd.debug) cout <<"ham  " << ham << " ovlp  " << ovlp << endl << endl;
       double tmpovlp = 1.0;
       w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
       //cout << "grad\n" << localdiagonalGrad << endl << endl;

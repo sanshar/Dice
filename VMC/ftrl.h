@@ -16,8 +16,8 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef OPTIMIZERSGD_HEADER_H
-#define OPTIMIZERSGD_HEADER_H
+#ifndef OPTIMIZERFTRL_HEADER_H
+#define OPTIMIZERFTRL_HEADER_H
 #include <Eigen/Dense>
 #include <boost/serialization/serialization.hpp>
 #include "iowrapper.h"
@@ -35,25 +35,31 @@
 using namespace Eigen;
 using namespace boost;
 
-class SGD
+class FTRL
 {
   private:
     friend class boost::serialization::access;
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-      ar & iter;        
+      ar & lambda
+         & zVec
+         & sumGradSquare
+         & iter;        
     }
 
   public:
-    double stepsize;
-    double momentum;
+    double alpha;
+    double beta;
+    double lambda;
+    VectorXd zVec;
+    VectorXd sumGradSquare;
 
     int maxIter;
     int iter;
 
-    SGD(double pstepsize=0.001, double pmomentum=0.,
-        int pmaxIter=1000) : stepsize(pstepsize), momentum(pmomentum), maxIter(pmaxIter)
+    FTRL(double palpha=0.001, double pbeta=1.,
+        int pmaxIter=1000) : alpha(palpha), beta(pbeta), maxIter(pmaxIter)
     {
         iter = 0;
     }
@@ -63,7 +69,7 @@ class SGD
         if (commrank == 0)
         {
             char file[5000];
-            sprintf(file, "sgd.bkp");
+            sprintf(file, "ftrl.bkp");
             std::ofstream ofs(file, std::ios::binary);
             boost::archive::binary_oarchive save(ofs);
             save << *this;
@@ -77,7 +83,7 @@ class SGD
         if (commrank == 0)
         {
             char file[5000];
-            sprintf(file, "sgd.bkp");
+            sprintf(file, "ftrl.bkp");
             std::ifstream ifs(file, std::ios::binary);
             boost::archive::binary_iarchive load(ifs);
             load >> *this;
@@ -99,26 +105,30 @@ class SGD
 	    boost::mpi::broadcast(world, vars, 0);
 #endif
         }
+        else if (zVec.rows() == 0)
+        {
+          lambda = 0.;
+          zVec = VectorXd::Zero(vars.rows());
+          sumGradSquare = VectorXd::Zero(vars.rows());
+        }
 
         VectorXd grad = VectorXd::Zero(vars.rows());
-        VectorXd update = VectorXd::Zero(vars.rows());
-        double E0 = 0., EOld = 0.; bool skip = 0;
 
         while (iter < maxIter)
         {
-            double stddev = 0.0, rt = 1.0;
-            //if (skip == 0) EOld = E0;
+            double E0, stddev = 0.0, rt = 1.0;
             VectorXd varsOld = vars;
             getGradient(vars, grad, E0, stddev, rt);
-            //if (E0 - EOld > 10 * stddev) {skip = 1; continue;}
-            //else skip = 0;
             if (commrank == 0 && schd.printGrad) {cout << "totalGrad" << endl; cout << grad << endl;}
             write(vars);
 
             if (commrank == 0)
             {
-               update = momentum * update + stepsize * grad;
-               vars -= update;
+              for (int i = 0; i < vars.rows(); i++) {
+                zVec(i) += grad(i) + vars(i) * (pow(sumGradSquare(i), 0.5) - pow(sumGradSquare(i) + grad(i) * grad(i), 0.5)) / alpha;
+                sumGradSquare(i) += grad(i) * grad(i);
+                vars(i) = - zVec(i) * alpha / (beta + pow(sumGradSquare(i), 0.5));
+              }
             }
 
 #ifndef SERIAL

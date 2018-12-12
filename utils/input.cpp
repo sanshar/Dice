@@ -62,6 +62,9 @@ void readInput(string input, schedule& schd, bool print) {
       schd.method = amsgrad;
       schd.decay2 = 0.001;
       schd.decay1 = 0.1;
+      schd.alpha = 0.001;
+      schd.beta = 1.;
+      schd.momentum = 0.;
       schd.stepsize = 0.001;
 
       schd.stochasticIter = 1e4;
@@ -77,6 +80,8 @@ void readInput(string input, schedule& schd, bool print) {
       schd.optimizeOrbs = true;
       schd.optimizeCps = true;
       schd.printVars = false;
+      schd.printGrad = false;
+      schd.debug = false;
       schd.Hamiltonian = ABINITIO;
       schd.nwalk = 100;
       schd.tau = 0.001;
@@ -136,6 +141,8 @@ void readInput(string input, schedule& schd, bool print) {
 	  else if (boost::iequals(ArgName, "sr"))
 	    schd.method = sr;
 	  
+	  else if (boost::iequals(ArgName, "ftrl"))
+	    schd.method = ftrl;
 
 	  else if (boost::iequals(ArgName, "amsgrad_sgd"))
           {
@@ -145,6 +152,9 @@ void readInput(string input, schedule& schd, bool print) {
       
       else if (boost::iequals(ArgName, "printvars"))
 	    schd.printVars = true;
+      
+      else if (boost::iequals(ArgName, "printgrad"))
+	    schd.printGrad = true;
       
       else if (boost::iequals(ArgName, "test"))
 	    schd.wavefunctionType = "test";
@@ -205,10 +215,15 @@ void readInput(string input, schedule& schd, bool print) {
       
       else if (boost::iequals(ArgName, "lanczosjastrowpfaffian"))
 	    schd.wavefunctionType = "LanczosJastrowPfaffian";
+      
       else if (boost::iequals(ArgName, "ctmc"))
 	    schd.ctmc = true;
+      
       else if (boost::iequals(ArgName, "metropolis"))
 	    schd.ctmc = false;
+      
+      else if (boost::iequals(ArgName, "debug"))
+	    schd.debug = true;
 	  
 	  else if (boost::iequals(ArgName, "tol"))
 	    schd.tol = atof(tok[1].c_str());
@@ -221,6 +236,15 @@ void readInput(string input, schedule& schd, bool print) {
 
 	  else if (boost::iequals(ArgName, "decay2"))
 	    schd.decay2 = atof(tok[1].c_str());
+	  
+      else if (boost::iequals(ArgName, "alpha"))
+	    schd.alpha = atof(tok[1].c_str());
+
+	  else if (boost::iequals(ArgName, "beta"))
+	    schd.beta = atof(tok[1].c_str());
+	  
+      else if (boost::iequals(ArgName, "momentum"))
+	    schd.momentum = atof(tok[1].c_str());
 
 	  else if (boost::iequals(ArgName, "epsilon"))
 	    schd.epsilon = atof(tok[1].c_str());
@@ -408,6 +432,26 @@ void readPairMat(MatrixXd& pairMat)
   for (int i = 0; i < pairMat.rows(); i++) {
     for (int j = 0; j < pairMat.rows(); j++){
       dump >> pairMat(i, j);
+    }
+  }
+}
+
+void readMat(MatrixXd& mat, std::string fileName) 
+{
+  ifstream dump(fileName);
+  for (int i = 0; i < mat.rows(); i++) {
+    for (int j = 0; j < mat.cols(); j++){
+      dump >> mat(i, j);
+    }
+  }
+}
+
+void readMat(MatrixXcd& mat, std::string fileName) 
+{
+  ifstream dump(fileName);
+  for (int i = 0; i < mat.rows(); i++) {
+    for (int j = 0; j < mat.cols(); j++){
+      dump >> mat(i, j);
     }
   }
 }
