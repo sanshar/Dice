@@ -78,20 +78,8 @@ struct Hmult2 {
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-    //
-    // Begin modify region
-    //
-    /*
-    Command being timed: "mpirun -np 4 ../../build/Dice" (OMP_NUM_THREADS=4)
-    0) User time (seconds): 236.91
-       Percent of CPU this job got: 375%
-       Maximum resident set size (kbytes): 1229040
-    1)
-
-    */
+    // TODO
     auto start = std::chrono::system_clock::now();
-    // if (rank == 0) {
-    // }
 
     vector<CItype> ytemp(numDets, 0);
 
@@ -141,15 +129,12 @@ struct Hmult2 {
     for (int j = 0; j < numDets; j++)
       y[j] = ytemp[j];
 #endif
+    // TODO
     if (rank == 0) {
       auto end = std::chrono::system_clock::now();
       std::chrono::duration<double> elapsed_seconds = end - start;
       pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
-    //
-    // End modify region
-    //
-
   } // operator
 };
 

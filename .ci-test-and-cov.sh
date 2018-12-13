@@ -21,4 +21,4 @@ gcov ../../Dice/integral.cpp --object-file ../unittests/CMakeFiles/unit-integral
 
 # Functional Tests
 cd ../../tests/
-pytest -v test_small.py
+pytest -v test_serial.py
