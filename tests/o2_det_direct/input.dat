@@ -11,6 +11,7 @@ end
 davidsonTol 5e-05
 dE 1e-08
 maxiter 9
+directdavidson
 
 # PT #
 epsilon2 1e-07
@@ -18,4 +19,4 @@ sampleN 200
 deterministic
 
 # Misc #
-noio 
+noio

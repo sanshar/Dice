@@ -1,18 +1,24 @@
 nocc 28
-0 2 4 6 8 10 12 14 16 18 20 22 24 26 1 3 5 7 9 11 13 15 17 19 21 23 25 27 
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 1 3 5 7 9 11 13 15 17 19 21 23 25 27
 end
+orbitals ../integrals/cr2_FCIDUMP
+
+# Variational #
 nroots 1
-schedule 
+schedule
 0	0.001
 2	0.0005
 end
 davidsonTol 5e-05
 dE 1e-08
 DoRDM
-nPTiter 0
-epsilon2 1e-07
-sampleN 200
-noio 
 maxiter 8
 Treversal 1
 
+# PT #
+nPTiter 0
+epsilon2 1e-07
+sampleN 200
+
+# Misc #
+noio

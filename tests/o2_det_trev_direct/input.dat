@@ -11,11 +11,13 @@ end
 davidsonTol 5e-05
 dE 1e-08
 maxiter 9
+Treversal 1
+directdavidson
 
 # PT #
+deterministic
 epsilon2 1e-07
 sampleN 200
-deterministic
 
 # Misc #
-noio 
+noio

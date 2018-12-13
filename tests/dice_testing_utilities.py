@@ -98,6 +98,8 @@ def compare_2rdm(file1="spatialRDM.0.0.txt", file2="trusted2RDM.txt",
 
 
 def cleanup():
-    os.remove("*.bkp")
-    os.remove("spatialRDM.*.txt")
-    os.remove("shci.e")
+    # fn := filename
+    for fn in os.listdir('.'):
+        if fn.endswith('.bkp') or fn.endswith("0.txt") or fn == "shci.e" or fn == "output.dat":
+            # print("Removing %s" % fn)
+            os.remove(fn)

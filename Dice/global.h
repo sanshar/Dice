@@ -26,6 +26,7 @@
 #include <string>
 #ifndef SERIAL
 #include "mpi.h"
+#include <omp.h>
 #endif
 
 typedef unsigned short ushort;

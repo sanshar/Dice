@@ -5,17 +5,19 @@ orbitals ../integrals/o2_FCIDUMP
 
 # Variational #
 schedule
-0	0.001
-3	0.0001
+0	0.0001
+3	0.00001
 end
 davidsonTol 5e-05
 dE 1e-08
+DoRDM
 maxiter 9
 
 # PT #
 epsilon2 1e-07
 sampleN 200
-deterministic
+nPTiter 200
+targeterror 8e-6
 
 # Misc #
-noio 
+noio
