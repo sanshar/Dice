@@ -88,7 +88,6 @@ struct Hmult2 {
       for (int j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
-#pragma omp atomic update
         ytemp[i * size + rank] += hij * x[J];
 
         if (J != i * size + rank)

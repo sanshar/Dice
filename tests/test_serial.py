@@ -55,6 +55,7 @@ def test_o2_det_direct():
     subprocess.call(dice_exe, shell=True)
     dtu.test_energy()
 
+
 # def test_c2_pt_rdm():
 #
 #     os.chdir("./c2_pt_rdm")
@@ -62,31 +63,31 @@ def test_o2_det_direct():
 #     dtu.test_energy()
 #     dtu.compare_2rdm()
 
-def test_restart():
-
-    os.chdir("./restart")
-    subprocess.call(
-        dice_exe+" input2.dat > output2.dat", shell=True)
-    subprocess.call(
-        dice_exe + " input3.dat > output3.dat", shell=True)
-    dtu.test_energy()
-
-
-def test_restart_trev():
-
-    os.chdir("./restart_trev")
-    subprocess.call(
-        dice_exe + " input2.dat > output2.dat", shell=True)
-    subprocess.call(
-        dice_exe + " input3.dat > output3.dat", shell=True)
-    dtu.test_energy()
-
-
-def test_fullrestart():
-
-    os.chdir("./fullrestart")
-    subprocess.call(
-        dice_exe + " input2.dat > output2.dat", shell=True)
-    subprocess.call(
-        dice_exe + " input3.dat > output3.dat", shell=True)
-    dtu.test_energy()
+# def test_restart():
+#
+#     os.chdir("./restart")
+#     subprocess.call(
+#         dice_exe+" input2.dat > output2.dat", shell=True)
+#     subprocess.call(
+#         dice_exe + " input3.dat > output3.dat", shell=True)
+#     dtu.test_energy()
+#
+#
+# def test_restart_trev():
+#
+#     os.chdir("./restart_trev")
+#     subprocess.call(
+#         dice_exe + " input2.dat > output2.dat", shell=True)
+#     subprocess.call(
+#         dice_exe + " input3.dat > output3.dat", shell=True)
+#     dtu.test_energy()
+#
+#
+# def test_fullrestart():
+#
+#     os.chdir("./fullrestart")
+#     subprocess.call(
+#         dice_exe + " input2.dat > output2.dat", shell=True)
+#     subprocess.call(
+#         dice_exe + " input3.dat > output3.dat", shell=True)
+#     dtu.test_energy()
