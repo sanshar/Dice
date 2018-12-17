@@ -88,6 +88,7 @@ struct Hmult2 {
       for (int j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
+#pragma omp atomic update
         ytemp[i * size + rank] += hij * x[J];
 
         if (J != i * size + rank)
@@ -132,7 +133,7 @@ struct Hmult2 {
     if (rank == 0) {
       auto end = std::chrono::system_clock::now();
       std::chrono::duration<double> elapsed_seconds = end - start;
-      pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
+      // pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
   } // operator
 };
