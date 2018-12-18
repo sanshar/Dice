@@ -18,13 +18,13 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#include "SHCIrdm.h"
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
-#include "SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
 #include "boost/format.hpp"
 #include "input.h"
@@ -1293,6 +1293,7 @@ void popSpin3RDM(vector<int> &cs, vector<int> &ds, CItype value, size_t &norbs,
     do {
       par = pars[ctr / 6] * pars[ctr % 6];
       ctr++;
+#pragma omp atomic update
       threeRDM(genIdx(cs[cI[0]], cs[cI[1]], cs[cI[2]], norbs),
                genIdx(ds[dI[0]], ds[dI[1]], ds[dI[2]], norbs)) += par * value;
     } while (next_permutation(dI, dI + 3));
@@ -1321,6 +1322,7 @@ void SHCIrdm::popSpatial3RDM(vector<int> &cs, vector<int> &ds, CItype value,
       ctr++;
       if (cs[cI[0]] % 2 == ds[dI[2]] % 2 && cs[cI[1]] % 2 == ds[dI[1]] % 2 &&
           cs[cI[2]] % 2 == ds[dI[0]] % 2) {
+#pragma omp atomic update
         s3RDM(genIdx(cs[cI[0]] / 2, cs[cI[1]] / 2, cs[cI[2]] / 2, norbs / 2),
               genIdx(ds[dI[0]] / 2, ds[dI[1]] / 2, ds[dI[2]] / 2, norbs / 2)) +=
             par * value;
@@ -1345,11 +1347,13 @@ void SHCIrdm::Evaluate3RDM(Determinant *Dets, int DetsSize, CItype *cibra,
   int nSpatOrbs = norbs / 2;
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
 
-  // Pairs of determinants
+// Pairs of determinants
+#pragma omp parallel // Put barrier and overhead outside of loops
   for (int b = 0; b < DetsSize; b++) {
     if (b % commsize != commrank)
       continue;
     Determinant DetsB = Dets[b]; // Necessary for MPI
+#pragma omp for
     for (int k = 0; k < DetsSize; k++) {
       Determinant DetsK = Dets[k]; // Necessary for MPI
 
@@ -1511,6 +1515,7 @@ void popSpin4RDM(vector<int> &cs, vector<int> &ds, CItype value, int &norbs,
   do {
     do {
       par = pars[ctr / 24] * pars[ctr % 24];
+#pragma omp atomic update
       fourRDM(gen4Idx(cs[cI[0]], cs[cI[1]], cs[cI[2]], cs[cI[3]], norbs),
               gen4Idx(ds[dI[0]], ds[dI[1]], ds[dI[2]], ds[dI[3]], norbs)) +=
           par * value;
@@ -1534,6 +1539,7 @@ void SHCIrdm::popSpatial4RDM(vector<int> &cs, vector<int> &ds, CItype value,
       par = pars[ctr / 24] * pars[ctr % 24];
       if (cs[cI[0]] % 2 == ds[dI[3]] % 2 && cs[cI[1]] % 2 == ds[dI[2]] % 2 &&
           cs[cI[2]] % 2 == ds[dI[1]] % 2 && cs[cI[3]] % 2 == ds[dI[0]] % 2) {
+#pragma omp atomic update
         s4RDM(gen4Idx(cs[cI[0]] / 2, cs[cI[1]] / 2, cs[cI[2]] / 2,
                       cs[cI[3]] / 2, nSOs),
               gen4Idx(ds[dI[0]] / 2, ds[dI[1]] / 2, ds[dI[2]] / 2,
@@ -1558,11 +1564,13 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
   int norbs = Dets[0].norbs;
   int nSOs = norbs / 2; // Number of spatial orbitals
 
-  // Pairs of determinants
+// Pairs of determinants
+#pragma omp parallel // Put barrier and overhead outside of loops
   for (int b = 0; b < DetsSize; b++) {
     if (b % commsize != commrank)
       continue;
     Determinant DetsB = Dets[b];
+#pragma omp for
     for (int k = 0; k < DetsSize; k++) {
       Determinant DetsK = Dets[k];
 
