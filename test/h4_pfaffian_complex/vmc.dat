@@ -1,0 +1,7 @@
+jastrowpfaffian
+maxIter 5
+stochasticIter 1000
+seed 5
+stepsize 0.01
+decay1 0.1
+decay2 0.01
