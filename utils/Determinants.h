@@ -180,4 +180,8 @@ void generateAllScreenedSingleExcitation(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
+void comb(int N, int K, vector<vector<int>> &combinations);
+
+void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
+
 #endif

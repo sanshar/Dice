@@ -980,3 +980,43 @@ bool applyExcitation(int a, int b, int k, int l, Determinant& dcopy) {
   
   return valid;
 }
+
+//generate all the alpha or beta strings
+void comb(int N, int K, vector<vector<int>> &combinations)
+{
+  std::vector<int> bitmask(K, 1);
+  bitmask.resize(N, 0); // N-K trailing 0's
+
+  // print integers and permute bitmask
+  int index = 0;
+  do
+  {
+    vector<int> comb;
+    for (int i = 0; i < N; ++i) // [0..N-1] integers
+    {
+      if (bitmask[i] == 1)
+        comb.push_back(i);
+    }
+    combinations.push_back(comb);
+  } while (std::prev_permutation(bitmask.begin(), bitmask.end()));
+}
+
+void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta) {
+  vector<vector<int>> alphaDets, betaDets;
+  comb(norbs, nalpha, alphaDets);
+  comb(norbs, nbeta, betaDets);
+  
+  for (int a = 0; a < alphaDets.size(); a++)
+    for (int b = 0; b < betaDets.size(); b++)
+    {
+      Determinant d;
+      for (int i = 0; i < alphaDets[a].size(); i++)
+        d.setoccA(alphaDets[a][i], true);
+      for (int i = 0; i < betaDets[b].size(); i++)
+        d.setoccB(betaDets[b][i], true);
+      allDets.push_back(d);
+    }
+
+  alphaDets.clear();
+  betaDets.clear();
+}

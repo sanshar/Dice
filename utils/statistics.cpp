@@ -3,8 +3,87 @@
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include "global.h"
+#ifndef SERIAL
+#include "mpi.h"
+#endif
 
 using namespace std;
+
+//random calcTcorr function, idk who wrote this it's pretty rough
+double calcTcorr(vector<double> &v)
+{
+  //vector<double> w(v.size(), 1);
+  int n = v.size();
+  double norm, rk, f, neff;
+
+  double aver = 0, var = 0;
+  for (int i = 0; i < v.size(); i++)
+  {
+    aver += v[i] ;
+    norm += 1.0 ;
+  }
+  aver = aver / norm;
+
+  neff = 0.0;
+  for (int i = 0; i < n; i++)
+  {
+    neff = neff + 1.0;
+  };
+  neff = norm * norm / neff;
+
+  for (int i = 0; i < v.size(); i++)
+  {
+    var = var + (v[i] - aver) * (v[i] - aver);
+  };
+  var = var / norm;
+  var = var * neff / (neff - 1.0);
+
+  //double c[v.size()];
+  vector<double> c(v.size(),0);
+  //for (int i=0; i<v.size(); i++) c[i] = 0.0;
+  int l = v.size() - 1;
+
+  int i = commrank+1;
+  for (; i < l; i+=commsize)
+  //int i = 1;
+  //for (; i < l; i++)
+  {
+    c[i] = 0.0;
+    double norm = 0.0;
+    for (int k = 0; k < n - i; k++)
+    {
+      c[i] = c[i] + (v[k] - aver) * (v[k + i] - aver);
+      norm = norm + 1.0;
+    };
+    c[i] = c[i] / norm / var;
+  };
+ #ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &c[0], v.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  rk = 1.0;
+
+  f = 1.0;
+
+  i = 1;
+  ofstream out("OldCorrFunc.txt");
+  for (; i < l; i++)
+  {
+
+    if (commrank == 0)
+    {
+      out << c[i] << endl;
+    }
+
+    if (c[i] < 0.0)
+      f = 0.0;
+    rk = rk + 2.0 * c[i] * f;
+  }
+  out.close();
+  
+  return rk;
+}
 
 //various functions for calculating statistics of serially correlated data, functions overloaded for weighted and unweighted data sets
 
@@ -29,7 +108,7 @@ double average(vector<double> &x)
 }
 
 //calculates effective sample size for weighted data sets. For unweighted data, will just return the size of the data set
-double n_eff(vector<double> &w)
+double neff(vector<double> &w)
 {
     double n_eff, W = 0.0, W_2 = 0.0;
     int n = w.size();
@@ -73,7 +152,7 @@ double variance(vector<double> &x)
 //correlation function: given a weighted/unweighted data set, calculates C(t) = <(x(i)-x_bar)(x(i+t)-x_bar)> / <(x(i)-x_bar)^2>
 //Input: x, w if weighted; x if unweighted
 //Output: c
-void corr_func(vector<double> &c, vector<double> &x, vector<double> &w)
+void corrFunc(vector<double> &c, vector<double> &x, vector<double> &w)
 {
     double x_bar = average(x,w);
     double var = variance(x,w);
@@ -95,21 +174,21 @@ void corr_func(vector<double> &c, vector<double> &x, vector<double> &w)
     }
 }
 
-void corr_func(vector<double> &c, vector<double> &x)
+void corrFunc(vector<double> &c, vector<double> &x)
 {
     vector<double> w(x.size(), 1.0);
-    corr_func(c, x, w);
+    corrFunc(c, x, w);
 }
 
 //autocorrelation time: given correlation function, calculates autocorrelation time: t = 1 + 2 \sum C(i)
-double corr_time(vector<double> &c)
+double corrTime(vector<double> &c)
 {
     double t = 1.0;
     for (int i = 1; i < c.size(); i++)
     {
-        if (fabs(c[i]) < 0.01)
+        if (c[i] < 0.0 || c[i] < 0.01)
         {
-            continue;
+            break;
         }
         t += 2 * c[i];
     }
@@ -117,9 +196,9 @@ double corr_time(vector<double> &c)
 }
 
 //writes correlation function to text file
-void write_corr_func(vector<double> &c)
+void writeCorrFunc(vector<double> &c)
 {
-    ofstream ofile("corr_func.txt");
+    ofstream ofile("CorrFunc.txt");
     for (int i = 0; i < c.size(); i++)
     {
         ofile << i << "\t" << c[i] << endl;
@@ -130,7 +209,7 @@ void write_corr_func(vector<double> &c)
 //blocking function, given a wighted or unweighted data set, calculates autocorrelation time vs. block size
 //Input: x, w if weighted; x if unweighted
 //Output: b_size - block size per iteration, r_t - autocorrelation time per iteration
-void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x, vector<double> &w)
+void block(vector<double> &b_size, vector<double> &r_t, vector<double> &x, vector<double> &w)
 {
     b_size.clear();
     r_t.clear();
@@ -167,19 +246,19 @@ void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x, ve
     }
 }
 
-void blocking(vector<double> &b_size, vector<double> &r_t, vector<double> &x)
+void block(vector<double> &b_size, vector<double> &r_t, vector<double> &x)
 {
     vector<double> w(x.size(), 1.0);
-    blocking(b_size, r_t, x, w);
+    block(b_size, r_t, x, w);
 }
 
 //autocorrelation time: given blocking data, finds autocorrelation time based on the criteria: (block size)^3 > 2 * (number of original data points) * (autocorrelation time)^2
-double corr_time(double n_original, vector<double> &b_size, vector<double> &r_t)
+double corrTime(double n_original, vector<double> &b_size, vector<double> &r_t)
 {
     double t = 0.0;
     for (int i = 0; i < r_t.size(); i++)
     {
-        double B = pow(b_size[i], 3);
+        double B = b_size[i] * b_size[i] * b_size[i];
         double C = 2 * n_original * (r_t[i] * r_t[i]);
         if (B > C)
         {
@@ -191,13 +270,17 @@ double corr_time(double n_original, vector<double> &b_size, vector<double> &r_t)
     {
         throw runtime_error("Insufficient number of stochastic iterations");
     }
+    if (t < 1.0)
+    {
+      t = 1.0;
+    }
     return t;
 }
 
 //writes blocking data to file
-void write_block(vector<double> &b_size, vector<double> &r_t)
+void writeBlock(vector<double> &b_size, vector<double> &r_t)
 {
-    ofstream ofile("block.txt");
+    ofstream ofile("Block.txt");
     for (int i = 0; i < r_t.size(); i++)
     {
         ofile << b_size[i] << "\t" << r_t[i] << endl;

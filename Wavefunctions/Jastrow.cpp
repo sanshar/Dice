@@ -28,8 +28,10 @@ using namespace Eigen;
 Jastrow::Jastrow () {    
   int norbs = Determinant::norbs;
   SpinCorrelator = MatrixXd::Constant(2*norbs, 2*norbs, 1.);
-  if (schd.optimizeCPS)
+/*
+  if (schd.optimizeCps)
     SpinCorrelator += 0.01*MatrixXd::Random(2*norbs, 2*norbs);
+*/
   bool readJastrow = false;
   char file[5000];
   sprintf(file, "Jastrow.txt");

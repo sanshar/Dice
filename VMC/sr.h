@@ -40,11 +40,8 @@ using namespace std;
 class DirectMetric
 {
     public:
-    VectorXd T;
-    MatrixXd Vectors;
-    //std::vector<double> T;
-    //std::vector<VectorXd> Vectors;
-    //VectorXd H;
+    vector<double> T;
+    vector<VectorXd> Vectors;
     double diagshift;
     MatrixXd S;
     DirectMetric(double _diagshift) : diagshift(_diagshift) {}
@@ -52,24 +49,19 @@ class DirectMetric
     void BuildMetric()
     {
       double Tau = 0.0;
-      int dim = Vectors.col(0).rows();
+      int dim = Vectors[0].rows();
       S = MatrixXd::Zero(dim, dim);
       for (int i = 0; i < Vectors.size(); i++)
       {
-        S += T(i) * Vectors.col(i) * Vectors.col(i).adjoint();
-        Tau += T(i);
+        S += T[i] * Vectors[i] * Vectors[i].adjoint();
+        Tau += T[i];
       }
 
 #ifndef SERIAL
       MPI_Allreduce(MPI_IN_PLACE, &(Tau), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE, &(S(0,0)), S.rows() * S.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
       S /= Tau; 
-/*
-      if (commrank == 0) std::cout << S << std::endl << std::endl;
-      if (commrank == 1) std::cout << S << std::endl << std::endl;
-*/
     }
       
     
@@ -81,20 +73,17 @@ class DirectMetric
       Ax = VectorXd::Zero(dim);
     else
       Ax.setZero();
-    for (int i = 0; i < Vectors.cols(); i++)
+    for (int i = 0; i < Vectors.size(); i++)
     {
-      //double factor = x.dot(Vectors[i]) * T[i];
-      double factor = Vectors.col(i).adjoint() * x;
-      Ax += T(i) * Vectors.col(i) * factor;
+      double factor = Vectors[i].adjoint() * x;
+      Ax += T[i] * Vectors[i] * factor;
       Tau += T[i];
     }
-
 #ifndef SERIAL
       MPI_Allreduce(MPI_IN_PLACE, &(Ax(0)), Ax.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE, &(Tau), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
       Ax /= Tau;
-
       Ax += diagshift * x;
     } 
 };
@@ -119,7 +108,7 @@ class SR
     int maxIter;
     int iter;
 
-    SR(double pstepsize=0.001, int pmaxIter=1000) : stepsize(pstepsize), maxIter(pmaxIter)
+    SR(double pstepsize=0.01, int pmaxIter=1000) : stepsize(pstepsize), maxIter(pmaxIter)
     {
         iter = 0;
     }
@@ -142,7 +131,7 @@ class SR
     {
         if (commrank == 0)
         {
-	    char file[5000];
+	    char file[50];
             sprintf(file, "sr.bkp");
             std::ifstream ifs(file, std::ios::binary);
 	    boost::archive::binary_iarchive load(ifs);
@@ -153,7 +142,7 @@ class SR
     }
 
    template<typename Function>
-   void optimize(VectorXd &vars, Function& getMetric, bool restart)
+   void optimize(VectorXd &vars, Function &getMetric, bool restart)
    {
      if (restart)
      {
@@ -167,7 +156,7 @@ class SR
      }
      int numVars = vars.rows();
      VectorXd grad, x, H;
-     DirectMetric s(schd.sDiagShift);
+     DirectMetric S(schd.sDiagShift);
      double E0, stddev, rt;
      while (iter < maxIter)
      {
@@ -177,19 +166,21 @@ class SR
        grad.setZero(numVars);
        x.setZero(numVars + 1);
        H.setZero(numVars + 1);
+       S.Vectors.clear();
+       S.T.clear();
 
-       getMetric(vars, grad, H, s, E0, stddev, rt);
+       getMetric(vars, grad, H, S, E0, stddev, rt);
        write(vars);
 
        /*
          FOR DEBUGGING PURPOSE
        */
        /*
-       s.BuildMetric();
+       S.BuildMetric();
        for(int i=0; i<vars.rows(); i++)
-         s.S(i,i) += 1.e-4;
+         S.S(i,i) += 1.e-4;
        MatrixXd s_inv = MatrixXd::Zero(vars.rows() + 1, vars.rows() + 1);
-       PInv(s.S,s_inv);
+       PIn(S.S,s_inv);
        x = s_inv * s.H;
        */
        
@@ -197,16 +188,14 @@ class SR
        //cout << x <<endl<<endl<<endl;;
 
        //xguess << 1.0, vars;
-       //ConjGrad(s, s.H, xguess, schd.cgIter, x);
 
        x[0] = 1.0;
-       ConjGrad(s, H, schd.cgIter, x);
+       ConjGrad(S, H, schd.cgIter, x);
        
        for (int i = 0; i < vars.rows(); i++)
        {
          vars(i) += (x(i+1) / x(0));
        }
-       
 #ifndef SERIAL
        MPI_Bcast(&(vars[0]), vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif

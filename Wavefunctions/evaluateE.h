@@ -25,6 +25,9 @@
 #include "statistics.h"
 #include "sr.h"
 #include "global.h"
+#include "Deterministic.h"
+#include "ContinuousTime.h"
+#include "Metropolis.h"
 #include <iostream>
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
@@ -44,104 +47,56 @@ class oneInt;
 class twoInt;
 class twoIntHeatBathSHM;
 
-//generate all the alpha or beta strings
-void comb(int N, int K, std::vector<std::vector<int>> &combinations);
-
-//calculate reblocking analysis to find correlation length
-double calcTcorr(std::vector<double> &v);
-
-void generateAllDeterminants(vector<Determinant> &allDets, int norbs, int nalpha, int nbeta);
-
+//############################################################Deterministic Evaluation############################################################################
 template<typename Wfn, typename Walker>
-void getEnergyDeterministic(Wfn &w, Walker& walk, double &E0)
+void getEnergyDeterministic(Wfn &w, Walker& walk, double &Energy)
 {
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  vector<Determinant> allDets;
-  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
-
-  workingArray work;
-
-  double Overlap = 0, Energy = 0;
-
-
-  for (int i = commrank; i < allDets.size(); i += commsize)
+  Deterministic<Wfn, Walker> D(w, walk);
+  Energy = 0.0;
+  for (int i = commrank; i < D.allDets.size(); i += commsize)
   {
-    w.initWalker(walk, allDets[i]);
-    double ovlp = 0, ham = 0;
-    {
-      E0 = 0.;
-      double scale = 1.0;
-
-
-      w.HamAndOvlp(walk, ovlp, ham, work, false);
-    }
-    
-    //grad += localgrad * ovlp * ovlp;
-    Overlap += ovlp * ovlp;
-    Energy += ham * ovlp * ovlp;
+    D.LocalEnergy(D.allDets[i]);
+    D.UpdateEnergy(Energy);
   }
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-  E0 = Energy / Overlap;
+  D.FinishEnergy(Energy);
+}
+  
+template<typename Wfn, typename Walker>
+void getGradientDeterministic(Wfn &w, Walker &walk, double &Energy, VectorXd &grad)
+{
+  Deterministic<Wfn, Walker> D(w, walk);
+  Energy = 0.0;
+  grad.setZero();
+  VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
+  for (int i = commrank; i < D.allDets.size(); i += commsize)
+  {
+    D.LocalEnergy(D.allDets[i]);
+    D.LocalGradient();
+    D.UpdateEnergy(Energy);
+    D.UpdateGradient(grad, grad_ratio_bar);
+  }
+  D.FinishEnergy(Energy); 
+  D.FinishGradient(grad, grad_ratio_bar, Energy);
 }
 
 template<typename Wfn, typename Walker>
-void getGradientDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad)
+void getGradientMetricDeterministic(Wfn &w, Walker &walk, double &Energy, VectorXd &grad, VectorXd &H, DirectMetric &S)
 {
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  vector<Determinant> allDets;
-  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
-
-  workingArray work;
-
-  double Overlap = 0, Energy = 0;
+  Deterministic<Wfn, Walker> D(w, walk);
+  Energy = 0.0;
   grad.setZero();
-  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localgrad = VectorXd::Zero(grad.rows());
-
-  for (int i = commrank; i < allDets.size(); i += commsize)
+  VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
+  for (int i = commrank; i < D.allDets.size(); i += commsize) 
   {
-    w.initWalker(walk, allDets[i]);
-    double ovlp = 0, ham = 0;
-    {
-      E0 = 0.;
-      double scale = 1.0;
-      localgrad.setZero();
-      localdiagonalGrad.setZero();
-      //cout << walk << endl;
-
-      w.HamAndOvlp(walk, ovlp, ham, work, false);
-      //cout <<"ham  " << ham << " ovlp  " << ovlp << endl << endl;
-      double tmpovlp = 1.0;
-      w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
-      //cout << "grad\n" << localdiagonalGrad << endl << endl;
-    }
-    
-    //grad += localgrad * ovlp * ovlp;
-    grad += localdiagonalGrad * ham * ovlp * ovlp;
-    diagonalGrad += localdiagonalGrad * ovlp * ovlp;
-    Overlap += ovlp * ovlp;
-    Energy += ham * ovlp * ovlp;
+    D.LocalEnergy(D.allDets[i]);
+    D.LocalGradient();
+    D.UpdateEnergy(Energy);
+    D.UpdateGradient(grad, grad_ratio_bar);
+    D.UpdateSR(S);
   }
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-  E0 = Energy / Overlap;
-  grad = (grad - E0 * diagonalGrad) / Overlap;
-  //cout << "totalGrad\n" << grad << endl << endl;
+  D.FinishEnergy(Energy);
+  D.FinishGradient(grad, grad_ratio_bar, Energy);
+  D.FinishSR(grad, grad_ratio_bar, H);
 }
 
 template<typename Wfn, typename Walker>
@@ -247,191 +202,74 @@ void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::V
   lanczosCoeffs = coeffs / overlapTot;
 }
 
-template<typename Wfn, typename Walker>
-void getGradientMetricDeterministic(Wfn &w, Walker& walk, double &E0, VectorXd &grad, VectorXd &H, DirectMetric &S)
-{
-  //cout << "1" << endl; 
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  vector<Determinant> allDets;
-  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
-
-  workingArray work;
-
-  double Overlap = 0.0, Energy = 0.0;
-  grad.setZero();
-  int numVars = grad.rows();
-  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
-  VectorXd grad_ratio = VectorXd::Zero(numVars);
-  S.T.setZero(allDets.size());
-  S.Vectors.setZero(numVars + 1, allDets.size());
-  H.setZero(numVars + 1);
-
-  //cout << "2" << endl; 
-/*
-  char sfile[50];
-  sprintf(sfile, "./Metric/sVectors%i.bin", commrank);
-  ofstream s(sfile, ios::binary);
-  char tfile[50];
-  sprintf(tfile, "./T/%i.bin", commrank);
-  ofstream t(tfile, ios::binary); 
-*/
-
-  for (int i = commrank; i < allDets.size(); i += commsize)
-  {
-    w.initWalker(walk, allDets[i]);
-    double ovlp = 0.0, Eloc = 0.0;
-
-    {
-      E0 = 0.;
-      double scale = 1.0;
-      grad_ratio.setZero();
-      w.HamAndOvlp(walk, ovlp, Eloc, work, false);
-      w.OverlapWithGradient(walk, ovlp, grad_ratio);
-    }
-    //grad += localgrad * ovlp * ovlp;
-    grad += grad_ratio * Eloc * ovlp * ovlp;
-    grad_ratio_bar += grad_ratio * ovlp * ovlp;
-    Overlap += ovlp * ovlp;
-    Energy += Eloc * ovlp * ovlp;
-
-    VectorXd appended(numVars + 1);
-    appended << 1.0, grad_ratio;
-/*
-    t << (ovlp * ovlp);
-    s << appended;
-*/
-    S.Vectors.col(i) = (appended);
-    S.T(i) = (ovlp * ovlp);
-/*
-    appended << 1.0, localdiagonalGrad;
-    S.Vectors.col(i) = appended;
-    S.T.push_back(ovlp * ovlp);
-    Smatrix.block(1, 1, grad.rows(), grad.rows()) += localdiagonalGrad * localdiagonalGrad.transpose() * ovlp * ovlp;
-    Smatrix.block(0, 1, 1, grad.rows()) += ovlp * ovlp * localdiagonalGrad.transpose();
-    Smatrix.block(1, 0, grad.rows(), 1) += ovlp * ovlp * localdiagonalGrad;
-    */
-  }
-  
-  //cout << "3" << endl; 
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, (S.T.data()), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, (S.Vectors.data()), S.Vectors.rows() * S.Vectors.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-  E0 = Energy / Overlap;
-  grad = (grad - E0 * grad_ratio_bar) / Overlap;
-  //Smatrix = Smatrix/Overlap;
-  //Smatrix(0,0) = 1.0;
-  VectorXd appended(numVars);
-  appended = grad_ratio_bar - schd.stepsize * grad;
-  H << 1.0, appended;
-  //cout << "4" << endl; 
-/*
-  s.close();
-  t.close();
-*/
-}
-
+//############################################################Continuous Time Evaluation############################################################################
 template<typename Wfn, typename Walker> 
-void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev, double &rk, int niter, double targetError)
+void getStochasticEnergyContinuousTime(Wfn &w, Walker &walk, double &Energy, double &stddev, double &rk, int niter)
 {
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
-
-
-  workingArray work;
-
-  stddev = 1.e4;
-  int iter = 0;
-  double M1 = 0., S1 = 0., Eavg = 0.;
-  double Eloc = 0.;
-  double ham = 0., ovlp = 0.;
-  double scale = 1.0;
-
-  double bestOvlp = 0.;
-  Determinant bestDet = walk.getDet();
-
-  E0 = 0.0;
-  w.HamAndOvlp(walk, ovlp, ham, work);
-
-
-  int nstore = 1000000 / commsize;
-  int gradIter = min(nstore, niter);
-
-  std::vector<double> gradError(gradIter * commsize, 0);
-  std::vector<double> tauError(gradIter * commsize, 0);
-  double cumdeltaT = 0., cumdeltaT2 = 0.;
-
-  while (iter < niter && stddev > targetError)
+  ContinuousTime<Wfn, Walker> CTMC(w, walk, niter);
+  Energy = 0.0, stddev = 0.0, rk = 0.0;
+  CTMC.LocalEnergy();
+  for (int iter = 0; iter < niter; iter++)
   {
-
-    double cumovlpRatio = 0;
-    //when using uniform probability 1./numConnection * max(1, pi/pj)
-    for (int i = 0; i < work.nExcitations; i++)
-    {
-      cumovlpRatio += abs(work.ovlpRatio[i]);
-      work.ovlpRatio[i] = cumovlpRatio;
-    }
-
-    //double deltaT = -log(random())/(cumovlpRatio);
-    double deltaT = 1.0 / (cumovlpRatio);
-    double nextDetRandom = random() * cumovlpRatio;
-    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                   nextDetRandom) -
-        work.ovlpRatio.begin();
-
-    cumdeltaT += deltaT;
-    cumdeltaT2 += deltaT * deltaT;
-
-    double Elocold = Eloc;
-
-    double ratio = deltaT / cumdeltaT;
-    Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT); //running average of energy
-
-    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
-
-    if (iter < gradIter)
-    {
-      gradError[iter + commrank * gradIter] = ham;
-      tauError[iter + commrank * gradIter] = deltaT;
-    }
-
-    iter++;
-
-    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-    w.HamAndOvlp(walk, ovlp, ham, work);
+    CTMC.MakeMove();
+    CTMC.UpdateEnergy(Energy);
+    //CTMC.LocalEnergy();
+    CTMC.LocalEnergy();
+    //CTMC.UpdateBestDet();
+    //CTMC.UpdateEnergy(Energy);
   }
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-  //if (commrank == 0)
-  vector<double> r_x, b_size;
-  blocking(b_size, r_x, gradError, tauError);
-  rk = corr_time(gradError.size(), b_size, r_x);
-
-  E0 = Eloc / commsize;
-  S1 /= cumdeltaT;
-
-  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
-  stddev =  sqrt(rk * S1 / n_eff);
-  //stddev = sqrt(S1 * rk / (niter - 1) / niter / commsize);
-#ifndef SERIAL
-  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
+  CTMC.FinishEnergy(Energy, stddev, rk);
+  //CTMC.FinishBestDet();
+}
+    
+template<typename Wfn, typename Walker>
+void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &Energy, double &stddev, VectorXd &grad, double &rk, int niter)
+{
+  ContinuousTime<Wfn, Walker> CTMC(w, walk, niter);
+  Energy = 0.0, stddev = 0.0, rk = 0.0;
+  grad.setZero();
+  VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
+  CTMC.LocalEnergy();
+  CTMC.LocalGradient();
+  for (int iter = 0; iter < niter; iter++)
+  {
+    CTMC.MakeMove();
+    CTMC.UpdateEnergy(Energy);
+    CTMC.UpdateGradient(grad, grad_ratio_bar);
+    //CTMC.LocalEnergy();
+    //CTMC.LocalGradient();
+    CTMC.LocalEnergy();
+    CTMC.LocalGradient();
+    CTMC.UpdateBestDet();
+    //CTMC.UpdateEnergy(Energy);
+    //CTMC.UpdateGradient(grad, grad_ratio_bar);
+  }
+  CTMC.FinishEnergy(Energy, stddev, rk);
+  CTMC.FinishGradient(grad, grad_ratio_bar, Energy);
+  CTMC.FinishBestDet();
+}
+    
+template<typename Wfn, typename Walker>
+void getStochasticGradientMetricContinuousTime(Wfn &w, Walker& walk, double &Energy, double &stddev, VectorXd &grad, VectorXd &H, DirectMetric &S, double &rk, int niter)
+{
+  ContinuousTime<Wfn, Walker> CTMC(w, walk, niter);
+  Energy = 0.0, stddev = 0.0, rk = 0.0;
+  grad.setZero();
+  VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
+  for (int iter = 0; iter < niter; iter++)
+  {
+    CTMC.LocalEnergy();
+    CTMC.LocalGradient();
+    CTMC.MakeMove();
+    CTMC.UpdateEnergy(Energy);
+    CTMC.UpdateGradient(grad, grad_ratio_bar);
+    CTMC.UpdateSR(S);
+    CTMC.UpdateBestDet();
+  }
+  CTMC.FinishEnergy(Energy, stddev, rk);
+  CTMC.FinishGradient(grad, grad_ratio_bar, Energy);
+  CTMC.FinishSR(grad, grad_ratio_bar, H);
+  CTMC.FinishBestDet();
 }
 
 template<typename Wfn, typename Walker> 
@@ -533,8 +371,8 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
   for (int i = 0; i < 4; i++)
   {
     vector<double> b_size, r_x;
-    blocking(b_size, r_x, gradError[i], tauError);
-    rk[i] = corr_time(gradError.size(), b_size, r_x);
+    block(b_size, r_x, gradError[i], tauError);
+    rk[i] = corrTime(gradError.size(), b_size, r_x);
     S1[i] /= cumdeltaT;
   }
 
@@ -545,392 +383,6 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
 
   lanczosCoeffs = coeffs / commsize;
 
-}
-
-template<typename Wfn, typename Walker>
-void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &E0, double &stddev, Eigen::VectorXd &grad, double &rk, int niter, double targetError)
-{
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
-
-
-  workingArray work;
-
-  stddev = 1.e4;
-  int iter = 0;
-  double M1 = 0., S1 = 0., Eavg = 0.;
-  double Eloc = 0.;
-  double ham = 0., ovlp = 0.;
-  grad.setZero();
-  VectorXd localGrad = grad;
-  double scale = 1.0;
-
-  VectorXd diagonalGrad = VectorXd::Zero(grad.rows());
-  VectorXd localdiagonalGrad = VectorXd::Zero(grad.rows());
-
-  double bestOvlp = 0.;
-  Determinant bestDet = walk.getDet();
-
-  E0 = 0.0;
-  //cout << walk << endl << endl;
-  w.HamAndOvlp(walk, ovlp, ham, work);
-  //cout << ham << "  " << ovlp << endl << endl;
-  w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
-  
-
-  int nstore = 1000000 / commsize;
-  int gradIter = min(nstore, niter);
-
-  std::vector<double> gradError(gradIter * commsize, 0);
-  std::vector<double> tauError(gradIter * commsize, 0);
-  double cumdeltaT = 0., cumdeltaT2 = 0.;
-
-  while (iter < niter && stddev > targetError)
-  {
-
-    double cumovlpRatio = 0;
-    //when using uniform probability 1./numConnection * max(1, pi/pj)
-    for (int i = 0; i < work.nExcitations; i++)
-    {
-      cumovlpRatio += abs(work.ovlpRatio[i]);
-      work.ovlpRatio[i] = cumovlpRatio;
-    }
-
-    //double deltaT = -log(random())/(cumovlpRatio);
-    double deltaT = 1.0 / (cumovlpRatio);
-    double nextDetRandom = random() * cumovlpRatio;
-    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                   nextDetRandom) -
-        work.ovlpRatio.begin();
-
-    cumdeltaT += deltaT;
-    cumdeltaT2 += deltaT * deltaT;
-
-    double Elocold = Eloc;
-
-    //exit(0);
-    //if (commrank == 1) cout << walk.d<<"  "<<ham<<"  "<<Eloc<<"  "<<localdiagonalGrad.norm()<<endl;
-
-    double ratio = deltaT / cumdeltaT;
-    for (int i = 0; i < grad.rows(); i++)
-    {
-      diagonalGrad[i] += ratio * (localdiagonalGrad[i] - diagonalGrad[i]);
-      grad[i] += ratio * (ham * localdiagonalGrad[i] - grad[i]);
-      localdiagonalGrad[i] = 0.0;
-    }
-
-    Eloc = Eloc + deltaT * (ham - Eloc) / (cumdeltaT); //running average of energy
-
-    S1 = S1 + deltaT * (ham - Elocold) * (ham - Eloc);
-
-    if (iter < gradIter)
-    {
-      gradError[iter + commrank * gradIter] = ham;
-      tauError[iter + commrank * gradIter] = deltaT;
-    }
-    iter++;
-
-    //cout << "before  " << walk.d << endl;
-    //cout << "hftype  " << w.getRef().hftype << endl;
-    //cout << w.getRef().determinants[0] << endl;
-    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-    //cout << "after  " << walk.d << endl;
-
-    w.HamAndOvlp(walk, ovlp, ham, work);
-    //cout << walk << endl;
-    //cout << "ham  " <<  ham << "  ovlp  " << ovlp << endl << endl;
-    
-    w.OverlapWithGradient(walk, ovlp, localdiagonalGrad);
-
-    if (abs(ovlp) > bestOvlp)
-    {
-      bestOvlp = abs(ovlp);
-      bestDet = walk.getDet();
-    }
-  }
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(diagonalGrad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &Eloc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-  //exit(0);
-  //if (commrank == 0)
-  vector<double> b_size, r_x;
-  blocking(b_size, r_x, gradError, tauError);
-  rk = corr_time(gradError.size(), b_size, r_x);
-  //rk = calcTcorr(gradError);
-  diagonalGrad /= (commsize);
-  grad /= (commsize);
-  E0 = Eloc / commsize;
-  grad = grad - E0 * diagonalGrad;
-
-  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
-  S1 /= cumdeltaT;
-  stddev = sqrt((S1 * rk / n_eff));
-/*
-  cout << "sample variance: " << S1 << endl;
-  cout << "sample size: " << n_eff << endl;
-  cout << "rk: " << rk << endl;
-*/
-#ifndef SERIAL
-  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  if (commrank == 0)
-  {
-    char file[5000];
-    sprintf(file, "BestDeterminant.txt");
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << bestDet;
-  }
-}
-
-class MetHelper
-{
-  public: 
-  int norbs;
-  vector<double> a, b; //all occ alpha/beta orbs of cdet
-  vector<double> sa, sb; //all singly occ alpha/beta orbs of cdet
-  vector<double> ua, ub; //all unocc alpha/beta orbs of cdet
-
-  MetHelper(Determinant &d)
-  {
-    norbs = Determinant::norbs;
-    for (int i = 0; i < norbs; i++)
-    {
-      bool alpha = d.getoccA(i);
-      bool beta = d.getoccB(i);
-      if (alpha) a.push_back(i);
-      else ua.push_back(i);
-      if (beta) b.push_back(i);
-      else ub.push_back(i);
-      if (alpha && !beta) sa.push_back(i);
-      if (beta && !alpha) sb.push_back(i);
-    }
-  }
-
-  double TotalMoves()
-  {
-    return (double) (a.size() * ua.size() + b.size() * ub.size() + sa.size() * sb.size());
-  }
-  double AlphaMoves()
-  {
-    return (double) (a.size() * ua.size());
-  }
-  double BetaMoves()
-  {
-    return (double) (b.size() * ub.size());
-  }
-  double DoubleMoves()
-  {
-    return (double) (sa.size() * sb.size());
-  }
-};
-
-template<typename Wfn, typename Walker>
-void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &E0, double &stddev, Eigen::VectorXd &grad, double &rk, int niter)
-{
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-  workingArray work;
-  stddev = 0.0;
-  E0 = 0.0;
-  int iter = 0;
-  double S1 = 0.0, Eloc = 0.0, ovlp = 0.0;
-  int numVars = grad.rows();
-  grad.setZero();
-  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
-  VectorXd grad_ratio = VectorXd::Zero(numVars);
-  int nstore = 1000000 / commsize;
-  int gradIter = min(nstore, niter);
-  std::vector<double> gradError(gradIter * commsize, 0);
-  double bestOvlp = 0.0;
-  Determinant bestDet = walk.getDet();
-  enum Move
-  {
-    Amove,
-    Bmove,
-    Dmove
-  };
-  bool calcEloc = true;
-  int nAMoves = 0;
-  /*
-  std::vector<double> e, t;
-  double weight;
-  */
-  while (iter < niter)
-  {
-    if (calcEloc)
-    {
-      grad_ratio.setZero();
-      w.HamAndOvlp(walk, ovlp, Eloc, work);
-      w.OverlapWithGradient(walk, ovlp, grad_ratio);
-    }
-    for (int i = 0; i < grad.rows(); i++)
-    {
-      grad_ratio_bar[i] += grad_ratio[i];
-      grad[i] += grad_ratio[i] * Eloc;;
-    }
-    double E0old = E0;
-    E0 = E0 + (Eloc - E0) / (iter + 1);
-    S1 = S1 + (Eloc - E0old) * (Eloc - E0);
-    if (iter < gradIter)
-    {
-      gradError[iter + commrank * gradIter] = Eloc;
-    }
-    Determinant cdet = walk.getDet();  
-    Determinant pdet = cdet;
-    Move move;
-    MetHelper C(cdet);
-    double P_a = C.AlphaMoves() / C.TotalMoves();
-    double P_b = C.BetaMoves() / C.TotalMoves();
-    double P_d = C.DoubleMoves() / C.TotalMoves();
-    double rand = random();
-    int orb1, orb2;
-    double pdetOvercdet;
-    if (rand < P_a) 
-    {
-      move = Amove;
-      orb1 = C.a[(int) (random() * C.a.size())];
-      orb2 = C.ua[(int) (random() * C.ua.size())];
-      pdet.setoccA(orb1, false);
-      pdet.setoccA(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1, 0, 2*orb2, 0, walk, false);
-    }
-    else if (rand < (P_b + P_a)) 
-    {
-      move = Bmove;
-      orb1 = C.b[(int) (random() * C.b.size())];
-      orb2 = C.ub[(int) (random() * C.ub.size())];
-      pdet.setoccB(orb1, false);
-      pdet.setoccB(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1+1, 0, 2*orb2+1, 0, walk, false);
-    }
-    else if (rand < (P_d + P_a + P_b))
-    {
-      move = Dmove;
-      orb1 = C.sa[(int) (random() * C.sa.size())];
-      orb2 = C.sb[(int) (random() * C.sb.size())];
-      pdet.setoccA(orb1, false);
-      pdet.setoccB(orb2, false);
-      pdet.setoccB(orb1, true);
-      pdet.setoccA(orb2, true);
-      pdetOvercdet = w.getOverlapFactor(2*orb1, 2*orb2+1, 2*orb2, 2*orb1+1, walk, false);
-    }
-    MetHelper P(pdet);
-    double T_C = 1.0 / C.TotalMoves();
-    double T_P = 1.0 / P.TotalMoves();
-    double P_pdetOvercdet = pow(pdetOvercdet, 2.0);
-    double accept = min(1.0, (T_P * P_pdetOvercdet) / T_C);
-    if (random() < accept)
-    {
-      /*
-      e.push_back(Eloc);
-      t.push_back(weight);
-      weight = 1.0;
-      */
-      nAMoves += 1;
-      calcEloc = true;
-      if (move == Amove)
-      {
-        walk.update(orb1, orb2, 0, w.getRef(), w.getCorr());
-      }
-      else if (move == Bmove)
-      {
-        walk.update(orb1, orb2, 1, w.getRef(), w.getCorr());
-      }
-      else if (move == Dmove)
-      {
-        walk.update(orb1, orb2, 0, w.getRef(), w.getCorr());
-        walk.update(orb2, orb1, 1, w.getRef(), w.getCorr());
-      }
-    }
-    else
-    {
-      calcEloc = false;
-      //weight += 1.0;
-    }
-    iter++;
-    if (abs(ovlp) > bestOvlp)
-    {
-      bestOvlp = abs(ovlp);
-      bestDet = walk.getDet();
-    }
-  }
-  grad_ratio_bar /= niter;
-  grad /= niter;
-  S1 /= niter;
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &E0, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &nAMoves, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-#endif
-/*
-//pseudo weights
-  vector<double> C;
-  corr_func(C, e, t);
-  cout << "\t Pseudo data" << endl;
-  cout << "\t mean: " << average(e, t) << endl;
-  double tau = corr_time(C); 
-  cout << "\t autocorrelation time: " << tau << endl;
-  cout << "\t sample variance: " << variance(e,t) << endl;
-  cout << "\t n_eff: " << n_eff(t) << endl;
-  cout << "\t average variance: " << (variance(e, t) * tau / n_eff(t)) << endl;
-  ofstream file("pseudo.txt");
-  for (int i = 0; i < e.size(); i++)
-  {
-    file << e[i] << " \t" << t[i] << endl;
-  }
-  file.close();
-*/
-//blocking
-  vector<double> b_size, r_x;
-  blocking(b_size, r_x, gradError);
-  rk = corr_time(gradError.size(), b_size, r_x);
-  //write_block(b_size, r_x);
-/*
-  cout << "block rk: " << rk << endl;
-//correlation function
-  vector<double> c;
-  corr_func(c, gradError);
-  rk = corr_time(c);
-  cout << "brute force rk: " << rk << endl;
-  write_corr_func(c);
-  cout << "sample variance: " << S1 << endl;
-  cout << "sample size: " << niter * commsize << endl;
-  cout << "Fraction of accepted moves: " << fracAmoves << endl;
-*/
-  grad_ratio_bar /= (commsize);
-  grad /= (commsize);
-  E0 /= commsize;
-  grad = (grad - E0 * grad_ratio_bar);
-  double n = niter * commsize;
-  double fracAmoves = ((double) nAMoves)/ n;
-  stddev = sqrt(S1 * rk / n);
-#ifndef SERIAL
-  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-  if (commrank == 0)
-  {
-    char file[5000];
-    sprintf(file, "BestDeterminant.txt");
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << bestDet;
-  }
 }
 
 template<typename Wfn, typename Walker>
@@ -1047,7 +499,7 @@ void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0
 #endif
 
   vector<double> b_size, r_x;
-  blocking(b_size,r_x,gradError,tauError);
+  block(b_size,r_x,gradError,tauError);
   rk = corr_time(gradError.size(), b_size, r_x);
   //rk = calcTcorr(gradError);
 
@@ -1076,167 +528,24 @@ void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0
   }
 }
 
+//############################################################Metropolis Evaluation############################################################################
 template<typename Wfn, typename Walker>
-void getStochasticGradientMetricContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev, VectorXd &grad, VectorXd &H, DirectMetric &S, double &rk, int niter, double targetError)
+void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &Energy, double &stddev, VectorXd &grad, double &rk, int niter)
 {
-  //cout << "a" << endl;
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),std::ref(generator));
-  
-  workingArray work;
-
-  stddev = 1.e4;
-  int iter = 0;
-  double M1 = 0., S1 = 0., Eavg = 0.;
-  double Eloc = 0., ovlp = 0.;
-  int numVars = grad.rows();
-  H = VectorXd::Zero(numVars + 1);
-  VectorXd grad_ratio_bar = VectorXd::Zero(numVars);
-  VectorXd grad_ratio = VectorXd::Zero(numVars);
-
-  double bestOvlp = 0.0;
-  Determinant bestDet = walk.getDet();
-
-  E0 = 0.0;
-  w.HamAndOvlp(walk, ovlp, Eloc, work);
-  w.OverlapWithGradient(walk, ovlp, grad_ratio);
-
-  int nstore = 1000000/commsize;
-  int gradIter = min(nstore, niter);
-
-  std::vector<double> gradError(gradIter * commsize, 0);
-  std::vector<double> tauError(gradIter * commsize, 0);
-  double cumdeltaT = 0., cumdeltaT2 = 0.;
-
-  S.T.setZero(niter);
-  S.Vectors.setZero(numVars + 1, niter);
-
-/*
-  char sfile[50];
-  sprintf(sfile, "./Metric/sVectors%i.bin", commrank);
-  ofstream s(sfile, ios::binary);
-  char tfile[50];
-  sprintf(tfile, "./T/%i.bin", commrank);
-  ofstream t(tfile, ios::binary); 
-*/
-
-  //cout << "b" << endl;
-  while (iter < niter && stddev > targetError)
+  Metropolis<Wfn, Walker> M(w, walk, niter); 
+  Energy = 0.0, stddev = 0.0, rk = 0.0;
+  grad.setZero();
+  VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
+  for (int iter = 0; iter < niter; iter++)
   {
-    //cout << "i" << endl;
-
-    double cumovlpRatio = 0;
-    //when using uniform probability 1./numConnection * max(1, pi/pj)
-    for (int i = 0; i < work.nExcitations; i++)
-    {
-      cumovlpRatio += abs(work.ovlpRatio[i]);
-      work.ovlpRatio[i] = cumovlpRatio;
-    }
-    //cout << "ii" << endl;
-
-    //double deltaT = -log(random())/(cumovlpRatio);
-    double deltaT = 1.0 / (cumovlpRatio);
-    double nextDetRandom = random() * cumovlpRatio;
-    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations), nextDetRandom) - work.ovlpRatio.begin();
-
-    cumdeltaT += deltaT;
-    cumdeltaT2 += deltaT * deltaT;
-
-    double E0old = E0;
-
-    grad_ratio_bar += deltaT * (grad_ratio - grad_ratio_bar) / (cumdeltaT);
-    grad += deltaT * (grad_ratio * Eloc - grad) / (cumdeltaT); //running average of grad
-    E0 += deltaT * (Eloc - E0) / (cumdeltaT);       //running average of energy
-    //cout << "iii" << endl;
-
-    //Smatrix.block(1, 1, grad.rows(), grad.rows()) += deltaT * (localdiagonalGrad * localdiagonalGrad.transpose() - Smatrix.block(1, 1, grad.rows(), grad.rows())) / cumdeltaT;
-    //Smatrix.block(0, 1, 1, grad.rows()) += deltaT * (localdiagonalGrad.transpose() - Smatrix.block(0, 1, 1, grad.rows())) / cumdeltaT;
-    //Smatrix.block(1, 0, grad.rows(), 1) += deltaT * (localdiagonalGrad - Smatrix.block(1, 0, grad.rows(), 1)) / cumdeltaT;
-    VectorXd appended(numVars + 1);
-    appended << 1.0, grad_ratio;
-/*
-    t.write((char *)&deltaT, sizeof(double));
-    s.write((char *)appended.data(), appended.size() * sizeof(double));
-*/
-
-    //cout << "iiii" << endl;
-    S.T(iter) = deltaT;
-    S.Vectors.col(iter) = appended;
-
-    //Smatrix = (1 - deltaT / cumdeltaT) * Smatrix;
-    //localdiagonalGrad = pow(deltaT/cumdeltaT, 0.5) * localdiagonalGrad;
-    //VectorXd appended(grad.rows() + 1);
-    //appended << pow(deltaT/cumdeltaT, 0.5), localdiagonalGrad;
-    //Smatrix.noalias() += appended * appended.transpose();
-
-    S1 += deltaT * (Eloc - E0old) * (Eloc - E0);
-
-    if (iter < gradIter)
-    {
-      gradError[iter + commrank * gradIter] = Eloc;
-      tauError[iter + commrank * gradIter] = deltaT;
-    }
-    iter++;
-
-    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-
-    grad_ratio.setZero();
-    w.HamAndOvlp(walk, ovlp, Eloc, work);
-    w.OverlapWithGradient(walk, ovlp, grad_ratio);
-    //cout << "iiiii" << endl;
-
-    if (abs(ovlp) > bestOvlp) {
-      bestOvlp = abs(ovlp);
-      bestDet = walk.getDet();
-    }
+    M.LocalEnergy();
+    M.LocalGradient();
+    M.MakeMove();
+    M.UpdateEnergy(Energy);
+    M.UpdateGradient(grad, grad_ratio_bar);
   }
-  //cout << "c" << endl;
-  
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad_ratio_bar[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(grad[0]), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &E0, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-  vector<double> r_x, b_size;
-  blocking(b_size, r_x, gradError, tauError);
-  rk = corr_time(gradError.size(), b_size, r_x);
-  //write_block(b_size, r_x);
-
-  grad_ratio_bar /= (commsize);
-  grad /= (commsize);
-  E0 /= commsize;
-
-  grad = grad - E0 * grad_ratio_bar;
-  
-  VectorXd appended(numVars);
-  appended = grad_ratio_bar - schd.stepsize * grad;
-  H << 1.0, appended;
-
-  S1 /= cumdeltaT;
-  double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
-  stddev = sqrt(S1 * rk / n_eff);
-#ifndef SERIAL
-  MPI_Bcast(&stddev, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-  if (commrank == 0) {
-    char file[5000];
-    sprintf(file, "BestDeterminant.txt");
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << bestDet;
-  }
-/*
-  s.close();
-  t.close();
-*/
-  //cout << "d" << endl;
+  M.FinishEnergy(Energy, stddev, rk);
+  M.FinishGradient(grad, grad_ratio_bar, Energy);
 }
 
 template <typename Wfn, typename Walker>
@@ -1261,7 +570,7 @@ class getGradientWrapper
     {
       if (ctmc)
       {
-        getStochasticGradientContinuousTime(w, walk, E0, stddev, grad, rt, stochasticIter, 0.5e-3);
+        getStochasticGradientContinuousTime(w, walk, E0, stddev, grad, rt, stochasticIter);
       }
       else
       {
@@ -1283,7 +592,7 @@ class getGradientWrapper
       w.initWalker(walk);
       if (!deterministic)
       {
-        getStochasticGradientMetricContinuousTime(w, walk, E0, stddev, grad, H, S, rt, stochasticIter, 0.5e-3);
+        getStochasticGradientMetricContinuousTime(w, walk, E0, stddev, grad, H, S, rt, stochasticIter);
       }
       else
       {

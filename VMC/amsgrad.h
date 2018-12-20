@@ -168,7 +168,7 @@ class AMSGrad
 #endif
 
             if (commrank == 0)
-                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i  %6.6f %8.2f %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % (stepNorm) %(angle) % ((getTime() - startofCalc));
+                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i  %6.6f %8.2f %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % (stepNorm) % (angle) % ((getTime() - startofCalc));
             if (maxIter - iter <= avgIter) avgVars += vars;
             iter++;
         }

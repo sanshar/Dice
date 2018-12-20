@@ -125,7 +125,6 @@ template<typename Wfn, typename Walker>
     }
 
     //ham = Ewalk-cumHij;
-
     double tsample = -log(random())/cumHij;
     double deltaT = min(t, tsample);
     t -= tsample;

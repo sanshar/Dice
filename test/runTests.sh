@@ -113,9 +113,9 @@ then
     ../clean.sh
 fi
 
-cd $here/h10/
+cd $here/h10sr/
 ../clean.sh
-printf "...running h10\n"
+printf "...running h10 sr\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python ../testEnergy.py 'vmc' $tol
 if [ $clean == 1 ]

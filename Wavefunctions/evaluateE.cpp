@@ -38,6 +38,7 @@
 using namespace std;
 using namespace Eigen;
 
+/*
 void comb(int N, int K, vector<vector<int>> &combinations)
 {
   std::vector<int> bitmask(K, 1);
@@ -85,8 +86,9 @@ double calcTcorr(vector<double> &v)
   var = var / norm;
   var = var * neff / (neff - 1.0);
 
-  double c[v.size()];
-  for (int i=0; i<v.size(); i++) c[i] = 0.0;
+  //double c[v.size()];
+  vector<double> c(v.size(),0);
+  //for (int i=0; i<v.size(); i++) c[i] = 0.0;
   int l = v.size() - 1;
 
   int i = commrank+1;
@@ -112,13 +114,21 @@ double calcTcorr(vector<double> &v)
   f = 1.0;
 
   i = 1;
+  ofstream out("OldCorrFunc.txt");
   for (; i < l; i++)
   {
+
+    if (commrank == 0)
+    {
+      out << c[i] << endl;
+    }
+
     if (c[i] < 0.0)
       f = 0.0;
     rk = rk + 2.0 * c[i] * f;
-  };
-
+  }
+  out.close();
+  
   return rk;
 }
 
@@ -141,3 +151,4 @@ void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha
   alphaDets.clear();
   betaDets.clear();
 }
+*/
