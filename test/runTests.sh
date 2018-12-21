@@ -133,7 +133,7 @@ then
     ../clean.sh
 fi
 
-cd $here/h10sr/
+cd $here/h10srNew/
 ../clean.sh
 printf "...running h10 sr\n"
 $MPICOMMAND $VMCPATH > vmc.out

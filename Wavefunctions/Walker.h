@@ -749,7 +749,8 @@ struct Walker<Corr, Pfaffian> {
     int tableIndexi, tableIndexa;
     refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz); 
     //return refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
-    return ((refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi))(0,0) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
+    //return ((refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi))(0,0) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
+    return (refHelper.rTable[0](tableIndexa, tableIndexi) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
   }
   
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Pfaffian &ref) const
@@ -768,12 +769,17 @@ struct Walker<Corr, Pfaffian> {
       //summand1 = refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) 
       //    - refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj);
       //summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (refHelper.rTable[1](tableIndexi * nopen + tableIndexa, tableIndexj * nopen + tableIndexb) + crossTerm);
-      complex<double> term1 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
-      complex<double> term2 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
-      complex<double> term3 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
-      complex<double> term4 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      //complex<double> term1 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      //complex<double> term2 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      //complex<double> term3 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      //complex<double> term4 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      complex<double> term1 = refHelper.rTable[0](tableIndexa, tableIndexi);
+      complex<double> term2 = refHelper.rTable[0](tableIndexb, tableIndexj);
+      complex<double> term3 = refHelper.rTable[0](tableIndexb, tableIndexi);
+      complex<double> term4 = refHelper.rTable[0](tableIndexa, tableIndexj);
       summand1 = term1 * term2 - term3 * term4;
-      complex<double> term5 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexj * nopen + tableIndexb));
+      //complex<double> term5 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexj * nopen + tableIndexb));
+      complex<double> term5 = refHelper.rTable[1](tableIndexa, tableIndexb);
       summand2 = refHelper.thetaInv(tableIndexi, tableIndexj) * (term5 + crossTerm);
     }
     else { 
@@ -781,12 +787,17 @@ struct Walker<Corr, Pfaffian> {
       //summand1 = refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexj) * refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi) 
       //    - refHelper.rTable[0](tableIndexi * nopen + tableIndexa, tableIndexj) * refHelper.rTable[0](tableIndexj * nopen + tableIndexb, tableIndexi);
       //summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (refHelper.rTable[1](tableIndexj * nopen + tableIndexb, tableIndexi * nopen + tableIndexa) + crossTerm);
-      complex<double> term1 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
-      complex<double> term2 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
-      complex<double> term3 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
-      complex<double> term4 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      //complex<double> term1 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexj);
+      //complex<double> term2 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexi);
+      //complex<double> term3 = refHelper.fMat.row(tableIndexi * nopen + tableIndexa) * refHelper.thetaInv.col(tableIndexj);
+      //complex<double> term4 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv.col(tableIndexi);
+      complex<double> term1 = refHelper.rTable[0](tableIndexb, tableIndexj);
+      complex<double> term2 = refHelper.rTable[0](tableIndexa, tableIndexi);
+      complex<double> term3 = refHelper.rTable[0](tableIndexa, tableIndexj);
+      complex<double> term4 = refHelper.rTable[0](tableIndexb, tableIndexi);
       summand1 = term1 * term2 - term3 * term4;
-      complex<double> term5 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexi * nopen + tableIndexa));
+      //complex<double> term5 = refHelper.fMat.row(tableIndexj * nopen + tableIndexb) * refHelper.thetaInv * (-refHelper.fMat.transpose().col(tableIndexi * nopen + tableIndexa));
+      complex<double> term5 = refHelper.rTable[1](tableIndexb, tableIndexa);
       summand2 = refHelper.thetaInv(tableIndexj, tableIndexi) * (term5 + crossTerm);
     }
     //cout << "double   " << crossTerm << "   " << summand1 << "  " << summand2 << endl; 
@@ -894,8 +905,8 @@ struct Walker<Corr, Pfaffian> {
   friend ostream& operator<<(ostream& os, const Walker<Corr, Pfaffian>& w) {
     os << w.d << endl << endl;
     os << "fMat\n" << w.refHelper.fMat << endl << endl;
-    //os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
-    //os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
+    os << "fThetaInv\n" << w.refHelper.rTable[0] << endl << endl;
+    os << "fThetaInvf\n" << w.refHelper.rTable[1] << endl << endl;
     os << "pfaff\n" << w.refHelper.thetaPfaff << endl << endl;
     os << "thetaInv\n" << w.refHelper.thetaInv << endl << endl;
     return os;

@@ -63,7 +63,7 @@ class ContinuousTime
     Eloc = 0.0, ovlp = 0.0;
     w->HamAndOvlp(*walk, ovlp, Eloc, work);
     if (schd.debug) {
-      cout << walk << endl;
+      cout << *walk << endl;
       cout << "ham  " << Eloc << "  ovlp  " << ovlp << endl << endl;
     }
   }
