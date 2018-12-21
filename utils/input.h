@@ -74,6 +74,9 @@ private:
       & fn_factor
       & nGeneration
       & excitationLevel
+      & sDiagShift
+      & cgIter
+      & stepsize
       & expCorrelator;
   }
 public:
@@ -117,6 +120,8 @@ public:
   int avgIter;                     
   int _sgdIter;
   Method method;
+  double sDiagShift;
+  int cgIter;
   bool ctmc;
 
   /*

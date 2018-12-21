@@ -8,7 +8,7 @@ import sys
 UHF = False
 r = float(sys.argv[1])*0.529177
 n = 10
-order = 2
+order = 5
 
 atomstring = ""
 for i in range(n):

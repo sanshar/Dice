@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include "input.h"
 #include "evaluateE.h"
 #include "amsgrad.h"
@@ -27,7 +28,7 @@
 #include "sr.h"
 
 using functor1 = boost::function<void (VectorXd&, VectorXd&, double&, double&, double&)>;
-using functor2 = boost::function<void (VectorXd&, VectorXd&, MatrixXd&, double&, double&, double&)>;
+using functor2 = boost::function<void (VectorXd&, VectorXd&, VectorXd&, DirectMetric&, double&, double&, double&)>;
 
 template<typename Wave, typename Walker>
 void runVMC(Wave& wave, Walker& walk) {
@@ -36,7 +37,7 @@ void runVMC(Wave& wave, Walker& walk) {
   VectorXd vars; wave.getVariables(vars);
   getGradientWrapper<Wave, Walker> wrapper(wave, walk, schd.stochasticIter, schd.ctmc);
   functor1 getStochasticGradient = boost::bind(&getGradientWrapper<Wave, Walker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-  functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<Wave, Walker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, schd.deterministic);
+  functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<Wave, Walker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, _7, schd.deterministic);
 
   if (schd.method == amsgrad || schd.method == amsgrad_sgd) {
     AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter, schd.avgIter);
@@ -51,6 +52,10 @@ void runVMC(Wave& wave, Walker& walk) {
     optimizer.optimize(vars, getStochasticGradient, schd.restart);
   }
   else if (schd.method == sr) {
+/*
+    mkdir("./Metric", 0777); 
+    mkdir("./T", 0777); 
+*/
     SR optimizer(schd.stepsize, schd.maxIter);
     optimizer.optimize(vars, getStochasticGradientMetric, schd.restart);
   }

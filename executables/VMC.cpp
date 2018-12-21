@@ -28,7 +28,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #ifndef SERIAL
-//#include "mpi.h"
+#include "mpi.h"
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
@@ -183,16 +183,6 @@ int main(int argc, char *argv[])
     wave.optimizeWave(walk);
     wave.writeWave();
   }
-  
-  else if (schd.wavefunctionType == "GutzwillerSlater") {
-    CorrelatedWavefunction<Gutzwiller, Slater> wave; Walker<Gutzwiller, Slater> walk;
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "GutzwillerPfaffian") {
-    CorrelatedWavefunction<Gutzwiller, Pfaffian> wave; Walker<Gutzwiller, Pfaffian> walk;
-    runVMC(wave, walk);
-  }
 
   else if (schd.wavefunctionType == "test") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
@@ -210,9 +200,6 @@ int main(int argc, char *argv[])
       cout << "Density correlations\n" << corr << endl << endl;
     }
   }
-
-
-  
   //else if (schd.wavefunctionType == "LanczosCPSSlater") {
   //  //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
   //  CPSSlater wave; HFWalker walk;

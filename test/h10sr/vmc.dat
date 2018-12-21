@@ -1,9 +1,11 @@
-correlator 2 correlators.txt
+correlator 5 correlators.txt
 maxIter 10
 stochasticIter 10000
 seed 1
 #deterministic
-
 epsilon 1.e-5
+
 sr
-stepsize 0.01
+cgIter 15
+sDiagShift 0.01
+stepsize 0.1

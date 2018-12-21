@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 
     //calculate the energy as a initial guess for shift
     double ham, stddev, rk;
-    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter, 1.e-5);
+    getStochasticEnergyContinuousTime(wave, walk, ham, stddev, rk, schd.stochasticIter);
     if (commrank == 0) cout << "Energy of VMC wavefunction: "<<ham <<"("<<stddev<<")"<<endl;
 
     //do the GFMC continous time

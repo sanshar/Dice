@@ -24,6 +24,7 @@
 #include "global.h"
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <fstream>
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -34,55 +35,62 @@
 
 using namespace Eigen;
 using namespace boost;
+using namespace std;
 
-void conj_grad(MatrixXd &A, VectorXd &b, VectorXd &xguess, int n, VectorXd &x)
+class DirectMetric
 {
-    VectorXd x0 = xguess;
-    VectorXd r0 = b - A * x0;
-    VectorXd p0 = r0;
-    double r0_square = r0.adjoint() * r0;
-    for (int i = 0; i < n; i++)
-    {
-	VectorXd Ap = A * p0;
-	double pAp = p0.adjoint() * Ap;
-	double alpha = r0_square / pAp;
-	VectorXd x1 = x0 + alpha * p0;
-	VectorXd r1 = r0 - alpha * Ap;
-	double r1_square = r1.adjoint() * r1;
-	double beta = r1_square / r0_square;
-	VectorXd p1 = r1 + beta * p0;
+    public:
+    vector<double> T;
+    vector<VectorXd> Vectors;
+    double diagshift;
+    MatrixXd S;
+    DirectMetric(double _diagshift) : diagshift(_diagshift) {}
 
-	x0 = x1;
-	r0 = r1;
-	p0 = p1;
-	r0_square = r1_square;
-        x = x1;
-    }
-}
-
-void pinv(MatrixXd &A, MatrixXd &Ainv)
-{
-    SelfAdjointEigenSolver<MatrixXd> es;
-    es.compute(A);
-    std::vector<int> cols;
-    for (int m = 0; m < A.cols(); m++)
+    void BuildMetric()
     {
-      if (fabs(es.eigenvalues()(m)) > 1.e-10)
+      double Tau = 0.0;
+      int dim = Vectors[0].rows();
+      S = MatrixXd::Zero(dim, dim);
+      for (int i = 0; i < Vectors.size(); i++)
       {
-        cols.push_back(m);
+        S += T[i] * Vectors[i] * Vectors[i].adjoint();
+        Tau += T[i];
       }
+
+#ifndef SERIAL
+      MPI_Allreduce(MPI_IN_PLACE, &(Tau), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &(S(0,0)), S.rows() * S.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+      S /= Tau; 
     }
-    MatrixXd U = MatrixXd::Zero(A.rows(), cols.size());
-    MatrixXd eig_inv = MatrixXd::Zero(cols.size(),cols.size());
-    for (int m = 0; m < cols.size(); m++)
+      
+    
+  void multiply(VectorXd &x, VectorXd& Ax)
+  {
+    double Tau = 0.0;
+    int dim = x.rows();
+    if (Ax.rows() != x.rows())
+      Ax = VectorXd::Zero(dim);
+    else
+      Ax.setZero();
+    for (int i = 0; i < Vectors.size(); i++)
     {
-      int index = cols[m];
-      U.col(m) = es.eigenvectors().col(index);
-      double eigval = es.eigenvalues()(index);
-      eig_inv(m,m) = 1.0 / eigval;
+      double factor = Vectors[i].adjoint() * x;
+      Ax += T[i] * Vectors[i] * factor;
+      Tau += T[i];
     }
-    Ainv = U * eig_inv * U.adjoint();
-}
+#ifndef SERIAL
+      MPI_Allreduce(MPI_IN_PLACE, &(Ax(0)), Ax.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &(Tau), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+      Ax /= Tau;
+      Ax += diagshift * x;
+    } 
+};
+
+void ConjGrad(DirectMetric &A, VectorXd &b, int n, VectorXd &x);
+
+void PInv(MatrixXd &A, MatrixXd &Ainv);
 
 class SR
 {
@@ -100,7 +108,7 @@ class SR
     int maxIter;
     int iter;
 
-    SR(double pstepsize=0.001, int pmaxIter=1000) : stepsize(pstepsize), maxIter(pmaxIter)
+    SR(double pstepsize=0.01, int pmaxIter=1000) : stepsize(pstepsize), maxIter(pmaxIter)
     {
         iter = 0;
     }
@@ -109,7 +117,7 @@ class SR
     {
         if (commrank == 0)
         {
-            char file[5000];
+	    char file[5000];
             sprintf(file, "sr.bkp");
             std::ofstream ofs(file, std::ios::binary);
             boost::archive::binary_oarchive save(ofs);
@@ -123,10 +131,10 @@ class SR
     {
         if (commrank == 0)
         {
-            char file[5000];
+	    char file[50];
             sprintf(file, "sr.bkp");
             std::ifstream ifs(file, std::ios::binary);
-            boost::archive::binary_iarchive load(ifs);
+	    boost::archive::binary_iarchive load(ifs);
             load >> *this;
             load >> vars;
             ifs.close();
@@ -134,84 +142,68 @@ class SR
     }
 
    template<typename Function>
-    void optimize(VectorXd &vars, Function& getMetric, bool restart)
-    {
-        if (restart)
-        {
-            if (commrank == 0)
-                read(vars);
+   void optimize(VectorXd &vars, Function &getMetric, bool restart)
+   {
+     if (restart)
+     {
+       if (commrank == 0) 
+         read(vars);
 #ifndef SERIAL
 	    boost::mpi::communicator world;
 	    boost::mpi::broadcast(world, *this, 0);
 	    boost::mpi::broadcast(world, vars, 0);
 #endif
-        }
+     }
+     int numVars = vars.rows();
+     VectorXd grad, x, H;
+     DirectMetric S(schd.sDiagShift);
+     double E0, stddev, rt;
+     while (iter < maxIter)
+     {
+       E0 = 0.0;
+       stddev = 0.0;
+       rt = 0.0;
+       grad.setZero(numVars);
+       x.setZero(numVars + 1);
+       H.setZero(numVars + 1);
+       S.Vectors.clear();
+       S.T.clear();
 
-        VectorXd grad, b, x;
-        MatrixXd s;
-        double E0, stddev, rt;
-        while (iter < maxIter)
-        {
-            E0 = 0.0;
-            stddev = 0.0;
-            rt = 0.0;
-            grad.setZero(vars.rows());
-	    b.setZero(vars.rows() + 1);
-	    x.setZero(vars.rows() + 1);
-	    s.setZero(vars.rows() + 1, vars.rows() + 1);
-            
-            getMetric(vars, grad, s, E0, stddev, rt);
-            write(vars);
+       getMetric(vars, grad, H, S, E0, stddev, rt);
+       write(vars);
 
-          if (commrank == 0) {  
-            for (int l = 0; l < b.rows(); l++)
-            {
-                if (l == 0)
-                {
-                  b(l) = s(l,0);
-                }
-                else
-                {
-                  b(l) = s(l,0) - stepsize * grad(l-1);
-                }
-            }
-/*
-            s.block(1,1,vars.rows(),vars.rows()) += 0.1 * MatrixXd::Identity(vars.rows(), vars.rows());
-            VectorXd xguess = VectorXd::Zero(b.rows());
-            for (int i = 0; i < xguess.rows(); i++)
-            {
-                if (i == 0)
-                {
-                  xguess(i) = 1.0;
-                }
-                else 
-                {
-                  xguess(i) = vars(i-1);
-                }
-            }
-            VectorXd x = VectorXd::Zero(b.rows());
-            conj_grad(s,b,xguess,10,x);
-*/
+       /*
+         FOR DEBUGGING PURPOSE
+       */
+       /*
+       S.BuildMetric();
+       for(int i=0; i<vars.rows(); i++)
+         S.S(i,i) += 1.e-4;
+       MatrixXd s_inv = MatrixXd::Zero(vars.rows() + 1, vars.rows() + 1);
+       PIn(S.S,s_inv);
+       x = s_inv * s.H;
+       */
+       
+       //cout << s.H << endl<<endl;
+       //cout << x <<endl<<endl<<endl;;
 
-            MatrixXd s_inv = MatrixXd::Zero(vars.rows() + 1, vars.rows() + 1);
-            pinv(s,s_inv);
-	    x = s_inv * b; 
+       //xguess << 1.0, vars;
 
-            for (int i = 0; i < vars.rows(); i++)
-            {
-               vars(i) += (x(i+1) / x(0));
-            }
-          }
-
+       x[0] = 1.0;
+       ConjGrad(S, H, schd.cgIter, x);
+       
+       for (int i = 0; i < vars.rows(); i++)
+       {
+         vars(i) += (x(i+1) / x(0));
+       }
 #ifndef SERIAL
-            MPI_Bcast(&vars[0], vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+       MPI_Bcast(&(vars[0]), vars.rows(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
-
-            if (commrank == 0)
-                std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
-            iter++;
-        }
-    }
-};
+       if (commrank == 0)
+         std::cout << format("%5i %14.8f (%8.2e) %14.8f %8.1f %10i %8.2f\n") % iter % E0 % stddev % (grad.norm()) % (rt) % (schd.stochasticIter) % ((getTime() - startofCalc));
+       iter++;
+     }
+   }
+};   
 
 #endif
