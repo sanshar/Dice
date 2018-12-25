@@ -235,7 +235,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
         if (DetI < StartIndex && DetJ < StartIndex)     
           continue;
         if (DetI % nprocs != proc || DetI < 0) continue;
-        CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+        CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
         if (std::abs(hij) > 1.e-10) {
           //pout << Dets[Nminus1ToDetSM[i][j]].ExcitationDistance(Dets[Nminus1ToDetSM[i][k]]);
         //pout << "(" << Nminus1ToDetSM[i][j] << " " << Nminus1ToDetSM[i][k] << ")" << " " << hij.real() << " " << hij.imag() << endl;
@@ -255,7 +255,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
         if (DetI < StartIndex && DetJ < StartIndex)     
           continue;
         if (DetI % nprocs != proc || DetI < 0) continue;
-        CItype hij = Hij(Dets[Nminus2ToDetSM[i][k]], Dets[Nminus2ToDetSM[i][j]], I1, I2, coreE, orbDiff);
+        CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
         //pout  << hij << endl;
         if (std::abs(hij) > 1.e-10) {
           if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;

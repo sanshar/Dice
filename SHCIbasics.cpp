@@ -856,10 +856,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
   //If this is a restart calculation then read from disk
   int iterstart = 0;
-  if (schd.restart || schd.fullrestart)
-  {
-    pout << "restart calculation not supported for 4c yet!" << endl;
+  if (schd.restart) {
+    pout << "Only fullrestart is supported" << endl;
     exit(0);
+  }
+  if (schd.fullrestart)
+  {
     bool converged;
     readVariationalResult(iterstart, ci, Dets, sparseHam, E0, converged, schd, helper2);
 
@@ -884,6 +886,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //Make helpers and make sparse hamiltonian if full restart and not direct
     if (!BruteForce)
     {
+      helper2.clear();
+      if (proc == 0)
+        helper2.PopulateHelpers(SHMDets, DetsSize, 0); 
       helper2.MakeSHMHelpers();
       if (!(schd.DavidsonType == DIRECT || (!schd.fullrestart && converged && iterstart >= schd.epsilon1.size() - 1)))
       {
@@ -1198,6 +1203,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
         X0[i].resize(0, 0);
       }
     }
+    /*if (proc == 0) {
+    for (int i=0; i<DetsSize; ++i) {
+      cout << SHMDets[i] << " : " << endl;
+      for (int j=0; j<sparseHam.connections[i].size(); j++)
+        cout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << sparseHam.orbDifference[i][j] << endl;
+    }
+    }*/
 
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
@@ -1225,13 +1237,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #endif
       pout << endl
            << "Exiting variational iterations" << endl;
+    if (proc == 0) {
+    for (int i=0; i<DetsSize; ++i) {
+      cout << SHMDets[i] << " : " << endl;
+      for (int j=0; j<sparseHam.connections[i].size(); j++)
+        cout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << sparseHam.orbDifference[i][j] << endl;
+    }
+    }
       if (commrank == 0)
       {
         Dets.resize(DetsSize);
         for (int i = 0; i < DetsSize; i++)
           Dets[i] = SHMDets[i];
       }
-      //    writeVariationalResult(iter, ci, Dets, sparseHam, E0, true,// schd, helper2);
+      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
       //
       //    unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||//schd.doResponse, I1, I2, coreE);
       //    if (Determinant::Trev != 0) {
@@ -1252,7 +1271,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, SHMci,
                                   SHMci, sparseHam.orbDifference, nelec, schd, i,
                                   oneRDM, s1RDM);
-          SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+          //SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+          SHCIrdm::save1RDM_bin(schd, oneRDM, i);
         }
       }
 
@@ -1278,7 +1298,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           {
             SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2, coreEbkp, s2RDM);
           }
-          SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+          //SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+          SHCIrdm::saveRDM_bin(schd, twoRDM, i);
 
           boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
         } // for i
@@ -1486,19 +1507,20 @@ void SHCIbasics::readVariationalResult(int &iter, vector<MatrixXx> &ci, vector<D
   if (schd.outputlevel > 0)
     pout << format("#Begin reading variational wf %29.2f\n") % (getTime() - startofCalc);
 
-  //{
-  //  char file [5000];
-  //  sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), commrank );
-  //  std::ifstream ifs(file, std::ios::binary);
-  //  boost::archive::binary_iarchive load(ifs);
-  //
-  //  std::vector<Determinant> sorted;
-  //  load >> iter >> Dets;// >>sorted ;
-  //  load >> ci;
-  //  load >> E0;
-  //  if (schd.onlyperturbative) {ifs.close();return;}
-  //  load >> converged;
-  //}
+  {
+    char file [5000];
+    sprintf (file, "%s/%d-variational.bkp" , schd.prefix[0].c_str(), commrank );
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+  
+    std::vector<Determinant> sorted;
+    load >> iter >> Dets;// >>sorted ;
+    load >> ci;
+    load >> E0;
+    if (schd.onlyperturbative) {ifs.close();return;}
+    load >> converged;
+    ifs.close();
+  }
 
   /*
   if (schd.DavidsonType != DIRECT)
@@ -1517,11 +1539,11 @@ void SHCIbasics::readVariationalResult(int &iter, vector<MatrixXx> &ci, vector<D
   //  sprintf (file, "%s/%d-helpers.bkp" , schd.prefix[0].c_str(), commrank );
   //  std::ifstream ifs(file, std::ios::binary);
   //  boost::archive::binary_iarchive load(ifs);
-  //  load >> helper2.AlphaMajorToBeta >> helper2.AlphaMajorToDet
-  // >> helper2.BetaMajorToAlpha >> helper2.BetaMajorToDet
-  // >> helper2.SinglesFromAlpha >> helper2.SinglesFromBeta
+  //  load >> helper2.N >> helper2.AlphaMajorToDet
+  //       >> helper2.BetaMajorToAlpha >> helper2.BetaMajorToDet
+  //       >> helper2.SinglesFromAlpha >> helper2.SinglesFromBeta
   //       >> helper2.BetaN            >> helper2.AlphaN;
-  //
+  
   //  ifs.close();
   //}
 

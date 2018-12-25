@@ -20,6 +20,7 @@
 #include "string.h"
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
+#include <iomanip>
 #include "math.h"
 #include "boost/format.hpp"
 #include <fstream>
@@ -109,6 +110,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
         }
         index += 1;
       }
+      //dump.close();
     } // while
 
     if (norbs == -1 || nelec == -1) {
@@ -117,14 +119,13 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     }
     irrep.resize(norbs);
   } // commrank=0
-
 #ifndef SERIAL
   mpi::broadcast(world, nelec, 0);
   mpi::broadcast(world, norbs, 0);
   mpi::broadcast(world, irrep, 0);
   mpi::broadcast(world, I2.ksym, 0);
 #endif
-
+  
   //long npair = norbs*(norbs+1)/2;
   //size_t I2memory = npair*(npair+1)/2; //memory in bytes
   long npair = norbs*norbs;
@@ -144,12 +145,62 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
+  
+  auto dump2 = ifstream("FCIDUMP.bin", ios::out | ios::binary);
   if (commrank == 0) {
+    std::cout << "FCIDUMP.bin opened" << endl;
     I1.store.clear();
-    I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
+    I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
     coreE = 0.0;
+    for (int i=0; i!=16; i++) {
+      //auto tmp = MatrixXd::Zero(norbs*norbs/4, norbs*norbs/4);
+      cout << "block " << i << " of mo2e" << endl;
+      //MatrixXd tmp = MatrixXd::Zero(norbs*norbs/4, norbs*norbs/4); 
+      vector<complex<double>> tmp;
+      tmp.resize(norbs*norbs*norbs*norbs/16);
+      dump2.read((char*) tmp.data(), pow(norbs/2, 4) * sizeof(complex<double>));
+      const int jfac  = i & 1;
+      const int j2fac = (i & 2)/2;
+      const int kfac  = (i & 4)/4;
+      const int k2fac = (i & 8)/8;
+      for (int j=0; j!=norbs/2; ++j)
+        for (int j2=0; j2!=norbs/2; ++j2)
+          for (int k=0; k!=norbs/2; ++k)
+            for (int k2=0; k2!=norbs/2; ++k2) {
+              //cout << j << j2 << k << k2 << " " << jfac << j2fac << kfac << k2fac << endl;
+              ///*I2(2*k2+k2fac, 2*j2+j2fac, 2*k+kfac, 2*j+jfac) = I2(2*k+kfac, 2*j+jfac, 2*k2+k2fac, 2*j2+j2fac)*/ auto val = tmp(k2+norbs/2*k, j2+norbs/2*j);
+              auto integral = tmp[(j2+norbs/2*j)*norbs*norbs/4+norbs/2*k];
+              if (abs(integral) > 1.0e-60)
+                I2(2*k2+k2fac, 2*j2+j2fac, 2*k+kfac, 2*j+jfac) = tmp[(j2+norbs/2*j)*norbs*norbs/4+k2+norbs/2*k];
+              //cout <<  I2(2*k2+k2fac, 2*j2+j2fac, 2*k+kfac, 2*j+jfac) << setw(4) << 2*k2+k2fac+1 << setw(4) << 2*j2+j2fac+1 << setw(4) << 2*k+kfac+1 << setw(4) << 2*j+jfac+1 << endl;
+            }
+    }
+    for (int i=0; i!=4; i++) {
+      vector<complex<double>> tmp;
+      tmp.resize(norbs*norbs/4);
+      dump2.read((char*) tmp.data(), norbs*norbs/4 * sizeof(complex<double>));
+      const int jfac = i & 1;
+      const int kfac = (i & 2) / 2; 
+      cout << "block " << i << " of mo1e." << endl;
+      for (int j = 0; j != norbs/2; j++)
+        for (int k = 0; k != norbs/2; k++) {
+          auto integral = tmp[j*norbs/2+k];
+          if (abs(integral) > 1.0e-40)
+            I1(2*k+kfac, 2*j+jfac) = tmp[j*norbs/2+k];
+          //cout << I1(2*k+kfac, 2*j+jfac) << setw(4) << 2*k+kfac << setw(4) << 2*j+jfac << endl;
+        }
+    }
+    dump2.read((char*) (&coreE), sizeof(complex<double>));
+    cout << coreE << endl;
+    dump2.close();
+  }
+  
+  if (commrank == 0) {
+    //I1.store.clear();
+    //I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
+    //coreE = 0.0;
 
-    vector<string> tok;
+    /*vector<string> tok;
     string msg;
     while(!dump.eof()) {
       std::getline(dump, msg);
@@ -165,12 +216,16 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
         coreE = integral.real();
       else if (b==c && c==d && d==0)
         continue;//orbital energy
-      else if (c==d&&d==0)
-        I1(a-1,b-1) = integral;
-      else
-        I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;
-    } // while
-    
+      else if (c==d&&d==0) {
+        cout << I1(a-1, b-1) << " " << integral << setw(4) << a << setw(4) << b << endl;
+        //I1(a-1,b-1) = integral;
+      }
+      else {
+        cout << I2(a-1, b-1, c-1, d-1) << " " << integral << setw(4) << a << setw(4) << b << setw(4) << c << setw(4) << d << endl; 
+        //I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;       
+      }
+    }*/ // while
+    dump.close(); 
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Exchange *= 0.;

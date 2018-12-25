@@ -139,7 +139,9 @@ int main(int argc, char* argv[]) {
   //read the hamiltonian (integrals, orbital irreps, num-electron etc.)
   twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
   std::vector<int> irrep;
+  if (commrank == 0) Time::print_time("begin_integral");
   readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
+  if (commrank == 0) Time::print_time("end_integral");
   if (HFoccupied[0].size() != nelec) {
     pout << "The number of electrons given in the FCIDUMP should be equal to the nocc given in the shci input file."<<endl;
     exit(0);
@@ -239,7 +241,6 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, ci, 0);
 #endif
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM, false);
-
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
@@ -247,19 +248,21 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, DetsSize, 0);
 #endif
   Dets.clear();
-
   if (commrank == 0) {
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
+    cout << efile << " " << E0.size() << endl;
     FILE* f = fopen(efile.c_str(), "wb");
+    //ofstream fs(efile);
     for(int j=0;j<E0.size();++j) {
-      pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
-      fwrite( &E0[j], 1, sizeof(CItype), f);
+      cout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
+      //fs << E0[j] << endl;
+      fwrite( &E0[j], 1, sizeof(double), f);
     }
     fclose(f);
+    //fs.close();
   }
-
-    //print the 5 most important determinants and their weights
+  //print the 5 most important determinants and their weights
   pout << "Printing most important determinants"<<endl;
   pout << format("%4s %10s  ") %("Det") %("weight"); pout << "Determinant string"<<endl;
   for (int root=0; root<schd.nroots; root++) {
@@ -270,13 +273,16 @@ int main(int argc, char* argv[]) {
       compAbs comp;
       int m = distance(&prevci(0,0), max_element(&prevci(0,0), &prevci(0,0) + prevci.rows(), comp));
 #ifdef Complex
-      pout << format("%4i %12.4e %12.4e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
+      pout << format("%4i %16.8e %16.8e  ") %(i) %(prevci(m,0).real()) %(prevci(m,0).imag()); pout << SHMDets[m]<<endl;
 #else
       pout << format("%4i %18.10e ") %(i) %(prevci(m,0)); pout << SHMDets[m]<<endl;
 #endif
       prevci(m,0) = 0.0;
     }
   }
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
   exit(0);
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
@@ -475,6 +481,7 @@ int main(int argc, char* argv[]) {
         SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, iroot);
         s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
         SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, iroot);
+        //SHCIrdm::saveRDM_bin(schd, twoRDMdisk, iroot);
         SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDMdisk);
       }
     }
@@ -548,7 +555,7 @@ int main(int argc, char* argv[]) {
 	schd.epsilon1.resize(1); schd.epsilon1[0] = 1.e10; //very large
 	schd.restart = false; schd.fullrestart = false;
 	schd.DoRDM = false;
-	E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, false);
+	E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, true);
 	var[iter+1] = E0[0];
 
 	DetsSize = Dets.size();
