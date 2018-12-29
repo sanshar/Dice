@@ -65,7 +65,7 @@ void Slater::initHforbs()
     hftype = HartreeFock::UnRestricted;
     MatrixXcd Hforbs = MatrixXcd::Zero(norbs, 2*norbs);
     readMat(Hforbs, "hf.txt");
-    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd(norbs, 2*norbs);
+    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd::Random(norbs, 2*norbs);
     HforbsA = Hforbs.block(0, 0, norbs, norbs);
     HforbsB = Hforbs.block(0, norbs, norbs, norbs);
   }
@@ -80,7 +80,7 @@ void Slater::initHforbs()
     }
     MatrixXcd Hforbs = MatrixXcd::Zero(size, size);
     readMat(Hforbs, "hf.txt");
-    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd(size, size);
+    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd::Random(size, size);
     HforbsA = Hforbs;
     HforbsB = Hforbs;
   }

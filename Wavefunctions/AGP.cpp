@@ -42,7 +42,7 @@ AGP::AGP()
   int norbs = Determinant::norbs;
   pairMat = MatrixXcd::Zero(norbs, norbs);
   readMat(pairMat, "pairMat.txt");
-  if (schd.ifComplex && pairMat.imag().isZero(0)) pairMat.imag() = 0.01 * MatrixXd(norbs, norbs);
+  if (schd.ifComplex && pairMat.imag().isZero(0)) pairMat.imag() = 0.01 * MatrixXd::Random(norbs, norbs);
   pairMat = (pairMat + pairMat.transpose().eval()) / 2;
 }
 

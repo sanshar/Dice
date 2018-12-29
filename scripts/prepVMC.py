@@ -5,9 +5,8 @@ from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
 from pyscf.lo import pipek, boys
 import sys
 from scipy.linalg import fractional_matrix_power
-
-COMPLEX = True
-
+from scipy.stats import ortho_group
+import scipy.linalg as la
 
 def doRHF(mol):
   mf = scf.RHF(mol)
@@ -25,16 +24,17 @@ def localize(mol, mf, method):
   elif (method == "boys"):
     return boys.Boys(mol).kernel(mf.mo_coeff)
 
-# only use after lowdin
+# only use after lowdin, and for non-minimal bases
 def lmoScramble(mol, lmo):
   scrambledLmo = np.full(lmo.shape, 0.)
-  nBasisPerAtom = np.full(mol.natm, 0.)
+  nBasisPerAtom = np.full(mol.natm, 0)
   for i in range(len(gto.ao_labels(mol))):
-    nBasisPerAtom[int(gto.ao_labels(mol).split()[i])] += 1
+    nBasisPerAtom[int(gto.ao_labels(mol)[i].split()[0])] += 1
+  print nBasisPerAtom
   for i in range(mol.natm):
     n = nBasisPerAtom[i]
     orth = ortho_group.rvs(dim=n)
-    scampledLmo[::,n*i:n*(i+1)] = lmo[::,n*i:n*(i+1)].dot(orth)
+    scrambledLmo[::,n*i:n*(i+1)] = lmo[::,n*i:n*(i+1)].dot(orth)
   return scrambledLmo
 
 def writeFCIDUMP(mol, mf, lmo):
@@ -91,10 +91,12 @@ def doGHF(mol):
 
 def makeAGPFromRHF(rhfCoeffs):
   norb = rhfCoeffs.shape[0]
-  diag = np.zeros((norb,norb))
-  for i in range(norb/2):
-    diag[i,i] = 1.
-  pairMat = uc.dot(diag).dot(uc.T)
+  nelec = 2*rhfCoeffs.shape[1]
+  diag = np.eye(nelec/2)
+  #diag = np.zeros((norb,norb))
+  #for i in range(nelec/2):
+  #  diag[i,i] = 1.
+  pairMat = rhfCoeffs.dot(diag).dot(rhfCoeffs.T)
   return pairMat
 
 def makePfaffFromGHF(ghfCoeffs):
@@ -115,22 +117,29 @@ def addNoise(mat, isComplex):
     return mat + randMat
 
 # make your molecule here
-#r = 2 * 0.529177
-#atomstring = ""
-#for i in range(4):
-#  atomstring += "H 0 0 %g\n"%(i*r)
-#mol = gto.M(
-#    atom = atomstring,
-#    basis = 'sto-6g',
-#    verbose=4,
-#    symmetry=0,
-#    spin = 0)
-#mf = doRHF(mol)
-#lmo = localize(mol, mf, "pm")
-#writeFCIDUMP(mol, mf, lmo)
-#coeffs = basisChange(mf.mo_coeff, lmo, mf.get_ovlp(mol))
-#writeMat(coeffs, "rhf.txt")
-matr = readMat("hf.txt", (8,8), False)
-mati = readMat("hfi.txt", (8,8), False)
-mat = matr + 1j * mati
-writeMat(mat, "ghf.txt", True)
+r = 2 * 0.529177
+atomstring = ""
+for i in range(4):
+  atomstring += "H 0 0 %g\n"%(i*r)
+mol = gto.M(
+    atom = atomstring,
+    basis = 'sto-6g',
+    verbose=4,
+    symmetry=0,
+    spin = 0)
+mf = doRHF(mol)
+lmo = localize(mol, mf, "lowdin")
+#lmo = lmoScramble(mol, lmo) # use for non-minimal bases
+writeFCIDUMP(mol, mf, lmo)
+overlap = mf.get_ovlp(mol)
+rhfCoeffs = basisChange(mf.mo_coeff, lmo, overlap)
+writeMat(rhfCoeffs, "rhf.txt", False)
+theta = rhfCoeffs[::, :mol.nelectron/2]
+pairMat = makeAGPFromRHF(theta)
+writeMat(pairMat, "agp.txt", False)
+gmf = doGHF(mol)
+ghfCoeffs = basisChange(gmf.mo_coeff, la.block_diag(lmo, lmo), la.block_diag(overlap, overlap))
+writeMat(ghfCoeffs, "ghf.txt", False)
+theta = ghfCoeffs[::, :mol.nelectron]
+pairMat = makePfaffFromGHF(theta)
+writeMat(pairMat, "pfaffian.txt", False)
