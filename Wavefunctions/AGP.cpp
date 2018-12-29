@@ -40,13 +40,10 @@ using namespace Eigen;
 AGP::AGP() 
 {
   int norbs = Determinant::norbs;
-  //pairMat = MatrixXd::Identity(norbs, norbs) + MatrixXd::Random(norbs, norbs);
-  MatrixXd pairMatr = MatrixXd::Zero(norbs, norbs);
-  readPairMat(pairMatr);
-  MatrixXd pairMati = MatrixXd::Zero(norbs, norbs);
-  readMat(pairMati, "pairMati.txt");
-  pairMat = pairMatr.cast<std::complex<double>>();
-  pairMat.imag() = pairMati;
+  pairMat = MatrixXcd::Zero(norbs, norbs);
+  readMat(pairMat, "pairMat.txt");
+  if (schd.ifComplex && pairMat.imag().isZero(0)) pairMat.imag() = 0.01 * MatrixXd(norbs, norbs);
+  pairMat = (pairMat + pairMat.transpose().eval()) / 2;
 }
 
 void AGP::getVariables(Eigen::VectorBlock<VectorXd> &v) const

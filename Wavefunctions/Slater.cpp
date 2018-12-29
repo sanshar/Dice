@@ -61,30 +61,29 @@ void Slater::initHforbs()
   int norbs = Determinant::norbs;
   int size; //dimension of the mo coeff matrix
   //initialize hftype and hforbs
-  if (schd.hf == "rhf") {
-    hftype = HartreeFock::Restricted;
-    //hftype = 0;
-    size = norbs;
-  }
-  else if (schd.hf == "uhf") {
+  if (schd.hf == "uhf") {
     hftype = HartreeFock::UnRestricted;
-    //hftype = 1;
-    size = norbs;
+    MatrixXcd Hforbs = MatrixXcd::Zero(norbs, 2*norbs);
+    readMat(Hforbs, "hf.txt");
+    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd(norbs, 2*norbs);
+    HforbsA = Hforbs.block(0, 0, norbs, norbs);
+    HforbsB = Hforbs.block(0, norbs, norbs, norbs);
   }
-  else if (schd.hf == "ghf") {
-    hftype = HartreeFock::Generalized;
-    //hftype = 2;
-    size = 2*norbs;
+  else {
+    if (schd.hf == "rhf") {
+      hftype = HartreeFock::Restricted;
+      size = norbs;
+    }
+    else if (schd.hf == "ghf") {
+      hftype = HartreeFock::Generalized;
+      size = 2*norbs;
+    }
+    MatrixXcd Hforbs = MatrixXcd::Zero(size, size);
+    readMat(Hforbs, "hf.txt");
+    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd(size, size);
+    HforbsA = Hforbs;
+    HforbsB = Hforbs;
   }
-  MatrixXd HforbsAr = MatrixXd::Zero(size, size);
-  MatrixXd HforbsBr = MatrixXd::Zero(size, size);
-  readHF(HforbsAr, HforbsBr, schd.hf);
-  MatrixXd Hforbsi = MatrixXd::Zero(size, size);
-  readMat(Hforbsi, "hfi.txt");;
-  HforbsA = HforbsAr.cast<std::complex<double>>();
-  HforbsB = HforbsBr.cast<std::complex<double>>();
-  HforbsA.imag() = Hforbsi;
-  HforbsB.imag() = Hforbsi;
 }
 
 void Slater::initDets() 

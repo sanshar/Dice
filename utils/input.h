@@ -77,6 +77,7 @@ private:
       & sDiagShift
       & cgIter
       & stepsize
+      & ifComplex
       & expCorrelator;
   }
 public:
@@ -86,6 +87,7 @@ public:
   int printLevel;                        // How much stuff to print
   bool expCorrelator;                    //exponential correlator parameters, to enforce positivity
   bool debug;
+  bool ifComplex;                        //breaks complex conjugation symmetry 
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;

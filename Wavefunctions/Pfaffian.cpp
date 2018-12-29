@@ -40,13 +40,10 @@ using namespace Eigen;
 Pfaffian::Pfaffian() 
 {
   int norbs = Determinant::norbs;
-  //pairMat = MatrixXd::Identity(norbs, norbs) + MatrixXd::Random(norbs, norbs);
-  MatrixXd pairMatr = MatrixXd::Zero(2 * norbs, 2 * norbs);
-  readPairMat(pairMatr);
-  MatrixXd pairMati = MatrixXd::Zero(2 * norbs, 2 * norbs);
-  readMat(pairMati, "pairMati.txt");
-  pairMat = pairMatr.cast<std::complex<double>>();
-  pairMat.imag() = pairMati;
+  pairMat = MatrixXcd::Zero(2*norbs, 2*norbs);
+  readMat(pairMat, "pairMat.txt");
+  if (schd.ifComplex && pairMat.imag().isZero(0)) pairMat.imag() = 0.01 * MatrixXd(2*norbs, 2*norbs);
+  pairMat = (pairMat - pairMat.transpose().eval()) / 2;
 }
 
 void Pfaffian::getVariables(Eigen::VectorBlock<VectorXd> &v) const
