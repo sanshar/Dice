@@ -27,17 +27,6 @@
 #include <list>
 #include <set>
 #include <tuple>
-#include "Davidson.h"
-#include "Hmult.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
-#include "SHCImakeHamiltonian.h"
-#include "SHCIrdm.h"
-#include "Utils/Determinants.h"
-#include "Utils/SHCItime.h"
-#include "Utils/global.h"
-#include "Utils/input.h"
-#include "Utils/integral.h"
 #include "boost/format.hpp"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
@@ -45,18 +34,29 @@
 #include <boost/mpi/environment.hpp>
 #endif
 #include <unistd.h>
+#include <algorithm>
+#include <boost/bind.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
-#include "LCC.h"
-#include "SOChelper.h"
-#include "Utils/SHCIshm.h"
-#include "Utils/communicate.h"
 
-#include <algorithm>
-#include <boost/bind.hpp>
-#include "symmetry.h"
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/LCC.h"
+#include "Dice/SHCIbasics.h"
+#include "Dice/SHCIgetdeterminants.h"
+#include "Dice/SHCImakeHamiltonian.h"
+#include "Dice/SHCIrdm.h"
+#include "Dice/SOChelper.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/SHCIshm.h"
+#include "Dice/Utils/SHCItime.h"
+#include "Dice/Utils/communicate.h"
+#include "Dice/Utils/global.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
+#include "Dice/Utils/symmetry.h"
 
 // Initialize
 using namespace Eigen;

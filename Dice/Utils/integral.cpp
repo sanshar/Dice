@@ -18,7 +18,6 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "integral.h"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/serialization/vector.hpp>
@@ -31,8 +30,10 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "communicate.h"
-#include "global.h"
+
+#include "Dice/Utils/communicate.h"
+#include "Dice/Utils/global.h"
+#include "Dice/Utils/integral.h"
 
 using namespace boost;
 

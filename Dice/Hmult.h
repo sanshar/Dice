@@ -29,11 +29,12 @@
 #endif
 #include <algorithm>
 #include <chrono>
-#include "SHCImakeHamiltonian.h"
-#include "Utils/Determinants.h"
-#include "Utils/SHCISortMpiUtils.h"
-#include "Utils/communicate.h"
-#include "Utils/global.h"
+
+#include "Dice/SHCImakeHamiltonian.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/SHCISortMpiUtils.h"
+#include "Dice/Utils/communicate.h"
+#include "Dice/Utils/global.h"
 
 using namespace Eigen;
 using namespace std;

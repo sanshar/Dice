@@ -18,6 +18,7 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/map.hpp>
@@ -37,15 +38,15 @@
 #include <boost/mpi/environment.hpp>
 #endif
 
-#include "Determinants.h"
 #include "Dice/Davidson.h"
 #include "Dice/Hmult.h"
 #include "Dice/SHCIbasics.h"
 #include "Dice/SHCIgetdeterminants.h"
 #include "Dice/SHCIrdm.h"
-#include "communicate.h"
-#include "input.h"
-#include "integral.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/communicate.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
 
 #include "SHCISortMpiUtils.h"
 

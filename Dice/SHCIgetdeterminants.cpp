@@ -23,15 +23,15 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "Davidson.h"
-#include "Hmult.h"
-#include "Utils/Determinants.h"
-#include "Utils/input.h"
-#include "Utils/integral.h"
+#include "Dice/Davidson.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
+#include "Dice/Hmult.h"
 #include "boost/format.hpp"
 #include "math.h"
 
-#include "SHCIgetdeterminants.h"  // Keep separate or clang-tidy will rearrange
+#include "Dice/SHCIgetdeterminants.h"  // Keep separate or clang-tidy will rearrange
 
 using namespace std;
 using namespace Eigen;

@@ -18,14 +18,15 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Davidson.h"
 #include <Eigen/Dense>
 #include <iostream>
-#include "Hmult.h"
-#include "Utils/communicate.h"
-#include "Utils/global.h"
-#include "Utils/iowrapper.h"
 #include "boost/format.hpp"
+
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/Utils/communicate.h"
+#include "Dice/Utils/global.h"
+#include "Dice/Utils/iowrapper.h"
 
 using namespace Eigen;
 using namespace std;

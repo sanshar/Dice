@@ -25,7 +25,8 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/complex.hpp>
 #include <boost/serialization/serialization.hpp>
-#include "global.h"
+
+#include "Dice/Utils/global.h"
 
 using namespace Eigen;
 

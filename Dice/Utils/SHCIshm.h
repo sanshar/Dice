@@ -24,7 +24,8 @@
 #include <Eigen/Dense>
 #include <string>
 #include <vector>
-#include "global.h"
+
+#include "Dice/Utils/global.h"
 using namespace Eigen;
 
 void initSHM();

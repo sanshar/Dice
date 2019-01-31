@@ -20,12 +20,12 @@
 */
 
 #include "SHCInonessentials."
-#include "Davidson.h"
-#include "Hmult.h"
-#include "SHCIbasics.h"
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/SHCIbasics.h"
 #include "boost/format.hpp"
-#include "input.h"
-#include "Utils/integral.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
 #include "math.h"
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -43,7 +43,7 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "communicate.h"
+#include "Dice/Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

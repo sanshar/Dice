@@ -19,15 +19,17 @@
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "SHCIshm.h"
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <vector>
-#include "Determinants.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include "mpi.h"
 #endif
+
+#include "Dice/Utils/Determinants.h"
 
 using namespace std;
 

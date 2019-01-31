@@ -18,7 +18,7 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "SHCIbasics.h"
+#include "Dice/SHCIbasics.h"
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/map.hpp>
@@ -30,22 +30,22 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "Davidson.h"
-#include "Hmult.h"
-#include "SHCIgetdeterminants.h"
-#include "SHCImakeHamiltonian.h"
-#include "SHCIrdm.h"
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/SHCIgetdeterminants.h"
+#include "Dice/SHCImakeHamiltonian.h"
+#include "Dice/SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
-#include "Utils/Determinants.h"
-#include "Utils/SHCISortMpiUtils.h"
-#include "Utils/SHCIshm.h"
-#include "Utils/SHCItime.h"
-#include "Utils/input.h"
-#include "Utils/integral.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/SHCISortMpiUtils.h"
+#include "Dice/Utils/SHCIshm.h"
+#include "Dice/Utils/SHCItime.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
 #include "boost/format.hpp"
 #include "math.h"
 
-#include "Utils/communicate.h"
+#include "Dice/Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

@@ -7,10 +7,10 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
-#include "new_anglib.h"
+#include "Dice/new_anglib.h"
 #include <cmath>
 #include <algorithm>
-#include "Utils/global.h"
+#include "Dice/Utils/global.h"
 
 #include <iostream>
 using namespace std;

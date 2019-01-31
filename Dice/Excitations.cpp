@@ -1,45 +1,45 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Utils/Determinants.h"
-#include "CIPSIbasics.h"
-#include "Utils/integral.h"
-#include <vector>
-#include "math.h"
-#include "Hmult.h"
-#include <tuple>
-#include <map>
-#include "Davidson.h"
-#include "boost/format.hpp"
-#include <fstream>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/set.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/vector.hpp>
+#include <fstream>
+#include <map>
+#include <tuple>
+#include <vector>
+#include "CIPSIbasics.h"
+#include "Dice/Davidson.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/integral.h"
+#include "Dice/Hmult.h"
+#include "boost/format.hpp"
+#include "math.h"
 
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
-#include "communicate.h"
+#include "Dice/Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

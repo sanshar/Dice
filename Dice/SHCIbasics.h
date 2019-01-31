@@ -27,7 +27,7 @@
 #include <set>
 #include <tuple>
 #include <vector>
-#include "Utils/global.h"
+#include "Dice/Utils/global.h"
 
 using namespace std;
 using namespace Eigen;

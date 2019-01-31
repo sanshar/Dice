@@ -25,7 +25,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <iostream>
 #include <vector>
-#include "global.h"
+
+#include "Dice/Utils/global.h"
 
 class oneInt;
 class twoInt;

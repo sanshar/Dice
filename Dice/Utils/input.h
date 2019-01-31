@@ -23,7 +23,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <list>
 #include <vector>
-#include "Determinants.h"
+#include "Dice/Utils/Determinants.h"
 
 using namespace std;
 

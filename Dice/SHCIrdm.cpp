@@ -18,7 +18,7 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "SHCIrdm.h"
+#include "Dice/SHCIrdm.h"
 #include <algorithm>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -31,15 +31,15 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "Davidson.h"
-#include "Hmult.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/SHCIbasics.h"
+#include "Dice/SHCIgetdeterminants.h"
 #include "SHCIsampledeterminants.h"
-#include "Utils/Determinants.h"
-#include "Utils/SHCISortMpiUtils.h"
-#include "Utils/input.h"
-#include "Utils/integral.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/SHCISortMpiUtils.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
 #include "boost/format.hpp"
 #include "math.h"
 
@@ -48,7 +48,7 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "Utils/communicate.h"
+#include "Dice/Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

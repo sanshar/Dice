@@ -16,32 +16,32 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Utils/global.h"
+#include "Dice/Utils/global.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <fstream>
-#include "Utils/Determinants.h"
-#include "SHCImakeHamiltonian.h"
-#include "input.h"
-#include "Utils/integral.h"
-#include "Hmult.h"
-#include "SHCIbasics.h"
-#include "Davidson.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/SHCImakeHamiltonian.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
+#include "Dice/Hmult.h"
+#include "Dice/SHCIbasics.h"
+#include "Dice/Davidson.h"
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include <set>
 #include <list>
 #include <tuple>
 #include "boost/format.hpp"
-#include "new_anglib.h"
+#include "Dice/new_anglib.h"
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
 #include <boost/serialization/vector.hpp>
-#include "communicate.h"
-#include "SOChelper.h"
+#include "Dice/Utils/communicate.h"
+#include "Dice/SOChelper.h"
 
 using namespace Eigen;
 using namespace boost;

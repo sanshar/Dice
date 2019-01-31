@@ -126,7 +126,7 @@ set(DICE_SOURCES
   ${DICE_SOURCE_DIR}/SHCImakeHamiltonian.cpp
   ${DICE_SOURCE_DIR}/Utils/SHCIshm.cpp
   ${DICE_SOURCE_DIR}/LCC.cpp # TODO problem with Serial
-  ${DICE_SOURCE_DIR}/symmetry.cpp
+  ${DICE_SOURCE_DIR}/Utils/symmetry.cpp
 )
 
 IF(${COMPLEX})

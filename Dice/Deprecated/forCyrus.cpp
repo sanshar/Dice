@@ -16,15 +16,15 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Utils/Determinants.h"
-#include "SHCIbasics.h"
-#include "Utils/integral.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/SHCIbasics.h"
+#include "Dice/Utils/integral.h"
 #include <vector>
 #include "math.h"
-#include "Hmult.h"
+#include "Dice/Hmult.h"
 #include <tuple>
 #include <map>
-#include "Davidson.h"
+#include "Dice/Davidson.h"
 #include "boost/format.hpp"
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
@@ -39,7 +39,7 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
-#include "communicate.h"
+#include "Dice/Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

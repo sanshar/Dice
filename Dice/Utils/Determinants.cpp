@@ -18,13 +18,14 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Determinants.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <algorithm>
 #include <iostream>
+
 #include "Dice/Hmult.h"
-#include "integral.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/integral.h"
 using namespace std;
 using namespace Eigen;
 

@@ -24,9 +24,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "global.h"
 
-#include "input.h"
+#include "Dice/Utils/global.h"
+#include "Dice/Utils/input.h"
 
 using namespace std;
 using namespace boost;

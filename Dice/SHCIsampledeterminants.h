@@ -27,7 +27,7 @@
 
 using namespace std;
 using namespace Eigen;
-#include "Utils/global.h"
+#include "Dice/Utils/global.h"
 
 namespace SHCIsampledeterminants {
 

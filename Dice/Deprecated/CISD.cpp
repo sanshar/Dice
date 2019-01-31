@@ -17,13 +17,13 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include <iostream>
-#include "Utils/global.h"
-#include "input.h"
-#include "Utils/Determinants.h"
-#include "Utils/integral.h"
-#include "Hmult.h"
+#include "Dice/Utils/global.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/integral.h"
+#include "Dice/Hmult.h"
 #include "CIPSIbasics.h"
-#include "Davidson.h"
+#include "Dice/Davidson.h"
 #include <Eigen/Dense>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
