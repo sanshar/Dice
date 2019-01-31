@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCIsampledeterminants.h"
@@ -24,7 +24,7 @@
 #include "SHCISortMpiUtils.h"
 #include "SHCImakeHamiltonian.h"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include <vector>
 #include "math.h"
 #include "Hmult.h"

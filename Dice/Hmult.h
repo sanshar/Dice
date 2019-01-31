@@ -27,11 +27,11 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCImakeHamiltonian.h"
 #include "communicate.h"
-#include "global.h"
+#include "Utils/global.h"
 #include <algorithm>
 #include <chrono>
 

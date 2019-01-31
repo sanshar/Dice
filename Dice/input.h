@@ -21,7 +21,7 @@
 #include <vector>
 #include <list>
 #include <boost/serialization/serialization.hpp>
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 
 using namespace std;
 

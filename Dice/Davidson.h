@@ -23,7 +23,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <vector>
-#include "global.h"
+#include "Utils/global.h"
 
 class Hmult2;
 class HmultDirect;

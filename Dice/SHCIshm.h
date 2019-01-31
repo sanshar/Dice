@@ -22,7 +22,7 @@
 #include <string>
 #include <Eigen/Dense>
 #include <Eigen/Core>
-#include "global.h"
+#include "Utils/global.h"
 using namespace Eigen;
 
 void initSHM();

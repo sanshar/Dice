@@ -1,4 +1,5 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/49d4e0485f3448da95b7ae0711bbcf2a)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=sanshar/Dice&amp;utm_campaign=Badge_Grade)
+[![CodeFactor](https://www.codefactor.io/repository/github/sanshar/dice/badge/cmake)](https://www.codefactor.io/repository/github/sanshar/dice/overview/cmake)
 
 <div><img src="https://github.com/sanshar/Dice/blob/master/docs/images/dice_lateral.png" height="360px"/></div>
 
@@ -90,4 +91,3 @@ Upon successful compilation, one can test the code using the `runTests.sh` scrip
 
   If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the `runTests.sh`
   script because they require a large amount of processing power and memory.
-

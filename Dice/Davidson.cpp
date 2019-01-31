@@ -24,7 +24,7 @@
 #include "boost/format.hpp"
 #include "communicate.h"
 #include "iowrapper.h"
-#include "global.h"
+#include "Utils/global.h"
 
 using namespace Eigen;
 using namespace std;

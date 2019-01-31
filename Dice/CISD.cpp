@@ -17,10 +17,10 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include <iostream>
-#include "global.h"
+#include "Utils/global.h"
 #include "input.h"
-#include "Determinants.h"
-#include "integral.h"
+#include "Utils/Determinants.h"
+#include "Utils/integral.h"
 #include "Hmult.h"
 #include "CIPSIbasics.h"
 #include "Davidson.h"

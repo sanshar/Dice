@@ -25,7 +25,7 @@
 #include "SHCIbasics.h"
 #include "boost/format.hpp"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include "math.h"
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>

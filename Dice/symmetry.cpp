@@ -18,7 +18,7 @@
    this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
+#include "Utils/global.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -28,8 +28,8 @@
 #include <boost/bind.hpp>
 #include <Eigen/Dense>
 
-#include "integral.h"
-#include "Determinants.h"
+#include "Utils/integral.h"
+#include "Utils/Determinants.h"
 #include "symmetry.h"
 
 using namespace Eigen;

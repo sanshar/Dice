@@ -113,8 +113,8 @@ set(DICE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Dice/) # TODO
 set(DICE_SOURCES
   ${DICE_SOURCE_DIR}/SHCI.cpp
   ${DICE_SOURCE_DIR}/SHCIbasics.cpp
-  ${DICE_SOURCE_DIR}/Determinants.cpp
-  ${DICE_SOURCE_DIR}/integral.cpp
+  ${DICE_SOURCE_DIR}/Utils/Determinants.cpp
+  ${DICE_SOURCE_DIR}/Utils/integral.cpp
   ${DICE_SOURCE_DIR}/input.cpp
   ${DICE_SOURCE_DIR}/Davidson.cpp
   ${DICE_SOURCE_DIR}/SHCIgetdeterminants.cpp

@@ -18,7 +18,7 @@
 */
 #include "SHCIshm.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include <vector>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>

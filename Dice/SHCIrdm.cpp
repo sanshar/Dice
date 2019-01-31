@@ -20,7 +20,7 @@
 */
 #include "SHCIrdm.h"
 #include "Davidson.h"
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "Hmult.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIbasics.h"
@@ -28,7 +28,7 @@
 #include "SHCIsampledeterminants.h"
 #include "boost/format.hpp"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include "math.h"
 #include <algorithm>
 #include <boost/archive/binary_iarchive.hpp>

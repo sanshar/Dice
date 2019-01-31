@@ -31,7 +31,7 @@
 #include <tuple>
 #include <vector>
 #include "Davidson.h"
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "Hmult.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIgetdeterminants.h"
@@ -42,7 +42,7 @@
 #include "SHCItime.h"
 #include "boost/format.hpp"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include "math.h"
 
 #include "communicate.h"

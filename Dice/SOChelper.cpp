@@ -16,14 +16,14 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
-#include "global.h"
+#include "Utils/global.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <fstream>
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "SHCImakeHamiltonian.h"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include "Hmult.h"
 #include "SHCIbasics.h"
 #include "Davidson.h"

@@ -19,52 +19,52 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#include <stdio.h>
+#include <stdlib.h>
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <fstream>
+#include <list>
+#include <set>
+#include <tuple>
 #include "Davidson.h"
-#include "Determinants.h"
 #include "Hmult.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCImakeHamiltonian.h"
 #include "SHCIrdm.h"
 #include "SHCItime.h"
+#include "Utils/Determinants.h"
+#include "Utils/global.h"
+#include "Utils/integral.h"
 #include "boost/format.hpp"
-#include "global.h"
 #include "input.h"
-#include "integral.h"
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <fstream>
-#include <list>
-#include <set>
-#include <stdio.h>
-#include <stdlib.h>
-#include <tuple>
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "LCC.h"
-#include "SHCIshm.h"
-#include "SOChelper.h"
-#include "communicate.h"
+#include <unistd.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
-#include <unistd.h>
+#include "LCC.h"
+#include "SHCIshm.h"
+#include "SOChelper.h"
+#include "communicate.h"
 
-#include "symmetry.h"
 #include <algorithm>
 #include <boost/bind.hpp>
+#include "symmetry.h"
 
 // Initialize
 using namespace Eigen;
 using namespace boost;
-int HalfDet::norbs = 1;     // spin orbitals
-int Determinant::norbs = 1; // spin orbitals
+int HalfDet::norbs = 1;      // spin orbitals
+int Determinant::norbs = 1;  // spin orbitals
 int Determinant::EffDetLen = 1;
-char Determinant::Trev = 0; // Time reversal
+char Determinant::Trev = 0;  // Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder;
 
 // Get the current time
@@ -161,19 +161,15 @@ int main(int argc, char *argv[]) {
 
   // Initialize
   initSHM();
-  if (commrank == 0)
-    license(argv);
+  if (commrank == 0) license(argv);
 
   // Read the input file
   string inputFile = "input.dat";
-  if (argc > 1)
-    inputFile = string(argv[1]);
+  if (argc > 1) inputFile = string(argv[1]);
   std::vector<std::vector<int>> HFoccupied;
   schedule schd;
-  if (commrank == 0)
-    readInput(inputFile, HFoccupied, schd);
-  if (schd.outputlevel > 0 && commrank == 0)
-    Time::print_time("begin");
+  if (commrank == 0) readInput(inputFile, HFoccupied, schd);
+  if (schd.outputlevel > 0 && commrank == 0) Time::print_time("begin");
   if (DetLen % 2 == 1) {
     pout << "Change DetLen in global to an even number and recompile." << endl;
     exit(0);
@@ -196,8 +192,7 @@ int main(int argc, char *argv[]) {
   // Set the random seed
   startofCalc = getTime();
   srand(schd.randomSeed + commrank);
-  if (schd.outputlevel > 1)
-    pout << "#using seed: " << schd.randomSeed << endl;
+  if (schd.outputlevel > 1) pout << "#using seed: " << schd.randomSeed << endl;
 
   std::cout.precision(15);
 
@@ -231,8 +226,8 @@ int main(int argc, char *argv[]) {
 
   // Setup the lexical table for the determinants
   norbs *= 2;
-  Determinant::norbs = norbs; // spin orbitals
-  HalfDet::norbs = norbs;     // spin orbitals
+  Determinant::norbs = norbs;  // spin orbitals
+  HalfDet::norbs = norbs;      // spin orbitals
   Determinant::EffDetLen = norbs / 64 + 1;
   Determinant::initLexicalOrder(nelec);
   if (Determinant::EffDetLen > DetLen) {
@@ -243,12 +238,10 @@ int main(int argc, char *argv[]) {
 
   // Initialize the Heat-Bath integrals
   std::vector<int> allorbs;
-  for (int i = 0; i < norbs / 2; i++)
-    allorbs.push_back(i);
+  for (int i = 0; i < norbs / 2; i++) allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (commrank == 0)
-    I2HB.constructClass(allorbs, I2, I1, norbs / 2);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
   I2HBSHM.constructClass(norbs / 2, I2HB);
 
   int num_thrds;
@@ -275,8 +268,8 @@ int main(int argc, char *argv[]) {
 
   // Have the dets, ci coefficient and diagnoal on all processors
   vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(), 1));
-  vector<MatrixXx> vdVector(schd.nroots); // these vectors are used to
-                                          // calculate the response equations
+  vector<MatrixXx> vdVector(schd.nroots);  // these vectors are used to
+                                           // calculate the response equations
   double Psi1Norm = 0.0;
 
   // #####################################################################
@@ -299,8 +292,7 @@ int main(int argc, char *argv[]) {
       }
       Dets[d].setocc(HFoccupied[d][i], true);
     }
-    if (Determinant::Trev != 0)
-      Dets[d].makeStandard();
+    if (Determinant::Trev != 0) Dets[d].makeStandard();
     for (int i = 0; i < d; i++) {
       if (Dets[d] == Dets[i]) {
         pout << "Determinant " << Dets[d]
@@ -323,7 +315,7 @@ int main(int argc, char *argv[]) {
                                    HFoccupied.at(d), tempDets.at(d));
     pout << tempDets[d] << " Est. Det. Energy: "
          << format("%18.10f") % (tempDets.at(d).Energy(I1, I2, coreE))
-         << endl; // TODO
+         << endl;  // TODO
 
     // #####################################################################
     // Variational step
@@ -356,12 +348,11 @@ int main(int argc, char *argv[]) {
           }
         }
       }
-    } // end cd
+    }  // end cd
     schd.HF = Dets[0];
 
     if (commrank == 0) {
-      for (int j = 0; j < ci[0].rows(); j++)
-        ci[0](j, 0) = 1.0;
+      for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 1.0;
       ci[0] = ci[0] / ci[0].norm();
     }
 
@@ -417,7 +408,7 @@ int main(int argc, char *argv[]) {
         // "<<Dets[m]<<endl;
         prevci(m, 0) = 0.0;
       }
-    } // end root
+    }  // end root
     pout << std::flush;
 
     // #####################################################################
@@ -516,7 +507,7 @@ int main(int argc, char *argv[]) {
     // #####################################################################
     // PT
     // #####################################################################
-    if (schd.doSOC && !schd.stochastic) { // deterministic SOC calculation
+    if (schd.doSOC && !schd.stochastic) {  // deterministic SOC calculation
       log_pt(schd);
       if (schd.doGtensor) {
         pout << "Gtensor calculation not supported with deterministic PT for "
@@ -593,8 +584,7 @@ int main(int argc, char *argv[]) {
             coreE, nelec, root, vdVector, Psi1Norm);
         ePT += E0[root];
         // pout << "Writing energy " << ePT << "  to file: " << efile << endl;
-        if (commrank == 0)
-          fwrite(&ePT, 1, sizeof(double), f);
+        if (commrank == 0) fwrite(&ePT, 1, sizeof(double), f);
       }
       fclose(f);
     } else if (schd.SampleN != -1 && schd.singleList) {
@@ -614,8 +604,7 @@ int main(int argc, char *argv[]) {
           ePT[root] += E0[root];
           // pout << "Writing energy " << E0[root] << "  to file: " << efile <<
           // endl;
-          if (commrank == 0)
-            fwrite(&ePT[root], 1, sizeof(double), f);
+          if (commrank == 0) fwrite(&ePT[root], 1, sizeof(double), f);
         }
         fclose(f);
 
@@ -624,7 +613,7 @@ int main(int argc, char *argv[]) {
             pout << str(boost::format("State: %3d,  E: %18.10f, dE: %10.2f\n") %
                         j % (ePT[j]) % ((ePT[j] - ePT[0]) * 219470));
         }
-      } // end if iter!=0
+      }  // end if iter!=0
     } else {
 #ifndef SERIAL
       world.barrier();
@@ -681,12 +670,12 @@ int main(int argc, char *argv[]) {
       // pout << " response ";
       // SHCIrdm::ComputeEnergyFromSpatialRDM(norbs, nelec, I1, I2, coreE,
       // s2RDM);
-    } // end if doResponse||DoRDM && RdmType && !stochastic...
+    }  // end if doResponse||DoRDM && RdmType && !stochastic...
 
     // #####################################################################
     // Extrapolate
     // #####################################################################
-    if (schd.extrapolate) { // performing extrapolation
+    if (schd.extrapolate) {  // performing extrapolation
       if (schd.nroots > 1) {
         pout << " extrapolation only supported for single root " << endl;
         exit(0);
@@ -699,8 +688,7 @@ int main(int argc, char *argv[]) {
         std::string efile;
         efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
         FILE *f = fopen(efile.c_str(), "rb");
-        if (commrank == 0)
-          fread(&PT[0], 1, sizeof(double), f);
+        if (commrank == 0) fread(&PT[0], 1, sizeof(double), f);
 #ifndef SERIAL
         mpi::broadcast(world, PT, 0);
 #endif
@@ -719,16 +707,14 @@ int main(int argc, char *argv[]) {
             int niter;
             load >> niter >> Dets;
             load >> ci;
-            if (iter == 0)
-              nDets[0] = Dets.size();
+            if (iter == 0) nDets[0] = Dets.size();
             DetsSize = Dets.size();
           }
           SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment,
                          regionDetsCI);
           if (commrank == 0) {
             std::vector<size_t> indices(DetsSize);
-            for (int i = 0; i < DetsSize; i++)
-              indices[i] = i;
+            for (int i = 0; i < DetsSize; i++) indices[i] = i;
 
             sort(indices.begin(), indices.end(), [&ci](size_t i1, size_t i2) {
               return abs(ci[0](i1, 0)) > abs(ci[0](i2, 0));
@@ -753,7 +739,7 @@ int main(int argc, char *argv[]) {
 #endif
           nDets[iter + 1] = DetsSize;
           schd.epsilon1.resize(1);
-          schd.epsilon1[0] = 1.e10; // very large
+          schd.epsilon1[0] = 1.e10;  // very large
           schd.restart = false;
           schd.fullrestart = false;
           schd.DoRDM = false;
@@ -780,7 +766,7 @@ int main(int argc, char *argv[]) {
                 DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
                     SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
                     schd, coreE, nelec, root);
-        } // end iter
+        }  // end iter
 
         if (commrank == 0)
           printf("Ndet         Evar                  Ept               \n");
@@ -788,8 +774,8 @@ int main(int argc, char *argv[]) {
           if (commrank == 0)
             printf("%10i   %18.10g    %18.10g \n", nDets[iter], var[iter],
                    PT[iter]);
-      } // end root
-    }   // end extrapolate
+      }  // end root
+    }    // end extrapolate
 
 #ifndef SERIAL
     world.barrier();
@@ -807,5 +793,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 
-  } // end d@symm ?
+  }  // end d@symm ?
 }

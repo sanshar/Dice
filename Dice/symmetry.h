@@ -28,7 +28,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "global.h"
+#include "Utils/global.h"
 
 using namespace Eigen;
 using namespace std;

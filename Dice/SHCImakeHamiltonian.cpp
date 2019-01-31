@@ -31,7 +31,7 @@
 #include <tuple>
 #include <vector>
 #include "Davidson.h"
-#include "Determinants.h"
+#include "Utils/Determinants.h"
 #include "Hmult.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIbasics.h"
@@ -41,7 +41,7 @@
 #include "SHCItime.h"
 #include "boost/format.hpp"
 #include "input.h"
-#include "integral.h"
+#include "Utils/integral.h"
 #include "math.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
