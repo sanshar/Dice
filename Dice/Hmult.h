@@ -27,13 +27,13 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #endif
-#include "Utils/Determinants.h"
-#include "SHCISortMpiUtils.h"
-#include "SHCImakeHamiltonian.h"
-#include "communicate.h"
-#include "Utils/global.h"
 #include <algorithm>
 #include <chrono>
+#include "SHCImakeHamiltonian.h"
+#include "Utils/Determinants.h"
+#include "Utils/SHCISortMpiUtils.h"
+#include "Utils/communicate.h"
+#include "Utils/global.h"
 
 using namespace Eigen;
 using namespace std;
@@ -107,8 +107,7 @@ struct Hmult2 {
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
-      for (int j = 0; j < numDets; j++)
-        y[j] = ytemp[j];
+      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
     } else {
       MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
@@ -117,8 +116,7 @@ struct Hmult2 {
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
-      for (int j = 0; j < numDets; j++)
-        y[j] = ytemp[j];
+      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
     } else {
       MPI_Reduce(&ytemp[0], &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
@@ -126,8 +124,7 @@ struct Hmult2 {
 #endif
     MPI_Barrier(MPI_COMM_WORLD);
 #else
-    for (int j = 0; j < numDets; j++)
-      y[j] = ytemp[j];
+    for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
 #endif
     // TODO
     if (rank == 0) {
@@ -135,7 +132,7 @@ struct Hmult2 {
       std::chrono::duration<double> elapsed_seconds = end - start;
       // pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
-  } // operator
+  }  // operator
 };
 
 struct HmultDirect {
@@ -170,9 +167,15 @@ struct HmultDirect {
         SinglesFromAlphaLen(helpers2.SinglesFromAlphaLen),
         SinglesFromAlpha(helpers2.SinglesFromAlphaSM),
         SinglesFromBetaLen(helpers2.SinglesFromBetaLen),
-        SinglesFromBeta(helpers2.SinglesFromBetaSM), Dets(pDets),
-        DetsSize(pDetsSize), StartIndex(pStartIndex), Norbs(pNorbs), I1(pI1),
-        I2(pI2), coreE(pcoreE), diag(pDiag){};
+        SinglesFromBeta(helpers2.SinglesFromBetaSM),
+        Dets(pDets),
+        DetsSize(pDetsSize),
+        StartIndex(pStartIndex),
+        Norbs(pNorbs),
+        I1(pI1),
+        I2(pI2),
+        coreE(pcoreE),
+        diag(pDiag){};
 
   HmultDirect(int *&pAlphaMajorToBetaLen, vector<int *> &pAlphaMajorToBeta,
               vector<int *> &pAlphaMajorToDet, int *&pBetaMajorToAlphaLen,
@@ -182,19 +185,26 @@ struct HmultDirect {
               Determinant *&pDets, int pDetsSize, int pStartIndex, int pNorbs,
               oneInt &pI1, twoInt &pI2, double &pcoreE, MatrixXx &pDiag)
       : AlphaMajorToBetaLen(pAlphaMajorToBetaLen),
-        AlphaMajorToBeta(pAlphaMajorToBeta), AlphaMajorToDet(pAlphaMajorToDet),
+        AlphaMajorToBeta(pAlphaMajorToBeta),
+        AlphaMajorToDet(pAlphaMajorToDet),
         BetaMajorToAlphaLen(pBetaMajorToAlphaLen),
-        BetaMajorToAlpha(pBetaMajorToAlpha), BetaMajorToDet(pBetaMajorToDet),
+        BetaMajorToAlpha(pBetaMajorToAlpha),
+        BetaMajorToDet(pBetaMajorToDet),
         SinglesFromAlphaLen(pSinglesFromAlphaLen),
         SinglesFromAlpha(pSinglesFromAlpha),
         SinglesFromBetaLen(pSinglesFromBetaLen),
-        SinglesFromBeta(pSinglesFromBeta), Dets(pDets), DetsSize(pDetsSize),
-        StartIndex(pStartIndex), Norbs(pNorbs), I1(pI1), I2(pI2), coreE(pcoreE),
+        SinglesFromBeta(pSinglesFromBeta),
+        Dets(pDets),
+        DetsSize(pDetsSize),
+        StartIndex(pStartIndex),
+        Norbs(pNorbs),
+        I1(pI1),
+        I2(pI2),
+        coreE(pcoreE),
         diag(pDiag){};
 
   void operator()(CItype *x, CItype *y) {
-    if (StartIndex >= DetsSize)
-      return;
+    if (StartIndex >= DetsSize) return;
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
@@ -204,8 +214,7 @@ struct HmultDirect {
 
     // diagonal element
     for (size_t k = StartIndex; k < DetsSize; k++) {
-      if (k % (nprocs) != proc)
-        continue;
+      if (k % (nprocs) != proc) continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       size_t orbDiff;
       if (Determinant::Trev != 0)
@@ -216,7 +225,6 @@ struct HmultDirect {
     // alpha-beta excitation
     for (int i = 0; i < AlphaMajorToBeta.size(); i++) {
       for (int ii = 0; ii < AlphaMajorToBetaLen[i]; ii++) {
-
         int Astring = i, Bstring = AlphaMajorToBeta[i][ii],
             DetI = AlphaMajorToDet[i][ii];
 
@@ -231,14 +239,12 @@ struct HmultDirect {
         for (int j = 0; j < SinglesFromAlphaLen[Astring]; j++) {
           int Asingle = SinglesFromAlpha[Astring][j];
 
-          if (Asingle > maxBToA)
-            break;
+          if (Asingle > maxBToA) break;
           int index = binarySearch(&BetaMajorToAlpha[Bstring][0], 0,
                                    BetaMajorToAlphaLen[Bstring] - 1, Asingle);
           if (index != -1) {
             int DetJ = BetaMajorToDet[Bstring][index];
-            if (abs(DetJ) == abs(DetI))
-              continue;
+            if (abs(DetJ) == abs(DetI)) continue;
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                              coreE, orbDiff);
@@ -259,8 +265,7 @@ struct HmultDirect {
           for (int k = 0; k < SinglesFromBLen; k++) {
             int &Bsingle = SinglesFromBeta[Bstring][k];
 
-            if (SearchStartIndex >= AlphaToBetaLen)
-              break;
+            if (SearchStartIndex >= AlphaToBetaLen) break;
             /*
             auto itb = lower_bound(
                  &AlphaMajorToBeta[Asingle][SearchStartIndex],
@@ -278,33 +283,29 @@ struct HmultDirect {
             SearchStartIndex = index;
             if (index < AlphaToBetaLen &&
                 AlphaMajorToBeta[Asingle][index] == Bsingle) {
-
               int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
-              if (abs(DetJ) == abs(DetI))
-                continue;
+              if (abs(DetJ) == abs(DetI)) continue;
               size_t orbDiff;
               CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                                coreE, orbDiff);
               fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
               y[abs(DetI) - 1] += hij * x[abs(DetJ) - 1];
-            } //*itb == Bsingle
-          }   // k 0->SinglesFromBeta
-        }     // j singles fromAlpha
+            }  //*itb == Bsingle
+          }    // k 0->SinglesFromBeta
+        }      // j singles fromAlpha
 
         // singles from Bstring
         int maxAtoB =
             AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring] - 1];
         for (int j = 0; j < SinglesFromBetaLen[Bstring]; j++) {
           int Bsingle = SinglesFromBeta[Bstring][j];
-          if (Bsingle > maxAtoB)
-            break;
+          if (Bsingle > maxAtoB) break;
           int index = binarySearch(&AlphaMajorToBeta[Astring][0], 0,
                                    AlphaMajorToBetaLen[Astring] - 1, Bsingle);
 
           if (index != -1) {
             int DetJ = AlphaMajorToDet[Astring][index];
-            if (abs(DetJ) == abs(DetI))
-              continue;
+            if (abs(DetJ) == abs(DetI)) continue;
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                              coreE, orbDiff);
@@ -316,11 +317,9 @@ struct HmultDirect {
         // double beta excitation
         for (int j = 0; j < AlphaMajorToBetaLen[i]; j++) {
           int DetJ = AlphaMajorToDet[i][j];
-          if (abs(DetJ) == abs(DetI))
-            continue;
+          if (abs(DetJ) == abs(DetI)) continue;
           Determinant dj = Dets[abs(DetJ) - 1];
-          if (DetJ < 0)
-            dj.flipAlphaBeta();
+          if (DetJ < 0) dj.flipAlphaBeta();
           if (dj.ExcitationDistance(Dets[DetI - 1]) == 2) {
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
@@ -333,11 +332,9 @@ struct HmultDirect {
         // double Alpha excitation
         for (int j = 0; j < BetaMajorToAlphaLen[Bstring]; j++) {
           int DetJ = BetaMajorToDet[Bstring][j];
-          if (abs(DetJ) == abs(DetI))
-            continue;
+          if (abs(DetJ) == abs(DetI)) continue;
           Determinant dj = Dets[std::abs(DetJ) - 1];
-          if (DetJ < 0)
-            dj.flipAlphaBeta();
+          if (DetJ < 0) dj.flipAlphaBeta();
           if (Dets[DetI - 1].ExcitationDistance(dj) == 2) {
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
@@ -347,9 +344,9 @@ struct HmultDirect {
           }
         }
 
-      } // ii
-    }   // i
-  };    // end operator
+      }  // ii
+    }    // i
+  };     // end operator
 };
 
 #endif

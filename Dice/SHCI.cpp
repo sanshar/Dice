@@ -33,12 +33,12 @@
 #include "SHCIgetdeterminants.h"
 #include "SHCImakeHamiltonian.h"
 #include "SHCIrdm.h"
-#include "SHCItime.h"
 #include "Utils/Determinants.h"
+#include "Utils/SHCItime.h"
 #include "Utils/global.h"
+#include "Utils/input.h"
 #include "Utils/integral.h"
 #include "boost/format.hpp"
-#include "input.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -50,9 +50,9 @@
 #include <cstdlib>
 #include <numeric>
 #include "LCC.h"
-#include "SHCIshm.h"
 #include "SOChelper.h"
-#include "communicate.h"
+#include "Utils/SHCIshm.h"
+#include "Utils/communicate.h"
 
 #include <algorithm>
 #include <boost/bind.hpp>

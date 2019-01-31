@@ -31,17 +31,17 @@
 #include <tuple>
 #include <vector>
 #include "Davidson.h"
-#include "Utils/Determinants.h"
 #include "Hmult.h"
-#include "SHCISortMpiUtils.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
-#include "SHCItime.h"
-#include "boost/format.hpp"
-#include "input.h"
+#include "Utils/Determinants.h"
+#include "Utils/SHCISortMpiUtils.h"
+#include "Utils/SHCItime.h"
+#include "Utils/input.h"
 #include "Utils/integral.h"
+#include "boost/format.hpp"
 #include "math.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
@@ -49,7 +49,7 @@
 #include <boost/mpi/environment.hpp>
 #endif
 #include <boost/interprocess/managed_shared_memory.hpp>
-#include "communicate.h"
+#include "Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

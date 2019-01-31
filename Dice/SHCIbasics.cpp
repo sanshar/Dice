@@ -31,21 +31,21 @@
 #include <tuple>
 #include <vector>
 #include "Davidson.h"
-#include "Utils/Determinants.h"
 #include "Hmult.h"
-#include "SHCISortMpiUtils.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCImakeHamiltonian.h"
 #include "SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
-#include "SHCIshm.h"
-#include "SHCItime.h"
-#include "boost/format.hpp"
-#include "input.h"
+#include "Utils/Determinants.h"
+#include "Utils/SHCISortMpiUtils.h"
+#include "Utils/SHCIshm.h"
+#include "Utils/SHCItime.h"
+#include "Utils/input.h"
 #include "Utils/integral.h"
+#include "boost/format.hpp"
 #include "math.h"
 
-#include "communicate.h"
+#include "Utils/communicate.h"
 
 using namespace std;
 using namespace Eigen;

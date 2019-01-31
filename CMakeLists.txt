@@ -109,20 +109,22 @@ target_include_directories(Catch2 INTERFACE ${CATCH2_INCLUDE_DIR})
 ### Sources ###
 ###############
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 set(DICE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Dice/) # TODO
 set(DICE_SOURCES
   ${DICE_SOURCE_DIR}/SHCI.cpp
   ${DICE_SOURCE_DIR}/SHCIbasics.cpp
   ${DICE_SOURCE_DIR}/Utils/Determinants.cpp
   ${DICE_SOURCE_DIR}/Utils/integral.cpp
-  ${DICE_SOURCE_DIR}/input.cpp
+  ${DICE_SOURCE_DIR}/Utils/input.cpp
   ${DICE_SOURCE_DIR}/Davidson.cpp
   ${DICE_SOURCE_DIR}/SHCIgetdeterminants.cpp
   ${DICE_SOURCE_DIR}/SHCIsampledeterminants.cpp
   ${DICE_SOURCE_DIR}/SHCIrdm.cpp
-  ${DICE_SOURCE_DIR}/SHCISortMpiUtils.cpp
+  ${DICE_SOURCE_DIR}/Utils/SHCISortMpiUtils.cpp
   ${DICE_SOURCE_DIR}/SHCImakeHamiltonian.cpp
-  ${DICE_SOURCE_DIR}/SHCIshm.cpp
+  ${DICE_SOURCE_DIR}/Utils/SHCIshm.cpp
   ${DICE_SOURCE_DIR}/LCC.cpp # TODO problem with Serial
   ${DICE_SOURCE_DIR}/symmetry.cpp
 )

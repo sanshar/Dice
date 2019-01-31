@@ -26,9 +26,9 @@
 #include "Davidson.h"
 #include "Hmult.h"
 #include "Utils/Determinants.h"
+#include "Utils/input.h"
 #include "Utils/integral.h"
 #include "boost/format.hpp"
-#include "input.h"
 #include "math.h"
 
 #include "SHCIgetdeterminants.h"  // Keep separate or clang-tidy will rearrange
