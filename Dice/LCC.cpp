@@ -23,7 +23,6 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/set.hpp>
-#include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/vector.hpp>
 #include <fstream>
 #include <map>
@@ -33,17 +32,17 @@
 #include "math.h"
 
 #include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/SHCIbasics.h"
+#include "Dice/SHCIgetdeterminants.h"
+#include "Dice/SHCImakeHamiltonian.h"
+#include "Dice/SHCIrdm.h"
 #include "Dice/Utils/Determinants.h"
 #include "Dice/Utils/SHCISortMpiUtils.h"
 #include "Dice/Utils/SHCIshm.h"
 #include "Dice/Utils/communicate.h"
 #include "Dice/Utils/input.h"
 #include "Dice/Utils/integral.h"
-#include "Dice/Hmult.h"
-#include "Dice/SHCIbasics.h"
-#include "Dice/SHCIgetdeterminants.h"
-#include "Dice/SHCImakeHamiltonian.h"
-#include "Dice/SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
 
 #include "Dice/LCC.h"

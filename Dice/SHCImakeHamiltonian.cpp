@@ -24,7 +24,6 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/set.hpp>
-#include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/vector.hpp>
 #include <fstream>
 #include <map>
@@ -35,12 +34,12 @@
 #include "Dice/SHCIbasics.h"
 #include "Dice/SHCIgetdeterminants.h"
 #include "Dice/SHCIrdm.h"
-#include "SHCIsampledeterminants.h"
 #include "Dice/Utils/Determinants.h"
 #include "Dice/Utils/SHCISortMpiUtils.h"
 #include "Dice/Utils/SHCItime.h"
 #include "Dice/Utils/input.h"
 #include "Dice/Utils/integral.h"
+#include "SHCIsampledeterminants.h"
 #include "boost/format.hpp"
 #include "math.h"
 #ifndef SERIAL
