@@ -487,11 +487,6 @@ double SHCIbasics::DoPerturbativeDeterministic(
     uniqueDEH.extra_info = true;
     for (int i = 0; i < DetsSize; i++) {
       if (i % size != rank) continue;
-      // SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
-      //     Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], I1, I2, I2HB, irrep,
-      //     coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy,
-      //     *uniqueDEH.var_indices_beforeMerge,
-      //     *uniqueDEH.orbDifference_beforeMerge, schd, nelec);
       SHCIgetdeterminants::getDeterminants(
           Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
           irrep, coreE, E0, uniqueDEH, schd, 0, nelec);
@@ -499,11 +494,6 @@ double SHCIbasics::DoPerturbativeDeterministic(
   } else {
     for (int i = 0; i < DetsSize; i++) {
       if ((i % size != rank)) continue;
-
-      // SHCIgetdeterminants::getDeterminantsDeterministicPT(
-      //     Dets[i], abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
-      //     irrep, coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num,
-      //     *uniqueDEH.Energy, schd, 0, nelec);
       SHCIgetdeterminants::getDeterminants(
           Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
           irrep, coreE, E0, uniqueDEH, schd, 0, nelec);

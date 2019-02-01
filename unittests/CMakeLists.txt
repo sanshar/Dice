@@ -12,7 +12,7 @@ message(STATUS "\n-- Setting up tests ...\n-- ")
 ######################
 
 # Set compiler flags for gcov
-set(CMAKE_CXX_STANDARD 11) # TODO
+set(CMAKE_CXX_STANDARD 14) # TODO
 set(CMAKE_CXX_FLAGS "-g -O0 -w -fprofile-arcs -ftest-coverage -fPIC -DSERIAL")
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1) # *.cpp.o -> *.o
 
@@ -51,13 +51,13 @@ foreach(file ${TEST_SOURCES})
   message(STATUS ${testcase})
 
   # Convert unit-file1.cpp to ../Dice/file.cpp (creates path to source file)
-  string(REGEX REPLACE "unit-([^$]+)" "../Dice/\\1.cpp" src_file ${file_basename})
+  string(REGEX REPLACE "unit-([^$]+)" "../Dice/Utils/\\1.cpp" src_file ${file_basename})
   message(STATUS "Found source file for ${testcase}: ${src_file}")
 
   # Add executable for test (including source file)
   # TODO currently build SHCIshm.cpp into all test (rather than keep a list of
   # files where it should included)
-  add_executable(${testcase} ${file} ${src_file} ${DICE_SOURCE_DIR}/SHCIshm.cpp)
+  add_executable(${testcase} ${file} ${src_file} ${DICE_SOURCE_DIR}/Utils/SHCIshm.cpp)
   add_dependencies(${testcase} eigen_project)
 
   # Add linker flags (in case Boost is used in test)

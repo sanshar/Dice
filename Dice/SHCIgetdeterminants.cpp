@@ -47,12 +47,16 @@ void SHCIgetdeterminants::getDeterminants(
     int nelec, bool keepRefDets) {
   //-----------------------------------------------------------------------------
   /*!
-  General function to get determinants.
+  General function to get determinants. Currently this supports the
+  functionality of the deprecated functions `getDeterminantsDeterministicPT()`
+  and `getDeterminantsDeterministicPTKeepRefDets()`.
 
   :Inputs:
 
       Determinant& d:
           The reference |D_i>
+      int det_ind:
+          The index of the determinant in the sum in `SHCIbasics.cpp`
       double epsilon:
           The criterion for chosing new determinants (understood as epsilon/c_i)
       CItype ci1:
@@ -64,21 +68,29 @@ void SHCIgetdeterminants::getDeterminants(
       twoInt& int2:
           Two-electron tensor of the Hamiltonian
       twoIntHeatBathSHM& I2hb:
-          The sorted two-electron integrals to choose the bi-excited
-  determinants vector<int>& irreps: Irrep of the orbitals double coreE: The core
-  energy double E0: The current variational energy std::vector<Determinant>&
-  dets: The determinants' determinant std::vector<CItype>& numerator: The
-  determinants' numerator std::vector<double>& energy: The determinants' energy
+          Sorted two-electron integrals to choose the bi-excited determinants
+      vector<int>& irreps:
+          Irrep of the orbitals
+      double coreE:
+          The core energy
+      double E0:
+          The current variational energy
+      StitchDEH uniqueDEH:
+          Container for information related to the next level of the determinant
+          space (determinants, numerator, energy, etc.)
       schedule& schd:
           The schedule
       int Nmc:
-          BM_description
+          commsize * num_thrds * Nsample
       int nelec:
           Number of electrons
+      bool keepRefDets:
+          Flag to keep reference determinants (used in PT RDM). Default is
+          `false`.
   */
   //-----------------------------------------------------------------------------
 
-  // Old arguments
+  // Expanding uniqueDEH
   std::vector<Determinant>& dets = *uniqueDEH.Det;
   std::vector<CItype>& numerator = *uniqueDEH.Num;
   std::vector<double>& energy = *uniqueDEH.Energy;
@@ -92,15 +104,12 @@ void SHCIgetdeterminants::getDeterminants(
   vector<int> closed(nelec, 0);
   vector<int> open(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
-  // d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
 
-  // if (keepRefDets) {
   // Need to be declared in max scope of function
   size_t orbDiff;
   std::vector<int> var_indices_vec;
   std::vector<size_t> orbDiff_vec;
-  // }
 
   // mono-excited determinants
   for (int ia = 0; ia < nopen * nclosed; ia++) {
@@ -143,9 +152,9 @@ void SHCIgetdeterminants::getDeterminants(
   }    // ia
 
   // bi-excitated determinants
-  //#pragma omp parallel for schedule(dynamic)
   if (fabs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
+  // #pragma omp parallel for schedule(dynamic) # TODO troublesome
   for (int ij = 0; ij < nclosed * nclosed; ij++) {
     int i = ij / nclosed, j = ij % nclosed;
     if (i <= j) continue;

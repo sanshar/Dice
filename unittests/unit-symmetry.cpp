@@ -4,7 +4,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <string>
-#include "symmetry.h"
+#include "Dice/Utils/symmetry.h"
 
 TEST_CASE("Point Group Properties", "[symmetry]") {
   SECTION("D2h") {

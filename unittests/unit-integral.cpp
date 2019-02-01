@@ -2,10 +2,10 @@
 
 // Let Catch provide main():
 #define CATCH_CONFIG_MAIN
-#include "SHCIshm.h"
-#include "integral.h"
 #include <catch.hpp>
 #include <string>
+#include "Dice/Utils/SHCIshm.h"
+#include "Dice/Utils/integral.h"
 
 TEST_CASE("*Ints", "[integrals]") {
   initSHM();
@@ -28,7 +28,7 @@ TEST_CASE("*Ints", "[integrals]") {
     I2.ksym = false;
     I2.norbs = norbs;
     long npair = norbs * (norbs + 1) / 2;
-    size_t I2memory = npair * (npair + 1) / 2; // memory in bytes
+    size_t I2memory = npair * (npair + 1) / 2;  // memory in bytes
 
     int2Segment.truncate((I2memory) * sizeof(double));
     regionInt2 = boost::interprocess::mapped_region{

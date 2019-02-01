@@ -2,27 +2,26 @@
 
 // Let Catch provide main():
 #define CATCH_CONFIG_MAIN
-#include "Determinants.h"
 #include <catch.hpp>
 #include <string>
+#include "Dice/Utils/Determinants.h"
 
 // Defining static variables
-int HalfDet::norbs = 1;     // spin orbitals
-int Determinant::norbs = 1; // spin orbitals
+int HalfDet::norbs = 1;      // spin orbitals
+int Determinant::norbs = 1;  // spin orbitals
 int Determinant::EffDetLen = 1;
-char Determinant::Trev = 0; // Time reversal
+char Determinant::Trev = 0;  // Time reversal
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder;
 
 TEST_CASE("Simple Determinants Function", "[determinants]") {
-
-  int norbs = 10; // Spin orbs
+  int norbs = 10;  // Spin orbs
   int nalpha = 3;
   int nbeta = 2;
   int nelec = nalpha + nbeta;
-  Determinant::norbs = norbs; // spin orbitals
-  HalfDet::norbs = norbs;     // spin orbitals
+  Determinant::norbs = norbs;  // spin orbitals
+  HalfDet::norbs = norbs;      // spin orbitals
   Determinant::EffDetLen = norbs / 64 + 1;
-  Determinant::Trev = 0; // Time reversal
+  Determinant::Trev = 0;  // Time reversal
 
   // Initialize dets
   Determinant::initLexicalOrder(nelec);
