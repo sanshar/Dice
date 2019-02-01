@@ -54,7 +54,7 @@ def compare_1rdm(file1="spatialRDM.0.0.txt", file2="trusted2RDM.txt",
     #     print("FAILED ....")
     # else:
     #     print("PASSED ....")
-    assert (val < float(tol))
+    npt.assert_array_less(val, float(tol))
 
 
 def compare_2rdm(file1="spatialRDM.0.0.txt", file2="trusted2RDM.txt",
@@ -94,12 +94,13 @@ def compare_2rdm(file1="spatialRDM.0.0.txt", file2="trusted2RDM.txt",
     #     print("\t FAILED 2RDM....")
     # else:
     #     print("\t PASSED 2RDM....")
-    assert (val < float(tol))
+    npt.assert_array_less(val, float(tol))
 
 
 def cleanup():
     # fn := filename
     for fn in os.listdir('.'):
-        if fn.endswith('.bkp') or fn.endswith("0.txt") or fn == "shci.e" or fn == "output.dat":
+        if fn.endswith('.bkp') or fn.endswith(
+                "0.txt") or fn == "shci.e" or fn == "output.dat":
             # print("Removing %s" % fn)
             os.remove(fn)

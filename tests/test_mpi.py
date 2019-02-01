@@ -7,7 +7,9 @@ import subprocess
 import pytest
 import dice_testing_utilities as dtu
 
+# dice_exe = "mpirun -np 4 ../../build/Dice"
 dice_exe = "mpirun -np 28 ../../build/Dice"
+
 main_test_dir = os.getcwd()
 
 
@@ -57,11 +59,11 @@ def test_o2_det_direct():
     dtu.test_energy()
 
 
-# def test_c2_pt_rdm():
-#     os.chdir("./c2_pt_rdm")
-#     subprocess.call(dice_exe, shell=True)
-#     dtu.test_energy()
-#     dtu.compare_2rdm()
+def test_c2_pt_rdm():
+    os.chdir("./c2_pt_rdm")
+    subprocess.call(dice_exe, shell=True)
+    # dtu.test_energy()
+    dtu.compare_2rdm(tol=5e-7)
 
 
 # Medium Tests

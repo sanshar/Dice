@@ -23,19 +23,184 @@
 #include <map>
 #include <tuple>
 #include <vector>
-#include "Dice/Davidson.h"
-#include "Dice/Utils/Determinants.h"
-#include "Dice/Utils/input.h"
-#include "Dice/Utils/integral.h"
-#include "Dice/Hmult.h"
 #include "boost/format.hpp"
 #include "math.h"
+
+#include "Dice/Davidson.h"
+#include "Dice/Hmult.h"
+#include "Dice/Utils/Determinants.h"
+#include "Dice/Utils/SHCISortMPIUtils.h"
+#include "Dice/Utils/input.h"
+#include "Dice/Utils/integral.h"
 
 #include "Dice/SHCIgetdeterminants.h"  // Keep separate or clang-tidy will rearrange
 
 using namespace std;
 using namespace Eigen;
 using namespace boost;
+
+//=============================================================================
+void SHCIgetdeterminants::getDeterminants(
+    Determinant& d, int det_ind, double epsilon, CItype ci1, CItype ci2,
+    oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps,
+    double coreE, double E0, StitchDEH& uniqueDEH, schedule& schd, int Nmc,
+    int nelec, bool keepRefDets) {
+  //-----------------------------------------------------------------------------
+  /*!
+  General function to get determinants.
+
+  :Inputs:
+
+      Determinant& d:
+          The reference |D_i>
+      double epsilon:
+          The criterion for chosing new determinants (understood as epsilon/c_i)
+      CItype ci1:
+          The reference CI coefficient c_i
+      CItype ci2:
+          The reference CI coefficient c_i (unused)
+      oneInt& int1:
+          One-electron tensor of the Hamiltonian
+      twoInt& int2:
+          Two-electron tensor of the Hamiltonian
+      twoIntHeatBathSHM& I2hb:
+          The sorted two-electron integrals to choose the bi-excited
+  determinants vector<int>& irreps: Irrep of the orbitals double coreE: The core
+  energy double E0: The current variational energy std::vector<Determinant>&
+  dets: The determinants' determinant std::vector<CItype>& numerator: The
+  determinants' numerator std::vector<double>& energy: The determinants' energy
+      schedule& schd:
+          The schedule
+      int Nmc:
+          BM_description
+      int nelec:
+          Number of electrons
+  */
+  //-----------------------------------------------------------------------------
+
+  // Old arguments
+  std::vector<Determinant>& dets = *uniqueDEH.Det;
+  std::vector<CItype>& numerator = *uniqueDEH.Num;
+  std::vector<double>& energy = *uniqueDEH.Energy;
+  std::vector<int>& var_indices = *uniqueDEH.var_indices_beforeMerge;
+  std::vector<size_t>& orbDifference = *uniqueDEH.orbDifference_beforeMerge;
+
+  // initialize variables
+  int norbs = d.norbs;
+  int nclosed = nelec;
+  int nopen = norbs - nclosed;
+  vector<int> closed(nelec, 0);
+  vector<int> open(norbs - nelec, 0);
+  d.getOpenClosed(open, closed);
+  // d.getRepArray(detArray);
+  double Energyd = d.Energy(int1, int2, coreE);
+
+  // if (keepRefDets) {
+  // Need to be declared in max scope of function
+  size_t orbDiff;
+  std::vector<int> var_indices_vec;
+  std::vector<size_t> orbDiff_vec;
+  // }
+
+  // mono-excited determinants
+  for (int ia = 0; ia < nopen * nclosed; ia++) {
+    int i = ia / nopen, a = ia % nopen;
+    // CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
+    CItype integral =
+        Hij_1Excite(open[a], closed[i], int1, int2, &closed[0], nclosed);
+
+    // sgn
+    if (closed[i] % 2 != open[a] % 2) {
+      double sgn = 1.0;
+      d.parity(min(open[a], closed[i]), max(open[a], closed[i]), sgn);
+      integral = int1(open[a], closed[i]) * sgn;
+    }
+
+    // generate determinant if integral is above the criterion
+    if (fabs(integral) > epsilon) {
+      dets.push_back(d);
+      Determinant& di = *dets.rbegin();
+      di.setocc(open[a], true);
+      di.setocc(closed[i], false);
+
+      // numerator and energy
+      numerator.push_back(integral * ci1);
+#ifndef Complex
+      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
+                                       open[a], Energyd);
+#else
+      double E = di.Energy(int1, int2, coreE);
+#endif
+      energy.push_back(E);
+
+      if (keepRefDets) {
+        var_indices.push_back(det_ind);
+        size_t A = open[a], N = norbs, I = closed[i];
+        orbDiff = A * N + I;  // a = creation, i = annihilation
+        orbDifference.push_back(orbDiff);
+      }
+    }  //
+  }    // ia
+
+  // bi-excitated determinants
+  //#pragma omp parallel for schedule(dynamic)
+  if (fabs(int2.maxEntry) < epsilon) return;
+  // for all pairs of closed
+  for (int ij = 0; ij < nclosed * nclosed; ij++) {
+    int i = ij / nclosed, j = ij % nclosed;
+    if (i <= j) continue;
+    int I = closed[i] / 2, J = closed[j] / 2;
+    int X = max(I, J), Y = min(I, J);
+
+    int pairIndex = X * (X + 1) / 2 + Y;
+    size_t start = closed[i] % 2 == closed[j] % 2
+                       ? I2hb.startingIndicesSameSpin[pairIndex]
+                       : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end = closed[i] % 2 == closed[j] % 2
+                     ? I2hb.startingIndicesSameSpin[pairIndex + 1]
+                     : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
+    float* integrals = closed[i] % 2 == closed[j] % 2
+                           ? I2hb.sameSpinIntegrals
+                           : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinPairs
+                                                       : I2hb.oppositeSpinPairs;
+
+    // for all HCI integrals
+    for (size_t index = start; index < end; index++) {
+      // if we are going below the criterion, break
+      if (fabs(integrals[index]) < epsilon) break;
+
+      // otherwise: generate the determinant corresponding to the current
+      // excitation
+      int a = 2 * orbIndices[2 * index] + closed[i] % 2,
+          b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+      if (!(d.getocc(a) || d.getocc(b))) {
+        dets.push_back(d);
+        Determinant& di = *dets.rbegin();
+        di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i], false),
+            di.setocc(closed[j], false);
+
+        // sgn
+        double sgn = 1.0;
+        di.parity(a, b, closed[i], closed[j], sgn);
+
+        // numerator and energy
+        numerator.push_back(integrals[index] * sgn * ci1);
+        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
+                                         a, j, b, Energyd);
+        energy.push_back(E);
+
+        if (keepRefDets) {
+          var_indices.push_back(det_ind);
+          size_t A = a, B = b, N = norbs, I = closed[i], J = closed[j];
+          orbDiff = A * N * N * N + I * N * N + B * N + J;  // i>j and a>b??
+          orbDifference.push_back(orbDiff);
+        }
+      }
+    }  // heatbath integrals
+  }    // ij
+  return;
+}  // end SHCIgetdeterminants::getDeterminantsDeterministicPT
 
 //=============================================================================
 void SHCIgetdeterminants::getDeterminantsDeterministicPT(
@@ -766,153 +931,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   }    // ij
   return;
 }  // end SHCIgetdeterminants::getDeterminantsVariationalApprox
-
-//=============================================================================
-void SHCIgetdeterminants::getDeterminantsStochastic(
-    Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1,
-    twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE,
-    double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1,
-    vector<double>& numerator2, std::vector<double>& energy, schedule& schd,
-    int Nmc, int nelec) {
-  //-----------------------------------------------------------------------------
-  /*!
-  BM_description
-
-  :Inputs:
-
-      Determinant& d:
-          The reference |D_i>
-      double epsilon:
-          The criterion for chosing new determinants (understood as epsilon/c_i)
-      CItype ci1:
-          The reference CI coefficient c_i
-      CItype ci2:
-          The reference CI coefficient c_i
-      oneInt& int1:
-          One-electron tensor of the Hamiltonian
-      twoInt& int2:
-          Two-electron tensor of the Hamiltonian
-      twoIntHeatBathSHM& I2hb:
-          The sorted two-electron integrals to choose the bi-excited
-  determinants vector<int>& irreps: Irrep of the orbitals double coreE: The core
-  energy double E0: The current variational energy std::vector<Determinant>&
-  dets: The determinants' determinant std::vector<CItype>& numerator1: The
-  determinants' numerator vector<double>& numerator2: The determinants'
-  numerator std::vector<double>& energy: The determinants' energy schedule&
-  schd: The schedule int Nmc: BM_description int nelec: Number of electrons
-  */
-  //-----------------------------------------------------------------------------
-
-  // initialize variables
-  int norbs = d.norbs;
-  int nclosed = nelec;
-  int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
-  d.getOpenClosed(open, closed);
-  // d.getRepArray(detArray);
-  double Energyd = d.Energy(int1, int2, coreE);
-  double Nmcd = 1. * Nmc;
-
-  // mono-excited determinants
-  for (int ia = 0; ia < nopen * nclosed; ia++) {
-    int i = ia / nopen, a = ia % nopen;
-    // if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a
-    // certain orbital
-#ifndef Complex
-    if (closed[i] % 2 != open[a] % 2 ||
-        irreps[closed[i] / 2] != irreps[open[a] / 2])
-      continue;
-#endif
-    CItype integral =
-        Hij_1Excite(open[a], closed[i], int1, int2, &closed[0], nclosed);
-
-    // generate determinant if integral is above the criterion
-    if (fabs(integral) > epsilon) {
-      dets.push_back(d);
-      Determinant& di = *dets.rbegin();
-      di.setocc(open[a], true);
-      di.setocc(closed[i], false);
-
-      // numerator and energy
-      numerator1.push_back(integral * ci1);
-#ifndef Complex
-      numerator2.push_back(integral * integral * ci1 *
-                           (ci1 * Nmcd / (Nmcd - 1) - ci2));
-#else
-      numerator2.push_back(
-          (integral * integral * ci1 * (ci1 * Nmcd / (Nmcd - 1) - ci2)).real());
-#endif
-#ifndef Complex
-      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
-                                       open[a], Energyd);
-#else
-      double E = di.Energy(int1, int2, coreE);
-#endif
-      energy.push_back(E);
-    }
-  }  // ia
-
-  // bi-excitated determinants
-  //#pragma omp parallel for schedule(dynamic)
-  if (fabs(int2.maxEntry) < epsilon) return;
-  // for all pairs of closed
-  for (int ij = 0; ij < nclosed * nclosed; ij++) {
-    int i = ij / nclosed, j = ij % nclosed;
-    if (i <= j) continue;
-    int I = closed[i] / 2, J = closed[j] / 2;
-    int X = max(I, J), Y = min(I, J);
-
-    int pairIndex = X * (X + 1) / 2 + Y;
-    size_t start = closed[i] % 2 == closed[j] % 2
-                       ? I2hb.startingIndicesSameSpin[pairIndex]
-                       : I2hb.startingIndicesOppositeSpin[pairIndex];
-    size_t end = closed[i] % 2 == closed[j] % 2
-                     ? I2hb.startingIndicesSameSpin[pairIndex + 1]
-                     : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
-    float* integrals = closed[i] % 2 == closed[j] % 2
-                           ? I2hb.sameSpinIntegrals
-                           : I2hb.oppositeSpinIntegrals;
-    short* orbIndices = closed[i] % 2 == closed[j] % 2 ? I2hb.sameSpinPairs
-                                                       : I2hb.oppositeSpinPairs;
-
-    // for all HCI integrals
-    for (size_t index = start; index < end; index++) {
-      // if we are going below the criterion, break
-      if (fabs(integrals[index]) < epsilon) break;
-
-      // otherwise: generate the determinant corresponding to the current
-      // excitation
-      int a = 2 * orbIndices[2 * index] + closed[i] % 2,
-          b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
-      if (!(d.getocc(a) || d.getocc(b))) {
-        dets.push_back(d);
-        Determinant& di = *dets.rbegin();
-        di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i], false),
-            di.setocc(closed[j], false);
-
-        // sgn
-        double sgn = 1.0;
-        di.parity(a, b, closed[i], closed[j], sgn);
-
-        // numerator and energy
-        numerator1.push_back(integrals[index] * sgn * ci1);
-#ifndef Complex
-        numerator2.push_back(integrals[index] * integrals[index] * ci1 *
-                             (ci1 * Nmcd / (Nmcd - 1) - ci2));
-#else
-        numerator2.push_back((integrals[index] * integrals[index] * 1.0 * ci1 *
-                              (ci1 * Nmcd / (Nmcd - 1) - ci2))
-                                 .real());
-#endif
-        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
-                                         a, j, b, Energyd);
-        energy.push_back(E);
-      }
-    }  // heatbath integrals
-  }    // ij
-  return;
-}  // end SHCIgetdeterminants::getDeterminantsStochastic
 
 //=============================================================================
 void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(

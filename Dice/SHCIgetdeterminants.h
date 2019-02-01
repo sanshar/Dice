@@ -36,20 +36,20 @@ class twoInt;
 class twoIntHeatBath;
 class twoIntHeatBathSHM;
 class schedule;
+class StichDEH;
 
 namespace SHCIgetdeterminants {
+void getDeterminants(Determinant& d, int det_ind, double epsilon, CItype ci1,
+                     CItype ci2, oneInt& int1, twoInt& int2,
+                     twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE,
+                     double E0, StitchDEH& uniqueDEH, schedule& schd, int Nmc,
+                     int nelec, bool keepRefDets = false);
+
 void getDeterminantsDeterministicPT(
     Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1,
     twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE,
     double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator,
     std::vector<double>& energy, schedule& schd, int Nmc, int nelec);
-
-void getDeterminantsStochastic(
-    Determinant& d, double epsilon, CItype ci1, CItype ci2, oneInt& int1,
-    twoInt& int2, twoIntHeatBathSHM& I2hb, vector<int>& irreps, double coreE,
-    double E0, std::vector<Determinant>& dets, std::vector<CItype>& numerator1,
-    std::vector<double>& numerator2, std::vector<double>& energy,
-    schedule& schd, int Nmc, int nelec);
 
 void getDeterminantsVariational(Determinant& d, double epsilon, CItype ci1,
                                 CItype ci2, oneInt& int1, twoInt& int2,

@@ -35,13 +35,13 @@
 #include "Dice/SHCIgetdeterminants.h"
 #include "Dice/SHCImakeHamiltonian.h"
 #include "Dice/SHCIrdm.h"
-#include "SHCIsampledeterminants.h"
 #include "Dice/Utils/Determinants.h"
 #include "Dice/Utils/SHCISortMpiUtils.h"
 #include "Dice/Utils/SHCIshm.h"
 #include "Dice/Utils/SHCItime.h"
 #include "Dice/Utils/input.h"
 #include "Dice/Utils/integral.h"
+#include "SHCIsampledeterminants.h"
 #include "boost/format.hpp"
 #include "math.h"
 
@@ -487,20 +487,26 @@ double SHCIbasics::DoPerturbativeDeterministic(
     uniqueDEH.extra_info = true;
     for (int i = 0; i < DetsSize; i++) {
       if (i % size != rank) continue;
-      SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
-          Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], I1, I2, I2HB, irrep,
-          coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy,
-          *uniqueDEH.var_indices_beforeMerge,
-          *uniqueDEH.orbDifference_beforeMerge, schd, nelec);
+      // SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
+      //     Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], I1, I2, I2HB, irrep,
+      //     coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy,
+      //     *uniqueDEH.var_indices_beforeMerge,
+      //     *uniqueDEH.orbDifference_beforeMerge, schd, nelec);
+      SHCIgetdeterminants::getDeterminants(
+          Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
+          irrep, coreE, E0, uniqueDEH, schd, 0, nelec);
     }
   } else {
     for (int i = 0; i < DetsSize; i++) {
       if ((i % size != rank)) continue;
 
-      SHCIgetdeterminants::getDeterminantsDeterministicPT(
-          Dets[i], abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB, irrep,
-          coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy, schd, 0,
-          nelec);
+      // SHCIgetdeterminants::getDeterminantsDeterministicPT(
+      //     Dets[i], abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
+      //     irrep, coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num,
+      //     *uniqueDEH.Energy, schd, 0, nelec);
+      SHCIgetdeterminants::getDeterminants(
+          Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
+          irrep, coreE, E0, uniqueDEH, schd, 0, nelec);
       // if (i%100000 == 0 && omp_get_thread_num()==0 && commrank == 0) pout <<
       // "# " << i << endl;
     }

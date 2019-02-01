@@ -7,7 +7,7 @@ message(STATUS "\n-- Finding compilers ...\n-- ")
 
 project (Dice)
 set (EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/External)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-g -O3")
 option(SERIAL "SERIAL" OFF)
 option(COMPLEX "COMPLEX" OFF)
