@@ -133,15 +133,15 @@ then
     ../clean.sh
 fi
 
-cd $here/h10srNew/
-../clean.sh
-printf "...running h10 sr\n"
-$MPICOMMAND $VMCPATH > vmc.out
-python ../testEnergy.py 'vmc' $tol
-if [ $clean == 1 ]
-then    
-    ../clean.sh
-fi
+#cd $here/h10sr/
+#../clean.sh
+#printf "...running h10 sr\n"
+#$MPICOMMAND $VMCPATH > vmc.out
+#python ../testEnergy.py 'vmc' $tol
+#if [ $clean == 1 ]
+#then    
+#    ../clean.sh
+#fi
 
 cd $here/h10pfaff/
 ../clean.sh
