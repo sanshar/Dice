@@ -184,8 +184,42 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
 
-  else if (schd.wavefunctionType == "test") {
+  else if (schd.wavefunctionType == "slaterRDM") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+    wave.readWave();
+    MatrixXd oneRdm0, oneRdm1, corr;
+    //getOneRdmDeterministic(wave, walk, oneRdm0, 0);
+    //getOneRdmDeterministic(wave, walk, oneRdm1, 1);
+    //getDensityCorrelationsDeterministic(wave, walk, corr);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm0, 0, schd.stochasticIter);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm1, 1, schd.stochasticIter);
+    getStochasticDensityCorrelationsContinuousTime(wave, walk, corr, schd.stochasticIter);
+    if (commrank == 0) {
+      cout << "oneRdm0\n" << oneRdm0 << endl << endl;
+      cout << "oneRdm1\n" << oneRdm1 << endl << endl;
+      cout << "Density correlations\n" << corr << endl << endl;
+    }
+  }
+  
+  else if (schd.wavefunctionType == "agpRDM") {
+    CorrelatedWavefunction<Jastrow, AGP> wave; Walker<Jastrow, AGP> walk;
+    wave.readWave();
+    MatrixXd oneRdm0, oneRdm1, corr;
+    //getOneRdmDeterministic(wave, walk, oneRdm0, 0);
+    //getOneRdmDeterministic(wave, walk, oneRdm1, 1);
+    //getDensityCorrelationsDeterministic(wave, walk, corr);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm0, 0, schd.stochasticIter);
+    getStochasticOneRdmContinuousTime(wave, walk, oneRdm1, 1, schd.stochasticIter);
+    getStochasticDensityCorrelationsContinuousTime(wave, walk, corr, schd.stochasticIter);
+    if (commrank == 0) {
+      cout << "oneRdm0\n" << oneRdm0 << endl << endl;
+      cout << "oneRdm1\n" << oneRdm1 << endl << endl;
+      cout << "Density correlations\n" << corr << endl << endl;
+    }
+  }
+  
+  else if (schd.wavefunctionType == "pfaffianRDM") {
+    CorrelatedWavefunction<Jastrow, Pfaffian> wave; Walker<Jastrow, Pfaffian> walk;
     wave.readWave();
     MatrixXd oneRdm0, oneRdm1, corr;
     //getOneRdmDeterministic(wave, walk, oneRdm0, 0);
