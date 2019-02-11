@@ -1237,13 +1237,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #endif
       pout << endl
            << "Exiting variational iterations" << endl;
-    if (proc == 0) {
+    /*if (proc == 0) {
     for (int i=0; i<DetsSize; ++i) {
       cout << SHMDets[i] << " : " << endl;
       for (int j=0; j<sparseHam.connections[i].size(); j++)
         cout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << sparseHam.orbDifference[i][j] << endl;
     }
-    }
+    }*/
       if (commrank == 0)
       {
         Dets.resize(DetsSize);

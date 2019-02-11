@@ -185,12 +185,14 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       for (int j = 0; j != norbs/2; j++)
         for (int k = 0; k != norbs/2; k++) {
           auto integral = tmp[j*norbs/2+k];
-          if (abs(integral) > 1.0e-40)
+          if (abs(integral) > 1.0e-60)
             I1(2*k+kfac, 2*j+jfac) = tmp[j*norbs/2+k];
           //cout << I1(2*k+kfac, 2*j+jfac) << setw(4) << 2*k+kfac << setw(4) << 2*j+jfac << endl;
         }
     }
-    dump2.read((char*) (&coreE), sizeof(complex<double>));
+    complex<double> coreEtmp = 0.0;
+    dump2.read((char*) (&coreEtmp), sizeof(complex<double>));
+    coreE = coreEtmp.real();
     cout << coreE << endl;
     dump2.close();
   }

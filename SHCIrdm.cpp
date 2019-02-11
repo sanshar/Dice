@@ -754,7 +754,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets,
 	        if (!((closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
 	        //if (c0%2 != d0%2) sgn *= -1;
 	        if (schd.DoSpinRDM) {
-            CItype tmp = sgn*cibra[connections[i/commsize][j]]*localConj::conj(ciket[i]);
+            CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
             twoRDM(a*norbs+b, I*norbs+J) += (tmp);
             //twoRDM(a*norbs+b, J*norbs+I) += -tmp;
             //twoRDM(b*norbs+a, I*norbs+J) += -tmp;
@@ -774,7 +774,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int> >& connections, Determinant *Dets,
 	      double sgn = 1.0;
 	      Dets[i].parity(d1,d0,c1,c0,sgn);
 	      if (schd.DoSpinRDM) {
-                CItype tmp = sgn*cibra[connections[i/commsize][j]]*localConj::conj(ciket[i]);
+                CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
                 twoRDM(c1*norbs+c0, d1*norbs+d0) += tmp;
                 twoRDM(d1*norbs+d0, c1*norbs+c0) += localConj::conj(tmp);
 	      }
@@ -941,8 +941,8 @@ pout << " printing 1rdm information" << endl;
     for (int q=0; q<norbs; q++)
 #ifdef Complex
     {
-      if (abs(I1(p,q)*oneRDM(p,q))>1.0e-4)
-        pout << " " << p%2*3+p/2 << " "<<q%2*3+q/2<<" "<<scientific<<setprecision(7)<<oneRDM(p,q) << " " << I1(p,q) << endl;
+      //if (abs(I1(p,q)*oneRDM(p,q))>1.0e-8)
+        //pout << " " << p%2*norbs/2+p/2 << " "<<q%2*norbs/2+q/2<<" "<<scientific<<setprecision(7)<<oneRDM(p,q) << endl;
       onebody += (I1(p, q)*oneRDM(p,q)).real();
     }  
 #else
@@ -967,8 +967,8 @@ pout << " printing 1rdm information" << endl;
     //else 
 #ifdef Complex
     twobody += (sgn * 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
-    if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6&&abs(I2(p,r,q,s))>1e-6)
-      pout <<P<<" "<<Q<<" "<<R<<" "<<S<<" "<<scientific<<setprecision(7)<<sgn<< " " << twoRDM(P*norbs+Q,R*norbs+S) << " " << twoRDM(p*norbs+q, r*norbs+s) << endl;
+    //if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6)
+      //pout <<p<<" "<<q<<" "<<r<<" "<<s<<" "<<scientific<<setprecision(7)<<sgn<< " " << twoRDM(P*norbs+Q,R*norbs+S) << " " <<P<<Q<<R<<S<< endl;
      // 2-body term
 #else
 	  twobody += sgn * 0.5 * twoRDM(P*(P+1)/2+Q, R*(R+1)/2+S) * I2(p,r,q,s); // 2-body term
