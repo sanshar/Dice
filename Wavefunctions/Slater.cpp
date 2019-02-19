@@ -93,7 +93,7 @@ void Slater::initDets()
   int nbeta = Determinant::nbeta;
   
   //initialize slater determinants
-  if (boost::iequals(schd.determinantFile, "")) {
+  if (boost::iequals(schd.determinantFile, "") || boost::iequals(schd.determinantFile, "bestDet")) {
     determinants.resize(1);
     ciExpansion.resize(1, 1.0);
     if (schd.hf == "rhf" || schd.hf == "uhf") {

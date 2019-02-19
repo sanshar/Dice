@@ -78,6 +78,7 @@ private:
       & cgIter
       & stepsize
       & ifComplex
+      & uagp
       & expCorrelator;
   }
 public:
@@ -87,7 +88,8 @@ public:
   int printLevel;                        // How much stuff to print
   bool expCorrelator;                    //exponential correlator parameters, to enforce positivity
   bool debug;
-  bool ifComplex;                        //breaks complex conjugation symmetry 
+  bool ifComplex;                        //breaks and restores complex conjugation symmetry 
+  bool uagp;                             //brakes S^2 symmetry in uagp
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;

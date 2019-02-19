@@ -89,35 +89,43 @@ struct Walker<Corr, Slater> {
     int nbeta = Determinant::nbeta;
 
     d = Determinant();
-    for (int i = 0; i < nalpha; i++) {
-      int bestorb = 0;
-      double maxovlp = 0;
-      for (int j = 0; j < norbs; j++) {
-        if (abs(HforbsA(i, j)) > maxovlp && !d.getoccA(j)) {
-          maxovlp = abs(HforbsA(i, j));
-          bestorb = j;
+    if (boost::iequals(schd.determinantFile, "")) {
+      for (int i = 0; i < nalpha; i++) {
+        int bestorb = 0;
+        double maxovlp = 0;
+        for (int j = 0; j < norbs; j++) {
+          if (abs(HforbsA(i, j)) > maxovlp && !d.getoccA(j)) {
+            maxovlp = abs(HforbsA(i, j));
+            bestorb = j;
+          }
         }
+        d.setoccA(bestorb, true);
       }
-      d.setoccA(bestorb, true);
+      for (int i = 0; i < nbeta; i++) {
+        int bestorb = 0;
+        double maxovlp = 0;
+        for (int j = 0; j < norbs; j++) {
+          if (schd.hf == "rhf" || schd.hf == "uhf") {
+            if (abs(HforbsB(i, j)) > maxovlp && !d.getoccB(j)) {
+              bestorb = j;
+              maxovlp = abs(HforbsB(i, j));
+            }
+          }
+          else {
+            if (abs(HforbsB(i+norbs, j)) > maxovlp && !d.getoccB(j)) {
+              bestorb = j;
+              maxovlp = abs(HforbsB(i+norbs, j));
+            }
+          }
+        }
+        d.setoccB(bestorb, true);
+      }
     }
-    for (int i = 0; i < nbeta; i++) {
-      int bestorb = 0;
-      double maxovlp = 0;
-      for (int j = 0; j < norbs; j++) {
-        if (schd.hf == "rhf" || schd.hf == "uhf") {
-          if (abs(HforbsB(i, j)) > maxovlp && !d.getoccB(j)) {
-            bestorb = j;
-            maxovlp = abs(HforbsB(i, j));
-          }
-        }
-        else {
-          if (abs(HforbsB(i+norbs, j)) > maxovlp && !d.getoccB(j)) {
-            bestorb = j;
-            maxovlp = abs(HforbsB(i+norbs, j));
-          }
-        }
-      }
-      d.setoccB(bestorb, true);
+    else if (boost::iequals(schd.determinantFile, "bestDet")) {
+      std::vector<Determinant> dets;
+      std::vector<double> ci;
+      readDeterminants(schd.determinantFile, dets, ci);
+      d = dets[0];
     }
   }
 

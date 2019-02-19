@@ -72,7 +72,7 @@ void AGP::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
       //pairMat(j, i) = pairMat(i,j);
     }
   }
-  pairMat = (pairMat + pairMat.transpose().eval())/2;
+  if (!schd.uagp) pairMat = (pairMat + pairMat.transpose().eval())/2;
 }
 
 void AGP::printVariables() const

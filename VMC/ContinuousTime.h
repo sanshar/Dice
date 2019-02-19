@@ -102,6 +102,7 @@ class ContinuousTime
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << bestDet;
+      if (schd.printLevel > 7) cout << bestDet << endl;
     }
   }
 

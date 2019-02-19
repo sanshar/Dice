@@ -56,6 +56,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.restart = false;
       schd.expCorrelator = false;
       schd.ifComplex = false;
+      schd.uagp = false;
 
       schd.maxIter = 50;
       schd.avgIter = 0;
@@ -126,7 +127,10 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "complex"))
 	    schd.ifComplex = true;
 
-	  //else if (boost::iequals(ArgName, "adam"))
+      else if (boost::iequals(ArgName, "uagp"))
+	    schd.uagp = true;
+	  
+      //else if (boost::iequals(ArgName, "adam"))
           //schd.method = adam;
 
 	  else if (boost::iequals(ArgName, "sgd"))

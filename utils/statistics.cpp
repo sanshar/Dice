@@ -268,7 +268,8 @@ double corrTime(double n_original, vector<double> &b_size, vector<double> &r_t)
     }
     if (t == 0.0)
     {
-        throw runtime_error("Insufficient number of stochastic iterations");
+        //throw runtime_error("Insufficient number of stochastic iterations");
+        t = 1.;
     }
     if (t < 1.0)
     {

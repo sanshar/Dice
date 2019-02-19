@@ -105,7 +105,7 @@ def makePfaffFromGHF(ghfCoeffs):
   for i in range(nelec/2):
     amat[2 * i + 1, 2 * i] = -1.
     amat[2 * i, 2 * i + 1] = 1.
-  pairMat = theta.dot(amat).dot(theta.T)
+  pairMat = ghfCoeffs.dot(amat).dot(ghfCoeffs.T)
   return pairMat
 
 def addNoise(mat, isComplex):
