@@ -125,7 +125,8 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "CIJastrowSlater") {
-    CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, SpinFreeOperator> wave; Walker<Jastrow, Slater> walk;
+    //CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, SpinFreeOperator> wave; Walker<Jastrow, Slater> walk;
+    CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, Operator> wave; Walker<Jastrow, Slater> walk;
     wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
     runVMC(wave, walk);
   }

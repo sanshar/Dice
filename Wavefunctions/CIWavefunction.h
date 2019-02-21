@@ -238,8 +238,13 @@ template <typename Wfn, typename Walker, typename OpType>
       int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
 
       Walker walkcopy = walk;
-      walkcopy.exciteWalker(wave.getRef(), wave.getCorr(), ex1, ex2, norbs);
+      if (ex2 == 0) walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, true);
+      else walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
       double ovlpdetcopy = Overlap(walkcopy);
+      if (schd.debug) {
+        cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpdetcopy / ovlp << endl;
+        cout << walkcopy << endl;
+      }
 
       ham += tia * ovlpdetcopy / ovlp;
       work.ovlpRatio[i] = ovlpdetcopy/ovlp;
