@@ -90,6 +90,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.fn_factor = 1.0;
       schd.nGeneration = 30.0;
       schd.excitationLevel = 1;
+      schd.numActive = -1;
       schd.ctmc = true;
       schd.cgIter = 15;
       schd.sDiagShift = 0.01;
@@ -373,7 +374,12 @@ void readInput(string input, schedule& schd, bool print) {
 	      schd.excitationLevel = atoi(tok[1].c_str());
 	    }
 
-	  else
+	  else if (boost::iequals(ArgName, "numactive"))
+	    {
+	      schd.numActive = atoi(tok[1].c_str());
+	    }
+	  
+      else
 	    {
 	      cout << "cannot read option " << ArgName << endl;
 	      exit(0);

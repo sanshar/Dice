@@ -145,6 +145,7 @@ void getGradientDeterministic(Wfn &w, Walker &walk, double &Energy, VectorXd &gr
   VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
   for (int i = commrank; i < D.allDets.size(); i += commsize)
   {
+    if (schd.debug) cout << "det   " << D.allDets[i] << endl;
     D.LocalEnergy(D.allDets[i]);
     D.LocalGradient();
     D.UpdateEnergy(Energy);

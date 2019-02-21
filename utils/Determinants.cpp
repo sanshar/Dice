@@ -896,8 +896,16 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
+  //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
+  auto ub = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
+  int indAct = distance(open.begin(), ub);
+  //cout << "v  " << open[0] << "  " << open[1] << endl;
+  //cout << "indAct  " << indAct << endl;
+  //cout << "numActive  " << schd.numActive << endl;
+
+
   for (int i = 0; i < closed.size(); i++) {
-    for (int a = 0; a < open.size(); a++) {
+    for (int a = 0; a < indAct; a++) {
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
       {
@@ -945,7 +953,8 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
         int a = 2 * orbIndices[2 * index] + closed[i] % 2,
             b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
 
-        if (!(d.getocc(a) || d.getocc(b))) {
+        if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {
+          //cout << "a   " << a << "  b  " << b << endl;
           work.appendValue(0.0, closed[i] * 2 * norbs + a,
                            closed[j] * 2 * norbs + b, integrals[index]);
         }

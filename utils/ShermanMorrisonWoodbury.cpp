@@ -176,7 +176,8 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXcd &inverseIn,
   Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
   Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(orderVec);
   inverseOut = inverseOutWrong * perm;
-  if (updateTable) tableOut = (tableIn - tableChangeWrong) * perm;
+  if (updateTable && lub.isInvertible()) tableOut = (tableIn - tableChangeWrong) * perm;
+  else if (updateTable) tableOut = Hforbs.block(0, 0, Hforbs.rows(), ColVec.rows()) * inverseOut;
   //igl::slice(inverseOutWrong, Eigen::VectorXi::LinSpaced(ColVec.rows(), 0, ColVec.rows() - 1), orderVec, inverseOut);
 }
 
