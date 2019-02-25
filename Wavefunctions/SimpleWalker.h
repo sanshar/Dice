@@ -41,70 +41,27 @@ public:
   Determinant d;                      //The current determinant
 
   // The constructor
-  SimpleWalker(Determinant &pd)
-      : d(pd) {};
+  SimpleWalker(Determinant &pd) : d(pd) {};
+  SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd) {};
   SimpleWalker(){};
 
+
+  Determinant getDet() { return d; }
+
+  void updateA(int i, int a);
+
+  void updateA(int i, int j, int a, int b);
+
+  void updateB(int i, int a);
+
+  void updateB(int i, int j, int a, int b);
+
+  void update(int i, int a, bool sz, const Determinant &ref, const Determinant &corr) { return; };//to be defined for metropolis
+
+  void updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool parity = true);
   
-  template <typename Wfn>
-  void updateWalker(Wfn &w, int ex1, int ex2)
-  {
-    int norbs = Determinant::norbs;
-
-    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-
-    //updateElecHoleAfterDes(I); updateElecHoleAfterCre(A);
-    //updateElecHoleAfterDes(J); updateElecHoleAfterCre(B);
-    d.setocc(I, false); d.setocc(A, true);
-    d.setocc(J, false); d.setocc(B, true);
-  }
-
-  Determinant &getDet() { return d; }
-
-  //these are not absolute orbital indices, but instead the
-  //ith occupied and ath unoccupied
-
-
-  template <typename Wfn>
-  void updateA(int i, int a, Wfn &w)
-  {
-
-    //updateElecHoleAfterDes(2*i); updateElecHoleAfterCre(2*a);
-    d.setoccA(i, false);
-    d.setoccA(a, true);
-  }
-
-  template <typename Wfn>
-  void updateA(int i, int j, int a, int b, Wfn &w)
-  {
-    //updateElecHoleAfterDes(2*i); updateElecHoleAfterCre(2*a);
-    //updateElecHoleAfterDes(2*j); updateElecHoleAfterCre(2*b);
-    d.setoccA(i, false);
-    d.setoccA(a, true);
-    d.setoccA(j, false);
-    d.setoccA(b, true);
-  }
-
-  template <typename Wfn>
-  void updateB(int i, int a, Wfn &w)
-  {
-    //updateElecHoleAfterDes(2*i+1); updateElecHoleAfterCre(2*a+1);
-    d.setoccB(i, false);
-    d.setoccB(a, true);
-  }
-
-  template <typename Wfn>
-  void updateB(int i, int j, int a, int b, Wfn &w)
-  {
-    //updateElecHoleAfterDes(2*i+1); updateElecHoleAfterCre(2*a+1);
-    //updateElecHoleAfterDes(2*j+1); updateElecHoleAfterCre(2*b+1);
-    d.setoccB(i, false);
-    d.setoccB(a, true);
-    d.setoccB(j, false);
-    d.setoccB(b, true);
-  }
-
+  void exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs);
+  
   bool operator<(const SimpleWalker &w) const
   {
     return d < w.d;
@@ -115,35 +72,14 @@ public:
     return d == w.d;
   }
 
-  template <typename Wfn>
-  void exciteTo(Wfn& w, Determinant& dcopy) {
-    d = dcopy;
+  friend ostream& operator<<(ostream& os, const SimpleWalker& w) {
+    os <<  w.d << endl;
+    return os;
   }
-  
-  template <typename Wfn>
-  void exciteWalker(Wfn &w, int excite1, int excite2, int norbs)
-  {
-    int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
-
-    //updateElecHoleAfterDes(I1); updateElecHoleAfterCre(A1);
-    if (I1 % 2 == 0) {
-      updateA(I1 / 2, A1 / 2, w);
-    }
-    else {
-      updateB(I1 / 2, A1 / 2, w);
-    }
-    
-    if (excite2 != 0)
-    {
-      int I2 = excite2 / (2 * norbs), A2 = excite2 % (2 * norbs);
-      //updateElecHoleAfterDes(I2); updateElecHoleAfterCre(A2);
-      if (I2 % 2 == 0)
-        updateA(I2 / 2, A2 / 2, w);
-      else
-        updateB(I2 / 2, A2 / 2, w);
-    }
-  }
-
+  //template <typename Wfn>
+  //void exciteTo(Wfn& w, Determinant& dcopy) {
+  //  d = dcopy;
+  //}
   
 };
 

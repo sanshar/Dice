@@ -63,6 +63,8 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/Correlator.o \
+	obj/SelectedCI.o \
+	obj/SimpleWalker.o \
 	obj/ShermanMorrisonWoodbury.o\
 	obj/excitationOperators.o\
     obj/statistics.o \

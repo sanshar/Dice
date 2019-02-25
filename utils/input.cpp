@@ -57,6 +57,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.expCorrelator = false;
       schd.ifComplex = false;
       schd.uagp = false;
+      schd.ciCeption = false;
 
       schd.maxIter = 50;
       schd.avgIter = 0;
@@ -173,8 +174,14 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "printgrad"))
 	    schd.printGrad = true;
       
-      else if (boost::iequals(ArgName, "test"))
+      else if (boost::iequals(ArgName, "test")) {
 	    schd.wavefunctionType = "test";
+      }
+      
+      else if (boost::iequals(ArgName, "sci")) {
+	    schd.wavefunctionType = "sci";
+        schd.ciCeption = true;
+      }
       
       else if (boost::iequals(ArgName, "gutzwillerslater"))
 	    schd.wavefunctionType = "GutzwillerSlater";

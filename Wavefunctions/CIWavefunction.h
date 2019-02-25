@@ -90,6 +90,10 @@ template <typename Wfn, typename Walker, typename OpType>
     OpType::populateScreenedDoublesToOpList(oplist, ciCoeffs, screen);
     //OpType::populateDoublesToOpList(oplist, ciCoeffs);
     ciCoeffs.clear(); ciCoeffs.resize(oplist.size(), 0.0); ciCoeffs[0] = 1.;
+    if (schd.ciCeption) {
+      uniform_real_distribution<double> dist(0.1,0.3);
+      for (int i = 1; i<ciCoeffs.size(); i++) ciCoeffs[i] = dist(generator);
+    }
   }
 
   void getVariables(VectorXd& vars) {
@@ -171,8 +175,16 @@ template <typename Wfn, typename Walker, typename OpType>
 	  bool valid = oplist[i].apply(dcopy, j);
 
 	  if (valid) {
-	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
-	    totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
+	    double ovlpdetcopy = 0.;
+        if (schd.ciCeption) {
+          Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
+          ovlpdetcopy = wave.Overlap(walkcopy); 
+	      totalovlp += ciCoeffs[i] * ovlpdetcopy;
+        }
+        else {
+          ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+	      totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
+        }
 	  }
 	}
       }
@@ -186,26 +198,33 @@ template <typename Wfn, typename Walker, typename OpType>
     VectorXd gradcopy = grad;
     gradcopy.setZero();
 
-    double ovlp0 = wave.Overlap(walk);
+    double ovlp0 = Overlap(walk);
+    if (ovlp0 == 0) return 0.;
 
-    for (int i = 0; i < oplist.size(); i++)
-      {
-	for (int j=0; j<oplist[i].nops; j++) {
-	  Determinant dcopy = walk.d;
-	  
-	  bool valid = oplist[i].apply(dcopy, j);
-
-	  if (valid) {
-	    double ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
-	    gradcopy[i] += ovlpdetcopy;
-	  }
-	}
+    for (int i = 0; i < oplist.size(); i++) {
+      for (int j=0; j<oplist[i].nops; j++) {
+	    Determinant dcopy = walk.d;
+	    bool valid = oplist[i].apply(dcopy, j);
+	    if (valid) {
+          double ovlpdetcopy = 0.;
+          if (schd.ciCeption) {
+            Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
+            ovlpdetcopy = wave.Overlap(walkcopy) / ovlp0; 
+          }
+          else ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+	      gradcopy[i] += ovlpdetcopy;
+	    }
       }
+    }
 
     double totalOvlp = 0.0;
-    for (int i=0; i<grad.rows(); i++) {
-      totalOvlp += ciCoeffs[i] * gradcopy[i];
+    if (schd.ciCeption) totalOvlp = 1.;
+    else {
+      for (int i=0; i<grad.rows(); i++) {
+        totalOvlp += ciCoeffs[i] * gradcopy[i];
+      }
     }
+
     for (int i=0; i<grad.rows(); i++) {
       grad[i] += gradcopy[i]/totalOvlp;
     }
@@ -221,13 +240,14 @@ template <typename Wfn, typename Walker, typename OpType>
     int norbs = Determinant::norbs;
 
     ovlp = Overlap(walk);
+    if (ovlp == 0.) return;
     ham = walk.d.Energy(I1, I2, coreE); 
 
 
     generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
-                                        work, true);  
+                                        work, !schd.ciCeption);  
     generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
-                                        work, true);  
+                                        work, !schd.ciCeption);  
 
     //loop over all the screened excitations
     for (int i=0; i<work.nExcitations; i++) {
@@ -240,13 +260,25 @@ template <typename Wfn, typename Walker, typename OpType>
       Walker walkcopy = walk;
       if (ex2 == 0) walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, true);
       else walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+      double parity = 1.0;
+      if (schd.ciCeption) {
+        Determinant dcopy = walk.d;
+        if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
+        else parity *= dcopy.parity(A/2, I/2, I%2);
+        dcopy.setocc(I, false); dcopy.setocc(A, true);
+        if (ex2 != 0) {
+          if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
+          else parity *= dcopy.parity(B/2, J/2, J%2);
+        }
+      }
       double ovlpdetcopy = Overlap(walkcopy);
       if (schd.debug) {
-        cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpdetcopy / ovlp << endl;
-        cout << walkcopy << endl;
+        cout << "walkCopy    " << walkcopy << endl;
+        cout << "det energy   " << ham << endl; 
+        cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << parity * ovlpdetcopy / ovlp << endl;
       }
 
-      ham += tia * ovlpdetcopy / ovlp;
+      ham += tia * parity * ovlpdetcopy / ovlp;
       work.ovlpRatio[i] = ovlpdetcopy/ovlp;
     }
   }

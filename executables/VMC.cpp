@@ -45,6 +45,8 @@
 #include "Profile.h"
 #include "CIWavefunction.h"
 #include "CorrelatedWavefunction.h"
+#include "SelectedCI.h"
+#include "SimpleWalker.h"
 #include "Lanczos.h"
 #include "runVMC.h"
 
@@ -143,6 +145,12 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
+  else if (schd.wavefunctionType == "sci") {
+    CIWavefunction<SelectedCI, SimpleWalker, Operator> wave; SimpleWalker walk;
+    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+    runVMC(wave, walk);
+  }
+  
   else if (schd.wavefunctionType == "LanczosCPSSlater") {
     Lanczos<CorrelatedWavefunction<CPS, Slater>> wave; Walker<CPS, Slater> walk;
     wave.initWalker(walk);
@@ -235,6 +243,7 @@ int main(int argc, char *argv[])
       cout << "Density correlations\n" << corr << endl << endl;
     }
   }
+  
   //else if (schd.wavefunctionType == "LanczosCPSSlater") {
   //  //CIWavefunction<CPSSlater, HFWalker, Operator> wave;
   //  CPSSlater wave; HFWalker walk;

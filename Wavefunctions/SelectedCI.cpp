@@ -17,16 +17,15 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Determinants.h"
-#include "SimpleWalker.h"
 #include "SelectedCI.h"
 
-SelectedCI::SelectedCI() {readWave();}
+SelectedCI::SelectedCI() {}
 
 void SelectedCI::readWave() {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
-  if (boost::iequals(schd.determinantFile, ""))
+  if (boost::iequals(schd.determinantFile, "") || boost::iequals(schd.determinantFile, "bestDet"))
   {
     Determinant det;
 
@@ -34,8 +33,7 @@ void SelectedCI::readWave() {
       det.setoccA(i, true);
     for (int i = 0; i < nbeta; i++)
       det.setoccB(i, true);
-    DetsMap[det] = 0;
-    coeffs.push_back(1.0);
+    DetsMap[det] = 1.0;
     bestDeterminant = det;
       
   }
@@ -49,10 +47,10 @@ void SelectedCI::readWave() {
       std::string Line;
       std::getline(dump, Line);
 
-      trim_if(Line, is_any_of(", \t\n"));
+      boost::trim_if(Line, boost::is_any_of(", \t\n"));
       
       vector<string> tok;
-      boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
+      boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
 
       if (tok.size() > 2 )
       {
@@ -82,8 +80,7 @@ void SelectedCI::readWave() {
           }
         }
 
-        DetsMap[det] = index;
-        coeffs.push_back(ci);
+        DetsMap[det] = ci;
         if (abs(ci) > abs(bestCoeff)) {
           bestCoeff = ci;
           bestDeterminant = det;
@@ -92,13 +89,23 @@ void SelectedCI::readWave() {
     }
 
   }
+  if (schd.debug) cout << "bestDet    " << bestDeterminant << "  " << DetsMap[bestDeterminant] << endl;
 }
+ 
+void SelectedCI::initWalker(SimpleWalker &walk) {
+  walk.d = bestDeterminant;
+}
+
+void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
+  walk.d = d;
+}
+
 
 double SelectedCI::getOverlapFactor(SimpleWalker& walk, Determinant& dcopy) {
   auto it1 = DetsMap.find(walk.d);
   auto it2 = DetsMap.find(dcopy);
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
-    return coeffs[it2->second]/coeffs[it1->second];
+    return it2->second/it1->second;
   else
     return 0.0;
 }
@@ -110,7 +117,7 @@ double SelectedCI::getOverlapFactor(int I, int A, SimpleWalker& walk, bool dopar
   auto it1 = DetsMap.find(walk.d);
   auto it2 = DetsMap.find(dcopy);
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
-    return coeffs[it2->second]/coeffs[it1->second];
+    return it2->second/it1->second;
   else
     return 0.0;
 }
@@ -119,13 +126,13 @@ double SelectedCI::getOverlapFactor(int I, int J, int A, int B,
                                     SimpleWalker& walk, bool doparity) {
   Determinant dcopy = walk.d;
   dcopy.setocc(I, false);
-  dcopy.setocc(J, false);
   dcopy.setocc(A, true);
+  dcopy.setocc(J, false);
   dcopy.setocc(B, true);
   auto it1 = DetsMap.find(walk.d);
   auto it2 = DetsMap.find(dcopy);
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
-    return coeffs[it2->second]/coeffs[it1->second];
+    return it2->second/it1->second;
   else
     return 0.0;
 }
@@ -133,7 +140,15 @@ double SelectedCI::getOverlapFactor(int I, int J, int A, int B,
 double SelectedCI::Overlap(SimpleWalker& walk) {
   auto it1 = DetsMap.find(walk.d);
   if (it1 != DetsMap.end())
-    return coeffs[it1->second];
+    return it1->second;
+  else
+    return 0.0;
+}
+
+double SelectedCI::Overlap(Determinant& d) {
+  auto it1 = DetsMap.find(d);
+  if (it1 != DetsMap.end())
+    return it1->second;
   else
     return 0.0;
 }
@@ -146,22 +161,22 @@ void SelectedCI::OverlapWithGradient(SimpleWalker &walk,
     grad[it1->second] = 1.0;
 }
 
-void SelectedCI::getVariables(Eigen::VectorXd &v) {
-  for (int i=0; i<v.rows(); i++)
-    v[i] = coeffs[i];
-}
+//void SelectedCI::getVariables(Eigen::VectorXd &v) {
+//  for (int i=0; i<v.rows(); i++)
+//    v[i] = coeffs[i];
+//}
 
-long SelectedCI::getNumVariables() {
-  return coeffs.size();
-}
+//long SelectedCI::getNumVariables() {
+//  return DetsMap.size();
+//}
 
-void SelectedCI::updateVariables(Eigen::VectorXd &v) {
-  for (int i=0; i<v.rows(); i++)
-    coeffs[i] = v[i];
-}
+//void SelectedCI::updateVariables(Eigen::VectorXd &v) {
+//  for (int i=0; i<v.rows(); i++)
+//    coeffs[i] = v[i];
+//}
 
-void SelectedCI::printVariables() {
-  for (int i=0; i<coeffs.size(); i++)
-    cout << coeffs[i]<<endl;
-}
+//void SelectedCI::printVariables() {
+//  for (int i=0; i<coeffs.size(); i++)
+//    cout << coeffs[i]<<endl;
+//}
 

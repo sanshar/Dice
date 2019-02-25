@@ -899,9 +899,6 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
   auto ub = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
   int indAct = distance(open.begin(), ub);
-  //cout << "v  " << open[0] << "  " << open[1] << endl;
-  //cout << "indAct  " << indAct << endl;
-  //cout << "numActive  " << schd.numActive << endl;
 
 
   for (int i = 0; i < closed.size(); i++) {

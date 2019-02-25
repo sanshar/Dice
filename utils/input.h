@@ -80,6 +80,7 @@ private:
       & stepsize
       & ifComplex
       & uagp
+      & ciCeption
       & expCorrelator;
   }
 public:
@@ -91,6 +92,7 @@ public:
   bool debug;
   bool ifComplex;                        //breaks and restores complex conjugation symmetry 
   bool uagp;                             //brakes S^2 symmetry in uagp
+  bool ciCeption;                        //true, when using ci on top of selectedCI
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
