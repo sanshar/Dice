@@ -284,7 +284,7 @@ void symmetry::estimateLowestEnergyDet( int spin, int targetIrrep, oneInt I1,
 						irreps.at(3) = irrep.at(sort1Body.at(l).second/2);
 						bool unocc = ( (Det.getocc(i) == false) &&
 						  (Det.getocc(j) == false) && (Det.getocc(k) == false)  &&
-						  (Det.getocc(k) == false) );
+						  (Det.getocc(l) == false) );
 
 						bool diffOrbs = ( (i/2!=j/2) || (i/2!=k/2) || (i/2!=l/2) ||
 						  (j/2!=k/2) || (j/2!=l/2) || (k/2!=l/2) );
