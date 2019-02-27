@@ -302,10 +302,10 @@ int main(int argc, char* argv[]) {
         exit(0);
       }
     }
+    // TODO Make this work with MPI and not print one set from each processor
+    pout << Dets[d] << " Given HF Energy:  "
+         << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
-  // TODO Make this work with MPI and not print one set from each processor
-  pout << Dets[0] << " Given HF Energy:  "
-       << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
 
   // Symmetry loop?
   //#ifndef Complex
