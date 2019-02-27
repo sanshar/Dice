@@ -58,18 +58,18 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     double coreE, int nelec, int root) {
   if (schd.nPTiter == 0)
     return 0;
-  pout << format("Performing semistochastic PT for state: %3i") % (root)
+  pout << format("Performing (semi)stochastic PT for state: %3i") % (root)
        << endl;
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  pout << endl
-       << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
-       << endl;
   vector<MatrixXx> vdVector;
   double Psi1Norm;
   double EptLarge = 0.0;
   if (schd.epsilon2 < 999)
+    pout << endl
+         << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
+         << endl;
     EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB,
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
