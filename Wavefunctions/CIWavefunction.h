@@ -55,6 +55,7 @@ template <typename Wfn, typename Walker, typename OpType>
       ar  & wave
 	& oplist
 	& ciCoeffs;
+    //& excitedOvlps;
     }
 
   
@@ -62,6 +63,7 @@ template <typename Wfn, typename Walker, typename OpType>
   Wfn wave;
   std::vector<OpType> oplist;
   std::vector<double> ciCoeffs;
+  //Eigen::VectorXd excitedOvlps; //stores overlaps: <n|oplist[i]|phi0> for the current walker |n>, filled during Overlap call
 
   CIWavefunction() {
     wave.readWave();
@@ -83,6 +85,7 @@ template <typename Wfn, typename Walker, typename OpType>
   {
     OpType::populateSinglesToOpList(oplist, ciCoeffs, screen);
     ciCoeffs.resize(oplist.size(), 0.0);
+    //excitedOvlps.resize(oplist.size(), 0.0);
   }
 
   void appendScreenedDoublesToOpList(double screen)
@@ -90,8 +93,9 @@ template <typename Wfn, typename Walker, typename OpType>
     OpType::populateScreenedDoublesToOpList(oplist, ciCoeffs, screen);
     //OpType::populateDoublesToOpList(oplist, ciCoeffs);
     ciCoeffs.clear(); ciCoeffs.resize(oplist.size(), 0.0); ciCoeffs[0] = 1.;
+    //excitedOvlps = Eigen::VectorXd::Zero(oplist.size());
     if (schd.ciCeption) {
-      uniform_real_distribution<double> dist(0.1,0.3);
+      uniform_real_distribution<double> dist(0.005,0.006);
       for (int i = 1; i<ciCoeffs.size(); i++) ciCoeffs[i] = dist(generator);
     }
   }
@@ -166,28 +170,40 @@ template <typename Wfn, typename Walker, typename OpType>
   
   double Overlap(Walker& walk) {
     double totalovlp = 0.0;
-    double ovlp0 = wave.Overlap(walk);
+    double ovlp0 = wave.Overlap(walk); 
+    //excitedOvlps.setZero();
+    //excitedOvlps[0] = ovlp0;
+    totalovlp += ciCoeffs[0] * ovlp0;
 
-    for (int i = 0; i < oplist.size(); i++)
-      {
-	for (int j=0; j<oplist[i].nops; j++) {
-	  Determinant dcopy = walk.d;
-	  bool valid = oplist[i].apply(dcopy, j);
-
-	  if (valid) {
+	Determinant dcopy = walk.d;
+    int opSize = oplist.size();
+    //int nops = 1;//change if using spin-free operators
+    for (int i = 1; i < opSize; i++) {
+	  for (int j = 0; j < oplist[i].nops; j++) {
+	  //for (int j=0; j<nops; j++) {
+        dcopy = walk.d;
+	    bool valid = 0;
 	    double ovlpdetcopy = 0.;
-        if (schd.ciCeption) {
-          Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
-          ovlpdetcopy = wave.Overlap(walkcopy); 
-	      totalovlp += ciCoeffs[i] * ovlpdetcopy;
+        if (schd.ciCeption) { //uncomment to work with non-sci waves
+          //for (int k = 0; k < op.n; k++) if (op.cre[k] >= 2*schd.nciAct) valid = 1;
+          //if (valid) continue;
+          valid = oplist[i].apply(dcopy, walk.excitedOrbs);
+          if (valid) {
+            Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
+            ovlpdetcopy = wave.Overlap(walkcopy); 
+            //excitedOvlps[i] = ovlpdetcopy;
+	        totalovlp += ciCoeffs[i] * ovlpdetcopy;
+          }
         }
-        else {
-          ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
-	      totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
+        else { 
+          valid = oplist[i].apply(dcopy, j);
+          if (valid) {
+            ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+	        totalovlp += ciCoeffs[i] * ovlpdetcopy * ovlp0;
+          }
         }
 	  }
-	}
-      }
+    }
     return totalovlp;
   }
 
@@ -197,23 +213,31 @@ template <typename Wfn, typename Walker, typename OpType>
   {
     VectorXd gradcopy = grad;
     gradcopy.setZero();
-
+    
     double ovlp0 = Overlap(walk);
-    if (ovlp0 == 0) return 0.;
+    //double ovlp0 = excitedOvlps[0];
+    if (ovlp0 == 0.) return 0.;
 
     for (int i = 0; i < oplist.size(); i++) {
       for (int j=0; j<oplist[i].nops; j++) {
-	    Determinant dcopy = walk.d;
-	    bool valid = oplist[i].apply(dcopy, j);
-	    if (valid) {
-          double ovlpdetcopy = 0.;
-          if (schd.ciCeption) {
-            Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
-            ovlpdetcopy = wave.Overlap(walkcopy) / ovlp0; 
-          }
-          else ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
-	      gradcopy[i] += ovlpdetcopy;
-	    }
+	  Determinant dcopy = walk.d;
+	  bool valid = 0;
+	  double ovlpdetcopy = 0.;
+      if (schd.ciCeption) {
+        valid = oplist[i].apply(dcopy, walk.excitedOrbs);
+        if (valid) {
+          Walker walkcopy(wave.getCorr(), wave.getRef(), dcopy);
+          ovlpdetcopy = wave.Overlap(walkcopy) / ovlp0; 
+        }
+        //ovlpdetcopy = excitedOvlps[i] / ovlp0; 
+      }
+      else { 
+        valid = oplist[i].apply(dcopy, j);
+        if (valid) {
+          ovlpdetcopy = calculateOverlapRatioWithUnderlyingWave(walk, dcopy);
+        }
+      }
+	  gradcopy[i] += ovlpdetcopy;
       }
     }
 
@@ -240,6 +264,7 @@ template <typename Wfn, typename Walker, typename OpType>
     int norbs = Determinant::norbs;
 
     ovlp = Overlap(walk);
+
     if (ovlp == 0.) return;
     ham = walk.d.Energy(I1, I2, coreE); 
 
@@ -260,6 +285,7 @@ template <typename Wfn, typename Walker, typename OpType>
       Walker walkcopy = walk;
       if (ex2 == 0) walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, true);
       else walkcopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+      if (schd.ciCeption && (walkcopy.excitedOrbs.size() > 2)) continue;
       double parity = 1.0;
       if (schd.ciCeption) {
         Determinant dcopy = walk.d;

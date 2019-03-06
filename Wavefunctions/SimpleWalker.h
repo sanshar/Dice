@@ -23,6 +23,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <Eigen/Dense>
 #include "input.h"
+#include <unordered_set>
+#include <iterator>
 
 using namespace Eigen;
 
@@ -39,12 +41,12 @@ class SimpleWalker
 
 public:
   Determinant d;                      //The current determinant
+  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
 
   // The constructor
   SimpleWalker(Determinant &pd) : d(pd) {};
   SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd) {};
   SimpleWalker(){};
-
 
   Determinant getDet() { return d; }
 
@@ -73,7 +75,10 @@ public:
   }
 
   friend ostream& operator<<(ostream& os, const SimpleWalker& w) {
-    os <<  w.d << endl;
+    os << w.d << endl;
+    //os << "excited Orbs   " << w.excitedOrbs << endl;
+    os << "excitedOrbs   ";
+    copy(w.excitedOrbs.begin(), w.excitedOrbs.end(), ostream_iterator<int>(os, " "));
     return os;
   }
   //template <typename Wfn>

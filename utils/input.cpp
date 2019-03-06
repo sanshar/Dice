@@ -92,6 +92,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.nGeneration = 30.0;
       schd.excitationLevel = 1;
       schd.numActive = -1;
+      schd.nciAct = -1;
       schd.ctmc = true;
       schd.cgIter = 15;
       schd.sDiagShift = 0.01;
@@ -181,6 +182,7 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "sci")) {
 	    schd.wavefunctionType = "sci";
         schd.ciCeption = true;
+        schd.nciAct = atoi(tok[1].c_str());
       }
       
       else if (boost::iequals(ArgName, "gutzwillerslater"))

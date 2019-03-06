@@ -75,6 +75,7 @@ private:
       & nGeneration
       & excitationLevel
       & numActive
+      & nciAct
       & sDiagShift
       & cgIter
       & stepsize
@@ -151,6 +152,7 @@ public:
   //option for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
+  int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
 };
 
 /**

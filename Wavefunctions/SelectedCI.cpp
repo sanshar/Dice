@@ -91,16 +91,22 @@ void SelectedCI::readWave() {
   }
   if (schd.debug) cout << "bestDet    " << bestDeterminant << "  " << DetsMap[bestDeterminant] << endl;
 }
- 
+
+//assuming bestDeterminant is an active space det, so no excitedOrbs
 void SelectedCI::initWalker(SimpleWalker &walk) {
   walk.d = bestDeterminant;
 }
 
 void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
   walk.d = d;
+  walk.excitedOrbs.clear();
+  for (int i = schd.nciAct; i < Determinant::norbs; i++) {
+    if (d.getoccA(i)) walk.excitedOrbs.insert(2*i);
+    else if (d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
+  }
 }
 
-
+//only used in deterministic calcs
 double SelectedCI::getOverlapFactor(SimpleWalker& walk, Determinant& dcopy) {
   auto it1 = DetsMap.find(walk.d);
   auto it2 = DetsMap.find(dcopy);

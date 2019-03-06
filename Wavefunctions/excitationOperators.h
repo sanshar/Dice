@@ -24,6 +24,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
 #include <utility>
+#include <unordered_set>
 
 class Determinant;
 
@@ -59,6 +60,7 @@ class Operator {
   friend ostream& operator << (ostream& os, Operator& o);
 
   bool apply(Determinant &dcopy, int op);
+  bool apply(Determinant &dcopy, const unordered_set<int> &excitedOrbs);
 
   static void populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen=0.0);
 
@@ -231,6 +233,7 @@ class SpinFreeOperator {
   friend ostream& operator << (ostream& os, const SpinFreeOperator& o);
 
   bool apply(Determinant &dcopy, int op);
+  bool apply(Determinant &dcopy, const unordered_set<int> &excitedOrbs) {};
 
   static void populateSinglesToOpList(vector<SpinFreeOperator>& oplist, vector<double>& hamElements, double screen =0.0);
   

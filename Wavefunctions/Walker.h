@@ -27,6 +27,7 @@
 #include "Slater.h"
 #include "AGP.h"
 #include "Pfaffian.h"
+#include <unordered_set>
 
 using namespace Eigen;
 
@@ -51,6 +52,7 @@ struct Walker<Corr, Slater> {
   Determinant d;
   WalkerHelper<Corr> corrHelper;
   WalkerHelper<Slater> refHelper;
+  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
 
   Walker() {};
   
@@ -443,6 +445,7 @@ struct Walker<Corr, AGP> {
   Determinant d;
   WalkerHelper<Corr> corrHelper;
   WalkerHelper<AGP> refHelper;
+  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
 
   Walker() {};
   
@@ -670,6 +673,7 @@ struct Walker<Corr, Pfaffian> {
   Determinant d;
   WalkerHelper<Corr> corrHelper;
   WalkerHelper<Pfaffian> refHelper;
+  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
 
   Walker() {};
   

@@ -62,6 +62,60 @@ bool Operator::apply(Determinant &dcopy, int op)
   return valid;
 }
 
+//used in active space calcs, excitedOrbs contains excited orbs in dcopy
+bool Operator::apply(Determinant &dcopy, const unordered_set<int> &excitedOrbs)
+{
+  if (excitedOrbs.size() == 2) {
+    for (int j = 0; j < n; j++) {
+      //if ((cre[j] >= 2*schd.nciAct) || (excitedOrbs.find(des[j]) == excitedOrbs.end())) return false;
+      //if (cre[j] >= 2*schd.nciAct) return false;
+      if (dcopy.getocc(des[j]) == true)
+        dcopy.setocc(des[j], false);
+      else
+        return false;
+      if (dcopy.getocc(cre[j]) == false)
+        dcopy.setocc(cre[j], true);
+      else
+        return false;
+    }
+    return true;
+  }
+  
+  else if (excitedOrbs.size() == 1) {
+    //bool valid = false;
+    bool valid = true;
+    for (int j = 0; j < n; j++) {
+      //if (cre[j] >= 2*schd.nciAct) return false;
+      //if (excitedOrbs.find(des[j]) == excitedOrbs.end()) valid = true;
+      if (dcopy.getocc(des[j]) == true)
+        dcopy.setocc(des[j], false);
+      else
+        return false;
+      if (dcopy.getocc(cre[j]) == false)
+        dcopy.setocc(cre[j], true);
+      else
+        return false;
+    }
+    return valid;
+  }
+
+  else {
+    bool valid = true;
+    for (int j = 0; j < n; j++) {
+      //if ((des[j] >= 2*schd.nciAct) || (cre[j] >= 2*schd.nciAct)) return false;
+      if (des[j] >= 2*schd.nciAct) return false;
+      if (dcopy.getocc(des[j]) == true)
+        dcopy.setocc(des[j], false);
+      else
+        return false;
+      if (dcopy.getocc(cre[j]) == false)
+        dcopy.setocc(cre[j], true);
+      else
+        return false;
+    }
+    return valid;
+  }
+}
   
 //used in Lanczos
 void Operator::populateSinglesToOpList(vector<Operator>& oplist, vector<double>& hamElements, double screen) {
