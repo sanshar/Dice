@@ -32,62 +32,71 @@ Prerequisites
 
 An example of download and compilation commands for the `NN` version of Boost can be:
 
-```
-  wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_NN_0.tar.gz
-  tar -xf boost_1_NN_0.tar.gz
-  cd boost_1_NN_0
-  ./bootstrap.sh
-  echo "using mpi ;" >> project-config.jam
-  ./b2 -j6 --target=shared,static
-```
-
-
-* [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled but can be installed)
-
-One way of getting and installing the Eigen package is:
-
-```
-  hg clone https://bitbucket.org/eigen/eigen/
-  cd eigen
-  mkdir build_dir
-  cd build_dir
-  cmake ..
-  sudo make install
+```bash
+wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_NN_0.tar.gz
+tar -xf boost_1_NN_0.tar.gz
+cd boost_1_NN_0
+./bootstrap.sh
+echo "using mpi ;" >> project-config.jam
+./b2 -j6 --target=shared,static
 ```
 
-* About compiler requirements:
+**NOTE** | Set the ENV variable `BOOST_ROOT` to the path where the boost `include` and `lib` directories are installed.
+-|-
+
+* [CMake]() (Build configuration system)
+
+CMake is used to control the software compilation process using simple platform and compiler independent configuration files, and generate native makefiles and workspaces that can be used in the compiler environment of your choice.
+
+You can download it in a variety of ways, we think that the package manager `pip` is the easiest:
+
+```bash
+pip install cmake
+```
+
+<!-- * [Eigen](http://eigen.tuxfamily.org/dox/) (Eigen consists of header files and does not have to be compiled but can be installed)
+This is automatically downloaded during the installation of *Dice*. -->
+
+
+* Compiler requirements:
     - GNU: g++ 4.8 or newer
     - Intel: icpc 14.0.1 or newer
-    - In any case: the C++0x/C++11 standards must be supported.
+    - The compiler must support the C++14 standard.
+    - The compiler must support OpenMP
 
 
 Compilation
 -------
 
-Edit the `Makefile` in the main directory and change the paths to your Eigen and Boost libraries.
-The user can choose whether to use gcc or intel by setting the `USE_INTEL` variable accordingly,
-and whether or not to compile with MPI by setting the `USE_MPI` variable.
-All the lines in the `Makefile` that normally need to be edited are shown below:
-
-```
-  USE_MPI = yes
-  USE_INTEL = yes
-  EIGEN=/path_to/eigen
-  BOOST=/path_to/boost_1_NN_0
+```bash
+export BOOST_ROOT=<path_to_boost>
+cd build
+cmake ..
+make -j
 ```
 
 
 Testing
 -------
 
-Upon successful compilation, one can test the code using the `runTests.sh` script in `/path_to/Dice/tests/`
-(before running this script, edit the `MPICOMMAND` variable to the appropriate number of processors you wish to run the tests onto):
+To build the unit-tests you can add the CMake command line option `-DENABLE_TESTS=ON`. The modified build procedure:
 
+```bash
+export BOOST_ROOT=<path_to_boost>
+cd build
+cmake .. -DENABLE_TESTS=ON
+make -j
+make test
 ```
-  cd /path_to/Dice/tests/
-  ./runTests.sh
+
+There are two sets of smoke tests (tests that evaluate the final result of a calculation): first, the serial tests (`Dice/tests/test_serial.py`) is a short series of tests that are small enough to be run on any machine; second, the mpi tests (`Dice/tests/test_mpi.py`) are larger and might not be able to run on every configuration.
+
+We suggest running the unit-tests with `pytest`, which can be installed using [`pip`](https://docs.pytest.org/en/latest/getting-started.html#install-pytest) or [`conda`](https://anaconda.org/anaconda/pytest).
+
+To run the tests:
+
+```bash
+cd tests
+pytest -v test_serial.py
+pytest -v test_mpi.py
 ```
-
-
-  If your system has limited memory or slow processing power, you may wish to comment out the tests for Mn(salen) in the `runTests.sh`
-  script because they require a large amount of processing power and memory.

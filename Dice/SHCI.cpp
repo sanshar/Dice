@@ -465,7 +465,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    // TODO Find permanent home for 3RDM
+    // TODO Find permanent home for RDMs
     if (schd.DoOneRDM) {
       pout << "Calculating 1-RDM..." << endl;
       MatrixXx s1RDM;
@@ -623,6 +623,8 @@ int main(int argc, char *argv[]) {
     }
 
     // THIS IS USED FOR RDM CALCULATION FOR DETERMINISTIC PT
+    // JETS: I think this calculates just the 4th term in Eqn. 20 (Smith JCTC
+    // 2017)
     if ((schd.doResponse || schd.DoRDM) && schd.RdmType == RELAXED &&
         (!schd.stochastic && schd.nblocks == 1)) {
       if (schd.DavidsonType == DIRECT) {

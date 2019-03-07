@@ -59,6 +59,14 @@ def test_o2_det_direct():
     dtu.test_energy()
 
 
+def test_n2_pt_rdm():
+
+    os.chdir("./n2_pt_rdm")
+    subprocess.call(dice_exe, shell=True)
+    # dtu.test_energy()
+    # dtu.compare_2rdm(tol=5e-7)
+
+
 def test_c2_pt_rdm():
     os.chdir("./c2_pt_rdm")
     subprocess.call(dice_exe, shell=True)

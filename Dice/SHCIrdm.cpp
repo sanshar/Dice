@@ -502,7 +502,8 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
         for (int n2 = 0; n2 < nSpatOrbs; n2++)
           for (int n3 = 0; n3 < nSpatOrbs; n3++)
             for (int n4 = 0; n4 < nSpatOrbs; n4++) {
-              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) > 1.e-6)
+              if (fabs(s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4)) >
+                  1.e-12)  // Originally 1.e-6
                 ofs << str(boost::format("%3d   %3d   %3d   %3d   %10.8g\n") %
                            n1 % n2 % n3 % n4 %
                            s2RDM(n1 * nSpatOrbs + n2, n3 * nSpatOrbs + n4));
@@ -663,6 +664,8 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
 
   Update variational 2RDMs with perturbative contributions.
 
+  JETS: I think this calculates just the third term in Eqn. 20 (Smith JCTC 2017)
+
   :Arguments:
 
       Determinant *Dets:
@@ -738,8 +741,9 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
     }
   }
 
-  for (size_t k = 0; k < uniqueDets.size(); k++) {
+  for (size_t k = 0; k < uniqueDets.size(); k++) {  // PT dets
     for (size_t i = 0; i < uniqueVarIndices[k].size(); i++) {
+      // i in variational connections to PT det k
       int d0 = uniqueOrbDiff[k][i] % norbs,
           c0 = (uniqueOrbDiff[k][i] / norbs) % norbs;
 
@@ -1271,7 +1275,11 @@ void popSpin3RDM(vector<int> &cs, vector<int> &ds, CItype value, size_t &norbs,
     do {
       par = pars[ctr / 6] * pars[ctr % 6];
       ctr++;
+#ifdef Complex
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
       threeRDM(genIdx(cs[cI[0]], cs[cI[1]], cs[cI[2]], norbs),
                genIdx(ds[dI[0]], ds[dI[1]], ds[dI[2]], norbs)) += par * value;
     } while (next_permutation(dI, dI + 3));
@@ -1300,7 +1308,11 @@ void SHCIrdm::popSpatial3RDM(vector<int> &cs, vector<int> &ds, CItype value,
       ctr++;
       if (cs[cI[0]] % 2 == ds[dI[2]] % 2 && cs[cI[1]] % 2 == ds[dI[1]] % 2 &&
           cs[cI[2]] % 2 == ds[dI[0]] % 2) {
+#ifdef Complex
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
         s3RDM(genIdx(cs[cI[0]] / 2, cs[cI[1]] / 2, cs[cI[2]] / 2, norbs / 2),
               genIdx(ds[dI[0]] / 2, ds[dI[1]] / 2, ds[dI[2]] / 2, norbs / 2)) +=
             par * value;
@@ -1489,7 +1501,11 @@ void popSpin4RDM(vector<int> &cs, vector<int> &ds, CItype value, int &norbs,
   do {
     do {
       par = pars[ctr / 24] * pars[ctr % 24];
+#ifdef Complex
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
       fourRDM(gen4Idx(cs[cI[0]], cs[cI[1]], cs[cI[2]], cs[cI[3]], norbs),
               gen4Idx(ds[dI[0]], ds[dI[1]], ds[dI[2]], ds[dI[3]], norbs)) +=
           par * value;
@@ -1513,7 +1529,11 @@ void SHCIrdm::popSpatial4RDM(vector<int> &cs, vector<int> &ds, CItype value,
       par = pars[ctr / 24] * pars[ctr % 24];
       if (cs[cI[0]] % 2 == ds[dI[3]] % 2 && cs[cI[1]] % 2 == ds[dI[2]] % 2 &&
           cs[cI[2]] % 2 == ds[dI[1]] % 2 && cs[cI[3]] % 2 == ds[dI[0]] % 2) {
+#ifdef Complex
+#pragma omp critical
+#else
 #pragma omp atomic update
+#endif
         s4RDM(gen4Idx(cs[cI[0]] / 2, cs[cI[1]] / 2, cs[cI[2]] / 2,
                       cs[cI[3]] / 2, nSOs),
               gen4Idx(ds[dI[0]] / 2, ds[dI[1]] / 2, ds[dI[2]] / 2,

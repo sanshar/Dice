@@ -82,29 +82,50 @@ struct Hmult2 {
     // TODO
     auto start = std::chrono::system_clock::now();
 
-    vector<CItype> ytemp(numDets, 0);
+    // vector<CItype> ytemp(numDets, 0);
+    vector<double> ytemp(numDets, 0);
 
+#ifdef Complex
+    vector<double> ytemp_imag(numDets, 0);
+#endif
+
+    // Looping over determinants and then connections
 #pragma omp parallel for
     for (int i = 0; i < sparseHam.connections.size(); i++) {
       for (int j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
+
+#ifdef Complex
+        std::complex<double> temp_complex = hij * x[J];
+#pragma omp atomic update
+        ytemp[i * size + rank] += temp_complex.real();
+#pragma omp atomix update
+        ytemp_imag[i * size + rank] += temp_complex.imag();
+
+        if (J != i * size + rank) {
+          std::complex<double> temp_complex2 =
+              std::conj(hij) * x[i * size + rank];
+#pragma omp atomic update
+          ytemp[J] += temp_complex2.real();
+#pragma omp atomic update
+          ytemp_imag[J] += temp_complex2.imag();
+        }
+#else  // Real
 #pragma omp atomic update
         ytemp[i * size + rank] += hij * x[J];
 
-        if (J != i * size + rank)
+        if (J != i * size + rank) {
 #pragma omp atomic update
-#ifdef Complex
-          ytemp[J] += std::conj(hij) * x[i * size + rank];
-#else
           ytemp[J] += hij * x[i * size + rank];
+        }
 #endif
       }
     }
 
 // Reduce result vector y (if using distributed memory)
 #ifndef SERIAL
-#ifndef Complex
+#ifndef Complex  // Real and parallel
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
@@ -113,18 +134,26 @@ struct Hmult2 {
       MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
     }
-#else
+#else  // Complex and parallel (there is no complex and serial)
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
-      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+      MPI_Reduce(MPI_IN_PLACE, &ytemp_imag[0], 2 * numDets, MPI_DOUBLE, MPI_SUM,
+                 0, localcomm);
+      for (int j = 0; j < numDets; j++) {
+        y[j].real(ytemp[j]);
+        y[j].imag(ytemp_imag[j]);
+      }
+
     } else {
       MPI_Reduce(&ytemp[0], &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
+                 localcomm);
+      MPI_Reduce(&ytemp[0], &ytemp_imag[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
     }
 #endif
     MPI_Barrier(MPI_COMM_WORLD);
-#else
+#else  // Serial and Real
     for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
 #endif
     // TODO

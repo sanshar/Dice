@@ -130,7 +130,7 @@ set(DICE_SOURCES
 )
 
 IF(${COMPLEX})
-  set(DICE_SOURCES
+  set(ZDICE_SOURCES
       ${DICE_SOURCES}
       ${DICE_SOURCE_DIR}/SOChelper.cpp
       ${DICE_SOURCE_DIR}/new_anglib.cpp
@@ -144,8 +144,15 @@ ENDIF()
 #################################
 message(STATUS "Compile Flags: ${CMAKE_CXX_FLAGS}")
 
+# Executable
 add_executable(Dice ${DICE_SOURCES})
 add_dependencies(Dice eigen_project)
+
+IF(${COMPLEX})
+  add_executable(ZDice ${ZDICE_SOURCES})
+  add_dependencies(ZDice eigen_project)
+ENDIF()
+
 
 # Add compile definitions
 IF(${SERIAL})
@@ -153,14 +160,21 @@ IF(${SERIAL})
 ENDIF()
 
 IF(${COMPLEX})
-  set_target_properties(Dice PROPERTIES COMPILE_FLAGS "-DCOMPLEX")
+  set_target_properties(ZDice PROPERTIES COMPILE_FLAGS "-DComplex")
+  message(STATUS "Building ZDice for complex numbers!")
 ENDIF()
 
 # Do not include -lrt on Mac OSX builds
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
-ELSE()
+  IF(${COMPLEX})
+    target_link_libraries(ZDice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi)
+  ENDIF()
+ELSE() # Linux Systems
   target_link_libraries(Dice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+  IF(${COMPLEX})
+    target_link_libraries(ZDice -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+  ENDIF()
 ENDIF()
 
 

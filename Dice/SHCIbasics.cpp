@@ -488,7 +488,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
       if (i % size != rank) continue;
       SHCIgetdeterminants::getDeterminants(
           Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
-          irrep, coreE, E0, uniqueDEH, schd, 0, nelec);
+          irrep, coreE, E0, uniqueDEH, schd, 0, nelec, true);
     }
   } else {
     for (int i = 0; i < DetsSize; i++) {
@@ -809,6 +809,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
   // sometimes coreenergy is huge and it kills the stability of davidson solver
   // so make it zero and just add it to the converged energy
   double coreEbkp = coreE;
+  pout << "Current CoreE = " << coreEbkp << '\n';
   coreE = 0.0;
 
   if (schd.outputlevel > 0 && commrank == 0)
@@ -898,9 +899,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx>& ci,
     }
 
     for (int i = 0; i < E0.size(); i++)
-      pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n") %
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f %9s  %10.2f\n") %
                   (iterstart) % (i) % schd.epsilon1[iterstart] % DetsSize %
-                  (E0[i] + coreEbkp) % (getTime() - startofCalc);
+                  (E0[i] + coreEbkp) % ("-") % (getTime() - startofCalc);
 
     if (!schd.fullrestart)
       iterstart++;
