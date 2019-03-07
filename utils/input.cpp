@@ -200,6 +200,9 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "cijastrowslater"))
 	    schd.wavefunctionType = "CIJastrowSlater";
       
+      else if (boost::iequals(ArgName, "lanczossci"))
+	    schd.wavefunctionType = "LanczosSci";
+      
       else if (boost::iequals(ArgName, "lanczoscpsslater"))
 	    schd.wavefunctionType = "LanczosCPSSlater";
       

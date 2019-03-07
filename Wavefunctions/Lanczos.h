@@ -73,12 +73,12 @@ class Lanczos
   }  
 
   template<typename Walker>
-  void optimizeWave(Walker& walk) {
+  double optimizeWave(Walker& walk, double alphaInit = 0.1) {
     Eigen::VectorXd stddev = Eigen::VectorXd::Zero(4);
     Eigen::VectorXd rk = Eigen::VectorXd::Zero(4);
     //double rk = 0;
     Eigen::VectorXd lanczosCoeffs = Eigen::VectorXd::Zero(4);
-    alpha = 0.1;
+    alpha = alphaInit;
     if (schd.deterministic) getLanczosCoeffsDeterministic(wave, walk, alpha, lanczosCoeffs);
     else getLanczosCoeffsContinuousTime(wave, walk, alpha, lanczosCoeffs, stddev, rk, schd.stochasticIter, 1.e-5);
 
@@ -94,11 +94,14 @@ class Lanczos
     double eP = (a * pow(alphaP, 2) + 2 * b * alphaP + c) / (b * pow(alphaP, 2) + 2 * c * alphaP + 1);
     double eM = (a * pow(alphaM, 2) + 2 * b * alphaM + c) / (b * pow(alphaM, 2) + 2 * c * alphaM + 1);
     if (commrank == 0) {
+      cout << "coeffs\n" << lanczosCoeffs << endl; 
+      //cout << "a  " << a << "  b  " << b << "  b  " << "   c  " << c << endl;
       cout << "alpha(+/-)   " << alphaP << "   " << alphaM << endl;
       cout << "energy(+/-)   " << eP << "   " << eM << endl;
     }
     if (eP < eM) alpha = alphaP;
     else alpha = alphaM;
+    return alpha;
   }
   
   template<typename Walker>

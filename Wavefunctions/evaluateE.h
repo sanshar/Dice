@@ -260,8 +260,11 @@ void getLanczosCoeffsDeterministic(Wfn &w, Walker &walk, double &alpha, Eigen::V
     w.initWalker(walk, allDets[i]);
     Eigen::VectorXd coeffsSample = Eigen::VectorXd::Zero(4);
     double overlapSample = 0.;
-    //cout << walk;
     w.HamAndOvlpLanczos(walk, coeffsSample, overlapSample, work, moreWork, alpha);
+    if (schd.debug) {
+      cout << "walker\n" << walk << endl;
+      cout << "coeffsSample\n" << coeffsSample << endl;
+    }
     //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
     //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
     

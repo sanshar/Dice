@@ -71,6 +71,15 @@ class SelectedCI
 			   double &factor,
 			   Eigen::VectorXd &grad);
 
+  void HamAndOvlp(SimpleWalker &walk,
+                  double &ovlp, double &ham, 
+                  workingArray& work, bool fillExcitations=true);
+  
+  void HamAndOvlpLanczos(SimpleWalker &walk,
+                         Eigen::VectorXd &lanczosCoeffsSample,
+                         double &ovlpSample,
+                         workingArray& work,
+                         workingArray& moreWork, double &alpha) ;
   //void getVariables(Eigen::VectorXd &v);
 
   //long getNumVariables();

@@ -192,6 +192,13 @@ int main(int argc, char *argv[])
     wave.optimizeWave(walk);
     wave.writeWave();
   }
+  
+  else if (schd.wavefunctionType == "LanczosSci") {
+    Lanczos<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    double alpha = wave.optimizeWave(walk, 0.943685);
+    wave.writeWave();
+  }
 
   else if (schd.wavefunctionType == "slaterRDM") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;

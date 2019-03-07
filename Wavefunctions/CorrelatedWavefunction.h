@@ -243,6 +243,7 @@ struct CorrelatedWavefunction {
   
     //loop over all the screened excitations
     //cout << "eloc excitations" << endl;
+    //if (schd.debug) cout << "phi0  d.energy" << ham << endl;
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       double tia = work.HijElement[i];
@@ -254,10 +255,11 @@ struct CorrelatedWavefunction {
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham += tia * ovlpRatio;
-      if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
+      //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
 
       work.ovlpRatio[i] = ovlpRatio;
     }
+    //if (schd.debug) cout << endl;
   }
 
   void HamAndOvlpLanczos(const Walker<Corr, Reference> &walk,
@@ -280,6 +282,7 @@ struct CorrelatedWavefunction {
     lanczosCoeffsSample[1] = ovlp[0] * ovlp[1] * el0 / (ovlp[2] * ovlp[2]);
     el1 = walk.d.Energy(I1, I2, coreE);
 
+    //if (schd.debug) cout << "phi1  d.energy  " << el1 << endl;
     //workingArray work1;
     //cout << "E0  " << el1 << endl;
     //loop over all the screened excitations
@@ -292,8 +295,10 @@ struct CorrelatedWavefunction {
       ovlp1 = el0 * ovlp0;
       el1 += tia * ovlp1 / ovlp[1];
       work.ovlpRatio[i] = (ovlp0 + alpha * ovlp1) / ovlp[2];
+      //if (schd.debug) cout << work.excitation1[i] << "  " << work.excitation2[i] << "  tia  " << tia << "  ovlpRatio  " << ovlp1 / ovlp[1] << endl;
     }
 
+    //if (schd.debug) cout << endl;
     lanczosCoeffsSample[2] = ovlp[1] * ovlp[1] * el1 / (ovlp[2] * ovlp[2]);
     lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
     ovlpSample = ovlp[2];
