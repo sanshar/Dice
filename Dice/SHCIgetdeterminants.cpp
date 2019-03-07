@@ -29,7 +29,7 @@
 #include "Dice/Davidson.h"
 #include "Dice/Hmult.h"
 #include "Dice/Utils/Determinants.h"
-#include "Dice/Utils/SHCISortMPIUtils.h"
+#include "Dice/Utils/SHCISortMpiUtils.h"
 #include "Dice/Utils/input.h"
 #include "Dice/Utils/integral.h"
 
