@@ -26,6 +26,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <map>
+#include <unordered_map>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/unordered_map.hpp>
@@ -46,7 +47,8 @@ class SelectedCI
   using CorrType = Determinant;
   using ReferenceType = Determinant;
   
-  map<Determinant, double> DetsMap;
+  unordered_map<Determinant, double, boost::hash<Determinant> > DetsMap;
+  //map<Determinant, double> DetsMap;
   Determinant bestDeterminant;
 
   SelectedCI();

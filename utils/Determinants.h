@@ -23,6 +23,7 @@
 #include <iostream>
 #include <vector>
 #include <boost/serialization/serialization.hpp>
+#include <boost/functional/hash.hpp>
 #include <Eigen/Dense>
 
 
@@ -128,11 +129,11 @@ class Determinant {
   bool connected(const Determinant& d) const;
   int ExcitationDistance(const Determinant& d) const;
 
-
   //operators
   bool operator<(const Determinant& d) const;
   bool operator==(const Determinant& d) const;
   friend ostream& operator<<(ostream& os, const Determinant& d);
+  friend size_t hash_value(Determinant const& d);
 
 };
 

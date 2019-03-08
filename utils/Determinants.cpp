@@ -366,6 +366,18 @@ ostream& operator<<(ostream& os, const Determinant& d) {
   return os;
 }
 
+size_t hash_value(Determinant const& d) {
+  std::size_t seed = 0;
+  //boost::hash_combine(seed, d.reprA[0]);
+  //boost::hash_combine(seed, d.reprB[0]);
+  boost::hash_combine(seed, d.reprA[0] * 2654435761);
+  boost::hash_combine(seed, d.reprB[0] * 2654435761);
+  //for (int i = 0; i < DetLen; i++) {
+  //  boost::hash_combine(seed, d.reprA[i]);
+  //  boost::hash_combine(seed, d.reprB[i]);
+  //}
+  return seed;
+}
 
 //=============================================================================
 double Determinant::Energy(const oneInt& I1, const twoInt&I2, const double& coreE) const {

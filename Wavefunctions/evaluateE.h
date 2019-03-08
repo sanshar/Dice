@@ -549,22 +549,22 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
   
   int transIter = 0, nTransIter = 1000;
 
-  while (transIter < nTransIter) {
-    double cumovlpRatio = 0;
-    //when using uniform probability 1./numConnection * max(1, pi/pj)
-    for (int i = 0; i < work.nExcitations; i++) {
-      cumovlpRatio += abs(work.ovlpRatio[i]);
-      work.ovlpRatio[i] = cumovlpRatio;
-    }
+  //while (transIter < nTransIter) {
+  //  double cumovlpRatio = 0;
+  //  //when using uniform probability 1./numConnection * max(1, pi/pj)
+  //  for (int i = 0; i < work.nExcitations; i++) {
+  //    cumovlpRatio += abs(work.ovlpRatio[i]);
+  //    work.ovlpRatio[i] = cumovlpRatio;
+  //  }
 
-    double nextDetRandom = random() * cumovlpRatio;
-    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                   nextDetRandom) - work.ovlpRatio.begin();
+  //  double nextDetRandom = random() * cumovlpRatio;
+  //  int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+  //                                 nextDetRandom) - work.ovlpRatio.begin();
 
-    transIter++;
-    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
-  }
+  //  transIter++;
+  //  walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+  //  w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+  //}
 
   while (iter < niter) {
     double cumovlpRatio = 0;
