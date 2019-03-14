@@ -82,6 +82,7 @@ private:
       & ifComplex
       & uagp
       & ciCeption
+      & actWidth
       & expCorrelator;
   }
 public:
@@ -153,6 +154,7 @@ public:
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
+  double actWidth; //used in lanczos
 };
 
 /**

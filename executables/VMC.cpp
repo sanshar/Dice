@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "LanczosSci") {
     Lanczos<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
-    double alpha = wave.optimizeWave(walk, -0.1);
+    double alpha = wave.optimizeWave(walk, schd.alpha);
     wave.writeWave();
   }
 

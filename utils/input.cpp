@@ -65,7 +65,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.method = amsgrad;
       schd.decay2 = 0.001;
       schd.decay1 = 0.1;
-      schd.alpha = 0.001;
+      schd.alpha = 0.01; //now lanczos alpha
       schd.beta = 1.;
       schd.momentum = 0.;
       schd.stepsize = 0.001;
@@ -93,6 +93,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.excitationLevel = 1;
       schd.numActive = -1;
       schd.nciAct = -1;
+      schd.actWidth = 100;
       schd.ctmc = true;
       schd.cgIter = 15;
       schd.sDiagShift = 0.01;
@@ -200,8 +201,14 @@ void readInput(string input, schedule& schd, bool print) {
       else if (boost::iequals(ArgName, "cijastrowslater"))
 	    schd.wavefunctionType = "CIJastrowSlater";
       
-      else if (boost::iequals(ArgName, "lanczossci"))
+      else if (boost::iequals(ArgName, "lanczossci")) {
 	    schd.wavefunctionType = "LanczosSci";
+        //schd.nciAct = atoi(tok[1].c_str());
+      }
+      
+      else if (boost::iequals(ArgName, "actWidth")) {
+        schd.actWidth = atoi(tok[1].c_str());
+      }
       
       else if (boost::iequals(ArgName, "lanczoscpsslater"))
 	    schd.wavefunctionType = "LanczosCPSSlater";
