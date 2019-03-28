@@ -48,6 +48,7 @@
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
 #include "Lanczos.h"
+#include "SCCI.h"
 #include "runVMC.h"
 
 using namespace Eigen;
@@ -197,6 +198,14 @@ int main(int argc, char *argv[])
     Lanczos<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     double alpha = wave.optimizeWave(walk, schd.alpha);
+    wave.writeWave();
+  }
+  
+  else if (schd.wavefunctionType == "scci") {
+    SCCI<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    if (schd.deterministic) wave.optimizeWaveDeterministic(walk);
+    else wave.optimizeWaveCT(walk);
     wave.writeWave();
   }
 

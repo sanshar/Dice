@@ -180,6 +180,11 @@ void readInput(string input, schedule& schd, bool print) {
 	    schd.wavefunctionType = "test";
       }
       
+      else if (boost::iequals(ArgName, "scci")) {
+	    schd.wavefunctionType = "scci";
+        schd.nciAct = atoi(tok[1].c_str());
+      }
+      
       else if (boost::iequals(ArgName, "sci")) {
 	    schd.wavefunctionType = "sci";
         schd.ciCeption = true;
