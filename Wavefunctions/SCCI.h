@@ -191,7 +191,8 @@ class SCCI
                             std::ref(generator));
 
     MatrixXd ciHam = MatrixXd::Zero(coeffs.size(), coeffs.size());
-    MatrixXd sMat = MatrixXd::Zero(coeffs.size(), coeffs.size()); 
+    //MatrixXd sMat = MatrixXd::Zero(coeffs.size(), coeffs.size()); 
+    VectorXd ovlpDiag = VectorXd::Zero(coeffs.size());
     double ovlp = 0., normSample = 0.;
     VectorXd hamSample = VectorXd::Zero(coeffs.size());
     int coeffsIndex = this->coeffsIndex(walk);
@@ -214,8 +215,10 @@ class SCCI
                                      nextDetRandom) - work.ovlpRatio.begin();
       cumdeltaT += deltaT;
       double ratio = deltaT / cumdeltaT;
-      sMat *= (1 - ratio);
-      sMat(coeffsIndex, coeffsIndex) += ratio * normSample;
+      //sMat *= (1 - ratio);
+      ovlpDiag *= (1 - ratio);
+      //sMat(coeffsIndex, coeffsIndex) += ratio * normSample;
+      ovlpDiag(coeffsIndex) += ratio * normSample;
       ciHam *= (1 - ratio);
       ciHam.row(coeffsIndex) += ratio * hamSample;
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
@@ -227,23 +230,47 @@ class SCCI
     }
   
     ciHam *= cumdeltaT;
-    sMat *= cumdeltaT;
+    //sMat *= cumdeltaT;
+    ovlpDiag *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, ciHam.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, sMat.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  //MPI_Allreduce(MPI_IN_PLACE, sMat.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, ovlpDiag.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
+    if (commrank == 0) cout << "matrices built in  " << getTime() - startofCalc << endl; 
+    
     if (commrank == 0) {
       ciHam /= cumdeltaT;
-      sMat /= cumdeltaT;
+      //sMat /= cumdeltaT;
+      ovlpDiag /= cumdeltaT;
       ciHam = (ciHam + ciHam.transpose().eval()) / 2;
-      sMat += 1.e-7 * MatrixXd::Identity(coeffs.size(), coeffs.size());
-      GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
+      //DiagonalMatrix<double, Dynamic> sMat(coeffs.size());
+      //sMat.diagonal() = 1.e-7 + ovlpDiag.array();
+      std::vector<int> largeNormIndices;
+      for (int i = 0; i < coeffs.size(); i++) {
+        if (ovlpDiag(i) > 1.e-5) largeNormIndices.push_back(i);
+      }
+      Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
+      VectorXd largeNorms;
+      igl::slice(ovlpDiag, largeNormSlice, largeNorms);
+      DiagonalMatrix<double, Dynamic> normInv(coeffs.size());
+      //normInv.diagonal() = (ovlpDiag.array() + 1.e-7).cwiseSqrt().cwiseInverse();
+      normInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+      MatrixXd largeHam;
+      igl::slice(ciHam, largeNormSlice, largeNormSlice, largeHam);
+      MatrixXd ciHamNorm = normInv * largeHam * normInv;
+      SelfAdjointEigenSolver<MatrixXd> diag(ciHamNorm);
+      //auto sMat = sMatDiag + 1.e-7 * MatrixXd::Identity(coeffs.size(), coeffs.size());
+      //DiagonalMatrix<double, Dynamic> normInv(size);
+      //normInv.diagonal() = diagVec.cwiseSqrt().cwiseInverse();
+      //GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl;
-      cout << "energy   " << diag.eigenvalues().real().minCoeff() << endl;
+      cout << "diagonaliztion in time  " << getTime() - startofCalc << endl; 
+      cout << "energy   " << diag.eigenvalues().minCoeff() << endl;
     }
   }
   
