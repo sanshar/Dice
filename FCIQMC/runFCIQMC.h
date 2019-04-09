@@ -71,9 +71,8 @@ void runFCIQMC() {
   // Processor that the HF determinant lives on
   int HFDetProc = HFDet.getProc();
 
-  // TODO: Update when code is parallelized
-  int walkersSize = schd.targetPop * schd.mainMemoryFac;
-  int spawnSize = schd.targetPop * schd.spawnMemoryFac;
+  int walkersSize = schd.targetPop * schd.mainMemoryFac / commsize;
+  int spawnSize = schd.targetPop * schd.spawnMemoryFac / commsize;
 
   walkersFCIQMC walkers(walkersSize);
   spawnFCIQMC spawn(spawnSize);
