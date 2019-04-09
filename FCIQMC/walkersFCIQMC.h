@@ -19,28 +19,16 @@
 #ifndef walkersFCIQMC_HEADER_H
 #define walkersFCIQMC_HEADER_H
 
-#include "global.h"
 #include <iostream>
 #include <vector>
-#include <boost/serialization/serialization.hpp>
-#include <Eigen/Dense>
 #include <unordered_map>
+#include "Determinants.h"
+
+using namespace std;
 
 class Determinant;
 
-void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-  double pAccept = abs(amp)/minPop;
-  if (random() < pAccept) {
-    amp = copysign(minPop, amp);
-    roundedUp = true;
-  } else {
-    amp = 0.0;
-    roundedUp = false;
-  }
-}
-
-using namespace std;
+void stochastic_round(const double& minPop, double& amp, bool& roundedUp);
 
 // Class for main walker list in FCIQMC
 class walkersFCIQMC {
@@ -62,72 +50,12 @@ class walkersFCIQMC {
   vector<int> emptyDets;
   int firstEmpty, lastEmpty;
 
-  walkersFCIQMC(int arrayLength) {
-    nDets = 0;
-    dets.resize(arrayLength);
-    amps.resize(arrayLength, 0.0);
-    emptyDets.resize(arrayLength);
-    firstEmpty = 0;
-    lastEmpty = -1;
-  }
+  walkersFCIQMC(int arrayLength);
 
-  void stochasticRoundAll(const double& minPop) {
-    bool keepDet;
-    for (int iDet=0; iDet<nDets; iDet++) {
-
-      // To be a valid walker in the main list, there must be a corresponding
-      // hash table entry *and* the amplitude must be non-zero
-      if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
-        if (abs(amps[iDet]) < minPop) {
-          stochastic_round(minPop, amps[iDet], keepDet);
-
-          if (!keepDet) {
-            ht.erase(dets[iDet]);
-            lastEmpty += 1;
-            emptyDets[lastEmpty] = iDet;
-          }
-        }
-
-      } else {
-        if (abs(amps[iDet]) > 1.0e-12) {
-          // This should never happen - the hash table entry should not be
-          // removed unless the walker population becomes zero
-          cout << "#Error: Non-empty det no hash table entry found." << endl;
-          cout << dets[iDet] << "    " << amps[iDet] << endl;
-        }
-      }
-
-    }
-  }
+  void stochasticRoundAll(const double& minPop);
 
   void calcStats(Determinant& HFDet, double& walkerPop, double& EProj, double& HFAmp,
-                 oneInt& I1, twoInt& I2, double& coreE) {
-
-    int excitLevel = 0;
-    walkerPop = 0.0;
-    EProj = 0.0;
-    HFAmp = 0.0;
-
-    for (int iDet=0; iDet<nDets; iDet++) {
-
-      // To be a valid walker in the main list, there must be a corresponding
-      // hash table entry *and* the amplitude must be non-zero
-      if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
-
-        walkerPop += abs(amps[iDet]);
-        excitLevel = HFDet.ExcitationDistance(dets[iDet]);
-
-        if (excitLevel == 0) {
-          HFAmp = amps[iDet];
-          EProj += amps[iDet] * HFDet.Energy(I1, I2, coreE);
-        } else if (excitLevel <= 2) {
-          EProj += amps[iDet] * Hij(HFDet, dets[iDet], I1, I2, coreE);
-        }
-
-      } // If a valid walker
-
-    } // Loop over all entries in list
-  }
+                 oneInt& I1, twoInt& I2, double& coreE);
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {

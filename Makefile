@@ -97,6 +97,8 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/SHCIshm.o \
 	obj/Determinants.o \
 	obj/Correlator.o \
+	obj/spawnFCIQMC.o \
+	obj/walkersFCIQMC.o \
 
 
 obj/%.o: %.cpp  
@@ -107,6 +109,8 @@ obj/%.o: utils/%.cpp
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: VMC/%.cpp  
 	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+obj/%.o: FCIQMC/%.cpp  
+	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 
 
 all: bin/VMC bin/GFMC #bin/sPT  bin/GFMC
