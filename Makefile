@@ -113,7 +113,7 @@ obj/%.o: FCIQMC/%.cpp
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 
 
-all: bin/VMC bin/GFMC #bin/sPT  bin/GFMC
+all: bin/VMC bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
 	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o
