@@ -24,6 +24,7 @@
 #include <vector>
 #include <boost/serialization/serialization.hpp>
 #include <Eigen/Dense>
+#include <unordered_map>
 
 class Determinant;
 
