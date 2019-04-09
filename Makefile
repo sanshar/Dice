@@ -91,6 +91,16 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/Correlator.o
 
 
+OBJ_FCIQMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Correlator.o \
+	obj/spawnFCIQMC.o \
+	obj/walkersFCIQMC.o \
+
+
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: Wavefunctions/%.cpp  
@@ -99,9 +109,11 @@ obj/%.o: utils/%.cpp
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: VMC/%.cpp  
 	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+obj/%.o: FCIQMC/%.cpp  
+	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 
 
-all: bin/VMC bin/GFMC #bin/sPT  bin/GFMC
+all: bin/VMC bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
 	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o
@@ -111,6 +123,9 @@ bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
 	$(CXX)   $(FLAGS) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS)
 
+bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
+	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS)
 
 bin/sPT	: $(OBJ_sPT) 
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)

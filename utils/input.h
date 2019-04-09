@@ -83,7 +83,16 @@ private:
       & uagp
       & ciCeption
       & actWidth
-      & expCorrelator;
+      & expCorrelator
+      & nAttemptsEach
+      & mainMemoryFac
+      & spawnMemoryFac
+      & shiftDamping
+      & initialShift
+      & minSpawn
+      & minPop
+      & initialPop
+      & targetPop;
   }
 public:
 //General options
@@ -155,6 +164,17 @@ public:
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
+
+  //options for FCIQMC
+  int nAttemptsEach;
+  double shiftDamping;
+  double mainMemoryFac;
+  double spawnMemoryFac;
+  double initialShift;
+  double minSpawn;
+  double minPop;
+  double initialPop;
+  double targetPop;
 };
 
 /**
