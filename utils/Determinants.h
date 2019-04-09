@@ -42,6 +42,8 @@ inline int CountNonZeroBits (long x)
   return (x * 0x0101010101010101ULL) >> 56;
 }
 
+// Just the determinant bit string, stored in a contiguous array
+typedef std::array<long, 2*DetLen> simpleDet;
 
 /**
 * This is the occupation number representation of a Determinants
@@ -71,6 +73,16 @@ class Determinant {
   //Constructors
   Determinant();
   Determinant(const Determinant& d);
+
+  Determinant(const simpleDet combined) {
+    for (int i=0; i<DetLen; i++) {
+      reprA[i] = combined[i];
+    }
+    for (int i=0; i<DetLen; i++) {
+      reprB[i] = combined[i+DetLen];
+    }
+  }
+
   void operator=(const Determinant& d);
 
   //mutates the Determinant
@@ -135,6 +147,29 @@ class Determinant {
   friend ostream& operator<<(ostream& os, const Determinant& d);
   friend size_t hash_value(Determinant const& d);
 
+
+  // Get unique processor label for this determinant
+  int getProc() const {
+    std::size_t h_tot = 0;
+    for (int i=0; i<DetLen; i++) {
+      boost::hash_combine(h_tot, reprA[i]);
+      boost::hash_combine(h_tot, reprB[i]);
+    }
+    return h_tot % commsize;
+  }
+
+  // Return simplified version of determinant
+  simpleDet getSimpleDet() const {
+    simpleDet combined;
+    for (int i=0; i<DetLen; i++) {
+      combined[i] = reprA[i];
+    }
+    for (int i=0; i<DetLen; i++) {
+      combined[i+DetLen] = reprB[i];
+    }
+    return combined;
+  }
+
 };
 
 //instead of storing memory in bits it uses 1 integer per bit
@@ -184,5 +219,18 @@ void generateAllScreenedSingleExcitation(const Determinant& det,
 void comb(int N, int K, vector<vector<int>> &combinations);
 
 void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
+
+template<> struct hash<Determinant>
+{
+  std::size_t operator()(Determinant const& d) const noexcept
+  {
+    std::size_t h_tot = 0;
+    for (int i=0; i<DetLen; i++) {
+      boost::hash_combine(h_tot, d.reprA[i]);
+      boost::hash_combine(h_tot, d.reprB[i]);
+    }
+    return h_tot;
+  }
+};
 
 #endif
