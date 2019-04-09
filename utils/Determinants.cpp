@@ -166,7 +166,7 @@ double Determinant::parityA(const int& a, const int& i) const {
   occ += getNalphaBefore(a);
 
   parity *= (occ%2==0) ? 1.: -1.;
-  if (i < a) parity *= 1.;
+  if (i < a) parity *= -1.;
     
   return parity;
 }
@@ -182,7 +182,7 @@ double Determinant::parityB(const int& a, const int& i) const {
   occ += getNbetaBefore(a);
 
   parity *= (occ%2==0) ? 1.: -1.;
-  if (i < a) parity *= 1.;
+  if (i < a) parity *= -1.;
 
   return parity;
 }
