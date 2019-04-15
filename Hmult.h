@@ -78,31 +78,21 @@ struct Hmult2 {
 
     vector<CItype> ytemp(numDets, 0);
     int i, j;
-#pragma omp parallel shared(sparseHam, x, ytemp) private(i,j)
-    {
-    const int nthreads = omp_get_num_threads();
-    const int ithread = omp_get_thread_num();
-    vector<CItype> yprivate(numDets*nthreads, 0);
-#pragma omp for schedule(static)	    
+#pragma omp declare reduction(vec_CItype_plus : std::vector<CItype> : \
+                              std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<CItype>())) \
+                    initializer(omp_priv = omp_orig)
+
+#pragma omp parallel for private(i, j) reduction(vec_CItype_plus : ytemp)
     for (i = 0; i < sparseHam.connections.size(); i++) {
       for (j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
         int I = i * size + rank;
 
-	yprivate[I+numDets*ithread] += hij * x[J];
+	ytemp[I] += hij * x[J];
 
-        if (J != I) {
-          yprivate[J+numDets*ithread] += std::conj(hij) * x[I];
-        }
+        if (J != I) ytemp[J] += std::conj(hij) * x[I];
       }
-    }
-#pragma omp for
-    for (i = 0; i<numDets; i++) {
-      for (int t=0; t<nthreads; t++) {
-        ytemp[i] += yprivate[numDets*t+i];
-      }
-    }
     }
     if (rank == 0) {
       auto end = std::chrono::system_clock::now();
