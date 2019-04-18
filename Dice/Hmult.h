@@ -29,6 +29,7 @@
 #endif
 #include <algorithm>
 #include <chrono>
+#include <functional>  // std::plus
 
 #include "Dice/SHCImakeHamiltonian.h"
 #include "Dice/Utils/Determinants.h"
@@ -82,43 +83,26 @@ struct Hmult2 {
     // TODO
     auto start = std::chrono::system_clock::now();
 
-    // vector<CItype> ytemp(numDets, 0);
-    vector<double> ytemp(numDets, 0);
+    vector<CItype> ytemp(numDets, 0);
 
-#ifdef Complex
-    vector<double> ytemp_imag(numDets, 0);
-#endif
+    int i, j;
+    // Declare a custom OMP reduction operation to handle complex vectors
+#pragma omp declare reduction(vec_CItype_plus : std::vector <CItype>: std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(),omp_out.begin(), std::plus<CItype>())) initializer(omp_priv=omp_orig)
 
-    // Looping over determinants and then connections
-#pragma omp parallel for
-    for (int i = 0; i < sparseHam.connections.size(); i++) {
-      for (int j = 0; j < sparseHam.connections[i].size(); j++) {
+#pragma omp parallel for private(i, j) reduction(vec_CItype_plus : ytemp)
+    for (i = 0; i < sparseHam.connections.size(); i++) {
+      for (j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
+        int I = i * size + rank;
+#pragma omp atomic update
+        ytemp[I] += hij * x[J];
 
+// #pragma omp atomic update
 #ifdef Complex
-        std::complex<double> temp_complex = hij * x[J];
-#pragma omp atomic update
-        ytemp[i * size + rank] += temp_complex.real();
-#pragma omp atomix update
-        ytemp_imag[i * size + rank] += temp_complex.imag();
-
-        if (J != i * size + rank) {
-          std::complex<double> temp_complex2 =
-              std::conj(hij) * x[i * size + rank];
-#pragma omp atomic update
-          ytemp[J] += temp_complex2.real();
-#pragma omp atomic update
-          ytemp_imag[J] += temp_complex2.imag();
-        }
-#else  // Real
-#pragma omp atomic update
-        ytemp[i * size + rank] += hij * x[J];
-
-        if (J != i * size + rank) {
-#pragma omp atomic update
-          ytemp[J] += hij * x[i * size + rank];
-        }
+        y[J] += std::conj(hij) * x[I];
+#else
+        y[J] += hij * x[I];
 #endif
       }
     }
