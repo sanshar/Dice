@@ -23,7 +23,7 @@ openmpi_ubuntu17_test:
   # image: ubuntu:17.10
   script:
     - apt-get -qq update
-    - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake python-numpy python-pip
+    - apt-get -qq install -y g++ libopenmpi-dev openmpi-bin libboost-all-dev cmake python3-numpy python3-pip
     - bash .ci-test-and-cov.sh
 
 
@@ -34,7 +34,7 @@ mpich_ubuntu16_test:
   image: ubuntu:16.04
   script:
     - apt-get -qq update
-    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake python-numpy python-pip
+    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake python3-numpy python3-pip
     - bash .ci-test-and-cov.sh
 
 
@@ -43,5 +43,5 @@ mpich_ubuntu17_test:
   # image: ubuntu:17.10
   script:
     - apt-get -qq update
-    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake python-numpy python-pip
+    - apt-get -qq install -y g++ libcr-dev mpich libmpich-dev libboost-all-dev cmake python3-numpy python3-pip
     - bash .ci-test-and-cov.sh

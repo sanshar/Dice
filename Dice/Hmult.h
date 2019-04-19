@@ -29,7 +29,7 @@
 #endif
 #include <algorithm>
 #include <chrono>
-#include <functional>  // std::plus
+#include <functional> // std::plus
 
 #include "Dice/SHCImakeHamiltonian.h"
 #include "Dice/Utils/Determinants.h"
@@ -59,9 +59,7 @@ struct Hmult2 {
     //-----------------------------------------------------------------------------
     /*!
     Calculate y = H.x from the sparse Hamiltonian
-
     :Inputs:
-
         CItype *x:
             The vector to multiply by H
         CItype *y:
@@ -83,42 +81,60 @@ struct Hmult2 {
     // TODO
     auto start = std::chrono::system_clock::now();
 
-    vector<CItype> ytemp(numDets, 0);
+    // vector<CItype> ytemp(numDets, 0);
+    vector<double> ytemp(numDets, 0);
 
-    int i, j;
-    // Declare a custom OMP reduction operation to handle complex vectors
-#pragma omp declare reduction(vec_CItype_plus : std::vector <CItype>: std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(),omp_out.begin(), std::plus<CItype>())) initializer(omp_priv=omp_orig)
+#ifdef Complex
+    vector<double> ytemp_imag(numDets, 0);
+#endif
 
-#pragma omp parallel for private(i, j) reduction(vec_CItype_plus : ytemp)
-    for (i = 0; i < sparseHam.connections.size(); i++) {
-      for (j = 0; j < sparseHam.connections[i].size(); j++) {
+    // Looping over determinants and then connections
+#pragma omp parallel for
+    for (int i = 0; i < sparseHam.connections.size(); i++) {
+      for (int j = 0; j < sparseHam.connections[i].size(); j++) {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
-        int I = i * size + rank;
-#pragma omp atomic update
-        ytemp[I] += hij * x[J];
 
-// #pragma omp atomic update
 #ifdef Complex
-        y[J] += std::conj(hij) * x[I];
-#else
-        y[J] += hij * x[I];
+        std::complex<double> temp_complex = hij * x[J];
+#pragma omp atomic update
+        ytemp[i * size + rank] += temp_complex.real();
+#pragma omp atomix update
+        ytemp_imag[i * size + rank] += temp_complex.imag();
+
+        if (J != i * size + rank) {
+          std::complex<double> temp_complex2 =
+              std::conj(hij) * x[i * size + rank];
+#pragma omp atomic update
+          ytemp[J] += temp_complex2.real();
+#pragma omp atomic update
+          ytemp_imag[J] += temp_complex2.imag();
+        }
+#else // Real
+#pragma omp atomic update
+        ytemp[i * size + rank] += hij * x[J];
+
+        if (J != i * size + rank) {
+#pragma omp atomic update
+          ytemp[J] += hij * x[i * size + rank];
+        }
 #endif
       }
     }
 
-// Reduce result vector y (if using distributed memory)
+    // Reduce result vector y (if using distributed memory)
 #ifndef SERIAL
-#ifndef Complex  // Real and parallel
+#ifndef Complex // Real and parallel
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
-      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+      for (int j = 0; j < numDets; j++)
+        y[j] = ytemp[j];
     } else {
       MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
     }
-#else  // Complex and parallel (there is no complex and serial)
+#else // Complex and parallel (there is no complex and serial)
     if (localrank == 0) {
       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
                  localcomm);
@@ -137,8 +153,9 @@ struct Hmult2 {
     }
 #endif
     MPI_Barrier(MPI_COMM_WORLD);
-#else  // Serial and Real
-    for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+#else // Serial and Real
+    for (int j = 0; j < numDets; j++)
+      y[j] = ytemp[j];
 #endif
     // TODO
     if (rank == 0) {
@@ -146,7 +163,7 @@ struct Hmult2 {
       std::chrono::duration<double> elapsed_seconds = end - start;
       // pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
-  }  // operator
+  } // operator
 };
 
 struct HmultDirect {
@@ -181,15 +198,9 @@ struct HmultDirect {
         SinglesFromAlphaLen(helpers2.SinglesFromAlphaLen),
         SinglesFromAlpha(helpers2.SinglesFromAlphaSM),
         SinglesFromBetaLen(helpers2.SinglesFromBetaLen),
-        SinglesFromBeta(helpers2.SinglesFromBetaSM),
-        Dets(pDets),
-        DetsSize(pDetsSize),
-        StartIndex(pStartIndex),
-        Norbs(pNorbs),
-        I1(pI1),
-        I2(pI2),
-        coreE(pcoreE),
-        diag(pDiag){};
+        SinglesFromBeta(helpers2.SinglesFromBetaSM), Dets(pDets),
+        DetsSize(pDetsSize), StartIndex(pStartIndex), Norbs(pNorbs), I1(pI1),
+        I2(pI2), coreE(pcoreE), diag(pDiag){};
 
   HmultDirect(int *&pAlphaMajorToBetaLen, vector<int *> &pAlphaMajorToBeta,
               vector<int *> &pAlphaMajorToDet, int *&pBetaMajorToAlphaLen,
@@ -199,26 +210,19 @@ struct HmultDirect {
               Determinant *&pDets, int pDetsSize, int pStartIndex, int pNorbs,
               oneInt &pI1, twoInt &pI2, double &pcoreE, MatrixXx &pDiag)
       : AlphaMajorToBetaLen(pAlphaMajorToBetaLen),
-        AlphaMajorToBeta(pAlphaMajorToBeta),
-        AlphaMajorToDet(pAlphaMajorToDet),
+        AlphaMajorToBeta(pAlphaMajorToBeta), AlphaMajorToDet(pAlphaMajorToDet),
         BetaMajorToAlphaLen(pBetaMajorToAlphaLen),
-        BetaMajorToAlpha(pBetaMajorToAlpha),
-        BetaMajorToDet(pBetaMajorToDet),
+        BetaMajorToAlpha(pBetaMajorToAlpha), BetaMajorToDet(pBetaMajorToDet),
         SinglesFromAlphaLen(pSinglesFromAlphaLen),
         SinglesFromAlpha(pSinglesFromAlpha),
         SinglesFromBetaLen(pSinglesFromBetaLen),
-        SinglesFromBeta(pSinglesFromBeta),
-        Dets(pDets),
-        DetsSize(pDetsSize),
-        StartIndex(pStartIndex),
-        Norbs(pNorbs),
-        I1(pI1),
-        I2(pI2),
-        coreE(pcoreE),
+        SinglesFromBeta(pSinglesFromBeta), Dets(pDets), DetsSize(pDetsSize),
+        StartIndex(pStartIndex), Norbs(pNorbs), I1(pI1), I2(pI2), coreE(pcoreE),
         diag(pDiag){};
 
   void operator()(CItype *x, CItype *y) {
-    if (StartIndex >= DetsSize) return;
+    if (StartIndex >= DetsSize)
+      return;
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
@@ -228,7 +232,8 @@ struct HmultDirect {
 
     // diagonal element
     for (size_t k = StartIndex; k < DetsSize; k++) {
-      if (k % (nprocs) != proc) continue;
+      if (k % (nprocs) != proc)
+        continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       size_t orbDiff;
       if (Determinant::Trev != 0)
@@ -253,12 +258,14 @@ struct HmultDirect {
         for (int j = 0; j < SinglesFromAlphaLen[Astring]; j++) {
           int Asingle = SinglesFromAlpha[Astring][j];
 
-          if (Asingle > maxBToA) break;
+          if (Asingle > maxBToA)
+            break;
           int index = binarySearch(&BetaMajorToAlpha[Bstring][0], 0,
                                    BetaMajorToAlphaLen[Bstring] - 1, Asingle);
           if (index != -1) {
             int DetJ = BetaMajorToDet[Bstring][index];
-            if (abs(DetJ) == abs(DetI)) continue;
+            if (abs(DetJ) == abs(DetI))
+              continue;
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                              coreE, orbDiff);
@@ -279,7 +286,8 @@ struct HmultDirect {
           for (int k = 0; k < SinglesFromBLen; k++) {
             int &Bsingle = SinglesFromBeta[Bstring][k];
 
-            if (SearchStartIndex >= AlphaToBetaLen) break;
+            if (SearchStartIndex >= AlphaToBetaLen)
+              break;
             /*
             auto itb = lower_bound(
                  &AlphaMajorToBeta[Asingle][SearchStartIndex],
@@ -298,28 +306,31 @@ struct HmultDirect {
             if (index < AlphaToBetaLen &&
                 AlphaMajorToBeta[Asingle][index] == Bsingle) {
               int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
-              if (abs(DetJ) == abs(DetI)) continue;
+              if (abs(DetJ) == abs(DetI))
+                continue;
               size_t orbDiff;
               CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                                coreE, orbDiff);
               fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
               y[abs(DetI) - 1] += hij * x[abs(DetJ) - 1];
-            }  //*itb == Bsingle
-          }    // k 0->SinglesFromBeta
-        }      // j singles fromAlpha
+            } //*itb == Bsingle
+          }   // k 0->SinglesFromBeta
+        }     // j singles fromAlpha
 
         // singles from Bstring
         int maxAtoB =
             AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring] - 1];
         for (int j = 0; j < SinglesFromBetaLen[Bstring]; j++) {
           int Bsingle = SinglesFromBeta[Bstring][j];
-          if (Bsingle > maxAtoB) break;
+          if (Bsingle > maxAtoB)
+            break;
           int index = binarySearch(&AlphaMajorToBeta[Astring][0], 0,
                                    AlphaMajorToBetaLen[Astring] - 1, Bsingle);
 
           if (index != -1) {
             int DetJ = AlphaMajorToDet[Astring][index];
-            if (abs(DetJ) == abs(DetI)) continue;
+            if (abs(DetJ) == abs(DetI))
+              continue;
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
                              coreE, orbDiff);
@@ -331,9 +342,11 @@ struct HmultDirect {
         // double beta excitation
         for (int j = 0; j < AlphaMajorToBetaLen[i]; j++) {
           int DetJ = AlphaMajorToDet[i][j];
-          if (abs(DetJ) == abs(DetI)) continue;
+          if (abs(DetJ) == abs(DetI))
+            continue;
           Determinant dj = Dets[abs(DetJ) - 1];
-          if (DetJ < 0) dj.flipAlphaBeta();
+          if (DetJ < 0)
+            dj.flipAlphaBeta();
           if (dj.ExcitationDistance(Dets[DetI - 1]) == 2) {
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
@@ -346,9 +359,11 @@ struct HmultDirect {
         // double Alpha excitation
         for (int j = 0; j < BetaMajorToAlphaLen[Bstring]; j++) {
           int DetJ = BetaMajorToDet[Bstring][j];
-          if (abs(DetJ) == abs(DetI)) continue;
+          if (abs(DetJ) == abs(DetI))
+            continue;
           Determinant dj = Dets[std::abs(DetJ) - 1];
-          if (DetJ < 0) dj.flipAlphaBeta();
+          if (DetJ < 0)
+            dj.flipAlphaBeta();
           if (Dets[DetI - 1].ExcitationDistance(dj) == 2) {
             size_t orbDiff;
             CItype hij = Hij(Dets[abs(DetI) - 1], Dets[abs(DetJ) - 1], I1, I2,
@@ -358,9 +373,9 @@ struct HmultDirect {
           }
         }
 
-      }  // ii
-    }    // i
-  };     // end operator
+      } // ii
+    }   // i
+  };    // end operator
 };
 
 #endif
