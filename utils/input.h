@@ -83,6 +83,7 @@ private:
       & uagp
       & ciCeption
       & actWidth
+      & overlapCutoff;
       & expCorrelator;
   }
 public:
@@ -155,6 +156,7 @@ public:
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
+  double overlapCutoff; //used in SCCI
 };
 
 /**

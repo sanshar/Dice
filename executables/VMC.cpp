@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     if (schd.deterministic) wave.optimizeWaveDeterministic(walk);
-    else wave.optimizeWaveCT(walk);
+    else {wave.optimizeWaveCT(walk); wave.optimizeWaveCT(walk);}
     wave.writeWave();
   }
 

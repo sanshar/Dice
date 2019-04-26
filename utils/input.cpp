@@ -94,6 +94,7 @@ void readInput(string input, schedule& schd, bool print) {
       schd.numActive = -1;
       schd.nciAct = -1;
       schd.actWidth = 100;
+      schd.overlapCutoff = 1.e-5;
       schd.ctmc = true;
       schd.cgIter = 15;
       schd.sDiagShift = 0.01;
@@ -212,7 +213,11 @@ void readInput(string input, schedule& schd, bool print) {
       }
       
       else if (boost::iequals(ArgName, "actWidth")) {
-        schd.actWidth = atoi(tok[1].c_str());
+        schd.actWidth = atof(tok[1].c_str());
+      }
+      
+      else if (boost::iequals(ArgName, "overlapCutoff")) {
+        schd.overlapCutoff = atof(tok[1].c_str());
       }
       
       else if (boost::iequals(ArgName, "lanczoscpsslater"))

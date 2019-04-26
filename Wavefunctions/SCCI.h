@@ -29,6 +29,7 @@
 #include <boost/serialization/array.hpp>
 #include <Eigen/Eigenvalues>
 #include <utility>
+#include <iomanip>
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -63,8 +64,17 @@ class SCCI
     wave.readWave();
     int numVirt = Determinant::norbs - schd.nciAct;
     //coeffs order: phi, singly excited (spin orb index), double excited (spin orb pair index)
+    
     coeffs = VectorXd::Random(1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2)) / 10;
     coeffs(0) = -0.5;
+    char file[5000];
+    sprintf(file, "ciCoeffs.txt");
+    ifstream ofile(file);
+    if (ofile) {
+      for (int i = 0; i < coeffs.size(); i++) {
+        ofile >> coeffs(i);
+      }
+    }
   }
 
   typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
@@ -122,7 +132,7 @@ class SCCI
   //hamSample = <psi^k_l|n>/<psi|n> * <n|H|psi^k'_l'>/<n|psi>, ovlp = <n|psi>
   template<typename Walker>
   void HamAndOvlp(Walker &walk,
-                  double &ovlp, double &normSample, VectorXd& hamSample, int coeffsIndex,
+                  double &ovlp, double &normSample, double &locEne, VectorXd& hamSample, int coeffsIndex,
                   workingArray& work, bool fillExcitations = true)
   {
     //if (walk.excitedOrbs.size() > 2) return;
@@ -138,6 +148,7 @@ class SCCI
     if (ovlp == 0.) return; //maybe not necessary
     normSample = 1 / ciCoeff / ciCoeff;
     hamSample(coeffsIndex) += walk.d.Energy(I1, I2, coreE) / ciCoeff / ciCoeff;
+    locEne = walk.d.Energy(I1, I2, coreE);
     //cout << "nEnergy  " << walk.d.Energy(I1, I2, coreE) << endl << endl;
     work.setCounterToZero();
     generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
@@ -172,16 +183,72 @@ class SCCI
       //cout << walkCopy << endl;
       if (coeffsCopyIndex == 0) {
         hamSample(coeffsCopyIndex) += parity * tia * ovlp0 / ciCoeff / ovlp;
+        locEne += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
         work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
       }
       else {
         hamSample(coeffsCopyIndex) += parity * tia * ham0 / ciCoeff / ovlp;
+        locEne += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
         work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
       }
       //ham += tia * parity * ovlp0/ovlp;
     }
     //cout << "hamSample\n" << hamSample * ovlp * ovlp << endl << endl;
     //cout << "normSample   " << normSample * ovlp * ovlp << endl << endl;
+  }
+  
+  template<typename Walker>
+  void LocalEnergy(Walker &walk,
+                  double &ovlp, double& locEne, int coeffsIndex,
+                  workingArray& work, bool fillExcitations = true)
+  {
+    int norbs = Determinant::norbs;
+    double ciCoeff = coeffs(coeffsIndex);
+    morework.setCounterToZero();
+    double ovlp0, ham0;
+    wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
+    if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
+    else ovlp = ciCoeff * ham0;
+    if (ovlp == 0.) return; //maybe not necessary
+    locEne = walk.d.Energy(I1, I2, coreE);
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+
+    //loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      double tia = work.HijElement[i];
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      auto walkCopy = walk;
+      double parity = 1.;
+      Determinant dcopy = walkCopy.d;
+      if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
+      else parity *= dcopy.parity(A/2, I/2, I%2);
+      dcopy.setocc(I, false);
+      dcopy.setocc(A, true);
+      if (ex2 != 0) {
+        if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
+        else parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
+                            work.excitation1[i], work.excitation2[i], false);
+      if (walkCopy.excitedOrbs.size() > 2) continue;
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework);
+      if (coeffsCopyIndex == 0) {
+        locEne += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+      else {
+        locEne += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+    }
   }
 
   template<typename Walker>
@@ -193,11 +260,12 @@ class SCCI
     MatrixXd ciHam = MatrixXd::Zero(coeffs.size(), coeffs.size());
     //MatrixXd sMat = MatrixXd::Zero(coeffs.size(), coeffs.size()); 
     VectorXd ovlpDiag = VectorXd::Zero(coeffs.size());
-    double ovlp = 0., normSample = 0.;
+    double ovlp = 0., normSample = 0., locEne = 0., ene = 0., correctionFactor = 0.;
     VectorXd hamSample = VectorXd::Zero(coeffs.size());
     int coeffsIndex = this->coeffsIndex(walk);
     workingArray work;
-    HamAndOvlp(walk, ovlp, normSample, hamSample, coeffsIndex, work);
+    Walker walkIn = walk;
+    HamAndOvlp(walk, ovlp, normSample, locEne, hamSample, coeffsIndex, work);
 
     int iter = 0;
     double cumdeltaT = 0.;
@@ -221,10 +289,14 @@ class SCCI
       ovlpDiag(coeffsIndex) += ratio * normSample;
       ciHam *= (1 - ratio);
       ciHam.row(coeffsIndex) += ratio * hamSample;
+      ene *= (1 - ratio);
+      ene += ratio * locEne;
+      correctionFactor *= (1 - ratio);
+      if (coeffsIndex == 0) correctionFactor += ratio;
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
       coeffsIndex = this->coeffsIndex(walk);
       hamSample.setZero();
-      HamAndOvlp(walk, ovlp, normSample, hamSample, coeffsIndex, work);
+      HamAndOvlp(walk, ovlp, normSample, locEne, hamSample, coeffsIndex, work);
       iter++;
       if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << getTime() - startofCalc << endl; 
     }
@@ -232,26 +304,37 @@ class SCCI
     ciHam *= cumdeltaT;
     //sMat *= cumdeltaT;
     ovlpDiag *= cumdeltaT;
+    ene *= cumdeltaT;
+    correctionFactor *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, ciHam.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   //MPI_Allreduce(MPI_IN_PLACE, sMat.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ovlpDiag.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
     if (commrank == 0) cout << "matrices built in  " << getTime() - startofCalc << endl; 
     
+    double ene0 = 0.;
     if (commrank == 0) {
       ciHam /= cumdeltaT;
       //sMat /= cumdeltaT;
       ovlpDiag /= cumdeltaT;
+      ene /= cumdeltaT;
+      cout << "energy of sampling wavefunction   "  << ene << endl;
+      correctionFactor /= cumdeltaT;
+      cout << "correctionFactor   " << correctionFactor << endl;
       ciHam = (ciHam + ciHam.transpose().eval()) / 2;
+      ene0 = ciHam(0, 0) / ovlpDiag(0);
+      cout << "ref energy   " << ene0 << endl;
       //DiagonalMatrix<double, Dynamic> sMat(coeffs.size());
       //sMat.diagonal() = 1.e-7 + ovlpDiag.array();
       std::vector<int> largeNormIndices;
       for (int i = 0; i < coeffs.size(); i++) {
-        if (ovlpDiag(i) > 1.e-5) largeNormIndices.push_back(i);
+        if (ovlpDiag(i) > schd.overlapCutoff) largeNormIndices.push_back(i);
       }
       Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
       VectorXd largeNorms;
@@ -259,10 +342,13 @@ class SCCI
       DiagonalMatrix<double, Dynamic> normInv(coeffs.size());
       //normInv.diagonal() = (ovlpDiag.array() + 1.e-7).cwiseSqrt().cwiseInverse();
       normInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+      //normInv.diagonal() = largeNorms.cwiseInverse();
       MatrixXd largeHam;
       igl::slice(ciHam, largeNormSlice, largeNormSlice, largeHam);
       MatrixXd ciHamNorm = normInv * largeHam * normInv;
+      //MatrixXd ciHamNorm = normInv * largeHam;
       SelfAdjointEigenSolver<MatrixXd> diag(ciHamNorm);
+      //EigenSolver<MatrixXd> diag(ciHamNorm);
       //auto sMat = sMatDiag + 1.e-7 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //DiagonalMatrix<double, Dynamic> normInv(size);
       //normInv.diagonal() = diagVec.cwiseSqrt().cwiseInverse();
@@ -270,8 +356,77 @@ class SCCI
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl;
       cout << "diagonaliztion in time  " << getTime() - startofCalc << endl; 
-      cout << "energy   " << diag.eigenvalues().minCoeff() << endl;
+      VectorXd::Index minInd;
+      double minEne = diag.eigenvalues().real().minCoeff(&minInd);
+      cout << "energy eigenvalue   " << minEne << endl;
+      VectorXd largeCoeffs = normInv * diag.eigenvectors().col(minInd).real();
+      
+      coeffs.setZero();
+      for (int i = 0; i < largeNormIndices.size(); i++) coeffs(largeNormIndices[i]) = largeCoeffs(i);
+      coeffs.normalize();
+      cout << "SCCI+Q energy  " << minEne + (1 - correctionFactor) * (minEne - ene0) << endl;
+      if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
+
+#ifndef SERIAL
+  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+    //ovlp = 0.;
+    //double localEne = 0., ene = 0., correctionFactor = 0.;
+    //walk = walkIn;
+    //coeffsIndex = this->coeffsIndex(walk);
+    //LocalEnergy(walk, ovlp, localEne, coeffsIndex, work);
+
+    //iter = 0;
+    //cumdeltaT = 0.;
+
+    //while (iter < schd.stochasticIter) {
+    //  double cumovlpRatio = 0;
+    //  for (int i = 0; i < work.nExcitations; i++) {
+    //    cumovlpRatio += abs(work.ovlpRatio[i]);
+    //    work.ovlpRatio[i] = cumovlpRatio;
+    //  }
+    //  double deltaT = 1.0 / (cumovlpRatio);
+    //  double nextDetRandom = random() * cumovlpRatio;
+    //  int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+    //                                 nextDetRandom) - work.ovlpRatio.begin();
+    //  cumdeltaT += deltaT;
+    //  double ratio = deltaT / cumdeltaT;
+    //  //sMat *= (1 - ratio);
+    //  ene *= (1 - ratio);
+    //  //sMat(coeffsIndex, coeffsIndex) += ratio * normSample;
+    //  ene += ratio * localEne;
+    //  correctionFactor *= (1 - ratio);
+    //  if (coeffsIndex == 0) correctionFactor += ratio;
+    //  walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    //  coeffsIndex = this->coeffsIndex(walk);
+    //  LocalEnergy(walk, ovlp, localEne, coeffsIndex, work);
+    //  iter++;
+    //  if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << getTime() - startofCalc << endl; 
+    //}
+  
+    //ene *= cumdeltaT;
+    ////sMat *= cumdeltaT;
+    //correctionFactor *= cumdeltaT;
+
+//#ifndef SERIAL
+//  MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//  //MPI_Allreduce(MPI_IN_PLACE, sMat.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//#endif
+    
+    //if (commrank == 0) cout << "sampling finished in    " << getTime() - startofCalc << endl; 
+    //if (commrank == 0) {
+    //  ene /= cumdeltaT;
+    //  correctionFactor /= cumdeltaT;
+    //  cout << "sampled optimized energy   " << fixed << setprecision(5) << ene << endl;
+    //  cout << "ref energy   " << fixed << setprecision(5) << ene0 << endl;
+    //  cout << "correctionFac   " << correctionFactor << endl;
+    //  cout << "SCCI+Q energy  " << ene + (1 - correctionFactor) * (ene - ene0) << endl;
+    //}
+  
   }
   
   template<typename Walker>
@@ -287,7 +442,7 @@ class SCCI
     double overlapTot = 0.; 
     VectorXd hamSample = VectorXd::Zero(coeffs.size());
     MatrixXd ciHam = MatrixXd::Zero(coeffs.size(), coeffs.size());
-    MatrixXd sMat = MatrixXd::Zero(coeffs.size(), coeffs.size()) + 1.e-6 * MatrixXd::Identity(coeffs.size(), coeffs.size());
+    MatrixXd sMat = MatrixXd::Zero(coeffs.size(), coeffs.size());// + 1.e-6 * MatrixXd::Identity(coeffs.size(), coeffs.size());
     //w.printVariables();
 
     for (int i = commrank; i < allDets.size(); i += commsize) {
@@ -297,8 +452,8 @@ class SCCI
       }
       if (walk.excitedOrbs.size() > 2) continue;
       int coeffsIndex = this->coeffsIndex(walk);
-      double ovlp = 0., normSample = 0.;
-      HamAndOvlp(walk, ovlp, normSample, hamSample, coeffsIndex, work);
+      double ovlp = 0., normSample = 0., locEne = 0.;
+      HamAndOvlp(walk, ovlp, normSample, locEne, hamSample, coeffsIndex, work);
       //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
       //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
       
@@ -313,16 +468,63 @@ class SCCI
   MPI_Allreduce(MPI_IN_PLACE, ciHam.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, sMat.data(), coeffs.size() * coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-
+    
+    double ene0 = 0.;
     if (commrank == 0) {
       ciHam = ciHam / overlapTot;
       sMat = sMat / overlapTot;
+      ene0 = ciHam(0, 0) / sMat(0,0);
+      //sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl; 
       GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
-      cout << "energy   " << diag.eigenvalues().real().minCoeff() << endl;
+      VectorXd::Index minInd;
+      double minEne = diag.eigenvalues().real().minCoeff(&minInd);
+      coeffs = diag.eigenvectors().col(minInd).real();
+      cout << "energy   " << fixed << setprecision(5) << minEne << endl;
+      cout << "coeffs\n" << coeffs << endl;
     }
-    //if (commrank == 0) cout << "energies\n" << diag.eigenvalues() << endl;
+#ifndef SERIAL
+  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  //MPI_Bcast(&(ene0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
+    //davidson
+    overlapTot = 0.; 
+    double ene = 0., correctionFac = 0.;
+    //w.printVariables();
+
+    for (int i = commrank; i < allDets.size(); i += commsize) {
+      wave.initWalker(walk, allDets[i]);
+      if (schd.debug) {
+        cout << "walker\n" << walk << endl;
+      }
+      if (walk.excitedOrbs.size() > 2) continue;
+      int coeffsIndex = this->coeffsIndex(walk);
+      double ovlp = 0., locEne = 0.;
+      LocalEnergy(walk, ovlp, locEne, coeffsIndex, work);
+      //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
+      //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
+      
+      if (coeffsIndex == 0) correctionFac += ovlp * ovlp;
+      overlapTot += ovlp * ovlp;
+      ene += (ovlp * ovlp) * locEne;
+    }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFac), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    if (commrank == 0) {
+      ene = ene / overlapTot;
+      correctionFac = correctionFac / overlapTot;
+      cout << "sampled optimized energy   " << fixed << setprecision(5) << ene << endl;
+      cout << "ref energy   " << fixed << setprecision(5) << ene0 << endl;
+      cout << "correctionFac   " << correctionFac << endl;
+      cout << "SCCI+Q energy  " << ene + (1 - correctionFac) * (ene - ene0) << endl;
+    }
+  //if (commrank == 0) cout << "energies\n" << diag.eigenvalues() << endl;
   }
   
   string getfileName() const {
