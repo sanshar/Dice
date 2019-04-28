@@ -1,6 +1,6 @@
 #!/bin/bash
 
-printf "\n\nRunning Tests for VMC/GFMC\n"
+printf "\n\nRunning Tests for VMC/GFMC/FCIQMC\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
@@ -8,6 +8,7 @@ VMCPATH="../../bin/VMC vmc.dat"
 CIPATH="../../bin/VMC ci.dat"
 LANCZOSPATH="../../bin/VMC lanczos.dat"
 GFMCPATH="../../bin/GFMC gfmc.dat"
+FCIQMCPATH="../../../bin/FCIQMC fciqmc.dat"
 here=`pwd`
 tol=1.0e-7
 clean=0
@@ -178,6 +179,26 @@ cd $here/c2/
 printf "...running c2\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python ../testEnergy.py 'vmc' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
+cd $here/FCIQMC/He2
+../../clean.sh
+printf "...running FCIQMC/He2\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then    
+    ../clean.sh
+fi
+
+cd $here/FCIQMC/Ne_plateau
+../../clean.sh
+printf "...running FCIQMC/Ne_plateau\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python ../../testEnergy.py 'fciqmc' $tol
 if [ $clean == 1 ]
 then    
     ../clean.sh

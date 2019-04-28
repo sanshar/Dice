@@ -1,0 +1,9 @@
+tau 0.001
+maxIter 1200
+seed 10
+shiftDamping 0.01
+initialShift 0.0
+initialPop 1000.0
+targetPop 500000.0
+mainMemoryFac 10.0
+spawnMemoryFac 10.0

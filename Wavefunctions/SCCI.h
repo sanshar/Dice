@@ -165,13 +165,15 @@ class SCCI
       auto walkCopy = walk;
       double parity = 1.;
       Determinant dcopy = walkCopy.d;
-      if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
-      else parity *= dcopy.parity(A/2, I/2, I%2);
+      //if (A > I) parity *= -1. * dcopy.parityCI(A/2, I/2, I%2);
+      //else parity *= dcopy.parityCI(A/2, I/2, I%2);
+      parity *= dcopy.parity(A/2, I/2, I%2);
       dcopy.setocc(I, false);
       dcopy.setocc(A, true);
       if (ex2 != 0) {
-        if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
-        else parity *= dcopy.parity(B/2, J/2, J%2);
+        //if (B > J) parity *= -1. * dcopy.parityCI(B/2, J/2, J%2);
+        //else parity *= dcopy.parityCI(B/2, J/2, J%2);
+        parity *= dcopy.parity(B/2, J/2, J%2);
       }
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);
@@ -226,13 +228,15 @@ class SCCI
       auto walkCopy = walk;
       double parity = 1.;
       Determinant dcopy = walkCopy.d;
-      if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
-      else parity *= dcopy.parity(A/2, I/2, I%2);
+      //if (A > I) parity *= -1. * dcopy.parityCI(A/2, I/2, I%2);
+      //else parity *= dcopy.parityCI(A/2, I/2, I%2);
+      parity *= dcopy.parity(A/2, I/2, I%2);
       dcopy.setocc(I, false);
       dcopy.setocc(A, true);
       if (ex2 != 0) {
-        if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
-        else parity *= dcopy.parity(B/2, J/2, J%2);
+        //if (B > J) parity *= -1 * dcopy.parityCI(B/2, J/2, J%2);
+        //else parity *= dcopy.parityCI(B/2, J/2, J%2);
+        parity *= dcopy.parity(B/2, J/2, J%2);
       }
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);

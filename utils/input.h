@@ -83,8 +83,17 @@ private:
       & uagp
       & ciCeption
       & actWidth
-      & overlapCutoff;
-      & expCorrelator;
+      & overlapCutoff
+      & expCorrelator
+      & nAttemptsEach
+      & mainMemoryFac
+      & spawnMemoryFac
+      & shiftDamping
+      & initialShift
+      & minSpawn
+      & minPop
+      & initialPop
+      & targetPop;
   }
 public:
 //General options
@@ -157,6 +166,17 @@ public:
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
   double overlapCutoff; //used in SCCI
+
+  //options for FCIQMC
+  int nAttemptsEach;
+  double shiftDamping;
+  double mainMemoryFac;
+  double spawnMemoryFac;
+  double initialShift;
+  double minSpawn;
+  double minPop;
+  double initialPop;
+  double targetPop;
 };
 
 /**
