@@ -30,6 +30,7 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+#include <boost/serialization/vector.hpp>
 
 using namespace boost;
 
