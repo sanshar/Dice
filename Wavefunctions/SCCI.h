@@ -165,6 +165,9 @@ class SCCI
       auto walkCopy = walk;
       double parity = 1.;
       Determinant dcopy = walkCopy.d;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
+                            work.excitation1[i], work.excitation2[i], false);
+      if (walkCopy.excitedOrbs.size() > 2) continue;
       //if (A > I) parity *= -1. * dcopy.parityCI(A/2, I/2, I%2);
       //else parity *= dcopy.parityCI(A/2, I/2, I%2);
       parity *= dcopy.parity(A/2, I/2, I%2);
@@ -175,9 +178,6 @@ class SCCI
         //else parity *= dcopy.parityCI(B/2, J/2, J%2);
         parity *= dcopy.parity(B/2, J/2, J%2);
       }
-      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
-                            work.excitation1[i], work.excitation2[i], false);
-      if (walkCopy.excitedOrbs.size() > 2) continue;
       int coeffsCopyIndex = this->coeffsIndex(walkCopy);
       morework.setCounterToZero();
       wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework);
@@ -478,7 +478,7 @@ class SCCI
       ciHam = ciHam / overlapTot;
       sMat = sMat / overlapTot;
       ene0 = ciHam(0, 0) / sMat(0,0);
-      //sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
+      sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl; 
       GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);

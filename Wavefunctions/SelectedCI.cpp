@@ -178,13 +178,23 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
   ham = ovlp * walk.d.Energy(I1, I2, coreE); 
 
   work.setCounterToZero();
-  generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
-                                      work, false); 
-  generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
-                                      work, false);
+  if (walk.excitedOrbs.size() == 2) {
+    generateAllScreenedExcitationsCAS(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(), *std::next(walk.excitedOrbs.begin())); 
+  }
+  else if (walk.excitedOrbs.size() == 1) {
+    generateAllScreenedSingleExcitationsCAS(walk.d, schd.epsilon, schd.screen,
+                                        work, *walk.excitedOrbs.begin(), false); 
+    generateAllScreenedDoubleExcitationsCAS(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin());
+  }
+  else {
+    generateAllScreenedSingleExcitationsCAS(walk.d, schd.epsilon, schd.screen,
+                                        work, false); 
+    generateAllScreenedDoubleExcitationsCAS(walk.d, schd.epsilon, work);
+  }
 
   //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;
   //loop over all the screened excitations
+  //cout << "m  " << walk.d << endl;
   //cout << "eloc excitations" << endl;
   for (int i=0; i<work.nExcitations; i++) {
     int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
@@ -211,11 +221,11 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
     //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
     ham += tia * ovlpcopy * parity;
-    //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity / ovlp << endl;
+    //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity << endl;
 
     //work.ovlpRatio[i] = ovlp;
   }
-  //if (schd.debug) cout << endl;
+  //if (schd.debug) cout << "ham  " << ham << "  ovlp  " << ovlp << endl << endl;
 }
 
 void SelectedCI::HamAndOvlpLanczos(SimpleWalker &walk,

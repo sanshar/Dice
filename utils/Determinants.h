@@ -210,7 +210,34 @@ void generateAllScreenedDoubleExcitation(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
+void generateAllScreenedExcitationsCAS(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc);
+
+void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& i);
+
+void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work);
+
 void generateAllScreenedSingleExcitation(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         const int& i,
+                                         bool doparity = false);
+
+void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
