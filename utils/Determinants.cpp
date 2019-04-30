@@ -1041,6 +1041,50 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
 
 }
 
+void generateAllScreenedDoubleExcitationsFOIS(const Determinant& d,
+                                         const double& THRESH,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity) {
+  int norbs = Determinant::norbs;
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
+  int nclosed = closed.size();
+  for (int i=0; i<nclosed; i++) {
+    for (int j = 0; j<i; j++) {
+      
+      const float *integrals; const short* orbIndices;
+      size_t numIntegrals;
+      I2hb.getIntegralArray(closed[i], closed[j], integrals, orbIndices, numIntegrals);
+      size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+      // for all HCI integrals
+      for (size_t index = 0; index < numLargeIntegrals; index++)
+      {
+        // if we are going below the criterion, break
+        //if (fabs(integrals[index]) < THRESH)
+        //  break;
+        
+        // otherwise: generate the determinant corresponding to the current excitation
+        int a = 2 * orbIndices[2 * index] + closed[i] % 2,
+            b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+        
+        if (a >= 2*schd.nciAct && b >= 2*schd.nciAct && closed[i] < 2*schd.nciAct && closed[j] < 2*schd.nciAct) continue; 
+        
+        //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
+        if (!(d.getocc(a) || d.getocc(b))) {
+          //cout << "a   " << a << "  b  " << b << endl;
+          work.appendValue(0.0, closed[i] * 2 * norbs + a,
+                           closed[j] * 2 * norbs + b, integrals[index]);
+        }
+      }
+    }
+  }
+
+}
+
 //excitations from a doubly excited det d such that the resulting det is in CAS, only double excitations can take d into CAS
 void generateAllScreenedExcitationsCAS(const Determinant& d,
                                          const double& THRESH,

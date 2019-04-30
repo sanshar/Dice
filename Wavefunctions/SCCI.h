@@ -153,9 +153,14 @@ class SCCI
     work.setCounterToZero();
     generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
                                         work, false);
-    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+    if (walk.excitedOrbs.size() == 0) {
+      generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
                                         work, false);
-
+    }
+    else {
+      generateAllScreenedDoubleExcitationsFOIS(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    }
     //loop over all the screened excitations
     for (int i=0; i<work.nExcitations; i++) {
       double tia = work.HijElement[i];

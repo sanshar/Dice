@@ -210,6 +210,12 @@ void generateAllScreenedDoubleExcitation(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
+void generateAllScreenedDoubleExcitationsFOIS(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
 void generateAllScreenedExcitationsCAS(const Determinant& det,
                                          const double& screen,
                                          workingArray& work,
