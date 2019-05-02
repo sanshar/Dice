@@ -164,8 +164,8 @@ class SCCI
     //cout << walk << endl;
     if (ovlp == 0.) return; //maybe not necessary
     normSample = 1 / ciCoeff / ciCoeff;
-    hamSample(coeffsIndex) += walk.d.Energy(I1, I2, coreE) / ciCoeff / ciCoeff;
     locEne = walk.d.Energy(I1, I2, coreE);
+    hamSample(coeffsIndex) += locEne / ciCoeff / ciCoeff;
     //cout << "nEnergy  " << walk.d.Energy(I1, I2, coreE) << endl << endl;
     work.setCounterToZero();
     generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
