@@ -1105,10 +1105,11 @@ void generateAllScreenedExcitationsCAS(const Determinant& d,
     //  break;
     
     // otherwise: generate the determinant corresponding to the current excitation
-    int a = 2 * orbIndices[2 * index] + i % 2,
-        b = 2 * orbIndices[2 * index + 1] + j % 2;
+    int a = 2 * orbIndices[2 * index] + i % 2;
+    if (a >= 2*schd.nciAct) continue; 
+    int b = 2 * orbIndices[2 * index + 1] + j % 2;
+    if (b >= 2*schd.nciAct) continue; 
     
-    if (a >= 2*schd.nciAct || b >= 2*schd.nciAct) continue; 
 
     //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
     if (!(d.getocc(a) || d.getocc(b))) {
@@ -1143,10 +1144,10 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
       //  break;
       
       // otherwise: generate the determinant corresponding to the current excitation
-      int a = 2 * orbIndices[2 * index] + i % 2,
-          b = 2 * orbIndices[2 * index + 1] + j % 2;
-      
-      if (a >= 2*schd.nciAct || b >= 2*schd.nciAct) continue; 
+      int a = 2 * orbIndices[2 * index] + i % 2;
+      if (a >= 2*schd.nciAct) continue; 
+      int b = 2 * orbIndices[2 * index + 1] + j % 2;
+      if (b >= 2*schd.nciAct) continue; 
 
       //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -1182,11 +1183,11 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
         //  break;
         
         // otherwise: generate the determinant corresponding to the current excitation
-        int a = 2 * orbIndices[2 * index] + closed[i] % 2,
-            b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+        int a = 2 * orbIndices[2 * index] + closed[i] % 2; 
+        if (a >= 2*schd.nciAct) continue; 
+        int b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+        if (b >= 2*schd.nciAct) continue; 
         
-        if (a >= 2*schd.nciAct || b >= 2*schd.nciAct) continue; 
-
         //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
         if (!(d.getocc(a) || d.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
