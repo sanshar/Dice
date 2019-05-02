@@ -62,11 +62,28 @@ class SCCI
   SCCI()
   {
     wave.readWave();
+
+    // Resize coeffs
     int numVirt = Determinant::norbs - schd.nciAct;
+    int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
+    coeffs = VectorXd::Zero(numCoeffs);
+
     //coeffs order: phi, singly excited (spin orb index), double excited (spin orb pair index)
+
+    if (commrank == 0) {
+      auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                              std::ref(generator));
+
+      coeffs(0) = -0.5;
+      for (int i=1; i < numCoeffs; i++) {
+        coeffs(i) = 0.2*random() - 0.1;
+      }
+    }
+
+#ifndef SERIAL
+  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
     
-    coeffs = VectorXd::Random(1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2)) / 10;
-    coeffs(0) = -0.5;
     char file[5000];
     sprintf(file, "ciCoeffs.txt");
     ifstream ofile(file);
