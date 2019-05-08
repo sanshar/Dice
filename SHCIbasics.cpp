@@ -949,6 +949,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     cMax.clear();
 
     CItype zero = 0.0;
+    if (schd.outputlevel > 0) pout << "Sampling determinants" << endl;
     for (int i = 0; i < SortedDetsSize; i++)
     {
       if (i % (commsize) != commrank)
@@ -968,7 +969,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
                                                       schd, 0, nelec);
 #endif
     }
-
+    if (schd.outputlevel > 0) pout << "Determinants sampled" << endl;
     if (Determinant::Trev != 0)
     {
       for (int i = 0; i < uniqueDEH.Det->size(); i++)
@@ -1071,6 +1072,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
     //*************
     //make Helpers and Hamiltonian
+    if (schd.outputlevel > 0) pout << "making Helpers and Hamiltonian" << endl;
     if (!BruteForce)
     {
       if (proc == 0)
@@ -1188,9 +1190,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
     Hmult2 H(sparseHam);
     int numIter = 0;
-    double prevE0 = E0[0];
-    if (iter == 0)
-      prevE0 = -10.0;
+    vector<double> prevE0 = E0;
+    //if (iter == 0)
+    //  prevE0(-10.0);
     E0 = davidson(H, X0, diag, schd.nroots + 4, schd.davidsonTol, numIter, false);
 
     //update the civector
@@ -1223,7 +1225,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     if (E0.size() > 1)
       pout << endl;
     //the variational step has converged
-    if (abs(E0[0] - prevE0) < schd.dE || iter == schd.epsilon1.size() - 1)
+    double dE = 0.0;
+    for(int i=0; i<E0.size(); i++) {
+      dE += abs(E0[i]-prevE0[i])/E0.size();
+    }
+    if (dE < schd.dE || iter == schd.epsilon1.size() - 1)
     {
       pout << endl
            << "Performing final tight davidson with tol: " << schd.davidsonTol << endl;
@@ -1250,7 +1256,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
         for (int i = 0; i < DetsSize; i++)
           Dets[i] = SHMDets[i];
       }
-      writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
+      //writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
       //
       //    unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||//schd.doResponse, I1, I2, coreE);
       //    if (Determinant::Trev != 0) {

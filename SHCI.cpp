@@ -248,20 +248,6 @@ int main(int argc, char* argv[]) {
   mpi::broadcast(world, DetsSize, 0);
 #endif
   Dets.clear();
-  if (commrank == 0) {
-    std::string efile;
-    efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
-    cout << efile << " " << E0.size() << endl;
-    FILE* f = fopen(efile.c_str(), "wb");
-    //ofstream fs(efile);
-    for(int j=0;j<E0.size();++j) {
-      cout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
-      //fs << E0[j] << endl;
-      fwrite( &E0[j], 1, sizeof(double), f);
-    }
-    fclose(f);
-    //fs.close();
-  }
   //print the 5 most important determinants and their weights
   pout << "Printing most important determinants"<<endl;
   pout << format("%4s %10s  ") %("Det") %("weight"); pout << "Determinant string"<<endl;
@@ -280,10 +266,25 @@ int main(int argc, char* argv[]) {
       prevci(m,0) = 0.0;
     }
   }
+
+  if (commrank == 0) {
+    std::string efile;
+    efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e" );
+    cout << efile << " " << E0.size() << endl;
+    FILE* f = fopen(efile.c_str(), "wb");
+    //ofstream fs(efile);
+    for(int j=0;j<E0.size();++j) {
+      cout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
+      //fs << E0[j] << endl;
+      fwrite( &E0[j], 1, sizeof(double), f);
+    }
+    fclose(f);
+    //fs.close();
+  }
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  exit(0);
+  return 0;
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
   if (schd.stochastic == true && schd.DoRDM) {
