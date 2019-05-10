@@ -208,6 +208,14 @@ int main(int argc, char *argv[])
     else {wave.optimizeWaveCT(walk); wave.optimizeWaveCT(walk);}
     wave.writeWave();
   }
+  
+  else if (schd.wavefunctionType == "test") {
+    SCCI<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    //wave.optimizeWaveDeterministicDirect(walk);
+    wave.optimizeWaveCTDirect(walk);
+    wave.writeWave();
+  }
 
   else if (schd.wavefunctionType == "slaterRDM") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
