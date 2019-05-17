@@ -65,6 +65,7 @@ class SCCI
   vector<int> largeSampleIndices;
   vector<int> nestedIndices;
   DiagonalMatrix<double, Dynamic> largeNormInv;
+  VectorXd largeHamDiag;
   double cumulativeTime; 
 
 
@@ -358,6 +359,13 @@ class SCCI
       MatrixXd largeHam;
       igl::slice(ciHam, largeNormSlice, largeNormSlice, largeHam);
       MatrixXd ciHamNorm = normInv * largeHam * normInv;
+      VectorXd initGuess = VectorXd::Random(largeNorms.size());
+      initGuess(0) = 1.;
+      double eigenVal; VectorXd eigenVec;
+      cout << "ciHamNorm\n" << ciHamNorm << endl;
+      cout << "non-direct davidson\n";
+      davidsonMethod(ciHamNorm, initGuess, eigenVec, eigenVal, 200, 1.e-5); 
+      cout << "energy eigenvalue of built ham   " << eigenVal << endl;
       //MatrixXd ciHamNorm = normInv * largeHam;
       SelfAdjointEigenSolver<MatrixXd> diag(ciHamNorm);
       //EigenSolver<MatrixXd> diag(ciHamNorm);
@@ -385,7 +393,76 @@ class SCCI
 #endif
 
   }
-  
+ 
+  //builds hamiltonian using sampled vectors (used for debugging)
+  void buildHamMat(MatrixXd &hamMat) {
+    MatrixXd ham = 0 * hamMat;
+    for (int j = 0; j < largeSampleIndices.size(); j++) {
+      ham.row(nestedIndices[largeSampleIndices[j]]) += largeSampleTimes[j] * largeHamSamples[j];
+    }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, ham.data(), ham.rows() * ham.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    ham /= cumulativeTime;
+    hamMat = largeNormInv * ham * largeNormInv;
+  }
+
+  void davidsonMethod(MatrixXd &mat, VectorXd& initGuess, VectorXd& eigenvec, double& eigenval, const int maxIter, const double threshold)
+  {
+    initGuess.normalize();
+    VectorXd vectorToBeAdded = initGuess;
+    int fullDim = initGuess.size(), subspaceDim = 0;
+    MatrixXd subspaceBasis = MatrixXd::Zero(1,1), hV = MatrixXd::Zero(1, 1), subspaceHam = MatrixXd::Zero(1, 1);
+    for (int i = 0; i < maxIter; i++) {
+      //add a vector to the subspace
+      subspaceDim += 1;
+      subspaceBasis.conservativeResize(fullDim, subspaceDim);
+      subspaceBasis.col(subspaceDim - 1) = vectorToBeAdded;
+      //cout << "subspaceBasis\n" << subspaceBasis << endl;
+
+      //extend subspaceHam to include added vector
+      VectorXd hVectorToBeAdded = mat * subspaceBasis.col(subspaceDim - 1);
+      hV.conservativeResize(fullDim, subspaceDim);
+      hV.col(subspaceDim - 1)  = hVectorToBeAdded;
+      //subspaceHam = subspaceBasis.transpose() * hV;
+      VectorXd newHamCol = hV.transpose() * subspaceBasis.col(subspaceDim - 1);
+      subspaceHam.conservativeResize(subspaceDim, subspaceDim);
+      subspaceHam.col(subspaceDim - 1) = newHamCol;
+      subspaceHam.row(subspaceDim - 1) = newHamCol;
+      //diagonalize subspaceHam
+      SelfAdjointEigenSolver<MatrixXd> diag(subspaceHam);
+      //EigenSolver<MatrixXd> diag(subspaceHam);
+      eigenval = diag.eigenvalues()(0);
+      //VectorXd::Index minInd;
+      //eigenval = diag.eigenvalues().real().minCoeff(&minInd);
+      //cout << "eigenval  " << eigenval << endl;
+      eigenvec = subspaceBasis * diag.eigenvectors().col(0);
+      //eigenvec = subspaceBasis * diag.eigenvectors().col(minInd).real();
+      VectorXd resVec = mat * eigenvec - eigenval * eigenvec;
+      //cout << "resVec\n" << resVec << endl;
+      if (resVec.norm() < threshold) {
+        cout << "Davidson converged in " << i+1 << " iterations" << endl;
+        return;
+      }
+      else {//calculate vector to be added
+        //calculate delta
+        DiagonalMatrix<double, Dynamic> preconditioner;
+        preconditioner.diagonal() = mat.diagonal() - VectorXd::Constant(fullDim, eigenval);
+        VectorXd delta = preconditioner.inverse() * resVec;
+        //cout << "delta\n" << delta << endl;
+        //orthonormalize
+        VectorXd overlaps = subspaceBasis.transpose() * delta;
+        //cout << "overlaps\n" << overlaps << endl;
+        //cout << "subspaceBasis * overlaps\n" << subspaceBasis * overlaps << endl;
+        vectorToBeAdded = delta - (subspaceBasis * overlaps);
+        //cout << "before normalize\n" << vectorToBeAdded << endl;
+        vectorToBeAdded.normalize();
+      }
+    }
+    cout << "Davidson did not converge in " << maxIter << " iterations" << endl;
+  }
+
+  //simulates hamiltonian multiplication
   void HMult(VectorXd& x, VectorXd& hX) {
     VectorXd sInvX = largeNormInv * x;
     VectorXd hSInvX = VectorXd::Zero(x.size());
@@ -402,7 +479,7 @@ class SCCI
   void powerMethod(VectorXd& initGuess, VectorXd& eigenVec, double& eigenVal, const int& numPowerIter, const double& threshold) {
     VectorXd oldIterVecNormal = initGuess;
     VectorXd newIterVec(initGuess.size());
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < numPowerIter; i++) {
       HMult(oldIterVecNormal, newIterVec);
       eigenVal = newIterVec.dot(oldIterVecNormal);
       VectorXd r = newIterVec - eigenVal * oldIterVecNormal;
@@ -414,7 +491,88 @@ class SCCI
       oldIterVecNormal= newIterVec / newIterVec.norm();
     }
     eigenVec = oldIterVecNormal;
-    if (commrank == 0) cout << "power method converged in " << numPowerIter << " iterations\n";
+    if (commrank == 0) cout << "power method did not converge in " << numPowerIter << " iterations\n";
+  }
+  
+  void powerMethod(MatrixXd& mat, VectorXd& initGuess, VectorXd& eigenVec, double& eigenVal, const int& numPowerIter, const double& threshold) {
+    VectorXd oldIterVecNormal = initGuess;
+    VectorXd newIterVec(initGuess.size());
+    for (int i = 0; i < numPowerIter; i++) {
+      newIterVec = mat * oldIterVecNormal;
+      eigenVal = newIterVec.dot(oldIterVecNormal);
+      VectorXd r = newIterVec - eigenVal * oldIterVecNormal;
+      if (r.norm() < 1.e-6) {
+        eigenVec = newIterVec / newIterVec.norm();
+        if (commrank == 0) cout << "power method converged in " << i << " iterations\n";
+        return;
+      }
+      oldIterVecNormal= newIterVec / newIterVec.norm();
+    }
+    eigenVec = oldIterVecNormal;
+    if (commrank == 0) cout << "power method did not converge in " << numPowerIter << " iterations\n";
+  }
+  
+  void davidsonMethod(VectorXd& initGuess, VectorXd& eigenvec, double& eigenval, const int& maxDavidsonIter, const double& threshold) {
+    initGuess.normalize();
+    VectorXd vectorToBeAdded = initGuess;
+    int fullDim = initGuess.size(), subspaceDim = 0;
+    MatrixXd subspaceBasis = MatrixXd::Zero(1,1), hV = MatrixXd::Zero(1, 1), subspaceHam = MatrixXd::Zero(1, 1);
+    for (int i = 0; i < maxDavidsonIter; i++) {
+      //add a vector to the subspace
+      subspaceDim += 1;
+      subspaceBasis.conservativeResize(fullDim, subspaceDim);
+      subspaceBasis.col(subspaceDim - 1) = vectorToBeAdded;
+      //cout << "subspaceBasis\n" << subspaceBasis << endl;
+
+      //extend subspaceHam to include added vector
+      //VectorXd hVectorToBeAdded = mat * subspaceBasis.col(subspaceDim - 1);
+      VectorXd hVectorToBeAdded = VectorXd::Zero(fullDim);
+      HMult(vectorToBeAdded, hVectorToBeAdded);
+      hV.conservativeResize(fullDim, subspaceDim);
+      hV.col(subspaceDim - 1)  = hVectorToBeAdded;
+      subspaceHam = subspaceBasis.transpose() * hV;
+      //VectorXd newHamCol = hV.transpose() * subspaceBasis.col(subspaceDim - 1);
+      //subspaceHam.conservativeResize(subspaceDim, subspaceDim);
+      //subspaceHam.col(subspaceDim - 1) = newHamCol;
+      //subspaceHam.row(subspaceDim - 1) = newHamCol;
+
+      //diagonalize subspaceHam
+      //SelfAdjointEigenSolver<MatrixXd> diag(subspaceHam);
+      //eigenval = diag.eigenvalues()(0);
+      //cout << "eigenval  " << eigenval << endl;
+      //eigenvec = subspaceBasis * diag.eigenvectors().col(0);
+      //VectorXd resVec = mat * eigenvec - eigenval * eigenvec;
+      EigenSolver<MatrixXd> diag(subspaceHam);
+      VectorXd::Index minInd;
+      eigenval = diag.eigenvalues().real().minCoeff(&minInd);
+      eigenvec = subspaceBasis * diag.eigenvectors().col(minInd).real();
+      VectorXd hEigenvec = VectorXd::Zero(fullDim);
+      HMult(eigenvec, hEigenvec);
+      VectorXd resVec = hEigenvec - eigenval * eigenvec;
+      //cout << "resVec\n" << resVec << endl;
+      if (resVec.norm() < threshold) {
+        if (commrank == 0) cout << "Davidson converged in " << i << " iterations" << endl;
+        return;
+      }
+      else {//calculate vector to be added
+        //calculate delta
+        DiagonalMatrix<double, Dynamic> preconditioner;
+        //preconditioner.diagonal() = mat.diagonal() - VectorXd::Constant(fullDim, eigenval);
+        preconditioner.diagonal() = largeHamDiag - VectorXd::Constant(fullDim, eigenval);
+        //preconditioner.diagonal() = VectorXd::Constant(fullDim, largeHamDiag(0) - eigenval);
+        VectorXd delta = preconditioner.inverse() * resVec;
+        //VectorXd delta = resVec;
+        //cout << "delta\n" << delta << endl;
+        //orthonormalize
+        VectorXd overlaps = subspaceBasis.transpose() * delta;
+        //cout << "overlaps\n" << overlaps << endl;
+        //cout << "subspaceBasis * overlaps\n" << subspaceBasis * overlaps << endl;
+        vectorToBeAdded = delta - (subspaceBasis * overlaps);
+        //cout << "before normalize\n" << vectorToBeAdded << endl;
+        vectorToBeAdded.normalize();
+      }
+    }
+    if (commrank == 0) cout << "Davidson did not converge in " << maxDavidsonIter << " iterations" << endl;
   }
 
   template<typename Walker>
@@ -426,6 +584,7 @@ class SCCI
                             std::ref(generator));
 
     VectorXd ovlpDiag = VectorXd::Zero(coeffs.size());
+    VectorXd hamDiag = VectorXd::Zero(coeffs.size());
     double ovlp = 0., normSample = 0., locEne = 0., ene = 0., ene0 = 0., correctionFactor = 0.;
     VectorXd hamSample = VectorXd::Zero(coeffs.size());
     vector<Eigen::VectorXd> hamSamples;
@@ -453,6 +612,8 @@ class SCCI
       double ratio = deltaT / cumdeltaT;
       ovlpDiag *= (1 - ratio);
       ovlpDiag(coeffsIndex) += ratio * normSample;
+      hamDiag *= (1 - ratio);
+      hamDiag(coeffsIndex) += ratio * hamSample(coeffsIndex);
       ene *= (1 - ratio);
       ene += ratio * locEne;
       correctionFactor *= (1 - ratio);
@@ -473,12 +634,14 @@ class SCCI
     }
   
     ovlpDiag *= cumdeltaT;
+    hamDiag *= cumdeltaT;
     ene *= cumdeltaT;
     ene0 *= cumdeltaT;
     correctionFactor *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, ovlpDiag.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, hamDiag.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(ene0), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -487,6 +650,7 @@ class SCCI
     
     cumulativeTime = cumdeltaT;
     ovlpDiag /= cumdeltaT;
+    hamDiag /= cumdeltaT;
     ene /= cumdeltaT;
     ene0 /= (cumdeltaT * ovlpDiag(0));
     correctionFactor /= cumdeltaT;
@@ -513,6 +677,9 @@ class SCCI
     igl::slice(ovlpDiag, largeNormSlice, largeNorms);
     largeNormInv.resize(coeffs.size());
     largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+    igl::slice(hamDiag, largeNormSlice, largeHamDiag);
+    largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
+    largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
     for (int i = 0; i < sampleIndices.size(); i++) {
       if (ovlpDiag(sampleIndices[i]) <= schd.overlapCutoff) continue;
       else {
@@ -524,18 +691,30 @@ class SCCI
       }
     }
     hamSamples.clear(); sampleTimes.clear(); sampleIndices.clear();
-    
+   
     //diagonaliztion
     VectorXd initGuess = VectorXd::Unit(largeNorms.size(), 0);
+    if (commrank == 0) {
+      auto random = std::bind(std::uniform_real_distribution<double>(-0.1, 0.1),
+                              std::ref(generator));
+      for (int i=1; i < initGuess.size(); i++) {
+        initGuess(i) = random();
+      }
+    }
+
+#ifndef SERIAL
+  MPI_Bcast(initGuess.data(), initGuess.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
     double eigenVal;
     VectorXd eigenVec;
-    powerMethod(initGuess, eigenVec, eigenVal, 200, 1.e-6); 
+    //powerMethod(initGuess, eigenVec, eigenVal, 5000, 1.e-6); 
+    davidsonMethod(initGuess, eigenVec, eigenVal, 100, 1.e-4); 
     VectorXd largeCoeffs = largeNormInv * eigenVec;
     coeffs.setZero();
     for (int i = 0; i < largeNormIndices.size(); i++) coeffs(largeNormIndices[i]) = largeCoeffs(i);
 
     if (commrank == 0) {
-      cout << "diagonaliztion in time  " << getTime() - startofCalc << endl; 
+      cout << "diagonalization in time  " << getTime() - startofCalc << endl; 
       cout << "retained " << largeNorms.size() << " out of " << coeffs.size() << " states" << endl;
       cout << "energy eigenvalue   " << eigenVal << endl;
       cout << "SCCI+Q energy  " << eigenVal + (1 - correctionFactor) * (eigenVal - ene0) << endl;
@@ -590,8 +769,8 @@ class SCCI
       sMat = sMat / overlapTot;
       ene0 = ciHam(0, 0) / sMat(0,0);
       sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
-      //cout << "ciHam\n" << ciHam << endl << endl;
-      //cout << "sMat\n" << sMat << endl << endl; 
+      cout << "ciHam\n" << ciHam << endl << endl;
+      cout << "sMat\n" << sMat << endl << endl; 
       GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
       VectorXd::Index minInd;
       double minEne = diag.eigenvalues().real().minCoeff(&minInd);
