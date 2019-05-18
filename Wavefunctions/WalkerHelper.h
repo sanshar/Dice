@@ -29,6 +29,7 @@
 #include "CPS.h"
 #include "Jastrow.h"
 #include "Gutzwiller.h"
+#include "RBM.h"
 
 template<typename Reference>
 class WalkerHelper {
@@ -478,7 +479,7 @@ class WalkerHelper<CPS>
   std::vector<std::vector<int> > twoSitesToCorrelator;
 
   WalkerHelper() {};
-  WalkerHelper(const CPS& cps, const Determinant& d) {
+  WalkerHelper(CPS& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
     intermediateForEachSpinOrb.resize(norbs*2);
     updateHelper(cps, d, 0, 0, 0);
@@ -501,7 +502,7 @@ class WalkerHelper<CPS>
   }
 
   //these update functions are really init functions
-  void updateHelper(const CPS& cps, const Determinant& d, int l, int a, bool sz) {
+  void updateHelper(CPS& cps, const Determinant& d, int l, int a, bool sz) {
     int norbs = Determinant::norbs;
 
     for (int i=0; i<2*norbs; i++) {
@@ -518,7 +519,7 @@ class WalkerHelper<CPS>
     }
   }
   
-  void updateHelper(const CPS& cps, const Determinant& d, int l, int m, int a, int b, bool sz) {
+  void updateHelper(CPS& cps, const Determinant& d, int l, int m, int a, int b, bool sz) {
     int norbs = Determinant::norbs;
 
     for (int i=0; i<2*norbs; i++) {
@@ -661,13 +662,13 @@ class WalkerHelper<Jastrow>
   std::vector<double> intermediateForEachSpinOrb;
 
   WalkerHelper() {};
-  WalkerHelper(const Jastrow& cps, const Determinant& d) {
+  WalkerHelper(Jastrow& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
     intermediateForEachSpinOrb.resize(norbs*2);
     initHelper(cps, d);
   }
 
-  void initHelper(const Jastrow& cps, const Determinant& d) {
+  void initHelper(Jastrow& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
 
     vector<int> closed;
@@ -683,7 +684,7 @@ class WalkerHelper<Jastrow>
     }
   }
   
-  void updateHelper(const Jastrow& cps, const Determinant& d, int i, int a, bool sz) {
+  void updateHelper(Jastrow& cps, const Determinant& d, int i, int a, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     int norbs = Determinant::norbs;
     for (int l = 0; l < 2 * norbs; l++) 
@@ -693,7 +694,7 @@ class WalkerHelper<Jastrow>
     //initHelper(cps, d);
   }
   
-  void updateHelper(const Jastrow& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
+  void updateHelper(Jastrow& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     j = 2 * j + sz; b = 2 * b + sz;
     int norbs = Determinant::norbs;
@@ -728,11 +729,11 @@ class WalkerHelper<Gutzwiller>
  public:
 
   WalkerHelper() {};
-  WalkerHelper(const Gutzwiller& gutz, const Determinant& d) {}
+  WalkerHelper(Gutzwiller& gutz, const Determinant& d) {}
 
-  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int a, bool sz) {}
+  void updateHelper(Gutzwiller& gutz, const Determinant& d, int i, int a, bool sz) {}
   
-  void updateHelper(const Gutzwiller& gutz, const Determinant& d, int i, int j, int a, int b, bool sz) {}
+  void updateHelper(Gutzwiller& gutz, const Determinant& d, int i, int j, int a, int b, bool sz) {}
 
   double OverlapRatio(int i, int a, const Gutzwiller& gutz,
                       const Determinant &dcopy, const Determinant &d) const
@@ -775,4 +776,76 @@ class WalkerHelper<Gutzwiller>
   }
 };  
 
+template<>
+class WalkerHelper<RBM>
+{
+ public:
+  //the intermediate data is stored in the wfn, this class initializes and updates it
+
+  WalkerHelper() {};
+  WalkerHelper(RBM& cps, const Determinant& d) {
+    int norbs = Determinant::norbs;
+    cps.bwn = ArrayXd::Zero(cps.numHidden);
+    cps.intermediates[0] = ArrayXXd::Zero(norbs, norbs);
+    cps.intermediates[1] = ArrayXXd::Zero(norbs, norbs);
+    initHelper(cps, d);
+  }
+
+  void initHelper(RBM& cps, const Determinant& d) {
+    int norbs = Determinant::norbs;
+    vector<int> closed;
+    vector<int> open;
+    d.getOpenClosed(open, closed);
+    
+    //bwn
+    cps.bwn = cps.bVec;
+    for (int j = 0; j < closed.size(); j++) {
+      cps.bwn += cps.wMat.col(closed[j]);
+    }
+
+    //intermediates
+    ArrayXd tanhbwn = tanh(cps.bwn);
+    for (int i = commrank; i < (norbs * (norbs-1)) / 2; i += commsize) {
+      //calc row (occupied) and column (unoccupied) up spatial orb indices
+      int occ = floor(0.5 + sqrt(1 + 8*i) / 2), unocc = i % occ;//bottom half
+      ArrayXd wDiff = cps.wMat.col(2 * unocc) - cps.wMat.col(2 * occ);
+      ArrayXd coshWDiff = cosh(wDiff), sinhWDiff = sinh(wDiff);
+      cps.intermediates[0](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
+      cps.intermediates[0](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();//bottom half
+      wDiff = cps.wMat.col(2 * unocc + 1) - cps.wMat.col(2 * occ + 1);
+      coshWDiff = cosh(wDiff); sinhWDiff = sinh(wDiff);
+      cps.intermediates[1](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
+      cps.intermediates[1](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();
+    }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[0].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[1].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  }
+  
+  void updateHelper(RBM& cps, const Determinant& d, int i, int a, bool sz) {
+    i = 2 * i + sz; a = 2 * a + sz;
+    cps.bwn += cps.wMat.col(a) - cps.wMat.col(i);
+  }
+  
+  void updateHelper(RBM& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
+    i = 2 * i + sz; a = 2 * a + sz;
+    j = 2 * j + sz; b = 2 * b + sz;
+    cps.bwn += cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
+  }
+
+  double OverlapRatio(int i, int a, const RBM& cps,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    int spatI = i / 2, spatA = a / 2, sz = i % 2;
+    double aFac = exp(cps.aVec(a) - cps.aVec(i));
+    return aFac * cps.intermediates[sz](spatI, spatA);
+  }
+  
+  double OverlapRatio(int i, int j, int a, int b, const RBM& cps,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return OverlapRatio(i, a, cps, dcopy, d) * OverlapRatio(j, b, cps, dcopy, d);
+  }
+};  
 #endif

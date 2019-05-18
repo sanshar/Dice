@@ -93,7 +93,8 @@ private:
       & minSpawn
       & minPop
       & initialPop
-      & targetPop;
+      & targetPop
+      & hidden;
   }
 public:
 //General options
@@ -177,6 +178,9 @@ public:
   double minPop;
   double initialPop;
   double targetPop;
+
+  //options for rbm
+  int hidden;
 };
 
 /**

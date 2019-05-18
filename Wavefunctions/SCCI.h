@@ -158,7 +158,7 @@ class SCCI
     wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
     if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
     else ovlp = ciCoeff * ham0;
-    if (ovlp == 0.) return; //maybe not necessary
+    if (ovlp == 0. || ciCoeff == 0) return; //maybe not necessary
     normSample = 1 / ciCoeff / ciCoeff;
     locEne = walk.d.Energy(I1, I2, coreE);
     hamSample(coeffsIndex) += locEne / ciCoeff / ciCoeff;
@@ -707,8 +707,8 @@ class SCCI
 #endif
     double eigenVal;
     VectorXd eigenVec;
-    //powerMethod(initGuess, eigenVec, eigenVal, 5000, 1.e-6); 
-    davidsonMethod(initGuess, eigenVec, eigenVal, 100, 1.e-4); 
+    //powerMethod(initGuess, eigenVec, eigenVal, 5000, 1.e-4); 
+    davidsonMethod(initGuess, eigenVec, eigenVal, 1000, 1.e-4); 
     VectorXd largeCoeffs = largeNormInv * eigenVec;
     coeffs.setZero();
     for (int i = 0; i < largeNormIndices.size(); i++) coeffs(largeNormIndices[i]) = largeCoeffs(i);

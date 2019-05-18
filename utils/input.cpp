@@ -110,6 +110,9 @@ void readInput(string input, schedule& schd, bool print) {
       schd.initialPop = 100.0;
       schd.targetPop = 1000.0;
 
+      //rbm options
+      schd.hidden = 1;
+
       while (dump.good())
 	{
 
@@ -190,7 +193,7 @@ void readInput(string input, schedule& schd, bool print) {
       
       else if (boost::iequals(ArgName, "test")) {
 	    schd.wavefunctionType = "test";
-        schd.nciAct = atoi(tok[1].c_str());
+        schd.hidden = atoi(tok[1].c_str());
       }
       
       else if (boost::iequals(ArgName, "scci")) {

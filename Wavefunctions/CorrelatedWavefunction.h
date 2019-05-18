@@ -56,12 +56,12 @@ struct CorrelatedWavefunction {
   Reference& getRef() { return ref; }
   Corr& getCorr() { return corr; }
 
-  void initWalker(Walker<Corr, Reference> &walk) const 
+  void initWalker(Walker<Corr, Reference> &walk)  
   {
     walk = Walker<Corr, Reference>(corr, ref);
   }
   
-  void initWalker(Walker<Corr, Reference> &walk, Determinant &d) const 
+  void initWalker(Walker<Corr, Reference> &walk, Determinant &d) 
   {
     walk = Walker<Corr, Reference>(corr, ref, d);
   }

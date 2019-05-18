@@ -56,14 +56,14 @@ struct Walker<Corr, Slater> {
 
   Walker() {};
   
-  Walker(const Corr &corr, const Slater &ref) 
+  Walker(Corr &corr, const Slater &ref) 
   {
     initDet(ref.getHforbsA().real(), ref.getHforbsB().real());
     refHelper = WalkerHelper<Slater>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
 
-  Walker(const Corr &corr, const Slater &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
+  Walker(Corr &corr, const Slater &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
 
   Determinant& getDet() {return d;}
   void readBestDeterminant(Determinant& d) const 
@@ -220,7 +220,7 @@ struct Walker<Corr, Slater> {
     return detFactorNum / detFactorDen;
   }
 
-  void update(int i, int a, bool sz, const Slater &ref, const Corr &corr, bool doparity = true)
+  void update(int i, int a, bool sz, const Slater &ref, Corr &corr, bool doparity = true)
   {
     double p = 1.0;
     if (doparity) p *= d.parity(a, i, sz);
@@ -240,7 +240,7 @@ struct Walker<Corr, Slater> {
     corrHelper.updateHelper(corr, d, i, a, sz);
   }
 
-  void update(int i, int j, int a, int b, bool sz, const Slater &ref, const Corr& corr, bool doparity = true)
+  void update(int i, int j, int a, int b, bool sz, const Slater &ref, Corr& corr, bool doparity = true)
   {
     double p = 1.0;
     Determinant dcopy = d;
@@ -262,7 +262,7 @@ struct Walker<Corr, Slater> {
     corrHelper.updateHelper(corr, d, i, j, a, b, sz);
   }
 
-  void updateWalker(const Slater &ref, const Corr& corr, int ex1, int ex2, bool doparity = true)
+  void updateWalker(const Slater &ref, Corr& corr, int ex1, int ex2, bool doparity = true)
   {
     int norbs = Determinant::norbs;
     int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
@@ -292,7 +292,7 @@ struct Walker<Corr, Slater> {
     }
   }
 
-  void exciteWalker(const Slater &ref, const Corr& corr, int excite1, int excite2, int norbs)
+  void exciteWalker(const Slater &ref, Corr& corr, int excite1, int excite2, int norbs)
   {
     int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
 
@@ -449,14 +449,14 @@ struct Walker<Corr, AGP> {
 
   Walker() {};
   
-  Walker(const Corr &corr, const AGP &ref) 
+  Walker(Corr &corr, const AGP &ref) 
   {
     initDet(ref.getPairMat().real());
     refHelper = WalkerHelper<AGP>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
 
-  Walker(const Corr &corr, const AGP &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
+  Walker(Corr &corr, const AGP &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
 
   Determinant& getDet() {return d;}
   void readBestDeterminant(Determinant& d) const 
@@ -556,7 +556,7 @@ struct Walker<Corr, AGP> {
     return (factor * refHelper.thetaDet).real() / (refHelper.thetaDet).real();
   }
   
-  void update(int i, int a, bool sz, const AGP &ref, const Corr &corr, bool doparity = true)
+  void update(int i, int a, bool sz, const AGP &ref, Corr &corr, bool doparity = true)
   {
     double p = 1.0;
     if (doparity) p *= d.parity(a, i, sz);
@@ -567,7 +567,7 @@ struct Walker<Corr, AGP> {
     corrHelper.updateHelper(corr, d, i, a, sz);
   }
   
-  void update(int i, int j, int a, int b, bool sz, const AGP &ref, const Corr &corr, bool doparity = true)
+  void update(int i, int j, int a, int b, bool sz, const AGP &ref, Corr &corr, bool doparity = true)
   {
     double p = 1.0;
     Determinant dcopy = d;
@@ -582,7 +582,7 @@ struct Walker<Corr, AGP> {
     corrHelper.updateHelper(corr, d, i, j, a, b, sz);
   }
   
-  void updateWalker(const AGP& ref, const Corr &corr, int ex1, int ex2, bool doparity = true)
+  void updateWalker(const AGP& ref, Corr &corr, int ex1, int ex2, bool doparity = true)
   {
     int norbs = Determinant::norbs;
     int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
@@ -612,7 +612,7 @@ struct Walker<Corr, AGP> {
     }
   }
   
-  void exciteWalker(const AGP& ref, const Corr &corr, int excite1, int excite2, int norbs)
+  void exciteWalker(const AGP& ref, Corr &corr, int excite1, int excite2, int norbs)
   {
     int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
   
@@ -677,14 +677,14 @@ struct Walker<Corr, Pfaffian> {
 
   Walker() {};
   
-  Walker(const Corr &corr, const Pfaffian &ref) 
+  Walker(Corr &corr, const Pfaffian &ref) 
   {
     initDet(ref.getPairMat().real());
     refHelper = WalkerHelper<Pfaffian>(ref, d);
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
 
-  Walker(const Corr &corr, const Pfaffian &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
+  Walker(Corr &corr, const Pfaffian &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
   
   Determinant& getDet() {return d;}
   void readBestDeterminant(Determinant& d) const 
@@ -816,7 +816,7 @@ struct Walker<Corr, Pfaffian> {
     return ((summand1 + summand2) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
   }
   
-  void update(int i, int a, bool sz, const Pfaffian &ref, const Corr &corr, bool doparity = true)
+  void update(int i, int a, bool sz, const Pfaffian &ref, Corr &corr, bool doparity = true)
   {
     double p = 1.0;
     p *= d.parity(a, i, sz);
@@ -826,7 +826,7 @@ struct Walker<Corr, Pfaffian> {
     corrHelper.updateHelper(corr, d, i, a, sz);
   }
   
-  void updateWalker(const Pfaffian& ref, const Corr &corr, int ex1, int ex2, bool doparity = true)
+  void updateWalker(const Pfaffian& ref, Corr &corr, int ex1, int ex2, bool doparity = true)
   {
     int norbs = Determinant::norbs;
     int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
@@ -845,7 +845,7 @@ struct Walker<Corr, Pfaffian> {
     }
   }
   
-  void exciteWalker(const Pfaffian& ref, const Corr &corr, int excite1, int excite2, int norbs)
+  void exciteWalker(const Pfaffian& ref, Corr &corr, int excite1, int excite2, int norbs)
   {
     int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
   

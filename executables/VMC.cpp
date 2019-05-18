@@ -109,6 +109,11 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
+  else if (schd.wavefunctionType == "test") {
+    CorrelatedWavefunction<RBM, Slater> wave; Walker<RBM, Slater> walk;
+    runVMC(wave, walk);
+  }
+  
   else if (schd.wavefunctionType == "CICPSSlater") {
     CIWavefunction<CorrelatedWavefunction<CPS, Slater>, Walker<CPS, Slater>, SpinFreeOperator> wave; Walker<CPS, Slater> walk;
     wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
@@ -209,13 +214,6 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
-  else if (schd.wavefunctionType == "test") {
-    SCCI<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    //wave.optimizeWaveDeterministicDirect(walk);
-    wave.optimizeWaveCTDirect(walk);
-    wave.writeWave();
-  }
 
   else if (schd.wavefunctionType == "slaterRDM") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
