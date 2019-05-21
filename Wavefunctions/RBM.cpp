@@ -28,7 +28,7 @@ using namespace Eigen;
 RBM::RBM () {    
   int norbs = Determinant::norbs;
   numHidden = schd.hidden;
-  wMat = MatrixXd::Random(numHidden, 2*norbs);
+  wMat = MatrixXd::Random(numHidden, 2*norbs) / 50;
   bVec = VectorXd::Zero(numHidden);
   aVec = VectorXd::Zero(2*norbs);
   
@@ -89,7 +89,7 @@ void RBM::OverlapWithGradient(const Determinant& d,
   d.getOpenClosed(open, closed);
   ArrayXd tanhbwn = tanh(bwn);
   if (schd.optimizeCps) {
-    //grad.segment(numHidden * 2 * norbs, numHidden) = tanhbwn.matrix(); //b derivatives
+    grad.segment(numHidden * 2 * norbs, numHidden) = tanhbwn.matrix(); //b derivatives
     for (int j = 0; j < closed.size(); j++) {
       //grad(numHidden * 2 * norbs + numHidden + closed[j]) = 1; //a derivatives
       grad.segment(numHidden * closed[j], numHidden) += tanhbwn.matrix();//w derivatives
