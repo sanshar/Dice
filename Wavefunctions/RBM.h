@@ -36,7 +36,7 @@ class RBM {
   friend class boost::serialization::access;
   template<class Archive>
   void serialize (Archive & ar, const unsigned int version) {
-    ar & numHidden;
+      ar & numHidden;
   }
  public:
   int numHidden; //number of hidden neurons
@@ -45,7 +45,8 @@ class RBM {
   Eigen::ArrayXd aVec; //visible neuron local fields
   //all visible neuron indices referring to spin-orbitals are ordered in an alpha-beta alternating pattern
   Eigen::ArrayXd bwn; //b + w.n, intermediate, updated by the walker (should be in the walker)
-  std::array<Eigen::ArrayXXd, 2> intermediates; //doesn't depend on the walker, norb x norb (one for each excitation) matrix for up and down spins
+  double coshbwn;//prod cosh(b + w.n)
+  //std::array<Eigen::ArrayXXd, 2> intermediates; //doesn't depend on the walker, norb x norb (one for each excitation) matrix for up and down spins
 
   //reads correlator file and makes cpsArray, orbitalToRBM
   RBM ();

@@ -763,13 +763,15 @@ class WalkerHelper<Gutzwiller>
       if (d.getoccA(i/2)) ratio /= gutz.g(i/2);  
       if (d.getoccA(a/2)) ratio *= gutz.g(a/2);
     }
+    Determinant dExc = d;
+    dExc.setocc(i, false); dExc.setocc(a, true);
     if (j % 2 == 0) { 
-      if (d.getoccB(j/2)) ratio /= gutz.g(j/2);  
-      if (d.getoccB(b/2)) ratio *= gutz.g(b/2);
+      if (dExc.getoccB(j/2)) ratio /= gutz.g(j/2);  
+      if (dExc.getoccB(b/2)) ratio *= gutz.g(b/2);
     }
     else { 
-      if (d.getoccA(j/2)) ratio /= gutz.g(j/2);  
-      if (d.getoccA(b/2)) ratio *= gutz.g(b/2);
+      if (dExc.getoccA(j/2)) ratio /= gutz.g(j/2);  
+      if (dExc.getoccA(b/2)) ratio *= gutz.g(b/2);
     }
     return ratio;
     //return gutz.OverlapRatio(dcopy, d);
@@ -786,8 +788,8 @@ class WalkerHelper<RBM>
   WalkerHelper(RBM& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
     cps.bwn = ArrayXd::Zero(cps.numHidden);
-    cps.intermediates[0] = ArrayXXd::Zero(norbs, norbs);
-    cps.intermediates[1] = ArrayXXd::Zero(norbs, norbs);
+    //cps.intermediates[0] = ArrayXXd::Zero(norbs, norbs);
+    //cps.intermediates[1] = ArrayXXd::Zero(norbs, norbs);
     initHelper(cps, d);
   }
 
@@ -802,50 +804,55 @@ class WalkerHelper<RBM>
     for (int j = 0; j < closed.size(); j++) {
       cps.bwn += cps.wMat.col(closed[j]);
     }
+    cps.coshbwn = cosh(cps.bwn).prod();
 
     //intermediates
-    ArrayXd tanhbwn = tanh(cps.bwn);
-    for (int i = commrank; i < (norbs * (norbs-1)) / 2; i += commsize) {
-      //calc row (occupied) and column (unoccupied) up spatial orb indices
-      int occ = floor(0.5 + sqrt(1 + 8*i) / 2), unocc = i % occ;//bottom half
-      ArrayXd wDiff = cps.wMat.col(2 * unocc) - cps.wMat.col(2 * occ);
-      ArrayXd coshWDiff = cosh(wDiff), sinhWDiff = sinh(wDiff);
-      cps.intermediates[0](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
-      cps.intermediates[0](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();//bottom half
-      wDiff = cps.wMat.col(2 * unocc + 1) - cps.wMat.col(2 * occ + 1);
-      coshWDiff = cosh(wDiff); sinhWDiff = sinh(wDiff);
-      cps.intermediates[1](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
-      cps.intermediates[1](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();
-    }
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[0].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[1].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
+    //ArrayXd tanhbwn = tanh(cps.bwn);
+    //for (int i = commrank; i < (norbs * (norbs-1)) / 2; i += commsize) {
+    //  //calc row (occupied) and column (unoccupied) up spatial orb indices
+    //  int occ = floor(0.5 + sqrt(1 + 8*i) / 2), unocc = i % occ;//bottom half
+    //  ArrayXd wDiff = cps.wMat.col(2 * unocc) - cps.wMat.col(2 * occ);
+    //  ArrayXd coshWDiff = cosh(wDiff), sinhWDiff = sinh(wDiff);
+    //  cps.intermediates[0](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
+    //  cps.intermediates[0](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();//bottom half
+    //  wDiff = cps.wMat.col(2 * unocc + 1) - cps.wMat.col(2 * occ + 1);
+    //  coshWDiff = cosh(wDiff); sinhWDiff = sinh(wDiff);
+    //  cps.intermediates[1](occ, unocc) = (coshWDiff + tanhbwn * sinhWDiff).prod();
+    //  cps.intermediates[1](unocc, occ) = (coshWDiff - tanhbwn * sinhWDiff).prod();
+    //}
+//#ifndef SERIAL
+//  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[0].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//  MPI_Allreduce(MPI_IN_PLACE, cps.intermediates[1].data(), norbs*norbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//#endif
   }
   
   void updateHelper(RBM& cps, const Determinant& d, int i, int a, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     cps.bwn += cps.wMat.col(a) - cps.wMat.col(i);
+    cps.coshbwn = cosh(cps.bwn).prod();
   }
   
   void updateHelper(RBM& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     j = 2 * j + sz; b = 2 * b + sz;
     cps.bwn += cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
+    cps.coshbwn = cosh(cps.bwn).prod();
   }
 
   double OverlapRatio(int i, int a, const RBM& cps,
                       const Determinant &dcopy, const Determinant &d) const
   {
-    int spatI = i / 2, spatA = a / 2, sz = i % 2;
     double aFac = exp(cps.aVec(a) - cps.aVec(i));
-    return aFac * cps.intermediates[sz](spatI, spatA);
+    ArrayXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i);
+    return aFac * cosh(bwnp).prod() / cps.coshbwn;
   }
   
   double OverlapRatio(int i, int j, int a, int b, const RBM& cps,
                       const Determinant &dcopy, const Determinant &d) const
   {
-    return OverlapRatio(i, a, cps, dcopy, d) * OverlapRatio(j, b, cps, dcopy, d);
+    double aFac = exp(cps.aVec(a) - cps.aVec(i) + cps.aVec(b) - cps.aVec(j));
+    ArrayXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
+    return aFac * cosh(bwnp).prod() / cps.coshbwn;
   }
 };  
 #endif

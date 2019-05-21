@@ -110,6 +110,10 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "test") {
+    //cout << "\ngutz\n";
+    //CorrelatedWavefunction<Gutzwiller, Slater> waveG; Walker<Gutzwiller, Slater> walkG;
+    //runVMC(waveG, walkG);
+    //cout << "\nrbm\n";
     CorrelatedWavefunction<RBM, Slater> wave; Walker<RBM, Slater> walk;
     runVMC(wave, walk);
   }

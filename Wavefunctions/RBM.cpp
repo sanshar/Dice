@@ -31,10 +31,7 @@ RBM::RBM () {
   wMat = MatrixXd::Random(numHidden, 2*norbs);
   bVec = VectorXd::Zero(numHidden);
   aVec = VectorXd::Zero(2*norbs);
-/*
-  if (schd.optimizeCps)
-    SpinCorrelator += 0.01*MatrixXd::Random(2*norbs, 2*norbs);
-*/
+  
   bool readRBM = false;
   char file[5000];
   sprintf(file, "RBM.txt");
@@ -43,7 +40,7 @@ RBM::RBM () {
     readRBM = true;
   if (readRBM) {
     for (int i = 0; i < wMat.rows(); i++) {
-      for (int j = 0; j < wMat.rows(); j++){
+      for (int j = 0; j < wMat.cols(); j++){
         ofile >> wMat(i, j);
       }
     }
@@ -92,10 +89,10 @@ void RBM::OverlapWithGradient(const Determinant& d,
   d.getOpenClosed(open, closed);
   ArrayXd tanhbwn = tanh(bwn);
   if (schd.optimizeCps) {
-    grad.segment(numHidden * 2 * norbs, numHidden) = tanhbwn.matrix(); //b derivatives
+    //grad.segment(numHidden * 2 * norbs, numHidden) = tanhbwn.matrix(); //b derivatives
     for (int j = 0; j < closed.size(); j++) {
-      grad(numHidden * 2 * norbs + numHidden + closed[j]) = 1; //a derivatives
-      grad.segment(numHidden * closed[j], numHidden) = tanhbwn.matrix();
+      //grad(numHidden * 2 * norbs + numHidden + closed[j]) = 1; //a derivatives
+      grad.segment(numHidden * closed[j], numHidden) += tanhbwn.matrix();//w derivatives
     }
   }
 }
