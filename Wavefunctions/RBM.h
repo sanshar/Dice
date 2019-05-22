@@ -36,15 +36,22 @@ class RBM {
   friend class boost::serialization::access;
   template<class Archive>
   void serialize (Archive & ar, const unsigned int version) {
-      ar & numHidden;
+      ar & numHidden
+        & wMat
+        & bVec
+        & aVec;
   }
  public:
   int numHidden; //number of hidden neurons
-  Eigen::ArrayXXd wMat; //edge coeffs, column-major in vars
-  Eigen::ArrayXd bVec; //hidden neuron local fields
-  Eigen::ArrayXd aVec; //visible neuron local fields
+  //Eigen::ArrayXXd wMat; //edge coeffs, column-major in vars
+  //Eigen::ArrayXd bVec; //hidden neuron local fields
+  //Eigen::ArrayXd aVec; //visible neuron local fields
+  Eigen::MatrixXd wMat; //edge coeffs, column-major in vars
+  Eigen::VectorXd bVec; //hidden neuron local fields
+  Eigen::VectorXd aVec; //visible neuron local fields
   //all visible neuron indices referring to spin-orbitals are ordered in an alpha-beta alternating pattern
-  Eigen::ArrayXd bwn; //b + w.n, intermediate, updated by the walker (should be in the walker)
+  //Eigen::ArrayXd bwn; //b + w.n, intermediate, updated by the walker (should be in the walker)
+  Eigen::VectorXd bwn; //b + w.n, intermediate, updated by the walker (should be in the walker)
   double coshbwn;//prod cosh(b + w.n)
   //std::array<Eigen::ArrayXXd, 2> intermediates; //doesn't depend on the walker, norb x norb (one for each excitation) matrix for up and down spins
 
@@ -93,12 +100,12 @@ class RBM {
    *              the gradient w.r.t to the current Correlator
    */
   void   OverlapWithGradient  (const Determinant& d, 
-                               Eigen::VectorXd& grad,
+                               Eigen::VectorBlock<Eigen::VectorXd>& grad,
                                const double& ovlp) const;
 
-  void getVariables(Eigen::VectorXd &v) const ;
+  void getVariables(Eigen::VectorBlock<Eigen::VectorXd> &v) const ;
   long getNumVariables() const;
-  void updateVariables(const Eigen::VectorXd &v);
+  void updateVariables(const Eigen::VectorBlock<Eigen::VectorXd> &v);
   void printVariables() const;
   std::string getfileName() const {return "RBM";};
 };

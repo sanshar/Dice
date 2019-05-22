@@ -54,12 +54,12 @@ double RBM::Overlap(const Determinant &d) const
   d.getOpenClosed(open, closed);
 
   double ovlp = 1.0;
-  ArrayXd wn = ArrayXd::Zero(numHidden);
+  VectorXd wn = VectorXd::Zero(numHidden);
   for (int j = 0; j < closed.size(); j++) {
     ovlp *= exp(aVec(closed[j]));
     wn += wMat.col(closed[j]);
   }
-  ovlp *= cosh(bVec + wn).prod();
+  ovlp *= cosh((bVec + wn).array()).prod();
   return ovlp;
 }
 
@@ -81,17 +81,17 @@ double RBM::OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, c
 
 //assuming bwn corresponds to d
 void RBM::OverlapWithGradient(const Determinant& d, 
-                              VectorXd& grad,
+                              Eigen::VectorBlock<VectorXd>& grad,
                               const double& ovlp) const {
   int norbs = Determinant::norbs;
   vector<int> closed;
   vector<int> open;
   d.getOpenClosed(open, closed);
-  ArrayXd tanhbwn = tanh(bwn);
+  ArrayXd tanhbwn = tanh(bwn.array());
   if (schd.optimizeCps) {
     grad.segment(numHidden * 2 * norbs, numHidden) = tanhbwn.matrix(); //b derivatives
     for (int j = 0; j < closed.size(); j++) {
-      //grad(numHidden * 2 * norbs + numHidden + closed[j]) = 1; //a derivatives
+      grad(numHidden * 2 * norbs + numHidden + closed[j]) = 1; //a derivatives
       grad.segment(numHidden * closed[j], numHidden) += tanhbwn.matrix();//w derivatives
     }
   }
@@ -103,7 +103,7 @@ long RBM::getNumVariables() const
 }
 
 
-void RBM::getVariables(Eigen::VectorXd &v) const
+void RBM::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 {
   int numVars = 0;
   for (int j = 0; j < wMat.cols(); j++) {
@@ -124,7 +124,7 @@ void RBM::getVariables(Eigen::VectorXd &v) const
   }
 }
 
-void RBM::updateVariables(const Eigen::VectorXd &v)
+void RBM::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
 {
   int numVars = 0;
   for (int j = 0; j < wMat.cols(); j++) {

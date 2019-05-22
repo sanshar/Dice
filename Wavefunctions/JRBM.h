@@ -17,9 +17,10 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef CPS_HEADER_H
-#define CPS_HEADER_H
-#include "Correlator.h"
+#ifndef JRBM_HEADER_H
+#define JRBM_HEADER_H
+#include "Jastrow.h"
+#include "RBM.h"
 #include <Eigen/Dense>
 #include <vector>
 #include <iostream>
@@ -32,60 +33,48 @@
 class Determinant;
 
 /*
- * CPS is a product of correlators 
+ * JRBM is a product of Jastrow and RBM
  */
-class CPS {
+class JRBM {
  private:
   friend class boost::serialization::access;
   template<class Archive>
   void serialize (Archive & ar, const unsigned int version) {
-    ar & cpsArray
-        & mapFromOrbitalToCorrelator
-        & commonCorrelators;
+    ar & jastrow
+      & rbm;
   }
  public:
-  bool twoSiteOrSmaller;
+  Jastrow jastrow;
+  RBM rbm;
   
-  std::vector<Correlator> cpsArray;  
-  
-  std::vector<std::vector<int>> mapFromOrbitalToCorrelator;
-  std::vector<int> commonCorrelators;
-  
-  //reads correlator file and makes cpsArray, orbitalToCPS
-  CPS ();
-  CPS (std::vector<Correlator>& pcpsArray);
-  
-  void generateMapFromOrbitalToCorrelators();
+  JRBM ();
   
   double Overlap(const Determinant& d) const ;
-  
+
   /*
    * Takes an occupation number representation of two determinants
    * in the local orbital basis and calculates the ratio of overlaps 
-   * <d1|CPS>/<d2|CPS>
+   * <d1|JRBM>/<d2|JRBM>
    * PARAMS:
    * 
    * Determinant: the occupation number representation of dets
    * 
    * RETURN:
-   * <d1|CPS>/<d2|CPS>
+   * <d1|JRBM>/<d2|JRBM>
    *
    */
   double OverlapRatio(const Determinant& d1, const Determinant& d2) const ;
   
   /*
-   * return ratio of overlaps of CPS with d and (i->a,j->b)excited-d (=dcopy)
+   * return ratio of overlaps of JRBM with d and (i->a,j->b)excited-d (=dcopy)
    */
   double OverlapRatio(int i, int a, const Determinant &dcopy, const Determinant &d) const ;
   double OverlapRatio(int i, int j, int a, int b, const Determinant &dcopy, const Determinant &d) const;
   
-  double OverlapRatio(int i, int a, const BigDeterminant &dcopy, const BigDeterminant &d) const ;
-  double OverlapRatio(int i, int j, int a, int b, const BigDeterminant &dcopy, const BigDeterminant &d) const;
-  
   /*
    * Takes an occupation number representation of a determinant
    * in the local orbital basis and calculates the overlap 
-   * the CPS and also the overlap of the determinant
+   * the JRBM and also the overlap of the determinant
    * with respect to the tangent vector w.r.t to all the 
    * parameters in the wavefuncion
    * 
@@ -94,10 +83,10 @@ class CPS {
    * Determinant: the occupation number representation of the determinant
    * grad       : the vector of the gradient. This vector is long and contains
    *              the space for storing gradients with respect to all the parameters
-   *              in the wavefunction and not just this CPS and so the index startIndex
+   *              in the wavefunction and not just this JRBM and so the index startIndex
    *              is needed to indentify at what index should we start populating the
-   *              gradient w.r.t to this CPS in the vector
-   * ovlp       : <d|CPS>
+   *              gradient w.r.t to this JRBM in the vector
+   * ovlp       : <d|JRBM>
    * startIndex : The location in the vector gradient from where to start populating
    *              the gradient w.r.t to the current Correlator
    */
@@ -109,9 +98,7 @@ class CPS {
   long getNumVariables() const;
   void updateVariables(const Eigen::VectorBlock<Eigen::VectorXd> &v);
   void printVariables() const;
-
-  std::string getfileName() const {return "CPS";};
-
+  std::string getfileName() const {return "JRBM";};
 };
 
 

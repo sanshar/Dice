@@ -106,7 +106,7 @@ class Correlator {
    *              the gradient w.r.t to the current correlator
    */
   void   OverlapWithGradient  (const Determinant& d, 
-                               Eigen::VectorXd& grad,
+                               Eigen::VectorBlock<Eigen::VectorXd>& grad,
                                const double& ovlp,
                                const long& startIndex) const;
 

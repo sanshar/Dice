@@ -196,6 +196,21 @@ void readInput(string input, schedule& schd, bool print) {
         schd.hidden = atoi(tok[1].c_str());
       }
       
+      else if (boost::iequals(ArgName, "RBM")) {
+	    schd.wavefunctionType = "RBM";
+        schd.hidden = atoi(tok[1].c_str());
+      }
+      
+      else if (boost::iequals(ArgName, "JRBMS")) {
+	    schd.wavefunctionType = "JRBMS";
+        schd.hidden = atoi(tok[1].c_str());
+      }
+      
+      else if (boost::iequals(ArgName, "JRBMP")) {
+	    schd.wavefunctionType = "JRBMP";
+        schd.hidden = atoi(tok[1].c_str());
+      }
+      
       else if (boost::iequals(ArgName, "scci")) {
 	    schd.wavefunctionType = "scci";
         schd.nciAct = atoi(tok[1].c_str());

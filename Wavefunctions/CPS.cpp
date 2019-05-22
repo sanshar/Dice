@@ -231,7 +231,7 @@ double CPS::OverlapRatio(int i, int j, int a, int b, const BigDeterminant &dcopy
 }
 
 void CPS::OverlapWithGradient(const Determinant& d, 
-                              VectorXd& grad,
+                              Eigen::VectorBlock<VectorXd>& grad,
                               const double& ovlp) const {
   
   if (schd.optimizeCps) {
@@ -253,7 +253,7 @@ long CPS::getNumVariables() const
 }
 
 
-void CPS::getVariables(Eigen::VectorXd &v) const
+void CPS::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 {
   int numVars = 0;
   for (const auto& c : cpsArray) {
@@ -262,7 +262,7 @@ void CPS::getVariables(Eigen::VectorXd &v) const
   }
 }
 
-void CPS::updateVariables(const Eigen::VectorXd &v)
+void CPS::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
 {
   int numVars = 0;
   for (auto& c : cpsArray) {

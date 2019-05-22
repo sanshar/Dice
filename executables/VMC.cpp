@@ -109,12 +109,18 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "test") {
-    //cout << "\ngutz\n";
-    //CorrelatedWavefunction<Gutzwiller, Slater> waveG; Walker<Gutzwiller, Slater> walkG;
-    //runVMC(waveG, walkG);
-    //cout << "\nrbm\n";
+  else if (schd.wavefunctionType == "RBM") {
     CorrelatedWavefunction<RBM, Slater> wave; Walker<RBM, Slater> walk;
+    runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "JRBMS") {
+    CorrelatedWavefunction<JRBM, Slater> wave; Walker<JRBM, Slater> walk;
+    runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "JRBMP") {
+    CorrelatedWavefunction<JRBM, Pfaffian> wave; Walker<JRBM, Pfaffian> walk;
     runVMC(wave, walk);
   }
   

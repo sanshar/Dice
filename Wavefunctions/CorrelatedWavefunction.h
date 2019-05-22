@@ -141,7 +141,8 @@ struct CorrelatedWavefunction {
                            Eigen::VectorXd &grad) const
   {
     double factor1 = 1.0;
-    corr.OverlapWithGradient(walk.d, grad, factor1);
+    Eigen::VectorBlock<VectorXd> gradhead = grad.head(corr.getNumVariables());
+    corr.OverlapWithGradient(walk.d, gradhead, factor1);
   
     Eigen::VectorBlock<VectorXd> gradtail = grad.tail(grad.rows() - corr.getNumVariables());
     walk.OverlapWithGradient(ref, gradtail);
@@ -155,7 +156,8 @@ struct CorrelatedWavefunction {
 
   void updateVariables(Eigen::VectorXd &v) 
   {
-    corr.updateVariables(v);
+    Eigen::VectorBlock<VectorXd> vhead = v.head(corr.getNumVariables());
+    corr.updateVariables(vhead);
     Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows() - corr.getNumVariables());
     ref.updateVariables(vtail);
   }
@@ -165,7 +167,8 @@ struct CorrelatedWavefunction {
     if (v.rows() != getNumVariables())
       v = VectorXd::Zero(getNumVariables());
 
-    corr.getVariables(v);
+    Eigen::VectorBlock<VectorXd> vhead = v.head(corr.getNumVariables());
+    corr.getVariables(vhead);
     Eigen::VectorBlock<VectorXd> vtail = v.tail(v.rows() - corr.getNumVariables());
     ref.getVariables(vtail);
   }

@@ -70,7 +70,7 @@ double Gutzwiller::OverlapRatio(int i, int j, int a, int b, const Determinant &d
 }
 
 void Gutzwiller::OverlapWithGradient(const Determinant& d, 
-                              VectorXd& grad,
+                              Eigen::VectorBlock<VectorXd>& grad,
                               const double& ovlp) const {
   if (schd.optimizeCps) {
     int norbs = Determinant::norbs;
@@ -86,13 +86,13 @@ long Gutzwiller::getNumVariables() const
 }
 
 
-void Gutzwiller::getVariables(Eigen::VectorXd &v) const
+void Gutzwiller::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 {
   for (int i = 0; i < Determinant::norbs; i++)
     v[i] = g[i];
 }
 
-void Gutzwiller::updateVariables(const Eigen::VectorXd &v)
+void Gutzwiller::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
 {
   for (int i = 0; i < Determinant::norbs; i++)
     g[i] = v[i];

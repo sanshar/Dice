@@ -84,7 +84,7 @@ double Jastrow::OverlapRatio(int i, int j, int a, int b, const Determinant &dcop
 
 
 void Jastrow::OverlapWithGradient(const Determinant& d, 
-                              VectorXd& grad,
+                              Eigen::VectorBlock<VectorXd>& grad,
                               const double& ovlp) const {
   vector<int> closed;
   vector<int> open;
@@ -107,7 +107,7 @@ long Jastrow::getNumVariables() const
 }
 
 
-void Jastrow::getVariables(Eigen::VectorXd &v) const
+void Jastrow::getVariables(Eigen::VectorBlock<VectorXd> &v) const
 {
   int numVars = 0;
   for (int i=0; i<SpinCorrelator.rows(); i++)
@@ -117,7 +117,7 @@ void Jastrow::getVariables(Eigen::VectorXd &v) const
     }
 }
 
-void Jastrow::updateVariables(const Eigen::VectorXd &v)
+void Jastrow::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
 {
   int numVars = 0;
   for (int i=0; i<SpinCorrelator.rows(); i++)

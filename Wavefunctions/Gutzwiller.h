@@ -93,12 +93,12 @@ class Gutzwiller {
    *              the gradient w.r.t to the current Correlator
    */
   void   OverlapWithGradient  (const Determinant& d, 
-                               Eigen::VectorXd& grad,
+                               Eigen::VectorBlock<Eigen::VectorXd>& grad,
                                const double& ovlp) const;
 
-  void getVariables(Eigen::VectorXd &v) const ;
+  void getVariables(Eigen::VectorBlock<Eigen::VectorXd> &v) const ;
   long getNumVariables() const;
-  void updateVariables(const Eigen::VectorXd &v);
+  void updateVariables(const Eigen::VectorBlock<Eigen::VectorXd> &v);
   void printVariables() const;
   std::string getfileName() const {return "Gutzwiller";};
 };

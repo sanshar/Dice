@@ -43,7 +43,7 @@ Correlator::Correlator (std::vector<int>& pasites,
 }
 
 void Correlator::OverlapWithGradient(const Determinant& d, 
-				     Eigen::VectorXd& grad,
+				     Eigen::VectorBlock<Eigen::VectorXd>& grad,
 				     const double& ovlp,
 				     const long& startIndex) const {
   

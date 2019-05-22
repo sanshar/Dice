@@ -30,6 +30,7 @@
 #include "Jastrow.h"
 #include "Gutzwiller.h"
 #include "RBM.h"
+#include "JRBM.h"
 
 template<typename Reference>
 class WalkerHelper {
@@ -787,7 +788,8 @@ class WalkerHelper<RBM>
   WalkerHelper() {};
   WalkerHelper(RBM& cps, const Determinant& d) {
     int norbs = Determinant::norbs;
-    cps.bwn = ArrayXd::Zero(cps.numHidden);
+    //cps.bwn = ArrayXd::Zero(cps.numHidden);
+    cps.bwn = VectorXd::Zero(cps.numHidden);
     //cps.intermediates[0] = ArrayXXd::Zero(norbs, norbs);
     //cps.intermediates[1] = ArrayXXd::Zero(norbs, norbs);
     initHelper(cps, d);
@@ -804,7 +806,7 @@ class WalkerHelper<RBM>
     for (int j = 0; j < closed.size(); j++) {
       cps.bwn += cps.wMat.col(closed[j]);
     }
-    cps.coshbwn = cosh(cps.bwn).prod();
+    cps.coshbwn = cosh(cps.bwn.array()).prod();
 
     //intermediates
     //ArrayXd tanhbwn = tanh(cps.bwn);
@@ -829,30 +831,71 @@ class WalkerHelper<RBM>
   void updateHelper(RBM& cps, const Determinant& d, int i, int a, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     cps.bwn += cps.wMat.col(a) - cps.wMat.col(i);
-    cps.coshbwn = cosh(cps.bwn).prod();
+    cps.coshbwn = cosh(cps.bwn.array()).prod();
   }
   
   void updateHelper(RBM& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
     i = 2 * i + sz; a = 2 * a + sz;
     j = 2 * j + sz; b = 2 * b + sz;
     cps.bwn += cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
-    cps.coshbwn = cosh(cps.bwn).prod();
+    cps.coshbwn = cosh(cps.bwn.array()).prod();
   }
 
   double OverlapRatio(int i, int a, const RBM& cps,
                       const Determinant &dcopy, const Determinant &d) const
   {
     double aFac = exp(cps.aVec(a) - cps.aVec(i));
-    ArrayXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i);
-    return aFac * cosh(bwnp).prod() / cps.coshbwn;
+    VectorXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i);
+    return aFac * cosh(bwnp.array()).prod() / cps.coshbwn;
   }
   
   double OverlapRatio(int i, int j, int a, int b, const RBM& cps,
                       const Determinant &dcopy, const Determinant &d) const
   {
     double aFac = exp(cps.aVec(a) - cps.aVec(i) + cps.aVec(b) - cps.aVec(j));
-    ArrayXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
-    return aFac * cosh(bwnp).prod() / cps.coshbwn;
+    VectorXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
+    return aFac * cosh(bwnp.array()).prod() / cps.coshbwn;
+  }
+};  
+
+template<>
+class WalkerHelper<JRBM>
+{
+ public:
+  WalkerHelper<Jastrow> jastrowHelper;
+  WalkerHelper<RBM> RBMHelper;
+
+  WalkerHelper() {};
+  WalkerHelper(JRBM& cps, const Determinant& d) {
+    jastrowHelper = WalkerHelper<Jastrow>(cps.jastrow, d);
+    RBMHelper = WalkerHelper<RBM>(cps.rbm, d);
+  }
+
+  void initHelper(JRBM& cps, const Determinant& d) {
+    jastrowHelper.initHelper(cps.jastrow, d);
+    RBMHelper.initHelper(cps.rbm, d);
+  }
+  
+  void updateHelper(JRBM& cps, const Determinant& d, int i, int a, bool sz) {
+    jastrowHelper.updateHelper(cps.jastrow, d, i, a, sz);
+    RBMHelper.updateHelper(cps.rbm, d, i, a, sz);
+  }
+  
+  void updateHelper(JRBM& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
+    jastrowHelper.updateHelper(cps.jastrow, d, i, j, a, b, sz);
+    RBMHelper.updateHelper(cps.rbm, d, i, j, a, b, sz);
+  }
+
+  double OverlapRatio(int i, int a, const JRBM& cps,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return jastrowHelper.OverlapRatio(i, a, cps.jastrow, dcopy, d) * RBMHelper.OverlapRatio(i, a, cps.rbm, dcopy, d);
+  }
+  
+  double OverlapRatio(int i, int j, int a, int b, const JRBM& cps,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return jastrowHelper.OverlapRatio(i, j, a, b, cps.jastrow, dcopy, d) * RBMHelper.OverlapRatio(i, j, a, b, cps.rbm, dcopy, d);
   }
 };  
 #endif
