@@ -94,7 +94,7 @@ private:
       & minPop
       & initialPop
       & targetPop
-      & hidden;
+      & numHidden;
   }
 public:
 //General options
@@ -180,7 +180,7 @@ public:
   double targetPop;
 
   //options for rbm
-  int hidden;
+  int numHidden;
 };
 
 /**
@@ -213,7 +213,7 @@ void readMat(Eigen::MatrixXd& mat, std::string fileName);
 
 void readMat(Eigen::MatrixXcd& mat, std::string fileName);
 
-void readInput(const std::string input, schedule& schd, bool print=true);
+void readInput(const std::string inputFile, schedule& schd, bool print=true);
 
 /**
  * We need information about the correlators because the wavefunction is

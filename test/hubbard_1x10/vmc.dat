@@ -1,5 +1,0 @@
-correlator 2 correlators.txt
-maxIter 10
-stochasticIter 10000
-hubbard
-seed 5

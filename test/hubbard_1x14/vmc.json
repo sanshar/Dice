@@ -1,0 +1,19 @@
+{
+  "wavefunction":
+  {
+    "name": "cpsslater",
+    "correlators":
+    { 
+      "3": "threesite.txt"
+    }
+  },
+  "sampling":
+  {
+    "stochasticIter": 10000,
+    "seed": 5
+  },
+  "optimizer":
+  {
+    "maxIter": 10
+  }
+}

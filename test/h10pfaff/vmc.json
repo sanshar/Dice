@@ -1,0 +1,19 @@
+{
+  "wavefunction":
+  {
+    "name": "jastrowpfaffian"
+  },
+  "sampling":
+  {
+    "stochasticIter": 5000,
+    "seed": 5,
+    "epsilon": 1.0e-6
+  },
+  "optimizer":
+  {
+    "maxIter": 5,
+    "stepsize": 0.01,
+    "decay1": 0.1,
+    "decay2": 0.01
+  }
+}

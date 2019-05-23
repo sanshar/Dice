@@ -27,7 +27,7 @@ using namespace Eigen;
 
 RBM::RBM () {    
   int norbs = Determinant::norbs;
-  numHidden = schd.hidden;
+  numHidden = schd.numHidden;
   wMat = MatrixXd::Random(numHidden, 2*norbs) / 50;
   bVec = VectorXd::Zero(numHidden);
   aVec = VectorXd::Zero(2*norbs);

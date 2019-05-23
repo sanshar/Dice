@@ -1,7 +1,0 @@
-correlator 2 correlators.txt
-maxIter 5
-stochasticIter 5000
-ghf
-
-epsilon 1.e-5
-seed 5

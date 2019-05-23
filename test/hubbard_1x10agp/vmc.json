@@ -1,0 +1,20 @@
+{
+  "hamiltonian": "hubbard",
+  "wavefunction":
+  {
+    "name": "cpsagp",
+    "correlators":
+    { 
+      "2": "correlators.txt"
+    }
+  },
+  "sampling":
+  {
+    "stochasticIter": 10000,
+    "seed": 5
+  },
+  "optimizer":
+  {
+    "maxIter": 5
+  }
+}

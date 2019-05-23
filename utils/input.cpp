@@ -22,10 +22,13 @@
 #include "Determinants.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 
 #ifndef SERIAL
@@ -40,448 +43,121 @@ using namespace boost;
 using namespace std;
 
 
-void readInput(string input, schedule& schd, bool print) {
-  if (commrank == 0)
-    {
-      if (print)
-	{
-	  cout << "**************************************************************" << endl;
-	  cout << "Input file  :" << endl;
-	  cout << "**************************************************************" << endl;
-	}
+void readInput(string inputFile, schedule& schd, bool print) {
+  if (commrank == 0) {
+    if (print)	{
+      cout << "**************************************************************" << endl;
+      cout << "Input file  :" << endl;
+      cout << "**************************************************************" << endl;
+    }
+    
+    property_tree::iptree input;
+    property_tree::read_json(inputFile, input);
+    
+    //print input file
+    stringstream ss;
+    property_tree::json_parser::write_json(ss, input);
+    cout << ss.str() << endl;
 
-      ifstream dump(input.c_str());
 
-      schd.deterministic = false;
-      schd.restart = false;
-      schd.expCorrelator = false;
-      schd.ifComplex = false;
-      schd.uagp = false;
-      schd.ciCeption = false;
-
-      schd.maxIter = 50;
-      schd.avgIter = 0;
-      schd._sgdIter = 1;
-      schd.method = amsgrad;
-      schd.decay2 = 0.001;
-      schd.decay1 = 0.1;
-      schd.alpha = 0.01; //now lanczos alpha
-      schd.beta = 1.;
-      schd.momentum = 0.;
-      schd.stepsize = 0.001;
-
-      schd.stochasticIter = 1e4;
-      schd.integralSampleSize = 10;
-      schd.seed = getTime();
-      schd.PTlambda = 0.;
-      schd.epsilon = 1.e-7;
-      schd.screen = 1.e-8;
-      schd.determinantFile = "";
-      schd.wavefunctionType = "CPSSlater";
-      schd.doHessian = false;
-      schd.hf = "rhf";
-      schd.optimizeOrbs = true;
-      schd.optimizeCps = true;
-      schd.printVars = false;
-      schd.printGrad = false;
-      schd.debug = false;
-      schd.Hamiltonian = ABINITIO;
-      schd.nwalk = 100;
-      schd.tau = 0.001;
-      schd.fn_factor = 1.0;
-      schd.nGeneration = 30.0;
-      schd.excitationLevel = 1;
-      schd.numActive = -1;
-      schd.nciAct = -1;
-      schd.actWidth = 100;
-      schd.overlapCutoff = 1.e-5;
-      schd.ctmc = true;
-      schd.cgIter = 15;
-      schd.sDiagShift = 0.01;
-
-      // FCIQMC options
-      schd.nAttemptsEach = 1;
-      schd.mainMemoryFac = 5.0;
-      schd.spawnMemoryFac = 5.0;
-      schd.shiftDamping = 0.01;
-      schd.initialShift = 0.0;
-      schd.minSpawn = 0.01;
-      schd.minPop = 1.0;
-      schd.initialPop = 100.0;
-      schd.targetPop = 1000.0;
-
-      //rbm options
-      schd.hidden = 1;
-
-      while (dump.good())
-	{
-
-	  std::string
-	    Line;
-	  std::getline(dump, Line);
-	  trim(Line);
-	  //if (print)
-	  cout << Line << endl;
-
-	  vector<string> tok;
-	  boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
-	  string ArgName = *tok.begin();
-
-	  //if (dump.eof())
-	  //break;
-	  if (!ArgName.empty() && (boost::iequals(tok[0].substr(0, 1), "#")))
-	    continue;
-	  if (ArgName.empty())
-	    continue;
-
-	  if (boost::iequals(ArgName, "restart"))
-	    schd.restart = true;
-
-	  else if (boost::iequals(ArgName, "deterministic"))
-	    schd.deterministic = true;
-	  
-      else if (boost::iequals(ArgName, "expCorrelator"))
-	    schd.expCorrelator = true;
-          
-      else if (boost::iequals(ArgName, "complex"))
-	    schd.ifComplex = true;
-
-      else if (boost::iequals(ArgName, "uagp"))
-	    schd.uagp = true;
-	  
-      //else if (boost::iequals(ArgName, "adam"))
-          //schd.method = adam;
-
-	  else if (boost::iequals(ArgName, "sgd"))
-	    schd.method = sgd;
-
-	  //else if (boost::iequals(ArgName, "nestorov"))
-          //schd.method = nestorov;
-
-	  //else if (boost::iequals(ArgName, "rmsprop"))
-          //schd.method = rmsprop;
-
-	  else if (boost::iequals(ArgName, "ptlambda"))
-	    schd.PTlambda = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "amsgrad"))
-	    schd.method = amsgrad;
-
-	  else if (boost::iequals(ArgName, "sr"))
-	    schd.method = sr;
-	  
-      else if (boost::iequals(ArgName, "sDiagShift"))
-        schd.sDiagShift = atof(tok[1].c_str());
-
-      else if (boost::iequals(ArgName, "cgIter"))
-        schd.cgIter = atoi(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "ftrl"))
-	    schd.method = ftrl;
-      
-	  else if (boost::iequals(ArgName, "amsgrad_sgd"))
-          {
-	    schd.method = amsgrad_sgd;
-            schd._sgdIter = atoi(tok[1].c_str());
-          }
-      
-      else if (boost::iequals(ArgName, "printvars"))
-	    schd.printVars = true;
-      
-      else if (boost::iequals(ArgName, "printgrad"))
-	    schd.printGrad = true;
-      
-      else if (boost::iequals(ArgName, "test")) {
-	    schd.wavefunctionType = "test";
-        schd.hidden = atoi(tok[1].c_str());
+    //minimal checking for correctness
+    //wavefunction
+    schd.wavefunctionType = algorithm::to_lower_copy(input.get("wavefunction.name", "jastrowslater"));
+    
+    //correlatedwavefunction options
+    schd.hf = algorithm::to_lower_copy(input.get("wavefunction.hfType", "rhf"));
+    schd.ifComplex = input.get("wavefunction.ifComplex", false);
+    schd.uagp = input.get("wavefunction.uagp", false); 
+    optional< property_tree::iptree& > child = input.get_child_optional("wavefunction.correlators");
+    if (child) {
+      for (property_tree::iptree::value_type &correlator : input.get_child("wavefunction.correlators")) {
+        int siteSize = stoi(correlator.first);
+        string file = correlator.second.data();
+	    schd.correlatorFiles[siteSize] = file;
       }
-      
-      else if (boost::iequals(ArgName, "RBM")) {
-	    schd.wavefunctionType = "RBM";
-        schd.hidden = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "JRBMS")) {
-	    schd.wavefunctionType = "JRBMS";
-        schd.hidden = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "JRBMP")) {
-	    schd.wavefunctionType = "JRBMP";
-        schd.hidden = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "scci")) {
-	    schd.wavefunctionType = "scci";
-        schd.nciAct = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "sci")) {
-	    schd.wavefunctionType = "sci";
-        schd.ciCeption = true;
-        schd.nciAct = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "gutzwillerslater"))
-	    schd.wavefunctionType = "GutzwillerSlater";
-      
-      else if (boost::iequals(ArgName, "gutzwillerpfaffian"))
-	    schd.wavefunctionType = "GutzwillerPfaffian";
-          
-      else if (boost::iequals(ArgName, "jastrowslater"))
-	    schd.wavefunctionType = "JastrowSlater";
-      
-      else if (boost::iequals(ArgName, "cicpsslater"))
-	    schd.wavefunctionType = "CICPSSlater";
-      
-      else if (boost::iequals(ArgName, "cijastrowslater"))
-	    schd.wavefunctionType = "CIJastrowSlater";
-      
-      else if (boost::iequals(ArgName, "lanczossci")) {
-	    schd.wavefunctionType = "LanczosSci";
-        //schd.nciAct = atoi(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "actWidth")) {
-        schd.actWidth = atof(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "overlapCutoff")) {
-        schd.overlapCutoff = atof(tok[1].c_str());
-      }
-      
-      else if (boost::iequals(ArgName, "lanczoscpsslater"))
-	    schd.wavefunctionType = "LanczosCPSSlater";
-      
-      else if (boost::iequals(ArgName, "lanczosjastrowslater"))
-	    schd.wavefunctionType = "LanczosJastrowSlater";
-      
-      else if (boost::iequals(ArgName, "cpsagp"))
-	    schd.wavefunctionType = "CPSAGP";
-      
-      else if (boost::iequals(ArgName, "jastrowagp"))
-	    schd.wavefunctionType = "JastrowAGP";
-      
-      else if (boost::iequals(ArgName, "cicpsagp"))
-	    schd.wavefunctionType = "CICPSAGP";
-      
-      else if (boost::iequals(ArgName, "cijastrowagp"))
-	    schd.wavefunctionType = "CIJastrowAGP";
-      
-      else if (boost::iequals(ArgName, "lanczoscpsagp"))
-	    schd.wavefunctionType = "LanczosCPSAGP";
-      
-      else if (boost::iequals(ArgName, "lanczosjastrowagp"))
-	    schd.wavefunctionType = "LanczosJastrowAGP";
-      
-      else if (boost::iequals(ArgName, "cpspfaffian"))
-	    schd.wavefunctionType = "CPSPfaffian";
-      
-      else if (boost::iequals(ArgName, "jastrowpfaffian"))
-	    schd.wavefunctionType = "JastrowPfaffian";
-      
-      else if (boost::iequals(ArgName, "cicpspfaffian"))
-	    schd.wavefunctionType = "CICPSPfaffian";
-      
-      else if (boost::iequals(ArgName, "cijastrowpfaffian"))
-	    schd.wavefunctionType = "CIJastrowPfaffian";
-      
-      else if (boost::iequals(ArgName, "lanczoscpspfaffian"))
-	    schd.wavefunctionType = "LanczosCPSPfaffian";
-      
-      else if (boost::iequals(ArgName, "lanczosjastrowpfaffian"))
-	    schd.wavefunctionType = "LanczosJastrowPfaffian";
-      
-      else if (boost::iequals(ArgName, "slaterrdm"))
-	    schd.wavefunctionType = "slaterRDM";
-      
-      else if (boost::iequals(ArgName, "agprdm"))
-	    schd.wavefunctionType = "agpRDM";
-      
-      else if (boost::iequals(ArgName, "pfaffianrdm"))
-	    schd.wavefunctionType = "pfaffianRDM";
-      
-      else if (boost::iequals(ArgName, "ctmc"))
-	    schd.ctmc = true;
-      
-      else if (boost::iequals(ArgName, "metropolis"))
-	    schd.ctmc = false;
-      
-      else if (boost::iequals(ArgName, "debug"))
-	    schd.debug = true;
-	  
-	  else if (boost::iequals(ArgName, "tol"))
-	    schd.tol = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "screentol"))
-	    schd.screen = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "decay1"))
-	    schd.decay1 = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "decay2"))
-	    schd.decay2 = atof(tok[1].c_str());
-	  
-      else if (boost::iequals(ArgName, "alpha"))
-	    schd.alpha = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "beta"))
-	    schd.beta = atof(tok[1].c_str());
-	  
-      else if (boost::iequals(ArgName, "momentum"))
-	    schd.momentum = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "epsilon"))
-	    schd.epsilon = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "seed"))
-	    schd.seed = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "stepsize"))
-	    schd.stepsize = atof(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "stochasticiter"))
-	    schd.stochasticIter = atoi(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "integralsamplesize"))
-	    schd.integralSampleSize = atoi(tok[1].c_str());
-
-	  else if (boost::iequals(ArgName, "correlator"))
-	    {
-	      int siteSize = atoi(tok[1].c_str());
-	      schd.correlatorFiles[siteSize] = tok[2];
-	    }
-
-	  else if (boost::iequals(ArgName, "determinants"))
-	    {
-	      schd.determinantFile = tok[1];
-	    }
-
-
-	  else if (boost::iequals(ArgName, "printLevel"))
-	    {
-	      schd.printLevel = atoi(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "maxiter"))
-	    {
-	      schd.maxIter = atoi(tok[1].c_str());
-	    }
-	  
-      else if (boost::iequals(ArgName, "avgiter"))
-	    {
-	      schd.avgIter = atoi(tok[1].c_str());
-	    }
-	  
-	  else if (boost::iequals(ArgName, "doHessian"))
-	    {
-	      schd.doHessian = true;
-	    }
-	  
-      else if (boost::iequals(ArgName, "rhf"))
-	    {
-	      schd.hf = "rhf";
-	    }
-
-	  else if (boost::iequals(ArgName, "uhf"))
-	    {
-	      schd.hf = "uhf";
-	    }
-	  
-      else if (boost::iequals(ArgName, "ghf"))
-	    {
-	      schd.hf = "ghf";
-	    }
-
-	  else if (boost::iequals(ArgName, "dontoptimizeorbs"))
-	    {
-	      schd.optimizeOrbs = false;
-	    }
-	  
-      else if (boost::iequals(ArgName, "dontoptimizecps"))
-	    {
-	      schd.optimizeCps = false;
-	    }
-
-	  else if (boost::iequals(ArgName, "hubbard"))
-	    {
-	      schd.Hamiltonian = HUBBARD;
-	    }
-
-	  else if (boost::iequals(ArgName, "nwalk"))
-	    {
-	      schd.nwalk = atoi(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "tau"))
-	    {
-	      schd.tau = atof(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "fixednodefactor"))
-	    {
-	      schd.fn_factor = atof(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "ngeneration"))
-	    {
-	      schd.nGeneration = atoi(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "excitationlevel"))
-	    {
-	      schd.excitationLevel = atoi(tok[1].c_str());
-	    }
-
-	  else if (boost::iequals(ArgName, "numactive"))
-	    {
-	      schd.numActive = atoi(tok[1].c_str());
-	    }
-
-    // FCIQMC options
-    else if (boost::iequals(ArgName,  "nAttemptsEach"      )) {
-      schd.nAttemptsEach = atoi(tok[1].c_str());
     }
 
-    else if (boost::iequals(ArgName,  "mainMemoryFac"       )) {
-      schd.mainMemoryFac = atof(tok[1].c_str());
-    }
+    //ci and lanczos
+    schd.nciAct = input.get("wavefunction.nciAct", -1);
+    schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
+    if (schd.wavefunctionType == "sci") schd.ciCeption = true;
+    else schd.ciCeption = false;
+    schd.determinantFile = input.get("wavefunction.determinantFile", ""); //used for both sci and starting det
+    schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
 
-    else if (boost::iequals(ArgName,  "spawnMemoryFac"       )) {
-      schd.spawnMemoryFac = atof(tok[1].c_str());
-    }
+    //rbm
+    schd.numHidden = input.get("wavefunction.numHidden", 1);
 
-    else if (boost::iequals(ArgName,  "shiftDamping"       )) {
-      schd.shiftDamping = atof(tok[1].c_str());
-    }
 
-    else if (boost::iequals(ArgName,  "initialShift"       )) {
-      schd.initialShift = atof(tok[1].c_str());
-    }
+    //hamiltonian
+    string hamString = algorithm::to_lower_copy(input.get("hamiltonian", "abinitio"));
+    if (hamString == "abinitio") schd.Hamiltonian = ABINITIO;
+    else if (hamString == "hubbard") schd.Hamiltonian = HUBBARD;
+    
+    //sampling
+    schd.epsilon = input.get("sampling.epsilon", 1.e-7);
+    schd.screen = input.get("sampling.screentol", 1.e-8);
+    schd.ctmc = input.get("sampling.ctmc", true); //if this is false, metropolis is used!
+    schd.deterministic = input.get("sampling.deterministic", false);
+    schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
+    schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
+    schd.seed = input.get("sampling.seed", getTime());
+    //gfmc 
+    schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
+    schd.nwalk = input.get("sampling.nwalk", 100);
+    schd.tau = input.get("sampling.tau", 0.001);
+    schd.fn_factor = input.get("sampling.fn_factor", 1.0);
+    schd.nGeneration = input.get("sampling.nGeneration", 30.0);
+    //FCIQMC options
+    schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
+    schd.mainMemoryFac = input.get("sampling.mainMemoryFac", 5.0);
+    schd.spawnMemoryFac = input.get("sampling.spawnMemoryFac", 5.0);
+    schd.shiftDamping = input.get("sampling.shiftDamping", 0.01);
+    schd.initialShift = input.get("sampling.initialShift", 0.0);
+    schd.minSpawn = input.get("sampling.minSpawn", 0.01);
+    schd.minPop = input.get("sampling.minPop", 1.0);
+    schd.initialPop = input.get("sampling.initialPop", 100.0);
+    schd.targetPop = input.get("sampling.targetPop", 1000.0);
 
-    else if (boost::iequals(ArgName,  "minSpawn"           )) {
-      schd.minSpawn = atof(tok[1].c_str());
-    }
 
-    else if (boost::iequals(ArgName,  "minWalkerPop"       )) {
-      schd.minPop = atof(tok[1].c_str());
-    }
-
-    else if (boost::iequals(ArgName,  "initialPop"         )) {
-      schd.initialPop = atof(tok[1].c_str());
-    }
-
-    else if (boost::iequals(ArgName,  "targetPop"          )) {
-      schd.targetPop = atof(tok[1].c_str());
-    }
-	  
-      else
-	    {
-	      cout << "cannot read option " << ArgName << endl;
-	      exit(0);
-	    }
-	}
-    }
+    //optimization
+    string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 
+    //need a better way of doing this
+    if (method == "amsgrad") schd.method = amsgrad;
+    else if (method == "amsgrad_sgd") schd.method = amsgrad_sgd;
+    else if (method == "sgd") schd.method = sgd;
+    else if (method == "sr") schd.method = sr;
+    schd.restart = input.get("optimizer.restart", false);
+    child = input.get_child_optional("sampling.maxIter"); //to ensure maxiter is not reassigned
+    if (!child) schd.maxIter = input.get("optimizer.maxIter", 50);
+    schd.avgIter = input.get("optimizer.avgIter", 0);
+    schd._sgdIter = input.get("optimizer.sgdIter", 1);
+    schd.decay2 = input.get("optimizer.decay2", 0.001);
+    schd.decay1 = input.get("optimizer.decay1", 0.1);
+    schd.momentum = input.get("optimizer.momentum", 0.);
+    schd.stepsize = input.get("optimizer.stepsize", 0.001);
+    schd.optimizeOrbs = input.get("optimizer.optimizeOrbs", true);
+    schd.optimizeCps = input.get("optimizer.optimizeCps", true);
+    schd.cgIter = input.get("optimizer.cgIter", 15);
+    schd.sDiagShift = input.get("optimizer.sDiagShift", 0.01);
+    schd.doHessian = input.get("optimizer.doHessian", false);
+    
+    //debug and print options
+    schd.printLevel = input.get("print.level", 0);
+    schd.printVars = input.get("print.vars", false);
+    schd.printGrad = input.get("print.grad", false);
+    schd.debug = input.get("print.debug", false);
+    
+    //deprecated, or I don't know what they do
+    schd.actWidth = input.get("wavefunction.actWidth", 100);
+    schd.numActive = input.get("wavefunction.numActive", -1);
+    schd.expCorrelator = input.get("wavefunction.expCorrelator", false); 
+    schd.PTlambda = input.get("PTlambda", 0.);
+    schd.tol = input.get("tol", 0.); 
+    schd.beta = input.get("beta", 1.);
+    schd.excitationLevel = input.get("excitationLevel", 1);
+    
+  }
 
 #ifndef SERIAL
   boost::mpi::communicator world;

@@ -1,6 +1,0 @@
-correlator 5 correlators.txt
-maxIter 10
-stochasticIter 10000
-seed 5
-#restart
-

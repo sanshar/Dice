@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
   if (schd.numActive == -1) schd.numActive = Determinant::norbs;
 
 
-  if (schd.wavefunctionType == "CPSSlater") {
+  if (schd.wavefunctionType == "cpsslater") {
     //initialize wavefunction
     CorrelatedWavefunction<CPS, Slater> wave; Walker<CPS, Slater> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "CPSPfaffian") {
+  else if (schd.wavefunctionType == "cpspfaffian") {
     //initialize wavefunction
     CorrelatedWavefunction<CPS, Pfaffian> wave; Walker<CPS, Pfaffian> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "CPSAGP") {
+  else if (schd.wavefunctionType == "cpsagp") {
     //initialize wavefunction
     CorrelatedWavefunction<CPS, AGP> wave; Walker<CPS, AGP> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "JastrowSlater") {
+  else if (schd.wavefunctionType == "jastrowslater") {
     //initialize wavefunction
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "JastrowPfaffian") {
+  else if (schd.wavefunctionType == "jastrowpfaffian") {
     //initialize wavefunction
     CorrelatedWavefunction<Jastrow, Pfaffian> wave; Walker<Jastrow, Pfaffian> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "JastrowAGP") {
+  else if (schd.wavefunctionType == "jastrowagp") {
     //initialize wavefunction
     CorrelatedWavefunction<Jastrow, AGP> wave; Walker<Jastrow, AGP> walk;
     wave.readWave(); wave.initWalker(walk);
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "CICPSSlater") {
+  else if (schd.wavefunctionType == "cicpslater") {
     CIWavefunction<CorrelatedWavefunction<CPS, Slater>,
                    Walker<CPS, Slater>,
                    SpinFreeOperator> wave;
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     //do the GFMC continous time
     doGFMCCT(wave, walk, ham);
   }
-  else if (schd.wavefunctionType == "LanczosJastrowSlater") {
+  else if (schd.wavefunctionType == "lanczosjastrowslater") {
     Lanczos<CorrelatedWavefunction<Jastrow, Slater>> wave; Walker<Jastrow, Slater> walk;
     wave.readWave();
     wave.initWalker(walk);

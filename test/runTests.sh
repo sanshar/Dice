@@ -4,11 +4,11 @@ printf "\n\nRunning Tests for VMC/GFMC/FCIQMC\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
-VMCPATH="../../bin/VMC vmc.dat"
-CIPATH="../../bin/VMC ci.dat"
+VMCPATH="../../bin/VMC vmc.json"
+CIPATH="../../bin/VMC ci.json"
 LANCZOSPATH="../../bin/VMC lanczos.dat"
-GFMCPATH="../../bin/GFMC gfmc.dat"
-FCIQMCPATH="../../../bin/FCIQMC fciqmc.dat"
+GFMCPATH="../../bin/GFMC gfmc.json"
+FCIQMCPATH="../../../bin/FCIQMC fciqmc.json"
 here=`pwd`
 tol=1.0e-7
 clean=0
