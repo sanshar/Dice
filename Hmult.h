@@ -97,7 +97,6 @@ struct Hmult2 {
     if (rank == 0) {
       auto end = std::chrono::system_clock::now();
       std::chrono::duration<double> elapsed_seconds = end - start;
-      pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
     /*start = std::chrono::system_clock::now();
     ytemp = vector<CItype>(numDets, 0);
@@ -146,7 +145,6 @@ struct Hmult2 {
     if (rank == 0) {
       auto end = std::chrono::system_clock::now();
       std::chrono::duration<double> elapsed_seconds = end - start;
-      pout << "Time cost of Hmult " << elapsed_seconds.count() << '\n';
     }
   }  // operator
 };

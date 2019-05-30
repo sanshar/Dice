@@ -148,13 +148,11 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   
   auto dump2 = ifstream("FCIDUMP.bin", ios::out | ios::binary);
   if (commrank == 0) {
-    std::cout << "FCIDUMP.bin opened" << endl;
     I1.store.clear();
     I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
     coreE = 0.0;
     for (int i=0; i!=16; i++) {
       //auto tmp = MatrixXd::Zero(norbs*norbs/4, norbs*norbs/4);
-      cout << "block " << i << " of mo2e" << endl;
       //MatrixXd tmp = MatrixXd::Zero(norbs*norbs/4, norbs*norbs/4); 
       vector<complex<double>> tmp;
       tmp.resize(norbs*norbs*norbs*norbs/16);
@@ -181,7 +179,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
       dump2.read((char*) tmp.data(), norbs*norbs/4 * sizeof(complex<double>));
       const int jfac = i & 1;
       const int kfac = (i & 2) / 2; 
-      cout << "block " << i << " of mo1e." << endl;
       for (int j = 0; j != norbs/2; j++)
         for (int k = 0; k != norbs/2; k++) {
           auto integral = tmp[j*norbs/2+k];
@@ -193,7 +190,6 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     complex<double> coreEtmp = 0.0;
     dump2.read((char*) (&coreEtmp), sizeof(complex<double>));
     coreE = coreEtmp.real();
-    cout << coreE << endl;
     dump2.close();
   }
   

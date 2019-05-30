@@ -1046,13 +1046,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     vector<Determinant> &newDets = *uniqueDEH.Det;
     if (proc == 0)
     {
-      X0 = vector<MatrixXx>(ci.size(), MatrixXx(DetsSize + newDets.size(), 1));
-      for (int i = 0; i < ci.size(); i++)
-      {
-        X0[i].setZero(DetsSize + newDets.size(), 1);
-        X0[i].block(0, 0, ci[i].rows(), 1) = 1. * ci[i];
-      }
-
       Dets.resize(DetsSize + newDets.size());
       for (int i = 0; i < DetsSize; i++)
         Dets[i] = SHMDets[i];
@@ -1060,6 +1053,37 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
         Dets[i + DetsSize] = newDets[i];
 
       DetsSize = Dets.size();
+
+      if (iter==0) {
+        const int matSize = schd.nroots;
+        MatrixXx trial = MatrixXx::Zero(matSize, matSize);
+        for (int i = 0; i < matSize; i++) {
+          trial(i,i) = Dets[i].Energy(I1, I2, coreE);
+          for (int j = i+1; j < matSize; j++) {
+            size_t orbDiff;
+            if (Dets[i].ExcitationDistance(Dets[j]) < 3) {
+              trial(i,j) = Hij(Dets[i], Dets[j], I1, I2, coreE, orbDiff);
+              trial(j,i) = conj(trial(i,j));  
+            }
+          }
+        }
+        SelfAdjointEigenSolver<MatrixXx> solver(trial);
+        //solver.compute();
+        MatrixXx eigVec = solver.eigenvectors();
+        for (int i = 0; i < ci.size(); i++) {
+          ci[i].resize(schd.nroots,1);
+          for (int j=0; j < schd.nroots; j++)
+            ci[i](j,0) = eigVec(i,j);
+        }
+      }
+
+      X0 = vector<MatrixXx>(ci.size(), MatrixXx(DetsSize, 1));
+      for (int i = 0; i < ci.size(); i++)
+      {
+        X0[i].setZero(DetsSize, 1);
+        X0[i].block(0, 0, ci[i].rows(), 1) = 1. * ci[i];
+      }
+
     }
     uniqueDEH.resize(0);
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
@@ -1193,13 +1217,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     vector<double> prevE0 = E0;
     //if (iter == 0)
     //  prevE0(-10.0);
-    E0 = davidson(H, X0, diag, schd.nroots + 4, schd.davidsonTol, numIter, false);
+    int subspace = DetsSize < schd.nroots*4 ? DetsSize : schd.nroots*4;
+    E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0);
 
     //update the civector
-    if (proc == 0)
-    {
-      for (int i = 0; i < E0.size(); i++)
-      {
+    if (proc == 0) {
+      for (int i = 0; i < E0.size(); i++) {
         ci[i].resize(DetsSize, 1);
         ci[i] = 1.0 * X0[i];
         X0[i].resize(0, 0);
@@ -1233,7 +1256,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     {
       pout << endl
            << "Performing final tight davidson with tol: " << schd.davidsonTol << endl;
-      E0 = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter, false);
+    int subspace = DetsSize < schd.nroots*4 ? DetsSize : schd.nroots*4;
+    //E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, false);
+      E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
+    for (int i = 0; i < E0.size(); i++)
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") % (iter) % (i) % schd.epsilon1[iter] % DetsSize % (E0[i] + coreEbkp) % (numIter) % (getTime() - startofCalc);
       //if (schd.DavidsonType == DIRECT)
       //E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+4, schd.davidsonTol, numIter, true);
       //else

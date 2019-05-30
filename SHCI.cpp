@@ -232,9 +232,9 @@ int main(int argc, char* argv[]) {
   schd.HF=Dets[0];
 
   if (commrank == 0) {
-    for (int j=0; j<ci[0].rows(); j++)
-      ci[0](j,0) = 1.0;
-    ci[0] = ci[0]/ci[0].norm();
+    for (int i=0; i < ci.size(); i++) {
+        ci[i](0,0) = 1.0;
+    }
   }
 
 #ifndef SERIAL
