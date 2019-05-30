@@ -26,4 +26,5 @@
 #########
 *.swp
 *.doctree
+*.bkp
 output*.dat
