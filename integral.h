@@ -159,7 +159,6 @@ class twoIntHeatBath {
               }
           }
       } // ij
-<<<<<<< HEAD
  
       //Singles = MatrixXd::Zero(2*norbs, 2*norbs);
       Singles = MatrixXd::Zero(norbs, norbs);
@@ -173,16 +172,6 @@ class twoIntHeatBath {
             //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
             if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i,j,j,a)))
               Singles(i,a) = abs(I2(i,a,j,j) - I2(i,j,j,a));
-=======
-
-      Singles = MatrixXd::Zero(2*norbs, 2*norbs);
-      for (int i=0; i<2*norbs; i++)
-        for (int a=0; a<2*norbs; a++) {
-          Singles(i,a) = std::abs(I1(i,a));
-          for (int j=0; j<2*norbs; j++) {
-            if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
-              Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i, j, j, a));
->>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
           }
       } 
     } // end constructClass

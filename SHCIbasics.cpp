@@ -1517,7 +1517,7 @@ void SHCIbasics::readVariationalResult(
     ifs.close();
   }
 
-  /*
+  
   if (schd.DavidsonType != DIRECT)
   {
     char file [5000];
@@ -1525,11 +1525,11 @@ void SHCIbasics::readVariationalResult(
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
     load >> sparseHam.connections >> sparseHam.Helements
-  >>sparseHam.orbDifference;
+         >>sparseHam.orbDifference;
   }
-  */
+  
 
-  if (commrank == 0) {
+  /*if (commrank == 0) {
     char file[5000];
     sprintf(file, "%s/%d-helpers.bkp", schd.prefix[0].c_str(), commrank);
     std::ifstream ifs(file, std::ios::binary);
@@ -1540,7 +1540,7 @@ void SHCIbasics::readVariationalResult(
         helper2.AlphaN;
 
     ifs.close();
-  }
+  }*/
 
   if (schd.outputlevel > 0)
     pout << format("#End   reading variational wf %29.2f\n") %

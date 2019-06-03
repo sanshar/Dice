@@ -323,6 +323,7 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 #else
       energy += I2.Direct(I / 2, J / 2);
       if ( (I % 2) == (J % 2) ) energy -= I2.Exchange(I / 2, J / 2);
+#endif
     }
   }
   return energy+coreE;
@@ -655,15 +656,12 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
 }
 
 
-double getParityForDiceToAlphaBeta(Determinant& det) 
-{
+double getParityForDiceToAlphaBeta(Determinant& det) {
   double parity = 1.0;
   int nalpha = det.Nalpha();
   int norbs = Determinant::norbs;
-  for (int i=0; i<norbs; i++) 
-    {
-      if (det.getocc( 2*(norbs-1-i) + 1))
-	{
+  for (int i=0; i<norbs; i++) {
+    if (det.getocc( 2*(norbs-1-i) + 1)) {
 	  int nAlphaBeforei = 0;
 	  for (int j=0 ;j<norbs-i-1; j++)
 	    if (det.getocc( 2*j))
@@ -671,7 +669,7 @@ double getParityForDiceToAlphaBeta(Determinant& det)
 	  int nAlphaAfteri = nalpha - nAlphaBeforei;
 	  if (det.getocc( 2*(norbs-1-i) )) nAlphaAfteri--;
 	  if (nAlphaAfteri%2 == 1) parity *= -1;
-	}
-    }
+	  }
+  }
   return parity;
 }
