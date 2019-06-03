@@ -6,8 +6,8 @@ USE_MPI = yes
 USE_INTEL = yes
 USING_OSX = no
 
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
+EIGEN=/usr/include/eigen3
+BOOST=/home/xubo/local
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
@@ -17,9 +17,9 @@ git_commit=`git rev-parse HEAD`
 git_branch=`git branch | grep "^\*" | sed 's/^..//'`
 export VERSION_FLAGS=-Dgit_commit="\"$(git_commit)\"" -Dgit_branch="\"$(git_branch)\""
 
-FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS)
-DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS) -DComplex
-LFLAGS = -L${BOOST}/stage/lib -lboost_serialization
+FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}/include $(VERSION_FLAGS)
+DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}/include $(VERSION_FLAGS) -DComplex
+LFLAGS = -L${BOOST}/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
 	FLAGS += -qopenmp
@@ -96,7 +96,7 @@ Dice	: $(OBJ_Dice)
 	$(CXX)   $(FLAGS) $(OPT) -o  Dice $(OBJ_Dice) $(LFLAGS)
 ZDice2	: $(OBJ_ZDice2)
 	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZDice2) $(LFLAGS)
-ZDice2	: $(OBJ_ZSHCI)
+ZSHCI	: $(OBJ_ZSHCI)
 	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZSHCI) $(LFLAGS)
 forcyrus	: $(OBJ_forcyrus)
 	$(CXX)   $(FLAGS) $(OPT) -o  forcyrus $(OBJ_forcyrus) $(LFLAGS)
