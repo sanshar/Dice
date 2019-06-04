@@ -3,11 +3,12 @@
 ##########################
 
 USE_MPI = yes
-USE_INTEL = yes
+USE_OMP = no
+USE_INTEL = no 
 USING_OSX = no
 
-EIGEN=/usr/include/eigen3
-BOOST=/home/xubo/local
+EIGEN=${EIGEN_ROOT}
+BOOST=${BOOST_ROOT}
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #
@@ -22,8 +23,10 @@ DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}/include $(VERSION_FLAGS) -DC
 LFLAGS = -L${BOOST}/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
-	FLAGS += -qopenmp
-	DFLAGS += -qopenmp
+	ifeq ($(USE_OMP), yes)
+		FLAGS += -qopenmp
+		DFLAGS += -qopenmp
+	endif
 	ifeq ($(USE_MPI), yes)
 		CXX = mpiicpc
 		CC = mpiicpc
@@ -35,8 +38,10 @@ ifeq ($(USE_INTEL), yes)
 		DFLAGS += -DSERIAL
 	endif
 else
-	FLAGS += -fopenmp
-	DFLAGS += -fopenmp
+	ifeq ($(USE_OMP), yes)
+		FLAGS += -fopenmp
+		DFLAGS += -fopenmp
+	endif
 	ifeq ($(USE_MPI), yes)
 		CXX = mpicxx
 		CC = mpicxx

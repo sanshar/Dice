@@ -409,7 +409,8 @@ int main(int argc, char* argv[]) {
             max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
         double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
 #ifdef Complex
-        pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
+        pout << format("%4i %16.10f %16.10f ") % (i) % prevci(m, 0).real()
+                % prevci(m, 0).imag();
         pout << SHMDets[m] << endl;
 #else
         pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
@@ -421,7 +422,31 @@ int main(int argc, char* argv[]) {
       }
     }  // end root
     pout << std::flush;
+    
+#ifndef SERIAL
+    world.barrier();
+#endif
 
+    if (commrank == 0) {
+      std::string efile;
+      efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
+      FILE* f = fopen(efile.c_str(), "wb");
+      for (int j = 0; j < E0.size(); ++j) {
+        fwrite(&E0[j], 1, sizeof(double), f);
+      }
+      fclose(f);
+      
+      pout << endl;
+      pout << endl;
+      pout << "**************************************************************"
+           << endl;
+      pout << "Returning without error" << endl;
+      pout << "**************************************************************"
+           << endl;
+      pout << endl << endl;
+  
+      exit(0);
+    }
     // #####################################################################
     // RDMs
     // #####################################################################

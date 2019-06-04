@@ -1155,28 +1155,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
       }
     }
 
-    /* Make the sparse Hamiltonian */
-    sparseHam.connections.resize(DetsSize);
-    sparseHam.Helements.resize(DetsSize);
-    sparseHam.orbDifference.resize(DetsSize);
-    if (proc == 0) {
-      for (int i = prevSize; i < DetsSize; i++) {
-        for (int j = i; j < DetsSize; j++) {
-          size_t orbDiff;
-          CItype connection;
-          if (i != j)
-            connection = Hij(Dets[j], Dets[i], I1, I2, coreEbkp, orbDiff);
-          else
-            connection = Dets[i].Energy(I1, I2, coreE), orbDiff = 0;
-          if (abs(connection) >= 1.0e-10) {
-            sparseHam.connections[i].push_back(j);
-            sparseHam.Helements[i].push_back(connection);
-            sparseHam.orbDifference[i].push_back(orbDiff);
-          }
-        }
-      }
-    }
-
     prevSize = DetsSize;
 
     Hmult2 H(sparseHam);
