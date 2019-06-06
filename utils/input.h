@@ -65,6 +65,8 @@ private:
       & hf
       & optimizeOrbs
       & optimizeCps
+      & optimizeJastrow
+      & optimizeRBM
       & printVars
       & printGrad
       & Hamiltonian
@@ -84,6 +86,8 @@ private:
       & ciCeption
       & actWidth
       & overlapCutoff
+      & diagMethod
+      & powerShift
       & expCorrelator
       & nAttemptsEach
       & mainMemoryFac
@@ -123,6 +127,8 @@ public:
   std::string hf;
   bool optimizeOrbs;
   bool optimizeCps;
+  bool optimizeJastrow;//used in jrbm
+  bool optimizeRBM;//used in jrbm
   bool printVars;
   bool printGrad;
   HAM Hamiltonian;
@@ -161,12 +167,14 @@ public:
   double fn_factor;
   int nGeneration;
 
-  //option for configuration interaction
+  //options for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
   double overlapCutoff; //used in SCCI
+  std::string diagMethod;
+  double powerShift;
 
   //options for FCIQMC
   int nAttemptsEach;

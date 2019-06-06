@@ -66,7 +66,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     
     //correlatedwavefunction options
     schd.hf = algorithm::to_lower_copy(input.get("wavefunction.hfType", "rhf"));
-    schd.ifComplex = input.get("wavefunction.ifComplex", false);
+    schd.ifComplex = input.get("wavefunction.complex", false);
     schd.uagp = input.get("wavefunction.uagp", false); 
     optional< property_tree::iptree& > child = input.get_child_optional("wavefunction.correlators");
     if (child) {
@@ -78,11 +78,11 @@ void readInput(string inputFile, schedule& schd, bool print) {
     }
 
     //ci and lanczos
-    schd.nciAct = input.get("wavefunction.nciAct", -1);
+    schd.nciAct = input.get("wavefunction.numAct", -1);
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;
     else schd.ciCeption = false;
-    schd.determinantFile = input.get("wavefunction.determinantFile", ""); //used for both sci and starting det
+    schd.determinantFile = input.get("wavefunction.determinants", ""); //used for both sci and starting det
     schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
 
     //rbm
@@ -138,10 +138,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.stepsize = input.get("optimizer.stepsize", 0.001);
     schd.optimizeOrbs = input.get("optimizer.optimizeOrbs", true);
     schd.optimizeCps = input.get("optimizer.optimizeCps", true);
+    schd.optimizeJastrow = input.get("optimizer.optimizeJastrow", true);
+    schd.optimizeRBM = input.get("optimizer.optimizeRBM", true);
     schd.cgIter = input.get("optimizer.cgIter", 15);
     schd.sDiagShift = input.get("optimizer.sDiagShift", 0.01);
     schd.doHessian = input.get("optimizer.doHessian", false);
-    
+    schd.diagMethod = input.get("optimizer.diagMethod", "power");
+    schd.powerShift = input.get("optimizer.powerShift", 10);
+
     //debug and print options
     schd.printLevel = input.get("print.level", 0);
     schd.printVars = input.get("print.vars", false);

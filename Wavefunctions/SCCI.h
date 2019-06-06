@@ -464,7 +464,8 @@ class SCCI
 
   //simulates hamiltonian multiplication
   void HMult(VectorXd& x, VectorXd& hX) {
-    VectorXd sInvX = largeNormInv * x;
+    //VectorXd sInvX = largeNormInv * x;
+    VectorXd sInvX = x;
     VectorXd hSInvX = VectorXd::Zero(x.size());
     for (int j = 0; j < largeSampleIndices.size(); j++) {
       hSInvX(nestedIndices[largeSampleIndices[j]]) += largeSampleTimes[j] * largeHamSamples[j].dot(sInvX);
@@ -481,10 +482,12 @@ class SCCI
     VectorXd newIterVec(initGuess.size());
     for (int i = 0; i < numPowerIter; i++) {
       HMult(oldIterVecNormal, newIterVec);
+      newIterVec -= schd.powerShift * oldIterVecNormal;
       eigenVal = newIterVec.dot(oldIterVecNormal);
       VectorXd r = newIterVec - eigenVal * oldIterVecNormal;
-      if (r.norm() < 1.e-6) {
+      if (r.norm() < threshold) {
         eigenVec = newIterVec / newIterVec.norm();
+        eigenVal += schd.powerShift;
         if (commrank == 0) cout << "power method converged in " << i << " iterations\n";
         return;
       }
@@ -578,16 +581,29 @@ class SCCI
   template<typename Walker>
   double optimizeWaveCTDirect(Walker& walk) {
     
+    //add noise to avoid zero coeffs
+    if (commrank == 0) {
+      auto random = std::bind(std::uniform_real_distribution<double>(0., 1.e-8), std::ref(generator));
+      for (int i=0; i < coeffs.size(); i++) {
+        if (coeffs(i) == 0) coeffs(i) = random();
+      }
+    }
+
+#ifndef SERIAL
+  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
     //sampling
     int norbs = Determinant::norbs;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                             std::ref(generator));
+    
 
     VectorXd ovlpDiag = VectorXd::Zero(coeffs.size());
     VectorXd hamDiag = VectorXd::Zero(coeffs.size());
     double ovlp = 0., normSample = 0., locEne = 0., ene = 0., ene0 = 0., correctionFactor = 0.;
     VectorXd hamSample = VectorXd::Zero(coeffs.size());
-    vector<Eigen::VectorXd> hamSamples;
+    vector<Eigen::VectorXd> hamSamples(schd.stochasticIter);
     vector<double> sampleTimes; vector<int> sampleIndices;
     int coeffsIndex = this->coeffsIndex(walk);
     workingArray work;
@@ -622,7 +638,8 @@ class SCCI
         correctionFactor += ratio;
         ene0 += ratio * hamSample(0);
       }
-      hamSamples.push_back(hamSample);
+      hamSamples[iter] = hamSample;
+      //hamSamples.push_back(hamSample);
       sampleTimes.push_back(deltaT);
       sampleIndices.push_back(coeffsIndex);
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
@@ -655,7 +672,7 @@ class SCCI
     ene0 /= (cumdeltaT * ovlpDiag(0));
     correctionFactor /= cumdeltaT;
     if (commrank == 0) {
-      cout << "ref energy   " << ene0 << endl;
+      cout << "ref energy   " << setprecision(12) << ene0 << endl;
       cout << "energy of sampling wavefunction   "  << ene << endl;
       cout << "correctionFactor   " << correctionFactor << endl;
       cout << "sampling done in   " << getTime() - startofCalc << endl; 
@@ -676,26 +693,32 @@ class SCCI
     VectorXd largeNorms;
     igl::slice(ovlpDiag, largeNormSlice, largeNorms);
     largeNormInv.resize(coeffs.size());
-    largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+    //largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+    largeNormInv.diagonal() = largeNorms.cwiseInverse();
     igl::slice(hamDiag, largeNormSlice, largeHamDiag);
     largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
-    largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
+    //largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
     for (int i = 0; i < sampleIndices.size(); i++) {
-      if (ovlpDiag(sampleIndices[i]) <= schd.overlapCutoff) continue;
+      if (ovlpDiag(sampleIndices[i]) <= schd.overlapCutoff) {
+        hamSamples[i].resize(0);
+        continue;
+      }
       else {
         largeSampleTimes.push_back(sampleTimes[i]);
         largeSampleIndices.push_back(sampleIndices[i]);
         VectorXd largeHamSample;  
         igl::slice(hamSamples[i], largeNormSlice, largeHamSample);
+        hamSamples[i].resize(0);
         largeHamSamples.push_back(largeHamSample);
       }
     }
     hamSamples.clear(); sampleTimes.clear(); sampleIndices.clear();
+    hamSamples.shrink_to_fit(); sampleTimes.shrink_to_fit(); sampleIndices.shrink_to_fit();
    
     //diagonaliztion
     VectorXd initGuess = VectorXd::Unit(largeNorms.size(), 0);
     if (commrank == 0) {
-      auto random = std::bind(std::uniform_real_distribution<double>(-0.1, 0.1),
+      auto random = std::bind(std::uniform_real_distribution<double>(-0.01, 0.01),
                               std::ref(generator));
       for (int i=1; i < initGuess.size(); i++) {
         initGuess(i) = random();
@@ -707,9 +730,10 @@ class SCCI
 #endif
     double eigenVal;
     VectorXd eigenVec;
-    //powerMethod(initGuess, eigenVec, eigenVal, 5000, 1.e-4); 
-    davidsonMethod(initGuess, eigenVec, eigenVal, 1000, 1.e-4); 
-    VectorXd largeCoeffs = largeNormInv * eigenVec;
+    if (schd.diagMethod == "power") powerMethod(initGuess, eigenVec, eigenVal, max(schd.maxIter, 5000), 1.e-4); 
+    else if (schd.diagMethod == "davidson") davidsonMethod(initGuess, eigenVec, eigenVal, max(schd.maxIter, 1000), 1.e-4); 
+    //VectorXd largeCoeffs = largeNormInv * eigenVec;
+    VectorXd largeCoeffs = eigenVec;
     coeffs.setZero();
     for (int i = 0; i < largeNormIndices.size(); i++) coeffs(largeNormIndices[i]) = largeCoeffs(i);
 
@@ -721,6 +745,7 @@ class SCCI
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
     largeHamSamples.clear(); largeSampleTimes.clear(); largeSampleIndices.clear(), nestedIndices.clear();
+    largeHamSamples.shrink_to_fit(); largeSampleTimes.shrink_to_fit(); largeSampleIndices.shrink_to_fit(), nestedIndices.shrink_to_fit();
   }
 
   template<typename Walker>
