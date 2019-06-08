@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "scci") {
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
-    if (schd.deterministic) wave.optimizeWaveDeterministic(walk);
+    if (schd.deterministic) {}//wave.optimizeWaveDeterministic(walk);
     else {wave.optimizeWaveCTDirect(walk); wave.optimizeWaveCTDirect(walk);}
     wave.writeWave();
   }
@@ -342,5 +342,6 @@ int main(int argc, char *argv[])
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
+  boost::interprocess::shared_memory_object::remove(shciint2shmcas.c_str());
   return 0;
 }

@@ -23,6 +23,7 @@ twoInt I2;
 oneInt I1;
 double coreE;
 twoIntHeatBathSHM I2hb(1e-10);
+twoIntHeatBathSHM I2hbCAS(1e-10);
 
 Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder ;
 
@@ -33,6 +34,10 @@ std::string shciint2;
 boost::interprocess::shared_memory_object int2SHMSegment;
 boost::interprocess::mapped_region regionInt2SHM;
 std::string shciint2shm;
+
+boost::interprocess::shared_memory_object int2SHMCASSegment;
+boost::interprocess::mapped_region regionInt2SHMCAS;
+std::string shciint2shmcas;
 
 std::mt19937 generator;
 

@@ -68,6 +68,8 @@ void initSHM() {
   int2Segment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2.c_str(), boost::interprocess::read_write);
   shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   int2SHMSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shm.c_str(), boost::interprocess::read_write);
+  shciint2shmcas = "SHCIint2shmcas" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  int2SHMCASSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciint2shmcas.c_str(), boost::interprocess::read_write);
 
 }
 

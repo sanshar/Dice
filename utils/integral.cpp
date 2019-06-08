@@ -17,6 +17,7 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "integral.h"
+#include "input.h"
 #include "string.h"
 #include "global.h"
 #include <boost/algorithm/string.hpp>
@@ -218,10 +219,14 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   for (int i = 0; i < norbs; i++)
     allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
+  twoIntHeatBath I2HBCAS(1.e-10);
 
-  if (commrank == 0)
+  if (commrank == 0) {
     I2HB.constructClass(allorbs, I2, I1, norbs);
-  I2hb.constructClass(norbs, I2HB);
+    if (schd.nciAct > 0) I2HBCAS.constructClass(allorbs, I2, I1, schd.nciAct);
+  }
+  I2hb.constructClass(norbs, I2HB, 0);
+  if (schd.nciAct > 0) I2hbCAS.constructClass(norbs, I2HBCAS, 1);
 
 } // end readIntegrals
 
@@ -270,7 +275,7 @@ int readNorbs(string fcidump) {
 
 
 //=============================================================================
-void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
+void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2, bool cas) {
 //-----------------------------------------------------------------------------
     /*!
     BM_description
@@ -293,9 +298,11 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   Singles = I2.Singles;
   if (commrank != 0) Singles.resize(2*norbs, 2*norbs);
 
+  if (!cas) {
 #ifndef SERIAL
   MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
 #endif
+  }
   
 
   I2.Singles.resize(0,0);
@@ -328,15 +335,24 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   world.barrier();
 #endif
 
-  int2SHMSegment.truncate(memRequired);
-  regionInt2SHM = boost::interprocess::mapped_region{int2SHMSegment, boost::interprocess::read_write};
-  memset(regionInt2SHM.get_address(), 0., memRequired);
+  if (!cas) {
+    int2SHMSegment.truncate(memRequired);
+    regionInt2SHM = boost::interprocess::mapped_region{int2SHMSegment, boost::interprocess::read_write};
+    memset(regionInt2SHM.get_address(), 0., memRequired);
+  }
+  else {
+    int2SHMCASSegment.truncate(memRequired);
+    regionInt2SHMCAS = boost::interprocess::mapped_region{int2SHMCASSegment, boost::interprocess::read_write};
+    memset(regionInt2SHMCAS.get_address(), 0., memRequired);
+  }
 
 #ifndef SERIAL
   world.barrier();
 #endif
 
-  char* startAddress = (char*)(regionInt2SHM.get_address());
+  char* startAddress;
+  if (!cas) startAddress = (char*)(regionInt2SHM.get_address());
+  else startAddress = (char*)(regionInt2SHMCAS.get_address());
   sameSpinIntegrals           = (float*)(startAddress);
   startingIndicesSameSpin     = (size_t*)(startAddress
                               + nonZeroSameSpinIntegrals*sizeof(float));
@@ -478,5 +494,18 @@ void twoIntHeatBathSHM::getIntegralArray(int i, int j, const float* &integrals,
   size_t end        = i % 2 == j % 2 ? I2hb.startingIndicesSameSpin[pairIndex + 1] : I2hb.startingIndicesOppositeSpin[pairIndex + 1];
   integrals  = i % 2 == j % 2 ? I2hb.sameSpinIntegrals+start : I2hb.oppositeSpinIntegrals+start;
   orbIndices = i % 2 == j % 2 ? I2hb.sameSpinPairs+2*start : I2hb.oppositeSpinPairs+2*start;
+  numIntegrals = end-start;
+}
+
+void twoIntHeatBathSHM::getIntegralArrayCAS(int i, int j, const float* &integrals,
+                                         const short* &orbIndices, size_t& numIntegrals) const {
+  int I = i / 2, J = j / 2;
+  int X = max(I, J), Y = min(I, J);
+
+  int pairIndex     = X * (X + 1) / 2 + Y;
+  size_t start      = i % 2 == j % 2 ? I2hbCAS.startingIndicesSameSpin[pairIndex] : I2hbCAS.startingIndicesOppositeSpin[pairIndex];
+  size_t end        = i % 2 == j % 2 ? I2hbCAS.startingIndicesSameSpin[pairIndex + 1] : I2hbCAS.startingIndicesOppositeSpin[pairIndex + 1];
+  integrals  = i % 2 == j % 2 ? I2hbCAS.sameSpinIntegrals+start : I2hbCAS.oppositeSpinIntegrals+start;
+  orbIndices = i % 2 == j % 2 ? I2hbCAS.sameSpinPairs+2*start : I2hbCAS.oppositeSpinPairs+2*start;
   numIntegrals = end-start;
 }

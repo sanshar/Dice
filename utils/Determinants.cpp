@@ -1094,7 +1094,7 @@ void generateAllScreenedExcitationsCAS(const Determinant& d,
   int i = max(iExc, jExc), j = min(iExc, jExc);
   const float *integrals; const short* orbIndices;
   size_t numIntegrals;
-  I2hb.getIntegralArray(i, j, integrals, orbIndices, numIntegrals);
+  I2hbCAS.getIntegralArrayCAS(i, j, integrals, orbIndices, numIntegrals);
   size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
 
   // for all HCI integrals
@@ -1106,9 +1106,9 @@ void generateAllScreenedExcitationsCAS(const Determinant& d,
     
     // otherwise: generate the determinant corresponding to the current excitation
     int a = 2 * orbIndices[2 * index] + i % 2;
-    if (a >= 2*schd.nciAct) continue; 
+    //if (a >= 2*schd.nciAct) continue; 
     int b = 2 * orbIndices[2 * index + 1] + j % 2;
-    if (b >= 2*schd.nciAct) continue; 
+    //if (b >= 2*schd.nciAct) continue; 
     
 
     //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
@@ -1133,7 +1133,7 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
     int j = closed[n];
     const float *integrals; const short* orbIndices;
     size_t numIntegrals;
-    I2hb.getIntegralArray(i, j, integrals, orbIndices, numIntegrals);
+    I2hb.getIntegralArrayCAS(i, j, integrals, orbIndices, numIntegrals);
     size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
 
     // for all HCI integrals
@@ -1145,9 +1145,9 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
       
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2 * orbIndices[2 * index] + i % 2;
-      if (a >= 2*schd.nciAct) continue; 
+      //if (a >= 2*schd.nciAct) continue; 
       int b = 2 * orbIndices[2 * index + 1] + j % 2;
-      if (b >= 2*schd.nciAct) continue; 
+      //if (b >= 2*schd.nciAct) continue; 
 
       //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
       if (!(d.getocc(a) || d.getocc(b))) {
@@ -1172,7 +1172,7 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
       
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;
-      I2hb.getIntegralArray(closed[i], closed[j], integrals, orbIndices, numIntegrals);
+      I2hbCAS.getIntegralArrayCAS(closed[i], closed[j], integrals, orbIndices, numIntegrals);
       size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
 
       // for all HCI integrals
@@ -1184,9 +1184,9 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
         
         // otherwise: generate the determinant corresponding to the current excitation
         int a = 2 * orbIndices[2 * index] + closed[i] % 2; 
-        if (a >= 2*schd.nciAct) continue; 
+        //if (a >= 2*schd.nciAct) continue; 
         int b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
-        if (b >= 2*schd.nciAct) continue; 
+        //if (b >= 2*schd.nciAct) continue; 
         
         //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
         if (!(d.getocc(a) || d.getocc(b))) {

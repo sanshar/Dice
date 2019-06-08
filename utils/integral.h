@@ -209,9 +209,12 @@ class twoIntHeatBathSHM {
     double epsilon;
     twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
  
-    void constructClass(int norbs, twoIntHeatBath& I2) ;
+    void constructClass(int norbs, twoIntHeatBath& I2, bool cas) ;
 
   void getIntegralArray(int i, int j, const float* &integrals,
+                        const short* &orbIndices, size_t& numIntegrals) const ;
+  
+  void getIntegralArrayCAS(int i, int j, const float* &integrals,
                         const short* &orbIndices, size_t& numIntegrals) const ;
 };
 
