@@ -224,6 +224,11 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
+  else if (schd.wavefunctionType == "test") {
+    SCCI<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    runVMC(wave, walk);
+  }
 
   else if (schd.wavefunctionType == "slaterrdm") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;

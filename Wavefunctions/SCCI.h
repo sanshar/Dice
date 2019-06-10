@@ -111,6 +111,15 @@ class SCCI
   void initWalker(Walker& walk) {
     this->wave.initWalker(walk);
   }
+  
+  template<typename Walker>
+  void initWalker(Walker& walk, Determinant& d) {
+    this->wave.initWalker(walk, d);
+  }
+  
+  //void initWalker(Walker& walk) {
+  //  this->wave.initWalker(walk);
+  //}
 
   void getVariables(VectorXd& vars) {
     vars = coeffs;
@@ -144,7 +153,90 @@ class SCCI
     else if (walk.excitedOrbs.size() == 0) return 0;
     else return -1;
   }
+  
+  template<typename Walker>
+  double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const  
+  {
+    return 1.;
+  }//not used
+  
+  template<typename Walker>
+  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const 
+  {
+    return 1.;
+  }//not used
+  
+  template<typename Walker>
+  void OverlapWithGradient(Walker &walk,
+			     double &factor,
+			     Eigen::VectorXd &grad)
+  {
+    int norbs = Determinant::norbs;
+    int coeffsIndex = this->coeffsIndex(walk);
+    double ciCoeff = coeffs(coeffsIndex);
+    //if (abs(ciCoeff) <= 1.e-8) return;
+    grad[coeffsIndex] += 1 / ciCoeff;
+  }
 
+  template<typename Walker>
+  void HamAndOvlp(Walker &walk,
+                  double &ovlp, double &ham, 
+                  workingArray& work, bool fillExcitations=true) 
+  {
+    int norbs = Determinant::norbs;
+    int coeffsIndex = this->coeffsIndex(walk);
+    double ciCoeff = coeffs(coeffsIndex);
+    morework.setCounterToZero();
+    double ovlp0, ham0;
+    wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
+    if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
+    else ovlp = ciCoeff * ham0;
+    if (ovlp == 0.) return; //maybe not necessary
+    ham = walk.d.Energy(I1, I2, coreE);
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    if (walk.excitedOrbs.size() == 0) {
+      generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    }
+    else {
+      generateAllScreenedDoubleExcitationsFOIS(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    }
+    
+    //loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      double tia = work.HijElement[i];
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      auto walkCopy = walk;
+      double parity = 1.;
+      Determinant dcopy = walkCopy.d;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
+                            work.excitation1[i], work.excitation2[i], false);
+      if (walkCopy.excitedOrbs.size() > 2) continue;
+      parity *= dcopy.parity(A/2, I/2, I%2);
+      dcopy.setocc(I, false);
+      dcopy.setocc(A, true);
+      if (ex2 != 0) {
+        parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework);
+      if (coeffsCopyIndex == 0) {
+        ham += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+      else {
+        ham += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+    }
+  }
+  
   //hamSample = <psi^k_l|n>/<psi|n> * <n|H|psi^k'_l'>/<n|psi>, ovlp = <n|psi>
   template<typename Walker>
   void HamAndOvlp(Walker &walk,

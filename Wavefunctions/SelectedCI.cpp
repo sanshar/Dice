@@ -96,6 +96,11 @@ void SelectedCI::readWave() {
 //assuming bestDeterminant is an active space det, so no excitedOrbs
 void SelectedCI::initWalker(SimpleWalker &walk) {
   walk.d = bestDeterminant;
+  walk.excitedOrbs.clear();
+  for (int i = schd.nciAct; i < Determinant::norbs; i++) {
+    if (walk.d.getoccA(i)) walk.excitedOrbs.insert(2*i);
+    if (walk.d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
+  }
 }
 
 void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
