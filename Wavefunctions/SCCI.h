@@ -279,9 +279,9 @@ class SCCI
                             work.excitation1[i], work.excitation2[i], false);
       if (walkCopy.excitedOrbs.size() > 2) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
-      dcopy.setocc(I, false);
-      dcopy.setocc(A, true);
       if (ex2 != 0) {
+        dcopy.setocc(I, false);
+        dcopy.setocc(A, true);
         parity *= dcopy.parity(B/2, J/2, J%2);
       }
       int coeffsCopyIndex = this->coeffsIndex(walkCopy);

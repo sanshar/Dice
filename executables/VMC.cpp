@@ -49,6 +49,7 @@
 #include "SimpleWalker.h"
 #include "Lanczos.h"
 #include "SCCI.h"
+#include "SCPT.h"
 #include "runVMC.h"
 
 using namespace Eigen;
@@ -217,17 +218,21 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scci") {
-    SCCI<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    if (schd.deterministic) {}//wave.optimizeWaveDeterministic(walk);
-    else {wave.optimizeWaveCTDirect(walk); wave.optimizeWaveCTDirect(walk);}
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "test") {
+    //SCCI<SelectedCI> wave; SimpleWalker walk;
+    //wave.initWalker(walk);
+    //if (schd.deterministic) {}//wave.optimizeWaveDeterministic(walk);
+    //else {wave.optimizeWaveCTDirect(walk); wave.optimizeWaveCTDirect(walk);}
+    //wave.writeWave();
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "test") {
+    SCPT<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    wave.optimizeWaveCT(walk);
+    wave.optimizeWaveCT(walk);
   }
 
   else if (schd.wavefunctionType == "slaterrdm") {

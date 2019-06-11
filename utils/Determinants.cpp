@@ -932,6 +932,44 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
 
 }
 
+void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
+                                         const Determinant& detAct,
+                                         const double& THRESH,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity) {
+  int norbs = Determinant::norbs;
+  vector<int> closed;
+  vector<int> open;
+  det.getOpenClosed(open, closed);
+
+  //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
+
+  for (int i = 0; i < closed.size(); i++) {
+    for (int a = 0; a < open.size(); a++) {
+      if (closed[i] % 2 == open[a] % 2 &&
+          abs(I2hb.Singles(closed[i], open[a])) > THRESH)
+      {
+        int I = closed[i] / 2, A = open[a] / 2;
+
+        const double tia = det.Hij_1ExciteScreened(open[a], closed[i], I2hb,
+                                                 TINY, doparity);
+       
+        double tiaD = 0.;
+        if (I < schd.nciAct && A < schd.nciAct) 
+          tiaD = detAct.Hij_1ExciteScreened(open[a], closed[i], I2hb,
+                                                 TINY, doparity);
+
+        if (abs(tia) > THRESH) {
+          work.appendValue(tiaD, closed[i]*2*norbs+open[a], 0, tia);//jailbreaking overlapRatio for Dyall ham element (tiaD)
+        }
+      }
+    }
+  }
+
+}
+
+
 //excitations from a CAS determinant d such that the resulting determinant is also in CAS
 void generateAllScreenedSingleExcitationsCAS(const Determinant& d,
                                          const double& THRESH,
@@ -1077,6 +1115,50 @@ void generateAllScreenedDoubleExcitationsFOIS(const Determinant& d,
         if (!(d.getocc(a) || d.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
           work.appendValue(0.0, closed[i] * 2 * norbs + a,
+                           closed[j] * 2 * norbs + b, integrals[index]);
+        }
+      }
+    }
+  }
+
+}
+
+
+void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
+                                         const double& THRESH,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity) {
+  int norbs = Determinant::norbs;
+  vector<int> closed;
+  vector<int> open;
+  det.getOpenClosed(open, closed);
+  
+  for (int i=0; i<closed.size(); i++) {
+    for (int j = 0; j<i; j++) {
+      
+      const float *integrals; const short* orbIndices;
+      size_t numIntegrals;
+      I2hb.getIntegralArray(closed[i], closed[j], integrals, orbIndices, numIntegrals);
+      size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+      // for all HCI integrals
+      for (size_t index = 0; index < numLargeIntegrals; index++)
+      {
+        // if we are going below the criterion, break
+        //if (fabs(integrals[index]) < THRESH)
+        //  break;
+        
+        // otherwise: generate the determinant corresponding to the current excitation
+        int a = 2 * orbIndices[2 * index] + closed[i] % 2,
+            b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+      
+        double flag = 0.;
+        if (closed[i] < 2*schd.nciAct && a < 2*schd.nciAct && b < 2*schd.nciAct) flag = 1.0; //Dyall excitation, (note j < i, so no j condition)
+        //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
+        if (!(det.getocc(a) || det.getocc(b))) {
+          //cout << "a   " << a << "  b  " << b << endl;
+          work.appendValue(flag, closed[i] * 2 * norbs + a,
                            closed[j] * 2 * norbs + b, integrals[index]);
         }
       }
