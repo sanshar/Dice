@@ -25,7 +25,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <string>
 #ifndef SERIAL
-#include "mpi.h"
+#include <mpi.h>
+#include <omp.h>
 #endif
 
 typedef unsigned short ushort;
