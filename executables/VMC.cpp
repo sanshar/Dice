@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "test") {
+  else if (schd.wavefunctionType == "scpt") {
     SCPT<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     wave.optimizeWaveCT(walk);

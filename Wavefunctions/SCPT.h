@@ -105,6 +105,10 @@ class SCPT
         ofilem >> moEne(i);
       }
     }
+    else {
+      if (commrank == 0) cout << "moEne.txt not found!\n";
+      exit(0);
+    }
   }
 
   typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
@@ -282,7 +286,7 @@ class SCPT
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                             std::ref(generator));
 
-    double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0., waveEne = 0.;
+    double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0., waveEne = 0., correctionFactor = 0.;
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     int coeffsIndex = this->coeffsIndex(walk);
     workingArray work;
@@ -310,27 +314,34 @@ class SCPT
       ham(coeffsIndex) += ratio * hamSample;
       waveEne *= (1 - ratio);
       waveEne += ratio * locEne;
+      correctionFactor *= (1 - ratio);
+      if (coeffsIndex == 0) {
+        correctionFactor += ratio;
+      }
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
       coeffsIndex = this->coeffsIndex(walk);
       HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
       iter++;
-      if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << getTime() - startofCalc << endl; 
+      if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
     }
   
     norm *= cumdeltaT;
     ham *= cumdeltaT;
     waveEne *= cumdeltaT;
+    correctionFactor *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
     norm /= cumdeltaT;
     ham /= cumdeltaT;
     waveEne /= cumdeltaT;
+    correctionFactor /= cumdeltaT;
     
     std::vector<int> largeNormIndices;
     int counter = 0;
@@ -345,12 +356,19 @@ class SCPT
     VectorXd largeHam;
     igl::slice(ham, largeNormSlice, largeHam);
     VectorXd ene = (largeHam.array() / largeNorms.array()).matrix();
+    double ene2 = 0.;
+    coeffs.setZero();
     coeffs(0) = 1.;
-    for (int i = 1; i < largeNorms.size(); i++) coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
+    for (int i = 1; i < largeNorms.size(); i++) {
+      ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
+    }
     
     if (commrank == 0) {
-      cout << "ref energy  " << ene(0) << endl;
+      cout << "ref energy   " << setprecision(12) << ene(0) << endl;
+      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
       cout << "waveEne  " << waveEne << endl;
+      if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
   }
   
@@ -364,7 +382,7 @@ class SCPT
     generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
     workingArray work;
-    double overlapTot = 0.; 
+    double overlapTot = 0., correctionFactor = 0.; 
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     double waveEne = 0.;
     //w.printVariables();
@@ -385,10 +403,12 @@ class SCPT
       ham(coeffsIndex) += (ovlp * ovlp) * hamSample;
       norm(coeffsIndex) += (ovlp * ovlp) * normSample;
       waveEne += (ovlp * ovlp) * locEne;
+      if (coeffsIndex == 0) correctionFactor += ovlp * ovlp;
     }
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -402,8 +422,12 @@ class SCPT
       ham = ham / overlapTot;
       //cout << "ham\n" << ham << endl;
       norm = norm / overlapTot;
-     // cout << "norm\n" << norm << endl;
+      // cout << "norm\n" << norm << endl;
       ene = (ham.array() / norm.array()).matrix();
+      correctionFactor = correctionFactor / overlapTot;
+      double ene2 = 0.;
+      for (int i = 1; i < coeffs.size(); i++) ene2 += norm(i) / correctionFactor / (ene(0) - ene(i));
+      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
       //cout << "ene\n" << ene << endl;
       coeffs(0) = 1.;
       for (int i = 1; i < coeffs.size(); i++) coeffs(i) = 1 / (ene(0) - ene(i));
