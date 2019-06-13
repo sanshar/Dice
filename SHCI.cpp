@@ -27,18 +27,6 @@
 #include <list>
 #include <set>
 #include <tuple>
-#include "Davidson.h"
-#include "Determinants.h"
-#include "Hmult.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
-#include "global.h"
-#include "SHCImakeHamiltonian.h"
-#include "SHCIrdm.h"
-#include "SHCItime.h"
-#include "boost/format.hpp"
-#include "input.h"
-#include "integral.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -48,11 +36,25 @@
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
+#include <unistd.h>
+#include "boost/format.hpp"
+#include "global.h"
+#include "SHCIgetdeterminants.h"
+
+#include "Davidson.h"
+#include "Determinants.h"
+#include "Hmult.h"
+#include "SHCIbasics.h"
+#include "SHCImakeHamiltonian.h"
+#include "SHCIrdm.h"
+#include "SHCItime.h"
+#include "input.h"
+#include "integral.h"
+
 #include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"
 #include "communicate.h"
-#include <unistd.h> 
 
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
@@ -450,7 +452,7 @@ int main(int argc, char* argv[]) {
 #ifdef Complex
     if (schd.doSOC) {
       pout << "PERFORMING G-tensor calculations" << endl;
-      
+
       // dont do this here, if perturbation theory is switched on
       if (schd.doGtensor) {
 #ifndef SERIAL

@@ -493,7 +493,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
     for (int i = 0; i < DetsSize; i++) {
       if (i % size != rank)
         continue;
-      SHCIgetdeterminants::getDeterminants(
+      SHCIgetdeterminants::getDeterminantsPT(
           Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
           irrep, coreE, E0, uniqueDEH, schd, 0, nelec, true);
     }
@@ -501,7 +501,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
     for (int i = 0; i < DetsSize; i++) {
       if ((i % size != rank))
         continue;
-      SHCIgetdeterminants::getDeterminants(
+      SHCIgetdeterminants::getDeterminantsPT(
           Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB,
           irrep, coreE, E0, uniqueDEH, schd, 0, nelec);
       // if (i%100000 == 0 && omp_get_thread_num()==0 && commrank == 0) pout <<
@@ -965,26 +965,34 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 
     CItype zero = 0.0;
 
+    // std::vector<Determinant> dets;
+    // #pragma omp for
     for (int i = 0; i < SortedDetsSize; i++) {
       if (i % (commsize) != commrank)
         continue;
 #ifndef Complex
       SHCIgetdeterminants::getDeterminantsVariationalApprox(
           SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,
-          I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec, SortedDets,
-          SortedDetsSize);
+          I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec, // TODO
+          SortedDets, SortedDetsSize);
 
 #else
       SHCIgetdeterminants::getDeterminantsVariational(
           SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,
           I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec);
+      // SHCIgetdeterminants::getDeterminantsVariational(
+      //     SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,
+      //     I2HB, irrep, coreE, E0[0], dets, schd, 0, nelec);
 #endif
     }
 
     if (Determinant::Trev != 0) {
       for (int i = 0; i < uniqueDEH.Det->size(); i++)
-        uniqueDEH.Det->at(i).makeStandard();
+        uniqueDEH.Det->at(i).makeStandard(); // TODO
     }
+    // #pragma omp critical
+    //       uniqueDEH.Det->insert(uniqueDEH.Det->end(), dets.begin(),
+    //       dets.end()); pout << "MADE IT OUT OF MERGE" << endl;
 
     //*********
     // Remove duplicates and put all the dets on all the nodes

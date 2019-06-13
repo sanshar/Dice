@@ -26,8 +26,9 @@
 #include <set>
 #include <tuple>
 #include <vector>
+#include "SHCISortMpiUtils.h"
 
-using namespace std;
+// using namespace std;
 using namespace Eigen;
 class Determinant;
 class HalfDet;
@@ -36,40 +37,41 @@ class twoInt;
 class twoIntHeatBath;
 class twoIntHeatBathSHM;
 class schedule;
-class StichDEH;
+// class StitchDEH; // Can't use this here because it's ambiguous
 
 namespace SHCIgetdeterminants {
-void getDeterminants(Determinant &d, int det_ind, double epsilon, CItype ci1,
-                     CItype ci2, oneInt &int1, twoInt &int2,
-                     twoIntHeatBathSHM &I2hb, vector<int> &irreps, double coreE,
-                     double E0, StitchDEH &uniqueDEH, schedule &schd, int Nmc,
-                     int nelec, bool keepRefDets = false);
+void getDeterminantsPT(Determinant &d, int det_ind, double epsilon, CItype ci1,
+                       CItype ci2, oneInt &int1, twoInt &int2,
+                       twoIntHeatBathSHM &I2hb, std::vector<int> &irreps,
+                       double coreE, double E0, SHCISortMpiUtils::StitchDEH &uniqueDEH,
+                       schedule &schd, int Nmc, int nelec,
+                       bool keepRefDets = false);
 
 void getDeterminantsVariational(Determinant &d, double epsilon, CItype ci1,
                                 CItype ci2, oneInt &int1, twoInt &int2,
-                                twoIntHeatBathSHM &I2hb, vector<int> &irreps,
+                                twoIntHeatBathSHM &I2hb, std::vector<int> &irreps,
                                 double coreE, double E0,
                                 std::vector<Determinant> &dets, schedule &schd,
                                 int Nmc, int nelec);
 
 void getDeterminantsVariationalApprox(
     Determinant &d, double epsilon, CItype ci1, CItype ci2, oneInt &int1,
-    twoInt &int2, twoIntHeatBathSHM &I2hb, vector<int> &irreps, double coreE,
+    twoInt &int2, twoIntHeatBathSHM &I2hb, std::vector<int> &irreps, double coreE,
     double E0, std::vector<Determinant> &dets, schedule &schd, int Nmc,
     int nelec, Determinant *SortedDets, int SortedDetsSize);
 
 void getDeterminantsStochastic2Epsilon(
     Determinant &d, double epsilon, double epsilonLarge, CItype ci1, CItype ci2,
-    oneInt &int1, twoInt &int2, twoIntHeatBathSHM &I2hb, vector<int> &irreps,
+    oneInt &int1, twoInt &int2, twoIntHeatBathSHM &I2hb, std::vector<int> &irreps,
     double coreE, double E0, std::vector<Determinant> &dets,
-    std::vector<CItype> &numerator1A, vector<CItype> &numerator2A,
-    vector<char> &present, std::vector<double> &energy, schedule &schd, int Nmc,
+    std::vector<CItype> &numerator1A, std::vector<CItype> &numerator2A,
+    std::vector<char> &present, std::vector<double> &energy, schedule &schd, int Nmc,
     int nelec);
 
 void getDeterminantsDeterministicPTWithSOC(
     Determinant det, int det_ind, double epsilon1, CItype ci1, double epsilon2,
     CItype ci2, oneInt &int1, twoInt &int2, twoIntHeatBathSHM &I2hb,
-    vector<int> &irreps, double coreE, std::vector<Determinant> &dets,
+    std::vector<int> &irreps, double coreE, std::vector<Determinant> &dets,
     std::vector<CItype> &numerator1, std::vector<CItype> &numerator2,
     std::vector<double> &energy, schedule &schd, int nelec);
 

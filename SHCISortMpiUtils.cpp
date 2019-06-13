@@ -1,24 +1,24 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-  
+
   This file is part of DICE.
-  
+
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
+  of the GNU General Public License as published by the Free Software Foundation,
   either version 3 of the License, or (at your option) any later version.
-  
+
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
+
+  You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
 #include "Determinants.h"
 #include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
+// #include "SHCIgetdeterminants.h"
 #include "SHCIrdm.h"
 #include "SHCISortMpiUtils.h"
 #include "input.h"
@@ -59,18 +59,18 @@ namespace SHCISortMpiUtils {
     if (r >= l)
       {
         int mid = l + (r - l)/2;
- 
+
         // If the element is present at the middle itself
         if (arr[mid] == x)  return mid;
- 
+
         // If element is smaller than mid, then it can only be present
         // in left subarray
         if (arr[mid] > x) return binarySearch(arr, l, mid-1, x);
- 
+
         // Else the element can only be present in right subarray
         return binarySearch(arr, mid+1, r, x);
       }
- 
+
     // We reach here when element is not present in array
     return -1;
   }
@@ -618,7 +618,7 @@ namespace SHCISortMpiUtils {
 	    Num2->operator[](uniqueSize) += Num2->at(i);
 	  if (present->size() != 0)
 	    present->operator[](uniqueSize) = present->at(i);
-	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10 && 
+	  if (abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10 &&
 	      abs(Energy->operator[](uniqueSize) - Energy->at(i)) > 1.e-10*abs(Energy->at(i)) ) {
 	    cout << uniqueSize<<"  "<<i<<"  "<<endl;
 	    cout << Detcopy[i]<<endl;
@@ -831,7 +831,7 @@ namespace SHCISortMpiUtils {
       i++; uniqueSize++;
     }
 
-    Det->resize(uniqueSize); 
+    Det->resize(uniqueSize);
   }
 
 

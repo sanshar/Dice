@@ -36,7 +36,7 @@ using namespace Eigen;
 using namespace boost;
 
 //=============================================================================
-void SHCIgetdeterminants::getDeterminants(
+void SHCIgetdeterminants::getDeterminantsPT(
     Determinant &d, int det_ind, double epsilon, CItype ci1, CItype ci2,
     oneInt &int1, twoInt &int2, twoIntHeatBathSHM &I2hb, vector<int> &irreps,
     double coreE, double E0, StitchDEH &uniqueDEH, schedule &schd, int Nmc,
@@ -101,13 +101,19 @@ void SHCIgetdeterminants::getDeterminants(
   vector<int> open(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
   double Energyd = d.Energy(int1, int2, coreE);
-
-  // Need to be declared in max scope of function
   size_t orbDiff;
-  std::vector<int> var_indices_vec;
-  std::vector<size_t> orbDiff_vec;
+
+  // Store batch_<var> for each thread and reduce afterward
+  // std::vector<Determinant> batch_dets;
+  // std::vector<CItype> batch_numerator;
+  // std::vector<double> batch_energy;
+  // std::vector<int> batch_var_indices;
+  // std::vector<size_t> batch_orbDifference;
 
   // mono-excited determinants
+  // #pragma omp parallel for private(batch_dets, batch_var_indices, \
+//                                  batch_orbDifference, batch_numerator, \
+//                                  batch_energy)
   for (int ia = 0; ia < nopen * nclosed; ia++) {
     int i = ia / nopen, a = ia % nopen;
     // CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
@@ -123,12 +129,15 @@ void SHCIgetdeterminants::getDeterminants(
 
     // generate determinant if integral is above the criterion
     if (fabs(integral) > epsilon) {
+      // batch_dets.push_back(d);
       dets.push_back(d);
       Determinant &di = *dets.rbegin();
+      // Determinant &di = *batch_dets.rbegin();
       di.setocc(open[a], true);
       di.setocc(closed[i], false);
 
       // numerator and energy
+      // batch_numerator.push_back(integral * ci1);
       numerator.push_back(integral * ci1);
 #ifndef Complex
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
@@ -136,22 +145,29 @@ void SHCIgetdeterminants::getDeterminants(
 #else
       double E = di.Energy(int1, int2, coreE);
 #endif
+      // batch_energy.push_back(E);
       energy.push_back(E);
 
       if (keepRefDets) {
         var_indices.push_back(det_ind);
+        // batch_var_indices.push_back(det_ind);
         size_t A = open[a], N = norbs, I = closed[i];
         orbDiff = A * N + I; // a = creation, i = annihilation
         orbDifference.push_back(orbDiff);
+        // batch_orbDifference.push_back(orbDiff);
       }
     } //
   }   // ia
 
   // bi-excitated determinants
-  if (fabs(int2.maxEntry) < epsilon)
+  if (fabs(int2.maxEntry) < epsilon) {
     return;
+  }
+
   // for all pairs of closed
-  // #pragma omp parallel for schedule(dynamic) # TODO troublesome
+  // #pragma omp parallel for private(batch_dets, batch_var_indices, \
+//                                  batch_orbDifference, batch_numerator, \
+//                                  batch_energy)
   for (int ij = 0; ij < nclosed * nclosed; ij++) {
     int i = ij / nclosed, j = ij % nclosed;
     if (i <= j)
@@ -183,8 +199,10 @@ void SHCIgetdeterminants::getDeterminants(
       int a = 2 * orbIndices[2 * index] + closed[i] % 2,
           b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
       if (!(d.getocc(a) || d.getocc(b))) {
+        // batch_dets.push_back(d);
         dets.push_back(d);
         Determinant &di = *dets.rbegin();
+        // Determinant &di = *batch_dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i], false),
             di.setocc(closed[j], false);
 
@@ -193,20 +211,38 @@ void SHCIgetdeterminants::getDeterminants(
         di.parity(a, b, closed[i], closed[j], sgn);
 
         // numerator and energy
+        // batch_numerator.push_back(integrals[index] * sgn * ci1);
         numerator.push_back(integrals[index] * sgn * ci1);
         double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i,
                                          a, j, b, Energyd);
         energy.push_back(E);
+        // batch_energy.push_back(E);
 
         if (keepRefDets) {
+          // batch_var_indices.push_back(det_ind);
           var_indices.push_back(det_ind);
           size_t A = a, B = b, N = norbs, I = closed[i], J = closed[j];
           orbDiff = A * N * N * N + I * N * N + B * N + J; // i>j and a>b??
+          // batch_orbDifference.push_back(orbDiff);
           orbDifference.push_back(orbDiff);
         }
       }
     } // heatbath integrals
   }   // ij
+
+  // reduce all of variables stored on each thread
+  // #pragma omp critical
+  //   {
+  //     var_indices.insert(var_indices.end(), batch_var_indices.begin(),
+  //                        batch_var_indices.end());
+  //     orbDifference.insert(orbDifference.end(), batch_orbDifference.begin(),
+  //                          batch_orbDifference.end());
+  //     dets.insert(dets.end(), batch_dets.begin(), batch_dets.end());
+  //     numerator.insert(numerator.end(), batch_numerator.begin(),
+  //                      batch_numerator.end());
+  //     energy.insert(energy.end(), batch_energy.begin(), batch_energy.end());
+  //   }
+
   return;
 } // end SHCIgetdeterminants::getDeterminantsDeterministicPT
 
@@ -416,7 +452,11 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   vector<int> open(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
 
+  // Store batch_dets for each thread and reduce after determinants are added
+  std::vector<Determinant> batch_dets;
+
   // mono-excited determinants
+#pragma omp parallel for private(batch_dets)
   for (int ia = 0; ia < nopen * nclosed; ia++) {
     int i = ia / nopen, a = ia % nopen;
     if (closed[i] / 2 < schd.ncore || open[a] / 2 >= schd.ncore + schd.nact)
@@ -437,8 +477,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
 
     // generate determinant if integral is above the criterion
     if (fabs(integral) > epsilon) {
-      dets.push_back(d);
-      Determinant &di = *dets.rbegin();
+      batch_dets.push_back(d);
+      Determinant &di = *batch_dets.rbegin();
       di.setocc(open[a], true);
       di.setocc(closed[i], false);
       // if (Determinant::Trev != 0) di.makeStandard();
@@ -448,7 +488,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   // bi-excitated determinants
   if (fabs(int2.maxEntry) < epsilon)
     return;
-  // for all pairs of closed
+// for all pairs of closed
+#pragma omp parallel for private(batch_dets)
   for (int ij = 0; ij < nclosed * nclosed; ij++) {
     int i = ij / nclosed, j = ij % nclosed;
     if (i <= j)
@@ -485,14 +526,18 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       if (a / 2 >= schd.ncore + schd.nact || b / 2 >= schd.ncore + schd.nact)
         continue;
       if (!(d.getocc(a) || d.getocc(b))) {
-        dets.push_back(d);
-        Determinant &di = *dets.rbegin();
+        batch_dets.push_back(d);
+        Determinant &di = *batch_dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i], false),
             di.setocc(closed[j], false);
         // if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
   }   // ij
+  // Reduce the batch_dets into the original dets vector
+#pragma omp critical
+  { dets.insert(dets.end(), batch_dets.begin(), batch_dets.end()); }
+
   return;
 } // end SHCIgetdeterminants::getDeterminantsVariational
 
@@ -588,21 +633,15 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       //}
 
       if (!binary_search(SortedDets, SortedDets + SortedDetsSize, di))
-        // dets.push_back(di);
         batch_dets.push_back(di);
 #ifdef Complex
       Determinant detcpy = di;
       detcpy.flipAlphaBeta();
       if (!binary_search(SortedDets, SortedDets + SortedDetsSize, detcpy))
-        // dets.push_back(detcpy);
         batch_dets.push_back(detcpy);
 #endif
     }
   } // ia
-
-  // Add the determinants in batches - JETS
-#pragma omp critical
-  { dets.insert(dets.end(), batch_dets.begin(), batch_dets.end()); }
 
   // bi-excitated determinants
   if (fabs(int2.maxEntry) < epsilon)
@@ -668,18 +707,22 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
         //}
 
         if (!binary_search(SortedDets, SortedDets + SortedDetsSize, di))
-          dets.push_back(di);
+          batch_dets.push_back(di);
 #ifdef Complex
         Determinant detcpy = di;
         detcpy.flipAlphaBeta();
         if (!binary_search(SortedDets, SortedDets + SortedDetsSize, detcpy))
-          dets.push_back(detcpy);
+          batch_dets.push_back(detcpy);
 #endif
 
         // if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
   }   // ij
+
+  // Add the determinants in batches - JETS
+#pragma omp critical
+  { dets.insert(dets.end(), batch_dets.begin(), batch_dets.end()); }
   return;
 } // end SHCIgetdeterminants::getDeterminantsVariationalApprox
 
