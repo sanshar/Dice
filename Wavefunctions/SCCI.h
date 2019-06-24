@@ -56,6 +56,7 @@ class SCCI
 
  public:
   VectorXd coeffs;
+  VectorXd moEne;
   Wfn wave; //reference wavefunction
   workingArray morework;
   
@@ -77,6 +78,7 @@ class SCCI
     int numVirt = Determinant::norbs - schd.nciAct;
     int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
     coeffs = VectorXd::Zero(numCoeffs);
+    moEne = VectorXd::Zero(numCoeffs);
 
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
@@ -102,6 +104,19 @@ class SCCI
         ofile >> coeffs(i);
       }
     }
+    
+    //char filem[5000];
+    //sprintf(filem, "moEne.txt");
+    //ifstream ofilem(filem);
+    //if (ofilem) {
+    //  for (int i = 0; i < Determinant::norbs; i++) {
+    //    ofilem >> moEne(i);
+    //  }
+    //}
+    //else {
+    //  if (commrank == 0) cout << "moEne.txt not found!\n";
+    //  exit(0);
+    //}
   }
 
   typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
@@ -171,6 +186,7 @@ class SCCI
 			     double &factor,
 			     Eigen::VectorXd &grad)
   {
+    if (walk.excitedOrbs.size() > 2) return;
     int norbs = Determinant::norbs;
     int coeffsIndex = this->coeffsIndex(walk);
     double ciCoeff = coeffs(coeffsIndex);
@@ -183,6 +199,7 @@ class SCCI
                   double &ovlp, double &ham, 
                   workingArray& work, bool fillExcitations=true) 
   {
+    if (walk.excitedOrbs.size() > 2) return;
     int norbs = Determinant::norbs;
     int coeffsIndex = this->coeffsIndex(walk);
     double ciCoeff = coeffs(coeffsIndex);
@@ -235,6 +252,99 @@ class SCCI
         work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
       }
     }
+  }
+  
+  //ham is a sample of the diagonal element of the Dyall ham
+  template<typename Walker>
+  void HamAndOvlp(Walker &walk,
+                  double &ovlp, double &locEne, double &ham, double &norm, int coeffsIndex, 
+                  workingArray& work, bool fillExcitations=true) 
+  {
+    int norbs = Determinant::norbs;
+    double ciCoeff = coeffs(coeffsIndex);
+    morework.setCounterToZero();
+    double ovlp0, ham0;
+    wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
+    if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
+    else ovlp = ciCoeff * ham0;
+    if (ovlp == 0.) return; //maybe not necessary
+    if (abs(ciCoeff) < 1.e-5) norm = 0;
+    else norm = 1 / ciCoeff / ciCoeff;
+    locEne = walk.d.Energy(I1, I2, coreE);
+    Determinant dAct = walk.d;
+    //cout << "walker\n" << walk << endl;
+    //cout << "ovlp  " << ovlp << endl;
+    if (walk.excitedOrbs.size() == 0) {
+      ham = walk.d.Energy(I1, I2, coreE) / ciCoeff / ciCoeff;
+      //cout << "ene  " << ham << endl;
+    }
+    else {
+      dAct.setocc(*walk.excitedOrbs.begin(), false);
+      double ene1 = moEne((*walk.excitedOrbs.begin())/2);
+      if (walk.excitedOrbs.size() == 1) {
+        ham = (dAct.Energy(I1, I2, coreE) + ene1) / ciCoeff / ciCoeff;
+        //cout << "ene  " << ham << endl;
+      }
+      else {
+        dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
+        double ene2 = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
+        ham = (dAct.Energy(I1, I2, coreE) + ene1 + ene2) / ciCoeff / ciCoeff;
+        //cout << "ene  " << ham << endl;
+      }
+    }
+
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen,
+                                        work, false);
+    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+
+    //loop over all the screened excitations
+    //cout << endl << "m dets\n" << endl << endl;
+    for (int i=0; i<work.nExcitations; i++) {
+      double tia = work.HijElement[i];
+      double tiaD = work.HijElement[i];
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      double isDyall = 0.;
+      if (work.ovlpRatio[i] != 0.) {
+        isDyall = 1.;
+        if (ex2 == 0) tiaD = work.ovlpRatio[i];
+        work.ovlpRatio[i] = 0.;
+      }
+      
+      auto walkCopy = walk;
+      double parity = 1.;
+      Determinant dcopy = walkCopy.d;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
+                            work.excitation1[i], work.excitation2[i], false);
+      //cout << walkCopy << endl;
+      if (walkCopy.excitedOrbs.size() > 2) continue;
+      parity *= dcopy.parity(A/2, I/2, I%2);
+      if (ex2 != 0) {
+        dcopy.setocc(I, false);
+        dcopy.setocc(A, true);
+        parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+      
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework);
+      //cout << "ovlp  " << ovlp0 << "  ham  " << ham0 << "  tia  " << tia << "  parity  " << parity << endl;
+      if (coeffsCopyIndex == 0) {
+        ham += isDyall * parity * tiaD * ovlp0 / ciCoeff / ovlp;
+        locEne += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+      else {
+        ham += isDyall * parity * tiaD * ham0 / ciCoeff / ovlp;
+        locEne += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
+        work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
+      }
+      //cout << endl;
+    }
+    //cout << endl << "n ham  " << ham << "  norm  " << norm << endl << endl;
   }
   
   //hamSample = <psi^k_l|n>/<psi|n> * <n|H|psi^k'_l'>/<n|psi>, ovlp = <n|psi>
@@ -707,6 +817,78 @@ class SCCI
       cout << "SCCI+Q energy  " << ene + (1 - correctionFac) * (ene - ene0) << endl;
     }
   //if (commrank == 0) cout << "energies\n" << diag.eigenvalues() << endl;
+  }
+  
+  template<typename Walker>
+  double optimizeWaveDeterministicNesbet(Walker& walk) {
+    
+    int norbs = Determinant::norbs;
+    int nalpha = Determinant::nalpha;
+    int nbeta = Determinant::nbeta;
+    vector<Determinant> allDets;
+    generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+
+    workingArray work;
+    double overlapTot = 0., correctionFactor = 0.; 
+    VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
+    VectorXd eneGrad = VectorXd::Zero(coeffs.size()), waveGrad = VectorXd::Zero(coeffs.size());
+    double waveEne = 0.;
+    //w.printVariables();
+    coeffs /= coeffs(0);
+
+    for (int i = commrank; i < allDets.size(); i += commsize) {
+      wave.initWalker(walk, allDets[i]);
+      if (schd.debug) {
+        cout << "walker\n" << walk << endl;
+      }
+      if (walk.excitedOrbs.size() > 2) continue;
+      int coeffsIndex = this->coeffsIndex(walk);
+      double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0.;
+      HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
+      //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
+      //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
+      
+      overlapTot += ovlp * ovlp;
+      ham(coeffsIndex) += (ovlp * ovlp) * hamSample;
+      norm(coeffsIndex) += (ovlp * ovlp) * normSample;
+      waveEne += (ovlp * ovlp) * locEne;
+      eneGrad(coeffsIndex) += (ovlp * ovlp) * locEne / coeffs(coeffsIndex);
+      waveGrad(coeffsIndex) += (ovlp * ovlp) / coeffs(coeffsIndex);
+      if (coeffsIndex == 0) correctionFactor += ovlp * ovlp;
+    }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, eneGrad.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, waveGrad.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    
+    if (commrank == 0) {
+      waveEne = waveEne / overlapTot;
+      //cout << "overlapTot  " << overlapTot << endl;
+      ham = ham / overlapTot;
+      //cout << "ham\n" << ham << endl;
+      norm = norm / overlapTot;
+      // cout << "norm\n" << norm << endl;
+      VectorXd ene = VectorXd::Zero(coeffs.size());
+      ene = (ham.array() / norm.array()).matrix();
+      eneGrad /= overlapTot;
+      waveGrad /= overlapTot;
+      eneGrad -= waveEne * waveGrad;
+      correctionFactor = correctionFactor / overlapTot;
+      for (int i = 1; i < coeffs.size(); i++) coeffs(i) += eneGrad(i) / correctionFactor / (waveEne - ene(i));
+      cout << "waveEne  " << waveEne << "  gradNorm   " << eneGrad.norm() << endl;
+      //cout << "ene\n" << ene << endl;
+    }
+#ifndef SERIAL
+  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  //MPI_Bcast(&(ene0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+
   }
   
   template<typename Walker>

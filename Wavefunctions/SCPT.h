@@ -187,7 +187,8 @@ class SCPT
     if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
     else ovlp = ciCoeff * ham0;
     if (ovlp == 0.) return; //maybe not necessary
-    norm = 1 / ciCoeff / ciCoeff;
+    if (abs(ciCoeff) < 1.e-5) norm = 0;
+    else norm = 1 / ciCoeff / ciCoeff;
     locEne = walk.d.Energy(I1, I2, coreE);
     Determinant dAct = walk.d;
     //cout << "walker\n" << walk << endl;
@@ -271,7 +272,7 @@ class SCPT
     //add noise to avoid zero coeffs
     if (commrank == 0) {
       //cout << "starting sampling at " << setprecision(4) << getTime() - startofCalc << endl; 
-      auto random = std::bind(std::uniform_real_distribution<double>(0., 1.e-8), std::ref(generator));
+      auto random = std::bind(std::uniform_real_distribution<double>(0., 1.e-6), std::ref(generator));
       for (int i=0; i < coeffs.size(); i++) {
         if (coeffs(i) == 0) coeffs(i) = random();
       }
@@ -359,8 +360,13 @@ class SCPT
     double ene2 = 0.;
     coeffs.setZero();
     coeffs(0) = 1.;
+    //if (commrank == 0) {
+    //  cout << "correctionFactor  " << correctionFactor << endl;
+    //  cout << "i   largeNorms(i)    ene(0) - ene(i)\n";
+    //}
     for (int i = 1; i < largeNorms.size(); i++) {
       ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      //if (commrank == 0) cout << i << "     " << largeNorms(i) << "    " << ene(0) - ene(i) << endl;
       coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
     }
     

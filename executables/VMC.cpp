@@ -218,14 +218,20 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scci") {
-    //SCCI<SelectedCI> wave; SimpleWalker walk;
-    //wave.initWalker(walk);
-    //if (schd.deterministic) {}//wave.optimizeWaveDeterministic(walk);
-    //else {wave.optimizeWaveCTDirect(walk); wave.optimizeWaveCTDirect(walk);}
-    //wave.writeWave();
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
-    runVMC(wave, walk);
+    if (schd.method == linearmethod) {
+      wave.optimizeWaveCTDirect(walk); 
+      wave.optimizeWaveCTDirect(walk);
+    }
+    else runVMC(wave, walk);
+    wave.writeWave();
+  }
+  
+  else if (schd.wavefunctionType == "test") {
+    SCCI<SelectedCI> wave; SimpleWalker walk;
+    wave.initWalker(walk);
+    for (int i = 0; i < schd.maxIter; i++) wave.optimizeWaveDeterministicNesbet(walk); 
   }
   
   else if (schd.wavefunctionType == "scpt") {
