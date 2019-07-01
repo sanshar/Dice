@@ -19,6 +19,7 @@
 #include "Determinants.h"
 #include "SelectedCI.h"
 #include "workingArray.h"
+#include "integral.h"
 
 SelectedCI::SelectedCI() {}
 
@@ -95,20 +96,48 @@ void SelectedCI::readWave() {
 
 //assuming bestDeterminant is an active space det, so no excitedOrbs
 void SelectedCI::initWalker(SimpleWalker &walk) {
+  int norbs = Determinant::norbs;
   walk.d = bestDeterminant;
   walk.excitedOrbs.clear();
   for (int i = schd.nciAct; i < Determinant::norbs; i++) {
     if (walk.d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (walk.d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
   }
+  
+  vector<int> open;
+  vector<int> closed;
+  walk.d.getOpenClosed(open, closed);
+  walk.energyIntermediates[0]= VectorXd::Zero(norbs);
+  walk.energyIntermediates[1]= VectorXd::Zero(norbs);
+  for (int i = 0; i < norbs; i++) {
+    for (int j = 0; j < closed.size(); j++) {
+      walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+      walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+      walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
+    }
+  }
 }
 
 void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
+  int norbs = Determinant::norbs;
   walk.d = d;
   walk.excitedOrbs.clear();
   for (int i = schd.nciAct; i < Determinant::norbs; i++) {
     if (d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
+  }
+ 
+  vector<int> open;
+  vector<int> closed;
+  walk.d.getOpenClosed(open, closed);
+  walk.energyIntermediates[0]= VectorXd::Zero(norbs);
+  walk.energyIntermediates[1]= VectorXd::Zero(norbs);
+  for (int i = 0; i < norbs; i++) {
+    for (int j = 0; j < closed.size(); j++) {
+      walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+      walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+      walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
+    }
   }
 }
 
@@ -176,11 +205,12 @@ void SelectedCI::OverlapWithGradient(SimpleWalker &walk,
 //ham here is <n|H|phi0> not the ratio, to avoid ou of active space singularitites
 void SelectedCI::HamAndOvlp(SimpleWalker &walk,
                   double &ovlp, double &ham, 
-                  workingArray& work, bool fillExcitations) {
+                  workingArray& work, bool dontCalcEnergy) {
   
   int norbs = Determinant::norbs;
   ovlp = Overlap(walk);
-  ham = ovlp * walk.d.Energy(I1, I2, coreE); 
+  if (dontCalcEnergy) ham *= ovlp;
+  else  ham = ovlp * walk.d.Energy(I1, I2, coreE); 
 
   work.setCounterToZero();
   if (walk.excitedOrbs.size() == 2) {

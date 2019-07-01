@@ -75,7 +75,7 @@ class SelectedCI
 
   void HamAndOvlp(SimpleWalker &walk,
                   double &ovlp, double &ham, 
-                  workingArray& work, bool fillExcitations=true);
+                  workingArray& work, bool dontCalcEnergy=true);
   
   void HamAndOvlpLanczos(SimpleWalker &walk,
                          Eigen::VectorXd &lanczosCoeffsSample,

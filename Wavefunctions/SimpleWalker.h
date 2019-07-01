@@ -25,6 +25,7 @@
 #include "input.h"
 #include <unordered_set>
 #include <iterator>
+#include "integral.h"
 
 using namespace Eigen;
 
@@ -42,10 +43,12 @@ class SimpleWalker
 public:
   Determinant d;                      //The current determinant
   unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
+  std::array<VectorXd, 2> energyIntermediates; 
 
   // The constructor
   SimpleWalker(Determinant &pd) : d(pd) {};
   SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd) {};
+  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs) {};
   SimpleWalker(){};
 
   Determinant getDet() { return d; }
@@ -59,8 +62,12 @@ public:
   void updateB(int i, int j, int a, int b);
 
   void update(int i, int a, bool sz, const Determinant &ref, const Determinant &corr) { return; };//to be defined for metropolis
+  
+  void updateEnergyIntermediate(const oneInt& I1, const twoInt& I2, int I, int A);
+  
+  void updateEnergyIntermediate(const oneInt& I1, const twoInt& I2, int I, int A, int J, int B);
 
-  void updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool parity = true);
+  void updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool updateIntermediate = true);
   
   void exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs);
   
@@ -79,6 +86,11 @@ public:
     //os << "excited Orbs   " << w.excitedOrbs << endl;
     os << "excitedOrbs   ";
     copy(w.excitedOrbs.begin(), w.excitedOrbs.end(), ostream_iterator<int>(os, " "));
+    os << "energyIntermediates\n";
+    os << "up\n";
+    os << w.energyIntermediates[0] << endl;
+    os << "down\n";
+    os << w.energyIntermediates[1] << endl;
     return os;
   }
   //template <typename Wfn>

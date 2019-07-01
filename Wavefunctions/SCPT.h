@@ -190,6 +190,7 @@ class SCPT
     if (abs(ciCoeff) < 1.e-5) norm = 0;
     else norm = 1 / ciCoeff / ciCoeff;
     locEne = walk.d.Energy(I1, I2, coreE);
+    double dEne = locEne;
     Determinant dAct = walk.d;
     //cout << "walker\n" << walk << endl;
     //cout << "ovlp  " << ovlp << endl;
@@ -241,10 +242,23 @@ class SCPT
       //cout << walkCopy << endl;
       if (walkCopy.excitedOrbs.size() > 2) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
-      if (ex2 != 0) {
+      if (ex2 == 0) {
+        ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
+                    - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
+      }
+      else {
         dcopy.setocc(I, false);
         dcopy.setocc(A, true);
         parity *= dcopy.parity(B/2, J/2, J%2);
+        bool sameSpin = (I%2 == J%2);
+        ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
+                    + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
+                    + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
+                    + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
+                    - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
+                    - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
+                    - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
+                    - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
       }
       
       int coeffsCopyIndex = this->coeffsIndex(walkCopy);

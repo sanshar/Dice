@@ -46,35 +46,63 @@ void SimpleWalker::updateB(int i, int j, int a, int b)
   d.setoccB(b, true);
 }
 
-//assumes valid excitations
-void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool parity)
+void SimpleWalker::updateEnergyIntermediate(const oneInt& I1, const twoInt& I2, int I, int A) 
 {
   int norbs = Determinant::norbs;
+  for (int i = 0; i < norbs; i++) {
+    energyIntermediates[0][i] += (I2.Direct(i, A/2) - I2.Direct(i, I/2));
+    energyIntermediates[1][i] += (I2.Direct(i, A/2) - I2.Direct(i, I/2));
+    energyIntermediates[I%2][i] -= (I2.Exchange(i, A/2) - I2.Exchange(i, I/2));
+  }
+}
 
-  int I1 = ex1 / (2 * norbs), A1 = ex1 % (2 * norbs);
+void SimpleWalker::updateEnergyIntermediate(const oneInt& I1, const twoInt& I2, int I, int A, int J, int B) 
+{
+  int norbs = Determinant::norbs;
+  for (int i = 0; i < norbs; i++) {
+    energyIntermediates[0][i] += (I2.Direct(i, A/2) - I2.Direct(i, I/2) + I2.Direct(i, B/2) - I2.Direct(i, J/2));
+    energyIntermediates[1][i] += (I2.Direct(i, A/2) - I2.Direct(i, I/2) + I2.Direct(i, B/2) - I2.Direct(i, J/2));
+    energyIntermediates[I%2][i] -= (I2.Exchange(i, A/2) - I2.Exchange(i, I/2));
+    energyIntermediates[J%2][i] -= (I2.Exchange(i, B/2) - I2.Exchange(i, J/2));
+  }
+}
 
-  if (A1 >= 2*schd.nciAct) excitedOrbs.insert(A1);
-  if (I1 >= 2*schd.nciAct) excitedOrbs.erase(I1);
-  if (I1 % 2 == 0) {
-    updateA(I1 / 2, A1 / 2);
+//assumes valid excitations
+//the energyIntermediates should only be updated for outer walker updates
+void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool updateIntermediate)
+{
+  int norbs = Determinant::norbs;
+  int I = ex1 / (2 * norbs), A = ex1 % (2 * norbs);
+  if (A >= 2*schd.nciAct) excitedOrbs.insert(A);
+  if (I >= 2*schd.nciAct) excitedOrbs.erase(I);
+  if (I % 2 == 0) {
+    updateA(I / 2, A / 2);
   }
   else {
-    updateB(I1 / 2, A1 / 2);
+    updateB(I / 2, A / 2);
+  }
+  
+  if (ex2 == 0 && updateIntermediate) {
+    updateEnergyIntermediate(I1, I2, I, A);
   }
   
   if (ex2 != 0)
   {
-    int I2 = ex2 / (2 * norbs), A2 = ex2 % (2 * norbs);
-    if (A2 >= 2*schd.nciAct) excitedOrbs.insert(A2);
-    if (I2 >= 2*schd.nciAct) excitedOrbs.erase(I2);
+    int J = ex2 / (2 * norbs), B = ex2 % (2 * norbs);
+    if (B >= 2*schd.nciAct) excitedOrbs.insert(B);
+    if (J >= 2*schd.nciAct) excitedOrbs.erase(J);
     
-    if (I2 % 2 == 0)
-      updateA(I2 / 2, A2 / 2);
+    if (J % 2 == 0)
+      updateA(J / 2, B / 2);
     else
-      updateB(I2 / 2, A2 / 2);
+      updateB(J / 2, B / 2);
+    if (updateIntermediate) {
+      updateEnergyIntermediate(I1, I2, I, A, J, B);
+    }
   }
 }
 
+//not implemented for SimpleWalker
 void SimpleWalker::exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs)
 {
   int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
