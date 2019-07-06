@@ -224,7 +224,10 @@ int main(int argc, char *argv[])
       wave.optimizeWaveCTDirect(walk); 
       wave.optimizeWaveCTDirect(walk);
     }
-    else runVMC(wave, walk);
+    else {
+      runVMC(wave, walk);
+      wave.calcEnergy(walk);
+    }
     wave.writeWave();
   }
   

@@ -574,6 +574,67 @@ class SCCI
     }
     if (commrank == 0) cout << "Davidson did not converge in " << maxDavidsonIter << " iterations" << endl;
   }
+  
+  template<typename Walker>
+  double calcEnergy(Walker& walk) {
+    
+    //sampling
+    int norbs = Determinant::norbs;
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                            std::ref(generator));
+    
+
+    double ovlp = 0., locEne = 0., ene = 0., correctionFactor = 0.;
+    int coeffsIndex = this->coeffsIndex(walk);
+    workingArray work;
+    HamAndOvlp(walk, ovlp, locEne, work);
+
+    int iter = 0;
+    double cumdeltaT = 0.;
+
+    while (iter < schd.stochasticIter) {
+      double cumovlpRatio = 0;
+      for (int i = 0; i < work.nExcitations; i++) {
+        cumovlpRatio += abs(work.ovlpRatio[i]);
+        work.ovlpRatio[i] = cumovlpRatio;
+      }
+      double deltaT = 1.0 / (cumovlpRatio);
+      double nextDetRandom = random() * cumovlpRatio;
+      int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                     nextDetRandom) - work.ovlpRatio.begin();
+      cumdeltaT += deltaT;
+      double ratio = deltaT / cumdeltaT;
+      ene *= (1 - ratio);
+      ene += ratio * locEne;
+      correctionFactor *= (1 - ratio);
+      if (coeffsIndex == 0) {
+        correctionFactor += ratio;
+      }
+      walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+      coeffsIndex = this->coeffsIndex(walk);
+      HamAndOvlp(walk, ovlp, locEne, work); 
+      iter++;
+    }
+  
+    ene *= cumdeltaT;
+    correctionFactor *= cumdeltaT;
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    
+    cumulativeTime = cumdeltaT;
+    ene /= cumdeltaT;
+    correctionFactor /= cumdeltaT;
+    if (commrank == 0) {
+      cout << "energy of sampling wavefunction   "  << setprecision(12) << ene << endl;
+      cout << "correctionFactor   " << correctionFactor << endl;
+      cout << "SCCI+Q energy = ene + (1 - correctionFactor) * (ene - ene0)" << endl;
+      if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
+    }
+  }
 
   template<typename Walker>
   double optimizeWaveCTDirect(Walker& walk) {
