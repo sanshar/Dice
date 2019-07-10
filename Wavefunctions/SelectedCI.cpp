@@ -104,18 +104,18 @@ void SelectedCI::initWalker(SimpleWalker &walk) {
     if (walk.d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
   }
   
-  vector<int> open;
-  vector<int> closed;
-  walk.d.getOpenClosed(open, closed);
-  walk.energyIntermediates[0]= VectorXd::Zero(norbs);
-  walk.energyIntermediates[1]= VectorXd::Zero(norbs);
-  for (int i = 0; i < norbs; i++) {
-    for (int j = 0; j < closed.size(); j++) {
-      walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
-      walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
-      walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
-    }
-  }
+  //vector<int> open;
+  //vector<int> closed;
+  //walk.d.getOpenClosed(open, closed);
+  //walk.energyIntermediates[0]= VectorXd::Zero(norbs);
+  //walk.energyIntermediates[1]= VectorXd::Zero(norbs);
+  //for (int i = 0; i < norbs; i++) {
+  //  for (int j = 0; j < closed.size(); j++) {
+  //    walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+  //    walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+  //    walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
+  //  }
+  //}
 }
 
 void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
@@ -127,18 +127,18 @@ void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
     if (d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
   }
  
-  vector<int> open;
-  vector<int> closed;
-  walk.d.getOpenClosed(open, closed);
-  walk.energyIntermediates[0]= VectorXd::Zero(norbs);
-  walk.energyIntermediates[1]= VectorXd::Zero(norbs);
-  for (int i = 0; i < norbs; i++) {
-    for (int j = 0; j < closed.size(); j++) {
-      walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
-      walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
-      walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
-    }
-  }
+  //vector<int> open;
+  //vector<int> closed;
+  //walk.d.getOpenClosed(open, closed);
+  //walk.energyIntermediates[0]= VectorXd::Zero(norbs);
+  //walk.energyIntermediates[1]= VectorXd::Zero(norbs);
+  //for (int i = 0; i < norbs; i++) {
+  //  for (int j = 0; j < closed.size(); j++) {
+  //    walk.energyIntermediates[0][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+  //    walk.energyIntermediates[1][i] += I2.Direct(i, closed[j]/2) + I1(2*i, 2*i);
+  //    walk.energyIntermediates[closed[j] % 2][i] -= I2.Exchange(i, closed[j]/2);
+  //  }
+  //}
 }
 
 //only used in deterministic calcs
@@ -203,14 +203,17 @@ void SelectedCI::OverlapWithGradient(SimpleWalker &walk,
 }
 
 //ham here is <n|H|phi0> not the ratio, to avoid ou of active space singularitites
+//ovlp = ham when ham is calculated
 void SelectedCI::HamAndOvlp(SimpleWalker &walk,
                   double &ovlp, double &ham, 
                   workingArray& work, bool dontCalcEnergy) {
   
   int norbs = Determinant::norbs;
-  ovlp = Overlap(walk);
-  if (dontCalcEnergy) ham *= ovlp;
-  else  ham = ovlp * walk.d.Energy(I1, I2, coreE); 
+  if (dontCalcEnergy) { 
+    ovlp = Overlap(walk);
+    return;//ham *= ovlp;
+  }
+  else ham = 0.;//ham = ovlp * walk.d.Energy(I1, I2, coreE); 
 
   work.setCounterToZero();
   if (walk.excitedOrbs.size() == 2) {
@@ -261,6 +264,7 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
     //work.ovlpRatio[i] = ovlp;
   }
   //if (schd.debug) cout << "ham  " << ham << "  ovlp  " << ovlp << endl << endl;
+  ovlp = ham;
 }
 
 void SelectedCI::HamAndOvlpLanczos(SimpleWalker &walk,

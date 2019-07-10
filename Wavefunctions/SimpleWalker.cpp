@@ -82,9 +82,9 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
     updateB(I / 2, A / 2);
   }
   
-  if (ex2 == 0 && updateIntermediate) {
-    updateEnergyIntermediate(I1, I2, I, A);
-  }
+  //if (ex2 == 0 && updateIntermediate) {
+  //  updateEnergyIntermediate(I1, I2, I, A);
+  //}
   
   if (ex2 != 0)
   {
@@ -96,9 +96,9 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
       updateA(J / 2, B / 2);
     else
       updateB(J / 2, B / 2);
-    if (updateIntermediate) {
-      updateEnergyIntermediate(I1, I2, I, A, J, B);
-    }
+    //if (updateIntermediate) {
+    //  updateEnergyIntermediate(I1, I2, I, A, J, B);
+    //}
   }
 }
 

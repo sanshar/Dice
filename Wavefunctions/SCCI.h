@@ -205,9 +205,14 @@ class SCCI
     double ciCoeff = coeffs(coeffsIndex);
     morework.setCounterToZero();
     double ovlp0, ham0;
-    wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
-    if (coeffsIndex == 0) ovlp = ciCoeff * ovlp0;
-    else ovlp = ciCoeff * ham0;
+    if (coeffsIndex == 0) {
+      wave.HamAndOvlp(walk, ovlp0, ham0, morework, true);
+      ovlp = ciCoeff * ovlp0;
+    }
+    else {
+      wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
+      ovlp = ciCoeff * ovlp0;
+    }
     if (ovlp == 0.) return; //maybe not necessary
     ham = walk.d.Energy(I1, I2, coreE);
     double dEne = ham;
@@ -236,32 +241,34 @@ class SCCI
                             work.excitation1[i], work.excitation2[i], false);
       if (walkCopy.excitedOrbs.size() > 2) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
-      if (ex2 == 0) {
-        ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
-                    - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
-      }
-      else {
+      //if (ex2 == 0) {
+      //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
+      //              - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
+      //}
+      //else {
+      if (ex2 != 0) {
         dcopy.setocc(I, false);
         dcopy.setocc(A, true);
         parity *= dcopy.parity(B/2, J/2, J%2);
-        bool sameSpin = (I%2 == J%2);
-        ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
-                    + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
-                    + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
-                    + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
-                    - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
-                    - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
-                    - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
-                    - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
+        //bool sameSpin = (I%2 == J%2);
+        //ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
+        //            + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
+        //            + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
+        //            + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
+        //            - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
+        //            - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
+        //            - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
+        //            - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
       } 
       int coeffsCopyIndex = this->coeffsIndex(walkCopy);
       morework.setCounterToZero();
-      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework);
       if (coeffsCopyIndex == 0) {
+        wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, true);
         ham += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
         work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
       }
       else {
+        wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
         ham += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
         work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
       }
