@@ -1067,8 +1067,8 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
         int a = 2 * orbIndices[2 * index] + closed[i] % 2,
             b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
 
-        //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
-        if (!(d.getocc(a) || d.getocc(b))) {
+        if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
+        //if (!(d.getocc(a) || d.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
           work.appendValue(0.0, closed[i] * 2 * norbs + a,
                            closed[j] * 2 * norbs + b, integrals[index]);

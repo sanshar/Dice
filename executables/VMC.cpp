@@ -50,6 +50,7 @@
 #include "Lanczos.h"
 #include "SCCI.h"
 #include "SCPT.h"
+#include "MRCI.h"
 #include "runVMC.h"
 
 using namespace Eigen;
@@ -232,9 +233,9 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "test") {
-    SCCI<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    for (int i = 0; i < schd.maxIter; i++) wave.optimizeWaveDeterministicNesbet(walk); 
+    MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
+    //wave.initWalker(walk);
+    runVMC(wave, walk);
   }
   
   else if (schd.wavefunctionType == "scpt") {

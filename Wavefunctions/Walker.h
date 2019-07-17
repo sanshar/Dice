@@ -197,7 +197,7 @@ struct Walker<Corr, Slater> {
     }
     return detFactorNum / detFactorDen;
   }
-
+  
   double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const Slater &ref) const
   {
     int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
@@ -218,6 +218,56 @@ struct Walker<Corr, Slater> {
       detFactorDen += ref.getciExpansion()[j] * (refHelper.thetaDet[j][0] * refHelper.thetaDet[j][1]).real();
     }
     return detFactorNum / detFactorDen;
+  }
+ 
+  //only works for ghf
+  double getDetFactor(Determinant &d, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  {
+    if (from[0].size() + from[1].size() == 0) return 1.;
+    int numExc = from[0].size() + from[1].size();
+    VectorXi tableIndicesRow = VectorXi::Zero(from[0].size() + from[1].size());
+    VectorXi tableIndicesCol = VectorXi::Zero(from[0].size() + from[1].size());
+    double parity = 1.;
+    int count = 0;
+    for (int sz = 0; sz < 2; sz++) {//iterate over spins
+      auto itFrom = from[sz].begin();
+      auto itTo = to[sz].begin();
+      for (int n = 0; n < from[sz].size(); n++) {//iterate over excitations
+        int i = *itFrom, a = *itTo;
+        itFrom = std::next(itFrom); itTo = std::next(itTo);
+        refHelper.getRelIndices(i, tableIndicesCol(count), a, tableIndicesRow(count), sz);
+        count++;
+        parity *= d.parity(a, i, sz);
+        d.setocc(i, sz, false);  
+        d.setocc(a, sz, true);
+      }
+    }
+
+    MatrixXcd detSlice = MatrixXcd::Zero(numExc,numExc);
+    igl::slice(refHelper.rTable[0][0], tableIndicesRow, tableIndicesCol, detSlice);
+    complex<double> det(0.,0.);
+    if (detSlice.rows() == 1) det = detSlice(0, 0);
+    else if (detSlice.rows() == 2) det = detSlice(0, 0) * detSlice(1, 1) - detSlice(0, 1) * detSlice(1, 0);
+    else if (detSlice.rows() == 3) det =   detSlice(0, 0) * (detSlice(1, 1) * detSlice(2, 2) - detSlice(1, 2) * detSlice(2, 1))
+                                         - detSlice(0, 1) * (detSlice(1, 0) * detSlice(2, 2) - detSlice(1, 2) * detSlice(2, 0))
+                                         + detSlice(0, 2) * (detSlice(1, 0) * detSlice(2, 1) - detSlice(1, 1) * detSlice(2, 0));
+    else if (detSlice.rows() == 4) det = detSlice(0,3) * detSlice(1,2) * detSlice(2,1) * detSlice(3,0) - detSlice(0,2) * detSlice(1,3) * detSlice(2,1) * detSlice(3,0) -
+       detSlice(0,3) * detSlice(1,1) * detSlice(2,2) * detSlice(3,0) + detSlice(0,1) * detSlice(1,3) * detSlice(2,2) * detSlice(3,0) +
+       detSlice(0,2) * detSlice(1,1) * detSlice(2,3) * detSlice(3,0) - detSlice(0,1) * detSlice(1,2) * detSlice(2,3) * detSlice(3,0) -
+       detSlice(0,3) * detSlice(1,2) * detSlice(2,0) * detSlice(3,1) + detSlice(0,2) * detSlice(1,3) * detSlice(2,0) * detSlice(3,1) +
+       detSlice(0,3) * detSlice(1,0) * detSlice(2,2) * detSlice(3,1) - detSlice(0,0) * detSlice(1,3) * detSlice(2,2) * detSlice(3,1) -
+       detSlice(0,2) * detSlice(1,0) * detSlice(2,3) * detSlice(3,1) + detSlice(0,0) * detSlice(1,2) * detSlice(2,3) * detSlice(3,1) +
+       detSlice(0,3) * detSlice(1,1) * detSlice(2,0) * detSlice(3,2) - detSlice(0,1) * detSlice(1,3) * detSlice(2,0) * detSlice(3,2) -
+       detSlice(0,3) * detSlice(1,0) * detSlice(2,1) * detSlice(3,2) + detSlice(0,0) * detSlice(1,3) * detSlice(2,1) * detSlice(3,2) +
+       detSlice(0,1) * detSlice(1,0) * detSlice(2,3) * detSlice(3,2) - detSlice(0,0) * detSlice(1,1) * detSlice(2,3) * detSlice(3,2) -
+       detSlice(0,2) * detSlice(1,1) * detSlice(2,0) * detSlice(3,3) + detSlice(0,1) * detSlice(1,2) * detSlice(2,0) * detSlice(3,3) +
+       detSlice(0,2) * detSlice(1,0) * detSlice(2,1) * detSlice(3,3) - detSlice(0,0) * detSlice(1,2) * detSlice(2,1) * detSlice(3,3) -
+       detSlice(0,1) * detSlice(1,0) * detSlice(2,2) * detSlice(3,3) + detSlice(0,0) * detSlice(1,1) * detSlice(2,2) * detSlice(3,3);
+
+    //complex<double> det = detSlice.determinant();
+    double num = (det * refHelper.thetaDet[0][0] * refHelper.thetaDet[0][1]).real();
+    double den = (refHelper.thetaDet[0][0] * refHelper.thetaDet[0][1]).real();
+    return parity * num / den;
   }
 
   void update(int i, int a, bool sz, const Slater &ref, Corr &corr, bool doparity = true)
@@ -439,6 +489,8 @@ struct Walker<Corr, Slater> {
 
 };
 
+//template<> struct Walker<Jastrow, Slater>;
+
 template<typename Corr>
 struct Walker<Corr, AGP> {
 
@@ -554,6 +606,11 @@ struct Walker<Corr, AGP> {
         + refHelper.thetaInv(tableIndexi, tableIndexj) * refHelper.rTable[2](tableIndexb, tableIndexa);
       }
     return (factor * refHelper.thetaDet).real() / (refHelper.thetaDet).real();
+  }
+  
+  double getDetFactor(std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  {
+    return 0.;
   }
   
   void update(int i, int a, bool sz, const AGP &ref, Corr &corr, bool doparity = true)
@@ -814,6 +871,11 @@ struct Walker<Corr, Pfaffian> {
     }
     //cout << "double   " << crossTerm << "   " << summand1 << "  " << summand2 << endl; 
     return ((summand1 + summand2) * refHelper.thetaPfaff).real() / (refHelper.thetaPfaff).real();
+  }
+  
+  double getDetFactor(std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  {
+    return 0.;
   }
   
   void update(int i, int a, bool sz, const Pfaffian &ref, Corr &corr, bool doparity = true)

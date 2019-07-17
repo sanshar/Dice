@@ -23,6 +23,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include "Walker.h"
+#include <unordered_set>
 
 class oneInt;
 class twoInt;
@@ -131,7 +132,12 @@ struct CorrelatedWavefunction {
         * walk.getDetFactor(I, J, A, B, ref);
         //* slater.OverlapRatio(I, J, A, B, walk, doparity);
   }
-
+  
+  double getOverlapFactor(const Walker<Corr, Reference>& walk, Determinant& d, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  {
+    //cout << "\ndet  " << walk.getDetFactor(d, from, to) << "  corr  " << walk.corrHelper.OverlapRatio(from, to, corr) << endl;
+    return walk.getDetFactor(d, from, to) * walk.corrHelper.OverlapRatio(from, to, corr);
+  }
 
   /**
    * This basically calls the overlapwithgradient(determinant, factor, grad)

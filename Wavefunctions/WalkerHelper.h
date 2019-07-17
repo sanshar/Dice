@@ -19,6 +19,7 @@
 #ifndef WalkerHelper_HEADER_H
 #define WalkerHelper_HEADER_H
 
+#include <unordered_set>
 #include "Determinants.h"
 #include "igl/slice.h"
 #include "igl/slice_into.h"
@@ -653,6 +654,11 @@ class WalkerHelper<CPS>
   
     return ovlp;
   }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const CPS& cps) const
+  {
+    return 0.;
+  }
 
 };
 
@@ -722,6 +728,28 @@ class WalkerHelper<Jastrow>
         /intermediateForEachSpinOrb[i]/intermediateForEachSpinOrb[j]/
         cps(i,a)/cps(j,a)/cps(i,b)/cps(j,b);
   }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const Jastrow& cps) const
+  {
+    vector<int> fromSpin, toSpin;
+    fromSpin.clear(); toSpin.clear();
+    double ratio = 1.;
+    for (int sz = 0; sz < 2; sz++) {//iterate over spins
+      auto itFrom = from[sz].begin();
+      auto itTo = to[sz].begin();
+      for (int n = 0; n < from[sz].size(); n++) {//iterate over excitations
+        int i = 2 * (*itFrom) + sz, a = 2 * (*itTo) + sz;
+        itFrom = std::next(itFrom); itTo = std::next(itTo);
+        ratio *= intermediateForEachSpinOrb[a] / intermediateForEachSpinOrb[i] / cps(i, a);
+        for (int p = 0; p < fromSpin.size(); p++) {
+          ratio *= cps(i, fromSpin[p]) * cps(a, toSpin[p]) / cps(i, toSpin[p]) / cps(fromSpin[p], a);
+        }
+        fromSpin.push_back(i);
+        toSpin.push_back(a);
+      }
+    }
+    return ratio;
+  }
 };  
 
 template<>
@@ -776,6 +804,11 @@ class WalkerHelper<Gutzwiller>
     }
     return ratio;
     //return gutz.OverlapRatio(dcopy, d);
+  }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const Gutzwiller& gutz) const
+  {
+    return 0.;
   }
 };  
 
@@ -856,6 +889,11 @@ class WalkerHelper<RBM>
     VectorXd bwnp = cps.bwn + cps.wMat.col(a) - cps.wMat.col(i) + cps.wMat.col(b) - cps.wMat.col(j);
     return aFac * cosh(bwnp.array()).prod() / cps.coshbwn;
   }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const RBM& cps) const
+  {
+    return 0.;
+  }
 };  
 
 template<>
@@ -896,6 +934,11 @@ class WalkerHelper<JRBM>
                       const Determinant &dcopy, const Determinant &d) const
   {
     return jastrowHelper.OverlapRatio(i, j, a, b, cps.jastrow, dcopy, d) * RBMHelper.OverlapRatio(i, j, a, b, cps.rbm, dcopy, d);
+  }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const JRBM& cps) const
+  {
+    return 0.;
   }
 };  
 #endif
