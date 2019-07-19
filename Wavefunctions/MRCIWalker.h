@@ -47,7 +47,7 @@ struct MRCIWalker
   std::array<unordered_set<int>, 2> excitedOrbs;     //spatial orbital indices of excited electrons (in virtual orbitals) in d 
   std::array<unordered_set<int>, 2> excitedHoles;    //spatial orbital indices of excited holes w.r.t. activeWalker (in active orbitals) in d 
   std::array<VectorXd, 2> energyIntermediates;       //would only be useful in lanczos
-  double parity;                          //parity between n_0 and n 
+  //double parity;                          //parity between n_0 and n 
 
   //constructors
   //default
@@ -93,18 +93,18 @@ struct MRCIWalker
     
     activeWalker = Walker<Corr, Reference>(corr, ref, activeDet);
 
-    parity = 1.;
-    for (int sz = 0; sz < 2; sz++) {//iterate over spins
-      auto itFrom = excitedHoles[sz].begin();
-      auto itTo = excitedOrbs[sz].begin();
-      for (int n = 0; n < excitedHoles[sz].size(); n++) {//iterate over excitations
-        int i = *itFrom, a = *itTo;
-        parity *= activeDet.parity(a, i, sz);
-        activeDet.setocc(i, sz, false);
-        activeDet.setocc(a, sz, true);
-        itFrom = std::next(itFrom); itTo = std::next(itTo);
-      }
-    }
+    //parity = 1.;
+    //for (int sz = 0; sz < 2; sz++) {//iterate over spins
+    //  auto itFrom = excitedHoles[sz].begin();
+    //  auto itTo = excitedOrbs[sz].begin();
+    //  for (int n = 0; n < excitedHoles[sz].size(); n++) {//iterate over excitations
+    //    int i = *itFrom, a = *itTo;
+    //    parity *= activeDet.parity(a, i, sz);
+    //    activeDet.setocc(i, sz, false);
+    //    activeDet.setocc(a, sz, true);
+    //    itFrom = std::next(itFrom); itTo = std::next(itTo);
+    //  }
+    //}
 
     //open.clear(); closed.clear()
     //d.getOpenClosed(open, closed);
@@ -148,7 +148,7 @@ struct MRCIWalker
     excitedHoles[1].clear();
     excitedSpinOrbs.clear();
     
-    parity = 1.;
+    //parity = 1.;
     //vector<int> open;
     //vector<int> closed;
     //d.getOpenClosed(open, closed);

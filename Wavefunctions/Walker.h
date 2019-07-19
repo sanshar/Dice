@@ -221,12 +221,13 @@ struct Walker<Corr, Slater> {
   }
  
   //only works for ghf
-  double getDetFactor(Determinant &d, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  double getDetFactor(std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
   {
     if (from[0].size() + from[1].size() == 0) return 1.;
     int numExc = from[0].size() + from[1].size();
     VectorXi tableIndicesRow = VectorXi::Zero(from[0].size() + from[1].size());
     VectorXi tableIndicesCol = VectorXi::Zero(from[0].size() + from[1].size());
+    Determinant dcopy = d;
     double parity = 1.;
     int count = 0;
     for (int sz = 0; sz < 2; sz++) {//iterate over spins
@@ -237,9 +238,9 @@ struct Walker<Corr, Slater> {
         itFrom = std::next(itFrom); itTo = std::next(itTo);
         refHelper.getRelIndices(i, tableIndicesCol(count), a, tableIndicesRow(count), sz);
         count++;
-        parity *= d.parity(a, i, sz);
-        d.setocc(i, sz, false);  
-        d.setocc(a, sz, true);
+        parity *= dcopy.parity(a, i, sz);
+        dcopy.setocc(i, sz, false);  
+        dcopy.setocc(a, sz, true);
       }
     }
 

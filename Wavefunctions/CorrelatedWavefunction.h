@@ -133,10 +133,10 @@ struct CorrelatedWavefunction {
         //* slater.OverlapRatio(I, J, A, B, walk, doparity);
   }
   
-  double getOverlapFactor(const Walker<Corr, Reference>& walk, Determinant& d, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  double getOverlapFactor(const Walker<Corr, Reference>& walk, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
   {
-    //cout << "\ndet  " << walk.getDetFactor(d, from, to) << "  corr  " << walk.corrHelper.OverlapRatio(from, to, corr) << endl;
-    return walk.getDetFactor(d, from, to) * walk.corrHelper.OverlapRatio(from, to, corr);
+    //cout << "\ndet  " << walk.getDetFactor(from, to) << "  corr  " << walk.corrHelper.OverlapRatio(from, to, corr) << endl;
+    return walk.getDetFactor(from, to) * walk.corrHelper.OverlapRatio(from, to, corr);
   }
 
   /**

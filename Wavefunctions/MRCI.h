@@ -69,7 +69,7 @@ class MRCI
     //cout << "JS vars\n";  wave.printVariables();
     // Resize coeffs
     int numVirt = Determinant::norbs - schd.nciAct;
-    int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
+    int numCoeffs = 2 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
     coeffs = VectorXd::Zero(numCoeffs);
 
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
@@ -79,6 +79,7 @@ class MRCI
                               std::ref(generator));
 
       coeffs(0) = -0.5;
+      //coeffs(1) = -0.5;
       for (int i=1; i < numCoeffs; i++) {
         coeffs(i) = 0.2*random() - 0.1;
       }
@@ -130,6 +131,7 @@ class MRCI
     return coeffs.size();
   }
   
+  //returns the s^(k)_l space index the walker with the given excitedOrbs belongs to
   int coeffsIndex(unordered_set<int> &excitedOrbs) {
     int norbs = Determinant::norbs;
     if (excitedOrbs.size() == 2) {
@@ -137,16 +139,17 @@ class MRCI
       int j = *(std::next(excitedOrbs.begin())) - 2*schd.nciAct;
       int I = max(i, j) - 1, J = min(i,j);
       int numVirt = norbs - schd.nciAct;
-      return 1 + 2*numVirt + I*(I+1)/2 + J;
+      return 2 + 2*numVirt + I*(I+1)/2 + J;
     }
     else if (excitedOrbs.size() == 1) {
-      return *excitedOrbs.begin() - 2*schd.nciAct + 1;
+      return *excitedOrbs.begin() - 2*schd.nciAct + 2;
     }
     else if (excitedOrbs.size() == 0) return 0;
     else return -1;
   }
 
   //this could be expensive
+  //returns the s^(k)_l space index the walker with the given excitedOrbs belongs to
   int coeffsIndex(MRCIWalker<Corr, Reference>& walk) {
     int norbs = Determinant::norbs;
     if (walk.excitedSpinOrbs.size() == 2) {
@@ -154,10 +157,10 @@ class MRCI
       int j = *(std::next(walk.excitedSpinOrbs.begin())) - 2*schd.nciAct;
       int I = max(i, j) - 1, J = min(i,j);
       int numVirt = norbs - schd.nciAct;
-      return 1 + 2*numVirt + I*(I+1)/2 + J;
+      return 2 + 2*numVirt + I*(I+1)/2 + J;
     }
     else if (walk.excitedSpinOrbs.size() == 1) {
-      return *walk.excitedSpinOrbs.begin() - 2*schd.nciAct + 1;
+      return *walk.excitedSpinOrbs.begin() - 2*schd.nciAct + 2;
     }
     else if (walk.excitedSpinOrbs.size() == 0) return 0;
     else return -1;
@@ -178,11 +181,20 @@ class MRCI
 			     Eigen::VectorXd &grad)
   {
     int coeffsIndex = this->coeffsIndex(walk);
-    if (coeffsIndex < 0) return;
     double ciCoeff = coeffs(coeffsIndex);
-    int norbs = Determinant::norbs;
-    //if (abs(ciCoeff) <= 1.e-8) return;
-    grad[coeffsIndex] += 1 / ciCoeff;
+    if (coeffsIndex < 0 || ciCoeff == 0) return;
+    if (coeffsIndex == 0) {
+      double ham = 0., ovlp = 0.;
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walk.activeWalker, ovlp, ham, morework);
+      grad[0] += 1 / (coeffs(0) + coeffs(1) * ham);
+      grad[1] += ham / (coeffs(0) + coeffs(1) * ham);
+    }
+    else {
+      int norbs = Determinant::norbs;
+      //if (abs(ciCoeff) <= 1.e-8) return;
+      grad(coeffsIndex) += 1 / ciCoeff;
+    }
   }
 
   //updates from and to by combining with excitations ex1 and ex2, also updates excitedOrbs
@@ -250,84 +262,81 @@ class MRCI
   //returns < m | psi > / < n_0 | phi > 
   //the walker n contains n_0 and its helpers
   //from and to are excitations from n_0 to m
-  //mEne would be reuired if the Lanczos term is included
+  //mEne would be required if the Lanczos term is included
   //this is essentially HamAndOvlp with the reference
   double ovlpRatio(MRCIWalker<Corr, Reference> &n, Determinant &m, int &coeffsIndex, unordered_set<int> &excitedOrbs, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to, double mEne, workingArray &work)
   {
     int norbs = Determinant::norbs;
-    double ovlpRatiom = 0.;
-    if (coeffsIndex == 0) {// < m | psi > = c_0 < m | phi >
-      Determinant dcopy = n.activeWalker.d;
-      ovlpRatiom = coeffs(0) * wave.getOverlapFactor(n.activeWalker, dcopy, from, to);
-      return ovlpRatiom;
+    double ham = 0.; //ovlp sans coeff 
+    if (coeffsIndex == 0) {// < m | psi > = c_0 < m | phi > + c_0^(0) < m | H | phi >
+      ham += m.Energy(I1, I2, coreE) * wave.getOverlapFactor(n.activeWalker, from, to);
+    }
+    work.setCounterToZero();
+    if (excitedOrbs.size() == 2) {
+      generateAllScreenedExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin(), *std::next(excitedOrbs.begin())); 
+    }
+    else if (excitedOrbs.size() == 1) {
+      generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
+                                          work, *excitedOrbs.begin(), false); 
+      generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin());
     }
     else {
-      work.setCounterToZero();
-      if (excitedOrbs.size() == 2) {
-        generateAllScreenedExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin(), *std::next(excitedOrbs.begin())); 
-      }
-      else if (excitedOrbs.size() == 1) {
-        generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
-                                            work, *excitedOrbs.begin(), false); 
-        generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin());
-      }
-      else {
-        generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
-                                            work, false);
-        generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work);
-      }
-
-      //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;
-      //loop over all the screened excitations
-      //cout << "m  " << walk.d << endl;
-      //cout << "eloc excitations" << endl;
-      std::array<unordered_set<int>, 2> fromNew = from;
-      std::array<unordered_set<int>, 2> toNew = to;
-      //cout << "\ngenerating mp's\n\n";
-      for (int i=0; i<work.nExcitations; i++) {
-        int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
-        double tia = work.HijElement[i];
-        //cout << "ex1  " << ex1 << "  ex2  " << ex2 << endl; 
-      
-        int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-        int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-        double parity = 1.;
-        Determinant dcopy = m;
-        parity *= dcopy.parity(A/2, I/2, I%2);
-        //if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
-        //else parity *= dcopy.parity(A/2, I/2, I%2);
-        if (ex2 != 0) {
-          dcopy.setocc(I, false);  //move these insisde the next if
-          dcopy.setocc(A, true);
-          parity *= dcopy.parity(B/2, J/2, J%2);
-          //dcopy.setocc(J, false);  //delete these
-          //dcopy.setocc(B, true);
-          //if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
-          //else parity *= dcopy.parity(B/2, J/2, J%2);
-        }
-        //cout << "m'   " << dcopy << endl;
-        dcopy = n.activeWalker.d;
-        combineExcitations(ex1, ex2, fromNew, toNew);
-        //cout << "from u  ";
-        //copy(fromNew[0].begin(), fromNew[0].end(), ostream_iterator<int>(cout, " "));
-        //cout << endl << "from d  ";
-        //copy(fromNew[1].begin(), fromNew[1].end(), ostream_iterator<int>(cout, " "));
-        //cout << endl << "to u  ";
-        //copy(toNew[0].begin(), toNew[0].end(), ostream_iterator<int>(cout, " "));
-        //cout << endl << "to d  ";
-        //copy(toNew[1].begin(), toNew[1].end(), ostream_iterator<int>(cout, " "));
-        //cout << endl;
-        ovlpRatiom += tia * wave.getOverlapFactor(n.activeWalker, dcopy, fromNew, toNew) * parity;
-        //ovlpRatio += tia * wave.getOverlapFactor(n.activeWalker, fromNew, toNew);
-        //cout << "tia  " << tia << "  ovlpRatio0   " << wave.getOverlapFactor(n.activeWalker, dcopy, fromNew, toNew) << "  " << parity << endl << endl;
-        //cout << "n.parity  " << n.parity << endl;
-        fromNew = from;
-        toNew = to;
-        //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity << endl;
-        //work.ovlpRatio[i] = ovlp;
-      }
-      return coeffs(coeffsIndex) * ovlpRatiom;
+      generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
+                                          work, false);
+      generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work);
     }
+
+    //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;
+    //loop over all the screened excitations
+    //cout << "m  " << walk.d << endl;
+    //cout << "eloc excitations" << endl;
+    std::array<unordered_set<int>, 2> fromNew = from;
+    std::array<unordered_set<int>, 2> toNew = to;
+    //cout << "\ngenerating mp's\n\n";
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+      //cout << "ex1  " << ex1 << "  ex2  " << ex2 << endl; 
+    
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      double parity = 1.;
+      Determinant dcopy = m;
+      parity *= dcopy.parity(A/2, I/2, I%2);
+      //if (A > I) parity *= -1. * dcopy.parity(A/2, I/2, I%2);
+      //else parity *= dcopy.parity(A/2, I/2, I%2);
+      if (ex2 != 0) {
+        dcopy.setocc(I, false);  //move these insisde the next if
+        dcopy.setocc(A, true);
+        parity *= dcopy.parity(B/2, J/2, J%2);
+        //dcopy.setocc(J, false);  //delete these
+        //dcopy.setocc(B, true);
+        //if (B > J) parity *= -1 * dcopy.parity(B/2, J/2, J%2);
+        //else parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+      //cout << "m'   " << dcopy << endl;
+      //dcopy = n.activeWalker.d;
+      combineExcitations(ex1, ex2, fromNew, toNew);
+      //cout << "from u  ";
+      //copy(fromNew[0].begin(), fromNew[0].end(), ostream_iterator<int>(cout, " "));
+      //cout << endl << "from d  ";
+      //copy(fromNew[1].begin(), fromNew[1].end(), ostream_iterator<int>(cout, " "));
+      //cout << endl << "to u  ";
+      //copy(toNew[0].begin(), toNew[0].end(), ostream_iterator<int>(cout, " "));
+      //cout << endl << "to d  ";
+      //copy(toNew[1].begin(), toNew[1].end(), ostream_iterator<int>(cout, " "));
+      //cout << endl;
+      ham += tia * wave.getOverlapFactor(n.activeWalker, fromNew, toNew) * parity;
+      //ovlpRatio += tia * wave.getOverlapFactor(n.activeWalker, fromNew, toNew);
+      //cout << "tia  " << tia << "  ovlpRatio0   " << wave.getOverlapFactor(n.activeWalker, dcopy, fromNew, toNew) << "  " << parity << endl << endl;
+      //cout << "n.parity  " << n.parity << endl;
+      fromNew = from;
+      toNew = to;
+      //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity << endl;
+      //work.ovlpRatio[i] = ovlp;
+    }
+    if (coeffsIndex == 0) return coeffs(0) * wave.getOverlapFactor(n.activeWalker, from, to) + coeffs(1) * ham;
+    else return coeffs(coeffsIndex) * ham;
     //if (schd.debug) cout << "ham  " << ham << "  ovlp  " << ovlp << endl << endl;
   }
 
