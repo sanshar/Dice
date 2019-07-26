@@ -923,7 +923,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       iterstart = 0;
 
     // if the calculation is converged then exit
-    if (converged && iterstart >= schd.epsilon1.size()) {
+    if (schd.outputlevel > 0)
+      pout << "Converged: " << converged
+           << " loaded iter: " << iterstart
+           << " max iter: " << schd.epsilon1.size()
+           << endl;
+    if (converged && iterstart <= schd.epsilon1.size()) {
       for (int i = 0; i < E0.size(); i++)
         E0[i] += coreEbkp;
       coreE = coreEbkp;
@@ -1431,11 +1436,13 @@ void SHCIbasics::readVariationalResult(
 
     load >> ci;
     load >> E0;
+    load >> converged;
+    if (schd.outputlevel > 0)
+      pout << "Load converged: " << converged << endl;
     if (schd.onlyperturbative) {
       ifs.close();
       return;
     }
-    load >> converged;
   }
 
   char file[5000];
@@ -1530,11 +1537,13 @@ void SHCIbasics::readVariationalResult(
     load >> iter >> Dets; // >>sorted ;
     load >> ci;
     load >> E0;
+    load >> converged;
+    if (schd.outputlevel > 0)
+      pout << "Load converged: " << converged << endl;
     if (schd.onlyperturbative) {
       ifs.close();
       return;
     }
-    load >> converged;
   }
 
   /*
