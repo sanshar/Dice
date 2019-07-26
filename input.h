@@ -74,6 +74,7 @@ private:
     & algorithm                               \
     & outputlevel                             \
     & printBestDeterminants                   \
+    & printMinCoeff                           \
     & extrapolate                             \
     & extrapolationFactor                     \
     & enforceSeniority                        \
@@ -135,6 +136,7 @@ public:
   int algorithm;
   int outputlevel;
   int printBestDeterminants;
+  double printMinCoeff;
   bool extrapolate;
   double extrapolationFactor;
   bool enforceSeniority;

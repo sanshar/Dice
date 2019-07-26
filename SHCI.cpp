@@ -394,7 +394,11 @@ int main(int argc, char* argv[]) {
       pout << format("State : %3i") % (root) << endl;
       MatrixXx prevci = 1. * ci[root];
       int num = max(6, schd.printBestDeterminants);
-      for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
+      double prev_weight = 1.; // Print at least 1
+      for (int i = 0;
+           (i < min(num, static_cast<int>(DetsSize)) &&
+            abs(prev_weight) >= schd.printMinCoeff);
+           i++) {
         compAbs comp;
         int m = distance(
             &prevci(0, 0),
@@ -407,6 +411,7 @@ int main(int argc, char* argv[]) {
         pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
         pout << SHMDets[m] << endl;
 #endif
+        prev_weight = abs(prevci(m, 0)); // 1 det with smaller weight is printed
         // pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"
         // "<<Dets[m]<<endl;
         prevci(m, 0) = 0.0;
