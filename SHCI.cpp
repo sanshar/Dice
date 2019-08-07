@@ -303,8 +303,8 @@ int main(int argc, char* argv[]) {
       }
     }
     // TODO Make this work with MPI and not print one set from each processor
-    pout << Dets[d] << " Given det. energy: "
-         << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
+    // pout << Dets[d] << " Given det. energy: "
+    //      << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
 
   // Symmetry loop?
@@ -315,9 +315,9 @@ int main(int argc, char* argv[]) {
     // Guess the lowest energy det with given symmetry from one body integrals.
     molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
                                    HFoccupied.at(d), tempDets.at(d));
-    pout << tempDets[d] << " Guess det. energy: "
-         << format("%18.10f") % (tempDets.at(d).Energy(I1, I2, coreE))
-         << endl;  // TODO
+    // pout << tempDets[d] << " Guess det. energy: "
+    //      << format("%18.10f") % (tempDets.at(d).Energy(I1, I2, coreE))
+    //      << endl;  // TODO
 
     // Generate list of connected determinants to guess determinant.
     // TODO This may be unstable, check for alternatives
@@ -326,6 +326,7 @@ int main(int argc, char* argv[]) {
         tempDets, schd, 0, nelec);
 
     // Check all connected and find lowest energy.
+    Determinant minDet = Dets.at(d);
     for (int cd = 0; cd < tempDets.size(); cd++) {
       if (tempDets.at(d).connected(tempDets.at(cd))) {
         if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
@@ -335,12 +336,28 @@ int main(int argc, char* argv[]) {
           if (Dets.at(d).Energy(I1, I2, coreE) >
                   tempDets.at(cd).Energy(I1, I2, coreE) &&
               molSym.getSymmetry(repArray, irrep) == schd.irrep) {
-            Dets.at(d) = tempDets.at(cd);
+            minDet = tempDets.at(cd);
           }
         }
       }
     }  // end cd
-    pout << Dets[d] << " Used det. energy: "
+    bool inlist = false;
+    for (int dd = 0; dd < Dets.size(); dd++)
+      if (minDet == Dets[dd]) {
+        inlist = true;
+        break;
+      }
+    if (!inlist) {
+      Dets.push_back(minDet);
+      if (schd.outputlevel > 0 && commrank == 0)
+        pout << format("Add low energy determinant connected to %4i : ") %(d)
+             << minDet << endl;
+    }
+  } // end d
+  tempDets.clear();
+  std::sort(Dets.begin(), Dets.end());
+  for (int d = 0; d < Dets.size(); d++) {
+    pout << Dets[d] << " Ref. det. energy: "
          << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE))
          << endl;
   }  // end d@symm ?
