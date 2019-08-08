@@ -1,0 +1,280 @@
+#INFO: **** input file is /projects/anma2640/VMC/VMC_tests/h_chains/h8_631g/prepVMC.py ****
+import numpy as np
+import math
+from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
+#from pyscf.shciscf import shci, settings
+from pyscf.lo import pipek, boys
+import sys
+from scipy.linalg import fractional_matrix_power
+from scipy.stats import ortho_group
+import scipy.linalg as la
+
+def doRHF(mol):
+  mf = scf.RHF(mol)
+  print mf.kernel()
+  return mf
+
+def localize(mol, mf, method):
+  if (method == "lowdin"):
+    return fractional_matrix_power(mf.get_ovlp(mol), -0.5).T
+  elif (method == "pm"):
+    return pipek.PM(mol).kernel(mf.mo_coeff)
+  elif (method == "pmLowdin"):
+    lowdin = fractional_matrix_power(mf.get_ovlp(mol), -0.5).T
+    return pipek.PM(mol).kernel(lowdin)
+  elif (method == "boys"):
+    return boys.Boys(mol).kernel(mf.mo_coeff)
+
+# only use after lowdin, and for non-minimal bases
+def lmoScramble(mol, lmo):
+  scrambledLmo = np.full(lmo.shape, 0.)
+  nBasisPerAtom = np.full(mol.natm, 0)
+  for i in range(len(gto.ao_labels(mol))):
+    nBasisPerAtom[int(gto.ao_labels(mol)[i].split()[0])] += 1
+  print nBasisPerAtom
+  for i in range(mol.natm):
+    n = nBasisPerAtom[i]
+    orth = ortho_group.rvs(dim=n)
+    scrambledLmo[::,n*i:n*(i+1)] = lmo[::,n*i:n*(i+1)].dot(orth)
+  return scrambledLmo
+
+def writeFCIDUMP(mol, mf, lmo):
+  h1 = lmo.T.dot(mf.get_hcore()).dot(lmo)
+  eri = ao2mo.kernel(mol, lmo)
+  tools.fcidump.from_integrals('FCIDUMP', h1, eri, mol.nao, mol.nelectron, mf.energy_nuc())
+
+def basisChange(matAO, lmo, ovlp):
+  matMO = (matAO.T.dot(ovlp).dot(lmo)).T
+  return matMO
+
+def writeMat(mat, fileName, isComplex):
+  fileh = open(fileName, 'w')
+  for i in range(mat.shape[0]):
+      for j in range(mat.shape[1]):
+        if (isComplex):
+          fileh.write('(%16.10e, %16.10e) '%(mat[i,j].real, mat[i,j].imag))
+        else:
+          fileh.write('%16.10e '%(mat[i,j]))
+      fileh.write('\n')
+  fileh.close()
+
+def readMat(fileName, shape, isComplex):
+  if(isComplex):
+    matr = np.zeros(shape)
+    mati = np.zeros(shape)
+  else:
+    mat = np.zeros(shape)
+  row = 0
+  fileh = open(fileName, 'r')
+  for line in fileh:
+    col = 0
+    for coeff in line.split():
+      if (isComplex):
+        m = coeff.strip()[1:-1]
+        matr[row, col], mati[row, col] = [float(x) for x in m.split(',')]
+      else:
+        mat[row, col]  = float(coeff)
+      col = col + 1
+    row = row + 1
+  fileh.close()
+  if (isComplex):
+    mat = matr + 1j * mati
+  return mat
+
+def doGHF(mol):
+  gmf = scf.GHF(mol)
+  gmf.max_cycle = 200
+  dm = gmf.get_init_guess()
+  norb = mol.nao
+  dm = dm + np.random.rand(2*norb, 2*norb) / 3
+  print gmf.kernel(dm0 = dm)
+  return gmf
+
+def makeAGPFromRHF(rhfCoeffs):
+  norb = rhfCoeffs.shape[0]
+  nelec = 2*rhfCoeffs.shape[1]
+  diag = np.eye(nelec/2)
+  #diag = np.zeros((norb,norb))
+  #for i in range(nelec/2):
+  #  diag[i,i] = 1.
+  pairMat = rhfCoeffs.dot(diag).dot(rhfCoeffs.T)
+  return pairMat
+
+def makePfaffFromGHF(ghfCoeffs):
+  nelec = ghfCoeffs.shape[1]
+  amat = np.full((nelec, nelec), 0.)
+  for i in range(nelec/2):
+    amat[2 * i + 1, 2 * i] = -1.
+    amat[2 * i, 2 * i + 1] = 1.
+  pairMat = ghfCoeffs.dot(amat).dot(ghfCoeffs.T)
+  return pairMat
+
+def addNoise(mat, isComplex):
+  if (isComplex):
+    randMat = 0.01 * (np.random.rand(mat.shape[0], mat.shape[1]) + 1j * np.random.rand(mat.shape[0], mat.shape[1]))
+    return mat + randMat
+  else:
+    randMat = 0.01 * np.random.rand(mat.shape[0], mat.shape[1])
+    return mat + randMat
+
+# make your molecule here
+r = 2.*0.529177
+atomstring = ""
+for i in range(8):
+    atomstring += "H 0 0 %g\n"%(i*r)
+mol = gto.M(atom = atomstring,
+    basis = '6-31g',
+    verbose=4,
+    symmetry=0,
+    spin = 0)
+mf = doRHF(mol)
+mc = mcscf.CASSCF(mf, 8, 8, 0)
+mc.kernel()
+print "moEne"
+for i in range(16):
+  print mc.mo_energy[i]
+lmo = mc.mo_coeff
+writeFCIDUMP(mol, mf, lmo)
+#INFO: ******************** input file end ********************
+
+
+System: ('Linux', 'bnode0307.rc.int.colorado.edu', '3.10.0-693.37.4.el7.x86_64', '#1 SMP Fri Aug 10 12:34:55 EDT 2018', 'x86_64', 'x86_64')  Threads 28
+Python 2.7.15 |Anaconda, Inc.| (default, Dec 14 2018, 19:04:19) 
+[GCC 7.3.0]
+numpy 1.15.4  scipy 1.1.0
+Date: Mon Jul  8 22:03:21 2019
+PySCF version 1.6.2
+PySCF path  /home/anma2640/miniconda2/lib/python2.7/site-packages/pyscf
+
+[CONFIG] conf_file None
+[INPUT] verbose = 4
+[INPUT] num. atoms = 8
+[INPUT] num. electrons = 8
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 0
+[INPUT] symmetry 0 subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 H      0.000000000000   0.000000000000   0.000000000000 AA    0.000000000000   0.000000000000   0.000000000000 Bohr
+[INPUT]  2 H      0.000000000000   0.000000000000   1.058350000000 AA    0.000000000000   0.000000000000   1.999991643933 Bohr
+[INPUT]  3 H      0.000000000000   0.000000000000   2.116710000000 AA    0.000000000000   0.000000000000   4.000002185128 Bohr
+[INPUT]  4 H      0.000000000000   0.000000000000   3.175060000000 AA    0.000000000000   0.000000000000   5.999993829062 Bohr
+[INPUT]  5 H      0.000000000000   0.000000000000   4.233420000000 AA    0.000000000000   0.000000000000   8.000004370256 Bohr
+[INPUT]  6 H      0.000000000000   0.000000000000   5.291770000000 AA    0.000000000000   0.000000000000   9.999996014190 Bohr
+[INPUT]  7 H      0.000000000000   0.000000000000   6.350120000000 AA    0.000000000000   0.000000000000  11.999987658123 Bohr
+[INPUT]  8 H      0.000000000000   0.000000000000   7.408480000000 AA    0.000000000000   0.000000000000  13.999998199318 Bohr
+
+nuclear repulsion = 6.87142990656337
+number of shells = 16
+number of NR pGTOs = 32
+number of NR cGTOs = 16
+basis = 6-31g
+ecp = {}
+CPU time:         0.55
+
+
+******** <class 'pyscf.scf.hf.RHF'> ********
+method = RHF
+initial guess = minao
+damping factor = 0
+level shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+DIIS start cycle = 1
+DIIS space = 8
+SCF tol = 1e-09
+SCF gradient tol = None
+max. SCF cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /projects/anma2640/VMC/VMC_tests/h_chains/h8_631g/tmpLNgZET
+max_memory 4000 MB (current use 54 MB)
+Set gradient conv threshold to 3.16228e-05
+init E= -3.29741378567938
+  HOMO = -0.230492382576605  LUMO = -0.0340015759369486
+cycle= 1 E= -4.26243571948608  delta_E= -0.965  |g|= 0.115  |ddm|= 1.57
+  HOMO = -0.355338785158782  LUMO = -0.00254134224608457
+cycle= 2 E= -4.27329200779425  delta_E= -0.0109  |g|= 0.041  |ddm|= 0.374
+  HOMO = -0.354489940467003  LUMO = 0.0181200724494841
+cycle= 3 E= -4.27523364616506  delta_E= -0.00194  |g|= 0.0141  |ddm|= 0.16
+  HOMO = -0.360351685866035  LUMO = 0.0215141170983722
+cycle= 4 E= -4.27548462010095  delta_E= -0.000251  |g|= 0.00176  |ddm|= 0.0741
+  HOMO = -0.360601080585305  LUMO = 0.0218302506897285
+cycle= 5 E= -4.27548731046825  delta_E= -2.69e-06  |g|= 0.000164  |ddm|= 0.00602
+  HOMO = -0.36065885798312  LUMO = 0.0218475895169985
+cycle= 6 E= -4.27548733030849  delta_E= -1.98e-08  |g|= 2.62e-05  |ddm|= 0.000549
+  HOMO = -0.360663105808487  LUMO = 0.0218440458794513
+cycle= 7 E= -4.27548733083397  delta_E= -5.25e-10  |g|= 1.22e-06  |ddm|= 0.000109
+  HOMO = -0.360662517619615  LUMO = 0.0218436239688906
+Extra cycle  E= -4.27548733083464  delta_E= -6.68e-13  |g|= 2.22e-07  |ddm|= 7.69e-06
+converged SCF energy = -4.27548733083464
+-4.2754873308346415
+
+******** <class 'pyscf.mcscf.mc1step.CASSCF'> ********
+CAS (4e+4e, 8o), ncore = 0, nvir = 8
+max_cycle_macro = 50
+max_cycle_micro = 4
+conv_tol = 1e-07
+conv_tol_grad = None
+orbital rotation max_stepsize = 0.02
+augmented hessian ah_max_cycle = 30
+augmented hessian ah_conv_tol = 1e-12
+augmented hessian ah_linear dependence = 1e-14
+augmented hessian ah_level shift = 0
+augmented hessian ah_start_tol = 2.5
+augmented hessian ah_start_cycle = 3
+augmented hessian ah_grad_trust_region = 3
+kf_trust_region = 3
+kf_interval = 4
+ci_response_space = 4
+ci_grad_trust_region = 3
+with_dep4 0
+natorb = False
+canonicalization = True
+sorting_mo_energy = False
+ao2mo_level = 2
+chkfile = /projects/anma2640/VMC/VMC_tests/h_chains/h8_631g/tmpLNgZET
+max_memory 4000 MB (current use 63 MB)
+internal_rotation = False
+******** <class 'pyscf.fci.direct_spin1.FCISolver'> ********
+max. cycles = 50
+conv_tol = 1e-08
+davidson only = False
+linear dependence = 1e-10
+level shift = 0.001
+max iter space = 12
+max_memory 4000 MB
+nroots = 1
+pspace_size = 400
+spin = None
+CASCI E = -4.35361117281951  S^2 = 0.0000000
+Set conv_tol_grad to 0.000316228
+macro iter 1 (21 JK  4 micro), CASSCF E = -4.39218345271762  dE = -0.03857228  S^2 = 0.0000000
+               |grad[o]|=0.0539  |grad[c]|= 0.03852439628070308  |ddm|=0.0654
+macro iter 2 (12 JK  4 micro), CASSCF E = -4.39335377555943  dE = -0.0011703228  S^2 = 0.0000000
+               |grad[o]|=0.0203  |grad[c]|= 0.002085532513790198  |ddm|=0.017
+macro iter 3 (3 JK  1 micro), CASSCF E = -4.39335389138464  dE = -1.1582521e-07  S^2 = 0.0000000
+               |grad[o]|=0.000341  |grad[c]|= 7.942209436453653e-05  |ddm|=0.000277
+macro iter 4 (3 JK  1 micro), CASSCF E = -4.39335389471616  dE = -3.3315182e-09  S^2 = 0.0000000
+               |grad[o]|=4.57e-05  |grad[c]|= 3.136588644380349e-05  |ddm|=6.73e-05
+1-step CASSCF converged in 4 macro (39 JK 10 micro) steps
+CASSCF canonicalization
+Density matrix diagonal elements [1.97101293 1.95883776 1.9313343  1.85916109 0.15334515 0.06692339
+ 0.03624041 0.02314498]
+CASSCF energy = -4.39335389471616
+CASCI E = -4.39335389471616  E(CI) = -11.2647838012795  S^2 = 0.0000000
+moEne
+-0.6761672741862575
+-0.6050295940910956
+-0.49061667329363917
+-0.33693707596342126
+0.05415694925199818
+0.3180305286514718
+0.5782927129824624
+0.8317597505443041
+0.8689872757324705
+0.874363173664611
+0.9326941649837828
+0.9808499862721533
+1.1106104721120849
+1.2475098966367986
+1.401495097760584
+1.53904877081618
