@@ -319,17 +319,6 @@ int main(int argc, char* argv[]) {
          << format("%18.10f") % (tempDets.at(d).Energy(I1, I2, coreE))
          << endl;  // TODO
 
-    // #####################################################################
-    // Variational step
-    // #####################################################################
-    pout << endl;
-    pout << endl;
-    pout << "**************************************************************"
-         << endl;
-    pout << "VARIATIONAL STEP  " << endl;
-    pout << "**************************************************************"
-         << endl;
-
     // Generate list of connected determinants to guess determinant.
     // TODO This may be unstable, check for alternatives
     SHCIgetdeterminants::getDeterminantsVariational(
@@ -351,6 +340,7 @@ int main(int argc, char* argv[]) {
         }
       }
     }  // end cd
+  }  // end d@symm ?
     schd.HF = Dets[0];
 
     if (commrank == 0) {
@@ -361,6 +351,17 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
     mpi::broadcast(world, ci, 0);
 #endif
+
+    // #####################################################################
+    // Variational step
+    // #####################################################################
+    pout << endl;
+    pout << endl;
+    pout << "**************************************************************"
+         << endl;
+    pout << "VARIATIONAL STEP  " << endl;
+    pout << "**************************************************************"
+         << endl;
 
     vector<double> E0 = SHCIbasics::DoVariational(
         ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
@@ -793,6 +794,4 @@ int main(int argc, char* argv[]) {
     // std::system("rm -rf /dev/shm* 2>/dev/null");
 
     return 0;
-
-  }  // end d@symm ?
 }
