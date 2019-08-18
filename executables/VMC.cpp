@@ -51,6 +51,7 @@
 #include "SCCI.h"
 #include "SCPT.h"
 #include "MRCI.h"
+#include "EOM.h"
 #include "runVMC.h"
 
 using namespace Eigen;
@@ -232,10 +233,23 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
-  else if (schd.wavefunctionType == "test") {
+  else if (schd.wavefunctionType == "MRCI") {
     MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
     //wave.initWalker(walk);
     runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "test") {
+    EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+    //cout << "detetrministic\n\n";
+    //wave.optimizeWaveDeterministic(walk); 
+    wave.initWalker(walk);
+    //cout << "stochastic\n\n";
+    //wave.optimizeWaveCT(walk); 
+    //wave.calcPolDeterministic(walk); 
+    wave.calcPolCT(walk); 
+    //wave.initWalker(walk);
+    //runVMC(wave, walk);
   }
   
   else if (schd.wavefunctionType == "scpt") {
