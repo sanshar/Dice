@@ -4,7 +4,8 @@
 printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
-MPICOMMAND="mpirun -np 28"
+export OMP_NUM_THREADS=1
+MPICOMMAND="mpirun -np 1"
 HCIPATH="../../Dice"
 here=`pwd`
 

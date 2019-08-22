@@ -3,11 +3,11 @@
 ##########################
 
 USE_MPI = yes
-USE_INTEL = yes
+USE_INTEL = no
 USING_OSX = no
 
-EIGEN=/projects/sash2458/apps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
+EIGEN=/home/james/apps/eigen/
+BOOST=/home/james/apps/boost_1_70_0/
 
 #########################################
 # DO NOT EDIT ANYTHING BELOW THIS POINT #

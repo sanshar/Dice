@@ -65,6 +65,7 @@ struct Hmult2 {
     */
     //-----------------------------------------------------------------------------
 
+  // Prepping MPI variables
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
@@ -76,46 +77,33 @@ struct Hmult2 {
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
+
     // TODO
+    // Keep copies of vector on each process AND thread
     auto start = std::chrono::system_clock::now();
 
-    // vector<CItype> ytemp(numDets, 0);
-    vector<double> ytemp(numDets, 0);
+    vector<CItype> ytemp(numDets, 0);
 
-#ifdef Complex
-    vector<double> ytemp_imag(numDets, 0);
-#endif
 
     // Looping over determinants and then connections
     CItype hij;
     int J;
-#pragma omp parallel for private(hij, J)
+#pragma omp parallel for private(hij, J, ytemp)
     for (int i = 0; i < sparseHam.connections.size(); i++) {
       for (int j = 0; j < sparseHam.connections[i].size(); j++) {
         hij = sparseHam.Helements[i][j];
         J = sparseHam.connections[i][j];
 
 #ifdef Complex
-        std::complex<double> temp_complex = hij * x[J];
-#pragma omp atomic update
-        ytemp[i * size + rank] += temp_complex.real();
-#pragma omp atomic update
-        ytemp_imag[i * size + rank] += temp_complex.imag();
+        ytemp[i * size + rank] +=  hij * x[J];
 
         if (J != i * size + rank) {
-          std::complex<double> temp_complex2 =
               std::conj(hij) * x[i * size + rank];
-#pragma omp atomic update
-          ytemp[J] += temp_complex2.real();
-#pragma omp atomic update
-          ytemp_imag[J] += temp_complex2.imag();
+          ytemp[J] +=  std::conj(hij) * x[i * size + rank];
         }
 #else // Real
-#pragma omp atomic update
         ytemp[i * size + rank] += hij * x[J];
-
         if (J != i * size + rank) {
-#pragma omp atomic update
           ytemp[J] += hij * x[i * size + rank];
         }
 #endif
