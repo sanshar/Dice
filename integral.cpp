@@ -131,23 +131,41 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   mpi::broadcast(world, irrep, 0);
   mpi::broadcast(world, I2.ksym, 0);
 #endif
+<<<<<<< HEAD
   
   //long npair = norbs*(norbs+1)/2;
   long npair = norbs * norbs;
   I2.norbs = norbs;
   size_t I2memory = npair * (npair + 1) / 2; // memory in bytes
+=======
+
+  long npair = norbs * (norbs + 1) / 2;
+  if (I2.ksym)
+    npair = norbs * norbs;
+  I2.norbs = norbs;
+  size_t I2memory = npair * (npair + 1) / 2; // memory in bytes
+
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
 #ifndef SERIAL
   world.barrier();
 #endif
 
+<<<<<<< HEAD
   int2Segment.truncate((I2memory)*sizeof(std::complex<double>));
   regionInt2 = boost::interprocess::mapped_region{int2Segment, boost::interprocess::read_write};
   memset(regionInt2.get_address(), 0., (I2memory)*sizeof(std::complex<double>));
+=======
+  int2Segment.truncate((I2memory) * sizeof(double));
+  regionInt2 = boost::interprocess::mapped_region{
+      int2Segment, boost::interprocess::read_write};
+  memset(regionInt2.get_address(), 0., (I2memory) * sizeof(double));
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
 
 #ifndef SERIAL
   world.barrier();
 #endif
 
+<<<<<<< HEAD
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
   
@@ -155,6 +173,14 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   if (commrank == 0) {
     I1.store.clear();
     I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
+=======
+  I2.store = static_cast<double *>(regionInt2.get_address());
+
+  if (commrank == 0) {
+    I1.store.clear();
+    I1.store.resize(2 * norbs * (2 * norbs), 0.0);
+    I1.norbs = 2 * norbs;
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
     coreE = 0.0;
     for (int i=0; i!=16; i++) {
       //auto tmp = MatrixXd::Zero(norbs*norbs/4, norbs*norbs/4);
@@ -208,6 +234,7 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     while (!dump.eof()) {
       std::getline(dump, msg);
       trim(msg);
+<<<<<<< HEAD
       boost::split(tok, msg, is_any_of(", \t()"), token_compress_on);
       //if (tok.size() != 5) continue;
       if (tok.size() != 7) continue;
@@ -238,6 +265,43 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
         I2.Direct(i,j) = I2(i,i,j,j);
         I2.Exchange(i,j) = I2(i,j,j,i);
     }
+=======
+      boost::split(tok, msg, is_any_of(", \t"), token_compress_on);
+      if (tok.size() != 5)
+        continue;
+
+      double integral = atof(tok[0].c_str());
+      int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str()),
+          c = atoi(tok[3].c_str()), d = atoi(tok[4].c_str());
+
+      if (a == b && b == c && c == d && d == 0) {
+        coreE = integral;
+      } else if (b == c && c == d && d == 0) {
+        continue; // orbital energy
+      } else if (c == d && d == 0) {
+        I1(2 * (a - 1), 2 * (b - 1)) = integral;         // alpha,alpha
+        I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) = integral; // beta,beta
+        I1(2 * (b - 1), 2 * (a - 1)) = integral;         // alpha,alpha
+        I1(2 * (b - 1) + 1, 2 * (a - 1) + 1) = integral; // beta,beta
+      } else {
+        I2(2 * (a - 1), 2 * (b - 1), 2 * (c - 1), 2 * (d - 1)) = integral;
+      }
+    } // while
+
+    // exit(0);
+    I2.maxEntry =
+        *std::max_element(&I2.store[0], &I2.store[0] + I2memory, myfn);
+    I2.Direct = MatrixXd::Zero(norbs, norbs);
+    I2.Direct *= 0.;
+    I2.Exchange = MatrixXd::Zero(norbs, norbs);
+    I2.Exchange *= 0.;
+
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < norbs; j++) {
+        I2.Direct(i, j) = I2(2 * i, 2 * i, 2 * j, 2 * j);
+        I2.Exchange(i, j) = I2(2 * i, 2 * j, 2 * j, 2 * i);
+      }
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
   } // commrank=0
 
 #ifndef SERIAL
@@ -249,11 +313,21 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   long maxIter = intdim / maxint;
 
   world.barrier();
+<<<<<<< HEAD
   for (int i=0; i<maxIter; i++) {
     cout << i << " " << maxIter << endl;
     mpi::broadcast(world, &I2.store[i * maxint], maxint, 0);
     world.barrier();
   }
+=======
+  for (int i = 0; i < maxIter; i++) {
+    // MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    mpi::broadcast(world, &I2.store[i * maxint], maxint, 0);
+    world.barrier();
+  }
+  // MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory -
+  // maxIter*maxint, MPI_DOUBLE, 0);
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
   mpi::broadcast(world, &I2.store[(maxIter)*maxint],
                  I2memory - maxIter * maxint, 0);
   world.barrier();
@@ -285,7 +359,13 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
 #endif
 
   Singles = I2.Singles;
+<<<<<<< HEAD
   if (commrank != 0) Singles.resize(norbs, norbs);
+=======
+  if (commrank != 0)
+    Singles.resize(2 * norbs, 2 * norbs);
+
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
 #ifndef SERIAL
   // MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(),
   // MPI_DOUBLE, 0);
@@ -299,6 +379,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
   //size_t nonZeroOppositeSpinIntegrals = 0;
 
   if (commrank == 0) {
+<<<<<<< HEAD
     //convert to CItype
     std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.begin();
     for (;it1!= I2.integral.end(); it1++) nonZeroIntegrals += it1->second.size();
@@ -309,6 +390,27 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
     //total Memory required, have to think of it carefully
     memRequired += nonZeroIntegrals*(sizeof(std::complex<double>)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
     //memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+=======
+    std::map<std::pair<short, short>,
+             std::multimap<float, std::pair<short, short>, compAbs>>::iterator
+        it1 = I2.sameSpin.begin();
+    for (; it1 != I2.sameSpin.end(); it1++)
+      nonZeroSameSpinIntegrals += it1->second.size();
+
+    std::map<std::pair<short, short>,
+             std::multimap<float, std::pair<short, short>, compAbs>>::iterator
+        it2 = I2.oppositeSpin.begin();
+    for (; it2 != I2.oppositeSpin.end(); it2++)
+      nonZeroOppositeSpinIntegrals += it2->second.size();
+
+    // total Memory required
+    memRequired +=
+        nonZeroSameSpinIntegrals * (sizeof(float) + 2 * sizeof(short)) +
+        ((norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+    memRequired +=
+        nonZeroOppositeSpinIntegrals * (sizeof(float) + 2 * sizeof(short)) +
+        ((norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
   }
 
 #ifndef SERIAL
@@ -328,6 +430,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
   world.barrier();
 #endif
 
+<<<<<<< HEAD
   char* startAddress = (char*)(regionInt2SHM.get_address());
   //sameSpinIntegrals           = (float*)(startAddress);
   //startingIndicesSameSpin     = (size_t*)(startAddress
@@ -353,11 +456,35 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
   pairs                         = (short*)(startAddress
                                 + nonZeroIntegrals*sizeof(std::complex<double>)
                                 + norbs*(norbs + 1) / 2*sizeof(size_t));                            
+=======
+  char *startAddress = (char *)(regionInt2SHM.get_address());
+  sameSpinIntegrals = (float *)(startAddress);
+  startingIndicesSameSpin =
+      (size_t *)(startAddress + nonZeroSameSpinIntegrals * sizeof(float));
+  sameSpinPairs =
+      (short *)(startAddress + nonZeroSameSpinIntegrals * sizeof(float) +
+                (norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+  oppositeSpinIntegrals =
+      (float *)(startAddress +
+                nonZeroSameSpinIntegrals * (sizeof(float) + 2 * sizeof(short)) +
+                (norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+  startingIndicesOppositeSpin =
+      (size_t *)(startAddress + nonZeroOppositeSpinIntegrals * sizeof(float) +
+                 nonZeroSameSpinIntegrals *
+                     (sizeof(float) + 2 * sizeof(short)) +
+                 (norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+  oppositeSpinPairs =
+      (short *)(startAddress + nonZeroOppositeSpinIntegrals * sizeof(float) +
+                (norbs * (norbs + 1) / 2 + 1) * sizeof(size_t) +
+                nonZeroSameSpinIntegrals * (sizeof(float) + 2 * sizeof(short)) +
+                (norbs * (norbs + 1) / 2 + 1) * sizeof(size_t));
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
 
   if (commrank == 0) {
     //startingIndicesSameSpin[0] = 0;
     startingIndicesIntegrals[0] = 0;
     size_t index = 0, pairIter = 1;
+<<<<<<< HEAD
     for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
         //convert to CItype
@@ -371,12 +498,54 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
             integrals[index] = it->first;
             pairs[2*index] = it->second.first;
             pairs[2*index+1] = it->second.second;
+=======
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j <= i; j++) {
+        std::map<std::pair<short, short>,
+                 std::multimap<float, std::pair<short, short>, compAbs>>::
+            iterator it1 = I2.sameSpin.find(std::pair<short, short>(i, j));
+
+        if (it1 != I2.sameSpin.end()) {
+          for (std::multimap<float, std::pair<short, short>,
+                             compAbs>::reverse_iterator it =
+                   it1->second.rbegin();
+               it != it1->second.rend(); it++) {
+            sameSpinIntegrals[index] = it->first;
+            sameSpinPairs[2 * index] = it->second.first;
+            sameSpinPairs[2 * index + 1] = it->second.second;
+            index++;
+          }
+        }
+        startingIndicesSameSpin[pairIter] = index;
+        pairIter++;
+      }
+    I2.sameSpin.clear();
+
+    startingIndicesOppositeSpin[0] = 0;
+    index = 0;
+    pairIter = 1;
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j <= i; j++) {
+        std::map<std::pair<short, short>,
+                 std::multimap<float, std::pair<short, short>, compAbs>>::
+            iterator it1 = I2.oppositeSpin.find(std::pair<short, short>(i, j));
+
+        if (it1 != I2.oppositeSpin.end()) {
+          for (std::multimap<float, std::pair<short, short>,
+                             compAbs>::reverse_iterator it =
+                   it1->second.rbegin();
+               it != it1->second.rend(); it++) {
+            oppositeSpinIntegrals[index] = it->first;
+            oppositeSpinPairs[2 * index] = it->second.first;
+            oppositeSpinPairs[2 * index + 1] = it->second.second;
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
             index++;
           }
         }
         //startingIndicesSameSpin[pairIter] = index;
         startingIndicesIntegrals[pairIter] = index;
         pairIter++;
+<<<<<<< HEAD
     }
     I2.integral.clear();
 
@@ -399,6 +568,10 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
     //    pairIter++;
     //}
     //I2.oppositeSpin.clear();
+=======
+      }
+    I2.oppositeSpin.clear();
+>>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
   } // commrank=0
 
   long intdim = memRequired;

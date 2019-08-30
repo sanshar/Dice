@@ -435,9 +435,9 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
     
     for (int n1=0; n1<norbs; n1++) {
       for (int n2=0; n2<norbs; n2++) {
-	      if (abs(oneRDM(n1,n2)) > 1.e-10) {
-	        ofs2 << str(boost::format("%3d   %3d   %18.10d %18.10d\n") % (n1+1) % (n2+1) % oneRDM(n1,n2).real() % oneRDM(n1, n2).imag());    
-	      }
+	if (abs(oneRDM(n1,n2)) > 1.e-10) {
+	  ofs2 << str(boost::format("%3d   %3d   %18.10d %18.10d\n") % (n1+1) % (n2+1) % oneRDM(n1,n2).real() % oneRDM(n1, n2).imag());    
+	}
       }
     }
     ofs2.close();
@@ -581,6 +581,8 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
         //ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
       }
     }
+  }
+
   } // end commrank
 }
 
@@ -1147,32 +1149,29 @@ pout << " printing 1rdm information" << endl;
   for (int p=0; p<norbs; p++){
     for (int q=0; q<norbs; q++){
       for (int r=0; r<norbs; r++){
-	      for (int s=0; s<norbs; s++){
-	        //if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not necessary
-	        int P = max(p,q), Q = min(p,q);
-	        int R = max(r,s), S = min(r,s);
-	        double sgn = 1;
-	        if (P != p)  sgn *= -1;
-	        if (R != r)  sgn *= -1;
+	for (int s=0; s<norbs; s++){
+	  //if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not necessary
+	  int P = max(p,q), Q = min(p,q);
+	  int R = max(r,s), S = min(r,s);
+	  double sgn = 1;
+	  if (P != p)  sgn *= -1;
+	  if (R != r)  sgn *= -1;
 
-          //if (P!=R&&Q!=S&&abs(twoRDM(P*norbs+Q, R*norbs+S))>1e-6) cout << (sgn*twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real()*2.<<" "<<p+r+q+s<<endl;
+    //if (P!=R&&Q!=S&&abs(twoRDM(P*norbs+Q, R*norbs+S))>1e-6) cout << (sgn*twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real()*2.<<" "<<p+r+q+s<<endl;
 
-	        //if((P*norbs+Q)==(R*norbs+S)) onsite += (sgn* 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
-          //else 
+	  //if((P*norbs+Q)==(R*norbs+S)) onsite += (sgn* 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
+    //else 
 #ifdef Complex
-          twobody += (sgn * 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
-          //if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6)
-          //pout <<p<<" "<<q<<" "<<r<<" "<<s<<" "<<scientific<<setprecision(7)<<sgn<< " " << twoRDM(P*norbs+Q,R*norbs+S) << " " <<P<<Q<<R<<S<< endl;
-          // 2-body term
+    twobody += (sgn * 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
+    //if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6)
+      //pout <<p<<" "<<q<<" "<<r<<" "<<s<<" "<<scientific<<setprecision(7)<<sgn<< " " << twoRDM(P*norbs+Q,R*norbs+S) << " " <<P<<Q<<R<<S<< endl;
+     // 2-body term
 #else
           twobody += sgn * 0.5 *
                      twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
                      I2(p, r, q, s); // 2-body term
 #endif
         }
-      }
-    }
-  }
 
   energy += onebody + twobody;
   pout << format("E(one-body) from 2RDM: %18.10f") % (onebody) << endl;

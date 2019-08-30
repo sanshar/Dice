@@ -82,7 +82,7 @@ namespace SHCIbasics {
           std::map<HalfDet, std::vector<int> >& AlphaNm1);
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
           twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
-          bool DoRDM=false);
+          bool DoRDM=false, bool BruteForce=true);
 
   vector<double> DoVariationalDirect(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
           twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
