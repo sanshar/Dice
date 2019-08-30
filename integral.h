@@ -26,8 +26,6 @@
 #include <utility>
 #include "iowrapper.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/serialization/complex.hpp>
-#include <boost/serialization/vector.hpp>
 
 using namespace std;
 using namespace Eigen;
@@ -44,6 +42,8 @@ class compAbs {
     bool operator()(const float& a, const float& b) const { return fabs(a) < fabs(b); }
     bool operator()(const complex<double>& a, const complex<double>& b) const { return std::abs(a) < std::abs(b); }
 };
+
+
 
 class oneInt {
   private:
@@ -127,11 +127,11 @@ class twoIntHeatBath {
     //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
     //std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > oppositeSpin;
     MatrixXd Singles;
-
+ 
     double epsilon;
     double zero ;
     twoIntHeatBath(double epsilon_) :zero(0.0),epsilon(fabs(epsilon_)) {}
-
+ 
     //the orbs contain all orbitals used to make the ij pair above
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
@@ -159,7 +159,6 @@ class twoIntHeatBath {
               }
           }
       } // ij
-<<<<<<< HEAD
  
       //Singles = MatrixXd::Zero(2*norbs, 2*norbs);
       Singles = MatrixXd::Zero(norbs, norbs);
@@ -173,20 +172,12 @@ class twoIntHeatBath {
             //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
             if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i,j,j,a)))
               Singles(i,a) = abs(I2(i,a,j,j) - I2(i,j,j,a));
-=======
-
-      Singles = MatrixXd::Zero(2*norbs, 2*norbs);
-      for (int i=0; i<2*norbs; i++)
-        for (int a=0; a<2*norbs; a++) {
-          Singles(i,a) = std::abs(I1(i,a));
-          for (int j=0; j<2*norbs; j++) {
-            if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
-              Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i, j, j, a));
->>>>>>> 6709cdbc7ac6029206c06f8e050004e3d73e1d0a
           }
       } 
     } // end constructClass
 };
+
+
 
 class twoIntHeatBathSHM {
   public:
@@ -201,10 +192,10 @@ class twoIntHeatBathSHM {
     short* pairs;
     double* singleExcitation;
     MatrixXd Singles;
-
+ 
     double epsilon;
     twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
-
+ 
     void constructClass(int norbs, twoIntHeatBath& I2) ;
 };
 

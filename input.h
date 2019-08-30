@@ -34,64 +34,60 @@ private:
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version)
   {
-    ar & davidsonTol                          \
-    & davidsonTolLoose                        \
-    & RdmType                                 \
-    & DavidsonType                            \
-    & epsilon2                                \
-    & epsilon2Large                           \
-    & SampleN                                 \
-    & epsilon1                                \
-    & onlyperturbative                        \
-    & restart                                 \
-    & fullrestart                             \
-    & dE                                      \
-    & eps                                     \
-    & prefix                                  \
-    & stochastic                              \
-    & nblocks                                 \
-    & excitation                              \
-    & nvirt                                   \
-    & singleList                              \
-    & io                                      \
-    & nroots                                  \
-    & nPTiter                                 \
-    & DoRDM                                   \
-    & DoSpinRDM                               \
-    & quasiQ                                  \
-    & quasiQEpsilon                           \
-    & doSOC                                   \
-    & doSOCQDPT                               \
-    & randomSeed                              \
-    & doGtensor                               \
-    & integralFile                            \
-    & doResponse                              \
-    & responseFile                            \
-    & socmultiplier                           \
-    & targetError                             \
-    & num_thrds                               \
-    & Trev                                    \
-    & algorithm                               \
-    & outputlevel                             \
-    & printBestDeterminants                   \
-    & extrapolate                             \
-    & extrapolationFactor                     \
-    & enforceSeniority                        \
-    & maxSeniority                            \
-    & enforceExcitation                       \
-    & maxExcitation                           \
-    & HF                                      \
-    & enforceSenioExc                         \
-    & ncore                                   \
-    & nact                                    \
-    & doLCC                                   \
-    & pointGroup                              \
-    & spin                                    \
-    & irrep                                   \
-    & DoSpinOneRDM                            \
-    & DoOneRDM                                \
-    & DoThreeRDM                              \
-    & DoFourRDM;
+    ar & davidsonTol				\
+      & davidsonTolLoose       			\
+      & RdmType                                 \
+      & DavidsonType                            \
+      & epsilon2				\
+      & epsilon2Large                           \
+      & SampleN					\
+      & epsilon1				\
+      & onlyperturbative			\
+      & restart					\
+      & fullrestart				\
+      & dE					\
+      & eps					\
+      & prefix					\
+      & stochastic				\
+      & nblocks					\
+      & excitation				\
+      & nvirt					\
+      & singleList				\
+      & io                                      \
+      & nroots                                  \
+      & nPTiter                                 \
+      & DoRDM                                   \
+      & DoSpinRDM                               \
+      & quasiQ                                  \
+      & quasiQEpsilon                           \
+      & doSOC                                   \
+      & doSOCQDPT                               \
+      & randomSeed                              \
+      & doGtensor                               \
+      & integralFile                            \
+      & doResponse                              \
+      & responseFile                            \
+      & socmultiplier                           \
+      & targetError                             \
+      & num_thrds                               \
+      & Trev                                    \
+      & algorithm                               \
+      & outputlevel                             \
+      & printBestDeterminants                   \
+      & extrapolate                             \
+      & extrapolationFactor                     \
+      & enforceSeniority                        \
+      & maxSeniority                            \
+      & enforceExcitation                       \
+      & maxExcitation                           \
+      & HF                                      \
+      & enforceSenioExc                         \
+      & ncore                                   \
+      & nact                                    \
+      & doLCC                                   \
+      & DoSpinOneRDM                            \
+      & DoOneRDM;
+
   }
 
 public:
@@ -146,13 +142,8 @@ public:
   int ncore;
   int nact;
   bool doLCC;
-  string pointGroup;
-  int spin;
-  int irrep;
-  bool DoSpinOneRDM;
   bool DoOneRDM;
-  bool DoThreeRDM;
-  bool DoFourRDM;
+  bool DoSpinOneRDM;
 };
 
 #endif

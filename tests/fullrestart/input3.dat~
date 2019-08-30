@@ -4,8 +4,9 @@ end
 nroots 1
 schedule 
 0	0.005
-3	0.0001
-6	5e-05
+3	0.001
+6	1e-04
+9	5e-5
 end
 davidsonTol 5e-05
 dE 1e-08
@@ -14,5 +15,5 @@ epsilon2 1e-08
 sampleN 200
 noio 
 prefix .
-maxiter 9
-fullrestart
+maxiter 12
+restart

@@ -41,36 +41,36 @@
 #endif
 #include "communicate.h"
 #include "SOChelper.h"
-#include <boost/serialization/vector.hpp>
 
 
 void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, MatrixXx& ci2,
-				 Determinant* Dets1, int Detssize, int norbs, int nelec)
+				 vector<Determinant>& Dets1, int norbs, int nelec)
 {
   size_t Norbs = norbs;
+  int num_thrds = omp_get_max_threads();
 
   map<Determinant, int> SortedDets;
-  for (int i=0; i<Detssize; i++)
+  for (int i=0; i<Dets1.size(); i++)
     SortedDets[Dets1[i]] = i;
 
 
-  vector<int> closed(nelec,0);
-  vector<int> open(norbs-nelec,0);
+  vector< vector<MatrixXx> > spinRDM_thrd(num_thrds, spinRDM);
 
-  for (int x=0; x<Detssize; x++) {
-    if (x%commsize != commrank) continue;
-
+#pragma omp parallel for
+  for (int x=0; x<Dets1.size(); x++) {
+    int thrd = omp_get_thread_num();
     Determinant& d = Dets1[x];
 
+    vector<int> closed(nelec,0);
+    vector<int> open(norbs-nelec,0);
     d.getOpenClosed(open, closed);
     int nclosed = nelec;
     int nopen = norbs-nclosed;
 
     for (int i=0; i<nclosed; i++){
-
-      spinRDM[0](closed[i], closed[i]) += conj(ci1(x,0))*ci1(x,0);
-      spinRDM[1](closed[i], closed[i]) += conj(ci2(x,0))*ci2(x,0);
-      spinRDM[2](closed[i], closed[i]) += conj(ci1(x,0))*ci2(x,0);
+      spinRDM_thrd[thrd][0](closed[i], closed[i]) += conj(ci1(x,0))*ci1(x,0);
+      spinRDM_thrd[thrd][1](closed[i], closed[i]) += conj(ci2(x,0))*ci2(x,0);
+      spinRDM_thrd[thrd][2](closed[i], closed[i]) += conj(ci1(x,0))*ci2(x,0);
     }
 
     //loop over all single excitation and find if they are present in the list
@@ -88,26 +88,22 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
       if (it != SortedDets.end() ) {
 	int y = it->second;
 	if (y != x) {
-	  spinRDM[0](open[a], closed[i]) += conj(ci1(y,0))*ci1(x,0)*sgn;
-	  spinRDM[1](open[a], closed[i]) += conj(ci2(y,0))*ci2(x,0)*sgn;
-	  spinRDM[2](open[a], closed[i]) += conj(ci1(y,0))*ci2(x,0)*sgn;
+	  spinRDM_thrd[thrd][0](open[a], closed[i]) += conj(ci1(y,0))*ci1(x,0)*sgn;
+	  spinRDM_thrd[thrd][1](open[a], closed[i]) += conj(ci2(y,0))*ci2(x,0)*sgn;
+	  spinRDM_thrd[thrd][2](open[a], closed[i]) += conj(ci1(y,0))*ci2(x,0)*sgn;
 	}
       }
     }
   }
 
-
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &spinRDM[0](0, 0), 2*spinRDM[0].rows() * spinRDM[0].cols(),
-                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &spinRDM[1](0, 0), 2*spinRDM[1].rows() * spinRDM[1].cols(),
-                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &spinRDM[2](0, 0), 2*spinRDM[2].rows() * spinRDM[2].cols(),
-                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
+  for (int thrd=0; thrd<num_thrds; thrd++) {
+    spinRDM[0] += spinRDM_thrd[thrd][0];
+    spinRDM[1] += spinRDM_thrd[thrd][1];
+    spinRDM[2] += spinRDM_thrd[thrd][2];
+  }
 }
 
-void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double>& E0, int Detssize, int norbs, int nelec, vector<MatrixXx>& spinRDM) {
+void SOChelper::doGTensor(vector<MatrixXx>& ci, vector<Determinant>& Dets, vector<double>& E0, int norbs, int nelec, vector<MatrixXx>& spinRDM) {
 
   if (abs(E0[0] - E0[1])*219470. > 10.0) {
     cout <<"Energy difference between kramer's pair greater than 10."<<endl;
@@ -162,9 +158,10 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
 	Intermediate[a](0,1) += (LplusS[a](i,j))*spinRDM[2](i,j);
       }
     Intermediate[a](1,0) = conj(Intermediate[a](0,1));
-
+    pout <<a<<endl<< Intermediate[a]<<endl<<endl;
     SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[a]);
     if (eigensolver.info() != Success) abort();
+    pout << a<<"  "<<((eigensolver.eigenvalues()[1]-eigensolver.eigenvalues()[0])-ge)*1e6<<endl;
   }
 
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
@@ -173,7 +170,7 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
     for (int j=0; j<3; j++)
       Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
 
-
+  pout << Gtensor<<endl;
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
   pout <<endl<< "Gtensor eigenvalues"<<endl;

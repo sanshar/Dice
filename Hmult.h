@@ -1,19 +1,19 @@
 /*
   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
   Copyright (c) 2017, Sandeep Sharma
-
+  
   This file is part of DICE.
-
+  
   This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation,
+  of the GNU General Public License as published by the Free Software Foundation, 
   either version 3 of the License, or (at your option) any later version.
-
+  
   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
+  
   See the GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with this program.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef HMULT_HEADER_H
@@ -47,7 +47,7 @@ namespace SHCISortMpiUtils{
 struct Hmult2 {
   SparseHam &sparseHam;
 
-  Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
+  Hmult2(SparseHam &p_sparseHam) : sparseHam(p_sparseHam) {}
 
   //=============================================================================
   void operator()(CItype *x, CItype *y) {
@@ -89,12 +89,9 @@ struct Hmult2 {
         int J = sparseHam.connections[i][j];
         int I = i * size + rank;
 
-	      ytemp[I] += hij * x[J];
-#ifdef Complex
+	ytemp[I] += hij * x[J];
+
         if (J != I) ytemp[J] += std::conj(hij) * x[I];
-#else 
-        if (J != I) ytemp[J] += hij * x[I];
-#endif
       }
     }
     if (rank == 0) {
@@ -156,12 +153,12 @@ struct Hmult2 {
   int*          &AlphaMajorToBetaLen; 
   vector<int* > &AlphaMajorToBeta   ;
   vector<int* > &AlphaMajorToDet    ;
-  int*          &BetaMajorToAlphaLen;
+  int*          &BetaMajorToAlphaLen; 
   vector<int* > &BetaMajorToAlpha   ;
   vector<int* > &BetaMajorToDet     ;
-  int*          &SinglesFromAlphaLen;
+  int*          &SinglesFromAlphaLen; 
   vector<int* > &SinglesFromAlpha   ;
-  int*          &SinglesFromBetaLen ;
+  int*          &SinglesFromBetaLen ; 
   vector<int* > &SinglesFromBeta    ;
   Determinant *&Dets;
   int DetsSize;
@@ -173,7 +170,7 @@ struct Hmult2 {
   MatrixXx& diag;
 
   HmultDirect(
-          SHCImakeHamiltonian::HamHelpers2& helpers2,
+          SHCImakeHamiltonian::HamHelpers2& helpers2, 
           Determinant* &pDets,
           int pDetsSize,
           int pStartIndex,
@@ -181,7 +178,7 @@ struct Hmult2 {
           oneInt& pI1,
           twoInt& pI2,
           double& pcoreE,
-          MatrixXx& pDiag) :
+          MatrixXx& pDiag) : 
     AlphaMajorToBetaLen(helpers2.AlphaMajorToBetaLen),
     AlphaMajorToBeta   (helpers2.AlphaMajorToBetaSM ),
     AlphaMajorToDet    (helpers2.AlphaMajorToDetSM  ),
@@ -203,15 +200,15 @@ struct Hmult2 {
 
 
   HmultDirect(
-          int*          &pAlphaMajorToBetaLen,
+          int*          &pAlphaMajorToBetaLen, 
           vector<int* > &pAlphaMajorToBeta   ,
           vector<int* > &pAlphaMajorToDet    ,
-          int*          &pBetaMajorToAlphaLen,
+          int*          &pBetaMajorToAlphaLen, 
           vector<int* > &pBetaMajorToAlpha   ,
           vector<int* > &pBetaMajorToDet     ,
-          int*          &pSinglesFromAlphaLen,
+          int*          &pSinglesFromAlphaLen, 
           vector<int* > &pSinglesFromAlpha   ,
-          int*          &pSinglesFromBetaLen ,
+          int*          &pSinglesFromBetaLen , 
           vector<int* > &pSinglesFromBeta    ,
           Determinant* &pDets,
           int pDetsSize,
@@ -220,7 +217,7 @@ struct Hmult2 {
           oneInt& pI1,
           twoInt& pI2,
           double& pcoreE,
-          MatrixXx& pDiag) :
+          MatrixXx& pDiag) : 
     AlphaMajorToBetaLen(pAlphaMajorToBetaLen),
     AlphaMajorToBeta   (pAlphaMajorToBeta   ),
     AlphaMajorToDet    (pAlphaMajorToDet    ),
@@ -246,7 +243,7 @@ struct Hmult2 {
     boost::mpi::communicator world;
 #endif
     int nprocs = commsize, proc = commrank;
-
+    
     size_t norbs = Norbs;
 
     //diagonal element
@@ -259,30 +256,30 @@ struct Hmult2 {
         updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
       y[k] += hij*x[k];
     }
-
+    
     //alpha-beta excitation
     for (int i=0; i<AlphaMajorToBeta.size(); i++) {
       for (int ii=0; ii<AlphaMajorToBetaLen[i]; ii++) {
 
-        int Astring = i,
-        Bstring = AlphaMajorToBeta[i][ii],
+        int Astring = i, 
+        Bstring = AlphaMajorToBeta[i][ii], 
         DetI    = AlphaMajorToDet [i][ii];
-
+        
         if (AlphaMajorToDet[i][ii]-1         < StartIndex ||
             (AlphaMajorToDet[i][ii]-1)%nprocs != proc       ||
             DetI < 0) continue;
-
+        
         int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring]-1];
 
         //singles from Astring
         for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
           int Asingle = SinglesFromAlpha[Astring][j];
-
+        
           if (Asingle > maxBToA) break;
           int index = binarySearch (
-                  &BetaMajorToAlpha[Bstring][0] ,
-                  0,
-                  BetaMajorToAlphaLen[Bstring]-1,
+                  &BetaMajorToAlpha[Bstring][0] , 
+                  0, 
+                  BetaMajorToAlphaLen[Bstring]-1, 
                   Asingle);
           if (index != -1 ) {
             int DetJ = BetaMajorToDet[Bstring][index];
@@ -297,14 +294,14 @@ struct Hmult2 {
         //single Alpha and single Beta
         for (int j=0; j<SinglesFromAlphaLen[Astring]; j++) {
           int Asingle = SinglesFromAlpha[Astring][j];
-
+          
           int SearchStartIndex = 0,
               AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
               SinglesFromBLen  = SinglesFromBetaLen[Bstring];
           int maxAToB = AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle]-1];
           for (int k=0; k<SinglesFromBLen; k++) {
             int& Bsingle = SinglesFromBeta[Bstring][k];
-
+            
             if (SearchStartIndex >= AlphaToBetaLen) break;
             /*
             auto itb = lower_bound(
@@ -316,10 +313,10 @@ struct Hmult2 {
             */
             /*int index=SearchStartIndex;
             for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
-
+            
             SearchStartIndex = index;
             if (index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] == Bsingle) {
-
+            
               int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
               if (abs(DetJ) == abs(DetI) ) continue;
               size_t orbDiff;
@@ -336,11 +333,11 @@ struct Hmult2 {
           int Bsingle =  SinglesFromBeta   [Bstring][j];
           if (Bsingle > maxAtoB) break;
           int index = binarySearch(
-                  &AlphaMajorToBeta[Astring][0] ,
-                  0                             ,
-                  AlphaMajorToBetaLen[Astring]-1,
+                  &AlphaMajorToBeta[Astring][0] , 
+                  0                             , 
+                  AlphaMajorToBetaLen[Astring]-1, 
                   Bsingle                       );
-
+          
           if (index != -1 ) {
             int DetJ = AlphaMajorToDet[Astring][index];
             if (abs(DetJ) == abs(DetI) ) continue;
@@ -350,7 +347,7 @@ struct Hmult2 {
             y[abs(DetI)-1] += hij*x[abs(DetJ)-1];
           }
         }
-
+        
         //double beta excitation
         for (int j=0; j< AlphaMajorToBetaLen[i]; j++) {
           int DetJ     = AlphaMajorToDet    [i][j];
@@ -364,7 +361,7 @@ struct Hmult2 {
             y[abs(DetI)-1] += hij*x[abs(DetJ)-1];
           }
         }
-
+        
         //double Alpha excitation
         for (int j=0; j < BetaMajorToAlphaLen[Bstring]; j++) {
           int DetJ      = BetaMajorToDet     [Bstring][j];
@@ -378,7 +375,7 @@ struct Hmult2 {
             y[abs(DetI)-1] += hij*x[abs(DetJ)-1];
           }
         }
-
+      
       } // ii
     } // i
   }; // end operator

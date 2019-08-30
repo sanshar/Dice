@@ -1,21 +1,21 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
-  Copyright (c) 2017, Sandeep Sharma
-  
-  This file is part of DICE.
-  
-  This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
-  either version 3 of the License, or (at your option) any later version.
-  
-  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
-  See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
-  If not, see <http://www.gnu.org/licenses/>.
-*/
+   Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+   Copyright (c) 2017, Sandeep Sharma
+
+   This file is part of DICE.
+
+   This program is free software: you can redistribute it and/or modify it under the terms
+   of the GNU General Public License as published by the Free Software Foundation,
+   either version 3 of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+   See the GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License along with this program.
+   If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <iostream>
 #include <algorithm>
 #include "integral.h"
@@ -30,98 +30,91 @@ using namespace Eigen;
 
 //=============================================================================
 void getHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
-			oneInt& I1,
-			twoInt& I2,
-			double& coreE,
-			size_t& orbDiff,
-			int plusORminus) {
-	/*!
-	   with treversal symmetry dj and dk will find each other multiple times
-	   we prune this possibility as follows
-	   ->  we only look for connection is dj is positive (starndard form)
-	   -> even it is positive there still might be two connections to dk
-	     -> so this updates hij
+  oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff, int plusORminus) {
+  /*!
+     with treversal symmetry dj and dk will find each other multiple times
+     we prune this possibility as follows
+     ->  we only look for connection is dj is positive (starndard form)
+     -> even it is positive there still might be two connections to dk
+     -> so this updates hij
 
-	   :Arguments:
+     :Arguments:
 
-  	    CItype& hij:
-  	        Hamiltonian matrix element, modifed in function.
-  	    Determinant& dj:
-  	        Determinant j.
-  	    Determinant& dk:
-  	        Determinant k.
-  	    oneInt& I1:
-  	        One body integrals.
-  	    twoInt& I2:
-  	        Two body integrals.
-  	    double& coreE:
-  	        Core energy.
-  	    size_t& orbDiff:
-  	        Different number of orbitals between determinants j and k.
-  	    int plusORminus:
-  	        Currently unused. TODO
-	 */
-	if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
-	  dk.hasUnpairedElectrons()) {
-		Determinant detcpy = dk;
-		detcpy.flipAlphaBeta();
-		double parity = dk.parityOfFlipAlphaBeta();
-		CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
-		hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
-	}
-	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
-	  !dk.hasUnpairedElectrons()) {
-		Determinant detcpy = dj;
-		detcpy.flipAlphaBeta();
-		double parity = dj.parityOfFlipAlphaBeta();
-		CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
-		hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
-	}
-	else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
-	  && dk.hasUnpairedElectrons()) {
-		Determinant detcpyk = dk;
-		detcpyk.flipAlphaBeta();
-		double parityk = dk.parityOfFlipAlphaBeta();
-		CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
-		hij = Determinant::Trev*parityk*hijCopy1;
+      CItype& hij:
+        Hamiltonian matrix element, modifed in function.
+      Determinant& dj:
+        Determinant j.
+      Determinant& dk:
+        Determinant k.
+      oneInt& I1:
+        One body integrals.
+      twoInt& I2:
+        Two body integrals.
+      double& coreE:
+        Core energy.
+      size_t& orbDiff:
+        Different number of orbitals between determinants j and k.
+      int plusORminus:
+        Currently unused. TODO
+   */
+  if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
+    dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dk;
+    detcpy.flipAlphaBeta();
+    double parity = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(dj, detcpy, I1, I2, coreE, orbDiff);
+    hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
+    !dk.hasUnpairedElectrons()) {
+    Determinant detcpy = dj;
+    detcpy.flipAlphaBeta();
+    double parity = dj.parityOfFlipAlphaBeta();
+    CItype hijCopy = Hij(detcpy, dk, I1, I2, coreE, orbDiff);
+    hij = (parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
+  }
+  else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
+    && dk.hasUnpairedElectrons()) {
+    Determinant detcpyk = dk;
+    detcpyk.flipAlphaBeta();
+    double parityk = dk.parityOfFlipAlphaBeta();
+    CItype hijCopy1 = Hij(dj, detcpyk, I1, I2, coreE, orbDiff);
+    hij = Determinant::Trev*parityk*hijCopy1;
 
-	}
+  }
 }
 
 
 
 //=============================================================================
 void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
-			   oneInt& I1,
-			   twoInt& I2,
-			   double& coreE,
-			   size_t& orbDiff) {
-	/*!
-	   with treversal symmetry dj and dk will find each other multiple times
-	   we prune this possibility as follows
-	   ->  we only look for connection is dj is positive (starndard form)
-	   -> even it is positive there still might be two connections to dk
-	     -> so this updates hij
+  oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff) {
+  /*!
+     with treversal symmetry dj and dk will find each other multiple times
+     we prune this possibility as follows
+     ->  we only look for connection is dj is positive (starndard form)
+     -> even it is positive there still might be two connections to dk
+     -> so this updates hij
 
-	   :Arguments:
+     :Arguments:
 
-  	    CItype& hij:
-  	        Hamiltonian matrix element, modifed in function.
-  	    Determinant& dj:
-  	        Determinant j.
-  	    Determinant& dk:
-  	        Determinant k.
-  	    oneInt& I1:
-  	        One body integrals.
-  	    twoInt& I2:
-  	        Two body integrals.
-  	    double& coreE:
-  	        Core energy.
-  	    size_t& orbDiff:
-  	        Different number of orbitals between determinants j and k.
-	 */
+      CItype& hij:
+        Hamiltonian matrix element, modifed in function.
+      Determinant& dj:
+        Determinant j.
+      Determinant& dk:
+        Determinant k.
+      oneInt& I1:
+        One body integrals.
+      twoInt& I2:
+        Two body integrals.
+      double& coreE:
+        Core energy.
+      size_t& orbDiff:
+        Different number of orbitals between determinants j and k.
+   */
   if (Determinant::Trev != 0 && !dj.hasUnpairedElectrons() &&
-      dk.hasUnpairedElectrons()) {
+    dk.hasUnpairedElectrons()) {
     Determinant detcpy = dk;
 
     detcpy.flipAlphaBeta();
@@ -131,7 +124,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
     hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
   }
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons() &&
-	   !dk.hasUnpairedElectrons()) {
+    !dk.hasUnpairedElectrons()) {
     Determinant detcpy = dj;
 
     detcpy.flipAlphaBeta();
@@ -141,7 +134,7 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
     hij = (hij + parity*Determinant::Trev*hijCopy)/pow(2.,0.5);
   }
   else if (Determinant::Trev != 0 && dj.hasUnpairedElectrons()
-	   && dk.hasUnpairedElectrons()) {
+    && dk.hasUnpairedElectrons()) {
     Determinant detcpyk = dk;
 
     detcpyk.flipAlphaBeta();
@@ -156,37 +149,37 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
 
 
 //=============================================================================
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, double Energyd) {
-	/*!
-	   Calculates the new energy of a determinant after single excitation.
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
+  twoInt& I2, double& coreE,  int i, int A, double Energyd) {
+  /*!
+     Calculates the new energy of a determinant after single excitation.
 
-	   .. note:: Assumes that the spin of i and a orbitals is the same
+     .. note:: Assumes that the spin of i and a orbitals is the same
 
-	   :Arguments:
+     :Arguments:
 
-  	   vector<int>& closed:
-  	       Occupied orbitals in a vector.
-  	   int& nclosed:
-  	       Number of occupied orbitals.
-  	   oneInt& I1:
-  	       One body integrals.
-  	   twoInt& I2:
-  	       Two body integrals.
-  	   double& coreE:
-  	       Core energy.
-  	   int i:
-  	       Orbital index for destruction operator.
-  	   int A:
-  	       Orbital index for creation operator.
-  	   double Energyd:
-  	       Old determinant energy.
+     vector<int>& closed:
+       Occupied orbitals in a vector.
+     int& nclosed:
+       Number of occupied orbitals.
+     oneInt& I1:
+       One body integrals.
+     twoInt& I2:
+       Two body integrals.
+     double& coreE:
+       Core energy.
+     int i:
+       Orbital index for destruction operator.
+     int A:
+       Orbital index for creation operator.
+     double Energyd:
+       Old determinant energy.
 
-	   :Returns:
+     :Returns:
 
-  	    double E:
-  	        Energy after excitation.
-	 */
+      double E:
+        Energy after excitation.
+   */
 
   double E = Energyd;
 #ifdef Complex
@@ -200,7 +193,7 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
     E = E - I2.Direct(closed[I], closed[i]).real() + I2.Direct(closed[I], A).real();
     //if ( (closed[I]%2) == (closed[i]%2) )
     //if ( closed[I] == closed[i] )
-    E = E + I2.Exchange(closed[I], closed[i]).real()-I2.Exchange(closed[I], A).real();
+    E = E + I2.Exchange(closed[I], closed[i]).real()-I2.Exchange(closed[I],A).real();
   }
   return E;
 }
@@ -208,46 +201,48 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 //Assumes that the spin of i and a orbitals is the same
 //and the spins of j and b orbitals is the same
 //=============================================================================
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, int j, int B, double Energyd) {
-	/*!
-	   Calculates the new energy of a determinant after double excitation. i -> A and j -> B.
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
+  twoInt& I2, double& coreE,  int i, int A, int j, int B, double Energyd) {
+  /*!
+     Calculates the new energy of a determinant after double excitation. i -> A and j -> B.
 
-	   .. note:: Assumes that the spin of each orbital pair (i-A and j-B) is the same.
+     .. note:: Assumes that the spin of each orbital pair (i-A and j-B) is the same.
 
-	   :Arguments:
+     :Arguments:
 
-  	   vector<int>& closed:
-  	       Occupied orbitals in a vector.
-  	   int& nclosed:
-  	       Number of occupied orbitals.
-  	   oneInt& I1:
-  	       One body integrals.
-  	   twoInt& I2:
-  	       Two body integrals.
-  	   double& coreE:
-  	       Core energy.
-  	   int i:
-  	       Orbital index for destruction operator.
-  	   int j:
-  	       Orbital index for destruction operator.
-  	   int A:
-  	       Orbital index for creation operator.
-  	   int B:
-  	       Orbital index for creation operator.
-  	   double Energyd:
-  	       Old determinant energy.
+     vector<int>& closed:
+       Occupied orbitals in a vector.
+     int& nclosed:
+       Number of occupied orbitals.
+     oneInt& I1:
+       One body integrals.
+     twoInt& I2:
+       Two body integrals.
+     double& coreE:
+       Core energy.
+     int i:
+       Orbital index for destruction operator.
+     int j:
+       Orbital index for destruction operator.
+     int A:
+       Orbital index for creation operator.
+     int B:
+       Orbital index for creation operator.
+     double Energyd:
+       Old determinant energy.
 
-	   :Returns:
+     :Returns:
 
-  	    double E:
-  	        Energy after excitation.
-	 */
+      double E:
+        Energy after excitation.
+   */
 
 #ifdef Complex
-  double E = Energyd - (I1(closed[i], closed[i]) - I1(A, A)+ I1(closed[j], closed[j]) - I1(B, B)).real();
+  double E = Energyd + ( - I1(closed[i], closed[i]) + I1(A, A) - I1(closed[j],
+  closed[j]) + I1(B, B)).real();
 #else
-  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j], closed[j]) + I1(B, B);
+  double E = Energyd - I1(closed[i], closed[i]) + I1(A, A)- I1(closed[j],
+  closed[j]) + I1(B, B);
 #endif
 
   for (int I = 0; I<nclosed; I++) {
@@ -278,23 +273,23 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoI
 
 //=============================================================================
 double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
-	/*!
-	   Calculates the energy of the determinant.
+  /*!
+     Calculates the energy of the determinant.
 
-	   :Arguments:
+     :Arguments:
 
-  	   oneInt& I1:
-  	       One body integrals.
-  	   twoInt& I2:
-  	       Two body integrals.
-  	   double& coreE:
-  	       Core energy.
+     oneInt& I1:
+       One body integrals.
+     twoInt& I2:
+       Two body integrals.
+     double& coreE:
+       Core energy.
 
-	   :Returns:
+     :Returns:
 
-  	   double energy+coreE:
-  	       Energy of determinant.
-	 */
+     double energy+coreE:
+       Energy of determinant.
+   */
 
   double energy = 0.0;
   size_t one = 1;
@@ -317,12 +312,13 @@ double Determinant::Energy(oneInt& I1, twoInt&I2, double& coreE) {
 #endif
     for (int j=0; j<i; j++) {
       int J = closed.at(j);
-#ifdef Complex
-      energy += I2.Direct(I, J).real();
-      energy -= I2.Exchange(I, J).real();
-#else
-      energy += I2.Direct(I / 2, J / 2);
-      if ( (I % 2) == (J % 2) ) energy -= I2.Exchange(I / 2, J / 2);
+      //energy += I2.Direct(I/2,J/2);
+      complex<double> Jij = I2.Direct(I,J), Kij = I2.Exchange(I,J);
+      energy += I2.Direct(I,J).real();
+      energy -= I2.Exchange(I,J).real();
+      //if ( (I%2) == (J%2) ) {
+        //energy -= I2.Exchange(I/2, J/2);
+      //}
     }
   }
   return energy+coreE;
@@ -390,46 +386,11 @@ void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
   return;
 }
 
-// Gamma = c0 c1 c2 d0 d1 d2
-// d2 -> c0   d1 -> c1   d0 -> c2
-// Always set true last so if there are duplicates the last operation doesn't
-// depopulate determinants.
-void Determinant::parity(int& c0, int& c1, int& c2, int& d0, int& d1, int& d2,
-  double& sgn) {
-	parity(min(d2, c0), max(d2,c0), sgn);
-	setocc(d2,false); setocc(c0,true);
-	parity(min(d1, c1), max(d1,c1), sgn);
-	setocc(d1,false); setocc(c1,true);
-	parity(min(d0, c2), max(d0,c2), sgn);
-	setocc(c1,false); setocc(d1,true);
-	setocc(c0,false); setocc(d2,true);
-	return;
-}
-
-// Gamma = c0 c1 c2 c3 d0 d1 d2 d3
-// Do NOT use with matching c and d pairs.
-void Determinant::parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1,
-  int& d2, int& d3,  double& sgn) {
-	parity(min(d3, c0), max(d3,c0), sgn);
-	setocc(d3,false); setocc(c0,true);
-
-	parity(min(d2, c1), max(d2,c1), sgn);
-	setocc(d2,false); setocc(c1,true);
-
-	parity(min(d1, c2), max(d1,c2), sgn);
-	setocc(d1,false); setocc(c2,true);
-	parity(min(d0,c3),max(d0,c3), sgn);
-
-	setocc(c2,false); setocc(d1,true);
-	setocc(c1,false); setocc(d2,true);
-	setocc(c0,false); setocc(d3,true);
-	return;
-}
-
 
 
 //=============================================================================
-CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2) {
+CItype Determinant::Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1,
+  twoInt& I2) {
   /*!
   Calculate the hamiltonian matrix element connecting determinants connected by  :math:`\Gamma = a^\dagger_i a^\dagger_j a_b a_a`, i.e. double excitation.
 
@@ -463,25 +424,26 @@ CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed,
   int& nclosed) {
   //int a = cre[0], i = des[0];
   /*!
-  Calculate the hamiltonian matrix element connecting determinants connected by  :math:`\Gamma = a^\dagger_i a^\dagger_j a_b a_a`, i.e. double excitation.
+  Calculate the hamiltonian matrix element connecting determinants connected by  :math:`\Gamma = a^\dagger_a a_i`, i.e. single excitation.
+
+  .. note:: This version of the function is not a member function of the determinant class.
 
   :Arguments:
 
-      int& i:
-          Creation operator index.
-      int& j:
-          Creation operator index.
-      int& a:
-          Destruction operator index.
-      int& b:
-          Destruction operator index.
-      oneInt& I1:
-          One body integrals.
-      twoInt& I2:
-          Two body integrals.
+    int& a:
+      Creation operator index.
+    int& i:
+      Destruction operator index.
+    oneInt& I1:
+      One body integrals.
+    twoInt& I2:
+      Two body integrals.
+    int* closed:
+      Vector of indices for occupied orbitals.
+    int& nclosed:
+      Number of occupied orbitals.
 
   */
-  //int a = cre[0], i = des[0];
   double sgn=1.0;
 
   CItype energy = I1(a,i);
@@ -589,7 +551,7 @@ void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbDiff) {
 
 //=============================================================================
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
-            double& coreE, size_t& orbDiff) {
+  double& coreE, size_t& orbDiff) {
   /*!
   Calculates the hamiltonian matrix element connecting the two determinants bra and ket.
 
@@ -639,39 +601,15 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
   else if (ncre ==1 ) {
     size_t c0=cre[0], N=bra.norbs, d0 = des[0];
     orbDiff = c0*N+d0;
-    //orbDiff = cre[0]*bra.norbs+des[0];
     return ket.Hij_1Excite(cre[0], des[0], I1, I2);
   }
   else if (ncre == 2) {
-    size_t c0=cre[0], c1=cre[1], d1=des[1], N=bra.norbs, d0 = des[0];
+    size_t c0=cre[0], c1=cre[1], d1=des[1],N=bra.norbs, d0 = des[0];
     orbDiff = c1*N*N*N+d1*N*N+c0*N+d0;
-    //orbDiff = cre[1]*bra.norbs*bra.norbs*bra.norbs+des[1]*bra.norbs*bra.norbs+cre[0]*bra.norbs+des[0];
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
   }
   else {
     //cout << "Should not be here"<<endl;
     return 0.;
   }
-}
-
-
-double getParityForDiceToAlphaBeta(Determinant& det) 
-{
-  double parity = 1.0;
-  int nalpha = det.Nalpha();
-  int norbs = Determinant::norbs;
-  for (int i=0; i<norbs; i++) 
-    {
-      if (det.getocc( 2*(norbs-1-i) + 1))
-	{
-	  int nAlphaBeforei = 0;
-	  for (int j=0 ;j<norbs-i-1; j++)
-	    if (det.getocc( 2*j))
-	      nAlphaBeforei++;
-	  int nAlphaAfteri = nalpha - nAlphaBeforei;
-	  if (det.getocc( 2*(norbs-1-i) )) nAlphaAfteri--;
-	  if (nAlphaAfteri%2 == 1) parity *= -1;
-	}
-    }
-  return parity;
 }
