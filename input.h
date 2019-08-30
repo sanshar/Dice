@@ -144,6 +144,8 @@ public:
   bool doLCC;
   bool DoOneRDM;
   bool DoSpinOneRDM;
+  double thresh_hij;
+  int subspace;
 };
 
 #endif

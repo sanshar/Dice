@@ -77,7 +77,7 @@ struct SparseHam {
             HamHelper4c& helper2, Determinant *SHMDets,
             int startIndex, int endIndex,
             int Norbs, oneInt& I1, twoInt& I2,
-            double& coreE, bool DoRDM);
+            schedule& schd, double& coreE, bool DoRDM);
 
     void writeBatch(int batch);
 
@@ -100,7 +100,7 @@ void MakeHfromSMHelpers(
   int* Nminus2ToDetLen,
   Determinant* Dets, int StartIndex, int EndIndex,
   bool diskio, SparseHam& sparseHam,
-  int Norbs, oneInt& I1, twoInt& I2, double& coreE,
+  int Norbs, oneInt& I1, twoInt& I2, schedule& schd, double& coreE,
   bool DoRDM);
 
 void MakeSHMHelpers();

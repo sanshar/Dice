@@ -29,6 +29,8 @@ class HmultDirect;
 using namespace Eigen;
 using namespace std;
 
+void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &sigmacol);
+
 void precondition(MatrixXx& r, MatrixXx& diag, double& e);
 
 vector<double> davidson(

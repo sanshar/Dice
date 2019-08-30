@@ -171,6 +171,8 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
           schd, Nmc, nelec);
     }
 
+
+    boost::shared_ptr<vector<Determinant>> &Det = uniqueDEH.Det;
     if (commsize > 1)
     {
 
@@ -180,6 +182,19 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       boost::shared_ptr<vector<double>> &Energy = uniqueDEH.Energy;
       boost::shared_ptr<vector<char>> &present = uniqueDEH.present;
 
+    /*if (commrank == 1) {
+      for (int i=0; i< Det->size(); i++) {
+        cout  << "commrank : " << commrank << " " << Det->at(i) << endl;
+      }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (commrank == 1) {
+      for (int i=0; i< Det->size(); i++) {
+        cout  << "commrank : " << commrank << " " << Det->at(i) << " " << Det->at(i).getHash() << endl;
+      }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);*/
+       
       std::vector<size_t> hashValues(Det->size());
 
       std::vector<size_t> all_to_all_cumulative(size, 0);
@@ -838,7 +853,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //if it is not direct Hamiltonian then generate it
     if (schd.DavidsonType != DIRECT)
     {
-      sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM || schd.DoOneRDM);
+      sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, schd, coreE, schd.DoRDM || schd.DoOneRDM);
     }
   }
 
@@ -893,7 +908,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
       if (!(schd.DavidsonType == DIRECT || (!schd.fullrestart && converged && iterstart >= schd.epsilon1.size() - 1)))
       {
         sparseHam.clear();
-        sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM || schd.DoOneRDM);
+        sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2, schd, coreE, schd.DoRDM || schd.DoOneRDM);
       }
     }
 
@@ -978,7 +993,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
     //*********
     //Remove duplicates and put all the dets on all the nodes
-
     sort(uniqueDEH.Det->begin(), uniqueDEH.Det->end());
     uniqueDEH.Det->erase(unique(uniqueDEH.Det->begin(), uniqueDEH.Det->end()), uniqueDEH.Det->end());
 
@@ -1106,11 +1120,23 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
       helper2.MakeSHMHelpers();
       if (schd.DavidsonType != DIRECT)
       {
-        sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, coreE, schd.DoRDM || schd.DoOneRDM);
+        sparseHam.makeFromHelper(helper2, SHMDets, SortedDetsSize, DetsSize, Norbs, I1, I2, schd, coreE, schd.DoRDM || schd.DoOneRDM);
       }
     }
+    
     //************
-
+    if (commrank == 0) {
+      int element_count = 0;
+      for (int i=0; i < sparseHam.connections.size(); i++) {
+        element_count += sparseHam.connections[i].size();
+      }
+    int memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
+    pout << " number of sparseHam elements " << element_count << endl;
+    pout << " number of determinants " << DetsSize << endl;
+    pout << " estimated memory " << memory_count << endl;
+    pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
+    pout << " time before davidson : " << getTime() - startofCalc << endl;
+    }
     //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous iterations
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
     if (localrank == 0)
@@ -1217,8 +1243,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     vector<double> prevE0 = E0;
     //if (iter == 0)
     //  prevE0(-10.0);
-    int subspace = DetsSize < schd.nroots*4 ? DetsSize : schd.nroots*4;
-    E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0);
+    int subspace = schd.subspace;
+    pout << "davidsonTolLoose " << schd.davidsonTolLoose << endl;
+    if (subspace < 0) {
+      subspace = DetsSize < schd.nroots*2 ? DetsSize : schd.nroots*2;
+    }
+    E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
 
     //update the civector
     if (proc == 0) {

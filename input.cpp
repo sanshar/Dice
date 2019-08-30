@@ -39,8 +39,15 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   vector<double> sweep_epsilon;
   int nocc = -1;
 
+  schd.subspace = -1;
+  schd.thresh_hij = 1.0e-10;
   schd.davidsonTol = 5.e-5;
-  schd.davidsonTolLoose = 5.e-5;
+#ifndef Complex
+  if (schd.DavidsonType == DIRECT)
+    schd.davidsonTolLoose = 3.e-2;
+#else
+  schd.davidsonTolLoose = 1.e-5;
+#endif
   schd.RdmType = RELAXED;
   schd.DavidsonType = MEMORY;
   schd.epsilon2 = 1.e-8;
@@ -140,6 +147,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
 	      index++;
       }
     }
+    else if (boost::iequals(ArgName, "subspace"))
+      schd.subspace = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "thresh_hij"))
+      schd.thresh_hij = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "nact"))
       schd.nact = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "ncore"))
@@ -286,12 +297,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "nocc keyword has to be included."<<endl;
     exit(0);
   }
-#ifndef Complex
-  if (schd.DavidsonType == DIRECT)
-    schd.davidsonTolLoose = 3.e-2;
-#else
-  schd.davidsonTolLoose = 1.e-5;
-#endif
 
   for (int i=1; i<sweep_iter.size(); i++)
     for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)

@@ -143,11 +143,11 @@ void SHCImake4cHamiltonian::MakeSMHelpers(
 void SHCImake4cHamiltonian::SparseHam::makeFromHelper(
         HamHelper4c& helper, Determinant * SHMDets,
         int startIndex, int endIndex,
-        int Norbs, oneInt& I1, twoInt& I2, double& coreE, bool DoRDM) 
+        int Norbs, oneInt& I1, twoInt& I2, schedule& schd, double& coreE, bool DoRDM) 
 {
   SHCImake4cHamiltonian::MakeHfromSMHelpers(helper.Nminus1ToDetSM, helper.Nminus1ToDetLen,
   helper.Nminus2ToDetSM, helper.Nminus2ToDetLen,
-  SHMDets, startIndex, endIndex, diskio, *this, Norbs, I1, I2, coreE, DoRDM);
+  SHMDets, startIndex, endIndex, diskio, *this, Norbs, I1, I2, schd, coreE, DoRDM);
 }
 
 void SHCImake4cHamiltonian::HamHelper4c::PopulateHelpers(
@@ -206,7 +206,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
   vector<int* > &Nminus2ToDetSM, int* Nminus2ToDetLen,
   Determinant* Dets, int StartIndex, int EndIndex,
   bool diskio, SparseHam& sparseHam,
-  int Norbs, oneInt& I1, twoInt& I2, double& coreE,
+  int Norbs, oneInt& I1, twoInt& I2, schedule& schd, double& coreE,
   bool DoRDM) {
   int proc = 0, nprocs = 1;
 #ifndef SERIAL
@@ -236,9 +236,10 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
           continue;
         if (DetI % nprocs != proc || DetI < 0) continue;
         CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
-        if (std::abs(hij) > 1.e-10) {
+        if (std::abs(hij) > schd.thresh_hij) {
           //pout << Dets[Nminus1ToDetSM[i][j]].ExcitationDistance(Dets[Nminus1ToDetSM[i][k]]);
         //pout << "(" << Nminus1ToDetSM[i][j] << " " << Nminus1ToDetSM[i][k] << ")" << " " << hij.real() << " " << hij.imag() << endl;
+          //cout << "Hij : " << abs(hij) << " greater than threshold " << schd.thresh_hij << endl;
           connections[DetI/nprocs].push_back(DetJ);
           Helements[DetI/nprocs].push_back(hij);
           if (DoRDM) orbDifference[DetI/nprocs].push_back(orbDiff);
@@ -257,7 +258,7 @@ void SHCImake4cHamiltonian::MakeHfromSMHelpers(
         if (DetI % nprocs != proc || DetI < 0) continue;
         CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
         //pout  << hij << endl;
-        if (std::abs(hij) > 1.e-10) {
+        if (std::abs(hij) > schd.thresh_hij) {
           if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;
           connections[DetI/nprocs].push_back(Nminus2ToDetSM[i][k]);
           Helements[DetI/nprocs].push_back(hij);

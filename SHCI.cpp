@@ -240,6 +240,12 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   mpi::broadcast(world, ci, 0);
 #endif
+        pout << "Print HF Determinants" << endl;
+        for (int i=0; i< HFoccupied.size(); i++) {
+          pout << "HF Det " << i << " : "  << Dets[i] << endl;
+        }
+  pout << " schedules, threshold for matrix elements" << endl;
+  pout << schd.thresh_hij << endl;
   vector<double> E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM, false);
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
@@ -284,7 +290,7 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  return 0;
+  
   pout << "### PERFORMING PERTURBATIVE CALCULATION"<<endl;
 
   if (schd.stochastic == true && schd.DoRDM) {
@@ -415,10 +421,13 @@ int main(int argc, char* argv[]) {
       ePT[root] = SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd, coreE, nelec, root);
       ePT[root] += E0[root];
       //pout << "Writing energy "<<E0[root]<<"  to file: "<<efile<<endl;
+    }
+    for (int root=0; root<schd.nroots;root++) {
+      pout << "Wrting energy " << ePT[root] << " to file: " << efile << endl;
       if (commrank == 0) fwrite( &ePT[root], 1, sizeof(double), f);
+      pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f +/- %8.2f (cm^-1)\n") %root %(ePT[root]) %((ePT[root]-ePT[0])*219470) %(schd.targetError*219470.));
     }
     fclose(f);
-
     if (schd.doSOC) {
       for (int j=0; j<E0.size(); j++)
 	      pout << str(boost::format("State: %3d,  E: %17.9f, dE: %10.2f\n")%j %(ePT[j]) %( (ePT[j]-ePT[0])*219470));
@@ -429,7 +438,6 @@ int main(int argc, char* argv[]) {
     world.barrier();
 #endif
     pout << "Error here"<<endl;
-    exit(0);
   }
 
 

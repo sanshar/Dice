@@ -978,12 +978,11 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
-    // Not sure what this part is used for, but I think relativity will not make use of the spin.
-    //if (closed[i]%2 != open[a]%2) {
-    //  double sgn = 1.0;
-    //  d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-    //  integral = int1(open[a], closed[i])*sgn;
-    //}
+    if (closed[i] != open[a]) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
 
     // generate determinant if integral is above the criterion
     if (std::abs(integral) > epsilon ) {
@@ -1014,7 +1013,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (fabs(int2.maxEntry) < epsilon) return;
+  if (std::abs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
@@ -1036,11 +1035,11 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (fabs(integrals[index]) < epsilon) break;
+      if (std::abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
       //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -1063,7 +1062,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
         energy.push_back(E);
 
         // ...
-        if (fabs(integrals[index]) > epsilonLarge) present.push_back(true);
+        if (std::abs(integrals[index]) > epsilonLarge) present.push_back(true);
         else present.push_back(false);
       }
     } // heatbath integrals
