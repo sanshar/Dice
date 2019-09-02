@@ -142,13 +142,15 @@ class twoIntHeatBath {
     //the orbs contain all orbitals used to make the ij pair above
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
-    void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int norbs) {
+    void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int ncore, int nact) {
+      int first_virtual = ncore + nact;
+
       for (int i=0; i<orbs.size(); i++)
         for (int j=0;j<=i;j++) {
 
           std::pair<short,short> IJ=make_pair(i,j);
 
-	  for (int a=0; a<norbs; a++) {
+	  for (int a=ncore; a<first_virtual; a++) {
 	    if (fabs(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j)) > epsilon) 
 	      singleIntegrals[IJ].insert(pair<float, short>(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j), 2*a));
 	    
@@ -158,8 +160,8 @@ class twoIntHeatBath {
 	  
           //sameSpin[IJ]=std::map<double, std::pair<int,int> >();
           //oppositeSpin[IJ]=std::map<double, std::pair<int,int> >();
-          for (int a=0; a<norbs; a++)
-            for (int b=0; b<norbs; b++) {
+          for (int a=ncore; a<first_virtual; a++)
+            for (int b=ncore; b<first_virtual; b++) {
               //opposite spin
               if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
                 oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
@@ -171,11 +173,11 @@ class twoIntHeatBath {
 	    }
 	} // ij
       
-      Singles = MatrixXd::Zero(2*norbs, 2*norbs);
-      for (int i=0; i<2*norbs; i++)
-        for (int a=0; a<2*norbs; a++) {
+      Singles = MatrixXd::Zero(2*nact, 2*nact);
+      for (int i=0; i<2*nact; i++)
+        for (int a=0; a<2*nact; a++) {
           Singles(i,a) = std::abs(I1(i,a));
-          for (int j=0; j<2*norbs; j++) {
+          for (int j=0; j<2*nact; j++) {
             //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
 	    Singles(i,a) += std::abs(I2(i,a,j,j) - I2(i, j, j, a));
           }

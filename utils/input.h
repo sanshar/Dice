@@ -77,6 +77,7 @@ private:
       & nGeneration
       & excitationLevel
       & numActive
+      & nciCore
       & nciAct
       & sDiagShift
       & cgIter
@@ -170,6 +171,7 @@ public:
   //options for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
+  int nciCore; //number of core spatial orbitals
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
   double overlapCutoff; //used in SCCI

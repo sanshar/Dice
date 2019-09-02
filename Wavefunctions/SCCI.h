@@ -75,7 +75,7 @@ class SCCI
     wave.readWave();
 
     // Resize coeffs
-    int numVirt = Determinant::norbs - schd.nciAct;
+    int numVirt = Determinant::norbs - schd.nciCore - schd.nciAct;
     int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
     coeffs = VectorXd::Zero(numCoeffs);
     moEne = VectorXd::Zero(numCoeffs);
@@ -157,14 +157,14 @@ class SCCI
   int coeffsIndex(Walker& walk) {
     int norbs = Determinant::norbs;
     if (walk.excitedOrbs.size() == 2) {
-      int i = *walk.excitedOrbs.begin() - 2*schd.nciAct;
-      int j = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciAct;
+      int i = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+      int j = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
       int I = max(i, j) - 1, J = min(i,j);
-      int numVirt = norbs - schd.nciAct;
+      int numVirt = norbs - schd.nciCore - schd.nciAct;
       return 1 + 2*numVirt + I*(I+1)/2 + J;
     }
     else if (walk.excitedOrbs.size() == 1) {
-      return *walk.excitedOrbs.begin() - 2*schd.nciAct + 1;
+      return *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct + 1;
     }
     else if (walk.excitedOrbs.size() == 0) return 0;
     else return -1;

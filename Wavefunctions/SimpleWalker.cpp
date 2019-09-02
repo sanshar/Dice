@@ -73,8 +73,8 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
 {
   int norbs = Determinant::norbs;
   int I = ex1 / (2 * norbs), A = ex1 % (2 * norbs);
-  if (A >= 2*schd.nciAct) excitedOrbs.insert(A);
-  if (I >= 2*schd.nciAct) excitedOrbs.erase(I);
+  if (A >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.insert(A);
+  if (I >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.erase(I);
   if (I % 2 == 0) {
     updateA(I / 2, A / 2);
   }
@@ -89,8 +89,8 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
   if (ex2 != 0)
   {
     int J = ex2 / (2 * norbs), B = ex2 % (2 * norbs);
-    if (B >= 2*schd.nciAct) excitedOrbs.insert(B);
-    if (J >= 2*schd.nciAct) excitedOrbs.erase(J);
+    if (B >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.insert(B);
+    if (J >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.erase(J);
     
     if (J % 2 == 0)
       updateA(J / 2, B / 2);
