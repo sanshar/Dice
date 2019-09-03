@@ -909,11 +909,13 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   d.getOpenClosed(open, closed);
 
   //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
-  auto ub = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
-  int indAct = distance(open.begin(), ub);
+  auto ub_1 = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
+  int indAct = distance(open.begin(), ub_1);
 
+  auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub_2);
 
-  for (int i = 0; i < closed.size(); i++) {
+  for (int i = indCore; i < closed.size(); i++) {
     for (int a = 0; a < indAct; a++) {
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
@@ -985,12 +987,13 @@ void generateAllScreenedSingleExcitationsCAS(const Determinant& d,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
-  //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
-  //auto ub = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
-  auto ub = upper_bound(open.begin(), open.end(), 2*first_virtual - 1);
-  int indAct = distance(open.begin(), ub);
+  auto ub_1 = upper_bound(open.begin(), open.end(), 2*first_virtual - 1);
+  int indAct = distance(open.begin(), ub_1);
+
+  auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub_2);
   
-  for (int i = 0; i < closed.size(); i++) {
+  for (int i = indCore; i < closed.size(); i++) {
     for (int a = 0; a < indAct; a++) {
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
@@ -1053,9 +1056,12 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
+  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub);
+
   int nclosed = closed.size();
-  for (int i=0; i<nclosed; i++) {
-    for (int j = 0; j<i; j++) {
+  for (int i=indCore; i<nclosed; i++) {
+    for (int j = indCore; j<i; j++) {
       
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;
@@ -1097,11 +1103,12 @@ void generateAllScreenedDoubleExcitationsFOIS(const Determinant& d,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
+  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub);
+
   int nclosed = closed.size();
-  for (int i=0; i<nclosed; i++) {
-    if (closed[i] < 2*schd.nciCore) continue;
-    for (int j = 0; j<i; j++) {
-      if (closed[j] < 2*schd.nciCore) continue;
+  for (int i = indCore; i<nclosed; i++) {
+    for (int j = indCore; j<i; j++) {
       
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;
@@ -1220,10 +1227,13 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
   vector<int> closed;
   vector<int> open;
   d.getOpenClosed(open, closed);
+
+  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub);
+
   int nclosed = closed.size();
-  for (int n=0; n < nclosed-1; n++) {
+  for (int n=indCore; n < nclosed-1; n++) {
     int j = closed[n];
-    if (j < 2*schd.nciCore) continue;
 
     const float *integrals; const short* orbIndices;
     size_t numIntegrals;
@@ -1258,11 +1268,13 @@ void generateAllScreenedDoubleExcitationsCAS(const Determinant& d,
   vector<int> closed;
   vector<int> open;
   d.getOpenClosed(open, closed);
+
+  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub);
+
   int nclosed = closed.size();
-  for (int i=0; i<nclosed; i++) {
-    if (closed[i] < 2*schd.nciCore) continue;
-    for (int j = 0; j<i; j++) {
-      if (closed[j] < 2*schd.nciCore) continue;
+  for (int i = indCore; i<nclosed; i++) {
+    for (int j = indCore; j<i; j++) {
       
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;

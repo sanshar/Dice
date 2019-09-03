@@ -78,7 +78,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     }
 
     //ci and lanczos
-    schd.nciCore = input.get("wavefunction.numCore", -1);
+    schd.nciCore = input.get("wavefunction.numCore", 0);
     schd.nciAct = input.get("wavefunction.numAct", -1);
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;

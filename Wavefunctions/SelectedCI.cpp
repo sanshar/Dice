@@ -37,7 +37,6 @@ void SelectedCI::readWave() {
       det.setoccB(i, true);
     DetsMap[det] = 1.0;
     bestDeterminant = det;
-      
   }
   else
   {
