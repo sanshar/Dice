@@ -204,39 +204,23 @@ void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
 
 double getParityForDiceToAlphaBeta(const Determinant& det);
 
+//---Generate all screened excitations---------------------------
+
+void generateAllScreenedSingleExcitation(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
 void generateAllScreenedDoubleExcitation(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity = false);
 
+//---Generate all screened excitations in the FOIS---------------
+
 void generateAllScreenedDoubleExcitationsFOIS(const Determinant& det,
-                                         const double& screen,
-                                         const double& TINY,
-                                         workingArray& work,
-                                         bool doparity = false);
-
-void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
-                                         const double& screen,
-                                         const double& TINY,
-                                         workingArray& work,
-                                         bool doparity = false);
-
-void generateAllScreenedExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work,
-                                         const int& iExc, const int& jExc);
-
-void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work,
-                                         const int& i);
-
-void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work);
-
-void generateAllScreenedSingleExcitation(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
@@ -249,18 +233,46 @@ void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
-void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
+void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+
+//---Generate all screened excitations into the CAS-------------------
+
+//---From excitation class 0 (the CAS itself) into the CAS------------
+void generateAllScreenedSingleExcitationsCAS_0h0p(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+//---From excitation class 0 (the CAS itself) into the CAS------------
+void generateAllScreenedDoubleExcitationsCAS_0h0p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work);
+
+//---From excitation class 1 (0 holes in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedSingleExcitationsCAS_0h1p(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
                                          const int& i,
                                          bool doparity = false);
 
-void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
+//---From excitation class 1 (0 holes in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedDoubleExcitationsCAS_0h1p(const Determinant& det,
                                          const double& screen,
-                                         const double& TINY,
                                          workingArray& work,
-                                         bool doparity = false);
+                                         const int& i);
+
+//---From excitation class 2 (0 holes in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_0h2p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc);
 
 void comb(int N, int K, vector<vector<int>> &combinations);
 

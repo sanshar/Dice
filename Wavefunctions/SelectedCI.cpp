@@ -216,18 +216,18 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
 
   work.setCounterToZero();
   if (walk.excitedOrbs.size() == 2) {
-    generateAllScreenedExcitationsCAS(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(),
-                                      *std::next(walk.excitedOrbs.begin()));
+    generateAllScreenedExcitationsCAS_0h2p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(),
+                                           *std::next(walk.excitedOrbs.begin()));
   }
   else if (walk.excitedOrbs.size() == 1) {
-    generateAllScreenedSingleExcitationsCAS(walk.d, schd.epsilon, schd.screen,
-                                            work, *walk.excitedOrbs.begin(), false);
-    generateAllScreenedDoubleExcitationsCAS(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin());
+    generateAllScreenedSingleExcitationsCAS_0h1p(walk.d, schd.epsilon, schd.screen,
+                                                 work, *walk.excitedOrbs.begin(), false);
+    generateAllScreenedDoubleExcitationsCAS_0h1p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin());
   }
   else {
-    generateAllScreenedSingleExcitationsCAS(walk.d, schd.epsilon, schd.screen,
-                                            work, false);
-    generateAllScreenedDoubleExcitationsCAS(walk.d, schd.epsilon, work);
+    generateAllScreenedSingleExcitationsCAS_0h0p(walk.d, schd.epsilon, schd.screen,
+                                                 work, false);
+    generateAllScreenedDoubleExcitationsCAS_0h0p(walk.d, schd.epsilon, work);
   }
 
   //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;

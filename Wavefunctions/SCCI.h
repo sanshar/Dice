@@ -69,10 +69,26 @@ class SCCI
   VectorXd largeHamDiag;
   double cumulativeTime; 
 
+  // a list of the excitation classes being considered
+  vector<int> classes_used;
+
 
   SCCI()
   {
     wave.readWave();
+
+    // Find which excitation classes are being considered. The classes are
+    // labelled by integers from 0 to 8, and defined in SimpleWalker.h
+    if (schd.nciCore == 0) {
+      classes_used.push_back(0);
+      classes_used.push_back(1);
+      classes_used.push_back(2);
+    } else {
+      classes_used.push_back(0);
+      classes_used.push_back(1);
+      classes_used.push_back(2);
+      classes_used.push_back(3);
+    }
 
     // Resize coeffs
     int numVirt = Determinant::norbs - schd.nciCore - schd.nciAct;
@@ -240,7 +256,9 @@ class SCCI
       Determinant dcopy = walkCopy.d;
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);
-      if (walkCopy.excitation_class < 0 || walkCopy.excitation_class > 2) continue;
+      //if (walkCopy.excitation_class < 0 || walkCopy.excitation_class > 2) continue;
+      // Is this excitation class being used? If not, then move to the next excitation.
+      if (std::find(classes_used.begin(), classes_used.end(), walkCopy.excitation_class) == classes_used.end()) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
       //if (ex2 == 0) {
       //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 

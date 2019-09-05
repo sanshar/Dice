@@ -48,16 +48,16 @@ public:
 
   // The excitation classes are used in MRCI/MRPT calculations, depending on
   // the type of excitation out of the CAS. They are:
-  // 0: determinant in the CAS
-  // 1: 0 holes in the core, 1 particle in the virtuals
-  // 2: 0 holes in the core, 2 particles in the virtuals
-  // 3: 1 hole in the core
-  // 4: 1 hole in the core, 1 particle in the virtuals
-  // 5: 1 hole in the core, 2 particles in the virtuals
-  // 6: 2 holes in the core
-  // 7: 2 holes in the core, 1 particle in the virtuals
-  // 8: 2 holes in the core, 2 holes in the virtuals
-  // (-1): None of the above (therefore beyond the FOIS)
+  // 0: determinant in the CAS (0h,0p)
+  // 1: 0 holes in the core, 1 partiCle in the virtuals (0h,1p)
+  // 2: 0 holes in the core, 2 particles in the virtuals (0h,2p)
+  // 3: 1 hole in the core (1h,0p)
+  // 4: 1 hole in the core, 1 particle in the virtuals (1h,1p)
+  // 5: 1 hole in the core, 2 particles in the virtuals (1h,2p)
+  // 6: 2 holes in the core (2h,0p)
+  // 7: 2 holes in the core, 1 particle in the virtuals (2h,1p)
+  // 8: 2 holes in the core, 2 holes in the virtuals (2h,2p)
+  // (-1): None of the above (therefore beyond the FOIS) (> 2h and/or > 2p)
   int excitation_class;
 
   // The constructor

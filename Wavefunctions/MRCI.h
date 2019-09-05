@@ -273,17 +273,17 @@ class MRCI
     }
     work.setCounterToZero();
     if (excitedOrbs.size() == 2) {
-      generateAllScreenedExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin(), *std::next(excitedOrbs.begin())); 
+      generateAllScreenedExcitationsCAS_0h2p(m, schd.epsilon, work, *excitedOrbs.begin(), *std::next(excitedOrbs.begin())); 
     }
     else if (excitedOrbs.size() == 1) {
-      generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
-                                          work, *excitedOrbs.begin(), false); 
-      generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work, *excitedOrbs.begin());
+      generateAllScreenedSingleExcitationsCAS_0h1p(m, schd.epsilon, schd.screen,
+                                                   work, *excitedOrbs.begin(), false); 
+      generateAllScreenedDoubleExcitationsCAS_0h1p(m, schd.epsilon, work, *excitedOrbs.begin());
     }
     else {
-      generateAllScreenedSingleExcitationsCAS(m, schd.epsilon, schd.screen,
-                                          work, false);
-      generateAllScreenedDoubleExcitationsCAS(m, schd.epsilon, work);
+      generateAllScreenedSingleExcitationsCAS_0h0p(m, schd.epsilon, schd.screen,
+                                                   work, false);
+      generateAllScreenedDoubleExcitationsCAS_0h0p(m, schd.epsilon, work);
     }
 
     //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;
