@@ -220,14 +220,14 @@ class SCCI
     work.setCounterToZero();
     generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
                                         work, false);
-    if (walk.excitedOrbs.size() == 0) {
-      generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+    //if (walk.excitedOrbs.size() == 0) {
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
                                         work, false);
-    }
-    else {
-      generateAllScreenedDoubleExcitationsFOIS(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
-    }
+    //}
+    //else {
+    //  generateAllScreenedDoubleExcitationsFOIS(walk.d, schd.epsilon, schd.screen,
+    //                                    work, false);
+    //}
    
     //loop over all the screened excitations
     for (int i=0; i<work.nExcitations; i++) {
@@ -240,7 +240,7 @@ class SCCI
       Determinant dcopy = walkCopy.d;
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);
-      if (walkCopy.excitedOrbs.size() > 2) continue;
+      if (walkCopy.excitation_class < 0 || walkCopy.excitation_class > 2) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
       //if (ex2 == 0) {
       //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 

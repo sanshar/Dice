@@ -912,10 +912,10 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   auto ub_1 = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
   int indAct = distance(open.begin(), ub_1);
 
-  auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
-  int indCore = distance(closed.begin(), ub_2);
+  //auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  //int indCore = distance(closed.begin(), ub_2);
 
-  for (int i = indCore; i < closed.size(); i++) {
+  for (int i = 0; i < closed.size(); i++) {
     for (int a = 0; a < indAct; a++) {
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
@@ -1060,8 +1060,8 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
   int indCore = distance(closed.begin(), ub);
 
   int nclosed = closed.size();
-  for (int i=indCore; i<nclosed; i++) {
-    for (int j = indCore; j<i; j++) {
+  for (int i = 0; i<nclosed; i++) {
+    for (int j = 0; j<i; j++) {
       
       const float *integrals; const short* orbIndices;
       size_t numIntegrals;

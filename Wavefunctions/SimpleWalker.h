@@ -41,9 +41,24 @@ class SimpleWalker
 {
 
 public:
-  Determinant d;                      //The current determinant
-  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
+  Determinant d;                       //The current determinant
+  unordered_set<int> excitedHoles;     //spin orbital indices of excited holes in core orbitals in d
+  unordered_set<int> excitedOrbs;      //spin orbital indices of excited electrons in virtual orbitals in d
   std::array<VectorXd, 2> energyIntermediates; 
+
+  // The excitation classes are used in MRCI/MRPT calculations, depending on
+  // the type of excitation out of the CAS. They are:
+  // 0: determinant in the CAS
+  // 1: 0 holes in the core, 1 particle in the virtuals
+  // 2: 0 holes in the core, 2 particles in the virtuals
+  // 3: 1 hole in the core
+  // 4: 1 hole in the core, 1 particle in the virtuals
+  // 5: 1 hole in the core, 2 particles in the virtuals
+  // 6: 2 holes in the core
+  // 7: 2 holes in the core, 1 particle in the virtuals
+  // 8: 2 holes in the core, 2 holes in the virtuals
+  // (-1): None of the above (therefore beyond the FOIS)
+  int excitation_class;
 
   // The constructor
   SimpleWalker(Determinant &pd) : d(pd) {};
@@ -83,9 +98,10 @@ public:
 
   friend ostream& operator<<(ostream& os, const SimpleWalker& w) {
     os << w.d << endl;
-    //os << "excited Orbs   " << w.excitedOrbs << endl;
     os << "excitedOrbs   ";
     copy(w.excitedOrbs.begin(), w.excitedOrbs.end(), ostream_iterator<int>(os, " "));
+    os << "excitedHoles   ";
+    copy(w.excitedHoles.begin(), w.excitedHoles.end(), ostream_iterator<int>(os, " "));
     os << "energyIntermediates\n";
     os << "up\n";
     os << w.energyIntermediates[0] << endl;
