@@ -26,6 +26,8 @@
 #include <utility>
 #include "iowrapper.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/serialization/complex.hpp>
+#include <boost/serialization/vector.hpp>
 
 using namespace std;
 using namespace Eigen;
@@ -42,8 +44,6 @@ class compAbs {
     bool operator()(const float& a, const float& b) const { return fabs(a) < fabs(b); }
     bool operator()(const complex<double>& a, const complex<double>& b) const { return std::abs(a) < std::abs(b); }
 };
-
-
 
 class oneInt {
   private:
@@ -127,11 +127,11 @@ class twoIntHeatBath {
     //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
     //std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > oppositeSpin;
     MatrixXd Singles;
- 
+
     double epsilon;
     double zero ;
     twoIntHeatBath(double epsilon_) :zero(0.0),epsilon(fabs(epsilon_)) {}
- 
+
     //the orbs contain all orbitals used to make the ij pair above
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
@@ -177,8 +177,6 @@ class twoIntHeatBath {
     } // end constructClass
 };
 
-
-
 class twoIntHeatBathSHM {
   public:
     //float* sameSpinIntegrals;
@@ -192,10 +190,10 @@ class twoIntHeatBathSHM {
     short* pairs;
     double* singleExcitation;
     MatrixXd Singles;
- 
+
     double epsilon;
     twoIntHeatBathSHM(double epsilon_) : epsilon(fabs(epsilon_)) {}
- 
+
     void constructClass(int norbs, twoIntHeatBath& I2) ;
 };
 

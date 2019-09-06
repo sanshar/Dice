@@ -16,18 +16,22 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
+#include "boost/format.hpp"
 #include "integral.h"
-#include "string.h"
+#include <fstream>
+#include "math.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/serialization/vector.hpp>
+#include "string.h"
 #include <algorithm>
 #include <iomanip>
 #include "math.h"
 #include "boost/format.hpp"
 #include <fstream>
 #ifndef SERIAL
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/environment.hpp>
 #endif
 #include "communicate.h"
 #include "global.h"
@@ -41,35 +45,36 @@ bool myfn(CItype i, CItype j) { return std::abs(i) < std::abs(j); }
 #endif
 
 //=============================================================================
-void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norbs, double& coreE, std::vector<int>& irrep) {
+void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
+                   int &norbs, double &coreE, std::vector<int> &irrep) {
 //-----------------------------------------------------------------------------
-    /*!
-    Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
+  /*!
+  Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
 
-    :Inputs:
+  :Inputs:
 
-        string fcidump:
-            Name of the FCIDUMP file
-        twoInt& I2:
-            Two-electron tensor of the Hamiltonian (output)
-        oneInt& I1:
-            One-electron tensor of the Hamiltonian (output)
-        int& nelec:
-            Number of electrons (output)
-        int& norbs:
-            Number of orbitals (output)
-        double& coreE:
-            The core energy (output)
-        std::vector<int>& irrep:
-            Irrep of the orbitals (output)
-    */
+      string fcidump:
+          Name of the FCIDUMP file
+      twoInt& I2:
+          Two-electron tensor of the Hamiltonian (output)
+      oneInt& I1:
+          One-electron tensor of the Hamiltonian (output)
+      int& nelec:
+          Number of electrons (output)
+      int& norbs:
+          Number of orbitals (output)
+      double& coreE:
+          The core energy (output)
+      std::vector<int>& irrep:
+          Irrep of the orbitals (output)
+  */
 //-----------------------------------------------------------------------------
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
   ifstream dump(fcidump.c_str());
   if (!dump.good()) {
-    pout << "Integral file "<<fcidump<<" does not exist!"<<endl;
+    pout << "Integral file " << fcidump << " does not exist!" << endl;
     exit(0);
   }
 
@@ -82,25 +87,26 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     int index = 0;
     vector<string> tok;
     string msg;
-    while(!dump.eof()) {
+    while (!dump.eof()) {
       std::getline(dump, msg);
       trim(msg);
       boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 
-      if (startScaling == false && tok.size() == 1 && (boost::iequals(tok[0],"&END") || boost::iequals(tok[0], "/"))) {
+      if (startScaling == false && tok.size() == 1 &&
+          (boost::iequals(tok[0], "&END") || boost::iequals(tok[0], "/"))) {
         startScaling = true;
         index += 1;
         break;
-      } else if(startScaling == false) {
-        if (boost::iequals(tok[0].substr(0,4),"&FCI")) {
-          if (boost::iequals(tok[1].substr(0,4), "NORB"))
+      } else if (startScaling == false) {
+        if (boost::iequals(tok[0].substr(0, 4), "&FCI")) {
+          if (boost::iequals(tok[1].substr(0, 4), "NORB"))
             norbs = atoi(tok[2].c_str());
-          if (boost::iequals(tok[3].substr(0,5), "NELEC"))
+          if (boost::iequals(tok[3].substr(0, 5), "NELEC"))
             nelec = atoi(tok[4].c_str());
         } 
-        else if (boost::iequals(tok[0].substr(0,4),"ISYM")) continue;
-        else if (boost::iequals(tok[0].substr(0,4),"KSYM")) I2.ksym = true;
-        else if (boost::iequals(tok[0].substr(0,6),"ORBSYM")) {
+        else if (boost::iequals(tok[0].substr(0, 4), "ISYM")) continue;
+        else if (boost::iequals(tok[0].substr(0, 4), "KSYM")) I2.ksym = true;
+        else if (boost::iequals(tok[0].substr(0, 6), "ORBSYM")) {
           for (int i=1;i<tok.size(); i++)
             irrep.push_back(atoi(tok[i].c_str()));
         } 
@@ -114,7 +120,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
     } // while
 
     if (norbs == -1 || nelec == -1) {
-      std::cout << "could not read the norbs or nelec"<<std::endl;
+      std::cout << "could not read the norbs or nelec" << std::endl;
       exit(0);
     }
     irrep.resize(norbs);
@@ -127,10 +133,9 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
   
   //long npair = norbs*(norbs+1)/2;
-  //size_t I2memory = npair*(npair+1)/2; //memory in bytes
-  long npair = norbs*norbs;
+  long npair = norbs * norbs;
   I2.norbs = norbs;
-  size_t I2memory = npair*(npair+1)/2;
+  size_t I2memory = npair * (npair + 1) / 2; // memory in bytes
 #ifndef SERIAL
   world.barrier();
 #endif
@@ -200,7 +205,7 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 
     /*vector<string> tok;
     string msg;
-    while(!dump.eof()) {
+    while (!dump.eof()) {
       std::getline(dump, msg);
       trim(msg);
       boost::split(tok, msg, is_any_of(", \t()"), token_compress_on);
@@ -239,8 +244,9 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
   mpi::broadcast(world, I1, 0);
 
   long intdim = I2memory;
-  long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
+  long maxint =
+      26843540; // mpi cannot transfer more than these number of doubles
+  long maxIter = intdim / maxint;
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
@@ -260,21 +266,19 @@ void readIntegrals(string fcidump, twoInt& I2, oneInt& I1, int& nelec, int& norb
 #endif
 } // end readIntegrals
 
-
-
 //=============================================================================
-void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
-//-----------------------------------------------------------------------------
-    /*!
-    BM_description
+void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
+  //-----------------------------------------------------------------------------
+  /*!
+  BM_description
 
-    :Inputs:
+  :Inputs:
 
-        int norbs:
-            Number of orbitals
-        twoIntHeatBath& I2:
-            Two-electron tensor of the Hamiltonian (output)
-    */
+      int norbs:
+          Number of orbitals
+      twoIntHeatBath& I2:
+          Two-electron tensor of the Hamiltonian (output)
+  */
 //-----------------------------------------------------------------------------
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -283,10 +287,12 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   Singles = I2.Singles;
   if (commrank != 0) Singles.resize(norbs, norbs);
 #ifndef SERIAL
-  MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+  // MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(),
+  // MPI_DOUBLE, 0);
+  mpi::broadcast(world, &Singles(0, 0), Singles.rows() * Singles.cols(), 0);
 #endif
 
-  I2.Singles.resize(0,0);
+  I2.Singles.resize(0, 0);
   size_t memRequired = 0;
   size_t nonZeroIntegrals = 0;
   //size_t nonZeroSameSpinIntegrals = 0;
@@ -314,7 +320,8 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
 #endif
 
   int2SHMSegment.truncate(memRequired);
-  regionInt2SHM = boost::interprocess::mapped_region{int2SHMSegment, boost::interprocess::read_write};
+  regionInt2SHM = boost::interprocess::mapped_region{
+      int2SHMSegment, boost::interprocess::read_write};
   memset(regionInt2SHM.get_address(), 0., memRequired);
 
 #ifndef SERIAL
@@ -395,250 +402,282 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2) {
   } // commrank=0
 
   long intdim = memRequired;
-  long  maxint = 26843540; //mpi cannot transfer more than these number of doubles
-  long maxIter = intdim/maxint;
+  long maxint =
+      26843540; // mpi cannot transfer more than these number of doubles
+  long maxIter = intdim / maxint;
 #ifndef SERIAL
   world.barrier();
-  char* shrdMem = static_cast<char*>(startAddress);
-  for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+  char *shrdMem = static_cast<char *>(startAddress);
+  for (int i = 0; i < maxIter; i++) {
+    // MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    mpi::broadcast(world, shrdMem + i * maxint, maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
+  // MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired -
+  // maxIter*maxint, MPI_CHAR, 0);
+  mpi::broadcast(world, shrdMem + (maxIter)*maxint,
+                 memRequired - maxIter * maxint, 0);
   world.barrier();
 #endif
 } // end twoIntHeatBathSHM::constructClass
 
-
-
 #ifdef Complex
 //=============================================================================
-void readSOCIntegrals(oneInt& I1, int norbs, string fileprefix) {
-//-----------------------------------------------------------------------------
-    /*!
-    Read SOC integrals from files, to be put in "I1"
+void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
+  //-----------------------------------------------------------------------------
+  /*!
+  Read SOC integrals from files, to be put in "I1"
 
-    :Inputs:
+  :Inputs:
 
-        oneInt& I1:
-            One-electron tensor of the Hamiltonian (output)
-        int norbs:
-            Number of orbitals
-        string fileprefix:
-            Basename of the SOC integral files
-    */
-//-----------------------------------------------------------------------------
+      oneInt& I1:
+          One-electron tensor of the Hamiltonian (output)
+      int norbs:
+          Number of orbitals
+      string fileprefix:
+          Basename of the SOC integral files
+  */
+  //-----------------------------------------------------------------------------
   if (commrank == 0) {
     vector<string> tok;
     string msg;
 
-    //Read SOC.X
+    // Read SOC.X
     {
       ifstream dump(str(boost::format("%s.X") % fileprefix));
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.X should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.X should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[1].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[1].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        //I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,integral/2.);  //alpha beta
-        //I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,integral/2.);  //beta alpha
-        I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,-integral/2.);  //alpha beta
-        I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(0,-integral/2.);  //beta alpha
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,integral/2.);
+        // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
+        // std::complex<double>(0,integral/2.);  //beta alpha
+        I1(2 * (a - 1), 2 * (b - 1) + 1) +=
+            std::complex<double>(0, -integral / 2.); // alpha beta
+        I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
+            std::complex<double>(0, -integral / 2.); // beta alpha
       }
     }
 
-    //Read SOC.Y
+    // Read SOC.Y
     {
       ifstream dump(str(boost::format("%s.Y") % fileprefix));
-      //ifstream dump("SOC.Y");
+      // ifstream dump("SOC.Y");
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.Y should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.Y should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[2].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[2].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(integral/2.,0);  //alpha beta
-        I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(-integral/2.,0);  //beta alpha
-        //I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);  //alpha beta
-        //I1(2*(a-1)+1, 2*(b-1)) += std::complex<double>(integral/2.,0);  //beta alpha
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        I1(2 * (a - 1), 2 * (b - 1) + 1) +=
+            std::complex<double>(integral / 2., 0); // alpha beta
+        I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
+            std::complex<double>(-integral / 2., 0); // beta alpha
+        // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);
+        // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
+        // std::complex<double>(integral/2.,0);  //beta alpha
       }
     }
 
-    //Read SOC.Z
+    // Read SOC.Z
     {
       ifstream dump(str(boost::format("%s.Z") % fileprefix));
-      //ifstream dump("SOC.Z");
+      // ifstream dump("SOC.Z");
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.Z should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.Z should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[3].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[3].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,integral/2); //alpha, alpha
-        I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,-integral/2); //beta, beta
-        //I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha, alpha
-        //I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2); //beta, beta
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        I1(2 * (a - 1), 2 * (b - 1)) +=
+            std::complex<double>(0, integral / 2); // alpha, alpha
+        I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
+            std::complex<double>(0, -integral / 2); // beta, beta
+        // I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha,
+        // alpha I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2);
+        // //beta, beta
       }
     }
   } // commrank=0
 } // end readSOCIntegrals
 #endif
 
-
-
 #ifdef Complex
 //=============================================================================
-void readGTensorIntegrals(vector<oneInt>& I1, int norbs, string fileprefix) {
-//-----------------------------------------------------------------------------
-    /*!
-    Read GTensor integrals from files, to be put in "I1"
+void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
+  //-----------------------------------------------------------------------------
+  /*!
+  Read GTensor integrals from files, to be put in "I1"
 
-    :Inputs:
+  :Inputs:
 
-        vector<oneInt>& I1:
-            One-electron tensor of the Hamiltonian (output)
-        int norbs
-            Number of orbitals
-        string fileprefix
-            Basename of the SOC integral files
-    */
-//-----------------------------------------------------------------------------
+      vector<oneInt>& I1:
+          One-electron tensor of the Hamiltonian (output)
+      int norbs
+          Number of orbitals
+      string fileprefix
+          Basename of the SOC integral files
+  */
+  //-----------------------------------------------------------------------------
   if (commrank == 0) {
     vector<string> tok;
     string msg;
 
-    //Read GTensor.X
+    // Read GTensor.X
     {
       ifstream dump(str(boost::format("%s.X") % fileprefix));
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.X should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.X should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[1].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[1].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        I1[0](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
-        I1[0](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        I1[0](2 * (a - 1), 2 * (b - 1)) +=
+            std::complex<double>(0, integral); // alpha alpha
+        I1[0](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
+            std::complex<double>(0, integral); // beta beta
       }
     }
 
-    //Read SOC.Y
+    // Read SOC.Y
     {
       ifstream dump(str(boost::format("%s.Y") % fileprefix));
-      //ifstream dump("SOC.Y");
+      // ifstream dump("SOC.Y");
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.Y should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.Y should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[2].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[2].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        I1[1](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
-        I1[1](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        I1[1](2 * (a - 1), 2 * (b - 1)) +=
+            std::complex<double>(0, integral); // alpha alpha
+        I1[1](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
+            std::complex<double>(0, integral); // beta beta
       }
     }
 
-    //Read SOC.Z
+    // Read SOC.Z
     {
       ifstream dump(str(boost::format("%s.Z") % fileprefix));
-      //ifstream dump("SOC.Z");
+      // ifstream dump("SOC.Z");
       int N;
       dump >> N;
-      if (N != norbs/2) {
-        cout << "number of orbitals in SOC.Z should be equal to norbs in the input file."<<endl;
-        cout << N <<" != "<<norbs<<endl;
+      if (N != norbs / 2) {
+        cout << "number of orbitals in SOC.Z should be equal to norbs in the "
+                "input file."
+             << endl;
+        cout << N << " != " << norbs << endl;
         exit(0);
       }
 
-      //I1soc[3].store.resize(N*(N+1)/2, 0.0);
-      while(!dump.eof()) {
+      // I1soc[3].store.resize(N*(N+1)/2, 0.0);
+      while (!dump.eof()) {
         std::getline(dump, msg);
         trim(msg);
         boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
-        if (tok.size() != 3) continue;
+        if (tok.size() != 3)
+          continue;
 
         double integral = atof(tok[0].c_str());
-        int a=atoi(tok[1].c_str()), b=atoi(tok[2].c_str());
-        I1[2](2*(a-1), 2*(b-1)) += std::complex<double>(0, integral);  //alpha alpha
-        I1[2](2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0, integral);  //beta beta
+        int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
+        I1[2](2 * (a - 1), 2 * (b - 1)) +=
+            std::complex<double>(0, integral); // alpha alpha
+        I1[2](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
+            std::complex<double>(0, integral); // beta beta
       }
     }
   } // commrank=0
 } // end readGTensorIntegrals
 #endif
 
-
-
 //=============================================================================
 int readNorbs(string fcidump) {
-//-----------------------------------------------------------------------------
-    /*!
-    Finds the number of orbitals in the FCIDUMP file
+  //-----------------------------------------------------------------------------
+  /*!
+  Finds the number of orbitals in the FCIDUMP file
 
-    :Inputs:
+  :Inputs:
 
-        string fcidump:
-            Name of the FCIDUMP file
+      string fcidump:
+          Name of the FCIDUMP file
 
-    :Returns:
+  :Returns:
 
-        int norbs:
-            Number of orbitals in the FCIDUMP file
-    */
+      int norbs:
+          Number of orbitals in the FCIDUMP file
+  */
 //-----------------------------------------------------------------------------
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -653,8 +692,8 @@ int readNorbs(string fcidump) {
     trim(msg);
     boost::split(tok, msg, is_any_of(", \t="), token_compress_on);
 
-    if (boost::iequals(tok[0].substr(0,4),"&FCI"))
-      if (boost::iequals(tok[1].substr(0,4), "NORB"))
+    if (boost::iequals(tok[0].substr(0, 4), "&FCI"))
+      if (boost::iequals(tok[1].substr(0, 4), "NORB"))
         norbs = atoi(tok[2].c_str());
   }
 #ifndef SERIAL
@@ -662,6 +701,3 @@ int readNorbs(string fcidump) {
 #endif
   return norbs;
 } // end readNorbs
-
-
-

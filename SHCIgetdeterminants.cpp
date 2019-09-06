@@ -100,11 +100,11 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
-    if (closed[i] != open[a]) {
+    /*if (closed[i] != open[a]) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
       integral = int1(open[a], closed[i])*sgn;
-    }
+    }*/
 
     // generate determinant if integral is above the criterion
     if (std::abs(integral) > epsilon ) {
@@ -266,7 +266,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (abs(int2.maxEntry) < epsilon) return;
+  if (std::abs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
@@ -676,15 +676,17 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
-      //if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
-      if (schd.enforceSenioExc){
-        if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
-              di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
-      } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
-        continue;
-      } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
-        continue;
-      }
+      ////if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+      //if (schd.enforceSenioExc){
+      //  if (di.ExcitationDistance(schd.HF) > schd.maxExcitation &&
+      //      di.numUnpairedElectrons()      > schd.maxSeniority){
+      //    continue;
+      //  } 
+      //} else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+      //  continue;
+      //} else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+      //  continue;
+      //}
 
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di)) dets.push_back(di);
 #ifdef Complex
@@ -734,15 +736,15 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
 
-        //if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
-        if (schd.enforceSenioExc){
-          if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
-                di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
-        } else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
-          continue;
-        } else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
-          continue;
-        }
+        ////if (schd.enforceSeniority && di.numUnpairedElectrons() > schd.maxSeniority) continue;
+        //if (schd.enforceSenioExc){
+        //  if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
+        //        di.numUnpairedElectrons()      <= schd.maxSeniority)) continue;
+        //} else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) > schd.maxExcitation){
+        //  continue;
+        //} else if (schd.enforceSeniority  && di.numUnpairedElectrons()      > schd.maxSeniority) {
+        //  continue;
+        //}
 
         if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di)) dets.push_back(di);
 #ifdef Complex
@@ -978,11 +980,12 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
-    if (closed[i] != open[a]) {
-      double sgn = 1.0;
-      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-      integral = int1(open[a], closed[i])*sgn;
-    }
+    // Not sure what this part is used for, but I think relativity will not make use of the spin.
+    //if (closed[i]%2 != open[a]%2) {
+    //  double sgn = 1.0;
+    //  d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+    //  integral = int1(open[a], closed[i])*sgn;
+    //}
 
     // generate determinant if integral is above the criterion
     if (std::abs(integral) > epsilon ) {
