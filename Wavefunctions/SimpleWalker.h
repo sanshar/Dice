@@ -61,10 +61,10 @@ public:
   int excitation_class;
 
   // The constructor
-  SimpleWalker(Determinant &pd) : d(pd) {};
-  SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd) {};
-  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs) {};
-  SimpleWalker(){};
+  SimpleWalker(Determinant &pd) : d(pd), excitation_class(0) {};
+  SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd), excitation_class(0) {};
+  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs), excitation_class(w.excitation_class) {};
+  SimpleWalker() : excitation_class(0) {};
 
   Determinant getDet() { return d; }
 
@@ -85,6 +85,8 @@ public:
   void updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool updateIntermediate = true);
   
   void exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs);
+
+  void getExcitationClass();
   
   bool operator<(const SimpleWalker &w) const
   {

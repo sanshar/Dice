@@ -70,7 +70,13 @@ class SCCI
   double cumulativeTime; 
 
   // a list of the excitation classes being considered
-  vector<int> classes_used;
+  vector<int> classesUsed;
+  // the total number of excitation classes (including the CAS itself, labelled as 0)
+  static const int NUM_EXCIT_CLASSES = 9;
+  // the number of coefficients in each excitation class
+  int numCoeffsPerClass[NUM_EXCIT_CLASSES];
+  // the cumulative sum of numCoeffsPerClass
+  int cumNumCoeffs[NUM_EXCIT_CLASSES];
 
 
   SCCI()
@@ -80,39 +86,69 @@ class SCCI
     // Find which excitation classes are being considered. The classes are
     // labelled by integers from 0 to 8, and defined in SimpleWalker.h
     if (schd.nciCore == 0) {
-      classes_used.push_back(0);
-      classes_used.push_back(1);
-      classes_used.push_back(2);
+      classesUsed.push_back(0);
+      classesUsed.push_back(1);
+      classesUsed.push_back(2);
     } else {
-      classes_used.push_back(0);
-      classes_used.push_back(1);
-      classes_used.push_back(2);
-      classes_used.push_back(3);
+      // Excitation classes to be added here as they are implemented
+      classesUsed.push_back(0);
+      classesUsed.push_back(1);
+      classesUsed.push_back(2);
+      //classesUsed.push_back(3);
+    }
+
+    int numCore = schd.nciCore;
+    int numVirt = Determinant::norbs - schd.nciCore - schd.nciAct;
+
+    // The number of coefficients in each excitation class:
+    // 0 holes, 0 particles:
+    numCoeffsPerClass[0] = 1;
+    // 0 holes, 1 particle:
+    numCoeffsPerClass[1] = 2*numVirt;
+    // 0 holes, 2 particles:
+    numCoeffsPerClass[2] = 2*numVirt * (2*numVirt - 1) / 2;
+    // 1 hole, 0 particles:
+    numCoeffsPerClass[3] = 2*numCore;
+    // 1 hole, 1 particle:
+    numCoeffsPerClass[4] = (2*numCore) * (2*numVirt);
+    // 1 hole, 2 particle:
+    numCoeffsPerClass[5] = (2*numCore) * (2*numVirt * (2*numVirt - 1) / 2);
+    // 2 hole, 0 particles:
+    numCoeffsPerClass[6] = 2*numCore * (2*numCore - 1) / 2;
+    // 2 hole, 1 particle:
+    numCoeffsPerClass[7] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt);
+    // 2 hole, 2 particles:
+    numCoeffsPerClass[8] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt * (2*numVirt - 1) / 2);
+
+    cumNumCoeffs[0] = 0;
+    for (int i = 1; i < 9; i++)
+    {
+      cumNumCoeffs[i] = cumNumCoeffs[i-1] + numCoeffsPerClass[i-1];
+    }
+
+    int numCoeffs = 0;
+    for (int i = 0; i < 9; i++)
+    {
+      // The total number of coefficients. Only include a class if that
+      // class is being used.
+      if (std::find(classesUsed.begin(), classesUsed.end(), i) != classesUsed.end()) numCoeffs += numCoeffsPerClass[i];
     }
 
     // Resize coeffs
-    int numVirt = Determinant::norbs - schd.nciCore - schd.nciAct;
-    int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
     coeffs = VectorXd::Zero(numCoeffs);
     moEne = VectorXd::Zero(numCoeffs);
 
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
-    if (commrank == 0) {
-      // Use a constant amplitude for each contracted state except
-      // the CASCI wave function.
-      double amp = -std::min(0.5, 20.0/std::sqrt(numCoeffs));
+    // Use a constant amplitude for each contracted state except
+    // the CASCI wave function.
+    double amp = -std::min(0.5, 20.0/std::sqrt(numCoeffs));
 
-      coeffs(0) = 1.0;
-      for (int i=1; i < numCoeffs; i++) {
-        coeffs(i) = amp;
-      }
+    coeffs(0) = 1.0;
+    for (int i=1; i < numCoeffs; i++) {
+      coeffs(i) = amp;
     }
 
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-    
     char file[5000];
     sprintf(file, "ciCoeffs.txt");
     ifstream ofile(file);
@@ -172,17 +208,20 @@ class SCCI
   template<typename Walker>
   int coeffsIndex(Walker& walk) {
     int norbs = Determinant::norbs;
-    if (walk.excitedOrbs.size() == 2) {
+
+    if (walk.excitation_class == 0) {
+      return 0;
+    }
+    else if (walk.excitation_class == 1) {
+      return cumNumCoeffs[1] + *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+    }
+    else if (walk.excitation_class == 2) {
       int i = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
       int j = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
       int I = max(i, j) - 1, J = min(i,j);
       int numVirt = norbs - schd.nciCore - schd.nciAct;
-      return 1 + 2*numVirt + I*(I+1)/2 + J;
+      return cumNumCoeffs[2] + I*(I+1)/2 + J;
     }
-    else if (walk.excitedOrbs.size() == 1) {
-      return *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct + 1;
-    }
-    else if (walk.excitedOrbs.size() == 0) return 0;
     else return -1;
   }
   
@@ -258,7 +297,7 @@ class SCCI
                             work.excitation1[i], work.excitation2[i], false);
       //if (walkCopy.excitation_class < 0 || walkCopy.excitation_class > 2) continue;
       // Is this excitation class being used? If not, then move to the next excitation.
-      if (std::find(classes_used.begin(), classes_used.end(), walkCopy.excitation_class) == classes_used.end()) continue;
+      if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
       parity *= dcopy.parity(A/2, I/2, I%2);
       //if (ex2 == 0) {
       //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 

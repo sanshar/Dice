@@ -102,6 +102,7 @@ void SelectedCI::initWalker(SimpleWalker &walk) {
     if (walk.d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (walk.d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
   }
+  walk.getExcitationClass();
   
   //vector<int> open;
   //vector<int> closed;
@@ -125,6 +126,7 @@ void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
     if (d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
   }
+  walk.getExcitationClass();
  
   //vector<int> open;
   //vector<int> closed;
@@ -215,19 +217,22 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
   else ham = 0.;//ham = ovlp * walk.d.Energy(I1, I2, coreE); 
 
   work.setCounterToZero();
-  if (walk.excitedOrbs.size() == 2) {
-    generateAllScreenedExcitationsCAS_0h2p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(),
-                                           *std::next(walk.excitedOrbs.begin()));
+
+  //cout << "ex class: " << walk.excitation_class << endl;
+
+  if (walk.excitation_class == 0) {
+    generateAllScreenedSingleExcitationsCAS_0h0p(walk.d, schd.epsilon, schd.screen,
+                                                 work, false);
+    generateAllScreenedDoubleExcitationsCAS_0h0p(walk.d, schd.epsilon, work);
   }
-  else if (walk.excitedOrbs.size() == 1) {
+  else if (walk.excitation_class == 1) {
     generateAllScreenedSingleExcitationsCAS_0h1p(walk.d, schd.epsilon, schd.screen,
                                                  work, *walk.excitedOrbs.begin(), false);
     generateAllScreenedDoubleExcitationsCAS_0h1p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin());
   }
-  else {
-    generateAllScreenedSingleExcitationsCAS_0h0p(walk.d, schd.epsilon, schd.screen,
-                                                 work, false);
-    generateAllScreenedDoubleExcitationsCAS_0h0p(walk.d, schd.epsilon, work);
+  else if (walk.excitation_class == 2) {
+    generateAllScreenedExcitationsCAS_0h2p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(),
+                                           *std::next(walk.excitedOrbs.begin()));
   }
 
   //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;

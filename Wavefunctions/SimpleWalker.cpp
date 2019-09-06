@@ -110,6 +110,34 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
     //}
   }
 
+  getExcitationClass();
+}
+
+//not implemented for SimpleWalker
+void SimpleWalker::exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs)
+{
+  int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
+
+  if (I1 % 2 == 0) {
+    updateA(I1 / 2, A1 / 2);
+  }
+  else {
+    updateB(I1 / 2, A1 / 2);
+  }
+
+  if (excite2 != 0)
+  {
+    int I2 = excite2 / (2 * norbs), A2 = excite2 % (2 * norbs);
+
+    if (I2 % 2 == 0)
+      updateA(I2 / 2, A2 / 2);
+    else
+      updateB(I2 / 2, A2 / 2);
+  }
+}
+
+void SimpleWalker::getExcitationClass()
+{
   // Find the excitation class
   if (excitedHoles.size() == 0) {
     // 0 core orbitals
@@ -151,29 +179,4 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
   } else {
     excitation_class = -1;
   }
-
 }
-
-//not implemented for SimpleWalker
-void SimpleWalker::exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs)
-{
-  int I1 = excite1 / (2 * norbs), A1 = excite1 % (2 * norbs);
-
-  if (I1 % 2 == 0) {
-    updateA(I1 / 2, A1 / 2);
-  }
-  else {
-    updateB(I1 / 2, A1 / 2);
-  }
-  
-  if (excite2 != 0)
-  {
-    int I2 = excite2 / (2 * norbs), A2 = excite2 % (2 * norbs);
-    
-    if (I2 % 2 == 0)
-      updateA(I2 / 2, A2 / 2);
-    else
-      updateB(I2 / 2, A2 / 2);
-  }
-}
-
