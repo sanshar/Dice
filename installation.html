@@ -17,34 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Getting Started" href="gettingstarted.html" />
     <link rel="prev" title="Overview" href="overview.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -87,7 +90,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#source-code">Source Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#connecting-module-for-pyscf">Connecting Module for PySCF</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#compile">Compile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-dice">Building Dice</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing">Testing</a></li>
 </ul>
 </li>
@@ -164,30 +168,60 @@
 <div class="section" id="source-code">
 <h2>Source Code<a class="headerlink" href="#source-code" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Download the latest stable version of Dice (1.0): <a class="reference download internal" href="_downloads/dice_1_0.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_1_0.tar.gz</span></code></a></li>
-<li>Download Dice from July, 2018: <a class="reference download internal" href="_downloads/dice_N_0.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_N_0.tar.gz</span></code></a></li>
-<li>Download Dice from July, 2017 (0.9): <a class="reference download internal" href="_downloads/dice_0_9.tar.gz" download=""><code class="xref download docutils literal notranslate"><span class="pre">dice_0_9.tar.gz</span></code></a></li>
+<li><p>Download the latest stable version of Dice (1.0): <a class="reference download internal" download="" href="_downloads/af9728865b79d2a392bd2cf207485ba2/dice_1_0.tar.gz"><code class="xref download docutils literal notranslate"><span class="pre">dice_1_0.tar.gz</span></code></a></p></li>
+<li><p>Download Dice from July, 2017 (0.9): <a class="reference download internal" download="" href="_downloads/5ddda5ba443d9e159266c2ed0d06be5d/dice_0_9.tar.gz"><code class="xref download docutils literal notranslate"><span class="pre">dice_0_9.tar.gz</span></code></a></p></li>
 </ul>
 </div>
 <div class="section" id="connecting-module-for-pyscf">
 <h2>Connecting Module for PySCF<a class="headerlink" href="#connecting-module-for-pyscf" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Available with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> package.</li>
+<li><p>Available with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> package.</p></li>
 </ul>
 </div>
-<div class="section" id="compile">
-<h2>Compile<a class="headerlink" href="#compile" title="Permalink to this headline">¶</a></h2>
-<p>Dice requires <a class="reference external" href="http://www.boost.org/">Boost</a> and <a class="reference external" href="http://eigen.tuxfamily.org/dox/">Eigen</a> libraries. When compiling the Boost library make sure that you use the same compiler as you do for Dice. Eigen consists of header files and does not have to be compiled. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.</p>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>GNU g++ 4.8 or newer required.</li>
-<li>Intel icpc 14.0.1 or newer required.</li>
+<li><p>GNU g++ 4.8 or newer required.</p></li>
+<li><p>Intel icpc 14.0.1 or newer required.</p></li>
+<li><p><a class="reference external" href="http://eigen.tuxfamily.org/dox/">Eigen</a></p></li>
+<li><p><a class="reference external" href="http://www.boost.org/">Boost</a> 1.57.0 or newer required.</p></li>
 </ul>
-<p>Before you can compile Dice you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:</p>
+<p>The Eigen library is header only, so no compiling is required. When compiling the Boost library make sure that you use the same compiler as you do for Dice. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.</p>
+<p>To install boost:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wget</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">dl</span><span class="o">.</span><span class="n">bintray</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">boostorg</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mf">1.70</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="n">source</span><span class="o">/</span><span class="n">boost_1_70_0</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">tar</span> <span class="o">-</span><span class="n">xzvf</span> <span class="n">boost_1_70_0</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">cd</span> <span class="n">boost_1_70_0</span>
+<span class="o">./</span><span class="n">bootstrap</span><span class="o">.</span><span class="n">sh</span> <span class="o">--</span><span class="k">with</span><span class="o">-</span><span class="n">libraries</span><span class="o">=</span><span class="n">serialization</span><span class="p">,</span><span class="n">mpi</span>
+</pre></div>
+</div>
+<p>Take a look in your <code class="code docutils literal notranslate"><span class="pre">project-config.jam</span></code> file and make sure that the compiler configuration section is pointing to the desired compiler. That at the end of the file, on a new line, add <code class="code docutils literal notranslate"><span class="pre">using</span> <span class="pre">mpi</span> <span class="pre">:</span> <span class="pre">mpicxx</span> <span class="pre">;</span></code> where you should replace <code class="code docutils literal notranslate"><span class="pre">mpicxx</span></code> with your desire mpi compiler. If you do not want to compile with MPI support, you may skip adding this line.</p>
+<p>Now we are ready to compile:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">b2</span> <span class="o">-</span><span class="n">j4</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-dice">
+<h2>Building Dice<a class="headerlink" href="#building-dice" title="Permalink to this headline">¶</a></h2>
+<p>First you need to download Dice:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wget</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">sanshar</span><span class="o">.</span><span class="n">github</span><span class="o">.</span><span class="n">io</span><span class="o">/</span><span class="n">Dice</span><span class="o">/</span><span class="n">_downloads</span><span class="o">/</span><span class="n">dice_1_0</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">tar</span> <span class="o">-</span><span class="n">xzvf</span> <span class="n">dice_1_0</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">cd</span> <span class="n">dice_1_0</span>
+</pre></div>
+</div>
+<p>Now before you can compile Dice you must edit the Makefile in the main directory and change the paths variables (EIGEN and BOOST) that point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">USE_MPI</span> <span class="o">=</span> <span class="n">yes</span>
-<span class="n">USE_INTEL</span> <span class="o">=</span> <span class="n">yes</span>
+<span class="n">USE_INTEL</span> <span class="o">=</span> <span class="n">no</span>
 
-<span class="n">FLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">O3</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span>
-<span class="n">DFLAGS</span> <span class="o">=</span> <span class="o">-</span><span class="n">std</span><span class="o">=</span><span class="n">c</span><span class="o">++</span><span class="mi">11</span> <span class="o">-</span><span class="n">g</span> <span class="o">-</span><span class="n">O3</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">apps</span><span class="o">/</span><span class="n">eigen</span> <span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="n">path_to</span><span class="o">/</span><span class="n">boost_1_57_0</span><span class="o">/</span> <span class="o">-</span><span class="n">DComplex</span>
+<span class="n">EIGEN</span><span class="o">=/</span><span class="n">home</span><span class="o">/</span><span class="n">james</span><span class="o">/</span><span class="n">apps</span><span class="o">/</span><span class="n">eigen</span><span class="o">/</span>
+<span class="n">BOOST</span><span class="o">=/</span><span class="n">home</span><span class="o">/</span><span class="n">james</span><span class="o">/</span><span class="n">apps</span><span class="o">/</span><span class="n">boost_1_70_0</span>
+</pre></div>
+</div>
+<p>To compile the plain Dice (no support for spin orbit coupling):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">Dice</span> <span class="o">-</span><span class="n">j</span>
+</pre></div>
+</div>
+<p>To compile plain Dice and ZDice (SOC support):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="o">-</span><span class="n">j</span>
 </pre></div>
 </div>
 </div>
@@ -195,12 +229,12 @@
 <h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
 <p>Once compiling is complete you should test the code using the “/path_to/Dice/tests/runAllTests.sh” script. Before running this script, edit the MPICOMMAND variable to show the appropriate number of processors you wish to run in parallel.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">If your system has limited memory or slow processing power, you may wish to run ./runSmallTests.sh instead.</p>
+<p class="admonition-title">Note</p>
+<p>If your system has limited memory or slow processing power, you may wish to run ./runSmallTests.sh instead.</p>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">If you compiled the serial version of Dice, replace the line <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;mpirun</span> <span class="pre">-np</span> <span class="pre">28&quot;</span></code> with <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;&quot;</span></code> in the “runTests.sh” and “runSmallTests.sh” files.</p>
+<p class="admonition-title">Note</p>
+<p>If you compiled the serial version of Dice, replace the line <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;mpirun</span> <span class="pre">-np</span> <span class="pre">28&quot;</span></code> with <code class="code docutils literal notranslate"><span class="pre">MPICOMMAND=&quot;&quot;</span></code> in the “runTests.sh” and “runSmallTests.sh” files.</p>
 </div>
 </div>
 </div>
@@ -216,7 +250,7 @@
         <a href="gettingstarted.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="overview.html" class="btn btn-neutral" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -225,7 +259,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Sandeep Sharma.
+        &copy; Copyright 2017, Sandeep Sharma
 
     </p>
   </div>
@@ -242,33 +276,16 @@
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>

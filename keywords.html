@@ -17,34 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Benchmarking" href="benchmarking.html" />
     <link rel="prev" title="Using in CASSCF" href="usingincasscf.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -170,9 +173,9 @@
 <div class="section" id="reference-determinant">
 <h3>Reference Determinant<a class="headerlink" href="#reference-determinant" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><dl class="first docutils">
-<dt>nroots</dt>
-<dd>(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</dd>
+<li><dl class="simple">
+<dt>nroots</dt><dd><p>(Integer) Number of eigenstates to solve for. Default is 1, i.e. ground state.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -180,34 +183,34 @@
 <div class="section" id="general">
 <h3>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><dl class="first docutils">
-<dt>doSOC</dt>
-<dd>(Boolean) Include spin-orbit coupling in hamiltonian. Default is false.</dd>
+<li><dl class="simple">
+<dt>doSOC</dt><dd><p>(Boolean) Include spin-orbit coupling in hamiltonian. Default is false.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>fullrestart</dt>
-<dd>(String) Restarts the calculation using determinants from a previous calculation as the starting determinants for a <em>new</em> calculation. This keyword will cause the hamiltonian to be recalculated.</dd>
+<li><dl class="simple">
+<dt>fullrestart</dt><dd><p>(String) Restarts the calculation using determinants from a previous calculation as the starting determinants for a <em>new</em> calculation. This keyword will cause the hamiltonian to be recalculated.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>noio</dt>
-<dd>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</dd>
+<li><dl class="simple">
+<dt>noio</dt><dd><p>Default is true and does not need to be included in input file. When true SHCI will write the variational results. To set to false write “noio” in input script.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>prefix</dt>
-<dd>(String) Path to scratch directory. Default is “.”. To set your own path, simply write the absolute path in the input file without quotations.</dd>
+<li><dl class="simple">
+<dt>prefix</dt><dd><p>(String) Path to scratch directory. Default is “.”. To set your own path, simply write the absolute path in the input file without quotations.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>restart</dt>
-<dd>(string) Restarts the calculation, reading in wavefunction and hamiltonian from a previous calculation.</dd>
+<li><dl class="simple">
+<dt>restart</dt><dd><p>(string) Restarts the calculation, reading in wavefunction and hamiltonian from a previous calculation.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>Treversal</dt>
-<dd>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</dd>
+<li><dl class="simple">
+<dt>Treversal</dt><dd><p>(Integer) Include time reversal symmetry in calculation. Default is 0 for false, 1 is true.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -215,34 +218,34 @@
 <div class="section" id="variational">
 <h3>Variational<a class="headerlink" href="#variational" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><dl class="first docutils">
-<dt>davidsonTol</dt>
-<dd>(Double) Tolerance for the final Davidson step. The default is 5e−5.</dd>
+<li><dl class="simple">
+<dt>davidsonTol</dt><dd><p>(Double) Tolerance for the final Davidson step. The default is 5e−5.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>davidsonTolLoose</dt>
-<dd>(Double) Tolerance for the Davidson steps leading up to final step. The default is 5e-5.</dd>
+<li><dl class="simple">
+<dt>davidsonTolLoose</dt><dd><p>(Double) Tolerance for the Davidson steps leading up to final step. The default is 5e-5.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>dE</dt>
-<dd>(Double) This is the energy convergence tolerance for the variational portion of the calculation.</dd>
+<li><dl class="simple">
+<dt>dE</dt><dd><p>(Double) This is the energy convergence tolerance for the variational portion of the calculation.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>DoRDM</dt>
-<dd>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</dd>
+<li><dl class="simple">
+<dt>DoRDM</dt><dd><p>If true, the program will save the spatial two body reduced density matrix as a text file. Default is False.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>DoOneRDM</dt>
-<dd>(String) If included, Dice will write the spatial and spin 1RDM to a text file in the directory specified with the keyword prefix.</dd>
+<li><dl class="simple">
+<dt>DoOneRDM</dt><dd><p>(String) If included, Dice will write the spatial and spin 1RDM to a text file in the directory specified with the keyword prefix.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>epsilon1</dt>
-<dd>(Array of doubles) Lower limit for accepted value of <span class="math notranslate nohighlight">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math notranslate nohighlight">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</dd>
+<li><dl class="simple">
+<dt>epsilon1</dt><dd><p>(Array of doubles) Lower limit for accepted value of <span class="math notranslate nohighlight">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. <span class="math notranslate nohighlight">\(c_i\)</span> is the projection of the wavefunction onto the ith determinant.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -250,29 +253,29 @@
 <div class="section" id="perturbative">
 <h3>Perturbative<a class="headerlink" href="#perturbative" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><dl class="first docutils">
-<dt>epsilon2</dt>
-<dd>(Double) Lower limit for accepted value of <span class="math notranslate nohighlight">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</dd>
+<li><dl class="simple">
+<dt>epsilon2</dt><dd><p>(Double) Lower limit for accepted value of <span class="math notranslate nohighlight">\(|H_{ai}c_i|\)</span> used when adding determinants to the Fock space during the variational calculation. Here Hai is the hamiltonian matrix element between determinants i and a. ci is the projection of the wavefunction onto the ith determinant. Used with stochastic, deterministic, and semi-stochastic perturbative calculations.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>epsilon2Large</dt>
-<dd>(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifies the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</dd>
+<li><dl class="simple">
+<dt>epsilon2Large</dt><dd><p>(Double) This keyword and value cause the perturbative component to be calculated using a semistochastic approach. Epsilon2 specifies the lower limit for the stochastic portion of the perturbative calculation and epsilon2Large specifies the lower limit of the perturbative component that will be calculated deterministically.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>SampleN</dt>
-<dd>(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</dd>
+<li><dl class="simple">
+<dt>SampleN</dt><dd><p>(Integer) Number of times the set of determinants outside the variational space is sampled in a given stochastic or semistochastic iteration.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>stochastic</dt>
-<dd>The default is true and this keyword should not be included in input file. True means that the the perturbative component will be calculated stochastically or semi-stochastically if epsilon2Large is used. To switch to deterministic write “deterministic” in input file.</dd>
+<li><dl class="simple">
+<dt>stochastic</dt><dd><p>The default is true and this keyword should not be included in input file. True means that the the perturbative component will be calculated stochastically or semi-stochastically if epsilon2Large is used. To switch to deterministic write “deterministic” in input file.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt>targetError</dt>
-<dd>(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math notranslate nohighlight">\(10^4\)</span>.</dd>
+<li><dl class="simple">
+<dt>targetError</dt><dd><p>(double) This keywords specifies the target standard deviation of the stochastic or semistochastic corrected energy and once the standard deviation reaches this value or a lower one the perturbative calculation will stop. The default is <span class="math notranslate nohighlight">\(10^4\)</span>.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -291,7 +294,7 @@
         <a href="benchmarking.html" class="btn btn-neutral float-right" title="Benchmarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="usingincasscf.html" class="btn btn-neutral" title="Using in CASSCF" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="usingincasscf.html" class="btn btn-neutral float-left" title="Using in CASSCF" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -300,7 +303,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Sandeep Sharma.
+        &copy; Copyright 2017, Sandeep Sharma
 
     </p>
   </div>
@@ -317,33 +320,16 @@
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>

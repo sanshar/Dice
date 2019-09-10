@@ -17,34 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installation.html" />
     <link rel="prev" title="Welcome to Dice’s documentation!" href="index.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -164,25 +167,25 @@
 <h2>Algorithm<a class="headerlink" href="#algorithm" title="Permalink to this headline">¶</a></h2>
 <p>There are two key ideas that set the SHCI algorithm apart and account for its vastly higher efficiency. SHCI partitions the entire set of determinants in the Hilbert space into two sets, the first that are treated variationally are included in the set <em>V</em> and a second set <em>C</em> that are connected to the determinants in <em>V</em> by a non-zero Hamiltonian matrix element. We use indices <em>i, j</em> for determinants in the variational space <em>V</em>, and index <em>a</em> for determinants in the connected space <em>C</em>.</p>
 <ol class="arabic simple">
-<li>The SHCI algorithm takes advantage of the fact that the 2-body excitation matrix elements depend only on the indices of the 4 orbitals whose occupations are changing and not on the other occupied orbitals [JCTC, 12, 3674]. This allows Dice to use a procedure in which only the important determinants are ever looked at! In addition, the usual SCI-PT algorithm promotes a determinant a to the V space if the criterion <span class="math notranslate nohighlight">\(\frac{\sum_i H_{ai} c_i}{E_0 - H_{aa}} &gt; \epsilon_1\)</span>, is satisfied for a user defined parameter <span class="math notranslate nohighlight">\(\epsilon_1\)</span>. Instead the SHCI algorithm uses a much simpler criterion in which a determinant <em>a</em> is promoted to <em>V</em> if <span class="math notranslate nohighlight">\(|H_{ai}c_i| &gt; \epsilon_1\)</span> for any <em>i</em> in <em>V</em>. Although using the SHCI criterion is much cheaper, the difference in calculated energies is negligibly small.</li>
-<li>The above ideas speed up both the variational and the perturbative steps of the algorithm by several orders of magnitude. However, the perturbative step has a large memory requirement because all determinants that are connected to those in <em>V</em> must be stored [JCTC, 13, 1595]. We have developed a semistochastic perturbative approach that both overcomes this memory bottleneck and is faster than the deterministic approach at the cost of having a small statistical error. The resulting semistochastic algorithm has several attractive features:</li>
+<li><p>The SHCI algorithm takes advantage of the fact that the 2-body excitation matrix elements depend only on the indices of the 4 orbitals whose occupations are changing and not on the other occupied orbitals [JCTC, 12, 3674]. This allows Dice to use a procedure in which only the important determinants are ever looked at! In addition, the usual SCI-PT algorithm promotes a determinant a to the V space if the criterion <span class="math notranslate nohighlight">\(\frac{\sum_i H_{ai} c_i}{E_0 - H_{aa}} &gt; \epsilon_1\)</span>, is satisfied for a user defined parameter <span class="math notranslate nohighlight">\(\epsilon_1\)</span>. Instead the SHCI algorithm uses a much simpler criterion in which a determinant <em>a</em> is promoted to <em>V</em> if <span class="math notranslate nohighlight">\(|H_{ai}c_i| &gt; \epsilon_1\)</span> for any <em>i</em> in <em>V</em>. Although using the SHCI criterion is much cheaper, the difference in calculated energies is negligibly small.</p></li>
+<li><p>The above ideas speed up both the variational and the perturbative steps of the algorithm by several orders of magnitude. However, the perturbative step has a large memory requirement because all determinants that are connected to those in <em>V</em> must be stored [JCTC, 13, 1595]. We have developed a semistochastic perturbative approach that both overcomes this memory bottleneck and is faster than the deterministic approach at the cost of having a small statistical error. The resulting semistochastic algorithm has several attractive features:</p></li>
 </ol>
 <blockquote>
 <div><ul class="simple">
-<li>There is no sign problem that plagues several quantum Monte Carlo methods. Further, instead of using Metropolis-Hastings sampling, we use the Alias method to directly sample determinants from the reference wavefunction, thus avoiding correlations between consecutive samples.</li>
-<li>In addition to removing the memory bottleneck, semistochastic HCI (SHCI) is faster than the deterministic variant for many systems if a stochastic error of 0.1 mHa is acceptable.</li>
-<li>The SHCI algorithm extends the range of applicability of the original algorithm, allowing us to calculate the correlation energy of large active spaces.</li>
+<li><p>There is no sign problem that plagues several quantum Monte Carlo methods. Further, instead of using Metropolis-Hastings sampling, we use the Alias method to directly sample determinants from the reference wavefunction, thus avoiding correlations between consecutive samples.</p></li>
+<li><p>In addition to removing the memory bottleneck, semistochastic HCI (SHCI) is faster than the deterministic variant for many systems if a stochastic error of 0.1 mHa is acceptable.</p></li>
+<li><p>The SHCI algorithm extends the range of applicability of the original algorithm, allowing us to calculate the correlation energy of large active spaces.</p></li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="features">
 <h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Wavefunction optimization and calculation of one and two reduced density matrices (RDMs) for multireference systems with large active spaces, between 30-100 orbitals. Dice can also calculated the one and two-body relaxed density matrices during the perturbative calculation.</li>
-<li>Calculation of excited states.</li>
-<li>Exploitation of Abelian, <span class="math notranslate nohighlight">\(D_{\infty h}\)</span>, and <span class="math notranslate nohighlight">\(C_{\infty v}\)</span> symmetries.</li>
-<li>Active space orbital optimization with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a>. When combined with <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> <em>Dice</em> can also calculate excited states using state averaging.</li>
-<li>Spin orbit coupling.</li>
+<li><p>Wavefunction optimization and calculation of one and two reduced density matrices (RDMs) for multireference systems with large active spaces, between 30-100 orbitals. Dice can also calculated the one and two-body relaxed density matrices during the perturbative calculation.</p></li>
+<li><p>Calculation of excited states.</p></li>
+<li><p>Exploitation of Abelian, <span class="math notranslate nohighlight">\(D_{\infty h}\)</span>, and <span class="math notranslate nohighlight">\(C_{\infty v}\)</span> symmetries.</p></li>
+<li><p>Active space orbital optimization with the <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a>. When combined with <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a> <em>Dice</em> can also calculate excited states using state averaging.</p></li>
+<li><p>Spin orbit coupling.</p></li>
 </ul>
 </div>
 <div class="section" id="license-and-how-to-cite">
@@ -190,13 +193,13 @@
 <p><em>Dice</em> is distributed under the GNU GPL license which is reproduced on the top of every source file. We would appreciate if you cite the following papers in publications resulting from the use of <em>Dice</em>.</p>
 <p>If you use any part of the software package, please cite:</p>
 <ul class="simple">
-<li><ol class="first upperalpha" start="19">
-<li>Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce">“Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory.”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, 13, 1595.</li>
+<li><ol class="upperalpha simple" start="19">
+<li><p>Sharma, A. A. Holmes, G. Jeanmairet, A. Alavi, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b01028?journalCode=jctcce">“Semistochastic Heat-bath Configuration Interaction method: selected configuration interaction with semistochastic perturbation theory.”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, 13, 1595.</p></li>
 </ol>
 </li>
-<li><ol class="first upperalpha">
-<li><ol class="first upperalpha">
-<li>Holmes, N. M. Tubman, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00407">“Heat-Bath Configuration Interaction: An Efficient Selected Configuration Interaction Algorithm Inspired by Heat-Bath Sampling.”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2016</strong>, 12, 3674.</li>
+<li><ol class="upperalpha simple">
+<li><ol class="upperalpha simple">
+<li><p>Holmes, N. M. Tubman, C. J. Umrigar, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.6b00407">“Heat-Bath Configuration Interaction: An Efficient Selected Configuration Interaction Algorithm Inspired by Heat-Bath Sampling.”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2016</strong>, 12, 3674.</p></li>
 </ol>
 </li>
 </ol>
@@ -204,9 +207,9 @@
 </ul>
 <p>If you use Dice to calculate excited states, please cite:</p>
 <ul class="simple">
-<li><ol class="first upperalpha">
-<li><ol class="first upperalpha">
-<li>Holmes, C. J. Umrigar, S. Sharma, <a class="reference external" href="http://aip.scitation.org/doi/pdf/10.1063/1.4998614">“Excited states using semistochastic heat-bath configuration interaction”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Physics</em>, <strong>2017</strong>, 147, 164111.</li>
+<li><ol class="upperalpha simple">
+<li><ol class="upperalpha simple">
+<li><p>Holmes, C. J. Umrigar, S. Sharma, <a class="reference external" href="http://aip.scitation.org/doi/pdf/10.1063/1.4998614">“Excited states using semistochastic heat-bath configuration interaction”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Physics</em>, <strong>2017</strong>, 147, 164111.</p></li>
 </ol>
 </li>
 </ol>
@@ -214,17 +217,17 @@
 </ul>
 <p>If you use Dice to perform relativistic calculations such as S.O.C., please cite:</p>
 <ul class="simple">
-<li><ol class="first upperalpha" start="2">
-<li>Mussard, S. Sharma, <a class="reference external" href="https://arxiv.org/abs/1710.00259">“One-step treatment of spin-orbit coupling and electron correlation in large active spaces”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, (under review).</li>
+<li><ol class="upperalpha simple" start="2">
+<li><p>Mussard, S. Sharma, <a class="reference external" href="https://arxiv.org/abs/1710.00259">“One-step treatment of spin-orbit coupling and electron correlation in large active spaces”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> <em>and</em> <em>Computations</em>, <strong>2017</strong>, (under review).</p></li>
 </ol>
 </li>
 </ul>
 <p>If you use Dice in conjunction with <a class="reference external" href="https://github.com/sunqm/pyscf/blob/master/README.md">PySCF</a>, please cite:</p>
 <ul class="simple">
-<li><ol class="first upperalpha" start="10">
-<li><ol class="first upperalpha" start="5">
-<li><ol class="first upperalpha" start="20">
-<li>Smith, B. Mussard, A. A. Holmes, S. Sharma, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00900">“Cheap and Near Exact CASSCF with Large Active Space”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> and <em>Computation</em>, <strong>2017</strong>.</li>
+<li><ol class="upperalpha simple" start="10">
+<li><ol class="upperalpha simple" start="5">
+<li><ol class="upperalpha simple" start="20">
+<li><p>Smith, B. Mussard, A. A. Holmes, S. Sharma, <a class="reference external" href="http://pubs.acs.org/doi/abs/10.1021/acs.jctc.7b00900">“Cheap and Near Exact CASSCF with Large Active Space”</a> <em>Journal</em> <em>of</em> <em>Chemical</em> <em>Theory</em> and <em>Computation</em>, <strong>2017</strong>.</p></li>
 </ol>
 </li>
 </ol>
@@ -246,7 +249,7 @@
         <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Welcome to Dice’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Dice’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -255,7 +258,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Sandeep Sharma.
+        &copy; Copyright 2017, Sandeep Sharma
 
     </p>
   </div>
@@ -272,33 +275,16 @@
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>

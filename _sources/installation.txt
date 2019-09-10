@@ -4,30 +4,68 @@ Source Code
 -----------
 * Download the latest stable version of Dice (1.0): :download:`dice_1_0.tar.gz <../_downloads/dice_1_0.tar.gz>`
 
-* Download Dice from July, 2018: :download:`dice_N_0.tar.gz <../_downloads/dice_N_0.tar.gz>`
-
 * Download Dice from July, 2017 (0.9): :download:`dice_0_9.tar.gz <../_downloads/dice_0_9.tar.gz>`
 
 Connecting Module for PySCF
 ---------------------------
 * Available with the `PySCF <https://github.com/sunqm/pyscf/blob/master/README.md>`_ package.
 
-Compile
--------
-Dice requires `Boost <http://www.boost.org/>`_ and `Eigen <http://eigen.tuxfamily.org/dox/>`_ libraries. When compiling the Boost library make sure that you use the same compiler as you do for Dice. Eigen consists of header files and does not have to be compiled. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.
-
+Dependencies
+------------
 * GNU g++ 4.8 or newer required.
 * Intel icpc 14.0.1 or newer required.
+* `Eigen <http://eigen.tuxfamily.org/dox/>`_
+* `Boost <http://www.boost.org/>`_ 1.57.0 or newer required.
 
-Before you can compile Dice you must edit the Makefile in the main directory and change the paths in the FLAGS and DFLAGS variables to point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:
+The Eigen library is header only, so no compiling is required. When compiling the Boost library make sure that you use the same compiler as you do for Dice. When choosing your compiler, either GNU or Intel, C++0x/C++11 standards must be supported.
+
+To install boost:
+::
+
+  wget https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.gz
+  tar -xzvf boost_1_70_0.tar.gz
+  cd boost_1_70_0
+  ./bootstrap.sh --with-libraries=serialization,mpi
+
+
+Take a look in your :code:`project-config.jam` file and make sure that the compiler configuration section is pointing to the desired compiler. That at the end of the file, on a new line, add :code:`using mpi : mpicxx ;` where you should replace :code:`mpicxx` with your desire mpi compiler. If you do not want to compile with MPI support, you may skip adding this line.
+
+Now we are ready to compile:
+::
+
+    ./b2 -j4
+
+
+
+Building Dice
+-------------
+
+First you need to download Dice:
+::
+
+  wget https://sanshar.github.io/Dice/_downloads/dice_1_0.tar.gz
+  tar -xzvf dice_1_0.tar.gz
+  cd dice_1_0
+
+
+Now before you can compile Dice you must edit the Makefile in the main directory and change the paths variables (EIGEN and BOOST) that point to your Eigen and Boost libraries. Then the user must choose whether to use gcc or intel and set the USE_INTEL variable accordingly. Finally choose whether you would like to compile with MPI or not before compiling. All of the lines in the Makefile that you must edit are shown below:
 
 ::
 
   USE_MPI = yes
-  USE_INTEL = yes
+  USE_INTEL = no
 
-  FLAGS = -std=c++11 -g -O3 -I/path_to/eigen -I/home/path_to/boost_1_57_0/
-  DFLAGS = -std=c++11 -g -O3 -I/path_to/apps/eigen -I/path_to/boost_1_57_0/ -DComplex
+  EIGEN=/home/james/apps/eigen/
+  BOOST=/home/james/apps/boost_1_70_0
+
+
+To compile the plain Dice (no support for spin orbit coupling):
+::
+  make Dice -j
+
+To compile plain Dice and ZDice (SOC support):
+::
+  make -j
 
 
 Testing

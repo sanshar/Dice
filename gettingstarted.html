@@ -17,34 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Using in CASSCF" href="usingincasscf.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
 </head>
 
 <body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -191,8 +194,8 @@ sampleN 200
 </pre></div>
 </div>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> page.</p>
+<p class="admonition-title">Note</p>
+<p>Although we have presented the input separated into three distinct sections, you do <em>not</em> have to write the keywords in any particular order, <strong>but is is highly recommended</strong> for clarity. For more details about the keywords used or other keywords please see the <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> page.</p>
 </div>
 </div>
 <div class="section" id="header">
@@ -207,17 +210,17 @@ sampleN 200
 <h3>Perturbative Section<a class="headerlink" href="#perturbative-section" title="Permalink to this headline">¶</a></h3>
 <p><em>Dice</em> can calculate the second order perturbative contribution to the energy in three ways all of which involve the use of the <span class="math notranslate nohighlight">\(\epsilon_2\)</span> keyword. This parameter controls how much of the determinant space will be included in the perturbative calculation</p>
 <ol class="arabic simple">
-<li>Deterministic: All determinants connected to the variational space with <span class="math notranslate nohighlight">\(|H_{ai}c_i| &gt; \epsilon_2\)</span> are included in the following summation where <span class="math notranslate nohighlight">\(\Delta E^{(2)}\)</span> is the second order perturbative correction to the energy, <span class="math notranslate nohighlight">\(H_{ai}\)</span> is the Hamiltonian matrix element connecting determinants i and a, <span class="math notranslate nohighlight">\(c_i\)</span> is the coefficient of the i <span class="math notranslate nohighlight">\(^{th}\)</span> determinant, and <span class="math notranslate nohighlight">\(E^{(0)}\)</span> is the eigenvalue of the zeroth-order Hamiltonian.</li>
+<li><p>Deterministic: All determinants connected to the variational space with <span class="math notranslate nohighlight">\(|H_{ai}c_i| &gt; \epsilon_2\)</span> are included in the following summation where <span class="math notranslate nohighlight">\(\Delta E^{(2)}\)</span> is the second order perturbative correction to the energy, <span class="math notranslate nohighlight">\(H_{ai}\)</span> is the Hamiltonian matrix element connecting determinants i and a, <span class="math notranslate nohighlight">\(c_i\)</span> is the coefficient of the i <span class="math notranslate nohighlight">\(^{th}\)</span> determinant, and <span class="math notranslate nohighlight">\(E^{(0)}\)</span> is the eigenvalue of the zeroth-order Hamiltonian.</p></li>
 </ol>
 <div class="math notranslate nohighlight">
 \[\Delta E^{(2)} \approx \sum_a \frac{\big(\sum_i^{\epsilon_2} H_{ai} c_i \big)^2}{E^{(0)}-H_{aa}}\]</div>
 <ol class="arabic simple" start="2">
-<li>Stochastic: A small number of determinants in the variational space (determined by the SampleN parameter, see <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> for more details) are stochastically selected and used to evaluate the equation above where <span class="math notranslate nohighlight">\(N_d\)</span> is the total number of determinants sampled, <span class="math notranslate nohighlight">\(N_d^{diff}\)</span> is the number of unique determinants sampled, <span class="math notranslate nohighlight">\(\omega_i\)</span> is the number of times determinant i was selected in this sample, and <span class="math notranslate nohighlight">\(p_i = \frac{|c_i|}{\sum_i |c_i|}\)</span> or the probability of selecting determinant i. Stochastic evaluation of the energy correction enables the use of much smaller <span class="math notranslate nohighlight">\(\epsilon_2\)</span> values for large systems, while retaining the sub mHa accuracy of the deterministic variant.</li>
+<li><p>Stochastic: A small number of determinants in the variational space (determined by the SampleN parameter, see <a class="reference internal" href="keywords.html#dice-keywords"><span class="std std-ref">Keywords</span></a> for more details) are stochastically selected and used to evaluate the equation above where <span class="math notranslate nohighlight">\(N_d\)</span> is the total number of determinants sampled, <span class="math notranslate nohighlight">\(N_d^{diff}\)</span> is the number of unique determinants sampled, <span class="math notranslate nohighlight">\(\omega_i\)</span> is the number of times determinant i was selected in this sample, and <span class="math notranslate nohighlight">\(p_i = \frac{|c_i|}{\sum_i |c_i|}\)</span> or the probability of selecting determinant i. Stochastic evaluation of the energy correction enables the use of much smaller <span class="math notranslate nohighlight">\(\epsilon_2\)</span> values for large systems, while retaining the sub mHa accuracy of the deterministic variant.</p></li>
 </ol>
 <div class="math notranslate nohighlight">
 \[\Delta E^{(2)} \approx \frac{1}{N_d(N_d-1)} \Bigg \langle \sum_a \frac{1}{E^{(0)}-H_{aa}} \Bigg[ \bigg(\sum_i^{N_d^{diff}} \frac{\omega_i H_{ai} c_i}{p_i}\bigg)^2 + \sum_i^{N_d^{diff}} \bigg(\frac{\omega_i (N_d-1)}{p_i} - \frac{\omega_i^2}{p_i^2}\bigg) c_i^2 H_{ai}^2 \Bigg] \Bigg \rangle\]</div>
 <ol class="arabic simple" start="3">
-<li>Semistochastic: In this variant of the perturbative calculation, <em>Dice</em> calculates the correction using both equations above. A new keyword called <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span> is needed to distinguish which determinants will be treated stochastically and which will not. <em>Dice</em> calculates the energy correction using the second equation for both <span class="math notranslate nohighlight">\(\epsilon_2\)</span> and <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span> and using the first equation with <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span>. We then subtract the less strict stochastic correction (<span class="math notranslate nohighlight">\(E_2^S[\epsilon_2^d]\)</span>) from the strict stochastic correction (<span class="math notranslate nohighlight">\(\Delta E_2^S[\epsilon_2]\)</span>) to reduce the stochastic noise before adding the deterministic contribution (<span class="math notranslate nohighlight">\(\Delta E_2^D[\epsilon_2^d]\)</span>).</li>
+<li><p>Semistochastic: In this variant of the perturbative calculation, <em>Dice</em> calculates the correction using both equations above. A new keyword called <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span> is needed to distinguish which determinants will be treated stochastically and which will not. <em>Dice</em> calculates the energy correction using the second equation for both <span class="math notranslate nohighlight">\(\epsilon_2\)</span> and <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span> and using the first equation with <span class="math notranslate nohighlight">\(\epsilon_{2Large}\)</span>. We then subtract the less strict stochastic correction (<span class="math notranslate nohighlight">\(E_2^S[\epsilon_2^d]\)</span>) from the strict stochastic correction (<span class="math notranslate nohighlight">\(\Delta E_2^S[\epsilon_2]\)</span>) to reduce the stochastic noise before adding the deterministic contribution (<span class="math notranslate nohighlight">\(\Delta E_2^D[\epsilon_2^d]\)</span>).</p></li>
 </ol>
 <div class="math notranslate nohighlight">
 \[\Delta E_2[\epsilon_2] = \big( \Delta E_2^S[\epsilon_2] − \Delta E_2^S[\epsilon_2^d] \big) + \Delta E_2^D[\epsilon_2^d]\]</div>
@@ -248,8 +251,8 @@ maxiter 6
 </div>
 <p>Once you have your input.dat and FCIDUMP file you can open a terminal and navigate to the directory with both files and use the following command:</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">You can run <em>Dice</em> in parallel using OMP, MPI, or a hybrid of both, but we recommend that you use MPI. If you would like to run a hybrid scheme, please contact us to help you set it up.</p>
+<p class="admonition-title">Note</p>
+<p>You can run <em>Dice</em> in parallel using OMP, MPI, or a hybrid of both, but we recommend that you use MPI. If you would like to run a hybrid scheme, please contact us to help you set it up.</p>
 </div>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun -np <span class="m">2</span> /path_to/Dice/Dice input.dat &gt; output.dat
 </pre></div>
@@ -358,7 +361,7 @@ Time(s):  0.754081964492798
         <a href="usingincasscf.html" class="btn btn-neutral float-right" title="Using in CASSCF" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -367,7 +370,7 @@ Time(s):  0.754081964492798
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Sandeep Sharma.
+        &copy; Copyright 2017, Sandeep Sharma
 
     </p>
   </div>
@@ -384,33 +387,16 @@ Time(s):  0.754081964492798
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'0.1',
-            LANGUAGE:'None',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  <script type="text/javascript" src="_static/js/theme.js"></script>
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
+
+  
+  
+    
+   
 
 </body>
 </html>
