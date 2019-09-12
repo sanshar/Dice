@@ -1,0 +1,27 @@
+{
+  "wavefunction":
+  {
+    "name": "scci",
+    "numAct": 10,
+    "determinants": "dets"
+  },
+  "sampling":
+  {
+    "stochasticIter": 5000,
+    "epsilon": 1.0e-8,
+    "seed": 13290
+  },
+  "optimizer":
+  {
+    "restart": false,
+    "method": "amsgrad",
+    "maxIter": 60,
+    "stepsize": 0.1,
+    "decay1": 0.5,
+    "decay2": 1
+  },
+  "print":
+  {
+    "vars": false
+  }
+}
