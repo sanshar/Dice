@@ -379,7 +379,7 @@ int main(int argc, char* argv[]) {
       FILE* f = fopen(efile.c_str(), "wb");
       for (int j = 0; j < E0.size(); ++j) {
         // pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
-        fwrite(&E0[j], 1, sizeof(CItype), f);
+        fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
     }
