@@ -274,6 +274,13 @@ void generateAllScreenedExcitationsCAS_0h2p(const Determinant& det,
                                          workingArray& work,
                                          const int& iExc, const int& jExc);
 
+//---From excitation class 8 (2 holes in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_2h2p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc,
+                                         const int& aExc, const int& bExc);
+
 void comb(int N, int K, vector<vector<int>> &combinations);
 
 void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);

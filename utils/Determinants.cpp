@@ -1303,6 +1303,37 @@ void generateAllScreenedExcitationsCAS_0h2p(const Determinant& d,
   }
 }
 
+//---From excitation class 8 (2 holes in core, 2 particles in virtuals) into the CAS------------
+void generateAllScreenedExcitationsCAS_2h2p(const Determinant& d,
+                                            const double& THRESH,
+                                            workingArray& work,
+                                            const int& iExc, const int& jExc,
+                                            const int& aExc, const int& bExc) {
+  int norbs = Determinant::norbs;
+
+  int i = max(iExc, jExc), j = min(iExc, jExc);
+  int a = max(aExc, bExc), b = min(aExc, bExc);
+
+  // if we are going below the criterion, break
+  //if (fabs(integrals[index]) < THRESH)
+  //  break;
+
+  double integral;
+
+  if (i%2 == j%2) {
+    // same spin
+    integral = I2(i, a, j, b) - I2(i, b, j, a);
+  }
+  else {
+    // opposite spin
+    integral = I2(i, a, j, b);
+  }
+
+  if (fabs(integral) > THRESH) {
+    work.appendValue(0.0, i * 2 * norbs + a, j * 2 * norbs + b, integral);
+  }
+}
+
 bool applyExcitation(int a, int b, int k, int l, Determinant& dcopy) {
   bool valid = true;
 

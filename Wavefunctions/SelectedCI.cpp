@@ -97,7 +97,12 @@ void SelectedCI::readWave() {
 void SelectedCI::initWalker(SimpleWalker &walk) {
   int norbs = Determinant::norbs;
   walk.d = bestDeterminant;
+  walk.excitedHoles.clear();
   walk.excitedOrbs.clear();
+  for (int i = 0; i < schd.nciCore; i++) {
+    if (!walk.d.getoccA(i)) walk.excitedHoles.insert(2*i);
+    if (!walk.d.getoccB(i)) walk.excitedHoles.insert(2*i+1);
+  }
   for (int i = schd.nciCore + schd.nciAct; i < Determinant::norbs; i++) {
     if (walk.d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (walk.d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);
@@ -203,11 +208,13 @@ void SelectedCI::OverlapWithGradient(SimpleWalker &walk,
     grad[it1->second] = 1.0;
 }
 
-//ham here is <n|H|phi0> not the ratio, to avoid ou of active space singularitites
+//ham here is <n|H|phi0> not the ratio, to avoid out of active space singularitites
 //ovlp = ham when ham is calculated
 void SelectedCI::HamAndOvlp(SimpleWalker &walk,
                   double &ovlp, double &ham, 
                   workingArray& work, bool dontCalcEnergy) {
+
+  walk.getExcitationClass();
   
   int norbs = Determinant::norbs;
   if (dontCalcEnergy) { 
@@ -217,8 +224,6 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
   else ham = 0.;//ham = ovlp * walk.d.Energy(I1, I2, coreE); 
 
   work.setCounterToZero();
-
-  //cout << "ex class: " << walk.excitation_class << endl;
 
   if (walk.excitation_class == 0) {
     generateAllScreenedSingleExcitationsCAS_0h0p(walk.d, schd.epsilon, schd.screen,
@@ -233,6 +238,11 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
   else if (walk.excitation_class == 2) {
     generateAllScreenedExcitationsCAS_0h2p(walk.d, schd.epsilon, work, *walk.excitedOrbs.begin(),
                                            *std::next(walk.excitedOrbs.begin()));
+  }
+  else if (walk.excitation_class == 8) {
+    generateAllScreenedExcitationsCAS_2h2p(walk.d, schd.epsilon, work,
+                                           *walk.excitedOrbs.begin(), *std::next(walk.excitedOrbs.begin()),
+                                           *walk.excitedHoles.begin(), *std::next(walk.excitedHoles.begin()));
   }
 
   //if (schd.debug) cout << "phi0  d.energy  " << ham / ovlp << endl;
@@ -261,7 +271,6 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
     }
 
     double ovlpcopy = Overlap(dcopy);
-    //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
     ham += tia * ovlpcopy * parity;
     //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity << endl;

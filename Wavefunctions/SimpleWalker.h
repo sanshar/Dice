@@ -63,7 +63,8 @@ public:
   // The constructor
   SimpleWalker(Determinant &pd) : d(pd), excitation_class(0) {};
   SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd), excitation_class(0) {};
-  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs), excitation_class(w.excitation_class) {};
+  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs),
+                                       excitedHoles(w.excitedHoles), excitation_class(w.excitation_class) {};
   SimpleWalker() : excitation_class(0) {};
 
   Determinant getDet() { return d; }
