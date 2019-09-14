@@ -274,6 +274,20 @@ void generateAllScreenedExcitationsCAS_0h2p(const Determinant& det,
                                          workingArray& work,
                                          const int& iExc, const int& jExc);
 
+//---From excitation class 3 (1 hole in core, 0 particles in virtuals) into the CAS
+void generateAllScreenedSingleExcitationsCAS_1h0p(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         const int& i,
+                                         bool doparity = false);
+
+//---From excitation class 3 (1 hole in core, 0 particles in virtuals) into the CAS
+void generateAllScreenedDoubleExcitationsCAS_1h0p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& i);
+
 //---From excitation class 8 (2 holes in core, 2 particles in virtuals) into the CAS
 void generateAllScreenedExcitationsCAS_2h2p(const Determinant& det,
                                          const double& screen,

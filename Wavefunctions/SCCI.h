@@ -94,7 +94,8 @@ class SCCI
       classesUsed.push_back(0);
       classesUsed.push_back(1);
       classesUsed.push_back(2);
-      classesUsed.push_back(8);
+      classesUsed.push_back(3);
+      //classesUsed.push_back(8);
     }
 
     int numCore = schd.nciCore;
