@@ -95,7 +95,8 @@ class SCCI
       classesUsed.push_back(1);
       classesUsed.push_back(2);
       //classesUsed.push_back(3);
-      classesUsed.push_back(6);
+      classesUsed.push_back(4);
+      //classesUsed.push_back(6);
       //classesUsed.push_back(8);
     }
 
@@ -237,6 +238,15 @@ class SCCI
     else if (walk.excitation_class == 3) {
       // 1 hole, 0 particles
       return cumNumCoeffs[3] + *walk.excitedHoles.begin();
+    }
+    else if (walk.excitation_class == 4) {
+      // 1 hole, 1 particles
+      int i = *walk.excitedHoles.begin();
+      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+
+      int numVirt = norbs - schd.nciCore - schd.nciAct;
+
+      return cumNumCoeffs[4] + numVirt*i + a;
     }
     else if (walk.excitation_class == 6) {
       // 2 hole, 0 particles

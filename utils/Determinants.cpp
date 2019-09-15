@@ -1138,8 +1138,6 @@ void generateAllScreenedSingleExcitationsCAS_0h0p(const Determinant& d,
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
       {
-        int I = closed[i] / 2, A = open[a] / 2;
-
         const double tia = d.Hij_1ExciteScreened(open[a], closed[i], I2hb,
                                                  TINY, doparity);
 
@@ -1217,8 +1215,6 @@ void generateAllScreenedSingleExcitationsCAS_0h1p(const Determinant& d,
     if (i % 2 == open[a] % 2 &&
         abs(I2hb.Singles(i, open[a])) > THRESH)
     {
-      int I = i / 2, A = open[a] / 2;
-
       const double tia = d.Hij_1ExciteScreened(open[a], i, I2hb,
                                                TINY, doparity);
 
@@ -1321,12 +1317,9 @@ void generateAllScreenedSingleExcitationsCAS_1h0p(const Determinant& d,
 
   for (int i = indCore; i < closed.size(); i++) {
     if (a % 2 == closed[i] % 2 &&
-        abs(I2hb.Singles(i, closed[i])) > THRESH)
+        abs(I2hb.Singles(closed[i], a)) > THRESH)
     {
-      int A = a / 2, I = closed[i] / 2;
-
-      const double tia = d.Hij_1ExciteScreened(closed[i], a, I2hb,
-                                               TINY, doparity);
+      const double tia = d.Hij_1ExciteScreened(closed[i], a, I2hb, TINY, doparity);
 
       if (abs(tia) > THRESH) {
         work.appendValue(0., closed[i]*2*norbs+a, 0, tia);
@@ -1375,7 +1368,130 @@ void generateAllScreenedDoubleExcitationsCAS_1h0p(const Determinant& d,
   }
 }
 
-//---From excitation class 8 (2 holes in core, 0 particles in virtuals) into the CAS------------
+//---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS------------
+void generateAllScreenedSingleExcitationsCAS_1h1p(const Determinant& d,
+                                                  const double& THRESH,
+                                                  const double& TINY,
+                                                  workingArray& work,
+                                                  const int& i, const int& a,
+                                                  bool doparity) {
+  int norbs = Determinant::norbs;
+
+  if (i%2 == a%2 && abs(I2hb.Singles(i, a)) > THRESH)
+  {
+    const double tia = d.Hij_1ExciteScreened(i, a, I2hb, TINY, doparity);
+
+    if (abs(tia) > THRESH) {
+      work.appendValue(0., i*2*norbs+a, 0, tia);
+    }
+  }
+}
+
+//---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS------------
+void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& d,
+                                                  const double& THRESH,
+                                                  workingArray& work,
+                                                  const int& i, const int& a) {
+  int norbs = Determinant::norbs;
+  int max_act_ind = 2*(schd.nciCore + schd.nciAct) - 1;
+
+  vector<int> closed;
+  vector<int> open;
+  d.getOpenClosed(open, closed);
+
+  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+  int indCore = distance(closed.begin(), ub);
+
+  int nclosed = closed.size();
+  for (int n=indCore; n < nclosed-1; n++) {
+    int j = closed[n];
+
+    const float *integrals; const short* orbIndices;
+    size_t numIntegrals;
+    //I2hb.getIntegralArrayCAS(i, j, integrals, orbIndices, numIntegrals);
+    I2hb.getIntegralArray(i, j, integrals, orbIndices, numIntegrals);
+    size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+    // for all HCI integrals
+    for (size_t index = 0; index < numLargeIntegrals; index++)
+    {
+      // otherwise: generate the determinant corresponding to the current excitation
+      int a_new = 2 * orbIndices[2 * index] + i % 2;
+      int b_new = 2 * orbIndices[2 * index + 1] + j % 2;
+
+      if (a_new > max_act_ind || b_new > max_act_ind) continue;
+
+      if (a_new == a || b_new == a) {
+        if (!(d.getocc(a_new) || d.getocc(b_new))) {
+          //cout << i << "  " << j << "  " << a_new << "  " << b_new << "  " << integrals[index] << endl;
+          work.appendValue(0.0, i * 2 * norbs + a_new, j * 2 * norbs + b_new, integrals[index]);
+        }
+      }
+
+    }
+  }
+}
+
+//---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS------------
+// An alternative version of this function for checking
+// TODO: Remove when all debugging has been done
+//void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& d,
+//                                                  const double& THRESH,
+//                                                  workingArray& work,
+//                                                  const int& iExc, const int& aExc) {
+//  int norbs = Determinant::norbs;
+//  int first_virtual = schd.nciCore + schd.nciAct;
+//
+//  vector<int> closed;
+//  vector<int> open;
+//  d.getOpenClosed(open, closed);
+//
+//  double integral;
+//  int i, j, a, b, b_temp;
+//
+//  auto ub_1 = upper_bound(open.begin(), open.end(), 2*first_virtual - 1);
+//  int indAct = distance(open.begin(), ub_1);
+//
+//  auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
+//  int indCore = distance(closed.begin(), ub_2);
+//
+//  for (int n = indCore; n < closed.size(); n++) {
+//    for (int m = 0; m < indAct; m++) {
+//
+//      i = max(iExc, closed[n]), j = min(iExc, closed[n]);
+//      b_temp = open[m];
+//
+//      if (i%2 == aExc%2 && j%2 == b_temp%2) {
+//        a = aExc;
+//        b = b_temp;
+//      }
+//      else if (i%2 == b_temp%2 && j%2 == aExc%2) {
+//        a = b_temp;
+//        b = aExc;
+//      }
+//      else {
+//        continue;
+//      }
+//
+//      if (i%2 == j%2) {
+//        // same spin
+//        integral = I2(i, a, j, b) - I2(i, b, j, a);
+//      }
+//      else {
+//        // opposite spin
+//        integral = I2(i, a, j, b);
+//      }
+//
+//      if (fabs(integral) > THRESH) {
+//        //cout << i << "  " << j << "  " << a << "  " << b << "  " << integral << endl;
+//        work.appendValue(0.0, i * 2 * norbs + a, j * 2 * norbs + b, integral);
+//      }
+//
+//    }
+//  }
+//}
+
+//---From excitation class 6 (2 holes in core, 0 particles in virtuals) into the CAS------------
 void generateAllScreenedExcitationsCAS_2h0p(const Determinant& d,
                                             const double& THRESH,
                                             workingArray& work,

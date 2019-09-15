@@ -217,7 +217,7 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
   walk.getExcitationClass();
   
   int norbs = Determinant::norbs;
-  if (dontCalcEnergy) { 
+  if (dontCalcEnergy) {
     ovlp = Overlap(walk);
     return;//ham *= ovlp;
   }
@@ -242,6 +242,12 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
     generateAllScreenedSingleExcitationsCAS_1h0p(walk.d, schd.epsilon, schd.screen,
                                                  work, *walk.excitedHoles.begin(), false);
     generateAllScreenedDoubleExcitationsCAS_1h0p(walk.d, schd.epsilon, work, *walk.excitedHoles.begin());
+  }
+  else if (walk.excitation_class == 4) {
+    generateAllScreenedSingleExcitationsCAS_1h1p(walk.d, schd.epsilon, schd.screen, work,
+                                                 *walk.excitedOrbs.begin(), *walk.excitedHoles.begin(), false);
+    generateAllScreenedDoubleExcitationsCAS_1h1p(walk.d, schd.epsilon, work,
+                                                 *walk.excitedOrbs.begin(), *walk.excitedHoles.begin());
   }
   else if (walk.excitation_class == 6) {
     generateAllScreenedExcitationsCAS_2h0p(walk.d, schd.epsilon, work, *walk.excitedHoles.begin(),
