@@ -243,6 +243,10 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
                                                  work, *walk.excitedHoles.begin(), false);
     generateAllScreenedDoubleExcitationsCAS_1h0p(walk.d, schd.epsilon, work, *walk.excitedHoles.begin());
   }
+  else if (walk.excitation_class == 6) {
+    generateAllScreenedExcitationsCAS_2h0p(walk.d, schd.epsilon, work, *walk.excitedHoles.begin(),
+                                           *std::next(walk.excitedHoles.begin()));
+  }
   else if (walk.excitation_class == 8) {
     generateAllScreenedExcitationsCAS_2h2p(walk.d, schd.epsilon, work,
                                            *walk.excitedOrbs.begin(), *std::next(walk.excitedOrbs.begin()),

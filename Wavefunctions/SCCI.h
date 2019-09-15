@@ -94,7 +94,8 @@ class SCCI
       classesUsed.push_back(0);
       classesUsed.push_back(1);
       classesUsed.push_back(2);
-      classesUsed.push_back(3);
+      //classesUsed.push_back(3);
+      classesUsed.push_back(6);
       //classesUsed.push_back(8);
     }
 
@@ -229,7 +230,7 @@ class SCCI
       // 0 holes, 2 particles
       int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
       int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
-      int A = max(a, b) - 1, B = min(a,b);
+      int A = max(a,b) - 1, B = min(a,b);
 
       return cumNumCoeffs[2] + A*(A+1)/2 + B;
     }
@@ -237,15 +238,23 @@ class SCCI
       // 1 hole, 0 particles
       return cumNumCoeffs[3] + *walk.excitedHoles.begin();
     }
+    else if (walk.excitation_class == 6) {
+      // 2 hole, 0 particles
+      int i = *walk.excitedHoles.begin();
+      int j = *(std::next(walk.excitedHoles.begin()));
+      int I = max(i,j) - 1, J = min(i,j);
+
+      return cumNumCoeffs[6] + I*(I+1)/2 + J;
+    }
     else if (walk.excitation_class == 8) {
       // 2 holes, 2 particles
       int i = *walk.excitedHoles.begin();
       int j = *(std::next(walk.excitedHoles.begin()));
-      int I = max(i, j) - 1, J = min(i,j);
+      int I = max(i,j) - 1, J = min(i,j);
 
       int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
       int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
-      int A = max(a, b) - 1, B = min(a,b);
+      int A = max(a,b) - 1, B = min(a,b);
 
       int numVirt = norbs - schd.nciCore - schd.nciAct;
       // Number of unique pairs of virtual orbitals
