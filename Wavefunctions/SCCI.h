@@ -94,11 +94,12 @@ class SCCI
       classesUsed.push_back(0);
       classesUsed.push_back(1);
       classesUsed.push_back(2);
-      //classesUsed.push_back(3);
-      //classesUsed.push_back(4);
+      classesUsed.push_back(3);
+      classesUsed.push_back(4);
       classesUsed.push_back(5);
-      //classesUsed.push_back(6);
-      //classesUsed.push_back(8);
+      classesUsed.push_back(6);
+      classesUsed.push_back(7);
+      classesUsed.push_back(8);
     }
 
     int numCore = schd.nciCore;
@@ -257,6 +258,7 @@ class SCCI
       int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
       int A = max(a,b) - 1, B = min(a,b);
 
+      // the number of *spatial* virtual orbitals
       int numVirt = norbs - schd.nciCore - schd.nciAct;
       // Number of unique pairs of virtual orbitals
       int numVirtPairs = 2*numVirt * (2*numVirt - 1) / 2;
@@ -270,6 +272,19 @@ class SCCI
       int I = max(i,j) - 1, J = min(i,j);
 
       return cumNumCoeffs[6] + I*(I+1)/2 + J;
+    }
+    else if (walk.excitation_class == 7) {
+      // 2 holes, 1 particles
+      int i = *walk.excitedHoles.begin();
+      int j = *(std::next(walk.excitedHoles.begin()));
+      int I = max(i,j) - 1, J = min(i,j);
+
+      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+
+      // the number of *spatial* virtual orbitals
+      int numVirt = norbs - schd.nciCore - schd.nciAct;
+
+      return cumNumCoeffs[7] + (2*numVirt)*(I*(I+1)/2 + J) + a;
     }
     else if (walk.excitation_class == 8) {
       // 2 holes, 2 particles
