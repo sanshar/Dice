@@ -1527,11 +1527,20 @@ void generateAllScreenedExcitationsCAS_2h2p(const Determinant& d,
   int norbs = Determinant::norbs;
 
   int i = max(iExc, jExc), j = min(iExc, jExc);
-  int a = max(aExc, bExc), b = min(aExc, bExc);
 
-  // if we are going below the criterion, break
-  //if (fabs(integrals[index]) < THRESH)
-  //  break;
+  int a, b;
+
+  if (i%2 == aExc%2 && j%2 == bExc%2) {
+    a = aExc;
+    b = bExc;
+  }
+  else if (i%2 == bExc%2 && j%2 == aExc%2) {
+    a = bExc;
+    b = aExc;
+  }
+  else {
+    return;
+  }
 
   double integral;
 
