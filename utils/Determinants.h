@@ -302,6 +302,13 @@ void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& det,
                                          workingArray& work,
                                          const int& i, const int& a);
 
+//---From excitation class 5 (1 hole in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_1h2p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc,
+                                         const int& a);
+
 //---From excitation class 6 (2 holes in core, 0 particles in virtuals) into the CAS
 void generateAllScreenedExcitationsCAS_2h0p(const Determinant& det,
                                          const double& screen,

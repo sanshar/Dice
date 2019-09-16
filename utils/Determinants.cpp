@@ -1433,7 +1433,7 @@ void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& d,
 }
 
 //---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS------------
-// An alternative version of this function for checking
+// An alternative implementation of this function for testing purposes
 // TODO: Remove when all debugging has been done
 //void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& d,
 //                                                  const double& THRESH,
@@ -1487,6 +1487,93 @@ void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& d,
 //        work.appendValue(0.0, i * 2 * norbs + a, j * 2 * norbs + b, integral);
 //      }
 //
+//    }
+//  }
+//}
+
+//---From excitation class 5 (1 hole in core, 2 particles in virtuals) into the CAS------------
+void generateAllScreenedExcitationsCAS_1h2p(const Determinant& d,
+                                            const double& THRESH,
+                                            workingArray& work,
+                                            const int& iExc, const int& jExc,
+                                            const int& a) {
+  int norbs = Determinant::norbs;
+  int max_act_ind = 2*(schd.nciCore + schd.nciAct) - 1;
+
+  int i = max(iExc, jExc), j = min(iExc, jExc);
+  const float *integrals; const short* orbIndices;
+  size_t numIntegrals;
+  I2hbCAS.getIntegralArray(i, j, integrals, orbIndices, numIntegrals);
+  size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+  // for all HCI integrals
+  for (size_t index = 0; index < numLargeIntegrals; index++)
+  {
+    // otherwise: generate the determinant corresponding to the current excitation
+    int a_new = 2 * orbIndices[2 * index] + i % 2;
+    int b_new = 2 * orbIndices[2 * index + 1] + j % 2;
+
+    if (a_new > max_act_ind || b_new > max_act_ind) continue;
+
+    if (a_new == a || b_new == a) {
+      if (!(d.getocc(a_new) || d.getocc(b_new))) {
+        //cout << "a   " << a << "  b  " << b << endl;
+        work.appendValue(0.0, i * 2 * norbs + a_new, j * 2 * norbs + b_new, integrals[index]);
+      }
+    }
+  }
+}
+
+//---From excitation class 5 (1 hole in core, 2 particles in virtuals) into the CAS------------
+// An alternative implementation of this function for testing purposes
+// TODO: Remove when all debugging has been done
+//void generateAllScreenedExcitationsCAS_1h2p(const Determinant& d,
+//                                            const double& THRESH,
+//                                            workingArray& work,
+//                                            const int& iExc, const int& jExc,
+//                                            const int& aExc) {
+//  int norbs = Determinant::norbs;
+//  int first_virtual = schd.nciCore + schd.nciAct;
+//
+//  vector<int> closed;
+//  vector<int> open;
+//  d.getOpenClosed(open, closed);
+//
+//  double integral;
+//  int a, b, b_temp;
+//
+//  int i = max(iExc, jExc), j = min(iExc, jExc);
+//
+//  auto ub = upper_bound(open.begin(), open.end(), 2*first_virtual - 1);
+//  int indAct = distance(open.begin(), ub);
+//
+//  for (int m = 0; m < indAct; m++) {
+//    b_temp = open[m];
+//
+//    if (i%2 == aExc%2 && j%2 == b_temp%2) {
+//      a = aExc;
+//      b = b_temp;
+//    }
+//    else if (i%2 == b_temp%2 && j%2 == aExc%2) {
+//      a = b_temp;
+//      b = aExc;
+//    }
+//    else {
+//      continue;
+//    }
+//
+//    if (i%2 == j%2) {
+//      // same spin
+//      integral = I2(i, a, j, b) - I2(i, b, j, a);
+//    }
+//    else {
+//      // opposite spin
+//      integral = I2(i, a, j, b);
+//    }
+//
+//    if (fabs(integral) > THRESH) {
+//      //cout << i << "  " << j << "  " << a << "  " << b << "  " << integral << endl;
+//      work.appendValue(0.0, i * 2 * norbs + a, j * 2 * norbs + b, integral);
 //    }
 //  }
 //}

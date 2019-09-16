@@ -95,7 +95,8 @@ class SCCI
       classesUsed.push_back(1);
       classesUsed.push_back(2);
       //classesUsed.push_back(3);
-      classesUsed.push_back(4);
+      //classesUsed.push_back(4);
+      classesUsed.push_back(5);
       //classesUsed.push_back(6);
       //classesUsed.push_back(8);
     }
@@ -247,6 +248,20 @@ class SCCI
       int numVirt = norbs - schd.nciCore - schd.nciAct;
 
       return cumNumCoeffs[4] + numVirt*i + a;
+    }
+    else if (walk.excitation_class == 5) {
+      // 1 hole, 2 particles
+      int i = *walk.excitedHoles.begin();
+
+      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+      int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
+      int A = max(a,b) - 1, B = min(a,b);
+
+      int numVirt = norbs - schd.nciCore - schd.nciAct;
+      // Number of unique pairs of virtual orbitals
+      int numVirtPairs = 2*numVirt * (2*numVirt - 1) / 2;
+
+      return cumNumCoeffs[5] + numVirtPairs*i + A*(A+1)/2 + B;
     }
     else if (walk.excitation_class == 6) {
       // 2 hole, 0 particles
