@@ -247,7 +247,7 @@ class SCCI
 
       int numVirt = norbs - schd.nciCore - schd.nciAct;
 
-      return cumNumCoeffs[4] + numVirt*i + a;
+      return cumNumCoeffs[4] + 2*numVirt*i + a;
     }
     else if (walk.excitation_class == 5) {
       // 1 hole, 2 particles
