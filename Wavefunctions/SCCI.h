@@ -83,12 +83,13 @@ class SCCI
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
     if (commrank == 0) {
-      auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                              std::ref(generator));
+      // Use a constant amplitude for each contracted state except
+      // the CASCI wave function.
+      double amp = -std::min(0.5, 20.0/std::sqrt(numCoeffs));
 
-      coeffs(0) = -0.5;
+      coeffs(0) = 1.0;
       for (int i=1; i < numCoeffs; i++) {
-        coeffs(i) = 0.2*random() - 0.1;
+        coeffs(i) = amp;
       }
     }
 
