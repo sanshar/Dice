@@ -386,7 +386,8 @@ class SCPT
     //  cout << "i   largeNorms(i)    ene(0) - ene(i)\n";
     //}
     for (int i = 1; i < largeNorms.size(); i++) {
-      ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      //ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      ene2 += largeNorms(i) / largeNorms(0) / (ene(0) - ene(i));
       //if (commrank == 0) cout << i << "     " << largeNorms(i) << "    " << ene(0) - ene(i) << endl;
       coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
     }
