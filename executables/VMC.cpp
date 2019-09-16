@@ -239,15 +239,31 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "test") {
+  else if (schd.wavefunctionType == "eom") {
+    EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+    //cout << "detetrministic\n\n";
+    if (schd.deterministic) wave.optimizeWaveDeterministic(walk); 
+    else {
+      wave.initWalker(walk);
+      wave.optimizeWaveCT(walk); 
+    }
+    //wave.calcPolDeterministic(walk); 
+    //wave.calcPolCT(walk); 
+    //wave.initWalker(walk);
+    //runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "pol") {
     EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
     //cout << "detetrministic\n\n";
     //wave.optimizeWaveDeterministic(walk); 
-    wave.initWalker(walk);
     //cout << "stochastic\n\n";
     //wave.optimizeWaveCT(walk); 
-    //wave.calcPolDeterministic(walk); 
-    wave.calcPolCT(walk); 
+    if (schd.deterministic) wave.calcPolDeterministic(walk); 
+    else {
+      wave.initWalker(walk);
+      wave.calcPolCT(walk); 
+    }
     //wave.initWalker(walk);
     //runVMC(wave, walk);
   }

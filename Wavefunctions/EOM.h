@@ -349,7 +349,7 @@ class EOM
       ciHam = ciHam / overlapTot;
       sMat = sMat / overlapTot;
       ene0 = ciHam(0, 0) / sMat(0,0);
-      sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
+      //sMat += 1.e-8 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl; 
       //GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
@@ -357,32 +357,38 @@ class EOM
       //double minEne = diag.eigenvalues().real().minCoeff(&minInd);
       //coeffs = diag.eigenvectors().col(minInd).real();
       cout << "ref energy   " << fixed << setprecision(5) << ene0 << endl;
+      MatrixXd projSMat = sMat.block(1,1,coeffs.size()-1, coeffs.size()-1) - sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1);
+      MatrixXd projHam = ciHam.block(1,1,coeffs.size()-1, coeffs.size()-1)- ciHam.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1)
+                               - sMat.block(1,0,coeffs.size()-1,1) * ciHam.block(0,1,1,coeffs.size()-1)
+                               + ene0 * sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1); 
+      GeneralizedEigenSolver<MatrixXd> diag(projHam, projSMat);
+      cout << "eigenvalues\n" << diag.eigenvalues() << endl;
       //cout << "eigenvalues\n" << diag.eigenvalues() << endl;
       //cout << "ciHam\n" << ciHam << endl;
       //cout << "sMat\n" << sMat << endl;
       //cout << "coeffs\n" << coeffs << endl;
-      EigenSolver<MatrixXd> ovlpDiag(sMat);
-      VectorXd norms = ovlpDiag.eigenvalues().real();
-      std::vector<int> largeNormIndices;
-      for (int i = 0; i < coeffs.size(); i++) {
-        if (norms(i) > 1.e-5) {
-          largeNormIndices.push_back(i);
-        }
-      }
-      Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-      VectorXd largeNorms;
-      igl::slice(norms, largeNormSlice, largeNorms);
-      cout << "largeNorms size  " << largeNorms.size() << endl;
-      DiagonalMatrix<double, Dynamic> largeNormInv;
-      largeNormInv.resize(largeNorms.size());
-      largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
-      //largeNormInv.diagonal() = largeNorms.cwiseInverse();
-      MatrixXd largeBasis;
-      igl::slice(ovlpDiag.eigenvectors().real(), VectorXi::LinSpaced(coeffs.size(), 0, coeffs.size()-1), largeNormSlice, largeBasis);
-      MatrixXd basisChange = largeBasis * largeNormInv;
-      MatrixXd largeHam = basisChange.transpose() * ciHam * basisChange;
-      EigenSolver<MatrixXd> hamDiag(largeHam);
-      cout << "eigenvalues\n" << hamDiag.eigenvalues().real() << endl;
+      //EigenSolver<MatrixXd> ovlpDiag(sMat);
+      //VectorXd norms = ovlpDiag.eigenvalues().real();
+      //std::vector<int> largeNormIndices;
+      //for (int i = 0; i < coeffs.size(); i++) {
+      //  if (norms(i) > 1.e-5) {
+      //    largeNormIndices.push_back(i);
+      //  }
+      //}
+      //Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
+      //VectorXd largeNorms;
+      //igl::slice(norms, largeNormSlice, largeNorms);
+      //cout << "largeNorms size  " << largeNorms.size() << endl;
+      //DiagonalMatrix<double, Dynamic> largeNormInv;
+      //largeNormInv.resize(largeNorms.size());
+      //largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
+      ////largeNormInv.diagonal() = largeNorms.cwiseInverse();
+      //MatrixXd largeBasis;
+      //igl::slice(ovlpDiag.eigenvectors().real(), VectorXi::LinSpaced(coeffs.size(), 0, coeffs.size()-1), largeNormSlice, largeBasis);
+      //MatrixXd basisChange = largeBasis * largeNormInv;
+      //MatrixXd largeHam = basisChange.transpose() * ciHam * basisChange;
+      //EigenSolver<MatrixXd> hamDiag(largeHam);
+      //cout << "eigenvalues\n" << hamDiag.eigenvalues().real() << endl;
     }
 #ifndef SERIAL
   MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -443,6 +449,10 @@ class EOM
       //double minEne = diag.eigenvalues().real().minCoeff(&minInd);
       //coeffs = diag.eigenvectors().col(minInd).real();
       cout << "ref energy   " << fixed << setprecision(5) << ene0 << endl;
+      MatrixXd projSMat = sMat.block(1,1,coeffs.size()-1, coeffs.size()-1) - sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1);
+      MatrixXd projHam = ciHam.block(1,1,coeffs.size()-1, coeffs.size()-1)- ciHam.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1)
+                               - sMat.block(1,0,coeffs.size()-1,1) * ciHam.block(0,1,1,coeffs.size()-1)
+                               + ene0 * sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1); 
       //cout << "eigenvalues\n" << diag.eigenvalues() << endl;
       //cout << "ciHam\n" << ciHam << endl;
       //cout << "sMat\n" << sMat << endl;
@@ -477,11 +487,11 @@ class EOM
       //  cout << w << "    " << (stateOnTheSide.adjoint() * corr).imag() << endl;
       //}
 
-      VectorXcd stateOnTheSide = VectorXcd::Zero(coeffs.size());
-      stateOnTheSide.real() = sMat.col(1);
+      VectorXcd stateOnTheSide = VectorXcd::Zero(coeffs.size() - 1);
+      stateOnTheSide.real() = projSMat.col(0);
       for (int i = 0; i < 100; i++) {
         complex<double> w (-0.5 + 0.005 * i, 0.001);
-        MatrixXcd aMat = (w - ene0) * sMat + ciHam;
+        MatrixXcd aMat = (w - ene0) * projSMat + projHam;
         //Eigen::ColPivHouseholderQR<Eigen::MatrixXcd> lin(aMat);
         //Eigen::ConjugateGradient<Eigen::MatrixXcd> lin(aMat);
         Eigen::BiCGSTAB<Eigen::MatrixXcd> lin(aMat);
@@ -638,14 +648,19 @@ class EOM
       sMat /= cumdeltaT;
       ciHam /= cumdeltaT;
       //ciHam = (ciHam + ciHam.transpose().eval()) / 2;
+      double ene0 = ciHam(0, 0) / sMat(0, 0);
       cout << "ref energy   " << setprecision(12) << ciHam(0, 0) / sMat(0, 0) << endl;
       //sMat += 1.e-7 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl; 
-      EigenSolver<MatrixXd> ovlpDiag(sMat);
+      MatrixXd projSMat = sMat.block(1,1,coeffs.size()-1, coeffs.size()-1) - sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1);
+      MatrixXd projHam = ciHam.block(1,1,coeffs.size()-1, coeffs.size()-1)- ciHam.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1)
+                               - sMat.block(1,0,coeffs.size()-1,1) * ciHam.block(0,1,1,coeffs.size()-1)
+                               + ene0 * sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1); 
+      EigenSolver<MatrixXd> ovlpDiag(projSMat);
       VectorXd norms = ovlpDiag.eigenvalues().real();
       std::vector<int> largeNormIndices;
-      for (int i = 0; i < coeffs.size(); i++) {
+      for (int i = 0; i < coeffs.size()-1; i++) {
         if (norms(i) > schd.overlapCutoff) {
           largeNormIndices.push_back(i);
         }
@@ -659,9 +674,9 @@ class EOM
       largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
       //largeNormInv.diagonal() = largeNorms.cwiseInverse();
       MatrixXd largeBasis;
-      igl::slice(ovlpDiag.eigenvectors().real(), VectorXi::LinSpaced(coeffs.size(), 0, coeffs.size()-1), largeNormSlice, largeBasis);
+      igl::slice(ovlpDiag.eigenvectors().real(), VectorXi::LinSpaced(coeffs.size()-1, 0, coeffs.size()-2), largeNormSlice, largeBasis);
       MatrixXd basisChange = largeBasis * largeNormInv;
-      MatrixXd largeHam = basisChange.transpose() * ciHam * basisChange;
+      MatrixXd largeHam = basisChange.transpose() * projHam * basisChange;
       EigenSolver<MatrixXd> hamDiag(largeHam);
       cout << "eigenvalues\n" << hamDiag.eigenvalues().real() << endl;
       //GeneralizedEigenSolver<MatrixXd> diag(ciHam, sMat);
@@ -749,6 +764,10 @@ class EOM
       //ciHam = (ciHam + ciHam.transpose().eval()) / 2;
       double ene0 = ciHam(0, 0) / sMat(0, 0);
       cout << "ref energy   " << setprecision(12) << ciHam(0, 0) / sMat(0, 0) << endl;
+      MatrixXd projSMat = sMat.block(1,1,coeffs.size()-1, coeffs.size()-1) - sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1);
+      MatrixXd projHam = ciHam.block(1,1,coeffs.size()-1, coeffs.size()-1)- ciHam.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1)
+                               - sMat.block(1,0,coeffs.size()-1,1) * ciHam.block(0,1,1,coeffs.size()-1)
+                               + ene0 * sMat.block(1,0,coeffs.size()-1,1) * sMat.block(0,1,1,coeffs.size()-1); 
       //sMat += 1.e-7 * MatrixXd::Identity(coeffs.size(), coeffs.size());
       //cout << "ciHam\n" << ciHam << endl << endl;
       //cout << "sMat\n" << sMat << endl << endl; 
@@ -782,11 +801,11 @@ class EOM
       //  cout << w << "    " << (stateOnTheSide.adjoint() * corr).imag() << endl;
       //}
       
-      VectorXcd stateOnTheSide = VectorXcd::Zero(coeffs.size());
-      stateOnTheSide.real() = sMat.col(2);
+      VectorXcd stateOnTheSide = VectorXcd::Zero(coeffs.size()-1);
+      stateOnTheSide.real() = projSMat.col(0);
       for (int i = 0; i < 100; i++) {
         complex<double> w (-0.5 + 0.005 * i, 0.001);
-        MatrixXcd aMat = (w - ene0) * sMat + ciHam;
+        MatrixXcd aMat = (w - ene0) * projSMat + projHam;
         //Eigen::ColPivHouseholderQR<Eigen::MatrixXcd> lin(aMat);
         //Eigen::ConjugateGradient<Eigen::MatrixXcd> lin(aMat);
         Eigen::BiCGSTAB<Eigen::MatrixXcd> lin(aMat);
