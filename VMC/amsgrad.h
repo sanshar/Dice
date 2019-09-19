@@ -127,6 +127,7 @@ class AMSGrad
             double E0, stddev = 0.0, rt = 1.0;
             getGradient(vars, grad, E0, stddev, rt);
             if (commrank == 0 && schd.printGrad) {cout << "totalGrad" << endl; cout << grad << endl;}
+            //if (commrank == 0 && schd.printVars) cout << endl << "ci coeffs\n" << vars << endl;
             write(vars);
             double oldNorm = stepNorm, dotProduct = 0.;
             stepNorm = 0.;

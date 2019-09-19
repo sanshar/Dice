@@ -1797,7 +1797,7 @@ void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha
   vector<vector<int>> alphaDets, betaDets;
   comb(norbs, nalpha, alphaDets);
   comb(norbs, nbeta, betaDets);
-  
+
   for (int a = 0; a < alphaDets.size(); a++)
     for (int b = 0; b < betaDets.size(); b++)
     {
@@ -1809,6 +1809,69 @@ void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha
       allDets.push_back(d);
     }
 
+  alphaDets.clear();
+  betaDets.clear();
+}
+
+// Useful when doing an MRCI/MRPT calculation. This routine only generates
+// determinants within the first-order interacting space of the chosen
+// CAS, using schd.nciCore and schd.nciAct
+void generateAllDeterminantsFOIS(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta) {
+  vector<vector<int>> alphaDets, betaDets;
+
+  vector<int> nBetaHoles, nBetaParts;
+  vector<int> nAlphaHoles, nAlphaParts;
+  int nHoles, nParts;
+
+  // generate the alpha and beta strings
+  comb(norbs, nalpha, alphaDets);
+  comb(norbs, nbeta, betaDets);
+
+  // find the number of holes and particles in the core and virtual
+  // orbitals, respectively
+  for (int a = 0; a < alphaDets.size(); a++) {
+    nAlphaHoles.push_back(schd.nciCore);
+    nAlphaParts.push_back(0);
+
+    for (int i = 0; i < alphaDets[a].size(); i++) {
+      if (alphaDets[a][i] < schd.nciCore) nAlphaHoles[a] -= 1;
+      if (alphaDets[a][i] >= schd.nciCore + schd.nciAct) nAlphaParts[a] += 1;
+    }
+  }
+  for (int b = 0; b < betaDets.size(); b++) {
+    nBetaHoles.push_back(schd.nciCore);
+    nBetaParts.push_back(0);
+
+    for (int i = 0; i < betaDets[b].size(); i++) {
+      if (betaDets[b][i] < schd.nciCore) nBetaHoles[b] -= 1;
+      if (betaDets[b][i] >= schd.nciCore + schd.nciAct) nBetaParts[b] += 1;
+    }
+  }
+
+  // construct the determinants
+  int counter = 0;
+  for (int a = 0; a < alphaDets.size(); a++)
+    for (int b = 0; b < betaDets.size(); b++)
+    {
+      nHoles = nAlphaHoles[a] + nBetaHoles[b];
+      nParts = nAlphaParts[a] + nBetaParts[b];
+
+      // this is the condition for the determinant to be in the FOIS
+      if (nHoles <= 2 && nParts <= 2) {
+        Determinant d;
+        for (int i = 0; i < alphaDets[a].size(); i++)
+          d.setoccA(alphaDets[a][i], true);
+        for (int i = 0; i < betaDets[b].size(); i++)
+          d.setoccB(betaDets[b][i], true);
+        allDets.push_back(d);
+        counter += 1;
+      }
+    }
+
+  nAlphaHoles.clear();
+  nAlphaParts.clear();
+  nBetaHoles.clear();
+  nBetaParts.clear();
   alphaDets.clear();
   betaDets.clear();
 }

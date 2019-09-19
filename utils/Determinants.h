@@ -332,6 +332,7 @@ void generateAllScreenedExcitationsCAS_2h2p(const Determinant& det,
 void comb(int N, int K, vector<vector<int>> &combinations);
 
 void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
+void generateAllDeterminantsFOIS(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
 
 template<> struct hash<Determinant>
 {
