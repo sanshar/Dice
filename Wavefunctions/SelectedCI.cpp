@@ -126,7 +126,12 @@ void SelectedCI::initWalker(SimpleWalker &walk) {
 void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
   int norbs = Determinant::norbs;
   walk.d = d;
+  walk.excitedHoles.clear();
   walk.excitedOrbs.clear();
+  for (int i = 0; i < schd.nciCore; i++) {
+    if (!walk.d.getoccA(i)) walk.excitedHoles.insert(2*i);
+    if (!walk.d.getoccB(i)) walk.excitedHoles.insert(2*i+1);
+  }
   for (int i = schd.nciCore + schd.nciAct; i < Determinant::norbs; i++) {
     if (d.getoccA(i)) walk.excitedOrbs.insert(2*i);
     if (d.getoccB(i)) walk.excitedOrbs.insert(2*i+1);

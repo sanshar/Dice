@@ -169,7 +169,7 @@ class SCCI
         ofile >> coeffs(i);
       }
     }
-    
+
     //char filem[5000];
     //sprintf(filem, "moEne.txt");
     //ifstream ofilem(filem);
@@ -322,7 +322,8 @@ class SCCI
 			     double &factor,
 			     Eigen::VectorXd &grad)
   {
-    if (walk.excitedOrbs.size() > 2) return;
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return;
+
     int norbs = Determinant::norbs;
     int coeffsIndex = this->coeffsIndex(walk);
     double ciCoeff = coeffs(coeffsIndex);
@@ -335,8 +336,7 @@ class SCCI
                   double &ovlp, double &ham, 
                   workingArray& work, bool fillExcitations=true) 
   {
-    if (walk.excitedHoles.size() > 2) return;
-    if (walk.excitedOrbs.size() > 2) return;
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return;
 
     //cout << "WALKER excitedOrbs: " << endl;
     //for (auto it = walk.excitedOrbs.begin(); it != walk.excitedOrbs.end(); ++it )
