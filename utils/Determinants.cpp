@@ -944,9 +944,6 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
   vector<int> open;
   d.getOpenClosed(open, closed);
 
-  auto ub = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
-  int indCore = distance(closed.begin(), ub);
-
   int nclosed = closed.size();
   for (int i = 0; i<nclosed; i++) {
     for (int j = 0; j<i; j++) {
