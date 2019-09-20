@@ -1708,8 +1708,7 @@ void generateAllScreenedExcitationsCAS_2h1p(const Determinant& d,
 //}
 
 //---From excitation class 8 (2 holes in core, 2 particles in virtuals) into the CAS------------
-void generateAllScreenedExcitationsCAS_2h2p(const Determinant& d,
-                                            const double& THRESH,
+void generateAllScreenedExcitationsCAS_2h2p(const double& THRESH,
                                             workingArray& work,
                                             const int& iExc, const int& jExc,
                                             const int& aExc, const int& bExc) {

@@ -78,6 +78,7 @@ class SCCI
   // the cumulative sum of numCoeffsPerClass
   int cumNumCoeffs[NUM_EXCIT_CLASSES];
 
+  unordered_map<std::array<int,4>, int, boost::hash<std::array<int,4>> > class_2h2p_ind;
 
   SCCI()
   {
@@ -123,7 +124,7 @@ class SCCI
     // 2 hole, 1 particle:
     numCoeffsPerClass[7] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt);
     // 2 hole, 2 particles:
-    numCoeffsPerClass[8] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt * (2*numVirt - 1) / 2);
+    create_class_2h2p_hash(numCoeffsPerClass[8]);
 
     cumNumCoeffs[0] = 0;
     for (int i = 1; i < 9; i++)
@@ -182,6 +183,35 @@ class SCCI
     //  if (commrank == 0) cout << "moEne.txt not found!\n";
     //  exit(0);
     //}
+  }
+
+  void create_class_2h2p_hash(int& numStates) {
+    // Loop over all combinations of vore and virtual pairs.
+    // For each, see if the corresponding Hamiltonian element is non-zero.
+    // If so, give it an index and put that index in the hash table for
+    // later access.
+
+    int norbs = Determinant::norbs;
+    int first_virtual = 2*(schd.nciCore + schd.nciAct);
+
+    numStates = 0;
+
+    for (int i = first_virtual+1; i < 2*norbs; i++) {
+      for (int j = first_virtual; j < i; j++) {
+        for (int a = 1; a < 2*schd.nciCore; a++) {
+          for (int b = 0; b < a; b++) {
+            morework.setCounterToZero();
+            generateAllScreenedExcitationsCAS_2h2p(schd.epsilon, morework, i, j, a, b);
+            if (morework.nExcitations > 0) {
+              std::array<int,4> inds = {i, j, a, b};
+              class_2h2p_ind[inds] = numStates;
+              numStates += 1;
+            }
+          }
+        }
+      }
+    }
+
   }
 
   typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
@@ -290,17 +320,19 @@ class SCCI
       // 2 holes, 2 particles
       int i = *walk.excitedHoles.begin();
       int j = *(std::next(walk.excitedHoles.begin()));
-      int I = max(i,j) - 1, J = min(i,j);
+      int I = max(i,j), J = min(i,j);
 
-      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
-      int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
-      int A = max(a,b) - 1, B = min(a,b);
+      int a = *walk.excitedOrbs.begin();
+      int b = *(std::next(walk.excitedOrbs.begin()));
+      int A = max(a,b), B = min(a,b);
 
-      int numVirt = norbs - schd.nciCore - schd.nciAct;
-      // Number of unique pairs of virtual orbitals
-      int numVirtPairs = 2*numVirt * (2*numVirt - 1) / 2;
+      std::array<int,4> inds = {A, B, I, J};
 
-      return cumNumCoeffs[8] + numVirtPairs*(I*(I+1)/2 + J) + A*(A+1)/2 + B;
+      auto it1 = class_2h2p_ind.find(inds);
+      if (it1 != class_2h2p_ind.end())
+        return cumNumCoeffs[8] + it1->second;
+      else
+        return -1;
     }
     else return -1;
   }
@@ -326,6 +358,7 @@ class SCCI
 
     int norbs = Determinant::norbs;
     int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1) return;
     double ciCoeff = coeffs(coeffsIndex);
     //if (abs(ciCoeff) <= 1.e-8) return;
     grad[coeffsIndex] += 1 / ciCoeff;
@@ -337,6 +370,9 @@ class SCCI
                   workingArray& work, bool fillExcitations=true) 
   {
     if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return;
+
+    int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1) return;
 
     //cout << "WALKER excitedOrbs: " << endl;
     //for (auto it = walk.excitedOrbs.begin(); it != walk.excitedOrbs.end(); ++it )
@@ -351,7 +387,6 @@ class SCCI
     //cout << "WALKER det: " << walk.d << endl << endl;
 
     int norbs = Determinant::norbs;
-    int coeffsIndex = this->coeffsIndex(walk);
     double ciCoeff = coeffs(coeffsIndex);
     morework.setCounterToZero();
     double ovlp0, ham0;
@@ -364,6 +399,7 @@ class SCCI
       wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
       ovlp = ciCoeff * ovlp0;
     }
+
     if (ovlp == 0.) return; //maybe not necessary
     ham = walk.d.Energy(I1, I2, coreE);
     double dEne = ham;
@@ -389,29 +425,18 @@ class SCCI
       Determinant dcopy = walkCopy.d;
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);
+
       // Is this excitation class being used? If not, then move to the next excitation.
       if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      if (coeffsCopyIndex == -1) continue;
+
       parity *= dcopy.parity(A/2, I/2, I%2);
-      //if (ex2 == 0) {
-      //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
-      //              - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
-      //}
-      //else {
       if (ex2 != 0) {
         dcopy.setocc(I, false);
         dcopy.setocc(A, true);
         parity *= dcopy.parity(B/2, J/2, J%2);
-        //bool sameSpin = (I%2 == J%2);
-        //ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
-        //            + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
-        //            + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
-        //            + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
-        //            - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
-        //            - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
-        //            - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
-        //            - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
       }
-      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
       morework.setCounterToZero();
 
       if (coeffsCopyIndex == 0) {
