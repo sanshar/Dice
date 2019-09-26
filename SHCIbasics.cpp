@@ -60,11 +60,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   pout << format("Performing semistochastic PT for state: %3i") % (root)
        << endl;
 
+  double epsilon2 = schd.epsilon2;
+  schd.epsilon2 = schd.epsilon2Large;
   pout << endl
        << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
        << endl;
-  double epsilon2 = schd.epsilon2;
-  schd.epsilon2 = schd.epsilon2Large;
   vector<MatrixXx> vdVector;
   double Psi1Norm;
   double EptLarge = 0.0;
@@ -73,9 +73,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
 
+  schd.epsilon2 = epsilon2;
   pout << endl
        << "2/ Stochastic calculation with epsilon2=" << schd.epsilon2 << endl;
-  schd.epsilon2 = epsilon2;
 
   int norbs = Determinant::norbs;
   Determinant* SortedDets;
