@@ -508,7 +508,8 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
       Determinant* Dets:
           The determinants of the basis
       int StartIndex:
-          BM_description
+          The index of the first "new" determinant in the CI expansion of the
+          wavefunction.
       int EndIndex:
           BM_description
       bool diskio:
@@ -550,9 +551,15 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
     for (int ii = 0; ii < AlphaMajorToBetaLen[i]; ii++) {
       int Astring = i, Bstring = AlphaMajorToBeta[i][ii],
           DetI = AlphaMajorToDet[i][ii];
-      if ((std::abs(DetI) - 1) % nprocs != proc ||
-          (std::abs(DetI) - 1) < StartIndex || DetI < 0)
+      if ((std::abs(DetI) - 1) % nprocs != proc || DetI < 0) {
+        // if ((std::abs(DetI) - 1) % nprocs != proc ||
+        //     (std::abs(DetI) - 1) < StartIndex || DetI < 0) {
+        std::cout << ((std::abs(DetI) - 1) % nprocs != proc) << std::endl;
+        std::cout << ((std::abs(DetI) - 1) < StartIndex) << std::endl;
+        std::cout << (DetI < 0) << std::endl;
+        std::cout << Dets[std::abs(DetI) - 1] << std::endl;
         continue;
+      }
 
       // singles from Astring
       int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring] - 1];
@@ -562,7 +569,11 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
                                  BetaMajorToAlphaLen[Bstring] - 1, Asingle);
         if (index != -1) {
           int DetJ = BetaMajorToDet[Bstring][index];
-          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          // if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          if (std::abs(DetJ) == std::abs(DetI)) continue;
+          if (std::abs(DetI) <= StartIndex && std::abs(DetJ) <= StartIndex) {
+            continue;  // Skip if we are in the "old" block of the Hamiltonian
+          }
           size_t orbDiff;
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
@@ -603,7 +614,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
             int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
             // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
             // max(offSet, StartIndex)) continue;
-            if (std::abs(DetJ) >= std::abs(DetI)) continue;
+            // if (std::abs(DetJ) >= std::abs(DetI)) continue;
+            if (std::abs(DetJ) == std::abs(DetI)) continue;
+            if (std::abs(DetI) <= StartIndex && std::abs(DetJ) <= StartIndex) {
+              continue;  // Skip if we are in the "old" block of the Hamiltonian
+            }
+
             size_t orbDiff;
             CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                              I1, I2, coreE, orbDiff);
@@ -634,7 +650,11 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           // if (std::abs(DetJ) < StartIndex) continue;
           // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
           // max(offSet, StartIndex)) continue;
-          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          // if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          if (std::abs(DetJ) == std::abs(DetI)) continue;
+          if (std::abs(DetI) <= StartIndex && std::abs(DetJ) <= StartIndex) {
+            continue;  // Skip if we are in the "old" block of the Hamiltonian
+          }
 
           size_t orbDiff;
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
@@ -656,7 +676,11 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
         // if (std::abs(DetJ) < StartIndex) continue;
         // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
         // max(offSet, StartIndex)) continue;
-        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        // if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        if (std::abs(DetJ) == std::abs(DetI)) continue;
+        if (std::abs(DetI) <= StartIndex && std::abs(DetJ) <= StartIndex) {
+          continue;  // Skip if we are in the "old" block of the Hamiltonian
+        }
 
         Determinant di = Dets[std::abs(DetI) - 1];
         if (DetJ < 0) di.flipAlphaBeta();
@@ -682,7 +706,11 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
         // if (std::abs(DetJ) < StartIndex) continue;
         // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
         // max(offSet, StartIndex)) continue;
-        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        // if (std::abs(DetJ) >= std::abs(DetI)) continue;
+        if (std::abs(DetJ) == std::abs(DetI)) continue;
+        if (std::abs(DetI) <= StartIndex && std::abs(DetJ) <= StartIndex) {
+          continue;  // Skip if we are in the "old" block of the Hamiltonian
+        }
 
         Determinant dj = Dets[std::abs(DetI) - 1];
         if (DetJ < 0) dj.flipAlphaBeta();
