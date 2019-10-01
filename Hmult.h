@@ -77,119 +77,89 @@ struct Hmult2 {
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-    if (numDets > 100000000) {  // more than 10 million
+    /*
+    Debugging
+    */
+    // MatrixXd testmatrix = MatrixXd::Zero(numDets, numDets);
+    // for (int i = 0; i < sparseHam.connections.size(); i++) {
+    //   if (sparseHam.connections[i].size() > numDets) {
+    //     std::cout << "Row " << i << " has too many elements "
+    //               << sparseHam.connections[i].size() << std::endl;
+    //   }
+    //   for (int j = 0; j < sparseHam.connections[i].size(); j++) {
+    //     CItype hij = sparseHam.Helements[i][j];
+    //     int J = sparseHam.connections[i][j];
 
-      for (int i = 0; i < sparseHam.connections.size(); i++) {
-        for (int j = 0; j < sparseHam.connections[i].size(); j++) {
-          CItype hij = sparseHam.Helements[i][j];
-          int J = sparseHam.connections[i][j];
-          y[i * size + rank] += hij * x[J];
-        }
+    //     // printf("H(%d,%d) = %f\n", i * size + rank, J, hij);
+    //     testmatrix(i * size + rank, J) = hij;
+    //   }
+    // }
+    // std::cout << testmatrix << std::endl;
+    /*
+     End Debugging
+    */
+
+    for (int i = 0; i < sparseHam.connections.size(); i++) {
+      for (int j = 0; j < sparseHam.connections[i].size(); j++) {
+        CItype hij = sparseHam.Helements[i][j];
+        int J = sparseHam.connections[i][j];
+        // ytemp[i * size + rank] += hij * x[J];
+        y[i * size + rank] += hij * x[J];
+
+        // if ((i * size + rank) == 5) {
+        //   std::cout << hij << " " << x[J] << std::endl;
+        // }
+
+        // std::cout << "H(" << <<","<< << ") = " <<hij << std::endl;
+        // printf("H(%d,%d) = %f\n", i * size + rank, J, hij);
+        //           if (J != i*size+rank)
+        // #ifdef Complex
+        //             ytemp[J] += std::conj(hij)*x[i*size+rank];
+        // #else
+        //             ytemp[J] += hij*x[i*size+rank];
+        // #endif
       }
+    }
+    // std::cout << std::endl;
 
-      for (int r = 0; r < localsize; r++) {
-#ifndef SERIAL
-        MPI_Barrier(MPI_COMM_WORLD);
-#endif
-        if (localrank == r) {
-          for (int i = 0; i < sparseHam.connections.size(); i++) {
-            for (int j = 1; j < sparseHam.connections[i].size(); j++) {
-              CItype hij = sparseHam.Helements[i][j];
-              int J = sparseHam.connections[i][j];
-#ifdef Complex
-              y[J] += std::conj(hij) * x[i * size + rank];
-#else
-              y[J] += hij * x[i * size + rank];
-#endif
-            }
-          }
-        }
-      }
-#ifndef SERIAL
-      MPI_Barrier(MPI_COMM_WORLD);
-#endif
-    } else {  // less than 10 million
-      vector<CItype> ytemp(numDets, 0);
-
-      /*
-      Debugging
-      */
-      // MatrixXd testmatrix = MatrixXd::Zero(numDets, numDets);
-      // for (int i = 0; i < sparseHam.connections.size(); i++) {
-      //   if (sparseHam.connections[i].size() > numDets) {
-      //     std::cout << "Row " << i << " has too many elements "
-      //               << sparseHam.connections[i].size() << std::endl;
-      //   }
-      //   for (int j = 0; j < sparseHam.connections[i].size(); j++) {
-      //     CItype hij = sparseHam.Helements[i][j];
-      //     int J = sparseHam.connections[i][j];
-
-      //     // printf("H(%d,%d) = %f\n", i * size + rank, J, hij);
-      //     testmatrix(i * size + rank, J) = hij;
-      //   }
-      // }
-      // std::cout << testmatrix << std::endl;
-      /*
-       End Debugging
-      */
-
-      for (int i = 0; i < sparseHam.connections.size(); i++) {
-        for (int j = 0; j < sparseHam.connections[i].size(); j++) {
-          CItype hij = sparseHam.Helements[i][j];
-          int J = sparseHam.connections[i][j];
-          ytemp[i * size + rank] += hij * x[J];
-
-          // if ((i * size + rank) == 5) {
-          //   std::cout << hij << " " << x[J] << std::endl;
-          // }
-
-          // std::cout << "H(" << <<","<< << ") = " <<hij << std::endl;
-          // printf("H(%d,%d) = %f\n", i * size + rank, J, hij);
-          //           if (J != i*size+rank)
-          // #ifdef Complex
-          //             ytemp[J] += std::conj(hij)*x[i*size+rank];
-          // #else
-          //             ytemp[J] += hij*x[i*size+rank];
-          // #endif
-        }
-      }
-      // std::cout << std::endl;
-
-#ifndef SERIAL
-#ifndef Complex
-      if (localrank == 0) {
-        MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
-                   localcomm);
-        for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
-      } else {
-        MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
-                   localcomm);
-      }
-#else
-      if (localrank == 0) {
-        MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
-                   localcomm);
-        for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
-      } else {
-        MPI_Reduce(&ytemp[0], &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
-                   localcomm);
-      }
-#endif
-      MPI_Barrier(MPI_COMM_WORLD);
-#else
-      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
-#endif
-      // Debug
-      // std::cout << "yi \t\t xi" << std::endl;
-      // for (uint i = 0; i < ytemp.size(); i++) {
-      //   std::cout << y[i] << "\t" << x[i] << std::endl;
-      // }
-      // if (ytemp.size() == 8) {
-      //   exit(1);
-      // }
-      // exit(1);
-    }  // ndets
-  }    // operator
+    // #ifndef SERIAL
+    // #ifndef Complex
+    //     if (localrank == 0) {
+    //       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM,
+    //       0,
+    //                  localcomm);
+    //       for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+    //     } else {
+    //       MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
+    //                  localcomm);
+    //     }
+    // #else
+    //     if (localrank == 0) {
+    //       MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE,
+    //       MPI_SUM, 0,
+    //                  localcomm);
+    //       for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+    //     } else {
+    //       MPI_Reduce(&ytemp[0], &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM,
+    //       0,
+    //                  localcomm);
+    //     }
+    // #endif
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // #else
+    //     for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+    // #endif
+    // Debug
+    // std::cout << "yi \t\t xi" << std::endl;
+    // for (uint i = 0; i < ytemp.size(); i++) {
+    //   std::cout << y[i] << "\t" << x[i] << std::endl;
+    // }
+    // if (ytemp.size() == 8) {
+    //   exit(1);
+    // }
+    // exit(1);
+  }  // ndets
+  // }    // operator
 };
 
 struct HmultDirect {

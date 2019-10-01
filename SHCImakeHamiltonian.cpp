@@ -554,10 +554,10 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
       if ((std::abs(DetI) - 1) % nprocs != proc || DetI < 0) {
         // if ((std::abs(DetI) - 1) % nprocs != proc ||
         //     (std::abs(DetI) - 1) < StartIndex || DetI < 0) {
-        std::cout << ((std::abs(DetI) - 1) % nprocs != proc) << std::endl;
-        std::cout << ((std::abs(DetI) - 1) < StartIndex) << std::endl;
-        std::cout << (DetI < 0) << std::endl;
-        std::cout << Dets[std::abs(DetI) - 1] << std::endl;
+        // std::cout << ((std::abs(DetI) - 1) % nprocs != proc) << std::endl;
+        // std::cout << ((std::abs(DetI) - 1) < StartIndex) << std::endl;
+        // std::cout << (DetI < 0) << std::endl;
+        // std::cout << Dets[std::abs(DetI) - 1] << std::endl;
         continue;
       }
 
