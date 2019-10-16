@@ -255,8 +255,12 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "scpt") {
     SCPT<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
-    wave.optimizeWaveCT(walk);
-    wave.optimizeWaveCT(walk);
+    if (schd.deterministic) {
+      wave.optimizeWaveDeterministic(walk);
+    } else {
+      wave.optimizeWaveCT(walk);
+      wave.optimizeWaveCT(walk);
+    }
   }
 
   else if (schd.wavefunctionType == "slaterrdm") {

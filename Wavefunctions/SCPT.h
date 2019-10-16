@@ -74,19 +74,14 @@ class SCPT
 
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
-    if (commrank == 0) {
-      auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                              std::ref(generator));
+    // Use a constant amplitude for each contracted state except
+    // the CASCI wave function.
+    double amp = -std::min(0.5, 5.0/std::sqrt(numCoeffs));
 
-      coeffs(0) = -0.5;
-      for (int i=1; i < numCoeffs; i++) {
-        coeffs(i) = 0.2*random() - 0.1;
-      }
+    coeffs(0) = 1.0;
+    for (int i=1; i < numCoeffs; i++) {
+      coeffs(i) = amp;
     }
-
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
     
     char file[5000];
     sprintf(file, "ciCoeffs.txt");
@@ -386,7 +381,8 @@ class SCPT
     //  cout << "i   largeNorms(i)    ene(0) - ene(i)\n";
     //}
     for (int i = 1; i < largeNorms.size(); i++) {
-      ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      //ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
+      ene2 += largeNorms(i) / largeNorms(0) / (ene(0) - ene(i));
       //if (commrank == 0) cout << i << "     " << largeNorms(i) << "    " << ene(0) - ene(i) << endl;
       coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
     }
@@ -409,7 +405,7 @@ class SCPT
     generateAllDeterminants(allDets, norbs, nalpha, nbeta);
 
     workingArray work;
-    double overlapTot = 0., correctionFactor = 0.; 
+    double overlapTot = 0.;
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     double waveEne = 0.;
     //w.printVariables();
@@ -430,12 +426,10 @@ class SCPT
       ham(coeffsIndex) += (ovlp * ovlp) * hamSample;
       norm(coeffsIndex) += (ovlp * ovlp) * normSample;
       waveEne += (ovlp * ovlp) * locEne;
-      if (coeffsIndex == 0) correctionFactor += ovlp * ovlp;
     }
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -451,18 +445,10 @@ class SCPT
       norm = norm / overlapTot;
       // cout << "norm\n" << norm << endl;
       ene = (ham.array() / norm.array()).matrix();
-      correctionFactor = correctionFactor / overlapTot;
       double ene2 = 0.;
-      for (int i = 1; i < coeffs.size(); i++) ene2 += norm(i) / correctionFactor / (ene(0) - ene(i));
+      for (int i = 1; i < coeffs.size(); i++) ene2 += norm(i) / norm(0) / (ene(0) - ene(i));
       cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
-      //cout << "ene\n" << ene << endl;
-      coeffs(0) = 1.;
-      for (int i = 1; i < coeffs.size(); i++) coeffs(i) = 1 / (ene(0) - ene(i));
     }
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  //MPI_Bcast(&(ene0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
   }
 
   string getfileName() const {
