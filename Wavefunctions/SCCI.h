@@ -59,6 +59,8 @@ class SCCI
   VectorXd moEne;
   Wfn wave; //reference wavefunction
   workingArray morework;
+
+  double ovlp_current;
   
   //intermediates used in direct methods
   vector<Eigen::VectorXd> largeHamSamples;
@@ -400,13 +402,40 @@ class SCCI
   {
     return 1.;
   }//not used
-  
+
   template<typename Walker>
-  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const 
+  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity)
   {
-    return 1.;
-  }//not used
-  
+    int norbs = Determinant::norbs;
+
+    auto walkCopy = walk;
+    walkCopy.updateWalker(wave.getRef(), wave.getCorr(), I*2*norbs + A, J*2*norbs + B, false);
+
+    // Is this excitation class being used? If not, then move to the next excitation.
+    if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
+      return 0.0;
+    }
+    int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+    if (coeffsCopyIndex == -1) {
+      return 0.0;
+    }
+
+    double ovlp0, ham0, ovlp_new;
+    double ciCoeff = coeffs(coeffsCopyIndex);
+
+    morework.setCounterToZero();
+
+    if (coeffsCopyIndex == 0) {
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, true);
+      ovlp_new = ciCoeff * ovlp0;
+    }
+    else {
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+      ovlp_new = ciCoeff * ovlp0;
+    }
+    return ovlp_new/ovlp_current;
+  }
+
   template<typename Walker>
   void OverlapWithGradient(Walker &walk,
 			     double &factor,
@@ -420,6 +449,17 @@ class SCCI
     double ciCoeff = coeffs(coeffsIndex);
     //if (abs(ciCoeff) <= 1.e-8) return;
     grad[coeffsIndex] += 1 / ciCoeff;
+  }
+
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk)
+  {
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return false;
+    int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1)
+      return false;
+    else
+      return true;
   }
 
   template<typename Walker>
@@ -446,6 +486,8 @@ class SCCI
       wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
       ovlp = ciCoeff * ovlp0;
     }
+
+    ovlp_current = ovlp;
 
     if (ovlp == 0.) return;
     ham = walk.d.Energy(I1, I2, coreE);

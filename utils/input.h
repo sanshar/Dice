@@ -79,6 +79,7 @@ private:
       & numActive
       & nciCore
       & nciAct
+      & usingFOIS
       & sDiagShift
       & cgIter
       & stepsize
@@ -173,6 +174,7 @@ public:
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciCore; //number of core spatial orbitals
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
+  bool usingFOIS; // Is this is a MRCI/MRPT calculation, sampling the FOIS only
   double actWidth; //used in lanczos
   double overlapCutoff; //used in SCCI
   std::string diagMethod;

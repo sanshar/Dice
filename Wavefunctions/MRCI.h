@@ -340,6 +340,11 @@ class MRCI
     //if (schd.debug) cout << "ham  " << ham << "  ovlp  " << ovlp << endl << endl;
   }
 
+  // not used
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk) {
+    return true;
+  }
 
   void HamAndOvlp(MRCIWalker<Corr, Reference> &n,
                   double &ovlp, double &ham, 

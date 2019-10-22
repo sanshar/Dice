@@ -220,6 +220,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scci") {
+    schd.usingFOIS = true;
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     if (schd.method == linearmethod) {
@@ -234,6 +235,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "MRCI") {
+    schd.usingFOIS = true;
     MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
     //wave.initWalker(walk);
     runVMC(wave, walk);
@@ -253,6 +255,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scpt") {
+    schd.usingFOIS = true;
     SCPT<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     if (schd.deterministic) {

@@ -167,6 +167,12 @@ class SCPT
   {
     return 1.;
   }//not used
+
+  // not implemented yet
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk) {
+    return true;
+  }
   
   //ham is a sample of the diagonal element of the Dyall ham
   template<typename Walker>
