@@ -1038,8 +1038,6 @@ void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
   vector<int> open;
   det.getOpenClosed(open, closed);
 
-  //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
-
   for (int i = 0; i < closed.size(); i++) {
     for (int a = 0; a < open.size(); a++) {
       if (closed[i] % 2 == open[a] % 2 &&
@@ -1051,12 +1049,12 @@ void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
                                                  TINY, doparity);
 
         double tiaD = 0.;
-        if (I < first_virtual && A < first_virtual)
+        if (I >= schd.nciCore && I < first_virtual && A >= schd.nciCore && A < first_virtual)
           tiaD = detAct.Hij_1ExciteScreened(open[a], closed[i], I2hb,
                                                  TINY, doparity);
 
         if (abs(tia) > THRESH) {
-          work.appendValue(tiaD, closed[i]*2*norbs+open[a], 0, tia);//jailbreaking overlapRatio for Dyall ham element (tiaD)
+          work.appendValue(tiaD, closed[i] * 2 * norbs + open[a], 0, tia); // jailbreaking overlapRatio for Dyall ham element (tiaD)
         }
       }
     }
@@ -1095,8 +1093,16 @@ void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
         int a = 2 * orbIndices[2 * index] + closed[i] % 2,
             b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
 
-        double flag = 0.;
-        if (closed[i] < 2*first_virtual && a < 2*first_virtual && b < 2*first_virtual) flag = 1.0; //Dyall excitation, (note j < i, so no j condition)
+        // Dyall excitation?
+        double flag = 0.0;
+        if (closed[i] < 2*first_virtual && a < 2*first_virtual && b < 2*first_virtual) // note j < i, so no j condition
+        {
+          if (closed[j] >= 2*schd.nciCore && a >= 2*schd.nciCore && b >= 2*schd.nciCore) // note i > j, so no i condition
+          {
+            flag = 1.0;
+          }
+        }
+
         //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
         if (!(det.getocc(a) || det.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
