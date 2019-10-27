@@ -444,26 +444,29 @@ class SCPT
     double dEne = locEne;
 
     Determinant dAct = walk.d;
-    //cout << "walker\n" << walk << endl;
-    //cout << "ovlp  " << ovlp << endl;
-    if (walk.excitedOrbs.size() == 0) {
-      ham = walk.d.Energy(I1, I2, coreE) / ciCoeff / ciCoeff;
-      //cout << "ene  " << ham << endl;
-    }
-    else {
+    double ene_h = 0.0, ene_hh = 0.0, ene_p = 0.0, ene_pp = 0.0;
+
+    if (walk.excitedOrbs.size() > 0)
+    {
       dAct.setocc(*walk.excitedOrbs.begin(), false);
-      double ene1 = moEne((*walk.excitedOrbs.begin())/2);
-      if (walk.excitedOrbs.size() == 1) {
-        ham = (dAct.Energy(I1, I2, coreE) + ene1) / ciCoeff / ciCoeff;
-        //cout << "ene  " << ham << endl;
-      }
-      else {
-        dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
-        double ene2 = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
-        ham = (dAct.Energy(I1, I2, coreE) + ene1 + ene2) / ciCoeff / ciCoeff;
-        //cout << "ene  " << ham << endl;
-      }
+      ene_p = moEne((*walk.excitedOrbs.begin())/2);
     }
+    if (walk.excitedOrbs.size() == 2)
+    {
+      dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
+      ene_pp = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
+    }
+    if (walk.excitedHoles.size() > 0)
+    {
+      dAct.setocc(*walk.excitedHoles.begin(), true);
+      ene_h = moEne((*walk.excitedHoles.begin())/2);
+    }
+    if (walk.excitedHoles.size() == 2)
+    {
+      dAct.setocc(*(std::next(walk.excitedHoles.begin())), true);
+      ene_hh = moEne((*(std::next(walk.excitedHoles.begin())))/2);
+    }
+    ham = (dAct.Energy(I1, I2, coreE) + ene_p + ene_pp - ene_h - ene_hh) / ciCoeff / ciCoeff;
 
     // Generate all excitations (after screening)
     work.setCounterToZero();
