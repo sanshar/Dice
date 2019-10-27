@@ -660,6 +660,20 @@ class SCPT
     double waveEne = 0.;
     //w.printVariables();
 
+    int first_virtual = schd.nciCore + schd.nciAct;
+    double energy_class_ccvv = 0.0;
+
+    for (int j=1; j<2*schd.nciCore; j++) {
+      for (int i=0; i<j; i++) {
+        for (int s=2*first_virtual+1; s<2*norbs; s++) {
+          for (int r=2*first_virtual; r<s; r++) {
+            energy_class_ccvv -= pow( I2(r, j, s, i) - I2(r, i, s, j), 2) / ( I1(r,r) + I1(s,s) - I1(i,i) - I1(j,j) );
+          }
+        }
+      }
+    }
+    cout << "CCVV energy: " << energy_class_ccvv << endl;
+
     for (int i = commrank; i < allDets.size(); i += commsize) {
       wave.initWalker(walk, allDets[i]);
       if (schd.debug) {
