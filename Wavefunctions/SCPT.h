@@ -667,7 +667,7 @@ class SCPT
       for (int i=0; i<j; i++) {
         for (int s=2*first_virtual+1; s<2*norbs; s++) {
           for (int r=2*first_virtual; r<s; r++) {
-            energy_class_ccvv -= pow( I2(r, j, s, i) - I2(r, i, s, j), 2) / ( I1(r,r) + I1(s,s) - I1(i,i) - I1(j,j) );
+            energy_class_ccvv -= pow( I2(r, j, s, i) - I2(r, i, s, j), 2) / ( moEne(r/2) + moEne(s/2) - moEne(i/2) - moEne(j/2) );
           }
         }
       }
