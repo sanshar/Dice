@@ -604,10 +604,12 @@ class SCCI
     workingArray work;
     HamAndOvlp(walk, ovlp, locEne, work);
 
-    int iter = 0;
-    double cumdeltaT = 0.;
+    int iter = 0, niter = schd.stochasticIter;
+    double cumdeltaT = 0., cumdeltaT2 = 0., S1 = 0.;
+    std::vector<double> gradError(niter * commsize, 0.);
+    std::vector<double> tauError(niter * commsize, 0.);
 
-    while (iter < schd.stochasticIter) {
+    while (iter < niter) {
       double cumovlpRatio = 0;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -618,13 +620,22 @@ class SCCI
       int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
                                      nextDetRandom) - work.ovlpRatio.begin();
       cumdeltaT += deltaT;
+      cumdeltaT2 += deltaT * deltaT;
       double ratio = deltaT / cumdeltaT;
       ene *= (1 - ratio);
       ene += ratio * locEne;
+      double oldCorrectionFactor = correctionFactor;
       correctionFactor *= (1 - ratio);
       if (coeffsIndex == 0) {
         correctionFactor += ratio;
+        S1 += deltaT * (1 - oldCorrectionFactor) * (1 - oldCorrectionFactor);
+        gradError[iter + commrank * niter] = 1.;
       }
+      else {
+        S1 += deltaT * (oldCorrectionFactor) * (oldCorrectionFactor);
+        gradError[iter + commrank * niter] = 0.;
+      }
+      tauError[iter + commrank * niter] = deltaT;
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
       coeffsIndex = this->coeffsIndex(walk);
       HamAndOvlp(walk, ovlp, locEne, work); 
@@ -636,16 +647,28 @@ class SCCI
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT2), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(ene), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(S1), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(gradError[0]), gradError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(tauError[0]), tauError.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
     cumulativeTime = cumdeltaT;
     ene /= cumdeltaT;
     correctionFactor /= cumdeltaT;
+    S1 /= cumdeltaT;
+
     if (commrank == 0) {
+      vector<double> b_size, r_x;
+      block(b_size, r_x, gradError, tauError);
+      double rk = corrTime(gradError.size(), b_size, r_x);
+      double n_eff = (cumdeltaT * cumdeltaT) / cumdeltaT2;
+      double stddev = sqrt(S1 * rk / n_eff);
       cout << "energy of sampling wavefunction   "  << setprecision(12) << ene << endl;
       cout << "correctionFactor   " << correctionFactor << endl;
+      cout << "correctionFactor error  " << stddev << endl;
       cout << "SCCI+Q energy = ene + (1 - correctionFactor) * (ene - ene0)" << endl;
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
