@@ -184,24 +184,24 @@ then
     ../clean.sh
 fi
 
-cd $here/FCIQMC/He2
-../../clean.sh
-printf "...running FCIQMC/He2\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python ../../testEnergy.py 'fciqmc' $tol
-if [ $clean == 1 ]
-then    
-    ../clean.sh
-fi
-
-cd $here/FCIQMC/Ne_plateau
-../../clean.sh
-printf "...running FCIQMC/Ne_plateau\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python ../../testEnergy.py 'fciqmc' $tol
-if [ $clean == 1 ]
-then    
-    ../clean.sh
-fi
+#cd $here/FCIQMC/He2
+#../../clean.sh
+#printf "...running FCIQMC/He2\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python ../../testEnergy.py 'fciqmc' $tol
+#if [ $clean == 1 ]
+#then    
+#    ../clean.sh
+#fi
+#
+#cd $here/FCIQMC/Ne_plateau
+#../../clean.sh
+#printf "...running FCIQMC/Ne_plateau\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python ../../testEnergy.py 'fciqmc' $tol
+#if [ $clean == 1 ]
+#then    
+#    ../clean.sh
+#fi
 
 cd $here

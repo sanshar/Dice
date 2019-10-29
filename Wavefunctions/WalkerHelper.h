@@ -233,6 +233,165 @@ class WalkerHelper<Slater>
 
 };
 
+//template<>
+//class WalkerHelper<BFSlater>
+//{
+//
+// public:
+//  HartreeFock hftype;                           //hftype same as that in slater
+//  std::array<MatrixXcd, 2> theta;
+//  std::array<MatrixXcd, 2> thetaInv;          //inverse of the theta matrix
+//  std::array<complex<double>, 2> thetaDet;    //determinant of the theta matrix
+//  std::array<vector<int>, 2> openOrbs;       //set of open orbitals in the walker
+//  std::array<vector<int>, 2> closedOrbs;     //set of closed orbitals in the walker
+//  std::vector<int> doublons, holons;         //doubly occupied and empty spatial orbs 
+//  std::array<vector<int>, 2> closedOrbsRef;  //set of closed orbitals in the reference
+//  std::array<MatrixXcd, 2> rTable;    //table used for efficiently
+//
+//  WalkerHelper() {};
+//  
+//  WalkerHelper(const BFSlater &w, const Determinant &d) 
+//  {
+//    hftype = w.hftype;
+// 
+//    fillOccupancyHelpers(d);
+//    closedOrbsRef[0].clear();
+//    closedOrbsRef[1].clear();
+//    w.det.getClosedAlphaBeta(closedOrbsRef[0], closedOrbsRef[1]);
+//
+//    if (hftype == Generalized) {
+//      initInvDetsTablesGhf(w);
+//    }
+//    else {
+//      initInvDetsTables(w);
+//    }
+//  }
+//
+//  void fillOccupancyHelpers(const Determinant &d)
+//  {
+//    //fill the spin strings for the walker
+//    openOrbs[0].clear();
+//    openOrbs[1].clear();
+//    closedOrbs[0].clear();
+//    closedOrbs[1].clear();
+//    d.getOpenClosedAlphaBeta(openOrbs[0], closedOrbs[0], openOrbs[1], closedOrbs[1]);
+//   
+//    //fill holons and doublons
+//    doublons.clear();
+//    holons.clear();
+//    set_intersection(closedOrbs[0].begin(), closedOrbs[0].end(), closedOrbs[1].begin(), closedOrbs[1].end(), back_inserter(doublons));
+//    set_intersection(openOrbs[0].begin(), openOrbs[0].end(), openOrbs[1].begin(), openOrbs[1].end(), back_inserter(holons));
+//  }
+//
+//  void initInvDetsTables(const BFSlater &w)
+//  {
+//    int norbs = Determinant::norbs;
+//    for (int sz = 0; sz < 2; sz++) {
+//      Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
+//      Eigen::Map<VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
+//      MatrixXcd hforbs = w.getHforbs(sz);
+//      igl::slice(hforbs, rowClosed, colClosed, theta[sz]);
+//      for (int i = 0; i < doublons.size(); i++) {
+//        int relIndex = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, doublons[i]) - closedOrbs[sz].begin();
+//        for (int j = 0; j < holons.size(); j++) {
+//          theta[sz].row(relIndex) += w.bf(i, j) * hforbs.row(holons(j));
+//        }
+//      }
+//
+//      Eigen::FullPivLU<MatrixXcd> lua(theta[sz]);
+//      if (lua.isInvertible()) {
+//        thetaInv[sz] = lua.inverse();
+//        thetaDet[sz] = lua.determinant();
+//      }
+//      else {
+//        cout << sz << " overlap with determinant not invertible" << endl;
+//        exit(0);
+//      }
+//
+//      rTable[sz] = MatrixXcd::Zero(norbs, closedOrbs[sz].size()); 
+//      rTable[sz] = hforbs.block(0, 0, norbs, closedOrbs[sz].size()) * thetaInv[sz];
+//    }
+//  }
+//
+//  void concatenateGhf(const vector<int>& v1, const vector<int>& v2, vector<int>& result) const
+//  {
+//    int norbs = Determinant::norbs;
+//    result.clear();
+//    result = v1;
+//    result.insert(result.end(), v2.begin(), v2.end());    
+//    for (int j = v1.size(); j < v1.size() + v2.size(); j++)
+//      result[j] += norbs;
+//  }
+//
+//  void initInvDetsTablesGhf(const BFSlater &w)
+//  {
+//    int norbs = Determinant::norbs;
+//    vector<int> workingVec0, workingVec1;
+//    concatenateGhf(closedOrbs[0], closedOrbs[1], workingVec0);
+//    Eigen::Map<VectorXi> rowTheta(&workingVec0[0], workingVec0.size());
+//    concatenateGhf(closedOrbsRef[0], closedOrbsRef[1], workingVec1);
+//    Eigen::Map<VectorXi> colTheta(&workingVec1[0], workingVec1.size());
+//      
+//    MatrixXcd hforbs = w.getHforbs();
+//    igl::slice(hforbs, rowTheta, colTheta, theta[0]); 
+//    for (int i = 0; i < doublons.size(); i++) {
+//      int relIndexA = std::search_n(closedOrbs[0].begin(), closedOrbs[0].end(), 1, doublons[i]) - closedOrbs[0].begin();
+//      int relIndexB = std::search_n(closedOrbs[1].begin(), closedOrbs[1].end(), 1, doublons[i]) - closedOrbs[1].begin();
+//      for (int j = 0; j < holons.size(); j++) {
+//        theta[0].row(relIndexA) += w.bf(i, j) * hforbs.row(holons(j));
+//        theta[0].row(closedOrbs[0].size() + relIndexB) += w.bf(i, j) * hforbs.row(norbs + holons(j));
+//      }
+//    }
+//    Eigen::FullPivLU<MatrixXcd> lua(theta[0]);
+//    if (lua.isInvertible()) {
+//      thetaInv[0] = lua.inverse();
+//      thetaDet[0] = lua.determinant();
+//    }
+//    else {
+//      Eigen::Map<VectorXi> v1(&closedOrbs[0][0], closedOrbs[0].size());
+//      Eigen::Map<VectorXi> v2(&closedOrbs[1][0], closedOrbs[1].size());
+//      cout << "alphaClosed\n" << v1 << endl << endl;
+//      cout << "betaClosed\n" << v2 << endl << endl;
+//      cout << "col\n" << colTheta << endl << endl;
+//      cout << theta << endl << endl;
+//      cout << "overlap with theta determinant not invertible" << endl;
+//      exit(0);
+//    }
+//    thetaDet[1] = 1.;
+//    rTable[0] = MatrixXcd::Zero(2*norbs, closedOrbs[0].size() + closedOrbs[1].size()); 
+//    rTable[0] = w.getHforbs().block(0, 0, 2*norbs, closedOrbs[0].size() + closedOrbs[1].size()) * thetaInv[0];
+//    rTable[1] = rTable[0];
+//    //makeTableGhf(w, colTheta);
+//  }
+//
+//  void excitationUpdate(const BFSlater &w, const Determinant& excitedDet)
+//  {
+//    fillOccupancyHelpers(excitedDet);
+//    initInvDetsTables(w);
+//    //makeTable(w, thetaInv[sz], colClosed, 0, sz);
+//    //calcOtherDetsTables(w, sz);
+//  }
+//
+//  void excitationUpdateGhf(const BFSlater &w, const Determinant& excitedDet)
+//  {
+//    fillOccupancyHelpers(excitedDet);
+//    initInvDetsTablesGhf(w);
+//    //makeTableGhf(w, colTheta);
+//  }
+//
+//  void getRelIndices(int i, int &relI, int a, int &relA, bool sz) const 
+//  {
+//    //relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
+//    //relA = std::lower_bound(openOrbs[sz].begin(), openOrbs[sz].end(), a) - openOrbs[sz].begin();
+//    int factor = 0;
+//    if (hftype == 2 && sz != 0) factor = 1;
+//    relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin() + factor * closedOrbs[0].size();
+//    //relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin() + factor * openOrbs[0].size();
+//    relA = a + factor * Determinant::norbs;
+//  }
+//
+//};
+
 template<>
 class WalkerHelper<AGP>
 {
