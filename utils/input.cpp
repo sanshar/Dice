@@ -104,6 +104,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
+    schd.determCCVV = input.get("sampling.determCCVV", false);
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);

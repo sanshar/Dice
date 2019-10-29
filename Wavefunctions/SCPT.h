@@ -63,8 +63,10 @@ class SCPT
 
   double ovlp_current;
   
-  // a list of the excitation classes being considered
+  // a list of the excitation classes being considered stochastically
   vector<int> classesUsed;
+  // a list of the excitation classes being considered deterministically
+  vector<int> classesUsedDeterm;
   // the total number of excitation classes (including the CAS itself, labelled as 0)
   static const int NUM_EXCIT_CLASSES = 9;
   // the number of coefficients in each excitation class
@@ -87,7 +89,6 @@ class SCPT
       classesUsed.push_back(1);
       classesUsed.push_back(2);
     } else {
-      // Excitation classes to be added here as they are implemented
       classesUsed.push_back(0);
       classesUsed.push_back(1);
       classesUsed.push_back(2);
@@ -96,7 +97,13 @@ class SCPT
       classesUsed.push_back(5);
       classesUsed.push_back(6);
       classesUsed.push_back(7);
-      classesUsed.push_back(8);
+      if (!schd.determCCVV)
+        classesUsed.push_back(8);
+
+      // Classes to be treated by the deterministic formulas, rather than by
+      // stochstic sampling
+      if (schd.determCCVV)
+        classesUsedDeterm.push_back(8);
     }
 
     int numCore = schd.nciCore;
@@ -470,10 +477,8 @@ class SCPT
 
     // Generate all excitations (after screening)
     work.setCounterToZero();
-    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen,
-                                        work, false);
-    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
+    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen, work, false);
 
     //loop over all the screened excitations
     //cout << endl << "m dets\n" << endl << endl;
@@ -495,8 +500,7 @@ class SCPT
       auto walkCopy = walk;
       double parity = 1.;
       Determinant dcopy = walkCopy.d;
-      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
-                            work.excitation1[i], work.excitation2[i], false);
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
 
       // Is this excitation class being used? If not, then move to the next excitation.
       if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
@@ -588,7 +592,11 @@ class SCPT
 
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
+      // Make sure that the walker is within one of the classes being sampled, after this move
+      if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) continue;
       coeffsIndex = this->coeffsIndex(walk);
+      if (coeffsIndex == -1) continue;
+
       HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
 
       iter++;
@@ -641,9 +649,20 @@ class SCPT
     }
     
     if (commrank == 0) {
-      cout << "ref energy   " << setprecision(12) << ene(0) << endl;
-      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
-      cout << "waveEne  " << waveEne << endl;
+      cout << "ref energy:  " << setprecision(12) << ene(0) << endl;
+      cout << "stochastic nevpt2 energy:  " << ene(0) + ene2 << endl;
+      cout << "stochastic waveEne:  " << waveEne << endl;
+
+      // If any classes are to be obtained deterministically, then do this now
+      if (!classesUsedDeterm.empty()) {
+        double energy_ccvv = 0.0;
+        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end()) {
+          energy_ccvv = get_ccvv_energy();
+          cout << "deterministic CCVV energy:  " << energy_ccvv << endl;
+        }
+        cout << "total nevpt2 energy:  " << ene(0) + ene2 + energy_ccvv << endl;
+      }
+
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
   }
@@ -662,20 +681,6 @@ class SCPT
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     double waveEne = 0.;
     //w.printVariables();
-
-    int first_virtual = schd.nciCore + schd.nciAct;
-    double energy_class_ccvv = 0.0;
-
-    for (int j=1; j<2*schd.nciCore; j++) {
-      for (int i=0; i<j; i++) {
-        for (int s=2*first_virtual+1; s<2*norbs; s++) {
-          for (int r=2*first_virtual; r<s; r++) {
-            energy_class_ccvv -= pow( I2(r, j, s, i) - I2(r, i, s, j), 2) / ( moEne(r/2) + moEne(s/2) - moEne(i/2) - moEne(j/2) );
-          }
-        }
-      }
-    }
-    cout << "CCVV energy: " << energy_class_ccvv << endl;
 
     for (int i = commrank; i < allDets.size(); i += commsize) {
       wave.initWalker(walk, allDets[i]);
@@ -731,6 +736,25 @@ class SCPT
       cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
       cout << "waveEne  " << waveEne << endl;
     }
+  }
+
+  double get_ccvv_energy() {
+
+    double energy_ccvv = 0.0;
+
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+
+    for (int j=1; j<2*schd.nciCore; j++) {
+      for (int i=0; i<j; i++) {
+        for (int s=2*first_virtual+1; s<2*norbs; s++) {
+          for (int r=2*first_virtual; r<s; r++) {
+            energy_ccvv -= pow( I2(r, j, s, i) - I2(r, i, s, j), 2) / ( moEne(r/2) + moEne(s/2) - moEne(i/2) - moEne(j/2) );
+          }
+        }
+      }
+    }
+    return energy_ccvv;
   }
 
   string getfileName() const {

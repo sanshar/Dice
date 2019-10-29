@@ -95,7 +95,6 @@ class SCCI
       classesUsed.push_back(1);
       classesUsed.push_back(2);
     } else {
-      // Excitation classes to be added here as they are implemented
       classesUsed.push_back(0);
       classesUsed.push_back(1);
       classesUsed.push_back(2);

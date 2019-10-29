@@ -86,6 +86,7 @@ private:
       & ifComplex
       & uagp
       & ciCeption
+      & determCCVV
       & actWidth
       & overlapCutoff
       & diagMethod
@@ -112,6 +113,7 @@ public:
   bool ifComplex;                        //breaks and restores complex conjugation symmetry 
   bool uagp;                             //brakes S^2 symmetry in uagp
   bool ciCeption;                        //true, when using ci on top of selectedCI
+  bool determCCVV;                       //In NEVPT2 calculations, calculate the CCVV energy by the exact formula
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
