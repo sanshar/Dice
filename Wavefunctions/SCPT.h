@@ -97,13 +97,14 @@ class SCPT
       classesUsed.push_back(5);
       classesUsed.push_back(6);
       classesUsed.push_back(7);
-      if (!schd.determCCVV)
-        classesUsed.push_back(8);
+      //if (!schd.determCCVV)
+      //  classesUsed.push_back(8);
+      classesUsed.push_back(8);
 
       // Classes to be treated by the deterministic formulas, rather than by
       // stochstic sampling
-      if (schd.determCCVV)
-        classesUsedDeterm.push_back(8);
+      //if (schd.determCCVV)
+      //  classesUsedDeterm.push_back(8);
     }
 
     int numCore = schd.nciCore;
@@ -450,26 +451,23 @@ class SCPT
     locEne = walk.d.Energy(I1, I2, coreE);
     double dEne = locEne;
 
+    // Get the diagonal Dyall Hamiltonian element from this determinant
     Determinant dAct = walk.d;
     double ene_h = 0.0, ene_hh = 0.0, ene_p = 0.0, ene_pp = 0.0;
 
-    if (walk.excitedOrbs.size() > 0)
-    {
+    if (walk.excitedOrbs.size() > 0) {
       dAct.setocc(*walk.excitedOrbs.begin(), false);
       ene_p = moEne((*walk.excitedOrbs.begin())/2);
     }
-    if (walk.excitedOrbs.size() == 2)
-    {
+    if (walk.excitedOrbs.size() == 2) {
       dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
       ene_pp = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
     }
-    if (walk.excitedHoles.size() > 0)
-    {
+    if (walk.excitedHoles.size() > 0) {
       dAct.setocc(*walk.excitedHoles.begin(), true);
       ene_h = moEne((*walk.excitedHoles.begin())/2);
     }
-    if (walk.excitedHoles.size() == 2)
-    {
+    if (walk.excitedHoles.size() == 2) {
       dAct.setocc(*(std::next(walk.excitedHoles.begin())), true);
       ene_hh = moEne((*(std::next(walk.excitedHoles.begin())))/2);
     }
@@ -535,11 +533,81 @@ class SCPT
   }
   
   template<typename Walker>
-  double optimizeWaveCT(Walker& walk) {
+  void getSCNorms(Walker &walk, double &ovlp, VectorXd &locSCNorms, workingArray& work)
+  {
+    int norbs = Determinant::norbs;
+    double parity, tia;
+
+    morework.setCounterToZero();
+    double ovlp0, ham0;
+
+    // Get the WF overlap with the walker, ovlp
+    wave.HamAndOvlp(walk, ovlp, ham0, morework, true);
+    ovlp_current = ovlp;
+
+    if (ovlp == 0.) return; //maybe not necessary
+
+    // Generate all screened excitations
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+
+    int nExcitationsCASCI = 0;
+
+    // loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      auto walkCopy = walk;
+      parity = 1.;
+      Determinant dcopy = walkCopy.d;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
+
+      parity *= dcopy.parity(A/2, I/2, I%2);
+      if (ex2 != 0) {
+        dcopy.setocc(I, false);
+        dcopy.setocc(A, true);
+        parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+
+      work.ovlpRatio[i] = 0.0;
+      if (walkCopy.excitation_class == 0) {
+        // For the CTMC algorithm (which is performed within the CASCI space, when
+        // calculating the SC norms), we need the ratio of overlaps for connected
+        // determinants within the CASCI space. Store these in the work array, and
+        // override other excitations, which we won't need any more.
+        work.excitation1[nExcitationsCASCI] = work.excitation1[i];
+        work.excitation2[nExcitationsCASCI] = work.excitation2[i];
+        work.ovlpRatio[nExcitationsCASCI] = wave.Overlap(walkCopy.d) / ovlp;
+        nExcitationsCASCI += 1;
+        continue;
+      } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
+        // Is this excitation class being used? If not, then move to the next excitation
+        continue;
+      }
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      if (coeffsCopyIndex == -1) continue;
+
+      morework.setCounterToZero();
+      double tia = work.HijElement[i];
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+      locSCNorms(coeffsCopyIndex) += parity * tia * ham0 / ovlp;
+    }
+
+    // For the CTMC algorithm, only need excitations within the CASCI space.
+    // Update the number of excitations to reflect this
+    work.nExcitations = nExcitationsCASCI;
+  }
+
+  template<typename Walker>
+  double doNEVPT2_CT(Walker& walk) {
 
     int norbs = Determinant::norbs;
     
-    //add noise to avoid zero coeffs
+    // add noise to avoid zero coeffs
     if (commrank == 0) {
       //cout << "starting sampling at " << setprecision(4) << getTime() - startofCalc << endl; 
       auto random = std::bind(std::uniform_real_distribution<double>(0., 1.e-6), std::ref(generator));
@@ -552,11 +620,11 @@ class SCPT
   MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
 
-    //sampling
+    // sampling
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                             std::ref(generator));
 
-    double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0., waveEne = 0., correctionFactor = 0.;
+    double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0., waveEne = 0.;
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     workingArray work;
 
@@ -585,10 +653,6 @@ class SCPT
       ham(coeffsIndex) += ratio * hamSample;
       waveEne *= (1 - ratio);
       waveEne += ratio * locEne;
-      correctionFactor *= (1 - ratio);
-      if (coeffsIndex == 0) {
-        correctionFactor += ratio;
-      }
 
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
@@ -606,20 +670,17 @@ class SCPT
     norm *= cumdeltaT;
     ham *= cumdeltaT;
     waveEne *= cumdeltaT;
-    correctionFactor *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
     norm /= cumdeltaT;
     ham /= cumdeltaT;
     waveEne /= cumdeltaT;
-    correctionFactor /= cumdeltaT;
     
     std::vector<int> largeNormIndices;
     int counter = 0;
@@ -637,17 +698,11 @@ class SCPT
     double ene2 = 0.;
     coeffs.setZero();
     coeffs(0) = 1.;
-    //if (commrank == 0) {
-    //  cout << "correctionFactor  " << correctionFactor << endl;
-    //  cout << "i   largeNorms(i)    ene(0) - ene(i)\n";
-    //}
     for (int i = 1; i < largeNorms.size(); i++) {
-      //ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
       ene2 += largeNorms(i) / largeNorms(0) / (ene(0) - ene(i));
-      //if (commrank == 0) cout << i << "     " << largeNorms(i) << "    " << ene(0) - ene(i) << endl;
       coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
     }
-    
+
     if (commrank == 0) {
       cout << "ref energy:  " << setprecision(12) << ene(0) << endl;
       cout << "stochastic nevpt2 energy:  " << ene(0) + ene2 << endl;
@@ -668,7 +723,91 @@ class SCPT
   }
   
   template<typename Walker>
-  double optimizeWaveDeterministic(Walker& walk) {
+  double doNEVPT2_CT_Efficient(Walker& walk) {
+
+    int norbs = Determinant::norbs;
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+    double ovlp = 0;
+    VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
+    workingArray work;
+
+    getSCNorms(walk, ovlp, locSCNormSamples, work);
+
+    int iter = 0;
+    double cumdeltaT = 0.;
+    int printMod = schd.stochasticIter / 5;
+
+    while (iter < schd.stochasticIter) {
+      double cumovlpRatio = 0;
+      for (int i = 0; i < work.nExcitations; i++) {
+        cumovlpRatio += abs(work.ovlpRatio[i]);
+        work.ovlpRatio[i] = cumovlpRatio;
+      }
+      double deltaT = 1.0 / (cumovlpRatio);
+      double nextDetRandom = random() * cumovlpRatio;
+      int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                     nextDetRandom) - work.ovlpRatio.begin();
+      cumdeltaT += deltaT;
+      double ratio = deltaT / cumdeltaT;
+      SCNorm *= (1 - ratio);
+      SCNorm += ratio * locSCNormSamples;
+
+      walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+
+      if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
+
+      locSCNormSamples.setZero();
+      getSCNorms(walk, ovlp, locSCNormSamples, work);
+
+      iter++;
+      if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
+    }
+
+    SCNorm *= cumdeltaT;
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+    SCNorm /= cumdeltaT;
+
+    if (commrank == 0) {
+      for (int i=0; i<coeffs.size(); i++) {
+        cout << setprecision(10) << SCNorm(i) << endl;
+      }
+
+      // Get the class 8 norms exactly
+      //int ind;
+      //double norm;
+      //int first_virtual = schd.nciCore + schd.nciAct;
+      //VectorXd SCNormExact = VectorXd::Zero(coeffs.size());
+
+      //for (int j=1; j<2*schd.nciCore; j++) {
+      //  for (int i=0; i<j; i++) {
+      //    for (int s=2*first_virtual+1; s<2*norbs; s++) {
+      //      for (int r=2*first_virtual; r<s; r++) {
+      //        std::array<int,4> inds = {s, r, j, i};
+      //        auto it1 = class_2h2p_ind.find(inds);
+      //        if (it1 != class_2h2p_ind.end()) {
+      //          ind = 1 + it1->second;
+      //          SCNormExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
+      //        }
+      //      }
+      //    }
+      //  }
+      //}
+
+      //for (int i=0; i<coeffs.size(); i++) {
+      //  cout << setprecision(10) << SCNorm(i) << "      " << SCNormExact(i) << endl;
+      //}
+    }
+
+  }
+
+  template<typename Walker>
+  double doNEVPT2_Deterministic(Walker& walk) {
 
     int norbs = Determinant::norbs;
     int nalpha = Determinant::nalpha;
@@ -677,10 +816,12 @@ class SCPT
     generateAllDeterminantsFOIS(allDets, norbs, nalpha, nbeta);
 
     workingArray work;
-    double overlapTot = 0.;
+    double overlapTot = 0., overlapTotCASCI = 0.;
     VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
     double waveEne = 0.;
     //w.printVariables();
+
+    VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
 
     for (int i = commrank; i < allDets.size(); i += commsize) {
       wave.initWalker(walk, allDets[i]);
@@ -699,6 +840,13 @@ class SCPT
       ham(coeffsIndex) += (ovlp * ovlp) * hamSample;
       norm(coeffsIndex) += (ovlp * ovlp) * normSample;
       waveEne += (ovlp * ovlp) * locEne;
+
+      if (walk.excitation_class == 0) {
+        locSCNormSamples.setZero();
+        getSCNorms(walk, ovlp, locSCNormSamples, work);
+        SCNorm += (ovlp * ovlp) * locSCNormSamples;
+        overlapTotCASCI += ovlp * ovlp;
+      }
     }
 
 #ifndef SERIAL
@@ -706,11 +854,21 @@ class SCPT
   MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(overlapTotCASCI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
     waveEne = waveEne / overlapTot;
     ham = ham / overlapTot;
     norm = norm / overlapTot;
+    SCNorm = SCNorm / overlapTotCASCI;
+
+    if (commrank == 0) {
+      cout << "Old and new norms:" << endl;
+      for (int i = 1; i < norm.size(); i++) {
+        cout << i << "    " << setprecision(12) << norm(i) / norm(0) << "    " << SCNorm(i) << endl;
+      }
+    }
 
     std::vector<int> largeNormIndices;
     int counter = 0;

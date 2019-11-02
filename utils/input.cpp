@@ -105,6 +105,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
     schd.determCCVV = input.get("sampling.determCCVV", false);
+    schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);

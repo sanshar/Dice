@@ -909,14 +909,14 @@ void generateAllScreenedSingleExcitation(const Determinant& d,
   d.getOpenClosed(open, closed);
 
   //schd.active = number of active spatial orbitals, assumed to be contiguous and at the beginning
-  auto ub_1 = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
-  int indAct = distance(open.begin(), ub_1);
+  //auto ub_1 = upper_bound(open.begin(), open.end(), 2*schd.numActive - 1);
+  //int indAct = distance(open.begin(), ub_1);
 
   //auto ub_2 = upper_bound(closed.begin(), closed.end(), 2*schd.nciCore - 1);
   //int indCore = distance(closed.begin(), ub_2);
 
   for (int i = 0; i < closed.size(); i++) {
-    for (int a = 0; a < indAct; a++) {
+    for (int a = 0; a < open.size(); a++) {
       if (closed[i] % 2 == open[a] % 2 &&
           abs(I2hb.Singles(closed[i], open[a])) > THRESH)
       {
@@ -964,8 +964,8 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
         int a = 2 * orbIndices[2 * index] + closed[i] % 2,
             b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
 
-        if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
-        //if (!(d.getocc(a) || d.getocc(b))) {
+        //if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
+        if (!(d.getocc(a) || d.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
           work.appendValue(0.0, closed[i] * 2 * norbs + a,
                            closed[j] * 2 * norbs + b, integrals[index]);

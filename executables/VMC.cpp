@@ -259,10 +259,14 @@ int main(int argc, char *argv[])
     SCPT<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     if (schd.deterministic) {
-      wave.optimizeWaveDeterministic(walk);
+      wave.doNEVPT2_Deterministic(walk);
     } else {
-      wave.optimizeWaveCT(walk);
-      wave.optimizeWaveCT(walk);
+      if (schd.efficientNEVPT) {
+        wave.doNEVPT2_CT_Efficient(walk);
+      } else {
+        wave.doNEVPT2_CT(walk);
+        wave.doNEVPT2_CT(walk);
+      }
     }
   }
 
