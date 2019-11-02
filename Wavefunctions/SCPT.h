@@ -533,7 +533,7 @@ class SCPT
   }
   
   template<typename Walker>
-  void getSCNorms(Walker &walk, double &ovlp, VectorXd &locSCNorms, workingArray& work)
+  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &locSCNorms, workingArray& work)
   {
     int norbs = Determinant::norbs;
     double parity, tia;
@@ -546,6 +546,7 @@ class SCPT
     ovlp_current = ovlp;
 
     if (ovlp == 0.) return; //maybe not necessary
+    ham = walk.d.Energy(I1, I2, coreE);
 
     // Generate all screened excitations
     work.setCounterToZero();
@@ -556,6 +557,7 @@ class SCPT
 
     // loop over all the screened excitations
     for (int i=0; i<work.nExcitations; i++) {
+      tia = work.HijElement[i];
 
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
@@ -579,9 +581,11 @@ class SCPT
         // calculating the SC norms), we need the ratio of overlaps for connected
         // determinants within the CASCI space. Store these in the work array, and
         // override other excitations, which we won't need any more.
+        double ovlpRatio = wave.Overlap(walkCopy.d) / ovlp;
         work.excitation1[nExcitationsCASCI] = work.excitation1[i];
         work.excitation2[nExcitationsCASCI] = work.excitation2[i];
-        work.ovlpRatio[nExcitationsCASCI] = wave.Overlap(walkCopy.d) / ovlp;
+        work.ovlpRatio[nExcitationsCASCI] = ovlpRatio;
+        ham += parity * tia * ovlpRatio;
         nExcitationsCASCI += 1;
         continue;
       } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
@@ -592,7 +596,6 @@ class SCPT
       if (coeffsCopyIndex == -1) continue;
 
       morework.setCounterToZero();
-      double tia = work.HijElement[i];
       wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
       locSCNorms(coeffsCopyIndex) += parity * tia * ham0 / ovlp;
     }
@@ -728,11 +731,11 @@ class SCPT
     int norbs = Determinant::norbs;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
-    double ovlp = 0;
+    double ovlp = 0., hamSample = 0., energyCASCI = 0.;
     VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
     workingArray work;
 
-    getSCNorms(walk, ovlp, locSCNormSamples, work);
+    HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
 
     int iter = 0;
     double cumdeltaT = 0.;
@@ -750,6 +753,8 @@ class SCPT
                                      nextDetRandom) - work.ovlpRatio.begin();
       cumdeltaT += deltaT;
       double ratio = deltaT / cumdeltaT;
+      energyCASCI *= (1 - ratio);
+      energyCASCI += ratio * hamSample;
       SCNorm *= (1 - ratio);
       SCNorm += ratio * locSCNormSamples;
 
@@ -758,30 +763,56 @@ class SCPT
       if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
 
       locSCNormSamples.setZero();
-      getSCNorms(walk, ovlp, locSCNormSamples, work);
+      HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
 
       iter++;
       if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
     }
 
+    energyCASCI *= cumdeltaT;
     SCNorm *= cumdeltaT;
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(energyCASCI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
+    energyCASCI /= cumdeltaT;
     SCNorm /= cumdeltaT;
 
-    if (commrank == 0) {
-      for (int i=0; i<coeffs.size(); i++) {
-        cout << setprecision(10) << SCNorm(i) << endl;
+    // Next we calculate the SC state energies, for the SC states with norms
+    // above a certain threshold
+
+    int first_virtual = schd.nciCore + schd.nciAct;
+    int highest_alpha = 2*first_virtual-2;
+    int highest_beta  = 2*first_virtual-1;
+    int a, b;
+
+    // Class 1 (0 holes, 1 particle)
+    for (int r=2*first_virtual; r<2*norbs; r++) {
+      int ind = cumNumCoeffs[1] + r - 2*first_virtual;
+      if (SCNorm(ind) > schd.overlapCutoff) {
+        // Create the lowest-energy determinant within this SC space
+        if (r%2 == 0)
+          a = highest_alpha;
+        else if (r%2 == 1)
+          a = highest_beta;
+
+        auto walkCopy = walk;
+        walkCopy.updateWalker(wave.getRef(), wave.getCorr(), a*2*norbs+r, 0, false);
       }
+    }
+
+    if (commrank == 0) {
+      //cout << "CASCI energy: " << setprecision(10) << energyCASCI << endl;
+      //for (int i=0; i<coeffs.size(); i++) {
+      //  cout << setprecision(10) << SCNorm(i) << endl;
+      //}
 
       // Get the class 8 norms exactly
       //int ind;
       //double norm;
-      //int first_virtual = schd.nciCore + schd.nciAct;
       //VectorXd SCNormExact = VectorXd::Zero(coeffs.size());
 
       //for (int j=1; j<2*schd.nciCore; j++) {
@@ -843,7 +874,7 @@ class SCPT
 
       if (walk.excitation_class == 0) {
         locSCNormSamples.setZero();
-        getSCNorms(walk, ovlp, locSCNormSamples, work);
+        HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
         SCNorm += (ovlp * ovlp) * locSCNormSamples;
         overlapTotCASCI += ovlp * ovlp;
       }
