@@ -73,6 +73,8 @@ class SCPT
   int numCoeffsPerClass[NUM_EXCIT_CLASSES];
   // the cumulative sum of numCoeffsPerClass
   int cumNumCoeffs[NUM_EXCIT_CLASSES];
+  // the total number of strongly contracted states (including the CASCI space itself)
+  int numCoeffs;
 
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_1h2p_ind;
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_2h1p_ind;
@@ -91,15 +93,15 @@ class SCPT
     } else {
       classesUsed.push_back(0);
       classesUsed.push_back(1);
-      classesUsed.push_back(2);
-      classesUsed.push_back(3);
-      classesUsed.push_back(4);
-      classesUsed.push_back(5);
-      classesUsed.push_back(6);
-      classesUsed.push_back(7);
+      //classesUsed.push_back(2);
+      //classesUsed.push_back(3);
+      //classesUsed.push_back(4);
+      //classesUsed.push_back(5);
+      //classesUsed.push_back(6);
+      //classesUsed.push_back(7);
       //if (!schd.determCCVV)
       //  classesUsed.push_back(8);
-      classesUsed.push_back(8);
+      //classesUsed.push_back(8);
 
       // Classes to be treated by the deterministic formulas, rather than by
       // stochstic sampling
@@ -145,7 +147,7 @@ class SCPT
       }
     }
 
-    int numCoeffs = 0;
+    numCoeffs = 0;
     for (int i = 0; i < 9; i++)
     {
       // The total number of coefficients. Only include a class if that
@@ -449,7 +451,6 @@ class SCPT
     else norm = 1 / ciCoeff / ciCoeff;
 
     locEne = walk.d.Energy(I1, I2, coreE);
-    double dEne = locEne;
 
     // Get the diagonal Dyall Hamiltonian element from this determinant
     Determinant dAct = walk.d;
@@ -532,6 +533,88 @@ class SCPT
     //cout << endl << "n ham  " << ham << "  norm  " << norm << endl << endl;
   }
   
+  //ham is a sample of the diagonal element of the Dyall ham
+  template<typename Walker>
+  void FastHamAndOvlp(Walker &walk, double &ovlp, double &ham, workingArray& work, bool fillExcitations=true)
+  {
+    double ovlp0, ham0;
+    double tiaD, parity;
+    int norbs = Determinant::norbs;
+
+    work.setCounterToZero();
+    morework.setCounterToZero();
+
+    //if (coeffsIndex == 0)
+    //  cout << "ERROR: FastHamAndOvlp should not be used within the CASCI space." << endl;
+    //else
+    wave.HamAndOvlp(walk, ovlp, ham0, morework, false);
+    ovlp_current = ovlp;
+
+    if (ovlp == 0.) return;
+
+    // Get the diagonal Dyall Hamiltonian element from this determinant
+    Determinant dAct = walk.d;
+    double ene_h = 0.0, ene_hh = 0.0, ene_p = 0.0, ene_pp = 0.0;
+
+    if (walk.excitedOrbs.size() > 0) {
+      dAct.setocc(*walk.excitedOrbs.begin(), false);
+      ene_p = moEne((*walk.excitedOrbs.begin())/2);
+    }
+    if (walk.excitedOrbs.size() == 2) {
+      dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
+      ene_pp = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
+    }
+    if (walk.excitedHoles.size() > 0) {
+      dAct.setocc(*walk.excitedHoles.begin(), true);
+      ene_h = moEne((*walk.excitedHoles.begin())/2);
+    }
+    if (walk.excitedHoles.size() == 2) {
+      dAct.setocc(*(std::next(walk.excitedHoles.begin())), true);
+      ene_hh = moEne((*(std::next(walk.excitedHoles.begin())))/2);
+    }
+    ham = (dAct.Energy(I1, I2, coreE) + ene_p + ene_pp - ene_h - ene_hh);
+
+    // Generate all excitations (after screening)
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen, work, false);
+
+    // loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      double tiaD = work.HijElement[i];
+
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      // If this is true, then this is a valid excitation for the Dyall
+      // Hamiltonian (i.e., using the active space Hamiltonian only).
+      if (work.ovlpRatio[i] != 0.) {
+        if (ex2 == 0) tiaD = work.ovlpRatio[i];
+        work.ovlpRatio[i] = 0.;
+      } else {
+        continue;
+      }
+
+      auto walkCopy = walk;
+      Determinant dcopy = walkCopy.d;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
+
+      parity = 1.;
+      parity *= dcopy.parity(A/2, I/2, I%2);
+      if (ex2 != 0) {
+        dcopy.setocc(I, false);
+        dcopy.setocc(A, true);
+        parity *= dcopy.parity(B/2, J/2, J%2);
+      }
+
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+      ham += parity * tiaD * ham0 / ovlp;
+      work.ovlpRatio[i] = ham0 / ovlp;
+    }
+  }
+
   template<typename Walker>
   void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &locSCNorms, workingArray& work)
   {
@@ -545,7 +628,7 @@ class SCPT
     wave.HamAndOvlp(walk, ovlp, ham0, morework, true);
     ovlp_current = ovlp;
 
-    if (ovlp == 0.) return; //maybe not necessary
+    if (ovlp == 0.) return;
     ham = walk.d.Energy(I1, I2, coreE);
 
     // Generate all screened excitations
@@ -724,12 +807,48 @@ class SCPT
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
   }
+
+  template<typename Walker>
+  void findInitDets(Walker& walk, vector<pair<int,int>>& initDets, vector<double>& largestCoeffs, workingArray& work) {
+
+    int norbs = Determinant::norbs;
+    double ovlp0, ham0;
+
+    // Generate all screened excitations
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+
+    // loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      auto walkCopy = walk;
+      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
+
+      if (walkCopy.excitation_class == 0) {
+        continue;
+      } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
+        // Is this excitation class being used? If not, then move to the next excitation
+        continue;
+      }
+      int ind = this->coeffsIndex(walkCopy);
+      if (ind == -1) continue;
+
+      morework.setCounterToZero();
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+      if (abs(ham0) > largestCoeffs[ind]) {
+        initDets[ind] = make_pair(work.excitation1[i], work.excitation2[i]);
+        largestCoeffs[ind] = abs(ham0);
+      }
+    }
+  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
     int norbs = Determinant::norbs;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+    auto walkInit = walk;
 
     double ovlp = 0., hamSample = 0., energyCASCI = 0.;
     VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
@@ -785,30 +904,107 @@ class SCPT
     // above a certain threshold
 
     int first_virtual = schd.nciCore + schd.nciAct;
-    int highest_alpha = 2*first_virtual-2;
-    int highest_beta  = 2*first_virtual-1;
-    int a, b;
+
+    // Find appropriate initial walkers for each SC sector
+    pair<int,int> zero_excitation(0,0);
+    vector<pair<int,int>> initDets;
+    initDets.resize(numCoeffs, zero_excitation);
+    vector<double> largestCoeffs;
+    largestCoeffs.resize(numCoeffs, 0.0);
+
+    findInitDets(walkInit, initDets, largestCoeffs, work);
+
+    double ham = 0., ene2 = 0.;
+    int I, J, A, B;
 
     // Class 1 (0 holes, 1 particle)
     for (int r=2*first_virtual; r<2*norbs; r++) {
+      if (commrank == 0) cout << "r: " << r << endl;
       int ind = cumNumCoeffs[1] + r - 2*first_virtual;
       if (SCNorm(ind) > schd.overlapCutoff) {
-        // Create the lowest-energy determinant within this SC space
-        if (r%2 == 0)
-          a = highest_alpha;
-        else if (r%2 == 1)
-          a = highest_beta;
 
-        auto walkCopy = walk;
-        walkCopy.updateWalker(wave.getRef(), wave.getCorr(), a*2*norbs+r, 0, false);
+        if (largestCoeffs[ind] == 0.0) {
+          cout << "Error: No initial determinant found. " << r << endl;
+        }
+
+        auto walkCopy = walkInit;
+        int ex1 = initDets[ind].first;
+        int ex2 = initDets[ind].second;
+        walkCopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+
+        //cout << "new det at 1: " << walkCopy.d << endl;
+        //cout << "ex1: " << ex1 << "    ex2: " << ex2 << endl;
+        //I = ex1 / (2 * norbs);
+        //A = ex1 % (2 * norbs);
+        //cout << "I: " << I << "   " << "A: " << A << endl;
+        //if (ex2 != 0) {
+        //  J = ex2 / (2 * norbs);
+        //  B = ex2 % (2 * norbs);
+        //  cout << "J: " << J << "   " << "B: " << B << endl;
+        //}
+
+        int coeffsIndexCopy = this->coeffsIndex(walkCopy);
+        if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
+
+        // Now, sample the SC energy in this space
+        FastHamAndOvlp(walkCopy, ovlp, hamSample, work);
+
+        int iter = 0;
+        double cumdeltaT = 0.;
+
+        while (iter < 100) {
+          double cumovlpRatio = 0;
+          for (int i = 0; i < work.nExcitations; i++) {
+            cumovlpRatio += abs(work.ovlpRatio[i]);
+            work.ovlpRatio[i] = cumovlpRatio;
+          }
+          double deltaT = 1.0 / (cumovlpRatio);
+          double nextDetRandom = random() * cumovlpRatio;
+          int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                         nextDetRandom) - work.ovlpRatio.begin();
+          cumdeltaT += deltaT;
+          double ratio = deltaT / cumdeltaT;
+          ham *= (1 - ratio);
+          ham += ratio * hamSample;
+
+          walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+
+          //cout << "new det at 2: " << walkCopy.d << endl;
+          //I = work.excitation1[nextDet] / (2 * norbs);
+          //A = work.excitation1[nextDet] % (2 * norbs);
+          //cout << "I: " << I << "   " << "A: " << A << endl;
+          //if (work.excitation2[nextDet] != 0) {
+          //  J = work.excitation2[nextDet] / (2 * norbs);
+          //  B = work.excitation2[nextDet] % (2 * norbs);
+          //  cout << "J: " << J << "   " << "B: " << B << endl;
+          //}
+
+          int coeffsIndexCopy = this->coeffsIndex(walkCopy);
+          if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
+
+          // Make sure that the walker is within one of the classes being sampled, after this move
+          //if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
+
+          FastHamAndOvlp(walkCopy, ovlp, hamSample, work);
+          iter++;
+        }
+
+        ham *= cumdeltaT;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(ham), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+        ham /= cumdeltaT;
+        if (commrank == 0) cout << "ham: " << setprecision(10) << ham << endl;
+        ene2 += SCNorm(ind) / (energyCASCI - ham);
       }
     }
 
     if (commrank == 0) {
+      cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
+      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCASCI + ene2 << endl;
+
       //cout << "CASCI energy: " << setprecision(10) << energyCASCI << endl;
-      //for (int i=0; i<coeffs.size(); i++) {
-      //  cout << setprecision(10) << SCNorm(i) << endl;
-      //}
 
       // Get the class 8 norms exactly
       //int ind;
@@ -828,10 +1024,6 @@ class SCPT
       //      }
       //    }
       //  }
-      //}
-
-      //for (int i=0; i<coeffs.size(); i++) {
-      //  cout << setprecision(10) << SCNorm(i) << "      " << SCNormExact(i) << endl;
       //}
     }
 
