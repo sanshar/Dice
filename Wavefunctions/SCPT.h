@@ -93,7 +93,7 @@ class SCPT
     } else {
       classesUsed.push_back(0);
       classesUsed.push_back(1);
-      //classesUsed.push_back(2);
+      classesUsed.push_back(2);
       //classesUsed.push_back(3);
       //classesUsed.push_back(4);
       //classesUsed.push_back(5);
@@ -919,19 +919,37 @@ class SCPT
     // Class 1 (0 holes, 1 particle)
     for (int r=2*first_virtual; r<2*norbs; r++) {
       if (commrank == 0) cout << "r: " << r << endl;
-
       int ind = cumNumCoeffs[1] + r - 2*first_virtual;
       if (SCNorm(ind) > schd.overlapCutoff) {
-
-        if (largestCoeffs[ind] == 0.0) {
-          cout << "Error: No initial determinant found. " << r << endl;
-        }
+        if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << endl;
 
         string outputFile = "sc_energies.";
         outputFile.append(to_string(r));
 
         double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work, outputFile);
         ene2 += SCNorm(ind) / (energyCASCI - SCHam);
+      }
+    }
+
+    // Class 2 (0 holes, 2 particle)
+    for (int r=2*first_virtual+1; r<2*norbs; r++) {
+      for (int s=2*first_virtual; s<r; s++) {
+        if (commrank == 0) cout << "r: " << r << " s: " << s << endl;
+        int R = r - 2*first_virtual - 1;
+        int S = s - 2*first_virtual;
+        int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+
+        if (SCNorm(ind) > schd.overlapCutoff) {
+          if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << "  " << s << endl;
+
+          string outputFile = "sc_energies.";
+          outputFile.append(to_string(r));
+          outputFile.append("_");
+          outputFile.append(to_string(s));
+
+          double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work, outputFile);
+          ene2 += SCNorm(ind) / (energyCASCI - SCHam);
+        }
       }
     }
 
