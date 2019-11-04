@@ -914,12 +914,12 @@ class SCPT
 
     findInitDets(walkInit, initDets, largestCoeffs, work);
 
-    double ham = 0., ene2 = 0.;
-    int I, J, A, B;
+    double ene2 = 0.;
 
     // Class 1 (0 holes, 1 particle)
     for (int r=2*first_virtual; r<2*norbs; r++) {
       if (commrank == 0) cout << "r: " << r << endl;
+
       int ind = cumNumCoeffs[1] + r - 2*first_virtual;
       if (SCNorm(ind) > schd.overlapCutoff) {
 
@@ -927,76 +927,8 @@ class SCPT
           cout << "Error: No initial determinant found. " << r << endl;
         }
 
-        auto walkCopy = walkInit;
-        int ex1 = initDets[ind].first;
-        int ex2 = initDets[ind].second;
-        walkCopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
-
-        //cout << "new det at 1: " << walkCopy.d << endl;
-        //cout << "ex1: " << ex1 << "    ex2: " << ex2 << endl;
-        //I = ex1 / (2 * norbs);
-        //A = ex1 % (2 * norbs);
-        //cout << "I: " << I << "   " << "A: " << A << endl;
-        //if (ex2 != 0) {
-        //  J = ex2 / (2 * norbs);
-        //  B = ex2 % (2 * norbs);
-        //  cout << "J: " << J << "   " << "B: " << B << endl;
-        //}
-
-        int coeffsIndexCopy = this->coeffsIndex(walkCopy);
-        if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
-
-        // Now, sample the SC energy in this space
-        FastHamAndOvlp(walkCopy, ovlp, hamSample, work);
-
-        int iter = 0;
-        double cumdeltaT = 0.;
-
-        while (iter < 100) {
-          double cumovlpRatio = 0;
-          for (int i = 0; i < work.nExcitations; i++) {
-            cumovlpRatio += abs(work.ovlpRatio[i]);
-            work.ovlpRatio[i] = cumovlpRatio;
-          }
-          double deltaT = 1.0 / (cumovlpRatio);
-          double nextDetRandom = random() * cumovlpRatio;
-          int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                         nextDetRandom) - work.ovlpRatio.begin();
-          cumdeltaT += deltaT;
-          double ratio = deltaT / cumdeltaT;
-          ham *= (1 - ratio);
-          ham += ratio * hamSample;
-
-          walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-
-          //cout << "new det at 2: " << walkCopy.d << endl;
-          //I = work.excitation1[nextDet] / (2 * norbs);
-          //A = work.excitation1[nextDet] % (2 * norbs);
-          //cout << "I: " << I << "   " << "A: " << A << endl;
-          //if (work.excitation2[nextDet] != 0) {
-          //  J = work.excitation2[nextDet] / (2 * norbs);
-          //  B = work.excitation2[nextDet] % (2 * norbs);
-          //  cout << "J: " << J << "   " << "B: " << B << endl;
-          //}
-
-          int coeffsIndexCopy = this->coeffsIndex(walkCopy);
-          if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
-
-          // Make sure that the walker is within one of the classes being sampled, after this move
-          //if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
-
-          FastHamAndOvlp(walkCopy, ovlp, hamSample, work);
-          iter++;
-        }
-
-        ham *= cumdeltaT;
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(ham), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-        ham /= cumdeltaT;
-        if (commrank == 0) cout << "ham: " << setprecision(10) << ham << endl;
-        ene2 += SCNorm(ind) / (energyCASCI - ham);
+        double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work);
+        ene2 += SCNorm(ind) / (energyCASCI - SCHam);
       }
     }
 
@@ -1027,6 +959,61 @@ class SCPT
       //}
     }
 
+  }
+
+  template<typename Walker>
+  double doSCEnergyCTMC(Walker& walkInit, int& ind, pair<int,int>& excitations, workingArray& work)
+  {
+    double ham = 0., ovlp = 0., hamSample = 0.;
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+    auto walk = walkInit;
+    int ex1 = excitations.first;
+    int ex2 = excitations.second;
+    walk.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+
+    int coeffsIndexCopy = this->coeffsIndex(walk);
+    if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
+
+    // Now, sample the SC energy in this space
+    FastHamAndOvlp(walk, ovlp, hamSample, work);
+
+    int iter = 0;
+    double cumdeltaT = 0.;
+
+    while (iter < 100) {
+      double cumovlpRatio = 0.;
+      for (int i = 0; i < work.nExcitations; i++) {
+        cumovlpRatio += abs(work.ovlpRatio[i]);
+        work.ovlpRatio[i] = cumovlpRatio;
+      }
+      double deltaT = 1.0 / (cumovlpRatio);
+      double nextDetRandom = random() * cumovlpRatio;
+      int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                     nextDetRandom) - work.ovlpRatio.begin();
+      cumdeltaT += deltaT;
+      double ratio = deltaT / cumdeltaT;
+      ham *= (1 - ratio);
+      ham += ratio * hamSample;
+
+      walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+
+      int coeffsIndexCopy = this->coeffsIndex(walk);
+      if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
+
+      FastHamAndOvlp(walk, ovlp, hamSample, work);
+      iter++;
+    }
+
+    ham *= cumdeltaT;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(ham), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    ham /= cumdeltaT;
+    if (commrank == 0) cout << "ham: " << setprecision(10) << ham << endl;
+
+    return ham;
   }
 
   template<typename Walker>
