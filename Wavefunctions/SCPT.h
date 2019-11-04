@@ -927,7 +927,10 @@ class SCPT
           cout << "Error: No initial determinant found. " << r << endl;
         }
 
-        double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work);
+        string outputFile = "sc_energies.";
+        outputFile.append(to_string(r));
+
+        double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work, outputFile);
         ene2 += SCNorm(ind) / (energyCASCI - SCHam);
       }
     }
@@ -962,9 +965,18 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMC(Walker& walkInit, int& ind, pair<int,int>& excitations, workingArray& work)
+  double doSCEnergyCTMC(Walker& walkInit, int& ind, pair<int,int>& excitations, workingArray& work, string& outputFile)
   {
-    double ham = 0., ovlp = 0., hamSample = 0.;
+    FILE * out;
+    if (commrank == 0) {
+      out = fopen(outputFile.c_str(), "w");
+      fprintf(out, "# 1. iteration     2. weighted_energy     3. residence_time\n");
+    }
+
+    double ham = 0., hamSample = 0., ovlp = 0.;
+    double numerator = 0., numerator_MPI = 0., numerator_Tot = 0.;
+    double deltaT = 0., deltaT_Tot = 0., deltaT_MPI = 0.;
+
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     auto walk = walkInit;
@@ -979,22 +991,32 @@ class SCPT
     FastHamAndOvlp(walk, ovlp, hamSample, work);
 
     int iter = 0;
-    double cumdeltaT = 0.;
-
-    while (iter < 100) {
+    while (iter < 10000) {
       double cumovlpRatio = 0.;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
         work.ovlpRatio[i] = cumovlpRatio;
       }
-      double deltaT = 1.0 / (cumovlpRatio);
+      deltaT = 1.0 / (cumovlpRatio);
+
+      numerator = deltaT*hamSample;
+
+#ifndef SERIAL
+      MPI_Allreduce(&(numerator), &(numerator_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(&(deltaT), &(deltaT_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+      numerator_MPI = numeratpr;
+      deltaT_MPI = deltaT;
+#endif
+
+      if (commrank == 0) fprintf(out, "%14d    %.12e    %.12e\n", iter, numerator_MPI, deltaT_MPI);
+
+      numerator_Tot += numerator_MPI;
+      deltaT_Tot += deltaT_MPI;
+
       double nextDetRandom = random() * cumovlpRatio;
       int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
                                      nextDetRandom) - work.ovlpRatio.begin();
-      cumdeltaT += deltaT;
-      double ratio = deltaT / cumdeltaT;
-      ham *= (1 - ratio);
-      ham += ratio * hamSample;
 
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
@@ -1005,15 +1027,11 @@ class SCPT
       iter++;
     }
 
-    ham *= cumdeltaT;
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(ham), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-    ham /= cumdeltaT;
-    if (commrank == 0) cout << "ham: " << setprecision(10) << ham << endl;
+    double final_ham = numerator_Tot/deltaT_Tot;
+    if (commrank == 0) cout << "ham: " << setprecision(10) << final_ham << endl;
+    if (commrank == 0) fclose(out);
 
-    return ham;
+    return final_ham;
   }
 
   template<typename Walker>
