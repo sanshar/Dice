@@ -53,6 +53,7 @@ private:
       & beta
       & method
       & stochasticIter
+      & stochasticIterEachSC
       & _sgdIter
       & momentum
       & integralSampleSize
@@ -123,8 +124,9 @@ public:
   std::string determinantFile;
 
 //Used in the stochastic calculation of E and PT evaluation
-  int stochasticIter;                    //Number of stochastic steps
-  int integralSampleSize;                //This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
+  int stochasticIter;                    // Number of stochastic steps
+  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted state, for the efficientNEVPT option
+  int integralSampleSize;                // This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
   int seed;                              // seed for the random number generator
   double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
   double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals

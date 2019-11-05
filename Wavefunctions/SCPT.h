@@ -1009,7 +1009,7 @@ class SCPT
     FastHamAndOvlp(walk, ovlp, hamSample, work);
 
     int iter = 0;
-    while (iter < 10000) {
+    while (iter < schd.stochasticIterEachSC) {
       double cumovlpRatio = 0.;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
