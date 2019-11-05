@@ -616,7 +616,9 @@ class SCPT
   }
 
   template<typename Walker>
-  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &locSCNorms, workingArray& work)
+  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &locSCNorms,
+                     vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                     workingArray& work)
   {
     int norbs = Determinant::norbs;
     double parity, tia;
@@ -675,12 +677,19 @@ class SCPT
         // Is this excitation class being used? If not, then move to the next excitation
         continue;
       }
-      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
-      if (coeffsCopyIndex == -1) continue;
+      int ind = this->coeffsIndex(walkCopy);
+      if (ind == -1) continue;
 
       morework.setCounterToZero();
       wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
-      locSCNorms(coeffsCopyIndex) += parity * tia * ham0 / ovlp;
+      locSCNorms(ind) += parity * tia * ham0 / ovlp;
+
+      // If this is the determinant with the largest coefficient found within
+      // the SC space so far, then store it.
+      if (abs(ham0) > largestCoeffs[ind]) {
+        initDets[ind] = walkCopy.d;
+        largestCoeffs[ind] = abs(ham0);
+      }
     }
 
     // For the CTMC algorithm, only need excitations within the CASCI space.
@@ -758,10 +767,10 @@ class SCPT
     waveEne *= cumdeltaT;
 
 #ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     
     norm /= cumdeltaT;
@@ -807,40 +816,6 @@ class SCPT
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
   }
-
-  template<typename Walker>
-  void findInitDets(Walker& walk, vector<pair<int,int>>& initDets, vector<double>& largestCoeffs, workingArray& work) {
-
-    int norbs = Determinant::norbs;
-    double ovlp0, ham0;
-
-    // Generate all screened excitations
-    work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
-    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
-
-    // loop over all the screened excitations
-    for (int i=0; i<work.nExcitations; i++) {
-      auto walkCopy = walk;
-      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
-
-      if (walkCopy.excitation_class == 0) {
-        continue;
-      } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
-        // Is this excitation class being used? If not, then move to the next excitation
-        continue;
-      }
-      int ind = this->coeffsIndex(walkCopy);
-      if (ind == -1) continue;
-
-      morework.setCounterToZero();
-      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
-      if (abs(ham0) > largestCoeffs[ind]) {
-        initDets[ind] = make_pair(work.excitation1[i], work.excitation2[i]);
-        largestCoeffs[ind] = abs(ham0);
-      }
-    }
-  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
@@ -854,7 +829,15 @@ class SCPT
     VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
     workingArray work;
 
-    HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
+    // As we calculate the SC norms, we will simultaneously find the determinants
+    // within each SC space that have the highest coefficient, as found during
+    // the sampling. These quantities are searched for in the following arrays.
+    vector<Determinant> initDets;
+    initDets.resize(numCoeffs, walkInit.d);
+    vector<double> largestCoeffs;
+    largestCoeffs.resize(numCoeffs, 0.0);
+
+    HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
 
     int iter = 0;
     double cumdeltaT = 0.;
@@ -882,7 +865,7 @@ class SCPT
       if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
 
       locSCNormSamples.setZero();
-      HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
+      HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
 
       iter++;
       if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
@@ -892,9 +875,9 @@ class SCPT
     SCNorm *= cumdeltaT;
 
 #ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(energyCASCI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(energyCASCI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
     energyCASCI /= cumdeltaT;
@@ -904,15 +887,6 @@ class SCPT
     // above a certain threshold
 
     int first_virtual = schd.nciCore + schd.nciAct;
-
-    // Find appropriate initial walkers for each SC sector
-    pair<int,int> zero_excitation(0,0);
-    vector<pair<int,int>> initDets;
-    initDets.resize(numCoeffs, zero_excitation);
-    vector<double> largestCoeffs;
-    largestCoeffs.resize(numCoeffs, 0.0);
-
-    findInitDets(walkInit, initDets, largestCoeffs, work);
 
     double ene2 = 0.;
 
@@ -983,7 +957,7 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMC(Walker& walkInit, int& ind, pair<int,int>& excitations, workingArray& work, string& outputFile)
+  double doSCEnergyCTMC(Walker& walkIn, int& ind, Determinant& initDet, workingArray& work, string& outputFile)
   {
     FILE * out;
     if (commrank == 0) {
@@ -997,10 +971,8 @@ class SCPT
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
-    auto walk = walkInit;
-    int ex1 = excitations.first;
-    int ex2 = excitations.second;
-    walk.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+    Walker walk;
+    this->wave.initWalker(walk, initDet);
 
     int coeffsIndexCopy = this->coeffsIndex(walk);
     if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
@@ -1069,6 +1041,11 @@ class SCPT
 
     VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
 
+    vector<Determinant> initDets;
+    initDets.resize(numCoeffs, walk.d);
+    vector<double> largestCoeffs;
+    largestCoeffs.resize(numCoeffs, 0.0);
+
     for (int i = commrank; i < allDets.size(); i += commsize) {
       wave.initWalker(walk, allDets[i]);
       if (schd.debug) {
@@ -1089,7 +1066,7 @@ class SCPT
 
       if (walk.excitation_class == 0) {
         locSCNormSamples.setZero();
-        HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, work);
+        HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
         SCNorm += (ovlp * ovlp) * locSCNormSamples;
         overlapTotCASCI += ovlp * ovlp;
       }
