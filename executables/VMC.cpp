@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
     if (schd.deterministic) {
       wave.doNEVPT2_Deterministic(walk);
     } else {
-      if (schd.efficientNEVPT) {
+      if (schd.efficientNEVPT || schd.efficientNEVPT_2) {
         wave.doNEVPT2_CT_Efficient(walk);
       } else {
         wave.doNEVPT2_CT(walk);

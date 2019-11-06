@@ -89,6 +89,7 @@ private:
       & ciCeption
       & determCCVV
       & efficientNEVPT
+      & efficientNEVPT_2
       & actWidth
       & overlapCutoff
       & diagMethod
@@ -117,6 +118,7 @@ public:
   bool ciCeption;                        //true, when using ci on top of selectedCI
   bool determCCVV;                       //In NEVPT2 calculations, calculate the CCVV energy by the exact formula
   bool efficientNEVPT;                   //More efficient sampling in the SC-NEVPT2(s) method
+  bool efficientNEVPT_2;                 //More efficient sampling in the SC-NEVPT2(s) method - a second approach to this sampling
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;

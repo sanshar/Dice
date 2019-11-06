@@ -852,7 +852,6 @@ class SCPT
     workingArray work;
     auto walkInit = walk;
 
-    int norbs = Determinant::norbs;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     double ham = 0., hamSample = 0., ovlp = 0.;
@@ -934,9 +933,40 @@ class SCPT
 
     if (commrank == 0) fclose(out_norms);
 
-    // Next we calculate the SC state energies, for the SC states with norms
-    // above a certain threshold
+    // Next we calculate the SC state energies, and the final PT2 energy estimate
+    double ene2 = sampleAllSCEnergies(walkInit, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
+    if (commrank == 0) {
+      cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
+      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCAS_Tot + ene2 << endl;
+
+      // Get the class 8 norms exactly
+      //int ind;
+      //double norm;
+      //VectorXd normsExact = VectorXd::Zero(coeffs.size());
+
+      //for (int j=1; j<2*schd.nciCore; j++) {
+      //  for (int i=0; i<j; i++) {
+      //    for (int s=2*first_virtual+1; s<2*norbs; s++) {
+      //      for (int r=2*first_virtual; r<s; r++) {
+      //        std::array<int,4> inds = {s, r, j, i};
+      //        auto it1 = class_2h2p_ind.find(inds);
+      //        if (it1 != class_2h2p_ind.end()) {
+      //          ind = 1 + it1->second;
+      //          normsExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
+      //        }
+      //      }
+      //    }
+      //  }
+      //}
+    }
+  }
+
+  template<typename Walker>
+  double sampleAllSCEnergies(Walker& walkInit, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                             double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
+  {
+    int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
 
     double ene2 = 0.;
@@ -977,32 +1007,7 @@ class SCPT
         }
       }
     }
-
-    if (commrank == 0) {
-      cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
-      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCAS_Tot + ene2 << endl;
-
-      // Get the class 8 norms exactly
-      //int ind;
-      //double norm;
-      //VectorXd normsExact = VectorXd::Zero(coeffs.size());
-
-      //for (int j=1; j<2*schd.nciCore; j++) {
-      //  for (int i=0; i<j; i++) {
-      //    for (int s=2*first_virtual+1; s<2*norbs; s++) {
-      //      for (int r=2*first_virtual; r<s; r++) {
-      //        std::array<int,4> inds = {s, r, j, i};
-      //        auto it1 = class_2h2p_ind.find(inds);
-      //        if (it1 != class_2h2p_ind.end()) {
-      //          ind = 1 + it1->second;
-      //          normsExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
-      //        }
-      //      }
-      //    }
-      //  }
-      //}
-    }
-
+    return ene2;
   }
 
   template<typename Walker>
