@@ -616,7 +616,7 @@ class SCPT
   }
 
   template<typename Walker>
-  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &locSCNorms,
+  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &normSamples,
                      vector<Determinant>& initDets, vector<double>& largestCoeffs,
                      workingArray& work)
   {
@@ -682,7 +682,7 @@ class SCPT
 
       morework.setCounterToZero();
       wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
-      locSCNorms(ind) += parity * tia * ham0 / ovlp;
+      normSamples(ind) += parity * tia * ham0 / ovlp;
 
       // If this is the determinant with the largest coefficient found within
       // the SC space so far, then store it.
@@ -816,18 +816,52 @@ class SCPT
       if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
     }
   }
+
+  // Output the header for the "norms" file, which will output the norms of
+  // the strongly contracted (SC) states, divided by the norm of the CASCI
+  // state (squared)
+  double outputNormFileHeader(FILE* out_norms)
+  {
+    fprintf(out_norms, "# 1. iteration");
+    fprintf(out_norms, "         # 2. residence_time");
+    fprintf(out_norms, "            # 3. casci_energy");
+    for (int ind = 1; ind < numCoeffs; ind++) {
+      int label = ind + 3;
+
+      string header;
+      header.append(to_string(label));
+      header.append(". weighted_norm_");
+      header.append(to_string(ind));
+      stringstream fixed_width;
+      // fix the width of each column to 28 characters
+      fixed_width << setw(28) << header;
+      string fixed_width_str = fixed_width.str();
+      fprintf(out_norms, fixed_width_str.c_str());
+    }
+    fprintf(out_norms, "\n");
+  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
+    // Print the norm samples to a file. Create the header:
+    FILE * out_norms;
+    out_norms = fopen("norms", "w");
+    if (commrank == 0) outputNormFileHeader(out_norms);
+
+    workingArray work;
+    auto walkInit = walk;
+
     int norbs = Determinant::norbs;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
-    auto walkInit = walk;
+    double ham = 0., hamSample = 0., ovlp = 0.;
+    double deltaT = 0., deltaT_MPI = 0., deltaT_Tot = 0.;
+    double energyCAS = 0., energyCAS_MPI = 0., energyCAS_Tot = 0.;
 
-    double ovlp = 0., hamSample = 0., energyCASCI = 0.;
-    VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
-    workingArray work;
+    VectorXd normSamples = VectorXd::Zero(coeffs.size());
+    VectorXd norms_MPI = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -837,11 +871,10 @@ class SCPT
     vector<double> largestCoeffs;
     largestCoeffs.resize(numCoeffs, 0.0);
 
-    HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
+    HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
 
     int iter = 0;
-    double cumdeltaT = 0.;
-    int printMod = schd.stochasticIter / 5;
+    int printMod = schd.stochasticIter / 10;
 
     while (iter < schd.stochasticIter) {
       double cumovlpRatio = 0;
@@ -850,38 +883,56 @@ class SCPT
         work.ovlpRatio[i] = cumovlpRatio;
       }
       double deltaT = 1.0 / (cumovlpRatio);
+
+      energyCAS = deltaT * hamSample;
+      normSamples *= deltaT;
+
+#ifndef SERIAL
+      MPI_Allreduce(&(deltaT), &(deltaT_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(&(energyCAS), &(energyCAS_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(normSamples.data(), norms_MPI.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+      deltaT_MPI = deltaT;
+      energyCAS_MPI = energy_CASCI;
+      norms_MPI = normSamples;
+#endif
+
+      // Print the norm samples from this iteration, summed across all processes
+      if (commrank == 0) {
+        fprintf(out_norms, "%14d", iter);
+        fprintf(out_norms, "          %.12e", deltaT_MPI);
+        fprintf(out_norms, "          %.12e", energyCAS_MPI);
+        for (int ind = 1; ind < numCoeffs; ind++) {
+          fprintf(out_norms, "          %.12e", norms_MPI(ind));
+        }
+        fprintf(out_norms, "\n");
+      }
+
+      // These hold the running totals
+      deltaT_Tot += deltaT_MPI;
+      energyCAS_Tot += energyCAS_MPI;
+      norms_Tot += norms_MPI;
+
+      // Pick the next determinant by the CTMC algorithm
       double nextDetRandom = random() * cumovlpRatio;
       int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
                                      nextDetRandom) - work.ovlpRatio.begin();
-      cumdeltaT += deltaT;
-      double ratio = deltaT / cumdeltaT;
-      energyCASCI *= (1 - ratio);
-      energyCASCI += ratio * hamSample;
-      SCNorm *= (1 - ratio);
-      SCNorm += ratio * locSCNormSamples;
 
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
       if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
 
-      locSCNormSamples.setZero();
-      HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
+      normSamples.setZero();
+      HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
 
+      if (commrank == 0 && iter % printMod == 0) cout << "iter: " << iter << "  t: " << setprecision(4) << getTime() - startofCalc << endl;
       iter++;
-      if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
     }
 
-    energyCASCI *= cumdeltaT;
-    SCNorm *= cumdeltaT;
+    energyCAS_Tot /= deltaT_Tot;
+    norms_Tot /= deltaT_Tot;
 
-#ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &(energyCASCI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, SCNorm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-
-    energyCASCI /= cumdeltaT;
-    SCNorm /= cumdeltaT;
+    if (commrank == 0) fclose(out_norms);
 
     // Next we calculate the SC state energies, for the SC states with norms
     // above a certain threshold
@@ -894,14 +945,14 @@ class SCPT
     for (int r=2*first_virtual; r<2*norbs; r++) {
       if (commrank == 0) cout << "r: " << r << endl;
       int ind = cumNumCoeffs[1] + r - 2*first_virtual;
-      if (SCNorm(ind) > schd.overlapCutoff) {
+      if (norms_Tot(ind) > schd.overlapCutoff) {
         if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << endl;
 
         string outputFile = "sc_energies.";
         outputFile.append(to_string(r));
 
         double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work, outputFile);
-        ene2 += SCNorm(ind) / (energyCASCI - SCHam);
+        ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
       }
     }
 
@@ -913,7 +964,7 @@ class SCPT
         int S = s - 2*first_virtual;
         int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
 
-        if (SCNorm(ind) > schd.overlapCutoff) {
+        if (norms_Tot(ind) > schd.overlapCutoff) {
           if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << "  " << s << endl;
 
           string outputFile = "sc_energies.";
@@ -922,21 +973,19 @@ class SCPT
           outputFile.append(to_string(s));
 
           double SCHam = doSCEnergyCTMC(walkInit, ind, initDets[ind], work, outputFile);
-          ene2 += SCNorm(ind) / (energyCASCI - SCHam);
+          ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
         }
       }
     }
 
     if (commrank == 0) {
       cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
-      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCASCI + ene2 << endl;
-
-      //cout << "CASCI energy: " << setprecision(10) << energyCASCI << endl;
+      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
       // Get the class 8 norms exactly
       //int ind;
       //double norm;
-      //VectorXd SCNormExact = VectorXd::Zero(coeffs.size());
+      //VectorXd normsExact = VectorXd::Zero(coeffs.size());
 
       //for (int j=1; j<2*schd.nciCore; j++) {
       //  for (int i=0; i<j; i++) {
@@ -946,7 +995,7 @@ class SCPT
       //        auto it1 = class_2h2p_ind.find(inds);
       //        if (it1 != class_2h2p_ind.end()) {
       //          ind = 1 + it1->second;
-      //          SCNormExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
+      //          normsExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
       //        }
       //      }
       //    }
@@ -995,7 +1044,7 @@ class SCPT
       MPI_Allreduce(&(numerator), &(numerator_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(&(deltaT), &(deltaT_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #else
-      numerator_MPI = numeratpr;
+      numerator_MPI = numerator;
       deltaT_MPI = deltaT;
 #endif
 
@@ -1039,7 +1088,7 @@ class SCPT
     double waveEne = 0.;
     //w.printVariables();
 
-    VectorXd locSCNormSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
+    VectorXd normSamples = VectorXd::Zero(coeffs.size()), SCNorm = VectorXd::Zero(coeffs.size());
 
     vector<Determinant> initDets;
     initDets.resize(numCoeffs, walk.d);
@@ -1065,9 +1114,9 @@ class SCPT
       waveEne += (ovlp * ovlp) * locEne;
 
       if (walk.excitation_class == 0) {
-        locSCNormSamples.setZero();
-        HamAndSCNorms(walk, ovlp, hamSample, locSCNormSamples, initDets, largestCoeffs, work);
-        SCNorm += (ovlp * ovlp) * locSCNormSamples;
+        normSamples.setZero();
+        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
+        SCNorm += (ovlp * ovlp) * normSamples;
         overlapTotCASCI += ovlp * ovlp;
       }
     }
