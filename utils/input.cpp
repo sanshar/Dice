@@ -103,6 +103,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.deterministic = input.get("sampling.deterministic", false);
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
     schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
+    schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
     schd.determCCVV = input.get("sampling.determCCVV", false);

@@ -54,6 +54,7 @@ private:
       & method
       & stochasticIter
       & stochasticIterEachSC
+      & numSCSamples
       & _sgdIter
       & momentum
       & integralSampleSize
@@ -128,6 +129,7 @@ public:
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    // Number of stochastic steps
   int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted state, for the efficientNEVPT option
+  int numSCSamples;                      // When performing SC-NEVPT2 with the efficientNEVPT_2 algorithm, how many samples of 1/(E_0-E_l^k) to take?
   int integralSampleSize;                // This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
   int seed;                              // seed for the random number generator
   double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
