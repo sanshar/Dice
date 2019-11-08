@@ -99,14 +99,14 @@ class SCPT
       classesUsed.push_back(5);
       classesUsed.push_back(6);
       classesUsed.push_back(7);
-      //if (!schd.determCCVV)
-      //  classesUsed.push_back(8);
-      classesUsed.push_back(8);
+      if (!schd.determCCVV)
+        classesUsed.push_back(8);
+      //classesUsed.push_back(8);
 
       // Classes to be treated by the deterministic formulas, rather than by
       // stochstic sampling
-      //if (schd.determCCVV)
-      //  classesUsedDeterm.push_back(8);
+      if (schd.determCCVV)
+        classesUsedDeterm.push_back(8);
     }
 
     int numCore = schd.nciCore;
@@ -943,6 +943,15 @@ class SCPT
     if (commrank == 0) {
       cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
       cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCAS_Tot + ene2 << endl;
+
+      if (!classesUsedDeterm.empty()) {
+        double energy_ccvv = 0.0;
+        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end()) {
+          energy_ccvv = get_ccvv_energy();
+          cout << "deterministic CCVV energy:  " << energy_ccvv << endl;
+        }
+        cout << "total nevpt2 energy:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
+      }
 
       // Get the class 8 norms exactly
       //int ind;
