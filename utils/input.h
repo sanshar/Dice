@@ -46,6 +46,8 @@ private:
       & maxIter
       & avgIter
       & printLevel
+      & printSCNorms
+      & printSCNormFreq
       & debug
       & decay1
       & decay2
@@ -143,6 +145,8 @@ public:
   bool optimizeRBM;//used in jrbm
   bool printVars;
   bool printGrad;
+  bool printSCNorms;                     //Should we print out the norms of strongly contracted states (in SC-NEVPT2)
+  int printSCNormFreq;                   //How often should we print out norms of strongly contracted states (for printSCNorms option)
   HAM Hamiltonian;
 
 //Deprecated options for optimizers

@@ -844,10 +844,14 @@ class SCPT
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
+    if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
+
     // Print the norm samples to a file. Create the header:
     FILE * out_norms;
-    out_norms = fopen("norms", "w");
-    if (commrank == 0) outputNormFileHeader(out_norms);
+    if (schd.printSCNorms) {
+      out_norms = fopen("norms", "w");
+      if (commrank == 0) outputNormFileHeader(out_norms);
+    }
 
     workingArray work;
     auto walkInit = walk;
@@ -855,12 +859,13 @@ class SCPT
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     double ham = 0., hamSample = 0., ovlp = 0.;
-    double deltaT = 0., deltaT_MPI = 0., deltaT_Tot = 0.;
-    double energyCAS = 0., energyCAS_MPI = 0., energyCAS_Tot = 0.;
+    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
+    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
 
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
-    VectorXd norms_MPI = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Print;
+    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -872,10 +877,10 @@ class SCPT
 
     HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
 
-    int iter = 0;
+    int iter = 1;
     int printMod = schd.stochasticIter / 10;
 
-    while (iter < schd.stochasticIter) {
+    while (iter <= schd.stochasticIter) {
       double cumovlpRatio = 0;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -886,31 +891,32 @@ class SCPT
       energyCAS = deltaT * hamSample;
       normSamples *= deltaT;
 
-#ifndef SERIAL
-      MPI_Allreduce(&(deltaT), &(deltaT_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      MPI_Allreduce(&(energyCAS), &(energyCAS_MPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      MPI_Allreduce(normSamples.data(), norms_MPI.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#else
-      deltaT_MPI = deltaT;
-      energyCAS_MPI = energy_CASCI;
-      norms_MPI = normSamples;
-#endif
+      // These hold the running totals
+      deltaT_Tot += deltaT;
+      energyCAS_Tot += energyCAS;
+      norms_Tot += normSamples;
 
       // Print the norm samples from this iteration, summed across all processes
-      if (commrank == 0) {
-        fprintf(out_norms, "%14d", iter);
-        fprintf(out_norms, "          %.12e", deltaT_MPI);
-        fprintf(out_norms, "          %.12e", energyCAS_MPI);
-        for (int ind = 1; ind < numCoeffs; ind++) {
-          fprintf(out_norms, "          %.12e", norms_MPI(ind));
-        }
-        fprintf(out_norms, "\n");
-      }
+      if (schd.printSCNorms && commrank == 0) {
+        // Only print these values out every printSCNormFreq iterations.
+        // The values printed out are summed over intervening iterations.
+        deltaT_Print += deltaT;
+        energyCAS_Print += energyCAS;
+        norms_Print += normSamples;
 
-      // These hold the running totals
-      deltaT_Tot += deltaT_MPI;
-      energyCAS_Tot += energyCAS_MPI;
-      norms_Tot += norms_MPI;
+        if (iter % schd.printSCNormFreq == 0) {
+          fprintf(out_norms, "%14d", iter);
+          fprintf(out_norms, "          %.12e", deltaT_Print);
+          fprintf(out_norms, "          %.12e", energyCAS_Print);
+          for (int ind = 1; ind < numCoeffs; ind++)
+            fprintf(out_norms, "          %.12e", norms_Print(ind));
+          fprintf(out_norms, "\n");
+
+          deltaT_Print = 0.;
+          energyCAS_Print = 0.;
+          norms_Print.setZero();
+        }
+      }
 
       // Pick the next determinant by the CTMC algorithm
       double nextDetRandom = random() * cumovlpRatio;
@@ -924,16 +930,23 @@ class SCPT
       normSamples.setZero();
       HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
 
-      if (commrank == 0 && iter % printMod == 0) cout << "iter: " << iter << "  t: " << setprecision(4) << getTime() - startofCalc << endl;
+      if (commrank == 0 && (iter % printMod == 0 || iter == 1))
+        cout << "iter: " << iter << "  t: " << setprecision(4) << getTime() - startofCalc << endl;
       iter++;
     }
 
     energyCAS_Tot /= deltaT_Tot;
     norms_Tot /= deltaT_Tot;
 
-    if (commrank == 0) fclose(out_norms);
+    if (schd.printSCNorms && commrank == 0) fclose(out_norms);
 
-    // Next we calculate the SC state energies, and the final PT2 energy estimate
+    if (commrank == 0)
+    {
+      cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
+      cout << "Now sampling the NEVPT2 energy..." << endl;
+    }
+
+    // Next we calculate the SC state energies and the final PT2 energy estimate
     double ene2;
     if (schd.efficientNEVPT)
       ene2 = sampleAllSCEnergies(walkInit, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
@@ -941,16 +954,19 @@ class SCPT
       ene2 = sampleSCEnergies(walkInit, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
     if (commrank == 0) {
-      cout << "PT2 energy:  " << setprecision(10) << ene2 << endl;
-      cout << "stochastic nevpt2 energy:  " << setprecision(10) << energyCAS_Tot + ene2 << endl;
+      cout << "Sampling complete." << endl << endl;
+      cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
+      cout << "Total SC-NEVPT(2) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
       if (!classesUsedDeterm.empty()) {
         double energy_ccvv = 0.0;
-        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end()) {
+        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
+        {
           energy_ccvv = get_ccvv_energy();
-          cout << "deterministic CCVV energy:  " << energy_ccvv << endl;
+          cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
+          cout << "SC-NEVPT2(s) second-order energy with CCVV:  " << energy_ccvv + ene2 << endl;
+          cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
         }
-        cout << "total nevpt2 energy:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
       }
 
       // Get the class 8 norms exactly
@@ -988,7 +1004,7 @@ class SCPT
       cumNorm[i] = totCumNorm;
     }
 
-    double energySample = 0., energyTot = 0., energyMPI = 0.;
+    double energySample = 0., energyTot = 0;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     FILE * pt2_out;
@@ -1011,23 +1027,47 @@ class SCPT
 
       double timeOut = getTime();
 
-      if (commrank == 0) fprintf(pt2_out, "%14d    %.12e    %.4e\n", iter, energySample, timeOut-timeIn);
-
+      if (commrank == 0) {
+        fprintf(pt2_out, "%14d    %.12e    %.4e\n", iter, energySample, timeOut-timeIn);
+        fflush(pt2_out);
+      }
       iter++;
     }
-
-#ifndef SERIAL
-      MPI_Allreduce(&(energyTot), &(energyMPI), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      energyMPI /= commsize;
-#else
-      energyMPI = energySample;
-#endif
-
-    double ene2 = energyMPI/iter;
-
     if (commrank == 0) fclose(pt2_out);
 
-    return ene2;
+    energyTot /= iter;
+
+    // Average over MPI processes
+    double energyFinal = 0.;
+#ifndef SERIAL
+    // Check how long processes have to wait for other MPI processes to finish
+    double timeIn = getTime();
+    MPI_Barrier(MPI_COMM_WORLD);
+    double timeOut = getTime();
+    if (commrank == 0) cout << "MPI Barrier time: " << timeOut-timeIn << " seconds" << endl;
+
+    // Gather and print energy estimates from all MPI processes
+    double energyTotAll[commsize];
+    MPI_Gather(&(energyTot), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    if (commrank == 0) {
+      FILE * mpi_out;
+      mpi_out = fopen("pt2_energies_mpi.dat", "w");
+      fprintf(mpi_out, "# 1. proc_label     2. energy\n");
+      for (int i=0; i<commsize; i++) {
+        fprintf(mpi_out, "%15d    %.12e\n", i, energyTotAll[i]);
+        energyFinal += energyTotAll[i];
+      }
+      fclose(mpi_out);
+
+      energyFinal /= commsize;
+    }
+    MPI_Bcast(&energyFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#else
+    energyFinal = energyTot;
+#endif
+
+    return energyFinal;
   }
 
   template<typename Walker>
