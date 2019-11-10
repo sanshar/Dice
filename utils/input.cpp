@@ -109,6 +109,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.determCCVV = input.get("sampling.determCCVV", false);
     schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
     schd.efficientNEVPT_2 = input.get("sampling.efficientNEVPT_2", false);
+    schd.continueMarkovSCPT = input.get("sampling.continueMarkovSCPT", true);
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);

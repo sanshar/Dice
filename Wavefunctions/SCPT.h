@@ -854,7 +854,6 @@ class SCPT
     }
 
     workingArray work;
-    auto walkInit = walk;
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -871,7 +870,7 @@ class SCPT
     // within each SC space that have the highest coefficient, as found during
     // the sampling. These quantities are searched for in the following arrays.
     vector<Determinant> initDets;
-    initDets.resize(numCoeffs, walkInit.d);
+    initDets.resize(numCoeffs, walk.d);
     vector<double> largestCoeffs;
     largestCoeffs.resize(numCoeffs, 0.0);
 
@@ -949,9 +948,9 @@ class SCPT
     // Next we calculate the SC state energies and the final PT2 energy estimate
     double ene2;
     if (schd.efficientNEVPT)
-      ene2 = sampleAllSCEnergies(walkInit, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
     if (schd.efficientNEVPT_2)
-      ene2 = sampleSCEnergies(walkInit, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
     if (commrank == 0) {
       cout << "Sampling complete." << endl << endl;
@@ -992,7 +991,7 @@ class SCPT
   }
 
   template<typename Walker>
-  double sampleSCEnergies(Walker& walkInit, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+  double sampleSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
                           double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
   {
     vector<double> cumNorm;
@@ -1020,9 +1019,13 @@ class SCPT
       double nextSCRandom = random() * totCumNorm;
       int nextSC = std::lower_bound(cumNorm.begin(), (cumNorm.begin() + numCoeffs), nextSCRandom) - cumNorm.begin();
 
-      double SCHam = doSCEnergyCTMC(walkInit, nextSC, initDets[nextSC], work);
-      energySample = totCumNorm / (energyCAS_Tot - SCHam);
+      this->wave.initWalker(walk, initDets[nextSC]);
+      double SCHam = doSCEnergyCTMC(walk, nextSC, work);
+      // If this same SC sector is sampled again, start from the final
+      // determinant from this time:
+      if (schd.continueMarkovSCPT) initDets[nextSC] = walk.d;
 
+      energySample = totCumNorm / (energyCAS_Tot - SCHam);
       energyTot += energySample;
 
       double timeOut = getTime();
@@ -1071,16 +1074,13 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMC(Walker& walkIn, int& ind, Determinant& initDet, workingArray& work)
+  double doSCEnergyCTMC(Walker& walk, int& ind, workingArray& work)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
     double numerator = 0., numerator_MPI = 0., numerator_Tot = 0.;
     double deltaT = 0., deltaT_Tot = 0., deltaT_MPI = 0.;
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-    Walker walk;
-    this->wave.initWalker(walk, initDet);
 
     int coeffsIndexCopy = this->coeffsIndex(walk);
     if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
@@ -1114,15 +1114,13 @@ class SCPT
       FastHamAndOvlp(walk, ovlp, hamSample, work);
       iter++;
     }
-
     double final_ham = numerator_Tot/deltaT_Tot;
-    //if (commrank == 0) cout << "ham: " << setprecision(10) << final_ham << endl;
 
     return final_ham;
   }
 
   template<typename Walker>
-  double sampleAllSCEnergies(Walker& walkInit, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+  double sampleAllSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
                              double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
   {
     int norbs = Determinant::norbs;
@@ -1140,7 +1138,8 @@ class SCPT
         string outputFile = "sc_energies.";
         outputFile.append(to_string(r));
 
-        double SCHam = doSCEnergyCTMCSync(walkInit, ind, initDets[ind], work, outputFile);
+        this->wave.initWalker(walk, initDets[ind]);
+        double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
         ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
       }
     }
@@ -1161,7 +1160,8 @@ class SCPT
           outputFile.append("_");
           outputFile.append(to_string(s));
 
-          double SCHam = doSCEnergyCTMCSync(walkInit, ind, initDets[ind], work, outputFile);
+          this->wave.initWalker(walk, initDets[ind]);
+          double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
           ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
         }
       }
@@ -1170,7 +1170,7 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMCSync(Walker& walkIn, int& ind, Determinant& initDet, workingArray& work, string& outputFile)
+  double doSCEnergyCTMCSync(Walker& walk, int& ind, workingArray& work, string& outputFile)
   {
     FILE * out;
     if (commrank == 0) {
@@ -1183,9 +1183,6 @@ class SCPT
     double deltaT = 0., deltaT_Tot = 0., deltaT_MPI = 0.;
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-    Walker walk;
-    this->wave.initWalker(walk, initDet);
 
     int coeffsIndexCopy = this->coeffsIndex(walk);
     if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;

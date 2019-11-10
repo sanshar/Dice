@@ -107,7 +107,8 @@ private:
       & minPop
       & initialPop
       & targetPop
-      & numHidden;
+      & numHidden
+      & continueMarkovSCPT;
   }
 public:
 //General options
@@ -147,6 +148,7 @@ public:
   bool printGrad;
   bool printSCNorms;                     //Should we print out the norms of strongly contracted states (in SC-NEVPT2)
   int printSCNormFreq;                   //How often should we print out norms of strongly contracted states (for printSCNorms option)
+  bool continueMarkovSCPT;               //In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   HAM Hamiltonian;
 
 //Deprecated options for optimizers
