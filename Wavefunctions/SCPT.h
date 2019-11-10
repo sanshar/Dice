@@ -997,10 +997,15 @@ class SCPT
     vector<double> cumNorm;
     cumNorm.resize(numCoeffs, 0.0);
 
+    int numCoeffsToSample = 0;
     double totCumNorm = 0.;
     for (int i = 1; i < numCoeffs; i++) {
-      totCumNorm += norms_Tot(i);
-      cumNorm[i] = totCumNorm;
+      if (norms_Tot(i) > schd.overlapCutoff) {
+        totCumNorm += norms_Tot(i);
+        cumNorm[numCoeffsToSample] = totCumNorm;
+        initDets[numCoeffsToSample] = initDets[i];
+        numCoeffsToSample += 1;
+      }
     }
 
     double energySample = 0., energyTot = 0;
@@ -1017,10 +1022,10 @@ class SCPT
       double timeIn = getTime();
 
       double nextSCRandom = random() * totCumNorm;
-      int nextSC = std::lower_bound(cumNorm.begin(), (cumNorm.begin() + numCoeffs), nextSCRandom) - cumNorm.begin();
+      int nextSC = std::lower_bound(cumNorm.begin(), (cumNorm.begin() + numCoeffsToSample), nextSCRandom) - cumNorm.begin();
 
       this->wave.initWalker(walk, initDets[nextSC]);
-      double SCHam = doSCEnergyCTMC(walk, nextSC, work);
+      double SCHam = doSCEnergyCTMC(walk, work);
       // If this same SC sector is sampled again, start from the final
       // determinant from this time:
       if (schd.continueMarkovSCPT) initDets[nextSC] = walk.d;
@@ -1074,7 +1079,7 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMC(Walker& walk, int& ind, workingArray& work)
+  double doSCEnergyCTMC(Walker& walk, workingArray& work)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
     double numerator = 0., numerator_MPI = 0., numerator_Tot = 0.;
@@ -1082,8 +1087,8 @@ class SCPT
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
-    int coeffsIndexCopy = this->coeffsIndex(walk);
-    if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
+    //int coeffsIndexCopy = this->coeffsIndex(walk);
+    //if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
 
     // Now, sample the SC energy in this space
     FastHamAndOvlp(walk, ovlp, hamSample, work);
@@ -1108,8 +1113,8 @@ class SCPT
 
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
-      int coeffsIndexCopy = this->coeffsIndex(walk);
-      if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
+      //int coeffsIndexCopy = this->coeffsIndex(walk);
+      //if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
 
       FastHamAndOvlp(walk, ovlp, hamSample, work);
       iter++;
