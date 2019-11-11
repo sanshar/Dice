@@ -1012,10 +1012,12 @@ class SCPT
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     FILE * pt2_out;
-    if (commrank == 0) {
-      pt2_out = fopen("pt2_energies.dat", "w");
-      fprintf(pt2_out, "# 1. iteration     2. energy             3. time\n");
-    }
+    string pt2OutName = "pt2_energies_";
+    pt2OutName.append(to_string(commrank));
+    pt2OutName.append(".dat");
+
+    pt2_out = fopen(pt2OutName.c_str(), "w");
+    fprintf(pt2_out, "# 1. iteration     2. energy             3. time\n");
 
     int iter = 0;
     while (iter < schd.numSCSamples) {
@@ -1035,13 +1037,12 @@ class SCPT
 
       double timeOut = getTime();
 
-      if (commrank == 0) {
-        fprintf(pt2_out, "%14d    %.12e    %.4e\n", iter, energySample, timeOut-timeIn);
-        fflush(pt2_out);
-      }
+      fprintf(pt2_out, "%14d    %.12e    %.4e\n", iter, energySample, timeOut-timeIn);
+      fflush(pt2_out);
+
       iter++;
     }
-    if (commrank == 0) fclose(pt2_out);
+    fclose(pt2_out);
 
     energyTot /= iter;
 
@@ -1060,7 +1061,7 @@ class SCPT
 
     if (commrank == 0) {
       FILE * mpi_out;
-      mpi_out = fopen("pt2_energies_mpi.dat", "w");
+      mpi_out = fopen("pt2_energies_avg.dat", "w");
       fprintf(mpi_out, "# 1. proc_label     2. energy\n");
       for (int i=0; i<commsize; i++) {
         fprintf(mpi_out, "%15d    %.12e\n", i, energyTotAll[i]);
