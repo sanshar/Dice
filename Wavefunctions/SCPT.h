@@ -844,6 +844,17 @@ class SCPT
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
+    double energy_ccvv = 0.0;
+    if (commrank == 0) {
+      if (!classesUsedDeterm.empty()) {
+        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
+        {
+          energy_ccvv = get_ccvv_energy();
+          cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
+        }
+      }
+    }
+
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
 
     // Print the norm samples to a file. Create the header:
@@ -877,9 +888,9 @@ class SCPT
     HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
 
     int iter = 1;
-    int printMod = schd.stochasticIter / 10;
+    int printMod = schd.stochasticIterNorms / 10;
 
-    while (iter <= schd.stochasticIter) {
+    while (iter <= schd.stochasticIterNorms) {
       double cumovlpRatio = 0;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -958,11 +969,8 @@ class SCPT
       cout << "Total SC-NEVPT(2) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
       if (!classesUsedDeterm.empty()) {
-        double energy_ccvv = 0.0;
         if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
         {
-          energy_ccvv = get_ccvv_energy();
-          cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
           cout << "SC-NEVPT2(s) second-order energy with CCVV:  " << energy_ccvv + ene2 << endl;
           cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
         }

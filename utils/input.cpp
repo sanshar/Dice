@@ -102,6 +102,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ctmc = input.get("sampling.ctmc", true); //if this is false, metropolis is used!
     schd.deterministic = input.get("sampling.deterministic", false);
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
+    schd.stochasticIterNorms = input.get("sampling.stochasticIterNorms", 1e4);
     schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
     schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
