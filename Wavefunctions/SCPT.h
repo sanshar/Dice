@@ -853,6 +853,8 @@ class SCPT
           cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
         }
       }
+
+      //if (!normsDeterm.empty()) get_norms_from_rdms();
     }
 
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
@@ -1398,6 +1400,135 @@ class SCPT
       }
     }
     return energy_ccvv;
+  }
+
+  void readSpinRDM(MatrixXd& oneRDM, MatrixXd& twoRDM) {
+    // Read a 2-RDM from the spin-RDM text file output by Dice
+    // Also construct the 1-RDM at the same time
+
+    int nSpinOrbsAct = 2*schd.nciAct;
+    int nPairs = nSpinOrbsAct * nSpinOrbsAct;
+
+    oneRDM = MatrixXd::Zero(nSpinOrbsAct, nSpinOrbsAct);
+    twoRDM = MatrixXd::Zero(nPairs, nPairs);
+
+    ifstream RDMFile("spinRDM.0.0.txt");
+    string lineStr;
+    while (getline(RDMFile, lineStr)) {
+      string buf;
+      stringstream ss(lineStr);
+      vector<string> words;
+      while (ss >> buf) words.push_back(buf);
+
+      int a = stoi(words[0]);
+      int b = stoi(words[1]);
+      int c = stoi(words[2]);
+      int d = stoi(words[3]);
+      double elem = stod(words[4]);
+
+      int ind1 = a * nSpinOrbsAct + b;
+      int ind2 = c * nSpinOrbsAct + d;
+      int ind3 = b * nSpinOrbsAct + a;
+      int ind4 = d * nSpinOrbsAct + c;
+
+      twoRDM(ind1, ind2) = elem;
+      twoRDM(ind3, ind2) = -elem;
+      twoRDM(ind1, ind4) = -elem;
+      twoRDM(ind3, ind4) = elem;
+
+      if (b == d) oneRDM(a,c) += elem;
+      if (b == c) oneRDM(a,d) += -elem;
+      if (a == d) oneRDM(b,c) += -elem;
+      if (a == c) oneRDM(b,d) += elem;
+    }
+  }
+
+  void get_norms_from_rdms() {
+
+    int norbs = Determinant::norbs;
+    int nelec_act = Determinant::nalpha + Determinant::nbeta - 2*schd.nciCore;
+
+    int first_virtual = schd.nciCore + schd.nciAct;
+
+    int nSpinOrbs = 2*norbs;
+    int nSpinOrbsCore = 2*schd.nciCore;
+    int nSpinOrbsAct = 2*schd.nciAct;
+
+    int nPairs = nSpinOrbsAct * nSpinOrbsAct;
+
+    MatrixXd oneRDM, twoRDM;
+    readSpinRDM(oneRDM, twoRDM);
+
+    // Normalize the 1-RDM
+    for (int a = 0; a < nSpinOrbsAct; a++) {
+      for (int b = 0; b < nSpinOrbsAct; b++) {
+        oneRDM(a,b) /= nelec_act-1;
+      }
+    }
+
+    // Construct auxiliary 2-RDM for CCAA class
+    double twoRDMAux[nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct];
+    for (int a = 0; a < nSpinOrbsAct; a++) {
+      for (int b = 0; b < nSpinOrbsAct; b++) {
+        for (int c = 0; c < nSpinOrbsAct; c++) {
+          for (int d = 0; d < nSpinOrbsAct; d++) {
+            int ind1 = c * nSpinOrbsAct + d;
+            int ind2 = a * nSpinOrbsAct + b;
+            twoRDMAux[a][b][c][d] = twoRDM(ind1, ind2);
+
+            if (b == c) twoRDMAux[a][b][c][d] += oneRDM(d,a);
+            if (a == d) twoRDMAux[a][b][c][d] += oneRDM(c,b);
+            if (a == c) twoRDMAux[a][b][c][d] += -oneRDM(d,b);
+            if (b == d) twoRDMAux[a][b][c][d] += -oneRDM(c,a);
+            if (b == d && a == c) twoRDMAux[a][b][c][d] += 1;
+            if (b == c && a == d) twoRDMAux[a][b][c][d] += -1;
+          }
+        }
+      }
+    }
+
+    cout << endl << "AAVV norms:" << endl;
+    for (int r = 2*first_virtual+1; r < nSpinOrbs; r++) {
+      for (int s = 2*first_virtual; s < r; s++) {
+        double norm_rs = 0.0;
+        for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
+          for (int b = nSpinOrbsCore; b < a; b++) {
+            double int_rs = I2(r,a,s,b) - I2(r,b,s,a);
+            for (int c = nSpinOrbsCore+1; c < 2*first_virtual; c++) {
+              for (int d = nSpinOrbsCore; d < c; d++) {
+                int ind1 = (a - nSpinOrbsCore) * nSpinOrbsAct + (b - nSpinOrbsCore);
+                int ind2 = (c - nSpinOrbsCore) * nSpinOrbsAct + (d - nSpinOrbsCore);
+                norm_rs += int_rs * twoRDM(ind1,ind2) * (I2(r,c,s,d) - I2(r,d,s,c));
+              }
+            }
+          }
+        }
+        cout << r << "   " << s << "   " << setprecision(12) << norm_rs << endl;
+      }
+    }
+
+    cout << endl << "CCAA norms:" << endl;
+    for (int i = 1; i < nSpinOrbsCore; i++) {
+      for (int j = 0; j < i; j++) {
+        double norm_ij = 0.0;
+        for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
+          int a_shift = a - nSpinOrbsCore;
+          for (int b = nSpinOrbsCore; b < a; b++) {
+            double int_ij = I2(j,a,i,b) - I2(j,b,i,a);
+            int b_shift = b - nSpinOrbsCore;
+            for (int c = nSpinOrbsCore+1; c < 2*first_virtual; c++) {
+              int c_shift = c - nSpinOrbsCore;
+              for (int d = nSpinOrbsCore; d < c; d++) {
+                int d_shift = d - nSpinOrbsCore;
+                norm_ij += int_ij * twoRDMAux[a_shift][b_shift][c_shift][d_shift] * (I2(c,j,d,i) - I2(c,i,d,j));
+              }
+            }
+          }
+        }
+        cout << i << "   " << j << "   " << setprecision(12) << norm_ij << endl;
+      }
+    }
+
   }
 
   string getfileName() const {
