@@ -1529,6 +1529,38 @@ class SCPT
       }
     }
 
+    cout << endl << "CAAV norms:" << endl;
+    for (int i = 0; i < nSpinOrbsCore; i++) {
+      for (int r = 2*first_virtual; r < nSpinOrbs; r++) {
+        double core_contrib = 0.0;
+        for (int j = 0; j < nSpinOrbsCore; j++) {
+          core_contrib += I2(i,r,j,j) - I2(i,j,j,r);
+        }
+        double norm_ir = (I1(i,r) + core_contrib) * (I1(i,r) + core_contrib);
+
+        for (int a = nSpinOrbsCore; a < 2*first_virtual; a++) {
+          for (int b = nSpinOrbsCore; b < 2*first_virtual; b++) {
+            double int_ab = I2(i,r,b,a) - I2(i,a,b,r);
+
+            norm_ir += 2*int_ab * oneRDM(b-nSpinOrbsCore, a-nSpinOrbsCore) * core_contrib;
+            norm_ir += 2*int_ab * oneRDM(b-nSpinOrbsCore, a-nSpinOrbsCore) * I1(r,i);
+
+            for (int c = nSpinOrbsCore; c < 2*first_virtual; c++) {
+
+              norm_ir += int_ab * oneRDM(b-nSpinOrbsCore, c-nSpinOrbsCore) * (I2(r,i,a,c) - I2(r,c,a,i));
+
+              for (int d = nSpinOrbsCore; d < 2*first_virtual; d++) {
+                int ind1 = (b - nSpinOrbsCore) * nSpinOrbsAct + (c - nSpinOrbsCore);
+                int ind2 = (a - nSpinOrbsCore) * nSpinOrbsAct + (d - nSpinOrbsCore);
+                norm_ir += int_ab * twoRDM(ind1,ind2) * (I2(r,i,c,d) - I2(r,d,c,i));
+              }
+            }
+          }
+        }
+        cout << i << "   " << r << "   " << setprecision(12) << norm_ir << endl;
+      }
+    }
+
   }
 
   string getfileName() const {
