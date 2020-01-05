@@ -67,6 +67,8 @@ class SCPT
   vector<int> classesUsed;
   // a list of the excitation classes being considered deterministically
   vector<int> classesUsedDeterm;
+  // a list of classes for which the perturber norms are calculated deterministically
+  vector<int> normsDeterm;
   // the total number of excitation classes (including the CAS itself, labelled as 0)
   static const int NUM_EXCIT_CLASSES = 9;
   // the number of coefficients in each excitation class
@@ -107,6 +109,13 @@ class SCPT
       // stochstic sampling
       if (schd.determCCVV)
         classesUsedDeterm.push_back(8);
+
+      // AAVV class
+      normsDeterm.push_back(2);
+      // CAAV class
+      normsDeterm.push_back(4);
+      // CCAA class
+      normsDeterm.push_back(6);
     }
 
     int numCore = schd.nciCore;
@@ -844,6 +853,18 @@ class SCPT
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+    workingArray work;
+
+    double ham = 0., hamSample = 0., ovlp = 0.;
+    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
+    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
+
+    VectorXd normSamples = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Print;
+    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
+
     double energy_ccvv = 0.0;
     if (commrank == 0) {
       if (!classesUsedDeterm.empty()) {
@@ -853,8 +874,19 @@ class SCPT
           cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
         }
       }
+    }
 
-      //if (!normsDeterm.empty()) get_norms_from_rdms();
+    if (!normsDeterm.empty())
+    {
+      MatrixXd oneRDM, twoRDM;
+      readSpinRDM(oneRDM, twoRDM);
+
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 2) != normsDeterm.end())
+        calc_AAVV_NormsFromRDMs(twoRDM, normSamples);
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 4) != normsDeterm.end())
+        calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, normSamples);
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 6) != normsDeterm.end())
+        calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, normSamples);
     }
 
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
@@ -865,19 +897,6 @@ class SCPT
       out_norms = fopen("norms", "w");
       if (commrank == 0) outputNormFileHeader(out_norms);
     }
-
-    workingArray work;
-
-    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-    double ham = 0., hamSample = 0., ovlp = 0.;
-    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
-    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
-
-    VectorXd normSamples = VectorXd::Zero(coeffs.size());
-    VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
-    VectorXd norms_Print;
-    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -1441,23 +1460,8 @@ class SCPT
       if (a == d) oneRDM(b,c) += -elem;
       if (a == c) oneRDM(b,d) += elem;
     }
-  }
 
-  void get_norms_from_rdms() {
-
-    int norbs = Determinant::norbs;
     int nelec_act = Determinant::nalpha + Determinant::nbeta - 2*schd.nciCore;
-
-    int first_virtual = schd.nciCore + schd.nciAct;
-
-    int nSpinOrbs = 2*norbs;
-    int nSpinOrbsCore = 2*schd.nciCore;
-    int nSpinOrbsAct = 2*schd.nciAct;
-
-    int nPairs = nSpinOrbsAct * nSpinOrbsAct;
-
-    MatrixXd oneRDM, twoRDM;
-    readSpinRDM(oneRDM, twoRDM);
 
     // Normalize the 1-RDM
     for (int a = 0; a < nSpinOrbsAct; a++) {
@@ -1465,27 +1469,16 @@ class SCPT
         oneRDM(a,b) /= nelec_act-1;
       }
     }
+  }
 
-    // Construct auxiliary 2-RDM for CCAA class
-    double twoRDMAux[nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct];
-    for (int a = 0; a < nSpinOrbsAct; a++) {
-      for (int b = 0; b < nSpinOrbsAct; b++) {
-        for (int c = 0; c < nSpinOrbsAct; c++) {
-          for (int d = 0; d < nSpinOrbsAct; d++) {
-            int ind1 = c * nSpinOrbsAct + d;
-            int ind2 = a * nSpinOrbsAct + b;
-            twoRDMAux[a][b][c][d] = twoRDM(ind1, ind2);
+  void calc_AAVV_NormsFromRDMs(MatrixXd& twoRDM, VectorXd& norms) {
 
-            if (b == c) twoRDMAux[a][b][c][d] += oneRDM(d,a);
-            if (a == d) twoRDMAux[a][b][c][d] += oneRDM(c,b);
-            if (a == c) twoRDMAux[a][b][c][d] += -oneRDM(d,b);
-            if (b == d) twoRDMAux[a][b][c][d] += -oneRDM(c,a);
-            if (b == d && a == c) twoRDMAux[a][b][c][d] += 1;
-            if (b == c && a == d) twoRDMAux[a][b][c][d] += -1;
-          }
-        }
-      }
-    }
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+
+    int nSpinOrbs = 2*norbs;
+    int nSpinOrbsCore = 2*schd.nciCore;
+    int nSpinOrbsAct = 2*schd.nciAct;
 
     cout << endl << "AAVV norms:" << endl;
     for (int r = 2*first_virtual+1; r < nSpinOrbs; r++) {
@@ -1493,41 +1486,34 @@ class SCPT
         double norm_rs = 0.0;
         for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
           for (int b = nSpinOrbsCore; b < a; b++) {
-            double int_rs = I2(r,a,s,b) - I2(r,b,s,a);
+            double int_ab = I2(r,a,s,b) - I2(r,b,s,a);
             for (int c = nSpinOrbsCore+1; c < 2*first_virtual; c++) {
               for (int d = nSpinOrbsCore; d < c; d++) {
                 int ind1 = (a - nSpinOrbsCore) * nSpinOrbsAct + (b - nSpinOrbsCore);
                 int ind2 = (c - nSpinOrbsCore) * nSpinOrbsAct + (d - nSpinOrbsCore);
-                norm_rs += int_rs * twoRDM(ind1,ind2) * (I2(r,c,s,d) - I2(r,d,s,c));
+                norm_rs += int_ab * twoRDM(ind1,ind2) * (I2(r,c,s,d) - I2(r,d,s,c));
               }
             }
           }
         }
+        int R = r - 2*first_virtual - 1;
+        int S = s - 2*first_virtual;
+        int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+        norms(ind) = norm_rs;
         cout << r << "   " << s << "   " << setprecision(12) << norm_rs << endl;
       }
     }
+  }
 
-    cout << endl << "CCAA norms:" << endl;
-    for (int i = 1; i < nSpinOrbsCore; i++) {
-      for (int j = 0; j < i; j++) {
-        double norm_ij = 0.0;
-        for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
-          int a_shift = a - nSpinOrbsCore;
-          for (int b = nSpinOrbsCore; b < a; b++) {
-            double int_ij = I2(j,a,i,b) - I2(j,b,i,a);
-            int b_shift = b - nSpinOrbsCore;
-            for (int c = nSpinOrbsCore+1; c < 2*first_virtual; c++) {
-              int c_shift = c - nSpinOrbsCore;
-              for (int d = nSpinOrbsCore; d < c; d++) {
-                int d_shift = d - nSpinOrbsCore;
-                norm_ij += int_ij * twoRDMAux[a_shift][b_shift][c_shift][d_shift] * (I2(c,j,d,i) - I2(c,i,d,j));
-              }
-            }
-          }
-        }
-        cout << i << "   " << j << "   " << setprecision(12) << norm_ij << endl;
-      }
-    }
+  void calc_CAAV_NormsFromRDMs(MatrixXd& oneRDM, MatrixXd& twoRDM, VectorXd& norms) {
+
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+
+    int nSpinOrbs = 2*norbs;
+    int nSpinOrbsCore = 2*schd.nciCore;
+    int nSpinVirtOrbs = 2*(norbs - schd.nciCore - schd.nciAct);
+    int nSpinOrbsAct = 2*schd.nciAct;
 
     cout << endl << "CAAV norms:" << endl;
     for (int i = 0; i < nSpinOrbsCore; i++) {
@@ -1557,7 +1543,66 @@ class SCPT
             }
           }
         }
+        int ind = cumNumCoeffs[4] + nSpinVirtOrbs*i + (r - nSpinOrbsCore - nSpinOrbsAct);
+        norms(ind) = norm_ir;
         cout << i << "   " << r << "   " << setprecision(12) << norm_ir << endl;
+      }
+    }
+  }
+
+  void calc_CCAA_NormsFromRDMs(MatrixXd& oneRDM, MatrixXd& twoRDM, VectorXd& norms) {
+
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+
+    int nSpinOrbs = 2*norbs;
+    int nSpinOrbsCore = 2*schd.nciCore;
+    int nSpinOrbsAct = 2*schd.nciAct;
+
+    int nPairs = nSpinOrbsAct * nSpinOrbsAct;
+
+    // Construct auxiliary 2-RDM for CCAA class
+    double twoRDMAux[nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct];
+    for (int a = 0; a < nSpinOrbsAct; a++) {
+      for (int b = 0; b < nSpinOrbsAct; b++) {
+        for (int c = 0; c < nSpinOrbsAct; c++) {
+          for (int d = 0; d < nSpinOrbsAct; d++) {
+            int ind1 = c * nSpinOrbsAct + d;
+            int ind2 = a * nSpinOrbsAct + b;
+            twoRDMAux[a][b][c][d] = twoRDM(ind1, ind2);
+
+            if (b == c) twoRDMAux[a][b][c][d] += oneRDM(d,a);
+            if (a == d) twoRDMAux[a][b][c][d] += oneRDM(c,b);
+            if (a == c) twoRDMAux[a][b][c][d] += -oneRDM(d,b);
+            if (b == d) twoRDMAux[a][b][c][d] += -oneRDM(c,a);
+            if (b == d && a == c) twoRDMAux[a][b][c][d] += 1;
+            if (b == c && a == d) twoRDMAux[a][b][c][d] += -1;
+          }
+        }
+      }
+    }
+
+    cout << endl << "CCAA norms:" << endl;
+    for (int i = 1; i < nSpinOrbsCore; i++) {
+      for (int j = 0; j < i; j++) {
+        double norm_ij = 0.0;
+        for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
+          int a_shift = a - nSpinOrbsCore;
+          for (int b = nSpinOrbsCore; b < a; b++) {
+            double int_ij = I2(j,a,i,b) - I2(j,b,i,a);
+            int b_shift = b - nSpinOrbsCore;
+            for (int c = nSpinOrbsCore+1; c < 2*first_virtual; c++) {
+              int c_shift = c - nSpinOrbsCore;
+              for (int d = nSpinOrbsCore; d < c; d++) {
+                int d_shift = d - nSpinOrbsCore;
+                norm_ij += int_ij * twoRDMAux[a_shift][b_shift][c_shift][d_shift] * (I2(c,j,d,i) - I2(c,i,d,j));
+              }
+            }
+          }
+        }
+        int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+        norms(ind) = norm_ij;
+        cout << i << "   " << j << "   " << setprecision(12) << norm_ij << endl;
       }
     }
 
