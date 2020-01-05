@@ -98,9 +98,9 @@ class SCPT
       classesUsed.push_back(2);
       classesUsed.push_back(3);
       classesUsed.push_back(4);
-      classesUsed.push_back(5);
+      //classesUsed.push_back(5);
       classesUsed.push_back(6);
-      classesUsed.push_back(7);
+      //classesUsed.push_back(7);
       if (!schd.determCCVV)
         classesUsed.push_back(8);
       //classesUsed.push_back(8);
@@ -627,7 +627,7 @@ class SCPT
   template<typename Walker>
   void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, VectorXd &normSamples,
                      vector<Determinant>& initDets, vector<double>& largestCoeffs,
-                     workingArray& work)
+                     workingArray& work, bool calcExtraNorms)
   {
     int norbs = Determinant::norbs;
     double parity, tia;
@@ -685,6 +685,10 @@ class SCPT
       } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
         // Is this excitation class being used? If not, then move to the next excitation
         continue;
+      } else if (std::find(normsDeterm.begin(), normsDeterm.end(), walkCopy.excitation_class) != normsDeterm.end()) {
+        // Is the norm for this class being calculated exactly? If so, move to the next excitation
+        // The exception is if we want to record the maximum coefficient size (calcExtraNorms == true)
+        if (!calcExtraNorms) continue;
       }
       int ind = this->coeffsIndex(walkCopy);
       if (ind == -1) continue;
@@ -853,18 +857,6 @@ class SCPT
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
 
-    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-    workingArray work;
-
-    double ham = 0., hamSample = 0., ovlp = 0.;
-    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
-    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
-
-    VectorXd normSamples = VectorXd::Zero(coeffs.size());
-    VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
-    VectorXd norms_Print;
-    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
-
     double energy_ccvv = 0.0;
     if (commrank == 0) {
       if (!classesUsedDeterm.empty()) {
@@ -876,20 +868,19 @@ class SCPT
       }
     }
 
-    if (!normsDeterm.empty())
-    {
-      MatrixXd oneRDM, twoRDM;
-      readSpinRDM(oneRDM, twoRDM);
-
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 2) != normsDeterm.end())
-        calc_AAVV_NormsFromRDMs(twoRDM, normSamples);
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 4) != normsDeterm.end())
-        calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, normSamples);
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 6) != normsDeterm.end())
-        calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, normSamples);
-    }
-
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
+
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+    workingArray work;
+
+    double ham = 0., hamSample = 0., ovlp = 0.;
+    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
+    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
+
+    VectorXd normSamples = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
+    VectorXd norms_Print;
+    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
 
     // Print the norm samples to a file. Create the header:
     FILE * out_norms;
@@ -906,9 +897,10 @@ class SCPT
     vector<double> largestCoeffs;
     largestCoeffs.resize(numCoeffs, 0.0);
 
-    HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
+    HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
 
     int iter = 1;
+    int nIterFindCoeffs = 100;
     int printMod = schd.stochasticIterNorms / 10;
 
     while (iter <= schd.stochasticIterNorms) {
@@ -959,7 +951,12 @@ class SCPT
       if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
 
       normSamples.setZero();
-      HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
+
+      if (schd.stochasticIterNorms - iter <= nIterFindCoeffs) {
+        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
+      } else {
+        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+      }
 
       if (commrank == 0 && (iter % printMod == 0 || iter == 1))
         cout << "iter: " << iter << "  t: " << setprecision(4) << getTime() - startofCalc << endl;
@@ -968,6 +965,19 @@ class SCPT
 
     energyCAS_Tot /= deltaT_Tot;
     norms_Tot /= deltaT_Tot;
+
+    if (!normsDeterm.empty())
+    {
+      MatrixXd oneRDM, twoRDM;
+      readSpinRDM(oneRDM, twoRDM);
+
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 2) != normsDeterm.end())
+        calc_AAVV_NormsFromRDMs(twoRDM, norms_Tot);
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 4) != normsDeterm.end())
+        calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
+      if (std::find(normsDeterm.begin(), normsDeterm.end(), 6) != normsDeterm.end())
+        calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
+    }
 
     if (schd.printSCNorms && commrank == 0) fclose(out_norms);
 
@@ -1311,7 +1321,7 @@ class SCPT
 
       if (walk.excitation_class == 0) {
         normSamples.setZero();
-        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work);
+        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
         SCNorm += (ovlp * ovlp) * normSamples;
         overlapTotCASCI += ovlp * ovlp;
       }
@@ -1499,8 +1509,9 @@ class SCPT
         int R = r - 2*first_virtual - 1;
         int S = s - 2*first_virtual;
         int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+        //double norm_old = norms(ind);
         norms(ind) = norm_rs;
-        cout << r << "   " << s << "   " << setprecision(12) << norm_rs << endl;
+        //cout << r << "   " << s << "   " << setprecision(12) << norm_old << "   " << norm_rs << endl;
       }
     }
   }
@@ -1544,8 +1555,9 @@ class SCPT
           }
         }
         int ind = cumNumCoeffs[4] + nSpinVirtOrbs*i + (r - nSpinOrbsCore - nSpinOrbsAct);
+        //double norm_old = norms(ind);
         norms(ind) = norm_ir;
-        cout << i << "   " << r << "   " << setprecision(12) << norm_ir << endl;
+        //cout << i << "   " << r << "   " << setprecision(12) << norm_old << "   " << norm_ir << endl;
       }
     }
   }
@@ -1601,8 +1613,9 @@ class SCPT
           }
         }
         int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+        //double norm_old = norms(ind);
         norms(ind) = norm_ij;
-        cout << i << "   " << j << "   " << setprecision(12) << norm_ij << endl;
+        //cout << i << "   " << j << "   " << setprecision(12) << norm_old << "   " << norm_ij << endl;
       }
     }
 
