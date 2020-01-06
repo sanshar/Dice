@@ -102,8 +102,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ctmc = input.get("sampling.ctmc", true); //if this is false, metropolis is used!
     schd.deterministic = input.get("sampling.deterministic", false);
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
-    schd.stochasticIterNorms = input.get("sampling.stochasticIterNorms", 1e4);
-    schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
     schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
@@ -111,6 +109,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
     schd.efficientNEVPT_2 = input.get("sampling.efficientNEVPT_2", false);
     schd.continueMarkovSCPT = input.get("sampling.continueMarkovSCPT", true);
+    schd.stochasticIterNorms = input.get("sampling.stochasticIterNorms", 1e4);
+    schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
+    schd.nIterFindInitDets = input.get("sampling.nIterFindInitDets", 1e2);
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);

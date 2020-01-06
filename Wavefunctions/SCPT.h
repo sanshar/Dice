@@ -900,7 +900,6 @@ class SCPT
     HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
 
     int iter = 1;
-    int nIterFindCoeffs = 100;
     int printMod = schd.stochasticIterNorms / 10;
 
     while (iter <= schd.stochasticIterNorms) {
@@ -952,7 +951,10 @@ class SCPT
 
       normSamples.setZero();
 
-      if (schd.stochasticIterNorms - iter <= nIterFindCoeffs) {
+      if (schd.stochasticIterNorms - iter < schd.nIterFindInitDets) {
+        // For the final schd.nIterFindInitDets iterations, sample all perturber
+        // norms, even for those being calculated deterministically. This
+        // allows initial determinants to be found for the energy sampling
         HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
       } else {
         HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
@@ -997,7 +999,7 @@ class SCPT
     if (commrank == 0) {
       cout << "Sampling complete." << endl << endl;
       cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
-      cout << "Total SC-NEVPT(2) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
+      cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
       if (!classesUsedDeterm.empty()) {
         if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
@@ -1043,6 +1045,7 @@ class SCPT
         totCumNorm += norms_Tot(i);
         cumNorm[numCoeffsToSample] = totCumNorm;
         initDets[numCoeffsToSample] = initDets[i];
+        largestCoeffs[numCoeffsToSample] = largestCoeffs[i];
         numCoeffsToSample += 1;
       }
     }
@@ -1064,6 +1067,8 @@ class SCPT
 
       double nextSCRandom = random() * totCumNorm;
       int nextSC = std::lower_bound(cumNorm.begin(), (cumNorm.begin() + numCoeffsToSample), nextSCRandom) - cumNorm.begin();
+
+      if (abs(largestCoeffs[nextSC]) < 1.e-15) cout << "Error: no initial determinant found:  " << setprecision(20) << largestCoeffs[nextSC] << endl;
 
       this->wave.initWalker(walk, initDets[nextSC]);
       double SCHam = doSCEnergyCTMC(walk, work);
@@ -1483,6 +1488,9 @@ class SCPT
 
   void calc_AAVV_NormsFromRDMs(MatrixXd& twoRDM, VectorXd& norms) {
 
+    if (commrank == 0) cout << "Calculating AAVV norms..." << endl;
+    double timeIn = getTime();
+
     int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
 
@@ -1490,7 +1498,6 @@ class SCPT
     int nSpinOrbsCore = 2*schd.nciCore;
     int nSpinOrbsAct = 2*schd.nciAct;
 
-    cout << endl << "AAVV norms:" << endl;
     for (int r = 2*first_virtual+1; r < nSpinOrbs; r++) {
       for (int s = 2*first_virtual; s < r; s++) {
         double norm_rs = 0.0;
@@ -1514,9 +1521,15 @@ class SCPT
         //cout << r << "   " << s << "   " << setprecision(12) << norm_old << "   " << norm_rs << endl;
       }
     }
+
+    double timeOut = getTime();
+    if (commrank == 0) cout << "AAVV norms calculated. Time taken: " << timeOut - timeIn << endl;
   }
 
   void calc_CAAV_NormsFromRDMs(MatrixXd& oneRDM, MatrixXd& twoRDM, VectorXd& norms) {
+
+    double timeIn = getTime();
+    if (commrank == 0) cout << "Calculating CAAV norms..." << endl;
 
     int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
@@ -1526,7 +1539,6 @@ class SCPT
     int nSpinVirtOrbs = 2*(norbs - schd.nciCore - schd.nciAct);
     int nSpinOrbsAct = 2*schd.nciAct;
 
-    cout << endl << "CAAV norms:" << endl;
     for (int i = 0; i < nSpinOrbsCore; i++) {
       for (int r = 2*first_virtual; r < nSpinOrbs; r++) {
         double core_contrib = 0.0;
@@ -1560,9 +1572,15 @@ class SCPT
         //cout << i << "   " << r << "   " << setprecision(12) << norm_old << "   " << norm_ir << endl;
       }
     }
+
+    double timeOut = getTime();
+    if (commrank == 0) cout << "CAAV norms calculated. Time taken: " << timeOut - timeIn << endl;
   }
 
   void calc_CCAA_NormsFromRDMs(MatrixXd& oneRDM, MatrixXd& twoRDM, VectorXd& norms) {
+
+    double timeIn = getTime();
+    if (commrank == 0) cout << "Calculating CCAA norms..." << endl;
 
     int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
@@ -1594,7 +1612,6 @@ class SCPT
       }
     }
 
-    cout << endl << "CCAA norms:" << endl;
     for (int i = 1; i < nSpinOrbsCore; i++) {
       for (int j = 0; j < i; j++) {
         double norm_ij = 0.0;
@@ -1619,6 +1636,8 @@ class SCPT
       }
     }
 
+    double timeOut = getTime();
+    if (commrank == 0) cout << "CCAA norms calculated. Time taken: " << timeOut - timeIn << endl;
   }
 
   string getfileName() const {

@@ -55,8 +55,6 @@ private:
       & beta
       & method
       & stochasticIter
-      & stochasticIterNorms
-      & stochasticIterEachSC
       & numSCSamples
       & _sgdIter
       & momentum
@@ -109,7 +107,10 @@ private:
       & initialPop
       & targetPop
       & numHidden
-      & continueMarkovSCPT;
+      & continueMarkovSCPT
+      & stochasticIterNorms
+      & stochasticIterEachSC
+      & nIterFindInitDets;
   }
 public:
 //General options
@@ -132,8 +133,6 @@ public:
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    // Number of stochastic steps
-  int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
-  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state, for the efficientNEVPT option
   int numSCSamples;                      // When performing SC-NEVPT2 with the efficientNEVPT_2 algorithm, how many samples of 1/(E_0-E_l^k) to take?
   int integralSampleSize;                // This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
   int seed;                              // seed for the random number generator
@@ -152,6 +151,9 @@ public:
   int printSCNormFreq;                   //How often should we print out norms of strongly contracted states (for printSCNorms option)
   bool continueMarkovSCPT;               //In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   HAM Hamiltonian;
+  int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
+  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state, for the efficientNEVPT option
+  int nIterFindInitDets;                 // The number of iterations used to find initial determinants for SC-NEVPT2(s) calculations
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
