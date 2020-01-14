@@ -63,13 +63,6 @@ class SCPT
 
   double ovlp_current;
   
-  // a list of the excitation classes being considered stochastically
-  vector<int> classesUsed;
-  // a list of the excitation classes being considered deterministically
-  vector<int> classesUsedDeterm;
-  // a list of classes for which the perturber norms are calculated deterministically
-  vector<int> normsDeterm;
-  // the total number of excitation classes (including the CAS itself, labelled as 0)
   static const int NUM_EXCIT_CLASSES = 9;
   // the number of coefficients in each excitation class
   int numCoeffsPerClass[NUM_EXCIT_CLASSES];
@@ -77,6 +70,12 @@ class SCPT
   int cumNumCoeffs[NUM_EXCIT_CLASSES];
   // the total number of strongly contracted states (including the CASCI space itself)
   int numCoeffs;
+  // a list of the excitation classes being considered stochastically
+  std::array<bool, NUM_EXCIT_CLASSES> classesUsed = { false };
+  // a list of the excitation classes being considered deterministically
+  std::array<bool, NUM_EXCIT_CLASSES> classesUsedDeterm = { false };
+  // a list of classes for which the perturber norms are calculated deterministically
+  std::array<bool, NUM_EXCIT_CLASSES> normsDeterm = { false };
 
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_1h2p_ind;
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_2h1p_ind;
@@ -89,33 +88,29 @@ class SCPT
     // Find which excitation classes are being considered. The classes are
     // labelled by integers from 0 to 8, and defined in SimpleWalker.h
     if (schd.nciCore == 0) {
-      classesUsed.push_back(0);
-      classesUsed.push_back(1);
-      classesUsed.push_back(2);
+      classesUsed[0] = true;
+      classesUsed[1] = true;
+      classesUsed[2] = true;
     } else {
-      classesUsed.push_back(0);
-      classesUsed.push_back(1);
-      classesUsed.push_back(2);
-      classesUsed.push_back(3);
-      classesUsed.push_back(4);
-      //classesUsed.push_back(5);
-      classesUsed.push_back(6);
-      //classesUsed.push_back(7);
+      classesUsed[0] = true;
+      classesUsed[1] = true;
+      classesUsed[2] = true;
+      classesUsed[3] = true;
+      classesUsed[4] = true;
+      //classesUsed[5] = true;
+      classesUsed[6] = true;
+      //classesUsed[7] = true;
       if (!schd.determCCVV)
-        classesUsed.push_back(8);
-      //classesUsed.push_back(8);
-
-      // Classes to be treated by the deterministic formulas, rather than by
-      // stochstic sampling
-      if (schd.determCCVV)
-        classesUsedDeterm.push_back(8);
+        classesUsed[8] = true;
+      else
+        classesUsedDeterm[8] = true;
 
       // AAVV class
-      normsDeterm.push_back(2);
+      normsDeterm[2] = true;
       // CAAV class
-      normsDeterm.push_back(4);
+      normsDeterm[4] = true;
       // CCAA class
-      normsDeterm.push_back(6);
+      normsDeterm[6] = true;
     }
 
     int numCore = schd.nciCore;
@@ -148,7 +143,7 @@ class SCPT
     {
       // If the previous class (labelled i-1) is being used, add it to the
       // cumulative counter.
-      if (std::find(classesUsed.begin(), classesUsed.end(), i-1) != classesUsed.end()) {
+      if (classesUsed[i-1]) {
         cumNumCoeffs[i] = cumNumCoeffs[i-1] + numCoeffsPerClass[i-1];
       }
       else {
@@ -161,7 +156,7 @@ class SCPT
     {
       // The total number of coefficients. Only include a class if that
       // class is being used.
-      if (std::find(classesUsed.begin(), classesUsed.end(), i) != classesUsed.end()) numCoeffs += numCoeffsPerClass[i];
+      if (classesUsed[i]) numCoeffs += numCoeffsPerClass[i];
     }
 
     // Resize coeffs
@@ -409,13 +404,13 @@ class SCPT
   }
   
   template<typename Walker>
-  double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const  
+  double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const
   {
     return 1.;
   }//not used
   
   template<typename Walker>
-  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const 
+  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const
   {
     return 1.;
   }//not used
@@ -423,7 +418,7 @@ class SCPT
   // not implemented yet
   template<typename Walker>
   bool checkWalkerExcitationClass(Walker &walk) {
-    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return false;
+    if (!classesUsed[walk.excitation_class]) return false;
     int coeffsIndex = this->coeffsIndex(walk);
     if (coeffsIndex == -1)
       return false;
@@ -511,7 +506,7 @@ class SCPT
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
 
       // Is this excitation class being used? If not, then move to the next excitation.
-      if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
+      if (!classesUsed[walkCopy.excitation_class]) continue;
       int coeffsCopyIndex = this->coeffsIndex(walkCopy);
       if (coeffsCopyIndex == -1) continue;
 
@@ -629,11 +624,36 @@ class SCPT
                      vector<Determinant>& initDets, vector<double>& largestCoeffs,
                      workingArray& work, bool calcExtraNorms)
   {
+
+    // which excitation classes should we consider?
+    bool useAAVV;
+    bool useCAAV;
+    bool useCAVV;
+    bool useCCAA;
+    bool useCCAV;
+    bool useCCVV;
+
+    if (calcExtraNorms) {
+      useAAVV = classesUsed[2];
+      useCAAV = classesUsed[4];
+      useCAVV = classesUsed[5];
+      useCCAA = classesUsed[6];
+      useCCAV = classesUsed[7];
+      useCCVV = classesUsed[8];
+    } else {
+      // only consider these classes if we're not calculating the norms separately
+      useAAVV = classesUsed[2] && !normsDeterm[2];
+      useCAAV = classesUsed[4] && !normsDeterm[4];
+      useCAVV = classesUsed[5] && !normsDeterm[5];
+      useCCAA = classesUsed[6] && !normsDeterm[6];
+      useCCAV = classesUsed[7] && !normsDeterm[7];
+      useCCVV = classesUsed[8] && !normsDeterm[8];
+    }
+
     int norbs = Determinant::norbs;
-    double parity, tia;
+    double ham0;
 
     morework.setCounterToZero();
-    double ovlp0, ham0;
 
     // Get the WF overlap with the walker, ovlp
     wave.HamAndOvlp(walk, ovlp, ham0, morework, true);
@@ -644,70 +664,157 @@ class SCPT
 
     // Generate all screened excitations
     work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
-    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
 
     int nExcitationsCASCI = 0;
 
-    // loop over all the screened excitations
-    for (int i=0; i<work.nExcitations; i++) {
-      tia = work.HijElement[i];
+    int nSpinCore = 2*schd.nciCore;
+    int firstSpinVirt = 2*(schd.nciCore + schd.nciAct);
 
-      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
-      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+    vector<int> closed;
+    vector<int> open;
+    walk.d.getOpenClosed(open, closed);
 
-      auto walkCopy = walk;
-      parity = 1.;
-      Determinant dcopy = walkCopy.d;
-      walkCopy.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[i], work.excitation2[i], false);
+    // single excitations
+    for (int i = 0; i < closed.size(); i++) {
+      bool iCore = closed[i] < nSpinCore;
+      for (int a = 0; a < open.size(); a++) {
+        if (closed[i] % 2 == open[a] % 2 &&
+            abs(I2hb.Singles(closed[i], open[a])) > schd.epsilon)
+        {
+          bool aVirt = open[a] >= firstSpinVirt;
 
-      parity *= dcopy.parity(A/2, I/2, I%2);
-      if (ex2 != 0) {
-        dcopy.setocc(I, false);
-        dcopy.setocc(A, true);
-        parity *= dcopy.parity(B/2, J/2, J%2);
+          bool caavExcit = iCore && aVirt;
+          if (!useCAAV && caavExcit) continue;
+
+          int ex1 = closed[i] * 2 * norbs + open[a];
+          int ex2 = 0.0;
+          double tia = walk.d.Hij_1ExciteScreened(open[a], closed[i], I2hb,
+                                                        schd.screen, false);
+
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
       }
+    }
 
-      work.ovlpRatio[i] = 0.0;
-      if (walkCopy.excitation_class == 0) {
-        // For the CTMC algorithm (which is performed within the CASCI space, when
-        // calculating the SC norms), we need the ratio of overlaps for connected
-        // determinants within the CASCI space. Store these in the work array, and
-        // override other excitations, which we won't need any more.
-        double ovlpRatio = wave.Overlap(walkCopy.d) / ovlp;
-        work.excitation1[nExcitationsCASCI] = work.excitation1[i];
-        work.excitation2[nExcitationsCASCI] = work.excitation2[i];
-        work.ovlpRatio[nExcitationsCASCI] = ovlpRatio;
-        ham += parity * tia * ovlpRatio;
-        nExcitationsCASCI += 1;
-        continue;
-      } else if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
-        // Is this excitation class being used? If not, then move to the next excitation
-        continue;
-      } else if (std::find(normsDeterm.begin(), normsDeterm.end(), walkCopy.excitation_class) != normsDeterm.end()) {
-        // Is the norm for this class being calculated exactly? If so, move to the next excitation
-        // The exception is if we want to record the maximum coefficient size (calcExtraNorms == true)
-        if (!calcExtraNorms) continue;
-      }
-      int ind = this->coeffsIndex(walkCopy);
-      if (ind == -1) continue;
+    // double excitations
+    int nclosed = closed.size();
+    for (int i = 0; i<nclosed; i++) {
+      bool iCore = closed[i] < nSpinCore;
+      for (int j = 0; j<i; j++) {
+        bool jCore = closed[j] < nSpinCore;
 
-      morework.setCounterToZero();
-      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
-      normSamples(ind) += parity * tia * ham0 / ovlp;
+        const float *integrals; const short* orbIndices;
+        size_t numIntegrals;
+        I2hb.getIntegralArray(closed[i], closed[j], integrals, orbIndices, numIntegrals);
+        size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, schd.epsilon, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
 
-      // If this is the determinant with the largest coefficient found within
-      // the SC space so far, then store it.
-      if (abs(ham0) > largestCoeffs[ind]) {
-        initDets[ind] = walkCopy.d;
-        largestCoeffs[ind] = abs(ham0);
+        // for all HCI integrals
+        for (size_t index = 0; index < numLargeIntegrals; index++)
+        {
+          // otherwise: generate the determinant corresponding to the current excitation
+          int a = 2 * orbIndices[2 * index] + closed[i] % 2,
+              b = 2 * orbIndices[2 * index + 1] + closed[j] % 2;
+
+          if (walk.d.getocc(a) || walk.d.getocc(b)) continue;
+
+          bool aVirt = a >= firstSpinVirt;
+          bool bVirt = b >= firstSpinVirt;
+
+          bool ccvvExcit = iCore && aVirt && bVirt;
+          if (!useCCVV && ccvvExcit) continue;
+          bool cavvExcit = jCore && (!iCore) && aVirt && bVirt;
+          if (!useCAVV && cavvExcit) continue;
+          bool ccavExcit = iCore && ((aVirt && (!bVirt)) || ((!aVirt) && bVirt));
+          if (!useCCAV && ccavExcit) continue;
+          bool aavvExcit = (!jCore) && aVirt && bVirt;
+          if (!useAAVV && aavvExcit) continue;
+          bool caavExcit = jCore && (!iCore) && ( (aVirt && (!bVirt)) || ((bVirt && (!aVirt))) );
+          if (!useCAAV && caavExcit) continue;
+          bool ccaaExcit = iCore && (!aVirt) && (!bVirt);
+          if (!useCCAA && ccaaExcit) continue;
+
+          int ex1 = closed[i] * 2 * norbs + a;
+          int ex2 = closed[j] * 2 * norbs + b;
+          double tia = integrals[index];
+
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
       }
     }
 
     // For the CTMC algorithm, only need excitations within the CASCI space.
     // Update the number of excitations to reflect this
     work.nExcitations = nExcitationsCASCI;
+  }
+
+  template<typename Walker>
+  void AddSCNormsContrib(Walker &walk, double &ovlp, double &ham, VectorXd &normSamples,
+                         vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                         workingArray& work, bool calcExtraNorms, int& ex1, int& ex2,
+                         double& tia, int& nExcitationsCASCI)
+  {
+    // This is called for each excitations from a determinant in the CASCI
+    // space (walk.d)
+    // If the excitations is within the CASCI space, store the overlap factor
+    // in the work array, for the CTMC algorithm to make a move.
+    // Otherwise, add contributions to the estimates of the norms.
+    // Also, if the given excited determinant has the largest coefficient found,
+    // then store the determinant and the coefficient in initDets and largestCoeffs.
+
+    int norbs = Determinant::norbs;
+    double ovlp0, ham0;
+
+    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+    auto walkCopy = walk;
+    double parity = 1.0;
+    Determinant dcopy = walkCopy.d;
+    walkCopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
+
+    parity *= dcopy.parity(A/2, I/2, I%2);
+    if (ex2 != 0) {
+      dcopy.setocc(I, false);
+      dcopy.setocc(A, true);
+      parity *= dcopy.parity(B/2, J/2, J%2);
+    }
+
+    //work.ovlpRatio[i] = 0.0;
+    if (walkCopy.excitation_class == 0) {
+      // For the CTMC algorithm (which is performed within the CASCI space, when
+      // calculating the SC norms), we need the ratio of overlaps for connected
+      // determinants within the CASCI space. Store these in the work array, and
+      // override other excitations, which we won't need any more.
+      double ovlpRatio = wave.Overlap(walkCopy.d) / ovlp;
+      work.excitation1[nExcitationsCASCI] = ex1;
+      work.excitation2[nExcitationsCASCI] = ex2;
+      work.ovlpRatio[nExcitationsCASCI] = ovlpRatio;
+      ham += parity * tia * ovlpRatio;
+      nExcitationsCASCI += 1;
+      return;
+    } else if (!classesUsed[walkCopy.excitation_class]) {
+      // Is this excitation class being used? If not, then move to the next excitation
+      return;
+    } else if (normsDeterm[walkCopy.excitation_class]) {
+      // Is the norm for this class being calculated exactly? If so, move to the next excitation
+      // The exception is if we want to record the maximum coefficient size (calcExtraNorms == true)
+      if (!calcExtraNorms) return;
+    }
+    int ind = this->coeffsIndex(walkCopy);
+    if (ind == -1) return;
+
+    morework.setCounterToZero();
+    wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+    normSamples(ind) += parity * tia * ham0 / ovlp;
+
+    // If this is the determinant with the largest coefficient found within
+    // the SC space so far, then store it.
+    if (abs(ham0) > largestCoeffs[ind]) {
+      initDets[ind] = walkCopy.d;
+      largestCoeffs[ind] = abs(ham0);
+    }
   }
 
   template<typename Walker>
@@ -765,7 +872,7 @@ class SCPT
       walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
 
       // Make sure that the walker is within one of the classes being sampled, after this move
-      if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) continue;
+      if (!classesUsed[walk.excitation_class]) continue;
       coeffsIndex = this->coeffsIndex(walk);
       if (coeffsIndex == -1) continue;
 
@@ -817,9 +924,9 @@ class SCPT
       cout << "stochastic waveEne:  " << waveEne << endl;
 
       // If any classes are to be obtained deterministically, then do this now
-      if (!classesUsedDeterm.empty()) {
+      if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
         double energy_ccvv = 0.0;
-        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end()) {
+        if (classesUsedDeterm[8]) {
           energy_ccvv = get_ccvv_energy();
           cout << "deterministic CCVV energy:  " << energy_ccvv << endl;
         }
@@ -859,8 +966,8 @@ class SCPT
 
     double energy_ccvv = 0.0;
     if (commrank == 0) {
-      if (!classesUsedDeterm.empty()) {
-        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
+      if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
+        if (classesUsedDeterm[8])
         {
           energy_ccvv = get_ccvv_energy();
           cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
@@ -968,16 +1075,16 @@ class SCPT
     energyCAS_Tot /= deltaT_Tot;
     norms_Tot /= deltaT_Tot;
 
-    if (!normsDeterm.empty())
+    if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
     {
       MatrixXd oneRDM, twoRDM;
       readSpinRDM(oneRDM, twoRDM);
 
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 2) != normsDeterm.end())
+      if (normsDeterm[2])
         calc_AAVV_NormsFromRDMs(twoRDM, norms_Tot);
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 4) != normsDeterm.end())
+      if (normsDeterm[4])
         calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
-      if (std::find(normsDeterm.begin(), normsDeterm.end(), 6) != normsDeterm.end())
+      if (normsDeterm[6])
         calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
     }
 
@@ -1001,8 +1108,8 @@ class SCPT
       cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
       cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
-      if (!classesUsedDeterm.empty()) {
-        if (std::find(classesUsedDeterm.begin(), classesUsedDeterm.end(), 8) != classesUsedDeterm.end())
+      if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
+        if (classesUsedDeterm[8])
         {
           cout << "SC-NEVPT2(s) second-order energy with CCVV:  " << energy_ccvv + ene2 << endl;
           cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
@@ -1312,7 +1419,7 @@ class SCPT
         cout << "walker\n" << walk << endl;
       }
 
-      if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) continue;
+      if (!classesUsed[walk.excitation_class]) continue;
       int coeffsIndex = this->coeffsIndex(walk);
       if (coeffsIndex == -1) continue;
 
