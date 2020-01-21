@@ -226,6 +226,19 @@ void generateAllScreenedDoubleExcitationsFOIS(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
+void generateAllScreenedSingleExcitationsDyallOld(const Determinant& det,
+                                         const Determinant& detAct,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+void generateAllScreenedDoubleExcitationsDyallOld(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
 void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
                                          const Determinant& detAct,
                                          const double& screen,

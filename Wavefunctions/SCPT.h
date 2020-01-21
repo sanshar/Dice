@@ -480,8 +480,8 @@ class SCPT
 
     // Generate all excitations (after screening)
     work.setCounterToZero();
-    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen, work, false);
-    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedSingleExcitationsDyallOld(walk.d, dAct, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitationsDyallOld(walk.d, schd.epsilon, schd.screen, work, false);
 
     //loop over all the screened excitations
     //cout << endl << "m dets\n" << endl << endl;
@@ -1178,6 +1178,7 @@ class SCPT
       if (abs(largestCoeffs[nextSC]) < 1.e-15) cout << "Error: no initial determinant found:  " << setprecision(20) << largestCoeffs[nextSC] << endl;
 
       this->wave.initWalker(walk, initDets[nextSC]);
+
       double SCHam = doSCEnergyCTMC(walk, work);
       // If this same SC sector is sampled again, start from the final
       // determinant from this time:

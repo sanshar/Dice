@@ -577,9 +577,9 @@ class SCCI
     }
 
     work.setCounterToZero();
-    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen,
+    generateAllScreenedSingleExcitationsDyallOld(walk.d, dAct, schd.epsilon, schd.screen,
                                         work, false);
-    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen,
+    generateAllScreenedDoubleExcitationsDyallOld(walk.d, schd.epsilon, schd.screen,
                                         work, false);
 
     //loop over all the screened excitations
