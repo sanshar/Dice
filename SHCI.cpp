@@ -303,7 +303,7 @@ int main(int argc, char* argv[]) {
       }
     }
     // TODO Make this work with MPI and not print one set from each processor
-    pout << Dets[d] << " Given HF Energy:  "
+    pout << Dets[d] << " Given det. energy: "
          << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
 
@@ -315,7 +315,7 @@ int main(int argc, char* argv[]) {
     // Guess the lowest energy det with given symmetry from one body integrals.
     molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
                                    HFoccupied.at(d), tempDets.at(d));
-    pout << tempDets[d] << " Est. Det. Energy: "
+    pout << tempDets[d] << " Guess det. energy: "
          << format("%18.10f") % (tempDets.at(d).Energy(I1, I2, coreE))
          << endl;  // TODO
 
@@ -340,6 +340,9 @@ int main(int argc, char* argv[]) {
         }
       }
     }  // end cd
+    pout << Dets[d] << " Used det. energy: "
+         << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE))
+         << endl;
   }  // end d@symm ?
   schd.HF = Dets[0];
 
