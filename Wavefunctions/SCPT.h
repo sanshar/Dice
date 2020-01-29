@@ -1009,6 +1009,9 @@ class SCPT
     int iter = 1;
     int printMod = schd.stochasticIterNorms / 10;
 
+    if (commrank == 0)
+      cout << "iter: 0" << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
+
     while (iter <= schd.stochasticIterNorms) {
       double cumovlpRatio = 0;
       for (int i = 0; i < work.nExcitations; i++) {
@@ -1068,7 +1071,7 @@ class SCPT
       }
 
       if (commrank == 0 && (iter % printMod == 0 || iter == 1))
-        cout << "iter: " << iter << "  t: " << setprecision(4) << getTime() - startofCalc << endl;
+        cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
       iter++;
     }
 
@@ -1166,7 +1169,7 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iteration     2. energy             3. time\n");
+    fprintf(pt2_out, "# 1. iteration     2. energy             3. class    4. time\n");
 
     int iter = 0;
     while (iter < schd.numSCSamples) {
@@ -1189,7 +1192,7 @@ class SCPT
 
       double timeOut = getTime();
 
-      fprintf(pt2_out, "%14d    %.12e    %.4e\n", iter, energySample, timeOut-timeIn);
+      fprintf(pt2_out, "%14d    %.12e    %8d    %.4e\n", iter, energySample, walk.excitation_class, timeOut-timeIn);
       fflush(pt2_out);
 
       iter++;
@@ -1700,21 +1703,23 @@ class SCPT
     int nPairs = nSpinOrbsAct * nSpinOrbsAct;
 
     // Construct auxiliary 2-RDM for CCAA class
-    double twoRDMAux[nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct][nSpinOrbsAct];
+    double *twoRDMAux = new double[pow(nSpinOrbsAct, 4)];
+
     for (int a = 0; a < nSpinOrbsAct; a++) {
       for (int b = 0; b < nSpinOrbsAct; b++) {
         for (int c = 0; c < nSpinOrbsAct; c++) {
           for (int d = 0; d < nSpinOrbsAct; d++) {
             int ind1 = c * nSpinOrbsAct + d;
             int ind2 = a * nSpinOrbsAct + b;
-            twoRDMAux[a][b][c][d] = twoRDM(ind1, ind2);
+            int ind3 = ((a*nSpinOrbsAct + b)*nSpinOrbsAct + c)*nSpinOrbsAct + d;
+            twoRDMAux[ind3] = twoRDM(ind1, ind2);
 
-            if (b == c) twoRDMAux[a][b][c][d] += oneRDM(d,a);
-            if (a == d) twoRDMAux[a][b][c][d] += oneRDM(c,b);
-            if (a == c) twoRDMAux[a][b][c][d] += -oneRDM(d,b);
-            if (b == d) twoRDMAux[a][b][c][d] += -oneRDM(c,a);
-            if (b == d && a == c) twoRDMAux[a][b][c][d] += 1;
-            if (b == c && a == d) twoRDMAux[a][b][c][d] += -1;
+            if (b == c) twoRDMAux[ind3] += oneRDM(d,a);
+            if (a == d) twoRDMAux[ind3] += oneRDM(c,b);
+            if (a == c) twoRDMAux[ind3] += -oneRDM(d,b);
+            if (b == d) twoRDMAux[ind3] += -oneRDM(c,a);
+            if (b == d && a == c) twoRDMAux[ind3] += 1;
+            if (b == c && a == d) twoRDMAux[ind3] += -1;
           }
         }
       }
@@ -1732,17 +1737,19 @@ class SCPT
               int c_shift = c - nSpinOrbsCore;
               for (int d = nSpinOrbsCore; d < c; d++) {
                 int d_shift = d - nSpinOrbsCore;
-                norm_ij += int_ij * twoRDMAux[a_shift][b_shift][c_shift][d_shift] * (I2(c,j,d,i) - I2(c,i,d,j));
+                int ind = ((a_shift*nSpinOrbsAct + b_shift)*nSpinOrbsAct + c_shift)*nSpinOrbsAct + d_shift;
+                norm_ij += int_ij * twoRDMAux[ind] * (I2(c,j,d,i) - I2(c,i,d,j));
               }
             }
           }
         }
-        int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
-        //double norm_old = norms(ind);
-        norms(ind) = norm_ij;
+        int norm_ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+        norms(norm_ind) = norm_ij;
         //cout << i << "   " << j << "   " << setprecision(12) << norm_old << "   " << norm_ij << endl;
       }
     }
+
+    delete []twoRDMAux;
 
     double timeOut = getTime();
     if (commrank == 0) cout << "CCAA norms calculated. Time taken: " << timeOut - timeIn << endl;
