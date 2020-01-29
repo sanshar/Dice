@@ -1337,10 +1337,6 @@ void generateAllScreenedDoubleExcitationsCAS_0h1p(const Determinant& d,
     // for all HCI integrals
     for (size_t index = 0; index < numLargeIntegrals; index++)
     {
-      // if we are going below the criterion, break
-      //if (fabs(integrals[index]) < THRESH)
-      //  break;
-
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2 * orbIndices[2 * index] + i % 2;
       int b = 2 * orbIndices[2 * index + 1] + j % 2;
@@ -1434,7 +1430,7 @@ void generateAllScreenedDoubleExcitationsCAS_1h0p(const Determinant& d,
 
     const float *integrals; const short* orbIndices;
     size_t numIntegrals;
-    I2hb.getIntegralArray(b, a, integrals, orbIndices, numIntegrals);
+    I2hb.getIntegralArrayCAS(b, a, integrals, orbIndices, numIntegrals);
     size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, THRESH, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
 
     // for all HCI integrals
