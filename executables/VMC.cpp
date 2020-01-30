@@ -16,6 +16,7 @@
   You should have received a copy of the GNU General Public License along with this program. 
   If not, see <http://www.gnu.org/licenses/>.
 */
+//#define EIGEN_USE_MKL_ALL
 #include <algorithm>
 #include <random>
 #include <chrono>
@@ -70,6 +71,14 @@ int main(int argc, char *argv[])
 
   initSHM();
   //license();
+  if (commrank == 0) {
+    system("echo User:; echo $USER");
+    system("echo Hostname:; echo $HOSTNAME");
+    system("echo CPU info:; lscpu | head -15");
+    system("echo Computation started at:; date");
+    cout << "git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << endl << endl;
+    cout << "nproc used: " << commsize << " (NB: stochasticIter below is per proc)" << endl << endl; 
+  }
 
   string inputFile = "input.dat";
   if (argc > 1)

@@ -6,22 +6,23 @@ USE_INTEL = yes
 EIGEN=/projects/ilsa8974/apps/eigen/
 BOOST=/projects/ilsa8974/apps/boost_1_66_0/
 LIBIGL=/projects/ilsa8974/apps/libigl/include/
+#MKL=/curc/sw/intel/17.4/mkl/
 
-FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-I${MKL}/include #-DComplex
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
-
-
-
-
+GIT_HASH=`git rev-parse HEAD`
+COMPILE_TIME=`date`
+GIT_BRANCH=`git branch | grep "^\*" | sed s/^..//`
+VERSION_FLAGS=-DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" -DGIT_BRANCH="\"$(GIT_BRANCH)\""
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
 	DFLAGS += -qopenmp
 	ifeq ($(USE_MPI), yes) 
-		CXX = mpiicpc
+		CXX = mpiicpc #-mkl
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi #-L${MKL}/lib/intel64 -lmkl_rt -lpthread -lm -ldl
 	else
 		CXX = icpc
 		CC = icpc
@@ -50,6 +51,7 @@ HOSTNAME := $(shell hostname)
 ifneq ($(filter dft node%, $(HOSTNAME)),)
 include dft.mk
 endif
+
 
 OBJ_VMC = obj/staticVariables.o \
 	obj/input.o \
@@ -115,19 +117,19 @@ obj/%.o: FCIQMC/%.cpp
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 
 
-all: bin/VMC bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
+all: bin/VMC bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC	
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
-	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS)
+	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
-	$(CXX)   $(FLAGS) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS)
+	$(CXX)   $(FLAGS) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
-	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS)
+	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/sPT	: $(OBJ_sPT) 
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
@@ -140,4 +142,5 @@ VMC2	: $(OBJ_VMC)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1
+
 
