@@ -80,7 +80,7 @@ void Slater::initHforbs()
     }
     MatrixXcd Hforbs = MatrixXcd::Zero(size, size);
     readMat(Hforbs, "hf.txt");
-    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd::Random(size, size);
+    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.1 * MatrixXd::Random(size, size) / norbs;
     HforbsA = Hforbs;
     HforbsB = Hforbs;
   }
