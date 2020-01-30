@@ -1,19 +1,18 @@
 USE_MPI = yes
 USE_INTEL = yes
 EIGEN=/projects/sash2458/newApps/eigen/
-BOOST=/projects/sash2458/apps/boost_1_57_0/
+#BOOST=/projects/sash2458/apps/boost_1_57_0/
 LIBIGL=/projects/sash2458/apps/libigl/include/
+HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 #EIGEN=/projects/ilsa8974/apps/eigen/
-#BOOST=/projects/ilsa8974/apps/boost_1_66_0/
+BOOST=/projects/ilsa8974/apps/boost_1_66_0/
 #LIBIGL=/projects/ilsa8974/apps/libigl/include/
 
-FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/  #-DComplex
+FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I/opt/local/include/openmpi-mp/  #-DComplex
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
 LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
-
-
 
 
 
@@ -24,7 +23,7 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options -L${HDF5}/lib -lhdf5
 	else
 		CXX = icpc
 		CC = icpc

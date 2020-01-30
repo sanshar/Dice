@@ -232,4 +232,6 @@ int readNorbs(string fcidump);
 
 void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump);
 
+void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump);
+
 #endif
