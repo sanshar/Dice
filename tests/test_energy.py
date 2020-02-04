@@ -5,25 +5,31 @@ from math import sqrt
 import numpy as N
 import struct
 
+
 def run(args):
 
-  #int1
-  file1 = open("shci.e","rb")
-  file2 = open("trusted_hci.e","rb")
+    if len(args) != 2 and len(args) != 3:
+        raise AssertionError("Wrong number of CLI arguments.")
 
-  tol = float(args[2])
+    trusted_energy_file = "trusted_hci.e"
+    if len(args) == 3:
+        trusted_energy_file = args[2]
 
-  index = 0
-  for i in range(int(args[1])):
-    calc_e = struct.unpack('d', file1.read(8))[0]
-    given_e = struct.unpack('d', file2.read(8))[0]
-    if abs(given_e-calc_e) > tol:
-      print("\t",given_e,"-", calc_e, " > ", tol)
-      print("\t FAILED Energy Test....")
+    file1 = open("shci.e", "rb")
+    file2 = open(trusted_energy_file, "rb")
+
+    tol = float(args[1])
+
+    calc_e = struct.unpack("d", file1.read(8))[0]
+    given_e = struct.unpack("d", file2.read(8))[0]
+    if abs(given_e - calc_e) > tol:
+        print("\t", given_e, "-", calc_e, " > ", tol)
+        print("\t FAILED Energy Test....")
     else:
-      print("\t PASSED Energy Test....")
-    index+=1
+        print("\t PASSED Energy Test....")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     import sys
+
     run(sys.argv)
