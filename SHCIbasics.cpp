@@ -1322,9 +1322,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       break;
     } else {
       if (schd.io) {
-        pout << "schd.io = " << schd.io << std::endl;
-        pout << "schd.io = " << schd.io << std::endl;
-        pout << "schd.io = " << schd.io << std::endl;
+        // pout << "schd.io = " << schd.io << std::endl;
+        // pout << "schd.io = " << schd.io << std::endl;
+        // pout << "schd.io = " << schd.io << std::endl;
         if (commrank == 0) {
           Dets.resize(DetsSize);
           for (int i = 0; i < DetsSize; i++)

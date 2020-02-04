@@ -7,7 +7,7 @@ spin 2
 
 # Variational
 schedule 
-0	1
+0	1e-3
 end
 davidsonTol 5e-05
 dE 1e-08

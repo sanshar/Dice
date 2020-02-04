@@ -83,7 +83,12 @@ $MPICOMMAND $HCIPATH input1.dat > output1.dat
 python $here/test_energy.py 5e-5 e_spin_0.e
 $MPICOMMAND $HCIPATH input2.dat > output2.dat
 python $here/test_energy.py 5e-5 e_spin_2.e
-
+$MPICOMMAND $HCIPATH input3.dat > output3.dat
+python $here/test_energy.py 5e-5 e_spin_1.e
+$MPICOMMAND $HCIPATH input4.dat > output4.dat
+python $here/test_energy.py 5e-5 e_spin_3.e
+$MPICOMMAND $HCIPATH input5.dat > output5.dat
+python $here/test_energy.py 5e-5 e_spin_4.e
 
 ## Clean up
 cd $here

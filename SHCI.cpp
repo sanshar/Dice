@@ -313,6 +313,7 @@ int main(int argc, char* argv[]) {
   if (schd.spin == -1) {  // Set spin if none specified by user
     spin_specified = false;
     schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
+    // pout << "Setting spin to " << schd.spin << endl;
   }
   for (int d = 0; d < HFoccupied.size(); d++) {
     // Guess the lowest energy det with given symmetry from one body integrals.

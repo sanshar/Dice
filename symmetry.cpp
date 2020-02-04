@@ -267,14 +267,16 @@ void symmetry::estimateLowestEnergyDet(int spin, int targetIrrep, oneInt I1,
     // Find lowest energy orbitals with the appropriate symmetry
     for (int i = nDOrbs; i < I1.norbs - 1; i++) {
       for (int j = i + 1; j < I1.norbs; j++) {
-        if (i % 2 != j % 2) continue;
-        int irrep1 = irrep.at(sort1Body.at(i).second / 2);
-        int irrep2 = irrep.at(sort1Body.at(j).second / 2);
-        bool unocc = ((Det.getocc(i) == false) && (Det.getocc(j) == false));
+        int I = sort1Body.at(i).second;
+        int J = sort1Body.at(j).second;
+        if (I % 2 != J % 2) continue;
+        int irrep1 = irrep.at(I / 2);
+        int irrep2 = irrep.at(J / 2);
+        bool unocc = ((Det.getocc(I) == false) && (Det.getocc(J) == false));
 
         if (symmetry::getProduct(irrep1, irrep2) == targetIrrep && unocc) {
-          Det.setocc(i, true);
-          Det.setocc(j, true);
+          Det.setocc(I, true);
+          Det.setocc(J, true);
           return;
         }
       }
@@ -289,18 +291,20 @@ void symmetry::estimateLowestEnergyDet(int spin, int targetIrrep, oneInt I1,
     for (int i = nDOrbs; i < I1.norbs - 2; i++) {
       for (int j = i + 1; j < I1.norbs - 1; j++) {
         for (int k = j + 1; k < I1.norbs; k++) {
-          if (!(i % 2 == j % 2 && j % 2 == k % 2)) continue;
+          int I = sort1Body.at(i).second, J = sort1Body.at(j).second;
+          int K = sort1Body.at(k).second;
+          if (!(I % 2 == J % 2 && J % 2 == K % 2)) continue;
           vector<int> irreps(3);
-          irreps.at(0) = irrep.at(sort1Body.at(i).second / 2);
-          irreps.at(1) = irrep.at(sort1Body.at(j).second / 2);
-          irreps.at(2) = irrep.at(sort1Body.at(k).second / 2);
-          bool unocc = ((Det.getocc(i) == false) && (Det.getocc(j) == false) &&
-                        (Det.getocc(k) == false));
+          irreps.at(0) = irrep.at(I / 2);
+          irreps.at(1) = irrep.at(J / 2);
+          irreps.at(2) = irrep.at(K / 2);
+          bool unocc = ((Det.getocc(I) == false) && (Det.getocc(J) == false) &&
+                        (Det.getocc(K) == false));
 
           if (symmetry::getProduct(irreps) == targetIrrep && unocc) {
-            Det.setocc(i, true);
-            Det.setocc(j, true);
-            Det.setocc(k, true);
+            Det.setocc(I, true);
+            Det.setocc(J, true);
+            Det.setocc(K, true);
             return;
           }
         }
@@ -317,23 +321,26 @@ void symmetry::estimateLowestEnergyDet(int spin, int targetIrrep, oneInt I1,
       for (int j = i + 1; j < I1.norbs - 2; j++) {
         for (int k = j + 1; k < I1.norbs - 1; k++) {
           for (int l = k + 1; l < I1.norbs; l++) {
-            bool diffOrbs = (i % 2 == j % 2 && j % 2 == k % 2 && k == l % 2);
+            int I = sort1Body.at(i).second, J = sort1Body.at(j).second;
+            int K = sort1Body.at(k).second, L = sort1Body.at(l).second;
+
+            bool diffOrbs =
+                (I % 2 == J % 2 && J % 2 == K % 2 && K % 2 == L % 2);
             if (!diffOrbs) continue;
             vector<int> irreps(4);
-            irreps.at(0) = irrep.at(sort1Body.at(i).second / 2);
-            irreps.at(1) = irrep.at(sort1Body.at(j).second / 2);
-            irreps.at(2) = irrep.at(sort1Body.at(k).second / 2);
-            irreps.at(3) = irrep.at(sort1Body.at(l).second / 2);
+            irreps.at(0) = irrep.at(I / 2);
+            irreps.at(1) = irrep.at(J / 2);
+            irreps.at(2) = irrep.at(K / 2);
+            irreps.at(3) = irrep.at(L / 2);
             bool unocc =
-                ((Det.getocc(i) == false) && (Det.getocc(j) == false) &&
-                 (Det.getocc(k) == false) && (Det.getocc(k) == false));
+                ((Det.getocc(I) == false) && (Det.getocc(J) == false) &&
+                 (Det.getocc(K) == false) && (Det.getocc(L) == false));
 
-            if (symmetry::getProduct(irreps) == targetIrrep && unocc &&
-                diffOrbs) {
-              Det.setocc(i, true);
-              Det.setocc(j, true);
-              Det.setocc(k, true);
-              Det.setocc(l, true);
+            if (symmetry::getProduct(irreps) == targetIrrep && unocc) {
+              Det.setocc(I, true);
+              Det.setocc(J, true);
+              Det.setocc(K, true);
+              Det.setocc(L, true);
               return;
             }
           }
