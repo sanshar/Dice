@@ -27,6 +27,12 @@ void SelectedCI::readWave() {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
+
+  simpleDet NULL_SIMPLE_DET;
+  for (int i=0; i++; i<2*DetLen)
+    NULL_SIMPLE_DET[i] = 0.0;
+  DetsMap.set_empty_key(NULL_SIMPLE_DET);
+
   if (boost::iequals(schd.determinantFile, "") || boost::iequals(schd.determinantFile, "bestDet"))
   {
     Determinant det;
@@ -35,7 +41,7 @@ void SelectedCI::readWave() {
       det.setoccA(i, true);
     for (int i = 0; i < nbeta; i++)
       det.setoccB(i, true);
-    DetsMap[det] = 1.0;
+    DetsMap[det.getSimpleDet()] = 1.0;
     bestDeterminant = det;
   }
   else
@@ -81,7 +87,7 @@ void SelectedCI::readWave() {
           }
         }
         
-        DetsMap[det] = ci;
+        DetsMap[det.getSimpleDet()] = ci;
         if (abs(ci) > abs(bestCoeff)) {
           bestCoeff = ci;
           bestDeterminant = det;
@@ -90,7 +96,7 @@ void SelectedCI::readWave() {
     }
 
   }
-  if (schd.debug) cout << "bestDet    " << bestDeterminant << "  " << DetsMap[bestDeterminant] << endl;
+  if (schd.debug) cout << "bestDet    " << bestDeterminant << "  " << DetsMap[bestDeterminant.getSimpleDet()] << endl;
 }
 
 //assuming bestDeterminant is an active space det, so no excitedOrbs
@@ -154,8 +160,8 @@ void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
 
 //only used in deterministic calcs
 double SelectedCI::getOverlapFactor(SimpleWalker& walk, Determinant& dcopy) {
-  auto it1 = DetsMap.find(walk.d);
-  auto it2 = DetsMap.find(dcopy);
+  auto it1 = DetsMap.find(walk.d.getSimpleDet());
+  auto it2 = DetsMap.find(dcopy.getSimpleDet());
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
     return it2->second/it1->second;
   else
@@ -166,8 +172,8 @@ double SelectedCI::getOverlapFactor(int I, int A, SimpleWalker& walk, bool dopar
   Determinant dcopy = walk.d;
   dcopy.setocc(I, false);
   dcopy.setocc(A, true);
-  auto it1 = DetsMap.find(walk.d);
-  auto it2 = DetsMap.find(dcopy);
+  auto it1 = DetsMap.find(walk.d.getSimpleDet());
+  auto it2 = DetsMap.find(dcopy.getSimpleDet());
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
     return it2->second/it1->second;
   else
@@ -181,8 +187,8 @@ double SelectedCI::getOverlapFactor(int I, int J, int A, int B,
   dcopy.setocc(A, true);
   dcopy.setocc(J, false);
   dcopy.setocc(B, true);
-  auto it1 = DetsMap.find(walk.d);
-  auto it2 = DetsMap.find(dcopy);
+  auto it1 = DetsMap.find(walk.d.getSimpleDet());
+  auto it2 = DetsMap.find(dcopy.getSimpleDet());
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
     return it2->second/it1->second;
   else
@@ -190,7 +196,7 @@ double SelectedCI::getOverlapFactor(int I, int J, int A, int B,
 }
   
 double SelectedCI::Overlap(SimpleWalker& walk) {
-  auto it1 = DetsMap.find(walk.d);
+  auto it1 = DetsMap.find(walk.d.getSimpleDet());
   if (it1 != DetsMap.end())
     return it1->second;
   else
@@ -198,6 +204,14 @@ double SelectedCI::Overlap(SimpleWalker& walk) {
 }
 
 double SelectedCI::Overlap(Determinant& d) {
+  auto it1 = DetsMap.find(d.getSimpleDet());
+  if (it1 != DetsMap.end())
+    return it1->second;
+  else
+    return 0.0;
+}
+
+inline double SelectedCI::Overlap(simpleDet& d) {
   auto it1 = DetsMap.find(d);
   if (it1 != DetsMap.end())
     return it1->second;
@@ -208,7 +222,7 @@ double SelectedCI::Overlap(Determinant& d) {
 void SelectedCI::OverlapWithGradient(SimpleWalker &walk,
                                      double &factor,
                                      Eigen::VectorXd &grad) {
-  auto it1 = DetsMap.find(walk.d);
+  auto it1 = DetsMap.find(walk.d.getSimpleDet());
   if (it1 != DetsMap.end())
     grad[it1->second] = 1.0;
 }
@@ -297,7 +311,8 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk,
       dcopy.setocc(B, true);
     }
 
-    double ovlpcopy = Overlap(dcopy);
+    simpleDet dcopySimple = dcopy.getSimpleDet();
+    double ovlpcopy = Overlap(dcopySimple);
 
     ham += tia * ovlpcopy * parity;
     //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpcopy * parity << endl;

@@ -21,6 +21,7 @@
 #define SCCI_HEADER_H
 #include <vector>
 #include <set>
+#include <unordered_map>
 #include "Determinants.h"
 #include "workingArray.h"
 #include "excitationOperators.h"

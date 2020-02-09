@@ -159,7 +159,7 @@ class Determinant {
   }
 
   // Return simplified version of determinant
-  simpleDet getSimpleDet() const {
+  inline simpleDet getSimpleDet() const {
     simpleDet combined;
     for (int i=0; i<DetLen; i++) {
       combined[i] = reprA[i];

@@ -25,12 +25,10 @@
 #include <vector>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
-#include <map>
-#include <unordered_map>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include <boost/serialization/unordered_map.hpp>
 #include "SimpleWalker.h"
+#include <google/dense_hash_map>
 
 
 class SelectedCI
@@ -39,16 +37,16 @@ class SelectedCI
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
-    ar & DetsMap
-        & bestDeterminant;
+    //ar & DetsMap & bestDeterminant;
+    ar & bestDeterminant;
   }
 
  public:
   using CorrType = Determinant;
   using ReferenceType = Determinant;
   
-  unordered_map<Determinant, double, boost::hash<Determinant> > DetsMap;
-  //map<Determinant, double> DetsMap;
+  google::dense_hash_map<simpleDet, double, boost::hash<simpleDet> > DetsMap;
+  //unordered_map<Determinant, double, boost::hash<Determinant> > DetsMap;
   Determinant bestDeterminant;
 
   SelectedCI();
@@ -64,6 +62,7 @@ class SelectedCI
 
   double Overlap(SimpleWalker& walk);
   double Overlap(Determinant& d);
+  inline double Overlap(simpleDet& d);
 
   
   double getOverlapFactor(int I, int J, int A, int B,

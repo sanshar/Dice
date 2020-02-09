@@ -7,8 +7,9 @@ HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 #EIGEN=/projects/ilsa8974/apps/eigen/
 BOOST=/projects/ilsa8974/apps/boost_1_66_0/
 #LIBIGL=/projects/ilsa8974/apps/libigl/include/
+SPARSEHASH=/home/nsb37/local/sparsehash
 
-FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I/opt/local/include/openmpi-mp/  #-DComplex
+FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH}/include -I/opt/local/include/openmpi-mp/  #-DComplex
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
