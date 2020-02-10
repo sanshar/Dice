@@ -92,14 +92,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.maxExcitation = 10000;
   schd.enforceSenioExc = false;
   schd.ncore = 0;
-  // the ridiculously large number of active spacce orbitals
+  // the ridiculously large number of active space orbitals
   schd.nact = 1000000;
   schd.doLCC = false;
   schd.DoOneRDM = false;
   schd.DoSpinOneRDM = false;
 
   schd.pointGroup = "c1";
-  schd.spin = -1;  // Default value overridden by HF spin
+  schd.spin = -1;  // Default value overridden by HF spin if not specified
   schd.irrep = 1;
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;

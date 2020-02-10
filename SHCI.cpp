@@ -305,51 +305,61 @@ int main(int argc, char* argv[]) {
   pout << Dets[0] << " Given HF Energy:      "
        << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
 
-  // Symmetry loop?
-  //#ifndef Complex
-  symmetry molSym(schd.pointGroup);
-  vector<Determinant> tempDets(Dets);
-  bool spin_specified = true;
-  if (schd.spin == -1) {  // Set spin if none specified by user
-    spin_specified = false;
-    schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-    // pout << "Setting spin to " << schd.spin << endl;
-  }
-  for (int d = 0; d < HFoccupied.size(); d++) {
-    // Guess the lowest energy det with given symmetry from one body integrals.
-    molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
-                                   HFoccupied.at(d), tempDets.at(d));
+  // Check and make sure that
 
-    // Generate list of connected determinants to guess determinant.
-    SHCIgetdeterminants::getDeterminantsVariational(
-        tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
-        tempDets, schd, 0, nelec);
+  symmetry molSym(schd.pointGroup, irrep);
 
-    // If spin is specified we assume the user wants a particular determinant
-    // even if it's higher in energy than the HF so we keep it. If the user
-    // didn't specify then we keep the lowest energy determinant
-    // Check all connected and find lowest energy.
-    int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
-    if (spin_specified && spin_HF != schd.spin) {
-      Dets.at(d) = tempDets.at(0);
+  if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
+      molSym.init_success) {
+    vector<Determinant> tempDets(Dets);
+    bool spin_specified = true;
+    if (schd.spin == -1) {  // Set spin if none specified by user
+      spin_specified = false;
+      schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
+      // pout << "Setting spin to " << schd.spin << endl;
     }
-    for (int cd = 0; cd < tempDets.size(); cd++) {
-      if (tempDets.at(d).connected(tempDets.at(cd))) {
-        if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
-            schd.spin) {
-          char repArray[tempDets.at(cd).norbs];
-          tempDets.at(cd).getRepArray(repArray);
-          if (Dets.at(d).Energy(I1, I2, coreE) >
-                  tempDets.at(cd).Energy(I1, I2, coreE) &&
-              molSym.getSymmetry(repArray, irrep) == schd.irrep) {
-            Dets.at(d) = tempDets.at(cd);
+    for (int d = 0; d < HFoccupied.size(); d++) {
+      // Guess the lowest energy det with given symmetry from one body
+      // integrals.
+      molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
+                                     HFoccupied.at(d), tempDets.at(d));
+
+      // Generate list of connected determinants to guess determinant.
+      SHCIgetdeterminants::getDeterminantsVariational(
+          tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
+          tempDets, schd, 0, nelec);
+
+      // If spin is specified we assume the user wants a particular determinant
+      // even if it's higher in energy than the HF so we keep it. If the user
+      // didn't specify then we keep the lowest energy determinant
+      // Check all connected and find lowest energy.
+      int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
+      if (spin_specified && spin_HF != schd.spin) {
+        Dets.at(d) = tempDets.at(0);
+      }
+      for (int cd = 0; cd < tempDets.size(); cd++) {
+        if (tempDets.at(d).connected(tempDets.at(cd))) {
+          if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
+              schd.spin) {
+            char repArray[tempDets.at(cd).norbs];
+            tempDets.at(cd).getRepArray(repArray);
+            if (Dets.at(d).Energy(I1, I2, coreE) >
+                    tempDets.at(cd).Energy(I1, I2, coreE) &&
+                molSym.getSymmetry(repArray, irrep) == schd.irrep) {
+              Dets.at(d) = tempDets.at(cd);
+            }
           }
         }
-      }
-    }  // end cd
-    pout << Dets[d] << " Starting Det. Energy: "
-         << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
-  }  // end d
+      }  // end cd
+      pout << Dets[d] << " Starting Det. Energy: "
+           << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
+    }  // end d
+
+  } else {
+    pout << "Skipping Ref. Determinant Search for pointgroup "
+         << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
+  }  // End if (Search for Ref. Det)
+
   schd.HF = Dets[0];
 
   if (commrank == 0) {

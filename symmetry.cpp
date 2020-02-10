@@ -29,6 +29,7 @@
 #include "global.h"
 
 #include "Determinants.h"
+#include "communicate.h"
 #include "integral.h"
 #include "symmetry.h"
 
@@ -37,20 +38,28 @@ using namespace std;
 // MatrixXd symmetry::product_table;
 // bool symmetry::compare(const pair<double,int>&,const pair<double,int>& );
 
-bool compareForSortingEnergies(
-    const pair<double, int>& a,
-    const pair<double, int>& b) {  // TODO decide on name
+bool compareForSortingEnergies(const pair<double, int>& a,
+                               const pair<double, int>& b) {
   return a.first < b.first;
 }
 
 // Constructor
-// Constructor implementation
-symmetry::symmetry(string pg) {
+/**
+ * @brief Construct a new symmetry::symmetry object. This is done once at the
+ * beginning of every Dice calculation. The full product table is resized based
+ * on the point group (with D2h being the full table). The irreps are checked to
+ * make sure they match the specified point group.
+ *
+ * @param pg Point group for the molecule in all lower case letters.
+ * @param mol_irreps A vector of the irreps for the active space orbitals.
+ */
+symmetry::symmetry(string pg, vector<int>& mol_irreps) {
   // Assign correct product table for point group. Note that even though the
-  // indices of the columns are one less than the MolPro notation the irrep
-  // returned is again in the MolPro notation.
+  // indices of the columns are one less than the MOLPRO notation the irrep
+  // returned is again in the MOLPRO notation.
+  init_success = true;
 
-  // D2h Ag:1, B1g:4, B2g:6, B3g:7, Au:8, B1u:5, B2u:3, B3u: 2 in MolPro.
+  // D2h Ag:1, B1g:4, B2g:6, B3g:7, Au:8, B1u:5, B2u:3, B3u: 2 in MOLPRO.
   // Row & col indices: Ag:0, B1g:3, B2g:5, B3g:6, Au:7, B1u:4, B2u:2, B3u:1
   fullD2hTable.resize(8, 8);
   fullD2hTable(0, 0) = 1;
@@ -126,7 +135,7 @@ symmetry::symmetry(string pg) {
   }
 
   else if (pg == (string) "c2v") {
-    // C2v A1: 1, B1:2, B2:3, A2:4 in MolPro. Indices here: A1: 0, B1:1, B2:2,
+    // C2v A1: 1, B1:2, B2:3, A2:4 in MOLPRO. Indices here: A1: 0, B1:1, B2:2,
     // A2:3
     pointGroup = pg;
     product_table.resize(4, 4);
@@ -150,21 +159,21 @@ symmetry::symmetry(string pg) {
   }
 
   else if (pg == (string) "cs") {
-    // Cs A':1, A'':2 in MolPro. Indices here A':0, A'':1
+    // Cs A':1, A'':2 in MOLPRO. Indices here A':0, A'':1
     pointGroup = pg;
     product_table.resize(2, 2);
     product_table = (fullD2hTable.topRows(2)).leftCols(2);
   }
 
   else if (pg == (string) "c2") {
-    // C2 A:1, B:2 in MolPro. Indices here: A:0, B:1
+    // C2 A:1, B:2 in MOLPRO. Indices here: A:0, B:1
     pointGroup = pg;
     product_table.resize(2, 2);
     product_table = (fullD2hTable.topRows(2)).leftCols(2);
   }
 
   else if (pg == (string) "ci") {
-    // Ci Ag:1, Au:2 in MolPro. Indices here: Ag:0, Au:1
+    // Ci Ag:1, Au:2 in MOLPRO. Indices here: Ag:0, Au:1
     pointGroup = pg;
     product_table.resize(2, 2);
     product_table = (fullD2hTable.topRows(2)).leftCols(2);
@@ -175,17 +184,29 @@ symmetry::symmetry(string pg) {
     product_table.resize(1, 1);
     product_table = (fullD2hTable.topRows(1)).leftCols(1);
   } else {
-    cout << "Couldn't find the irrep! Exiting..." << endl;
-    exit(EXIT_FAILURE);
+    pout << "Dice doesn't support the point group " << pg
+         << " when selecting a reference determinant." << endl;
+    init_success = false;
+    return;
+  }
+
+  // Check irreps to make sure they match the point group
+  // If this fails, HF will be used as the ref determinant.
+  for (auto ir : mol_irreps) {
+    if (ir - 1 > product_table.rows()) {
+      pout << "Irrep " << ir
+           << " doesn't match the specified point group symmetry " << pg
+           << endl;
+      init_success = false;
+      break;
+    }
   }
 }
 
-// using namespace std;
 int symmetry::getProduct(int irrep1, int irrep2) {
   // Note here that the irrep and column differ by 1 because the indexing starts
   // at 0 for the product_table object.
   return symmetry::product_table(irrep1 - 1, irrep2 - 1);
-  // return symmetry::product_table(irrep1 - 1,irrep2 - 1);
 }
 
 int symmetry::getProduct(vector<int>& irreps) {  // TODO test this
@@ -197,7 +218,7 @@ int symmetry::getProduct(vector<int>& irreps) {  // TODO test this
   }
 
   else {
-    return symmetry::getProduct(irreps.at(0), irreps.at(0));
+    return symmetry::getProduct(irreps.at(0), irreps.at(1));
   }
 }
 
