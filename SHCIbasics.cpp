@@ -927,8 +927,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       pout << "Converged: " << converged
            << " loaded iter: " << iterstart
            << " max iter: " << schd.epsilon1.size()
+           << " loaded eps1: " << schd.epsilon1[iterstart-1]
+           << " min eps1: " << schd.epsilon1[schd.epsilon1.size()-1]
            << endl;
-    if (converged && iterstart <= schd.epsilon1.size()) {
+    if (converged && iterstart-1 <= schd.epsilon1.size() &&
+        schd.epsilon1[iterstart-1] <= schd.epsilon1[schd.epsilon1.size()-1]) {
       for (int i = 0; i < E0.size(); i++)
         E0[i] += coreEbkp;
       coreE = coreEbkp;
