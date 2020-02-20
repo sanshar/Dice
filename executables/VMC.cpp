@@ -46,6 +46,7 @@
 #include "Profile.h"
 #include "CIWavefunction.h"
 #include "CorrelatedWavefunction.h"
+#include "ResonatingWavefunction.h"
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
 #include "Lanczos.h"
@@ -108,6 +109,11 @@ int main(int argc, char *argv[])
   
   if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+    runVMC(wave, walk);
+  }
+  
+  if (schd.wavefunctionType == "resonatingwavefunction") {
+    ResonatingWavefunction wave; ResonatingWalker walk;
     runVMC(wave, walk);
   }
   

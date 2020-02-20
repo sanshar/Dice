@@ -216,8 +216,8 @@ struct CorrelatedWavefunction {
 
   void readWave()
   {
-    if (commrank == 0)
-    {
+    //if (commrank == 0)
+    //{
       char file[5000];
       //sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
       sprintf(file, (getfileName()+".bkp").c_str() );
@@ -225,10 +225,10 @@ struct CorrelatedWavefunction {
       boost::archive::binary_iarchive load(infs);
       load >> *this;
       infs.close();
-    }
+    //}
 #ifndef SERIAL
-    boost::mpi::communicator world;
-    boost::mpi::broadcast(world, *this, 0);
+    //boost::mpi::communicator world;
+    //boost::mpi::broadcast(world, *this, 0);
 #endif
   }
 

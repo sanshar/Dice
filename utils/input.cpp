@@ -77,6 +77,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
       }
     }
 
+    //resonating wave function
+    schd.numResonants = input.get("wavefunction.numResonants", 1);
+
     //ci and lanczos
     schd.nciAct = input.get("wavefunction.numAct", -1);
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);

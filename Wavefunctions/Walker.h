@@ -459,8 +459,9 @@ struct Walker<Corr, Slater> {
   void OverlapWithGradient(const Slater &ref, Eigen::VectorBlock<VectorXd> &grad) const
   {
     double detovlp = getDetOverlap(ref);
-    for (int i = 0; i < ref.ciExpansion.size(); i++)
-      grad[i] += getIndividualDetOverlap(i) / detovlp;
+    //for (int i = 0; i < ref.ciExpansion.size(); i++)
+    //  grad[i] += getIndividualDetOverlap(i) / detovlp;
+    grad[0] = 0.;
     if (ref.determinants.size() <= 1 && schd.optimizeOrbs) {
       //if (hftype == UnRestricted)
       VectorXd gradOrbitals;
