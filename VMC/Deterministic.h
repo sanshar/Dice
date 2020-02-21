@@ -94,7 +94,7 @@ class Deterministic
   
   void UpdateSR(DirectMetric &S)
   {
-    VectorXd appended(numVars);
+    VectorXd appended(numVars+1);
     appended << 1.0, grad_ratio;
     S.Vectors.push_back(appended);
     S.T.push_back(ovlp * ovlp);
