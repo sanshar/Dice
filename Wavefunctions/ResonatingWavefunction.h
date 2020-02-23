@@ -52,6 +52,12 @@ struct ResonatingWavefunction {
         ref.resize(schd.numResonants - 1);
       }
       waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
+      //VectorXd v = VectorXd::Zero(waveVec[waveVec.size() - 2].getNumVariables());
+      //waveVec[waveVec.size() - 2].getVariables(v);
+      //waveVec[waveVec.size() - 1].updateVariables(v);
+      //v.resize(0);
+      //waveVec[waveVec.size() - 1].corr = waveVec[waveVec.size() - 2].corr;
+      //waveVec[waveVec.size() - 1].corr.addNoise();
       corr.push_back(waveVec[waveVec.size() - 1].corr);
       ref.push_back(waveVec[waveVec.size() - 1].ref);
       if (!schd.restart) {
@@ -67,6 +73,10 @@ struct ResonatingWavefunction {
         wave0.readWave();
         waveVec.push_back(wave0);
         waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
+        VectorXd v = VectorXd::Zero(waveVec[0].getNumVariables());
+        waveVec[0].getVariables(v);
+        waveVec[1].updateVariables(v);
+        v.resize(0);
         corr.push_back(waveVec[0].corr);
         ref.push_back(waveVec[0].ref);
         corr.push_back(waveVec[1].corr);
@@ -172,10 +182,16 @@ struct ResonatingWavefunction {
                            double &factor,
                            Eigen::VectorXd &grad) const
   {
-    waveVec[waveVec.size() - 1].OverlapWithGradient(walk.walkerVec[waveVec.size() - 1], factor, grad);
     vector<double> overlaps;
     double totalOverlap = Overlap(walk, overlaps);
-    grad *= overlaps[waveVec.size() - 1] / totalOverlap;
+    size_t index = 0;
+    for (int i = 0; i < waveVec.size(); i++) {
+      size_t numVars_i = waveVec[i].getNumVariables();
+      VectorXd grad_i = VectorXd::Zero(numVars_i);
+      waveVec[i].OverlapWithGradient(walk.walkerVec[i], factor, grad_i);
+      grad.segment(index, numVars_i) = grad_i * overlaps[i] / totalOverlap;
+      index += numVars_i;
+    }
   }
 
   void printVariables() const
@@ -190,21 +206,37 @@ struct ResonatingWavefunction {
   // updates the wave function helpers as well
   void updateVariables(Eigen::VectorXd &v) 
   {
-    waveVec[waveVec.size() - 1].updateVariables(v);
-    ref.resize(waveVec.size() - 1);
-    ref.push_back(waveVec[waveVec.size() - 1].ref);
-    corr.resize(waveVec.size() - 1);
-    corr.push_back(waveVec[waveVec.size() - 1].corr);
+    size_t index = 0;
+    ref.resize(0);
+    corr.resize(0);
+    for (int i = 0; i < waveVec.size(); i++) {
+      size_t numVars_i = waveVec[i].getNumVariables();
+      VectorXd v_i = v.segment(index, numVars_i);
+      waveVec[i].updateVariables(v_i);
+      ref.push_back(waveVec[i].ref);
+      corr.push_back(waveVec[i].corr);
+      index += numVars_i;
+    }
   }
 
   void getVariables(Eigen::VectorXd &v) const
   {
-    waveVec[waveVec.size() - 1].getVariables(v);
+    v = VectorXd::Zero(getNumVariables());
+    size_t index = 0;
+    for (int i = 0; i < waveVec.size(); i++) {
+      size_t numVars_i = waveVec[i].getNumVariables();
+      VectorXd v_i = VectorXd::Zero(numVars_i);
+      waveVec[i].getVariables(v_i);
+      v.segment(index, numVars_i) = v_i;
+      index += numVars_i;
+    }
   }
 
   long getNumVariables() const
   {
-    return waveVec[waveVec.size() - 1].getNumVariables();
+    long numVariables = 0;
+    for (int i = 0; i < waveVec.size(); i++) numVariables += waveVec[i].getNumVariables();
+    return numVariables;
   }
 
   string getfileName() const {

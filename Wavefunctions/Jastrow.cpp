@@ -128,6 +128,10 @@ void Jastrow::updateVariables(const Eigen::VectorBlock<VectorXd> &v)
 
 }
 
+void Jastrow::addNoise() {
+ SpinCorrelator += 0.01 * MatrixXd::Random(2*Determinant::norbs, 2*Determinant::norbs);
+}
+
 void Jastrow::printVariables() const
 {
   cout << "Jastrow"<< endl;
