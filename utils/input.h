@@ -64,6 +64,7 @@ private:
       & epsilon
       & screen
       & determinantFile
+      & detsInCAS
       & doHessian
       & hf
       & optimizeOrbs
@@ -130,6 +131,7 @@ public:
   std::string wavefunctionType;
   std::map<int, std::string> correlatorFiles;
   std::string determinantFile;
+  bool detsInCAS;
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    // Number of stochastic steps
