@@ -110,6 +110,7 @@ class Determinant {
   int Noccupied() const;
   int Nalpha() const;
   int Nbeta() const;
+  void flipAlphaBeta() ;
 
   
   double parityA(const int& a, const int& i) const;

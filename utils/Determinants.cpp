@@ -246,6 +246,14 @@ int Determinant::Nbeta() const {
   return nelec;
 }
 
+void Determinant::flipAlphaBeta() {
+  for (int i = 0; i < DetLen; i++) {
+    long temp = reprA[i];
+    reprA[i] = reprB[i];
+    reprB[i] = temp;
+  }
+}
+
 //Is the excitation between *this and d less than equal to 2.
 bool Determinant::connected(const Determinant& d) const {
   int ndiff = 0; long u;
