@@ -42,6 +42,7 @@ private:
   {
     ar & restart & deterministic
       & tol & correlatorFiles
+      & fullRestart
       & wavefunctionType
       & numResonants
       & maxIter
@@ -104,6 +105,7 @@ private:
 public:
 //General options
   bool restart;                          //option to restart calculation
+  bool fullRestart;                          //option to restart calculation
   bool deterministic;                    //Performs a deterministic calculation   
   int printLevel;                        // How much stuff to print
   bool expCorrelator;                    //exponential correlator parameters, to enforce positivity

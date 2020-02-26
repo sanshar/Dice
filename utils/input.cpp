@@ -132,6 +132,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     else if (method == "sr") schd.method = sr;
     else if (method == "lm") schd.method = linearmethod;
     schd.restart = input.get("optimizer.restart", false);
+    schd.fullRestart = input.get("optimizer.fullRestart", false);
     child = input.get_child_optional("sampling.maxIter"); //to ensure maxiter is not reassigned
     if (!child) schd.maxIter = input.get("optimizer.maxIter", 50);
     schd.avgIter = input.get("optimizer.avgIter", 0);

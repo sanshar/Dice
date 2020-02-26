@@ -33,7 +33,7 @@ using functor2 = boost::function<void (VectorXd&, VectorXd&, VectorXd&, DirectMe
 template<typename Wave, typename Walker>
 void runVMC(Wave& wave, Walker& walk) {
 
-  if (schd.restart) wave.readWave();
+  if (schd.restart || schd.fullRestart) wave.readWave();
   VectorXd vars; wave.getVariables(vars);
   getGradientWrapper<Wave, Walker> wrapper(wave, walk, schd.stochasticIter, schd.ctmc);
   functor1 getStochasticGradient = boost::bind(&getGradientWrapper<Wave, Walker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);

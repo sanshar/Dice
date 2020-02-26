@@ -101,10 +101,15 @@ class AMSGrad
    template<typename Function>
     void optimize(VectorXd &vars, Function& getGradient, bool restart)
     {
-        if (restart)
+        if (restart || schd.fullRestart)
         {
-            if (commrank == 0)
-                read(vars);
+            if (commrank == 0) {
+              read(vars);
+              if (schd.fullRestart) {
+                mom1 = VectorXd::Zero(vars.rows());
+                mom2 = VectorXd::Zero(vars.rows());
+              }
+            }
 #ifndef SERIAL
 	    boost::mpi::communicator world;
 	    boost::mpi::broadcast(world, *this, 0);
