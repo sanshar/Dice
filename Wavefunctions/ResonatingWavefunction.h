@@ -41,55 +41,71 @@ struct ResonatingWavefunction {
   // these are for convenience in passing to updateWalker, the information is already present in waveVec
   vector<Jastrow> corr;
   vector<Slater> ref;
+  bool singleJastrow;
 
   // default constructor
   ResonatingWavefunction() {
-    try {// if a ResonatingWavefunction is present, add a new CorrelatedWavefunction by reading hf.txt, (and possibly Jastrow.txt)
-      readWave();
-      if (waveVec.size() > schd.numResonants - 1) {
-        waveVec.resize(schd.numResonants - 1);
-        corr.resize(schd.numResonants - 1);
-        ref.resize(schd.numResonants - 1);
+    if (schd.singleJastrow) singleJastrow = true;
+    else singleJastrow = false;
+    if (schd.readTransOrbs) {
+      int norbs = Determinant::norbs;
+      for (int i = 0; i < schd.numResonants; i++) {
+        auto wave = CorrelatedWavefunction<Jastrow, Slater>();
+        string file = "hf" + to_string(i) + ".txt";
+        MatrixXcd Hforbs = MatrixXcd::Zero(2*norbs, 2*norbs);
+        readMat(Hforbs, file);
+        wave.ref.HforbsA = Hforbs;
+        wave.ref.HforbsB = Hforbs;
+        waveVec.push_back(wave);
+        corr.push_back(waveVec[i].corr);
+        ref.push_back(waveVec[i].ref);
       }
-      waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
-      //VectorXd v = VectorXd::Zero(waveVec[waveVec.size() - 2].getNumVariables());
-      //waveVec[waveVec.size() - 2].getVariables(v);
-      //waveVec[waveVec.size() - 1].updateVariables(v);
-      //v.resize(0);
-      //waveVec[waveVec.size() - 1].corr = waveVec[waveVec.size() - 2].corr;
-      //waveVec[waveVec.size() - 1].corr.addNoise();
-      corr.push_back(waveVec[waveVec.size() - 1].corr);
-      ref.push_back(waveVec[waveVec.size() - 1].ref);
-      if (!schd.restart) {
-        assert(waveVec.size() == schd.numResonants);
-        if (commrank == 0) {
-          cout << "Numer of resonants: " << waveVec.size() << endl;
-        }
+      if (commrank == 0) {
+        cout << "Numer of resonants: " << waveVec.size() << endl;
       }
     }
-    catch (const boost::archive::archive_exception &e) {
-      try {// if a CorrelatedWavefunction is present, add it, and add another by reading hf.txt, (and possibly Jastrow.txt)
-        CorrelatedWavefunction<Jastrow, Slater> wave0;
-        wave0.readWave();
-        waveVec.push_back(wave0);
+    else {
+      try {// if a ResonatingWavefunction is present, add a new CorrelatedWavefunction by reading hf.txt, (and possibly Jastrow.txt)
+        readWave();
+        if (waveVec.size() > schd.numResonants - 1) {
+          waveVec.resize(schd.numResonants - 1);
+          corr.resize(schd.numResonants - 1);
+          ref.resize(schd.numResonants - 1);
+        }
         waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
-        VectorXd v = VectorXd::Zero(waveVec[0].getNumVariables());
-        waveVec[0].getVariables(v);
-        waveVec[1].updateVariables(v);
-        v.resize(0);
-        corr.push_back(waveVec[0].corr);
-        ref.push_back(waveVec[0].ref);
-        corr.push_back(waveVec[1].corr);
-        ref.push_back(waveVec[1].ref);
-        assert(waveVec.size() == 2);
-        if (commrank == 0) cout << "Number of resonants: 2\n";
+        corr.push_back(waveVec[waveVec.size() - 1].corr);
+        ref.push_back(waveVec[waveVec.size() - 1].ref);
+        if (!schd.restart) {
+          assert(waveVec.size() == schd.numResonants);
+          if (commrank == 0) {
+            cout << "Numer of resonants: " << waveVec.size() << endl;
+          }
+        }
       }
-      catch (const boost::archive::archive_exception &e) {// if no wave function files are present, read a single CorrelatedWavefunction
-        waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
-        corr.push_back(waveVec[0].corr);
-        ref.push_back(waveVec[0].ref);
-        assert(waveVec.size() == 1);
-        if (commrank == 0) cout << "Number of resonants: 1\n";
+      catch (const boost::archive::archive_exception &e) {
+        try {// if a CorrelatedWavefunction is present, add it, and add another by reading hf.txt, (and possibly Jastrow.txt)
+          CorrelatedWavefunction<Jastrow, Slater> wave0;
+          wave0.readWave();
+          waveVec.push_back(wave0);
+          waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
+          VectorXd v = VectorXd::Zero(waveVec[0].getNumVariables());
+          waveVec[0].getVariables(v);
+          waveVec[1].updateVariables(v);
+          v.resize(0);
+          corr.push_back(waveVec[0].corr);
+          ref.push_back(waveVec[0].ref);
+          corr.push_back(waveVec[1].corr);
+          ref.push_back(waveVec[1].ref);
+          assert(waveVec.size() == 2);
+          if (commrank == 0) cout << "Number of resonants: 2\n";
+        }
+        catch (const boost::archive::archive_exception &e) {// if no wave function files are present, read a single CorrelatedWavefunction
+          waveVec.push_back(CorrelatedWavefunction<Jastrow, Slater>());
+          corr.push_back(waveVec[0].corr);
+          ref.push_back(waveVec[0].ref);
+          assert(waveVec.size() == 1);
+          if (commrank == 0) cout << "Number of resonants: 1\n";
+        }
       }
     }
   };
@@ -113,8 +129,18 @@ struct ResonatingWavefunction {
   double Overlap(const ResonatingWalker &walk) const 
   {
     double overlap = 0.;
-    for (int i = 0; i < waveVec.size(); i++) {
-      overlap += waveVec[i].Overlap(walk.walkerVec[i]);
+    if (singleJastrow) {
+      double jastrowOverlap = corr[0].Overlap(walk.walkerVec[0].d);
+      double detOverlap = 0.;
+      for (int i = 0; i < waveVec.size(); i++) {
+        detOverlap += walk.walkerVec[i].getDetOverlap(ref[i]);
+      }
+      overlap = jastrowOverlap * detOverlap;
+    }
+    else {
+      for (int i = 0; i < waveVec.size(); i++) {
+        overlap += waveVec[i].Overlap(walk.walkerVec[i]);
+      }
     }
     return overlap;
   }
@@ -124,14 +150,26 @@ struct ResonatingWavefunction {
   {
     overlaps.resize(waveVec.size(), 0.);
     double totalOverlap = 0.;
-    for (int i = 0; i < waveVec.size(); i++) {
-      overlaps[i] = waveVec[i].Overlap(walk.walkerVec[i]);
-      totalOverlap += overlaps[i];
+    if (singleJastrow) {
+      double jastrowOverlap = corr[0].Overlap(walk.walkerVec[0].d);
+      double detOverlap = 0.;
+      for (int i = 0; i < waveVec.size(); i++) {
+        overlaps[i] = walk.walkerVec[i].getDetOverlap(ref[i]);
+        detOverlap += overlaps[i];
+      }
+      totalOverlap = jastrowOverlap * detOverlap;
+    }
+    else {
+      for (int i = 0; i < waveVec.size(); i++) {
+        overlaps[i] = waveVec[i].Overlap(walk.walkerVec[i]);
+        totalOverlap += overlaps[i];
+      }
     }
     return totalOverlap;
   }
 
   // used in rdm calculations
+  // needs to be adapted for singleJastrow
   double getOverlapFactor(int i, int a, const ResonatingWalker& walk, bool doparity) const  
   {
     vector<double> overlaps;
@@ -144,6 +182,7 @@ struct ResonatingWavefunction {
   }
 
   // used in rdm calculations
+  // needs to be adapted for singleJastrow
   double getOverlapFactor(int I, int J, int A, int B, const ResonatingWalker& walk, bool doparity) const  
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
@@ -159,10 +198,23 @@ struct ResonatingWavefunction {
   double getOverlapFactor(int i, int a, const ResonatingWalker& walk, vector<double>& overlaps, double& totalOverlap, bool doparity) const  
   {
     double numerator = 0.;
-    for (int n = 0; n < waveVec.size(); n++) {
-      numerator += waveVec[n].getOverlapFactor(i, a, walk.walkerVec[n], doparity) * overlaps[n];
+    if (singleJastrow) {
+      Determinant dcopy = walk.walkerVec[0].d;
+      dcopy.setocc(i, false);
+      dcopy.setocc(a, true);
+      double jastrowRatio = walk.walkerVec[0].corrHelper.OverlapRatio(i, a, corr[0], dcopy, walk.walkerVec[0].d);
+      
+      for (int n = 0; n < waveVec.size(); n++) {
+        numerator += walk.walkerVec[n].getDetFactor(i, a, ref[n]) * overlaps[n];
+      }
+      return jastrowRatio * numerator / walk.detOverlap;
     }
-    return numerator / totalOverlap;
+    else {
+      for (int n = 0; n < waveVec.size(); n++) {
+        numerator += waveVec[n].getOverlapFactor(i, a, walk.walkerVec[n], doparity) * overlaps[n];
+      }
+      return numerator / totalOverlap;
+    }
   }
 
   // used in HamAndOvlp below
@@ -170,10 +222,25 @@ struct ResonatingWavefunction {
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, overlaps, totalOverlap, doparity);
     double numerator = 0.;
-    for (int n = 0; n < waveVec.size(); n++) {
-      numerator += waveVec[n].getOverlapFactor(I, J, A, B, walk.walkerVec[n], doparity) * overlaps[n];
+    if (singleJastrow) {
+      Determinant dcopy = walk.walkerVec[0].d;
+      dcopy.setocc(I, false);
+      dcopy.setocc(J, false);
+      dcopy.setocc(A, true);
+      dcopy.setocc(B, true);
+      double jastrowRatio = walk.walkerVec[0].corrHelper.OverlapRatio(I, J, A, B, corr[0], dcopy, walk.walkerVec[0].d);
+      
+      for (int n = 0; n < waveVec.size(); n++) {
+        numerator += walk.walkerVec[n].getDetFactor(I, J, A, B, ref[n]) * overlaps[n];
+      }
+      return jastrowRatio * numerator / walk.detOverlap;
     }
-    return numerator / totalOverlap;
+    else {
+      for (int n = 0; n < waveVec.size(); n++) {
+        numerator += waveVec[n].getOverlapFactor(I, J, A, B, walk.walkerVec[n], doparity) * overlaps[n];
+      }
+      return numerator / totalOverlap;
+    }
   }
   
   // gradient overlap ratio, used during sampling
@@ -184,13 +251,30 @@ struct ResonatingWavefunction {
   {
     vector<double> overlaps;
     double totalOverlap = Overlap(walk, overlaps);
-    size_t index = 0;
-    for (int i = 0; i < waveVec.size(); i++) {
-      size_t numVars_i = waveVec[i].getNumVariables();
-      VectorXd grad_i = VectorXd::Zero(numVars_i);
-      waveVec[i].OverlapWithGradient(walk.walkerVec[i], factor, grad_i);
-      grad.segment(index, numVars_i) = grad_i * overlaps[i] / totalOverlap;
+    if (singleJastrow) {
+      size_t index = 0;
+      size_t numVars_i = waveVec[0].getNumVariables();
+      VectorXd grad_0 = VectorXd::Zero(numVars_i);
+      waveVec[0].OverlapWithGradient(walk.walkerVec[0], factor, grad_0);
+      grad.segment(index, numVars_i) = grad_0 * overlaps[0] / walk.detOverlap;
       index += numVars_i;
+      for (int i = 1; i < waveVec.size(); i++) {
+        numVars_i = ref[i].getNumVariables();
+        VectorBlock<VectorXd> grad_i = grad.segment(index, numVars_i);
+        walk.walkerVec[i].OverlapWithGradient(ref[i], grad_i);
+        grad.segment(index, numVars_i) *= overlaps[i] / totalOverlap;
+        index += numVars_i;
+      }
+    }
+    else {
+      size_t index = 0;
+      for (int i = 0; i < waveVec.size(); i++) {
+        size_t numVars_i = waveVec[i].getNumVariables();
+        VectorXd grad_i = VectorXd::Zero(numVars_i);
+        waveVec[i].OverlapWithGradient(walk.walkerVec[i], factor, grad_i);
+        grad.segment(index, numVars_i) = grad_i * overlaps[i] / totalOverlap;
+        index += numVars_i;
+      }
     }
   }
 
@@ -209,13 +293,31 @@ struct ResonatingWavefunction {
     size_t index = 0;
     ref.resize(0);
     corr.resize(0);
-    for (int i = 0; i < waveVec.size(); i++) {
-      size_t numVars_i = waveVec[i].getNumVariables();
+    if (singleJastrow) {
+      size_t numVars_i = waveVec[0].getNumVariables();
       VectorXd v_i = v.segment(index, numVars_i);
-      waveVec[i].updateVariables(v_i);
-      ref.push_back(waveVec[i].ref);
-      corr.push_back(waveVec[i].corr);
+      waveVec[0].updateVariables(v_i);
+      ref.push_back(waveVec[0].ref);
+      corr.push_back(waveVec[0].corr);
       index += numVars_i;
+      for (int i = 1; i < waveVec.size(); i++) {
+        numVars_i = ref[i].getNumVariables();
+        VectorBlock<VectorXd> v_i = v.segment(index, numVars_i);
+        waveVec[i].ref.updateVariables(v_i);
+        ref.push_back(waveVec[i].ref);
+        corr.push_back(waveVec[i].corr);
+        index += numVars_i;
+      }
+    }
+    else {
+      for (int i = 0; i < waveVec.size(); i++) {
+        size_t numVars_i = waveVec[i].getNumVariables();
+        VectorXd v_i = v.segment(index, numVars_i);
+        waveVec[i].updateVariables(v_i);
+        ref.push_back(waveVec[i].ref);
+        corr.push_back(waveVec[i].corr);
+        index += numVars_i;
+      }
     }
   }
 
@@ -223,19 +325,41 @@ struct ResonatingWavefunction {
   {
     v = VectorXd::Zero(getNumVariables());
     size_t index = 0;
-    for (int i = 0; i < waveVec.size(); i++) {
-      size_t numVars_i = waveVec[i].getNumVariables();
+    if (singleJastrow) {
+      size_t numVars_i = waveVec[0].getNumVariables();
       VectorXd v_i = VectorXd::Zero(numVars_i);
-      waveVec[i].getVariables(v_i);
+      waveVec[0].getVariables(v_i);
       v.segment(index, numVars_i) = v_i;
       index += numVars_i;
+      for (int i = 1; i < waveVec.size(); i++) {
+        numVars_i = ref[i].getNumVariables();
+        VectorBlock<VectorXd> v_i = v.segment(index, numVars_i);
+        waveVec[i].ref.getVariables(v_i);
+        //v.segment(index, numVars_i) = v_i;
+        index += numVars_i;
+      }
+    }
+    else {
+      for (int i = 0; i < waveVec.size(); i++) {
+        size_t numVars_i = waveVec[i].getNumVariables();
+        VectorXd v_i = VectorXd::Zero(numVars_i);
+        waveVec[i].getVariables(v_i);
+        v.segment(index, numVars_i) = v_i;
+        index += numVars_i;
+      }
     }
   }
 
   long getNumVariables() const
   {
     long numVariables = 0;
-    for (int i = 0; i < waveVec.size(); i++) numVariables += waveVec[i].getNumVariables();
+    if (singleJastrow) {
+      numVariables += waveVec[0].getNumVariables();
+      for (int i = 1; i < waveVec.size(); i++) numVariables += waveVec[i].ref.getNumVariables();
+    }
+    else {
+      for (int i = 0; i < waveVec.size(); i++) numVariables += waveVec[i].getNumVariables();
+    }
     return numVariables;
   }
 

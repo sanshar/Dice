@@ -58,31 +58,34 @@ int Slater::getNumOfDets() const {return determinants.size();}
 
 void Slater::initHforbs() 
 {
-  int norbs = Determinant::norbs;
-  int size; //dimension of the mo coeff matrix
-  //initialize hftype and hforbs
-  if (schd.hf == "uhf") {
-    hftype = HartreeFock::UnRestricted;
-    MatrixXcd Hforbs = MatrixXcd::Zero(norbs, 2*norbs);
-    readMat(Hforbs, "hf.txt");
-    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd::Random(norbs, 2*norbs);
-    HforbsA = Hforbs.block(0, 0, norbs, norbs);
-    HforbsB = Hforbs.block(0, norbs, norbs, norbs);
-  }
-  else {
-    if (schd.hf == "rhf") {
-      hftype = HartreeFock::Restricted;
-      size = norbs;
+  ifstream dump("hf.txt");
+  if (dump) {
+    int norbs = Determinant::norbs;
+    int size; //dimension of the mo coeff matrix
+    //initialize hftype and hforbs
+    if (schd.hf == "uhf") {
+      hftype = HartreeFock::UnRestricted;
+      MatrixXcd Hforbs = MatrixXcd::Zero(norbs, 2*norbs);
+      readMat(Hforbs, "hf.txt");
+      if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.01 * MatrixXd::Random(norbs, 2*norbs);
+      HforbsA = Hforbs.block(0, 0, norbs, norbs);
+      HforbsB = Hforbs.block(0, norbs, norbs, norbs);
     }
-    else if (schd.hf == "ghf") {
-      hftype = HartreeFock::Generalized;
-      size = 2*norbs;
+    else {
+      if (schd.hf == "rhf") {
+        hftype = HartreeFock::Restricted;
+        size = norbs;
+      }
+      else if (schd.hf == "ghf") {
+        hftype = HartreeFock::Generalized;
+        size = 2*norbs;
+      }
+      MatrixXcd Hforbs = MatrixXcd::Zero(size, size);
+      readMat(Hforbs, "hf.txt");
+      if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.1 * MatrixXd::Random(size, size) / norbs;
+      HforbsA = Hforbs;
+      HforbsB = Hforbs;
     }
-    MatrixXcd Hforbs = MatrixXcd::Zero(size, size);
-    readMat(Hforbs, "hf.txt");
-    if (schd.ifComplex && Hforbs.imag().isZero(0)) Hforbs.imag() = 0.1 * MatrixXd::Random(size, size) / norbs;
-    HforbsA = Hforbs;
-    HforbsB = Hforbs;
   }
 }
 

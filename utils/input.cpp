@@ -79,6 +79,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     //resonating wave function
     schd.numResonants = input.get("wavefunction.numResonants", 1);
+    schd.singleJastrow = input.get("wavefunction.singleJastrow", true);
+    schd.readTransOrbs = input.get("wavefunction.readTransOrbs", true);
     
     // permuted wave function
     schd.numPermutations = input.get("wavefunction.numPermutations", 1);

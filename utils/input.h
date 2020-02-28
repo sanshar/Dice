@@ -45,6 +45,8 @@ private:
       & fullRestart
       & wavefunctionType
       & numResonants
+      & singleJastrow
+      & readTransOrbs
       & numPermutations
       & maxIter
       & avgIter
@@ -120,6 +122,8 @@ public:
   std::map<int, std::string> correlatorFiles;
   std::string determinantFile;
   int numResonants;
+  bool singleJastrow;
+  bool readTransOrbs;
   int numPermutations;
 
 //Used in the stochastic calculation of E and PT evaluation

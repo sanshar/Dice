@@ -33,6 +33,7 @@ class ResonatingWalker
 
 public:
   vector<Walker<Jastrow, Slater>> walkerVec;
+  double detOverlap; // for singleJastrow
 
   // constructors
   // default
@@ -42,16 +43,20 @@ public:
   // for deterministic
   ResonatingWalker(vector<Jastrow> &corr, const vector<Slater> &ref, Determinant &pd) 
   {
+    detOverlap = 0.;
     for (int i = 0; i < corr.size(); i++) {
       walkerVec.push_back(Walker<Jastrow, Slater>(corr[i], ref[i], pd));
+      detOverlap += walkerVec[i].getDetOverlap(ref[i]);
     }
   };
  
 
   ResonatingWalker(vector<Jastrow> &corr, const vector<Slater> &ref) 
   {
+    detOverlap = 0.;
     for (int i = 0; i < corr.size(); i++) {
       walkerVec.push_back(Walker<Jastrow, Slater>(corr[i], ref[i]));
+      detOverlap += walkerVec[i].getDetOverlap(ref[i]);
     }
   };
   
@@ -60,8 +65,10 @@ public:
 
   // used during sampling
   void updateWalker(const vector<Slater> &ref, vector<Jastrow> &corr, int ex1, int ex2) {
+    detOverlap = 0.;
     for (int i = 0; i < walkerVec.size(); i++) {
       walkerVec[i].updateWalker(ref[i], corr[i], ex1, ex2);
+      detOverlap += walkerVec[i].getDetOverlap(ref[i]);
     }
   }
  
