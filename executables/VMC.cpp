@@ -48,6 +48,8 @@
 #include "CorrelatedWavefunction.h"
 #include "ResonatingWavefunction.h"
 #include "TRWavefunction.h"
+#include "PermutedWavefunction.h"
+#include "PermutedTRWavefunction.h"
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
 #include "Lanczos.h"
@@ -122,6 +124,17 @@ int main(int argc, char *argv[])
     TRWavefunction wave; TRWalker walk;
     runVMC(wave, walk);
   }
+  
+  if (schd.wavefunctionType == "permutedwavefunction") {
+    PermutedWavefunction wave; PermutedWalker walk;
+    runVMC(wave, walk);
+  }
+  
+  if (schd.wavefunctionType == "permutedtrwavefunction") {
+    PermutedTRWavefunction wave; PermutedTRWalker walk;
+    runVMC(wave, walk);
+  }
+  
   
   else if (schd.wavefunctionType == "jastrowagp") {
     CorrelatedWavefunction<Jastrow, AGP> wave; Walker<Jastrow, AGP> walk;

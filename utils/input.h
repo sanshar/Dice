@@ -45,6 +45,7 @@ private:
       & fullRestart
       & wavefunctionType
       & numResonants
+      & numPermutations
       & maxIter
       & avgIter
       & printLevel
@@ -119,6 +120,7 @@ public:
   std::map<int, std::string> correlatorFiles;
   std::string determinantFile;
   int numResonants;
+  int numPermutations;
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    //Number of stochastic steps

@@ -16,137 +16,167 @@
   You should have received a copy of the GNU General Public License along with this program.
   If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef TRWavefunction_HEADER_H
-#define TRWavefunction_HEADER_H
+#ifndef PermutedWavefunction_HEADER_H
+#define PermutedWavefunction_HEADER_H
 #include "CorrelatedWavefunction.h"
-#include "TRWalker.h"
+#include "PermutedWalker.h"
 
 /**
- (1 + TR) | JS >
-*/
-struct TRWavefunction {
+ */
+struct PermutedWavefunction {
  private:
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
-    ar & wave;
+    ar & wave
+      & permutations
+      & numP
+      & characters;
   }
 
  public:
   
   CorrelatedWavefunction<Jastrow, Slater> wave; 
+  MatrixXd permutations; // this contains all permutations except identity
+  int numP; // number of permutations not including identity
+  VectorXd characters; 
+
   // default constructor
-  TRWavefunction() {
+  PermutedWavefunction() {
    wave = CorrelatedWavefunction<Jastrow, Slater>();
+   numP = schd.numPermutations;
+   characters = VectorXd::Zero(numP);
+   int norbs = Determinant::norbs;
+   permutations = MatrixXd::Zero(numP, norbs);
+   ifstream dump("permutations.txt");
+   if (dump) {
+    for (int i = 0; i < numP; i++) {
+      dump >> characters(i);
+      for (int j = 0; j < norbs; j++) dump >> permutations(i, j);
+    }
+   }
+   else {
+     if (commrank == 0) cout << "permutations.txt not found!\n";
+     exit(0);
+   }
   };
   
   Slater& getRef() { return wave.ref; }
   Jastrow& getCorr() { return wave.corr; }
 
   // used at the start of each sampling run
-  void initWalker(TRWalker &walk)  
+  void initWalker(PermutedWalker &walk)  
   {
-    walk = TRWalker(wave.corr, wave.ref);
+    walk = PermutedWalker(wave.corr, wave.ref, permutations);
   }
   
   // used in deterministic calculations
-  void initWalker(TRWalker &walk, Determinant &d) 
+  void initWalker(PermutedWalker &walk, Determinant &d) 
   {
-    walk = TRWalker(wave.corr, wave.ref, d);
+    walk = PermutedWalker(wave.corr, wave.ref, d, permutations);
   }
   
   // used in rdm calculations
-  double Overlap(const TRWalker &walk) const 
+  double Overlap(const PermutedWalker &walk) const 
   {
-    return wave.Overlap(walk.walkerPair[0]) + wave.Overlap(walk.walkerPair[0]);
+    double overlap = wave.Overlap(walk.walkerVec[0]);
+    for (int i = 0; i < numP; i++) {
+      overlap += characters(i) * wave.Overlap(walk.walkerVec[i+1]);
+    }
+    return overlap;
   }
  
   // used in HamAndOvlp below
-  double Overlap(const TRWalker &walk, array<double, 2> &overlaps) const 
+  double Overlap(const PermutedWalker &walk, vector<double> &overlaps) const 
   {
-    overlaps[0] = wave.Overlap(walk.walkerPair[0]);
-    overlaps[1] = wave.Overlap(walk.walkerPair[1]);
-    return overlaps[0] + overlaps[1];
+    overlaps.resize(numP+1, 0.);
+    double totalOverlap = 0.;
+    overlaps[0] = wave.Overlap(walk.walkerVec[0]);
+    totalOverlap += overlaps[0];
+    for (int i = 0; i < numP; i++) {
+      overlaps[i+1] = characters(i) * wave.Overlap(walk.walkerVec[i+1]);
+      totalOverlap += overlaps[i+1];
+    }
+    return totalOverlap;
   }
 
   // used in rdm calculations
-  double getOverlapFactor(int i, int a, const TRWalker& walk, bool doparity) const  
+  double getOverlapFactor(int i, int a, const PermutedWalker& walk, bool doparity) const  
   {
-    array<double, 2> overlaps;
+    vector<double> overlaps;
     double totalOverlap = Overlap(walk, overlaps);
-    double numerator = wave.getOverlapFactor(i, a, walk.walkerPair[0], doparity) * overlaps[0];
+    double numerator = wave.getOverlapFactor(i, a, walk.walkerVec[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
-    if (i%2 == 0) i += 1;
-    else i -= 1;
-    if (a%2 == 0) a += 1;
-    else a -= 1;
-    numerator += wave.getOverlapFactor(i, a, walk.walkerPair[1], doparity) * overlaps[1];
+    for (int n = 0; n < numP; n++) {
+      int ip = 2 * permutations(n, i/2) + i%2;
+      int ap = 2 * permutations(n, a/2) + a%2;
+      numerator += wave.getOverlapFactor(ip, ap, walk.walkerVec[n+1], doparity) * overlaps[n+1];
+    }
     return numerator / totalOverlap;
   }
 
   // used in rdm calculations
-  double getOverlapFactor(int I, int J, int A, int B, const TRWalker& walk, bool doparity) const  
+  double getOverlapFactor(int I, int J, int A, int B, const PermutedWalker& walk, bool doparity) const  
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
-    array<double, 2> overlaps;
+    vector<double> overlaps;
     double totalOverlap = Overlap(walk, overlaps);
-    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerPair[0], doparity) * overlaps[0];
+    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerVec[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
-    if (I%2 == 0) I += 1;
-    else I -= 1;
-    if (A%2 == 0) A += 1;
-    else A -= 1;
-    if (J%2 == 0) J += 1;
-    else J -= 1;
-    if (B%2 == 0) B += 1;
-    else B -= 1;
-    numerator += wave.getOverlapFactor(I, J, A, B, walk.walkerPair[1], doparity) * overlaps[1];
+    for (int n = 0; n < numP; n++) {
+      int ip = 2 * permutations(n, I/2) + I%2;
+      int ap = 2 * permutations(n, A/2) + A%2;
+      int jp = 2 * permutations(n, J/2) + J%2;
+      int bp = 2 * permutations(n, B/2) + B%2;
+      numerator += wave.getOverlapFactor(ip, jp, ap, bp, walk.walkerVec[n+1], doparity) * overlaps[n+1];
+    }
     return numerator / totalOverlap;
   }
   
-  double getOverlapFactor(int i, int a, const TRWalker& walk, array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
+  double getOverlapFactor(int i, int a, const PermutedWalker& walk, vector<double>& overlaps, double& totalOverlap, bool doparity) const  
   {
-    double numerator = wave.getOverlapFactor(i, a, walk.walkerPair[0], doparity) * overlaps[0];
+    double numerator = wave.getOverlapFactor(i, a, walk.walkerVec[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
-    if (i%2 == 0) i += 1;
-    else i -= 1;
-    if (a%2 == 0) a += 1;
-    else a -= 1;
-    numerator += wave.getOverlapFactor(i, a, walk.walkerPair[1], doparity) * overlaps[1];
+    for (int n = 0; n < numP; n++) {
+      int ip = 2 * permutations(n, i/2) + i%2;
+      int ap = 2 * permutations(n, a/2) + a%2;
+      numerator += wave.getOverlapFactor(ip, ap, walk.walkerVec[n+1], doparity) * overlaps[n+1];
+    }
     return numerator / totalOverlap;
   }
 
   // used in HamAndOvlp below
-  double getOverlapFactor(int I, int J, int A, int B, const TRWalker& walk, array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
+  double getOverlapFactor(int I, int J, int A, int B, const PermutedWalker& walk, vector<double>& overlaps, double& totalOverlap, bool doparity) const  
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, overlaps, totalOverlap, doparity);
-    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerPair[0], doparity) * overlaps[0];
+    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerVec[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
-    if (I%2 == 0) I += 1;
-    else I -= 1;
-    if (A%2 == 0) A += 1;
-    else A -= 1;
-    if (J%2 == 0) J += 1;
-    else J -= 1;
-    if (B%2 == 0) B += 1;
-    else B -= 1;
-    numerator += wave.getOverlapFactor(I, J, A, B, walk.walkerPair[1], doparity) * overlaps[1];
+    for (int n = 0; n < numP; n++) {
+      int ip = 2 * permutations(n, I/2) + I%2;
+      int ap = 2 * permutations(n, A/2) + A%2;
+      int jp = 2 * permutations(n, J/2) + J%2;
+      int bp = 2 * permutations(n, B/2) + B%2;
+      numerator += wave.getOverlapFactor(ip, jp, ap, bp, walk.walkerVec[n+1], doparity) * overlaps[n+1];
+    }
     return numerator / totalOverlap;
   }
   
   // gradient overlap ratio, used during sampling
   // just calls OverlapWithGradient on the last wave function
-  void OverlapWithGradient(const TRWalker &walk,
+  void OverlapWithGradient(const PermutedWalker &walk,
                            double &factor,
                            Eigen::VectorXd &grad) const
   {
-    array<double, 2> overlaps;
+    vector<double> overlaps;
     double totalOverlap = Overlap(walk, overlaps);
-    size_t index = 0;
-    VectorXd grad_0 = 0. * grad, grad_1 = 0. * grad;
-    wave.OverlapWithGradient(walk.walkerPair[0], factor, grad_0);
-    wave.OverlapWithGradient(walk.walkerPair[1], factor, grad_1);
-    grad = (grad_0 * overlaps[0] + grad_1 * overlaps[1]) / totalOverlap;
+    VectorXd grad_i = 0. * grad;
+    wave.OverlapWithGradient(walk.walkerVec[0], factor, grad_i);
+    grad += (grad_i * overlaps[0]) / totalOverlap;
+    for (int i = 0; i < numP; i++) {
+      grad_i = 0. * grad;
+      wave.OverlapWithGradient(walk.walkerVec[i+1], factor, grad_i);
+      grad += (grad_i * overlaps[i+1]) / totalOverlap;
+    }
   }
 
   void printVariables() const
@@ -172,7 +202,7 @@ struct TRWavefunction {
   }
 
   string getfileName() const {
-    return "TRWavefunction";
+    return "PermutedWavefunction";
   }
   
   void writeWave() const
@@ -210,25 +240,25 @@ struct TRWavefunction {
 
   // calculates local energy and overlap
   // used directly during sampling
-  void HamAndOvlp(const TRWalker &walk,
+  void HamAndOvlp(const PermutedWalker &walk,
                   double &ovlp, double &ham, 
                   workingArray& work, bool fillExcitations=true) const
   {
     int norbs = Determinant::norbs;
 
-    array<double, 2> overlaps;
+    vector<double> overlaps;
     ovlp = Overlap(walk, overlaps);
     if (schd.debug) {
       cout << "overlaps\n";
       for (int i = 0; i <overlaps.size(); i++) cout << overlaps[i] << "  ";
       cout << endl;
     }
-    ham = walk.walkerPair[0].d.Energy(I1, I2, coreE); 
+    ham = walk.walkerVec[0].d.Energy(I1, I2, coreE); 
 
     work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.walkerPair[0].d, schd.epsilon, schd.screen,
+    generateAllScreenedSingleExcitation(walk.walkerVec[0].d, schd.epsilon, schd.screen,
                                         work, false);
-    generateAllScreenedDoubleExcitation(walk.walkerPair[0].d, schd.epsilon, schd.screen,
+    generateAllScreenedDoubleExcitation(walk.walkerVec[0].d, schd.epsilon, schd.screen,
                                         work, false);
   
     //loop over all the screened excitations

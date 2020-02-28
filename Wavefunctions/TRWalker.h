@@ -33,6 +33,7 @@ class TRWalker
 
 public:
   array<Walker<Jastrow, Slater>, 2> walkerPair;
+  Determinant d;
 
   // constructors
   // default
@@ -42,6 +43,7 @@ public:
   // for deterministic
   TRWalker(Jastrow &corr, const Slater &ref, Determinant &pd) 
   {
+    d = pd;
     walkerPair[0] = Walker<Jastrow, Slater>(corr, ref, pd);
     Determinant dcopy = pd;
     dcopy.flipAlphaBeta();
@@ -53,6 +55,7 @@ public:
   {
     walkerPair[0] = Walker<Jastrow, Slater>(corr, ref);
     Determinant dcopy = walkerPair[0].d;
+    d = walkerPair[0].d;
     dcopy.flipAlphaBeta();
     walkerPair[1] = Walker<Jastrow, Slater>(corr, ref, dcopy);
   };
@@ -63,6 +66,7 @@ public:
   // used during sampling
   void updateWalker(const Slater &ref, Jastrow &corr, int ex1, int ex2) {
     walkerPair[0].updateWalker(ref, corr, ex1, ex2);
+    d = walkerPair[0].d;
     int norbs = Determinant::norbs;
     // for the flipped determinant, flip the excitations
     if (ex1%2 == 0) ex1 += 2*norbs + 1;

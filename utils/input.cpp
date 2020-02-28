@@ -79,6 +79,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     //resonating wave function
     schd.numResonants = input.get("wavefunction.numResonants", 1);
+    
+    // permuted wave function
+    schd.numPermutations = input.get("wavefunction.numPermutations", 1);
 
     //ci and lanczos
     schd.nciAct = input.get("wavefunction.numAct", -1);
