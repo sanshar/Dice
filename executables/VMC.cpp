@@ -47,6 +47,7 @@
 #include "CIWavefunction.h"
 #include "CorrelatedWavefunction.h"
 #include "ResonatingWavefunction.h"
+#include "ResonatingTRWavefunction.h"
 #include "TRWavefunction.h"
 #include "PermutedWavefunction.h"
 #include "PermutedTRWavefunction.h"
@@ -117,6 +118,11 @@ int main(int argc, char *argv[])
   
   if (schd.wavefunctionType == "resonatingwavefunction") {
     ResonatingWavefunction wave; ResonatingWalker walk;
+    runVMC(wave, walk);
+  }
+  
+  if (schd.wavefunctionType == "resonatingtrwavefunction") {
+    ResonatingTRWavefunction wave; ResonatingTRWalker walk;
     runVMC(wave, walk);
   }
   

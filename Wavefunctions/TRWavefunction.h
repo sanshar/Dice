@@ -58,7 +58,7 @@ struct TRWavefunction {
   // used in rdm calculations
   double Overlap(const TRWalker &walk) const 
   {
-    return wave.Overlap(walk.walkerPair[0]) + wave.Overlap(walk.walkerPair[0]);
+    return wave.Overlap(walk.walkerPair[0]) + wave.Overlap(walk.walkerPair[1]);
   }
  
   // used in HamAndOvlp below
