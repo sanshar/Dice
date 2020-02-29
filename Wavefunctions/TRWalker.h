@@ -34,6 +34,8 @@ class TRWalker
 public:
   array<Walker<Jastrow, Slater>, 2> walkerPair;
   Determinant d;
+  array<double, 2> overlaps;
+  double totalOverlap;
 
   // constructors
   // default
@@ -48,6 +50,9 @@ public:
     Determinant dcopy = pd;
     dcopy.flipAlphaBeta();
     walkerPair[1] = Walker<Jastrow, Slater>(corr, ref, dcopy);
+    overlaps[0] = corr.Overlap(walkerPair[0].d) * walkerPair[0].getDetOverlap(ref); 
+    overlaps[1] = corr.Overlap(walkerPair[1].d) * walkerPair[1].getDetOverlap(ref);
+    totalOverlap = overlaps[0] + overlaps[1];
   };
  
 
@@ -58,6 +63,9 @@ public:
     d = walkerPair[0].d;
     dcopy.flipAlphaBeta();
     walkerPair[1] = Walker<Jastrow, Slater>(corr, ref, dcopy);
+    overlaps[0] = corr.Overlap(walkerPair[0].d) * walkerPair[0].getDetOverlap(ref); 
+    overlaps[1] = corr.Overlap(walkerPair[1].d) * walkerPair[1].getDetOverlap(ref);
+    totalOverlap = overlaps[0] + overlaps[1];
   };
   
   // this is used for storing bestDet
@@ -76,6 +84,9 @@ public:
       else ex2 -= (2*norbs + 1);
     }
     walkerPair[1].updateWalker(ref, corr, ex1, ex2);
+    overlaps[0] = corr.Overlap(walkerPair[0].d) * walkerPair[0].getDetOverlap(ref); 
+    overlaps[1] = corr.Overlap(walkerPair[1].d) * walkerPair[1].getDetOverlap(ref);
+    totalOverlap = overlaps[0] + overlaps[1];
   }
  
   //to be defined for metropolis

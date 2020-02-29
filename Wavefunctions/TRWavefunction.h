@@ -58,7 +58,7 @@ struct TRWavefunction {
   // used in rdm calculations
   double Overlap(const TRWalker &walk) const 
   {
-    return wave.Overlap(walk.walkerPair[0]) + wave.Overlap(walk.walkerPair[1]);
+    return walk.totalOverlap;
   }
  
   // used in HamAndOvlp below
@@ -72,25 +72,25 @@ struct TRWavefunction {
   // used in rdm calculations
   double getOverlapFactor(int i, int a, const TRWalker& walk, bool doparity) const  
   {
-    array<double, 2> overlaps;
-    double totalOverlap = Overlap(walk, overlaps);
-    double numerator = wave.getOverlapFactor(i, a, walk.walkerPair[0], doparity) * overlaps[0];
+    //array<double, 2> overlaps;
+    //double totalOverlap = Overlap(walk, overlaps);
+    double numerator = wave.getOverlapFactor(i, a, walk.walkerPair[0], doparity) * walk.overlaps[0];
     int norbs = Determinant::norbs;
     if (i%2 == 0) i += 1;
     else i -= 1;
     if (a%2 == 0) a += 1;
     else a -= 1;
-    numerator += wave.getOverlapFactor(i, a, walk.walkerPair[1], doparity) * overlaps[1];
-    return numerator / totalOverlap;
+    numerator += wave.getOverlapFactor(i, a, walk.walkerPair[1], doparity) * walk.overlaps[1];
+    return numerator / walk.totalOverlap;
   }
 
   // used in rdm calculations
   double getOverlapFactor(int I, int J, int A, int B, const TRWalker& walk, bool doparity) const  
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
-    array<double, 2> overlaps;
-    double totalOverlap = Overlap(walk, overlaps);
-    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerPair[0], doparity) * overlaps[0];
+    //array<double, 2> overlaps;
+    //double totalOverlap = Overlap(walk, overlaps);
+    double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerPair[0], doparity) * walk.overlaps[0];
     int norbs = Determinant::norbs;
     if (I%2 == 0) I += 1;
     else I -= 1;
@@ -100,8 +100,8 @@ struct TRWavefunction {
     else J -= 1;
     if (B%2 == 0) B += 1;
     else B -= 1;
-    numerator += wave.getOverlapFactor(I, J, A, B, walk.walkerPair[1], doparity) * overlaps[1];
-    return numerator / totalOverlap;
+    numerator += wave.getOverlapFactor(I, J, A, B, walk.walkerPair[1], doparity) * walk.overlaps[1];
+    return numerator / walk.totalOverlap;
   }
   
   double getOverlapFactor(int i, int a, const TRWalker& walk, array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
@@ -140,13 +140,13 @@ struct TRWavefunction {
                            double &factor,
                            Eigen::VectorXd &grad) const
   {
-    array<double, 2> overlaps;
-    double totalOverlap = Overlap(walk, overlaps);
+    //array<double, 2> overlaps;
+    //double totalOverlap = Overlap(walk, overlaps);
     size_t index = 0;
     VectorXd grad_0 = 0. * grad, grad_1 = 0. * grad;
     wave.OverlapWithGradient(walk.walkerPair[0], factor, grad_0);
     wave.OverlapWithGradient(walk.walkerPair[1], factor, grad_1);
-    grad = (grad_0 * overlaps[0] + grad_1 * overlaps[1]) / totalOverlap;
+    grad = (grad_0 * walk.overlaps[0] + grad_1 * walk.overlaps[1]) / walk.totalOverlap;
   }
 
   void printVariables() const
@@ -216,11 +216,12 @@ struct TRWavefunction {
   {
     int norbs = Determinant::norbs;
 
-    array<double, 2> overlaps;
-    ovlp = Overlap(walk, overlaps);
+    //array<double, 2> overlaps;
+    //ovlp = Overlap(walk, overlaps);
+    ovlp = Overlap(walk);
     if (schd.debug) {
       cout << "overlaps\n";
-      for (int i = 0; i <overlaps.size(); i++) cout << overlaps[i] << "  ";
+      for (int i = 0; i < walk.overlaps.size(); i++) cout << walk.overlaps[i] << "  ";
       cout << endl;
     }
     ham = walk.walkerPair[0].d.Energy(I1, I2, coreE); 
@@ -234,7 +235,7 @@ struct TRWavefunction {
     //loop over all the screened excitations
     if (schd.debug) {
       cout << "eloc excitations" << endl;
-      cout << "phi0  d.energy" << ham << endl;
+      cout << "phi0  d.energy " << ham << endl;
     }
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
@@ -243,7 +244,8 @@ struct TRWavefunction {
       int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
       int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
 
-      double ovlpRatio = getOverlapFactor(I, J, A, B, walk, overlaps, ovlp, false);
+      //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, overlaps, ovlp, false);
+      double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham += tia * ovlpRatio;
