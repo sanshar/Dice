@@ -665,7 +665,7 @@ class SCPT
     // Generate all screened excitations
     work.setCounterToZero();
 
-    int nExcitationsCASCI = 0;
+    size_t nExcitationsCASCI = 0;
 
     int nSpinCore = 2*schd.nciCore;
     int firstSpinVirt = 2*(schd.nciCore + schd.nciAct);
@@ -673,7 +673,7 @@ class SCPT
     vector<int> closed;
     vector<int> open;
     walk.d.getOpenClosed(open, closed);
-
+    
     // single excitations
     for (int i = 0; i < closed.size(); i++) {
       bool iCore = closed[i] < nSpinCore;
@@ -690,7 +690,6 @@ class SCPT
           int ex2 = 0.0;
           double tia = walk.d.Hij_1ExciteScreened(open[a], closed[i], I2hb,
                                                         schd.screen, false);
-
           AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
                             work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
         }
@@ -753,7 +752,7 @@ class SCPT
   void AddSCNormsContrib(Walker &walk, double &ovlp, double &ham, VectorXd &normSamples,
                          vector<Determinant>& initDets, vector<double>& largestCoeffs,
                          workingArray& work, bool calcExtraNorms, int& ex1, int& ex2,
-                         double& tia, int& nExcitationsCASCI)
+                         double& tia, size_t& nExcitationsCASCI)
   {
     // This is called for each excitations from a determinant in the CASCI
     // space (walk.d)
@@ -773,14 +772,12 @@ class SCPT
     double parity = 1.0;
     Determinant dcopy = walkCopy.d;
     walkCopy.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2, false);
-
     parity *= dcopy.parity(A/2, I/2, I%2);
     if (ex2 != 0) {
       dcopy.setocc(I, false);
       dcopy.setocc(A, true);
       parity *= dcopy.parity(B/2, J/2, J%2);
     }
-
     //work.ovlpRatio[i] = 0.0;
     if (walkCopy.excitation_class == 0) {
       // For the CTMC algorithm (which is performed within the CASCI space, when
@@ -966,6 +963,7 @@ class SCPT
 
     double energy_ccvv = 0.0;
     if (commrank == 0) {
+      cout << "integrals and wave function preparation finished in " << getTime() - startofCalc << " s\n";
       if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
         if (classesUsedDeterm[8])
         {
@@ -1096,10 +1094,12 @@ class SCPT
     if (commrank == 0)
     {
       cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
+      cout << endl << "Total time for norms calculation:  " << getTime() - startofCalc << endl;
       cout << "Now sampling the NEVPT2 energy..." << endl;
     }
 
     // Next we calculate the SC state energies and the final PT2 energy estimate
+    double timeEnergyInit = getTime();
     double ene2;
     if (schd.efficientNEVPT)
       ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
@@ -1107,7 +1107,8 @@ class SCPT
       ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
     if (commrank == 0) {
-      cout << "Sampling complete." << endl << endl;
+      //cout << "Sampling complete." << endl << endl;
+      if (commrank == 0) cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
       cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
       cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
@@ -1215,16 +1216,20 @@ class SCPT
     MPI_Gather(&(energyTot), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     if (commrank == 0) {
+      double stdDev = 0.;
       FILE * mpi_out;
       mpi_out = fopen("pt2_energies_avg.dat", "w");
       fprintf(mpi_out, "# 1. proc_label     2. energy\n");
       for (int i=0; i<commsize; i++) {
         fprintf(mpi_out, "%15d    %.12e\n", i, energyTotAll[i]);
         energyFinal += energyTotAll[i];
+        stdDev += energyTotAll[i] * energyTotAll[i];
       }
       fclose(mpi_out);
-
       energyFinal /= commsize;
+      stdDev /= commsize;
+      stdDev -= energyFinal * energyFinal; 
+      cout << "Energy error  " << sqrt(stdDev / commsize) << endl;
     }
     MPI_Bcast(&energyFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
@@ -1608,9 +1613,15 @@ class SCPT
     int nSpinOrbs = 2*norbs;
     int nSpinOrbsCore = 2*schd.nciCore;
     int nSpinOrbsAct = 2*schd.nciAct;
-
+    
+    VectorXd normsLocal = 0. * norms;
+    size_t numTerms = (nSpinOrbs - 2*first_virtual) * (nSpinOrbs - 2*first_virtual + 1) / 2;
+    
     for (int r = 2*first_virtual+1; r < nSpinOrbs; r++) {
       for (int s = 2*first_virtual; s < r; s++) {
+        int R = r - 2*first_virtual - 1;
+        int S = s - 2*first_virtual;
+        if ((R*(R+1)/2+S) % commsize != commrank) continue;
         double norm_rs = 0.0;
         for (int a = nSpinOrbsCore+1; a < 2*first_virtual; a++) {
           for (int b = nSpinOrbsCore; b < a; b++) {
@@ -1624,12 +1635,23 @@ class SCPT
             }
           }
         }
+        size_t ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+        //double norm_old = norms(ind);
+        normsLocal(ind) = norm_rs;
+        //cout << r << "   " << s << "   " << setprecision(12) << norm_old << "   " << norm_rs << endl;
+      }
+    }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, normsLocal.data(), normsLocal.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    
+    for (int r = 2*first_virtual+1; r < nSpinOrbs; r++) {
+      for (int s = 2*first_virtual; s < r; s++) {
         int R = r - 2*first_virtual - 1;
         int S = s - 2*first_virtual;
-        int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
-        //double norm_old = norms(ind);
-        norms(ind) = norm_rs;
-        //cout << r << "   " << s << "   " << setprecision(12) << norm_old << "   " << norm_rs << endl;
+        size_t ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+        norms(ind) = normsLocal(ind);
       }
     }
 
@@ -1649,8 +1671,9 @@ class SCPT
     int nSpinOrbsCore = 2*schd.nciCore;
     int nSpinVirtOrbs = 2*(norbs - schd.nciCore - schd.nciAct);
     int nSpinOrbsAct = 2*schd.nciAct;
+    VectorXd normsLocal = 0. * norms;
 
-    for (int i = 0; i < nSpinOrbsCore; i++) {
+    for (int i = commrank; i < nSpinOrbsCore; i+=commsize) {
       for (int r = 2*first_virtual; r < nSpinOrbs; r++) {
         double core_contrib = 0.0;
         for (int j = 0; j < nSpinOrbsCore; j++) {
@@ -1677,10 +1700,21 @@ class SCPT
             }
           }
         }
-        int ind = cumNumCoeffs[4] + nSpinVirtOrbs*i + (r - nSpinOrbsCore - nSpinOrbsAct);
+        size_t ind = cumNumCoeffs[4] + nSpinVirtOrbs*i + (r - nSpinOrbsCore - nSpinOrbsAct);
         //double norm_old = norms(ind);
-        norms(ind) = norm_ir;
+        normsLocal(ind) = norm_ir;
         //cout << i << "   " << r << "   " << setprecision(12) << norm_old << "   " << norm_ir << endl;
+      }
+    }
+
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, normsLocal.data(), normsLocal.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    
+    for (int i = 0; i < nSpinOrbsCore; i++) {
+      for (int r = 2*first_virtual; r < nSpinOrbs; r++) {
+        size_t ind = cumNumCoeffs[4] + nSpinVirtOrbs*i + (r - nSpinOrbsCore - nSpinOrbsAct);
+        norms(ind) = normsLocal(ind);
       }
     }
 
