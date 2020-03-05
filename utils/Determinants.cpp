@@ -475,7 +475,7 @@ CItype Determinant::Hij_1ExciteScreened(const int& a, const int& i,
 
   double tia = I1(a, i);
   int X = max(i/2, a/2), Y = min(i/2, a/2);
-  int pairIndex = X * (X + 1) / 2 + Y;
+  size_t pairIndex = X * (X + 1) / 2 + Y;
   size_t start = I2hb.startingIndicesSingleIntegrals[pairIndex];
   size_t end = I2hb.startingIndicesSingleIntegrals[pairIndex + 1];
   float *integrals = I2hb.singleIntegrals;

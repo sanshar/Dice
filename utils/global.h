@@ -42,7 +42,7 @@ extern int commsize, shmsize, localsize;
 #define CItype double
 #endif
 
-const int DetLen = 4;
+const int DetLen = 10;
 
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;

@@ -135,7 +135,12 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   long npair = norbs*(norbs+1)/2;
   if (I2.ksym) npair = norbs*norbs;
   I2.norbs = norbs;
-  size_t I2memory = npair*(npair+1)/2; //memory in bytes
+  I2.npair = npair;
+  int inner = norbs;
+  if (schd.nciAct > 0) inner = schd.nciCore + schd.nciAct;
+  int virt = norbs - inner;
+  unsigned int nvirtpair = virt*(virt+1)/2;
+  size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
 
 #ifndef SERIAL
   world.barrier();
@@ -177,7 +182,12 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
         I1(2*(b-1),2*(a-1)) = integral; //alpha,alpha
         I1(2*(b-1)+1,2*(a-1)+1) = integral; //beta,beta
       } else {
-        I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
+        int n = 0;
+        if ((a-1) >= inner) n++;
+        if ((b-1) >= inner) n++;
+        if ((c-1) >= inner) n++;
+        if ((d-1) >= inner) n++;
+        if (n < 3) I2(2*(a-1),2*(b-1),2*(c-1),2*(d-1)) = integral;
       }
     } // while
 
@@ -186,8 +196,8 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
     I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
 
-    for (int i=0; i<norbs; i++)
-      for (int j=0; j<norbs; j++) {
+    for (int i=0; i<inner; i++)
+      for (int j=0; j<inner; j++) {
         I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
         I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
     }
@@ -223,17 +233,24 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
 
   //initialize the heatbath integrals
   std::vector<int> allorbs;
+  std::vector<int> innerorbs;
   for (int i = 0; i < norbs; i++)
     allorbs.push_back(i);
+  for (int i = 0; i < inner; i++)
+    innerorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBath I2HBCAS(1.e-10);
 
   if (commrank == 0) {
-    I2HB.constructClass(allorbs, I2, I1, 0, norbs);
-    if (schd.nciCore > 0 || schd.nciAct > 0) I2HBCAS.constructClass(allorbs, I2, I1, schd.nciCore, schd.nciAct);
+    cout << "starting heat bath construction\n";
+    //if (schd.nciAct > 0) I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
+    //else I2HB.constructClass(allorbs, I2, I1, 0, norbs);
+    I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
+    if (schd.nciCore > 0 || schd.nciAct > 0) I2HBCAS.constructClass(allorbs, I2, I1, schd.nciCore, schd.nciAct, true);
   }
   I2hb.constructClass(norbs, I2HB, 0);
   if (schd.nciAct > 0 || schd.nciAct > 0) I2hbCAS.constructClass(norbs, I2HBCAS, 1);
+  if (commrank == 0) cout << "heat bath construction done\n";
 
 } // end readIntegrals
 
@@ -262,6 +279,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 #ifndef SERIAL
   if (commrank == 0) {
 #endif
+    cout << "reading integrals\n";
     norbs = -1;
     nelec = -1;
     sz = -1;
@@ -305,7 +323,12 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
   long npair = norbs*(norbs+1)/2;
   if (I2.ksym) npair = norbs*norbs;
   I2.norbs = norbs;
-  size_t I2memory = npair*(npair+1)/2; //memory in bytes
+  I2.npair = npair;
+  int inner = norbs;
+  if (schd.nciAct > 0) inner = schd.nciCore + schd.nciAct;
+  int virt = norbs - inner;
+  unsigned int nvirtpair = virt*(virt+1)/2;
+  size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
 
 #ifndef SERIAL
   world.barrier();
@@ -345,21 +368,27 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
     delete [] hcore;
 
     //assuming 8-fold symmetry
-    int eri_size = npair * (npair + 1) / 2;
+    unsigned int eri_size = npair * (npair + 1) / 2;
     double *eri = new double[eri_size];
-    for (int i = 0; i < eri_size; i++)
+    for (unsigned int i = 0; i < eri_size; i++)
       eri[i] = 0.;
     dataset_eri = H5Dopen(file, "/eri", H5P_DEFAULT);
     status = H5Dread(dataset_eri, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, eri);
-    int ij = 0;
-    int ijkl = 0;
+    unsigned int ij = 0;
+    unsigned int ijkl = 0;
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j < i + 1; j++) {
         int kl = 0;
         for (int k = 0; k < i + 1; k++) {
           for (int l = 0; l < k + 1; l++) {
+            int n = 0;
+            if (i >= inner) n++;
+            if (j >= inner) n++;
+            if (k >= inner) n++;
+            if (l >= inner) n++;
             if (ij >= kl) {
-              I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
+              if (n < 3) I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
+              //I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
               ijkl++;
             }
             kl++;
@@ -383,12 +412,12 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
     I2.Direct = MatrixXd::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = MatrixXd::Zero(norbs, norbs); I2.Exchange *= 0.;
 
-    for (int i=0; i<norbs; i++)
-      for (int j=0; j<norbs; j++) {
+    for (int i=0; i<inner; i++)
+      for (int j=0; j<inner; j++) {
         I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
         I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
     }
-
+    cout << "done reading integrals\n";
   } // commrank=0
 
 #ifndef SERIAL
@@ -420,17 +449,24 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 
   //initialize the heatbath integrals
   std::vector<int> allorbs;
+  std::vector<int> innerorbs;
   for (int i = 0; i < norbs; i++)
     allorbs.push_back(i);
+  for (int i = 0; i < inner; i++)
+    innerorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBath I2HBCAS(1.e-10);
 
   if (commrank == 0) {
-    I2HB.constructClass(allorbs, I2, I1, 0, norbs);
-    if (schd.nciCore > 0 || schd.nciAct > 0) I2HBCAS.constructClass(allorbs, I2, I1, schd.nciCore, schd.nciAct);
+    cout << "starting heat bath construction\n";
+    //if (schd.nciAct > 0) I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
+    //else I2HB.constructClass(allorbs, I2, I1, 0, norbs);
+    I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
+    if (schd.nciCore > 0 || schd.nciAct > 0) I2HBCAS.constructClass(allorbs, I2, I1, schd.nciCore, schd.nciAct, true);
   }
   I2hb.constructClass(norbs, I2HB, 0);
   if (schd.nciAct > 0 || schd.nciAct > 0) I2hbCAS.constructClass(norbs, I2HBCAS, 1);
+  if (commrank == 0) cout << "heat bath construction done\n";
 
 } // end readIntegrals
 
