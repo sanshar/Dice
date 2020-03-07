@@ -120,7 +120,6 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
     nalpha = nelec/2 + sz;
     nbeta = nelec - nalpha;
     irrep.resize(norbs);
-
 #ifndef SERIAL
   } // commrank=0
 
@@ -138,9 +137,27 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   I2.npair = npair;
   int inner = norbs;
   if (schd.nciAct > 0) inner = schd.nciCore + schd.nciAct;
+  I2.inner = inner;
+  //innerDetLen = DetLen;
   int virt = norbs - inner;
-  unsigned int nvirtpair = virt*(virt+1)/2;
-  size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
+  I2.virt = virt;
+  //size_t nvirtpair = virt*(virt+1)/2;
+  size_t nii = inner*(inner+1)/2;
+  size_t niv = inner*virt;
+  size_t nvv = virt*(virt+1)/2;
+  size_t niiii = nii*(nii+1)/2;
+  size_t niiiv = nii*niv;
+  size_t niviv = niv*(niv+1)/2;
+  size_t niivv = nii*nvv;
+  I2.nii = nii;
+  I2.niv = niv;
+  I2.nvv = nvv;
+  I2.niiii = niiii;
+  I2.niiiv = niiiv;
+  I2.niviv = niviv;
+  I2.niivv = niivv;
+  size_t I2memory = niiii + niiiv + niviv + niivv;
+  //size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
 
 #ifndef SERIAL
   world.barrier();
@@ -273,7 +290,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 #endif
   vector<int> irrep;
   int nelec, sz, norbs, nalpha, nbeta;
-  hid_t file = (-1), dataset_header, dataset_hcore, dataset_eri, dataset_energy_core ;  /* identifiers */
+  hid_t file = (-1), dataset_header, dataset_hcore, dataset_eri, dataset_iiii, dataset_iiiv, dataset_iviv, dataset_iivv, dataset_energy_core ;  /* identifiers */
   herr_t status;
 
 #ifndef SERIAL
@@ -326,9 +343,27 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
   I2.npair = npair;
   int inner = norbs;
   if (schd.nciAct > 0) inner = schd.nciCore + schd.nciAct;
+  I2.inner = inner;
+  //innerDetLen = DetLen;
   int virt = norbs - inner;
-  unsigned int nvirtpair = virt*(virt+1)/2;
-  size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
+  I2.virt = virt;
+  //size_t nvirtpair = virt*(virt+1)/2;
+  size_t nii = inner*(inner+1)/2;
+  size_t niv = inner*virt;
+  size_t nvv = virt*(virt+1)/2;
+  size_t niiii = nii*(nii+1)/2;
+  size_t niiiv = nii*niv;
+  size_t niviv = niv*(niv+1)/2;
+  size_t niivv = nii*nvv;
+  I2.nii = nii;
+  I2.niv = niv;
+  I2.nvv = nvv;
+  I2.niiii = niiii;
+  I2.niiiv = niiiv;
+  I2.niviv = niviv;
+  I2.niivv = niivv;
+  size_t I2memory = niiii + niiiv + niviv + niivv;
+  //size_t I2memory = npair*(npair+1)/2 - nvirtpair*(nvirtpair+1)/2; //memory in bytes
 
 #ifndef SERIAL
   world.barrier();
@@ -368,36 +403,117 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
     delete [] hcore;
 
     //assuming 8-fold symmetry
-    unsigned int eri_size = npair * (npair + 1) / 2;
-    double *eri = new double[eri_size];
-    for (unsigned int i = 0; i < eri_size; i++)
-      eri[i] = 0.;
-    dataset_eri = H5Dopen(file, "/eri", H5P_DEFAULT);
-    status = H5Dread(dataset_eri, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, eri);
-    unsigned int ij = 0;
-    unsigned int ijkl = 0;
-    for (int i = 0; i < norbs; i++) {
-      for (int j = 0; j < i + 1; j++) {
-        int kl = 0;
-        for (int k = 0; k < i + 1; k++) {
-          for (int l = 0; l < k + 1; l++) {
-            int n = 0;
-            if (i >= inner) n++;
-            if (j >= inner) n++;
-            if (k >= inner) n++;
-            if (l >= inner) n++;
-            if (ij >= kl) {
-              if (n < 3) I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
-              //I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
-              ijkl++;
+    H5E_BEGIN_TRY {
+      dataset_eri = H5Dopen(file, "/eri", H5P_DEFAULT);
+    } H5E_END_TRY
+    if (dataset_eri > 0) {
+      unsigned int eri_size = npair * (npair + 1) / 2;
+      double *eri = new double[eri_size];
+      for (unsigned int i = 0; i < eri_size; i++)
+        eri[i] = 0.;
+      status = H5Dread(dataset_eri, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, eri);
+      unsigned int ij = 0;
+      unsigned int ijkl = 0;
+      for (int i = 0; i < norbs; i++) {
+        for (int j = 0; j < i + 1; j++) {
+          int kl = 0;
+          for (int k = 0; k < i + 1; k++) {
+            for (int l = 0; l < k + 1; l++) {
+              int n = 0;
+              if (i >= inner) n++;
+              if (j >= inner) n++;
+              if (k >= inner) n++;
+              if (l >= inner) n++;
+              if (ij >= kl) {
+                if (n < 3) I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
+                //I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
+                ijkl++;
+              }
+              kl++;
             }
-            kl++;
+          }
+          ij++;
+        }
+      }
+      delete [] eri;
+    }
+    else {
+      dataset_iiii = H5Dopen(file, "/iiii", H5P_DEFAULT);
+      double *iiii = new double[niiii];
+      for (unsigned int i = 0; i < niiii; i++)
+        iiii[i] = 0.;
+      status = H5Dread(dataset_iiii, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, iiii);
+      unsigned int ij = 0;
+      unsigned int ijkl = 0;
+      for (int i = 0; i < inner; i++) {
+        for (int j = 0; j < i + 1; j++) {
+          int kl = 0;
+          for (int k = 0; k < i + 1; k++) {
+            for (int l = 0; l < k + 1; l++) {
+              if (ij >= kl) {
+                I2(2*i, 2*j, 2*k, 2*l) = iiii[ijkl];
+                //I2(2*i, 2*j, 2*k, 2*l) = eri[ijkl];
+                ijkl++;
+              }
+              kl++;
+            }
+          }
+          ij++;
+        }
+      }
+      delete [] iiii;
+      
+      dataset_iiiv = H5Dopen(file, "/iiiv", H5P_DEFAULT);
+      double *iiiv = new double[niiiv];
+      for (size_t i = 0; i < niiiv; i++)
+        iiiv[i] = 0.;
+      status = H5Dread(dataset_iiiv, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, iiiv);
+      for (size_t iv = 0; iv < niv; iv++) {
+        size_t i = iv / inner + inner; 
+        size_t j = iv % inner;
+        for (size_t k = 0; k < inner; k++) {
+          for (size_t l = 0; l <= k; l++) {
+            size_t ii = k*(k+1)/2 + l;
+            I2(2*i, 2*j, 2*k, 2*l) = iiiv[iv*nii + ii];
           }
         }
-        ij++;
       }
+      delete [] iiiv;
+      
+      dataset_iivv = H5Dopen(file, "/iivv", H5P_DEFAULT);
+      double *iivv = new double[niivv];
+      for (size_t i = 0; i < niivv; i++)
+        iivv[i] = 0.;
+      status = H5Dread(dataset_iivv, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, iivv);
+      for (size_t i = inner; i < norbs; i++) {
+        for (size_t j = inner; j <= i; j++) {
+          size_t vv = (i-inner) * (i-inner+1) / 2 + (j-inner);
+          for (size_t k = 0; k < inner; k++) {
+            for (size_t l = 0; l <= k; l++) {
+              size_t ii = k*(k+1)/2 + l;
+              I2(2*i, 2*j, 2*k, 2*l) = iivv[vv*nii + ii];
+            }
+          }
+        }
+      }
+      delete [] iivv;
+      
+      dataset_iviv = H5Dopen(file, "/iviv", H5P_DEFAULT);
+      double *iviv = new double[niviv];
+      for (size_t i = 0; i < niviv; i++)
+        iviv[i] = 0.;
+      status = H5Dread(dataset_iviv, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, iviv);
+      for (size_t iv1 = 0; iv1 < niv; iv1++) {
+        size_t i = iv1 / inner + inner; 
+        size_t j = iv1 % inner;
+        for (size_t iv2 = 0; iv2 <= iv1; iv2++) {
+          size_t k = iv2 / inner + inner; 
+          size_t l = iv2 % inner;
+          I2(2*i, 2*j, 2*k, 2*l) = iviv[iv1*(iv1+1)/2 + iv2];
+        }
+      }
+      delete [] iviv;
     }
-    delete [] eri;
 
     double energy_core[1];
     energy_core[0] = 0.;

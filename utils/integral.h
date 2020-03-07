@@ -84,6 +84,15 @@ class twoInt {
     double zero ;
     size_t norbs;
     size_t npair;
+    size_t inner;
+    size_t virt;
+    size_t nii;
+    size_t niv;
+    size_t nvv;
+    size_t niiii;
+    size_t niiiv;
+    size_t niviv;
+    size_t niivv;
     bool ksym;
     twoInt() :zero(0.0),maxEntry(100.) {}
     inline double& operator()(int i, int j, int k, int l) {
@@ -96,9 +105,19 @@ class twoInt {
         //unsigned int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
         //unsigned int A = max(IJ,KL), B = min(IJ,KL);
         //return store[A*(A+1)/2+B];
-        unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
-        unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
-        unsigned int ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
+        //unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
+        //unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
+        size_t IJ, KL;
+        bool iv1 = false, iv2 = false;
+        if (I < inner && J < inner) IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+        else if (I >= inner && J >= inner) IJ = inner*(inner+1)/2 + inner*virt + max(I-inner,J-inner)*(max(I-inner,J-inner)+1)/2 + min(I-inner,J-inner);
+        else {IJ = inner*(inner+1)/2 + inner*(max(I,J)-inner) + min(I,J); iv1 = true;}
+        if (K < inner && L < inner) KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+        else if (K >= inner && L >= inner) KL = inner*(inner+1)/2 + inner*virt + max(K-inner,L-inner)*(max(K-inner,L-inner)+1)/2 + min(K-inner,L-inner);
+        else {KL = inner*(inner+1)/2 + inner*(max(K,L)-inner) + min(K,L); iv2 = true;}
+        size_t ind;
+        if (iv1 && iv2) ind = niiii + niiiv + niivv + max(IJ-nii,KL-nii)*(max(IJ-nii,KL-nii)+1)/2 + min(IJ-nii,KL-nii);
+        else ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
         //cout << I << "  " << J << "  " << K << "  " << L << "    " << IJ << "  " << KL << "    " << ind << endl;
         return store[ind];
       } else {
@@ -118,9 +137,19 @@ class twoInt {
       //unsigned int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
       //unsigned int A = max(IJ,KL), B = min(IJ,KL);
       //return store[A*(A+1)/2+B];
-      unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
-      unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
-      unsigned int ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
+      //unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
+      //unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
+      size_t IJ, KL;
+      bool iv1 = false, iv2 = false;
+      if (I < inner && J < inner) IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+      else if (I >= inner && J >= inner) IJ = inner*(inner+1)/2 + inner*virt + max(I-inner,J-inner)*(max(I-inner,J-inner)+1)/2 + min(I-inner,J-inner);
+      else {IJ = inner*(inner+1)/2 + inner*(max(I,J)-inner) + min(I,J); iv1 = true;}
+      if (K < inner && L < inner) KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+      else if (K >= inner && L >= inner) KL = inner*(inner+1)/2 + inner*virt + max(K-inner,L-inner)*(max(K-inner,L-inner)+1)/2 + min(K-inner,L-inner);
+      else {KL = inner*(inner+1)/2 + inner*(max(K,L)-inner) + min(K,L); iv2 = true;}
+      size_t ind;
+      if (iv1 && iv2) ind = niiii + niiiv + niivv + max(IJ-nii,KL-nii)*(max(IJ-nii,KL-nii)+1)/2 + min(IJ-nii,KL-nii);
+      else ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
       return store[ind];
     } else {
       unsigned int IJ = I*norbs+J, KL = K*norbs+L;
