@@ -974,6 +974,7 @@ class SCPT
     }
 
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
+    double timeNormsInit = getTime();
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
     workingArray work;
@@ -1094,7 +1095,7 @@ class SCPT
     if (commrank == 0)
     {
       cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
-      cout << endl << "Total time for norms calculation:  " << getTime() - startofCalc << endl;
+      cout << endl << "Total time for norms calculation:  " << getTime() - timeNormsInit << endl;
       cout << "Now sampling the NEVPT2 energy..." << endl;
     }
 
@@ -1107,8 +1108,8 @@ class SCPT
       ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
     if (commrank == 0) {
-      //cout << "Sampling complete." << endl << endl;
-      if (commrank == 0) cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
+      cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
+      cout << "CAS energy: " << setprecision(10) << energyCAS_Tot << endl;
       cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
       cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
 
