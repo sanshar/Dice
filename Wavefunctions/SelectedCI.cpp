@@ -49,6 +49,24 @@ void SelectedCI::readWave() {
     ifstream dump(schd.determinantFile.c_str());
     int index = 0;
     double bestCoeff = 0.0;
+
+    int orbsToLoopOver;
+    int offset;
+    Determinant detCAS;
+
+    if (schd.detsInCAS) {
+      orbsToLoopOver = schd.nciAct;
+      offset = schd.nciCore;
+      // Create determinant with all core orbitals occupied
+      for (int i=0; i<schd.nciCore; i++) {
+        detCAS.setoccA(i, true);
+        detCAS.setoccB(i, true);
+      }
+    } else {
+      orbsToLoopOver = Determinant::norbs;
+      offset = 0;
+    }
+
     while (dump.good())
     {
       std::string Line;
@@ -63,32 +81,30 @@ void SelectedCI::readWave() {
       {
         double ci = atof(tok[0].c_str());
         Determinant det ;
-        for (int i = 0; i < schd.nciCore; i++) {
-            det.setoccA(i, true);
-            det.setoccB(i, true);
-        }
-        for (int i=schd.nciCore; i<schd.nciCore+schd.nciAct; i++) 
+
+        if (schd.detsInCAS) det = detCAS;
+
+        for (int i=0; i<orbsToLoopOver; i++)
         {
-          int i1 = i - schd.nciCore;
-          if (boost::iequals(tok[1+i1], "2")) 
+          if (boost::iequals(tok[1+i], "2")) 
           {
-            det.setoccA(i, true);
-            det.setoccB(i, true);
+            det.setoccA(i+offset, true);
+            det.setoccB(i+offset, true);
           }
-          else if (boost::iequals(tok[1+i1], "a")) 
+          else if (boost::iequals(tok[1+i], "a")) 
           {
-            det.setoccA(i, true);
-            det.setoccB(i, false);
+            det.setoccA(i+offset, true);
+            det.setoccB(i+offset, false);
           }
-          if (boost::iequals(tok[1+i1], "b")) 
+          if (boost::iequals(tok[1+i], "b")) 
           {
-            det.setoccA(i, false);
-            det.setoccB(i, true);
+            det.setoccA(i+offset, false);
+            det.setoccB(i+offset, true);
           }
-          if (boost::iequals(tok[1+i1], "0")) 
+          if (boost::iequals(tok[1+i], "0")) 
           {
-            det.setoccA(i, false);
-            det.setoccB(i, false);
+            det.setoccA(i+offset, false);
+            det.setoccB(i+offset, false);
           }
         }
         

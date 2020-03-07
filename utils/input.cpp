@@ -85,6 +85,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;
     else schd.ciCeption = false;
     schd.determinantFile = input.get("wavefunction.determinants", ""); //used for both sci and starting det
+    schd.detsInCAS = input.get("wavefunction.detsInCAS", true);
     schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
 
     //rbm
