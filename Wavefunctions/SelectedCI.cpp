@@ -63,24 +63,29 @@ void SelectedCI::readWave() {
       {
         double ci = atof(tok[0].c_str());
         Determinant det ;
-        for (int i=0; i<Determinant::norbs; i++) 
+        for (int i = 0; i < schd.nciCore; i++) {
+            det.setoccA(i, true);
+            det.setoccB(i, true);
+        }
+        for (int i=schd.nciCore; i<schd.nciCore+schd.nciAct; i++) 
         {
-          if (boost::iequals(tok[1+i], "2")) 
+          int i1 = i - schd.nciCore;
+          if (boost::iequals(tok[1+i1], "2")) 
           {
             det.setoccA(i, true);
             det.setoccB(i, true);
           }
-          else if (boost::iequals(tok[1+i], "a")) 
+          else if (boost::iequals(tok[1+i1], "a")) 
           {
             det.setoccA(i, true);
             det.setoccB(i, false);
           }
-          if (boost::iequals(tok[1+i], "b")) 
+          if (boost::iequals(tok[1+i1], "b")) 
           {
             det.setoccA(i, false);
             det.setoccB(i, true);
           }
-          if (boost::iequals(tok[1+i], "0")) 
+          if (boost::iequals(tok[1+i1], "0")) 
           {
             det.setoccA(i, false);
             det.setoccB(i, false);

@@ -43,6 +43,7 @@ extern int commsize, shmsize, localsize;
 #endif
 
 const int DetLen = 10;
+const int innerDetLen = 2;
 
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;

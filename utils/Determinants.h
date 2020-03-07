@@ -43,7 +43,7 @@ inline int CountNonZeroBits (long x)
 }
 
 // Just the determinant bit string, stored in a contiguous array
-typedef std::array<long, 2*DetLen> simpleDet;
+typedef std::array<long, 2*innerDetLen> simpleDet;
 
 /**
 * This is the occupation number representation of a Determinants
@@ -75,13 +75,14 @@ class Determinant {
   Determinant(const Determinant& d);
 
   Determinant(const simpleDet combined) {
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<innerDetLen; i++) {
       reprA[i] = combined[i];
     }
-    for (int i=0; i<DetLen; i++) {
-      reprB[i] = combined[i+DetLen];
+    for (int i=0; i<innerDetLen; i++) {
+      reprB[i] = combined[i+innerDetLen];
     }
   }
+  
 
   void operator=(const Determinant& d);
 
@@ -161,11 +162,11 @@ class Determinant {
   // Return simplified version of determinant
   inline simpleDet getSimpleDet() const {
     simpleDet combined;
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<innerDetLen; i++) {
       combined[i] = reprA[i];
     }
-    for (int i=0; i<DetLen; i++) {
-      combined[i+DetLen] = reprB[i];
+    for (int i=0; i<innerDetLen; i++) {
+      combined[i+innerDetLen] = reprB[i];
     }
     return combined;
   }
