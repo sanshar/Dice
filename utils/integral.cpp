@@ -296,7 +296,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 #ifndef SERIAL
   if (commrank == 0) {
 #endif
-    cout << "reading integrals\n";
+    cout << "Reading integrals\n";
     norbs = -1;
     nelec = -1;
     sz = -1;
@@ -533,7 +533,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
         I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
         I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
     }
-    cout << "done reading integrals\n";
+    cout << "Finished reading integrals\n";
   } // commrank=0
 
 #ifndef SERIAL
@@ -574,7 +574,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
   twoIntHeatBath I2HBCAS(1.e-10);
 
   if (commrank == 0) {
-    cout << "starting heat bath construction\n";
+    cout << "Starting heat bath integral construction\n";
     //if (schd.nciAct > 0) I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
     //else I2HB.constructClass(allorbs, I2, I1, 0, norbs);
     I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
@@ -582,7 +582,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
   }
   I2hb.constructClass(norbs, I2HB, 0);
   if (schd.nciAct > 0 || schd.nciAct > 0) I2hbCAS.constructClass(norbs, I2HBCAS, 1);
-  if (commrank == 0) cout << "heat bath construction done\n";
+  if (commrank == 0) cout << "Finished heat bath integral construction\n";
 
 } // end readIntegrals
 

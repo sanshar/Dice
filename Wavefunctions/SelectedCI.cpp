@@ -28,9 +28,10 @@ void SelectedCI::readWave() {
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
 
+  if (commrank == 0) cout << "Reading active space determinants\n";
   simpleDet NULL_SIMPLE_DET;
-  for (int i=0; i++; i<2*DetLen)
-    NULL_SIMPLE_DET[i] = 0.0;
+  //for (int i=0; i++; i<2*innerDetLen)
+  //  NULL_SIMPLE_DET[i] = 0.0;
   DetsMap.set_empty_key(NULL_SIMPLE_DET);
 
   if (boost::iequals(schd.determinantFile, "") || boost::iequals(schd.determinantFile, "bestDet"))
@@ -117,7 +118,9 @@ void SelectedCI::readWave() {
     }
 
   }
-  if (schd.debug) cout << "bestDet    " << bestDeterminant << "  " << DetsMap[bestDeterminant.getSimpleDet()] << endl;
+  if (commrank == 0) {
+    cout << "Finished reading determinants, hash table bucket count: " << DetsMap.bucket_count() << endl;
+  }
 }
 
 //assuming bestDeterminant is an active space det, so no excitedOrbs
