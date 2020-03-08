@@ -133,10 +133,18 @@ class SCPT
     numCoeffsPerClass[6] = 2*numCore * (2*numCore - 1) / 2;
     // 2 hole, 1 particle:
     //numCoeffsPerClass[7] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt);
-
+    
+    //if (commrank == 0) cout << "creating indexMaps\n";
     // Class 5 (2 holes, 1 particle), class 7 (1 holes, 2 particles) and
     // class 8 (2 holes, 2 particles) are more complicated. They are set up here:
     createClassIndMap(numCoeffsPerClass[5], numCoeffsPerClass[7],  numCoeffsPerClass[8]);
+
+    //if (commrank == 0) {
+    //  cout << "done creating indexMaps\n";
+    //  cout << "1h2p size  " << class_1h2p_ind.size() << ", bucket count " << class_1h2p_ind.bucket_count() << endl;
+    //  cout << "2h1p size  " << class_2h1p_ind.size() << ", bucket count " << class_2h1p_ind.bucket_count() << endl;
+    //  cout << "2h2p size  " << class_2h2p_ind.size() << ", bucket count " << class_2h2p_ind.bucket_count() << endl;
+    //}
 
     cumNumCoeffs[0] = 0;
     for (int i = 1; i < 9; i++)
@@ -173,6 +181,7 @@ class SCPT
     for (int i=1; i < numCoeffs; i++) {
       coeffs(i) = amp;
     }
+    
     
     char file[5000];
     sprintf(file, "ciCoeffs.txt");
@@ -963,7 +972,7 @@ class SCPT
 
     double energy_ccvv = 0.0;
     if (commrank == 0) {
-      cout << "integrals and wave function preparation finished in " << getTime() - startofCalc << " s\n";
+      cout << "Integrals and wave function preparation finished in " << getTime() - startofCalc << " s\n";
       if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
         if (classesUsedDeterm[8])
         {
