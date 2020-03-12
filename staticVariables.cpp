@@ -16,6 +16,7 @@
 #include "communicate.h"
 
 int Determinant::norbs = 1;
+int Determinant::n_spinorbs = Determinant::norbs * 2;
 int Determinant::nalpha = 1;
 int Determinant::nbeta = 1;
 int Determinant::EffDetLen = 1;

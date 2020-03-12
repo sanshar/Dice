@@ -163,6 +163,8 @@ int main(int argc, char* argv[]) {
   int norbs, nelec;
   norbs = Determinant::norbs;
   nelec = Determinant::nalpha + Determinant::nbeta;
+  // pout << "norbs " << norbs << std::endl;  // JETS: rm
+  // exit(0);                                 // JETS: rm
 
   // Check
   if (HFoccupied[0].size() != (size_t)nelec) {
@@ -187,15 +189,18 @@ int main(int argc, char* argv[]) {
 
   // Setup the lexical table for the determinants
   norbs *= 2;
-  Determinant::norbs = norbs;  // spin orbitals
-  HalfDet::norbs = norbs;      // spin orbitals
-  Determinant::EffDetLen = norbs / 64 + 1;
-  Determinant::initLexicalOrder(nelec);
-  if (Determinant::EffDetLen > DetLen) {
-    pout << "change DetLen in global.h to " << Determinant::EffDetLen
-         << " and recompile " << endl;
-    exit(0);
-  }
+  // JETS: These are already set by
+  // readIntegralsAndInitializeDeterminantStaticVariables
+
+  // Determinant::norbs = norbs;  // spin orbitals
+  // HalfDet::norbs = norbs;      // spin orbitals
+  // Determinant::EffDetLen = norbs / 64 + 1;
+  // Determinant::initLexicalOrder(nelec);
+  // if (Determinant::EffDetLen > DetLen) {
+  //   pout << "change DetLen in global.h to " << Determinant::EffDetLen
+  //        << " and recompile " << endl;
+  //   exit(0);
+  // }
 
   // Initialize the Heat-Bath integrals
   std::vector<int> allorbs;

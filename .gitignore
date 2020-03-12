@@ -32,3 +32,13 @@ tests/mn_really_quick
 tests/*/shci.e
 tests/*/spatialRDM.*.txt
 tests/__pycache__
+tmp
+r00*
+perf.data*
+hsymm_comp
+Comparison
+OMP.code-workspace
+.vscode
+build
+Dice
+external

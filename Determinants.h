@@ -173,6 +173,7 @@ class Determinant {
   static int EffDetLen;
   static char Trev;
   static int norbs;
+  static int n_spinorbs;
   static int nalpha, nbeta;
   static Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> LexicalOrder;
 
