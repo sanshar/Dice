@@ -62,71 +62,22 @@ MatrixXd symmetry::product_table;
 // Initialize
 using namespace Eigen;
 using namespace boost;
-int HalfDet::norbs = 1;      // spin orbitals
-int Determinant::norbs = 1;  // spin orbitals
-int Determinant::EffDetLen = 1;
-char Determinant::Trev = 0;  // Time reversal
-Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder;
+int HalfDet::norbs = 1;  // spin orbitals
+// int Determinant::norbs = 1;  // spin orbitals
+// int Determinant::EffDetLen = 1;
+// char Determinant::Trev = 0;  // Time reversal
+// Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic>
+// Determinant::LexicalOrder;
 
 // Get the current time
-double getTime() {
-  struct timeval start;
-  gettimeofday(&start, NULL);
-  return start.tv_sec + 1.e-6 * start.tv_usec;
-}
-double startofCalc = getTime();
+// double getTime() {
+//   struct timeval start;
+//   gettimeofday(&start, NULL);
+//   return start.tv_sec + 1.e-6 * start.tv_usec;
+// }
+// startofCalc = getTime();
 
 // License
-void license(char* argv[]) {
-  pout << endl;
-  pout << "     ____  _\n";
-  pout << "    |  _ \\(_) ___ ___\n";
-  pout << "    | | | | |/ __/ _ \\\n";
-  pout << "    | |_| | | (_|  __/\n";
-  pout << "    |____/|_|\\___\\___|   v1.0\n";
-  pout << endl;
-  pout << endl;
-  pout << "**************************************************************"
-       << endl;
-  pout << "Dice  Copyright (C) 2017  Sandeep Sharma" << endl;
-  pout << endl;
-  pout << "This program is distributed in the hope that it will be useful,"
-       << endl;
-  pout << "but WITHOUT ANY WARRANTY; without even the implied warranty of"
-       << endl;
-  pout << "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
-  pout << "See the GNU General Public License for more details." << endl;
-  pout << endl;
-  pout << "Author:       Sandeep Sharma" << endl;
-  pout << "Contributors: James E Smith, Adam A Holmes, Bastien Mussard" << endl;
-  pout << "For detailed documentation on Dice please visit" << endl;
-  pout << "https://sanshar.github.io/Dice/" << endl;
-  pout << "and our group page for up to date information on other projects"
-       << endl;
-  pout << "http://www.colorado.edu/lab/sharmagroup/" << endl;
-  pout << "**************************************************************"
-       << endl;
-  pout << endl;
-
-  char* user;
-  user = (char*)malloc(10 * sizeof(char));
-  user = getlogin();
-
-  time_t t = time(NULL);
-  struct tm* tm = localtime(&t);
-  char date[64];
-  strftime(date, sizeof(date), "%c", tm);
-
-  printf("User:             %s\n", user);
-  printf("Date:             %s\n", date);
-  printf("PID:              %d\n", getpid());
-  pout << endl;
-  printf("Path:             %s\n", argv[0]);
-  printf("Commit:           %s\n", git_commit);
-  printf("Branch:           %s\n", git_branch);
-  printf("Compilation Date: %s %s\n", __DATE__, __TIME__);
-  // printf("Cores:            %s\n","TODO");
-}
 
 // Read Input
 void readInput(string input, vector<std::vector<int> >& occupied,
@@ -162,7 +113,8 @@ int main(int argc, char* argv[]) {
 
   // Initialize
   initSHM();
-  if (commrank == 0) license(argv);
+  // if (commrank == 0)
+  license(argv);
 
   // Read the input file
   string inputFile = "input.dat";
@@ -198,18 +150,26 @@ int main(int argc, char* argv[]) {
   std::cout.precision(15);
 
   // Read the Hamiltonian (integrals, orbital irreps, num-electron etc.)
-  twoInt I2;
-  oneInt I1;
-  int nelec;
-  int norbs;
-  double coreE = 0.0, eps;
+  // twoInt I2;
+  // oneInt I1;
+  // int nelec;
+  // int norbs;
+  // double coreE = 0.0;  //, eps; JETS: eps is unused
   std::vector<int> irrep;
-  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
+  // readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep); //
+  // From Old Dice
+  readIntegralsAndInitializeDeterminantStaticVariables(schd.integralFile);
+
+  int norbs, nelec;
+  norbs = Determinant::norbs;
+  nelec = Determinant::nalpha + Determinant::nbeta;
 
   // Check
-  if (HFoccupied[0].size() != nelec) {
+  if (HFoccupied[0].size() != (size_t)nelec) {
     pout << "The number of electrons given in the FCIDUMP should be";
     pout << " equal to the nocc given in the shci input file." << endl;
+    pout << "Nelec from FCIDUMP " << nelec << endl;
+    pout << "Nelec from SHCI input " << HFoccupied[0].size() << endl;
     exit(0);
   }
 
@@ -245,7 +205,7 @@ int main(int argc, char* argv[]) {
   if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
   I2HBSHM.constructClass(norbs / 2, I2HB);
 
-  int num_thrds;
+  // int num_thrds; // JETS: num_threads is unused
 
   // If SOC is true then read the SOC integrals
 #ifndef Complex
@@ -284,8 +244,8 @@ int main(int argc, char* argv[]) {
 
   // Make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
-  for (int d = 0; d < HFoccupied.size(); d++) {
-    for (int i = 0; i < HFoccupied[d].size(); i++) {
+  for (size_t d = 0; d < HFoccupied.size(); d++) {
+    for (size_t i = 0; i < HFoccupied[d].size(); i++) {
       if (Dets[d].getocc(HFoccupied[d][i])) {
         pout << "orbital " << HFoccupied[d][i]
              << " appears twice in input determinant number " << d << endl;
@@ -294,7 +254,7 @@ int main(int argc, char* argv[]) {
       Dets[d].setocc(HFoccupied[d][i], true);
     }
     if (Determinant::Trev != 0) Dets[d].makeStandard();
-    for (int i = 0; i < d; i++) {
+    for (size_t i = 0; i < d; i++) {
       if (Dets[d] == Dets[i]) {
         pout << "Determinant " << Dets[d]
              << " appears twice in the input determinant list." << endl;
@@ -305,60 +265,61 @@ int main(int argc, char* argv[]) {
   pout << Dets[0] << " Given HF Energy:      "
        << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
 
-  // Check and make sure that
+  // symmetry molSym(schd.pointGroup, irrep);
 
-  symmetry molSym(schd.pointGroup, irrep);
+  // if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
+  //     molSym.init_success) {
+  //   vector<Determinant> tempDets(Dets);
+  //   bool spin_specified = true;
+  //   if (schd.spin == -1) {  // Set spin if none specified by user
+  //     spin_specified = false;
+  //     schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
+  //     // pout << "Setting spin to " << schd.spin << endl;
+  //   }
+  //   for (int d = 0; d < HFoccupied.size(); d++) {
+  //     // Guess the lowest energy det with given symmetry from one body
+  //     // integrals.
+  //     molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
+  //                                    HFoccupied.at(d), tempDets.at(d));
 
-  if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
-      molSym.init_success) {
-    vector<Determinant> tempDets(Dets);
-    bool spin_specified = true;
-    if (schd.spin == -1) {  // Set spin if none specified by user
-      spin_specified = false;
-      schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-      // pout << "Setting spin to " << schd.spin << endl;
-    }
-    for (int d = 0; d < HFoccupied.size(); d++) {
-      // Guess the lowest energy det with given symmetry from one body
-      // integrals.
-      molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
-                                     HFoccupied.at(d), tempDets.at(d));
+  //     // Generate list of connected determinants to guess determinant.
+  //     SHCIgetdeterminants::getDeterminantsVariational(
+  //         tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
+  //         tempDets, schd, 0, nelec);
 
-      // Generate list of connected determinants to guess determinant.
-      SHCIgetdeterminants::getDeterminantsVariational(
-          tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
-          tempDets, schd, 0, nelec);
+  //     // If spin is specified we assume the user wants a particular
+  //     determinant
+  //     // even if it's higher in energy than the HF so we keep it. If the user
+  //     // didn't specify then we keep the lowest energy determinant
+  //     // Check all connected and find lowest energy.
+  //     int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
+  //     if (spin_specified && spin_HF != schd.spin) {
+  //       Dets.at(d) = tempDets.at(0);
+  //     }
+  //     for (int cd = 0; cd < tempDets.size(); cd++) {
+  //       if (tempDets.at(d).connected(tempDets.at(cd))) {
+  //         if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
+  //             schd.spin) {
+  //           char repArray[tempDets.at(cd).norbs];
+  //           tempDets.at(cd).getRepArray(
+  //               repArray);  // JETS: This breaks b/c we don't have
+  //                           // `getRepArray()` anymore. I'll fix this later
+  //           if (Dets.at(d).Energy(I1, I2, coreE) >
+  //                   tempDets.at(cd).Energy(I1, I2, coreE) &&
+  //               molSym.getSymmetry(repArray, irrep) == schd.irrep) {
+  //             Dets.at(d) = tempDets.at(cd);
+  //           }
+  //         }
+  //       }
+  //     }  // end cd
+  //     pout << Dets[d] << " Starting Det. Energy: "
+  //          << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
+  //   }  // end d
 
-      // If spin is specified we assume the user wants a particular determinant
-      // even if it's higher in energy than the HF so we keep it. If the user
-      // didn't specify then we keep the lowest energy determinant
-      // Check all connected and find lowest energy.
-      int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
-      if (spin_specified && spin_HF != schd.spin) {
-        Dets.at(d) = tempDets.at(0);
-      }
-      for (int cd = 0; cd < tempDets.size(); cd++) {
-        if (tempDets.at(d).connected(tempDets.at(cd))) {
-          if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
-              schd.spin) {
-            char repArray[tempDets.at(cd).norbs];
-            tempDets.at(cd).getRepArray(repArray);
-            if (Dets.at(d).Energy(I1, I2, coreE) >
-                    tempDets.at(cd).Energy(I1, I2, coreE) &&
-                molSym.getSymmetry(repArray, irrep) == schd.irrep) {
-              Dets.at(d) = tempDets.at(cd);
-            }
-          }
-        }
-      }  // end cd
-      pout << Dets[d] << " Starting Det. Energy: "
-           << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
-    }  // end d
-
-  } else {
-    pout << "Skipping Ref. Determinant Search for pointgroup "
-         << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
-  }  // End if (Search for Ref. Det)
+  // } else {
+  //   pout << "Skipping Ref. Determinant Search for pointgroup "
+  //        << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
+  // }  // End if (Search for Ref. Det)
 
   schd.HF = Dets[0];
 
@@ -396,7 +357,7 @@ int main(int argc, char* argv[]) {
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
     FILE* f = fopen(efile.c_str(), "wb");
-    for (int j = 0; j < E0.size(); ++j) {
+    for (size_t j = 0; j < E0.size(); ++j) {
       // pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
       fwrite(&E0[j], 1, sizeof(double), f);
     }
@@ -486,12 +447,12 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
-  // TODO Find permanent home for 3RDM
-  if (schd.DoOneRDM) {
-    pout << "Calculating 1-RDM..." << endl;
-    MatrixXx s1RDM;
-    CItype* ciroot;
-  }
+  // JETS: Unused at the moment
+  // if (schd.DoOneRDM) {
+  //   pout << "Calculating 1-RDM..." << endl;
+  //   MatrixXx s1RDM;
+  //   CItype* ciroot;
+  // }
 
   // 3RDM
   if (schd.DoThreeRDM) {
@@ -570,7 +531,7 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
     FILE* f = fopen(efile.c_str(), "wb");
-    for (int j = 0; j < E0.size(); ++j) {
+    for (size_t j = 0; j < E0.size(); ++j) {
       fwrite(&E0[j], 1, sizeof(double), f);
     }
     fclose(f);
@@ -630,7 +591,7 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
       fclose(f);
 
       if (schd.doSOC) {
-        for (int j = 0; j < E0.size(); j++)
+        for (size_t j = 0; j < E0.size(); j++)
           pout << str(boost::format("State: %3d,  E: %18.10f, dE: %10.2f\n") %
                       j % (ePT[j]) % ((ePT[j] - ePT[0]) * 219470));
       }
@@ -742,12 +703,12 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
           DetsSize = DetsSize * schd.extrapolationFactor;
           Dets.resize(DetsSize);
           MatrixXx cicopy = MatrixXx::Zero(DetsSize, 1);
-          for (size_t i = 0; i < DetsSize; i++) {
+          for (size_t i = 0; i < (size_t)DetsSize; i++) {
             Dets[i] = SHMDets[indices[i]];
             cicopy(i, 0) = ci[root](indices[i], 0);
           }
           ci[root].resize(DetsSize, 1);
-          for (size_t i = 0; i < DetsSize; i++) {
+          for (size_t i = 0; i < (size_t)DetsSize; i++) {
             ci[root](i, 0) = cicopy(i, 0);
           }
           ci[root] = ci[root] / ci[root].norm();

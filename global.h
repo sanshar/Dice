@@ -24,6 +24,7 @@
 //#include <sys/time.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <string>
+#include <vector>
 #ifndef SERIAL
 #include "mpi.h"
 #endif
@@ -32,6 +33,8 @@ typedef unsigned short ushort;
 const int DetLen = 6;
 extern double startofCalc;
 double getTime();
+
+void license(char* argv[]);
 
 #ifdef Complex
 #define MatrixXx MatrixXcd
@@ -74,4 +77,16 @@ extern MPI_Comm shmcomm, localcomm;
 #endif
 extern int commrank, shmrank, localrank;
 extern int commsize, shmsize, localsize;
-#endif
+
+// From VMC
+class twoInt;
+class oneInt;
+class twoIntHeatBathSHM;
+
+extern std::vector<int> irrep;
+extern twoInt I2;
+extern oneInt I1;
+extern double coreE;
+extern twoIntHeatBathSHM I2hb;
+extern twoIntHeatBathSHM I2hbCAS;
+#endif  // End Header guard

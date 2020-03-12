@@ -1,526 +1,460 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
-  Copyright (c) 2017, Sandeep Sharma
-  
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
+  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
+
   This file is part of DICE.
-  
-  This program is free software: you can redistribute it and/or modify it under the terms
-  of the GNU General Public License as published by the Free Software Foundation, 
-  either version 3 of the License, or (at your option) any later version.
-  
-  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
+  This program is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free Software
+  Foundation, either version 3 of the License, or (at your option) any later
+  version.
+
+  This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+  FOR A PARTICULAR PURPOSE.
+
   See the GNU General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License along with this program. 
-  If not, see <http://www.gnu.org/licenses/>.
+
+  You should have received a copy of the GNU General Public License along with
+  this program. If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef Determinants_HEADER_H
 #define Determinants_HEADER_H
 
-#include "global.h"
 #include <iostream>
 #include <vector>
-#include <boost/serialization/serialization.hpp>
-#include <Eigen/Dense>
 
+#include <Eigen/Dense>
+#include <boost/functional/hash.hpp>
+#include <boost/serialization/serialization.hpp>
+
+#include "global.h"
 
 class oneInt;
 class twoInt;
+class twoIntHeatBathSHM;
+class workingArray;
 
 using namespace std;
 
-inline int BitCount (long x)
-{
+inline int CountNonZeroBits(long x) {
   x = (x & 0x5555555555555555ULL) + ((x >> 1) & 0x5555555555555555ULL);
   x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
   x = (x & 0x0F0F0F0F0F0F0F0FULL) + ((x >> 4) & 0x0F0F0F0F0F0F0F0FULL);
   return (x * 0x0101010101010101ULL) >> 56;
-
-  //unsigned int u2=u>>32, u1=u;
-
-  //return __builtin_popcount(u2)+__builtin_popcount(u);
-  /*
-  u1 = u1
-    - ((u1 >> 1) & 033333333333)
-    - ((u1 >> 2) & 011111111111);
-
-
-  u2 = u2
-    - ((u2 >> 1) & 033333333333)
-    - ((u2 >> 2) & 011111111111);
-
-  return (((u1 + (u1 >> 3))
-	   & 030707070707) % 63) +
-    (((u2 + (u2 >> 3))
-      & 030707070707) % 63);
-  */
 }
 
+inline int BitCount(long x) {  // This should be redundant now -JETS
+  x = (x & 0x5555555555555555ULL) + ((x >> 1) & 0x5555555555555555ULL);
+  x = (x & 0x3333333333333333ULL) + ((x >> 2) & 0x3333333333333333ULL);
+  x = (x & 0x0F0F0F0F0F0F0F0FULL) + ((x >> 4) & 0x0F0F0F0F0F0F0F0FULL);
+  return (x * 0x0101010101010101ULL) >> 56;
+}
 
-//This is used to store just the alpha or the beta sub string of the entire determinant
-class HalfDet {
+class HalfDet {  // TODO clean this up
  private:
   friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive & ar, const unsigned int version) {
-    for (int i=0; i<DetLen/2; i++)
-      ar & repr[i];
-  }
- public:
-  long repr[DetLen/2];
-  static int norbs;
-  HalfDet() {
-    for (int i=0; i<DetLen/2; i++)
-      repr[i] = 0;
+  template <class Archive>
+  void serialize(Archive& ar, const unsigned int version) {
+    for (int i = 0; i < DetLen / 2; i++) ar& repr[i];
   }
 
-  //the comparison between determinants is performed
+ public:
+  long repr[DetLen / 2];
+  static int norbs;
+  HalfDet() {
+    for (int i = 0; i < DetLen / 2; i++) repr[i] = 0;
+  }
+
+  // the comparison between determinants is performed
   bool operator<(const HalfDet& d) const {
-    for (int i=DetLen/2-1; i>=0 ; i--) {
-      if (repr[i] < d.repr[i]) return true;
-      else if (repr[i] > d.repr[i]) return false;
+    for (int i = DetLen / 2 - 1; i >= 0; i--) {
+      if (repr[i] < d.repr[i])
+        return true;
+      else if (repr[i] > d.repr[i])
+        return false;
     }
     return false;
   }
 
   bool operator==(const HalfDet& d) const {
-    for (int i=DetLen/2-1; i>=0 ; i--)
+    for (int i = DetLen / 2 - 1; i >= 0; i--)
       if (repr[i] != d.repr[i]) return false;
     return true;
   }
 
   int ExcitationDistance(const HalfDet& d) const {
-    int ndiff = 0; 
-    for (int i=0; i<DetLen/2; i++) {
+    int ndiff = 0;
+    for (int i = 0; i < DetLen / 2; i++) {
       ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
-    return ndiff/2;
+    return ndiff / 2;
   }
 
-  //set the occupation of the ith orbital
+  // set the occupation of the ith orbital
   void setocc(int i, bool occ) {
-    //assert(i< norbs);
-    long Integer = i/64, bit = i%64, one=1;
+    // assert(i< norbs);
+    long Integer = i / 64, bit = i % 64, one = 1;
     if (occ)
       repr[Integer] |= one << bit;
     else
-      repr[Integer] &= ~(one<<bit);
+      repr[Integer] &= ~(one << bit);
   }
 
-  //get the occupation of the ith orbital
+  // get the occupation of the ith orbital
   bool getocc(int i) const {
-    //assert(i< norbs);
-    long Integer = i/64, bit = i%64, reprBit = repr[Integer];
-    if(( reprBit>>bit & 1) == 0)
+    // assert(i< norbs);
+    long Integer = i / 64, bit = i % 64, reprBit = repr[Integer];
+    if ((reprBit >> bit & 1) == 0)
       return false;
     else
       return true;
   }
 
-  int getClosed(vector<int>& closed){
+  int getClosed(vector<int>& closed) {
     int cindex = 0;
-    for (int i=0; i<32*DetLen; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
+    for (int i = 0; i < 32 * DetLen; i++) {
+      if (getocc(i)) {
+        closed.at(cindex) = i;
+        cindex++;
+      }
     }
     return cindex;
   }
 
-  int getOpenClosed(vector<int>& open, vector<int>& closed){
+  int getOpenClosed(vector<int>& open, vector<int>& closed) {
     int cindex = 0;
     int oindex = 0;
-    for (int i=0; i<32*DetLen; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
-      else {open.at(oindex) = i; oindex++;}
+    for (int i = 0; i < 32 * DetLen; i++) {
+      if (getocc(i)) {
+        closed.at(cindex) = i;
+        cindex++;
+      } else {
+        open.at(oindex) = i;
+        oindex++;
+      }
     }
     return cindex;
   }
 
   friend ostream& operator<<(ostream& os, const HalfDet& d) {
-    char det[norbs/2];
+    char det[norbs / 2];
     d.getRepArray(det);
-    for (int i=0; i<norbs/2; i++)
-      os<<(int)(det[i])<<" ";
+    for (int i = 0; i < norbs / 2; i++) os << (int)(det[i]) << " ";
     return os;
   }
 
   void getRepArray(char* repArray) const {
-    for (int i=0; i<norbs/2; i++) {
-      if (getocc(i)) repArray[i] = 1;
-      else repArray[i] = 0;
+    for (int i = 0; i < norbs / 2; i++) {
+      if (getocc(i))
+        repArray[i] = 1;
+      else
+        repArray[i] = 0;
     }
   }
-
 };
 
+/**
+ * This is the occupation number representation of a Determinants
+ * with alpha, beta strings
+ */
 class Determinant {
-
  private:
   friend class boost::serialization::access;
-  template<class Archive>
-  void serialize(Archive & ar, const unsigned int version) {
-    for (int i=0; i<DetLen; i++)
-      ar & repr[i];
+  template <class Archive>
+  void serialize(Archive& ar, const unsigned int version) {
+    for (int i = 0; i < DetLen; i++) ar& reprA[i] & reprB[i];
   }
 
  public:
   // 0th position of 0th long is the first position
   // 63rd position of the last long is the last position
-  long repr[DetLen];
+  long reprA[DetLen], reprB[DetLen];
+  static int EffDetLen;
   static char Trev;
   static int norbs;
-  static int EffDetLen;
+  static int nalpha, nbeta;
   static Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> LexicalOrder;
 
-  Determinant() {
-    for (int i=0; i<DetLen; i++)
-      repr[i] = 0;
-  }
+  // Constructors
+  Determinant();
+  Determinant(const Determinant& d);
+  void operator=(const Determinant& d);
 
-  Determinant(const Determinant& d) {
-    for (int i=0; i<DetLen; i++)
-      repr[i] = d.repr[i];
-  }
+  // mutates the Determinant
+  void setoccA(int i, bool occ);
+  void setoccB(int i, bool occ);
+  void setocc(int i, bool occ);  // i is the spin orbital index
+  void setocc(
+      int i, bool sz,
+      bool occ);  // i is the spatial orbital index, sz=0 for alpha, =1 for beta
 
-  void operator=(const Determinant& d) {
-    for (int i=0; i<DetLen; i++)
-      repr[i] = d.repr[i];
-  }
+  bool getocc(int i) const;           // i is the spin orbital index
+  bool getocc(int i, bool sz) const;  // i is the spatial orbital index
+  bool getoccA(int i) const;
+  bool getoccB(int i) const;
+  void getOpenClosed(std::vector<int>& open,
+                     std::vector<int>& closed) const;  // gets spin orbitals
+  void getOpenClosed(bool sz, std::vector<int>& open,
+                     std::vector<int>& closed) const;  // gets spatial orbitals
+  void getOpenClosedAlphaBeta(std::vector<int>& openAlpha,
+                              std::vector<int>& closedAlpha,
+                              std::vector<int>& openBeta,
+                              std::vector<int>& closedBeta) const;
+  void getClosedAlphaBeta(std::vector<int>& closedAlpha,
+                          std::vector<int>& closedBeta) const;
+  void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) const;
+  void getClosed(bool sz, std::vector<int>& closed) const;
+  int getNbetaBefore(int i) const;
+  int getNalphaBefore(int i) const;
+  int Noccupied() const;
+  int Nalpha() const;
+  int Nbeta() const;
 
-  double Energy(oneInt& I1, twoInt& I2, double& coreE);
-  static void initLexicalOrder(int nelec);
-  void parity(int& i, int& j, int& a, int& b, double& sgn) ;
-  void parity(int& c0, int& c1, int& c2, int& d0, int& d1, int& d2, double& sgn);
-  void parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1, int& d2,
-	      int& d3, double& sgn);
-  void parity(const int& start, const int& end, double& parity) {
-
-    long one = 1;
-    long mask = (one<< (start%64))-one;
-    long result = repr[start/64]&mask;
-    int nonZeroBits = -BitCount(result);
-
-    for (int i=start/64; i<end/64; i++) {
-      nonZeroBits += BitCount(repr[i]);
+  //
+  // From Dice
+  //
+  void flipAlphaBeta() {
+    long tmp;
+    for (int i = 0; i < DetLen; i++) {
+      tmp = reprA[i];
+      reprA[i] = reprB[i];
+      reprB[i] = tmp;
     }
-    mask = (one<< (end%64) )-one;
-
-    result = repr[end/64] & mask;
-    nonZeroBits += BitCount(result);
-
-
-    parity *= (-2.*(nonZeroBits%2)+1);
-    if (getocc(start)) parity *= -1.;
-
-    return;
   }
 
-
-  CItype Hij_1Excite(int& i, int& a, oneInt&I1, twoInt& I2);
-
-  CItype Hij_2Excite(int& i, int& j, int& a, int& b, oneInt&I1, twoInt& I2);
-
-
-  size_t getLexicalOrder() {
-    size_t order = 0;
-    int pnelec = 0;
-    long one = 1;
-    for(int i=0; i<EffDetLen; i++) {
-      long reprBit = repr[i];
-      while (reprBit != 0) {
-	int pos = __builtin_ffsl(reprBit);
-	order += LexicalOrder(i*64+pos-1-pnelec, pnelec);
-	pnelec++;
-	//reprBit = reprBit
-	reprBit &= ~(one<<(pos-1));
-      }
-    }
-    return order;
-  }
-
-  size_t getHash() {
-    return getLexicalOrder();
-  }
-
-  bool isStandard() {
+  bool isStandard() {  // JETS: MAYBE WORKING NOW
     if (!hasUnpairedElectrons()) return true;
-    
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      if (repr[i] < (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return false;
-      else if (repr[i] > (((repr[i]&even)<<1) + ((repr[i]&odd)>>1))) return true;
+
+    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    // for (int i = EffDetLen - 1; i >= 0; i--) {
+    //   if (repr[i] < (((repr[i] & even) << 1) + ((repr[i] & odd) >> 1)))
+    //     return false;
+    //   else if (repr[i] > (((repr[i] & even) << 1) + ((repr[i] & odd) >> 1)))
+    //     return true;
+    // }
+    if (Nalpha() > Nbeta()) {
+      return true;
+    } else {
+      cout << "Error finding standard for determinant " << *this << endl;
+      cout << hasUnpairedElectrons() << endl;
+      // exit(0);
+      throw "Problems with standard determinant. Exiting...";
     }
-    cout << "Error finding standard for determinant "<<*this<<endl;
-    cout << hasUnpairedElectrons()<<endl;
-    exit(0);
   }
 
-  bool hasUnpairedElectrons() {
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      if ( ((repr[i]&even)<<1) != (repr[i]&odd)) return true;
+  bool hasUnpairedElectrons() {  // JETS: MAYBE WORKING NOW
+    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    // for (int i = EffDetLen - 1; i >= 0; i--) {
+    //   if (((repr[i] & even) << 1) != (repr[i] & odd)) return true;
+    // }
+
+    // JETS
+    for (int i = 0; i < DetLen; i++) {
+      if (reprA[i] != reprB[i]) {
+        return true;
+      }
     }
     return false;
   }
 
+  void makeStandard() {
+    if (!isStandard()) flipAlphaBeta();
+  }
+
+  // I think these are obsolete now since we're using the boost hash functions
+  static void initLexicalOrder(int nelec);
+
+  size_t getHash() {
+    size_t seed = 0;
+    boost::hash_combine(seed, reprA[0] * 2654435761);
+    boost::hash_combine(seed, reprB[0] * 2654435761);
+    return seed;
+  }
+
+  double parityOfFlipAlphaBeta() {
+    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    // long temp = 0;
+    // int numpaired = 0;
+    // for (int i = 0; i < EffDetLen; i++) {
+    //   temp = ((repr[i] & even) << 1) & repr[i];
+    //   numpaired += BitCount(temp);
+    // }
+    // double parity1 = numpaired % 2 == 0 ? 1.0 : -1.0;
+    // if (Nbeta() % 2 == 0)
+    //   return parity1;
+    // else
+    //   return -1. * parity1;
+
+    long tmp;
+    int n_paired = 0;
+    for (int i = 0; i < DetLen; i++) {
+      if (reprA[i] != reprB[i]) {
+        tmp = reprA[i] & reprB[i];
+        n_paired += CountNonZeroBits(tmp);
+      }
+    }
+
+    double parity = n_paired % 2 == 0 ? 1.0 : -1.0;
+
+    if (Nbeta() % 2 == 0) {
+      return parity;
+    } else {
+      return -1. * parity;
+    }
+  }
+
+  CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2);
+
+  CItype Hij_2Excite(int& i, int& j, int& a, int& b, oneInt& I1, twoInt& I2);
+
   int numUnpairedElectrons() {
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
+    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
     int unpairedElecs = 0;
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      unsigned long unpaired = ( ((repr[i]&even)<<1) ^ (repr[i]&odd));
-      unpairedElecs += BitCount(unpaired);
+    unsigned long unpaired;
+    for (int i = EffDetLen - 1; i >= 0; i--) {
+      // unsigned long unpaired = (((repr[i] & even) << 1) ^ (repr[i] & odd));
+      unpaired = reprA[i] ^ reprB[i];
+      unpairedElecs += CountNonZeroBits(unpaired);
     }
     return unpairedElecs;
   }
 
+  void parity(const int& start, const int& end, double& parity);
+  void parity(int& i, int& j, int& a, int& b, double& sgn);
+  void parity(int& c0, int& c1, int& c2, int& d0, int& d1, int& d2,
+              double& sgn);
+  void parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1, int& d2,
+              int& d3, double& sgn);
 
-  void flipAlphaBeta() {
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=0; i<EffDetLen; i++) 
-      repr[i] = ((repr[i]&even)<<1) + ((repr[i]&odd)>>1);
-  }
-
-  double parityOfFlipAlphaBeta() {
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA; long temp=0;
-    int numpaired=0;
-    for (int i=0; i<EffDetLen; i++) {
-      temp = ((repr[i]&even)<<1)&repr[i];
-      numpaired += BitCount( temp);
-    }
-    double parity1= numpaired%2 == 0 ? 1.0 : -1.0; 
-    if (Nbeta()%2==0) return parity1;
-    else return -1.*parity1;
-  }
-
-  void makeStandard() {
-    if (!isStandard())
-      flipAlphaBeta();
-  }
-
-  bool connected1Alpha1Beta(const Determinant& d) const {
-    int ndiffAlpha = 0, ndiffBeta = 0; long u;
-    //unsigned long even = 12297829382473034410, odd = 6148914691236517205;
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    for (int i=0; i<EffDetLen; i++) {
-      u = (repr[i] ^ d.repr[i])&even;
-      ndiffAlpha += BitCount(u);
-      u = (repr[i] ^ d.repr[i])&odd;
-      ndiffBeta += BitCount(u);
-      //if (ndiffAlpha > 2 || ndiffBeta > 2) return false;
-    }
-    if (ndiffAlpha == 2 && ndiffBeta == 2) return true;
-
-    return false;
-
-  }
-
-  int Noccupied() const {
-    int nelec = 0;
-    for (int i=0; i<EffDetLen; i++) {
-      nelec += BitCount(repr[i]);
-    }
-    return nelec;
-
-  }
-
-  int Nalpha() const {
-    int nalpha = 0;
-    long alleven = 0x5555555555555555;
-    for (int i=0; i<EffDetLen; i++) {
-      long even = repr[i] & alleven;
-      nalpha += BitCount(even);
-    }
-    return nalpha;
-  }
-
-  int Nbeta() const {
-    int nbeta = 0;
-    long allodd = 0xAAAAAAAAAAAAAAAA;  ;
-    for (int i=0; i<EffDetLen; i++) {
-      long odd = repr[i] & allodd;
-      nbeta += BitCount(odd);
-    }
-    return nbeta;
-  }
-
-  //Is the excitation between *this and d less than equal to 2.
-  bool connected(const Determinant& d) const {
-    int ndiff = 0; long u;
-
-    for (int i=0; i<EffDetLen; i++) {
-      ndiff += BitCount(repr[i] ^ d.repr[i]);
-    }
-    return ndiff<=4;
-      //return true;
-  }
-
-  //Is the excitation between *this and d less than equal to 2.
-  bool connectedToFlipAlphaBeta(const Determinant& d) const {
-    int ndiff = 0; long u;
-    unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-
-    for (int i=0; i<EffDetLen; i++) {
-      u = repr[i] ^ ( ( (d.repr[i]&even)<<1) + ((d.repr[i]&odd)>>1));
-      ndiff += BitCount(u);
-      //if (ndiff > 4) return false;
-    }
-    return ndiff<=4;
-      //return true;
-    //Determinant dcopy = d;
-    //dcopy.flipAlphaBeta();
-    //return connected(dcopy);
-  }
-
-  //Get the number of electrons that need to be excited to get determinant d from *this determinant
-  //e.g. single excitation will return 1
-  int ExcitationDistance(const Determinant& d) const {
-    int ndiff = 0; 
-    for (int i=0; i<EffDetLen; i++) {
-      ndiff += BitCount(repr[i] ^ d.repr[i]);
-    }
-    return ndiff/2;
-  }
-
-  //Get HalfDet with just the alpha string
+  // Get HalfDet with just the alpha string
   HalfDet getAlpha() const {
     HalfDet d;
-    for (int i=0; i<EffDetLen; i++)
-      for (int j=0; j<32; j++) {
-	d.setocc(i*32+j, getocc(i*64+j*2));
+    for (int i = 0; i < EffDetLen; i++)
+      for (int j = 0; j < 32; j++) {
+        d.setocc(i * 32 + j, getocc(i * 64 + j * 2));
       }
     return d;
   }
 
-
-  //get HalfDet with just the beta string
+  // get HalfDet with just the beta string
   HalfDet getBeta() const {
     HalfDet d;
-    for (int i=0; i<EffDetLen; i++)
-      for (int j=0; j<32; j++)
-	d.setocc(i*32+j, getocc(i*64+j*2+1));
+    for (int i = 0; i < EffDetLen; i++)
+      for (int j = 0; j < 32; j++)
+        d.setocc(i * 32 + j, getocc(i * 64 + j * 2 + 1));
     return d;
   }
+  //
+  // end From Dice
+  //
 
+  double parityA(const int& a, const int& i) const;
+  double parityB(const int& a, const int& i) const;
+  double parity(const int& a, const int& i, const bool& sz) const;
+  double parityA(const vector<int>& aArray, const vector<int>& iArray) const;
+  double parityB(const vector<int>& aArray, const vector<int>& iArray) const;
+  double parity(const vector<int>& aArray, const vector<int>& iArray,
+                bool sz) const;
+  double parityAA(const int& i, const int& j, const int& a, const int& b) const;
+  double parityBB(const int& i, const int& j, const int& a, const int& b) const;
 
-  //the comparison between determinants is performed
-  bool operator<(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--) {
-      if (repr[i] < d.repr[i]) return true;
-      else if (repr[i] > d.repr[i]) return false;
-    }
-    return false;
-  }
+  double Energy(const oneInt& I1, const twoInt& I2, const double& coreE) const;
+  CItype Hij_1ExciteScreened(const int& a, const int& i,
+                             const twoIntHeatBathSHM& Ishm, const double& TINY,
+                             bool doparity = true) const;
+  CItype Hij_1ExciteA(const int& a, const int& i, const oneInt& I1,
+                      const twoInt& I2, bool doparity = true) const;
+  CItype Hij_1ExciteB(const int& a, const int& i, const oneInt& I1,
+                      const twoInt& I2, bool doparity = true) const;
+  CItype Hij_2ExciteAA(const int& a, const int& i, const int& b, const int& j,
+                       const oneInt& I1, const twoInt& I2) const;
+  CItype Hij_2ExciteBB(const int& a, const int& i, const int& b, const int& j,
+                       const oneInt& I1, const twoInt& I2) const;
+  CItype Hij_2ExciteAB(const int& a, const int& i, const int& b, const int& j,
+                       const oneInt& I1, const twoInt& I2) const;
 
-  //check if the determinants are equal
-  bool operator==(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--)
-      if (repr[i] != d.repr[i]) return false;
-    return true;
-  }
+  bool connected(const Determinant& d) const;
+  int ExcitationDistance(const Determinant& d) const;
 
-  //set the occupation of the ith orbital
-  void setocc(int i, bool occ) {
-    //assert(i< norbs);
-    long Integer = i/64, bit = i%64, one=1;
-    if (occ)
-      repr[Integer] |= one << bit;
-    else
-      repr[Integer] &= ~(one<<bit);
-  }
-
-
-  //get the occupation of the ith orbital
-  bool getocc(int i) const {
-    //asser(i<norbs);
-    long Integer = i/64, bit = i%64, reprBit = repr[Integer];
-    if(( reprBit>>bit & 1) == 0)
-      return false;
-    else
-      return true;
-  }
-
-  //the represenation where each char represents an orbital
-  //have to be very careful that the repArray is properly allocated with enough space
-  //before it is passed to this function
-  void getRepArray(char* repArray) const {
-    for (int i=0; i<norbs; i++) {
-      if (getocc(i)) repArray[i] = 1;
-      else repArray[i] = 0;
-    }
-  }
-
-  //Prints the determinant
-  friend ostream& operator<<(ostream& os, const Determinant& d) {
-    char det[norbs];
-    d.getRepArray(det);
-    for (int i=0; i<norbs/2; i++) {
-      if (det[2*i]==false && det[2*i+1] == false)
-	os<<0<<" ";
-      else if (det[2*i]==true && det[2*i+1] == false)
-	os<<"a"<<" ";
-      else if (det[2*i]==false && det[2*i+1] == true)
-	os<<"b"<<" ";
-      else if (det[2*i]==true && det[2*i+1] == true)
-	os<<2<<" ";
-      if ( (i+1)%5 == 0)
-	os <<"  ";
-    }
-    return os;
-  }
-
-  //returns integer array containing the closed and open orbital indices
-  int getOpenClosed(unsigned short* open, unsigned short* closed) const {
-    int oindex=0,cindex=0;
-    for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed[cindex] = i; cindex++;}
-      else {open[oindex] = i; oindex++;}
-    }
-    return cindex;
-  }
-
-  //returns integer array containing the closed and open orbital indices
-  void getOpenClosed(vector<int>& open, vector<int>& closed) const {
-    int oindex=0,cindex=0;
-    for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed.at(cindex) = i; cindex++;}
-      else {open.at(oindex) = i; oindex++;}
-    }
-  }
-
-  //returns integer array containing the closed and open orbital indices
-  int getOpenClosed(int* open, int* closed) const {
-    int oindex=0,cindex=0;
-    for (int i=0; i<norbs; i++) {
-      if (getocc(i)) {closed[cindex] = i; cindex++;}
-      else {open[oindex] = i; oindex++;}
-    }
-    return cindex;
-  }
-
+  // operators
+  bool operator<(const Determinant& d) const;
+  bool operator==(const Determinant& d) const;
+  friend ostream& operator<<(ostream& os, const Determinant& d);
 };
 
+// instead of storing memory in bits it uses 1 integer per bit
+// so it is clearly very exepnsive. This is only used during computations
+class BigDeterminant {
+ public:
+  vector<char> occupation;
+  BigDeterminant(const Determinant& d);
+  BigDeterminant(const BigDeterminant& d) : occupation(d.occupation){};
+  const char& operator[](int j) const;
+  char& operator[](int j);
+};
 
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, double Energyd) ;
-double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1, twoInt& I2, double& coreE,
-			     int i, int A, int j, int B, double Energyd) ;
-CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2, double& coreE, size_t& orbDiff);
+// note some of i, j, k, l might be repeats
+// and some its possible that the determinant might get killed
+// the return value tell us whether the determinant is killed
+bool applyExcitation(int a, int b, int k, int l, Determinant& dcopy);
 
-CItype Hij_1Excite(int i, int a, oneInt& I1, twoInt& I2, int* closed, int& nclosed);
+CItype Hij(const Determinant& bra, const Determinant& ket, const oneInt& I1,
+           const twoInt& I2, const double& coreE);
 
-void updateHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
-			   oneInt& I1,
-			   twoInt& I2, 
-			   double& coreE,
-			   size_t& orbDiff);
-void getHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
-			oneInt& I1,
-			twoInt& I2, 
-			double& coreE,
-			size_t& orbDiff);
+void getDifferenceInOccupation(const Determinant& bra, const Determinant& ket,
+                               vector<int>& creA, vector<int>& desA,
+                               vector<int>& creB, vector<int>& desB);
+void getDifferenceInOccupation(const Determinant& bra, const Determinant& ket,
+                               vector<int>& cre, vector<int>& des, bool sz);
+void getDifferenceInOccupation(const Determinant& bra, const Determinant& ket,
+                               int& I, int& A);
+void getDifferenceInOccupation(const Determinant& bra, const Determinant& ket,
+                               int& I, int& J, int& A, int& B);
 
-void getOrbDiff(Determinant& bra, Determinant &ket, size_t &orbdiff);
+double getParityForDiceToAlphaBeta(const Determinant& det);
 
-double getParityForDiceToAlphaBeta(Determinant& det);
+void generateScreenedSingleDoubleExcitation(const Determinant& d,
+                                            const double& THRESH,
+                                            const double& TINY,
+                                            workingArray& work, bool doparity);
+
+void generateAllScreenedDoubleExcitation(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY, workingArray& work,
+                                         bool doparity = false);
+
+void generateAllScreenedSingleExcitation(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY, workingArray& work,
+                                         bool doparity = false);
+
+void comb(int N, int K, vector<vector<int>>& combinations);
+
+void generateAllDeterminants(vector<Determinant>& allDets, int norbs,
+                             int nalpha, int nbeta);
+
+// From Dice
+void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
+                           oneInt& I1, twoInt& I2, double& coreE,
+                           size_t& orbDiff);
+
+// This is used to store just the alpha or the beta sub string of the entire
+// determinant
+
+size_t hash_value(Determinant const& d);
+void GetLadderOps(long bits, int ladder_ops[], int n_ops, int ith_rep);
+
+CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed,
+                   int& nclosed);
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
+                             twoInt& I2, double& coreE, int i, int A,
+                             double Energyd);
+double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
+                             twoInt& I2, double& coreE, int i, int A, int j,
+                             int B, double Energyd);
+
+void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff);
+CItype Hij(const Determinant& bra, const Determinant& ket, const oneInt& I1,
+           const twoInt& I2, const double& coreE, size_t orbDiff);
 #endif
