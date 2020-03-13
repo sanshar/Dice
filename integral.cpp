@@ -435,14 +435,14 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(0,integral/2.);  //beta alpha
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral); // alpha beta
+            std::complex<double>(0, integral); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(0, -integral); // beta alpha
+            std::complex<double>(0, integral); // beta alpha
       }
     }
 
     // Read SOC.Y
-    {
+    /*{
       ifstream dump(str(boost::format("%s.Y") % fileprefix));
       // ifstream dump("SOC.Y");
       int N;
@@ -507,7 +507,7 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         // alpha I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2);
         // //beta, beta
       }
-    }
+    }*/
   } // commrank=0
 } // end readSOCIntegrals
 #endif

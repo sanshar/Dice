@@ -1172,18 +1172,22 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     if (schd.DavidsonType == DISK)
       sparseHam.setNbatches(DetsSize);
     int numIter = 0;
+    vector<complex<double>> complex_E;
 
     // do the davidson calculation
     if (schd.DavidsonType == DIRECT)
       E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots + 2,
                           schd.davidsonTolLoose, numIter, schd.outputlevel > 0);
-    else
-      E0 = davidson(H, X0, diag, schd.nroots + 4, schd.davidsonTolLoose,
-                    numIter, schd.outputlevel > 0);
+    else {
+      complex_E = davidson(H, X0, diag, schd.nroots + 4, schd.davidsonTolLoose,
+                    numIter, schd.outputlevel);
+    }
 
     if (schd.outputlevel > 0 && commrank == 0)
       Time::print_time("davidson finished");
-
+    for(int i = 0; i<E0.size(); i++) {
+      E0[i]=complex_E[i].real();
+    }
 #ifndef SERIAL
     mpi::broadcast(world, E0, 0);
 #endif
@@ -1214,13 +1218,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       pout << "Performing final tight davidson with tol: " << schd.davidsonTol
            << endl;
 
+      vector<complex<double>> complex_E;
+
       if (schd.DavidsonType == DIRECT)
         E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots + 4,
                             schd.davidsonTol, numIter, true);
-      else
-        E0 = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter,
-                      false);
-
+      else {
+        complex_E = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter,
+                      schd.outputlevel);}
+      for(int i = 0; i<E0.size(); i++) {
+        E0[i]=complex_E[i].real();
+      }
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif
@@ -1252,12 +1260,34 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
           oneRDM = MatrixXx::Zero(norbs, norbs);
           s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
           CItype *SHMci;
-          SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment,
+          SHMVecFromMatrix(ci[i], SHMci, shciDetsCJ, DavidsonSegment,
                            regionDavidson);
+          //CItype *SHMcj;
+          //SHMVecFromMatrix(ci[i], SHMcj, shciDetsCI, int2Segment, regionInt2);
           SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
                                   SHMci, SHMci, sparseHam.orbDifference, nelec,
                                   schd, i, oneRDM, s1RDM);
           SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+        }
+      }
+
+      if (schd.DoTransitionRDM) {
+        pout << "\nCalculating transition-RDM" << endl;
+        for (int i = 0; i < schd.nroots; i++) {
+          for (int j = 0; j < i; j++) {
+            MatrixXx s1RDM, oneRDM;
+            oneRDM = MatrixXx::Zero(norbs, norbs);
+            s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
+            CItype *SHMci;
+            SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment,
+                           regionDavidson);
+            CItype *SHMcj;
+            SHMVecFromMatrix(ci[j], SHMcj, shciDetsCJ, CIvecSegment, regionCIvec);
+            SHCIrdm::EvaluateTRDM(sparseHam.connections, SHMDets, DetsSize,
+                                    SHMcj, SHMci, sparseHam.orbDifference, nelec,
+                                    schd, 0, oneRDM, s1RDM);
+            SHCIrdm::saveTransitionRDM(schd, s1RDM, oneRDM, j, i);
+          }
         }
       }
 

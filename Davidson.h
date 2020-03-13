@@ -32,6 +32,8 @@ using namespace std;
 
 void precondition(MatrixXx& r, MatrixXx& diag, double& e);
 
+vector<complex<double>> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, int print);
+
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag,
                         int maxCopies, double tol, int& numIter, bool print);
 
