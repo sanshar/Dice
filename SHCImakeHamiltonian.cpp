@@ -945,8 +945,8 @@ void SHCImakeHamiltonian::updateSOCconnections(
     if (x % (nprocs) != proc) continue;
     Determinant& d = Dets[x];
 
-    vector<int> closed(nelec, 0);
-    vector<int> open(norbs - nelec, 0);
+    vector<int> closed;
+    vector<int> open;
     d.getOpenClosed(open, closed);
     int nclosed = nelec;
     int nopen = norbs - nclosed;

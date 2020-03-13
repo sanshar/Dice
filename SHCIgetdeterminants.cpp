@@ -75,7 +75,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = d.norbs;
+  int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
   vector<int> closed;
@@ -214,7 +214,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = det.norbs;
+  int norbs = det.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
   vector<int> closed;
@@ -363,11 +363,11 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = det.norbs;
+  int norbs = det.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed;  //(nelec, 0);
-  vector<int> open;    //(norbs - nelec, 0);
+  vector<int> closed;
+  vector<int> open;
   det.getOpenClosed(open, closed);
   double Energyd = det.Energy(int1, int2, coreE);
   size_t orbDiff;
@@ -511,7 +511,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = d.norbs;
+  int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
   vector<int> closed;  //(nelec, 0);
@@ -638,8 +638,8 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed;  //(nelec, 0);
-  vector<int> open;    //(norbs - nelec, 0);
+  vector<int> closed;
+  vector<int> open;
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ? d.numUnpairedElectrons() : 0;
 
@@ -665,21 +665,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       Determinant di = d;
       di.setocc(open[a], true);
       di.setocc(closed[i], false);
-
-      ////if (schd.enforceSeniority && di.numUnpairedElectrons() >
-      /// schd.maxSeniority) continue;
-      // if (schd.enforceSenioExc){
-      //  if (di.ExcitationDistance(schd.HF) > schd.maxExcitation &&
-      //      di.numUnpairedElectrons()      > schd.maxSeniority){
-      //    continue;
-      //  }
-      //} else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) >
-      // schd.maxExcitation){
-      //  continue;
-      //} else if (schd.enforceSeniority  && di.numUnpairedElectrons()      >
-      // schd.maxSeniority) {
-      //  continue;
-      //}
 
       if (!binary_search(SortedDets, SortedDets + SortedDetsSize, di))
         dets.push_back(di);
@@ -737,20 +722,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
         di.setocc(closed[i], false);
         di.setocc(closed[j], false);
 
-        ////if (schd.enforceSeniority && di.numUnpairedElectrons() >
-        /// schd.maxSeniority) continue;
-        // if (schd.enforceSenioExc){
-        //  if (!(di.ExcitationDistance(schd.HF) <= schd.maxExcitation ||
-        //        di.numUnpairedElectrons()      <= schd.maxSeniority))
-        //        continue;
-        //} else if (schd.enforceExcitation && di.ExcitationDistance(schd.HF) >
-        // schd.maxExcitation){
-        //  continue;
-        //} else if (schd.enforceSeniority  && di.numUnpairedElectrons()      >
-        // schd.maxSeniority) {
-        //  continue;
-        //}
-
         if (!binary_search(SortedDets, SortedDets + SortedDetsSize, di))
           dets.push_back(di);
 #ifdef Complex
@@ -804,7 +775,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = d.norbs;
+  int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
   vector<int> closed;  //(nelec, 0);
@@ -960,7 +931,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = d.norbs;
+  int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
   vector<int> closed;

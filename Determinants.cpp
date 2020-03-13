@@ -1280,15 +1280,15 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
     ua = bra.reprA[i] ^ ket.reprA[i];
     ba = ua & bra.reprA[i];  // the cre bits
     ka = ua & ket.reprA[i];  // the des bits
-    GetLadderOps(ba, cre, ncre, i);
-    GetLadderOps(ka, des, ndes, i);
+    GetLadderOps(ba, cre, ncre, i, false);
+    GetLadderOps(ka, des, ndes, i, false);
 
     // Beta excitations
     ub = bra.reprB[i] ^ ket.reprB[i];
     bb = ub & bra.reprB[i];  // the cre bits
     kb = ub & ket.reprB[i];  // the des bits
-    GetLadderOps(bb, cre, ncre, i);
-    GetLadderOps(kb, des, ndes, i);
+    GetLadderOps(bb, cre, ncre, i, true);
+    GetLadderOps(kb, des, ndes, i, true);
 
     // while (b != 0) {
     //   int pos = __builtin_ffsl(b);
@@ -1304,13 +1304,14 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
     // }
   }
 
+  size_t N = Determinant::n_spinorbs;
   if (ncre == 0) {
     orbDiff = 0;
   } else if (ncre == 1) {
-    size_t c0 = cre[0], N = bra.norbs, d0 = des[0];
+    size_t c0 = cre[0], d0 = des[0];
     orbDiff = c0 * N + d0;
   } else if (ncre == 2) {
-    size_t c0 = cre[0], c1 = cre[1], d1 = des[1], N = bra.norbs, d0 = des[0];
+    size_t c0 = cre[0], c1 = cre[1], d1 = des[1], d0 = des[0];
     orbDiff = c1 * N * N * N + d1 * N * N + c0 * N + d0;
   } else {
     std::cout << "Different by more than 2 exitations." << std::endl;
@@ -1320,11 +1321,12 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
 
 //=============================================================================
 
-void GetLadderOps(long bits, int ladder_ops[], int n_ops, int ith_rep) {
+void GetLadderOps(long bits, int ladder_ops[], int& n_ops, int ith_rep,
+                  bool beta) {
   long one = 1;
   while (bits != 0) {
     int pos = __builtin_ffsl(bits);
-    ladder_ops[n_ops] = pos - 1 + ith_rep * 64;
+    ladder_ops[n_ops] = 2 * (pos - 1 + ith_rep * 64) + beta;
     n_ops++;
     bits &= ~(one << (pos - 1));
   }
@@ -1365,30 +1367,18 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
     ua = bra.reprA[i] ^ ket.reprA[i];
     ba = ua & bra.reprA[i];  // the cre bits
     ka = ua & ket.reprA[i];  // the des bits
-    GetLadderOps(ba, cre, ncre, i);
-    GetLadderOps(ka, des, ndes, i);
+    GetLadderOps(ba, cre, ncre, i, false);
+    GetLadderOps(ka, des, ndes, i, false);
 
     // Beta excitations
     ub = bra.reprB[i] ^ ket.reprB[i];
     bb = ub & bra.reprB[i];  // the cre bits
     kb = ub & ket.reprB[i];  // the des bits
-    GetLadderOps(bb, cre, ncre, i);
-    GetLadderOps(kb, des, ndes, i);
-
-    // while (b != 0) {
-    //   int pos = __builtin_ffsl(b);
-    //   cre[ncre] = pos - 1 + i * 64;
-    //   ncre++;
-    //   b &= ~(one << (pos - 1));
-    // }
-    // while (k != 0) {
-    //   int pos = __builtin_ffsl(k);
-    //   des[ndes] = pos - 1 + i * 64;
-    //   ndes++;
-    //   k &= ~(one << (pos - 1));
-    // }
+    GetLadderOps(bb, cre, ncre, i, true);
+    GetLadderOps(kb, des, ndes, i, true);
   }
 
+  size_t N = Determinant::n_spinorbs;
   if (ncre == 0) {
     cout << bra << endl;
     cout << ket << endl;
@@ -1397,11 +1387,11 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
     std::cout << "Use the function for energy!" << std::endl;
     exit(EXIT_FAILURE);
   } else if (ncre == 1) {
-    size_t c0 = cre[0], N = bra.norbs, d0 = des[0];
+    size_t c0 = cre[0], d0 = des[0];
     orbDiff = c0 * N + d0;
     return ket.Hij_1Excite(cre[0], des[0], I1, I2);
   } else if (ncre == 2) {
-    size_t c0 = cre[0], c1 = cre[1], d1 = des[1], N = bra.norbs, d0 = des[0];
+    size_t c0 = cre[0], c1 = cre[1], d1 = des[1], d0 = des[0];
     orbDiff = c1 * N * N * N + d1 * N * N + c0 * N + d0;
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
   } else {
@@ -1537,27 +1527,14 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
 }
 
 /**
- * @brief Compute the parity of the determinant exciting from start -> end
+ * @brief Compute the parity of the determinant exciting from start -> end. Used
+ * mainly in SHCI.
  *
  * @param start Destruction operator IN SPIN ORBITAL BASIS.
  * @param end  Creation operator IN SPIN ORBITAL BASIS.
  * @param parity Parity of excitation, modified in function.
  */
 void Determinant::parity(const int& start, const int& end, double& parity) {
-  // for (int i = 0; i < start; i++) {
-  //   if (i % 2 == 0 && getoccA(i / 2)) {
-  //     parity *= -1.;
-  //   } else if (i % 2 == 1 && getoccB(i / 2)) {
-  //     parity *= -1.;
-  //   }
-  // }
-  // for (int i = 0; i < end; i++) {
-  //   if (i % 2 == 0 && getoccA(i / 2)) {
-  //     parity *= -1.;
-  //   } else if (i % 2 == 1 && getoccB(i / 2)) {
-  //     parity *= -1.;
-  //   }
-  // }
   int a_start = (start % 2 == 0) ? start / 2 : start / 2 + 1;
   int a_end = (end % 2 == 0) ? end / 2 : end / 2 + 1;
   int b_start = start / 2;
@@ -1636,86 +1613,6 @@ void Determinant::parity(int& c0, int& c1, int& c2, int& c3, int& d0, int& d1,
   setocc(c0, false);
   setocc(d3, true);
   return;
-}
-
-CItype Hij(const Determinant& bra, const Determinant& ket, const oneInt& I1,
-           const twoInt& I2, const double& coreE, size_t orbDiff) {
-  // JETS: VERY REDUNDANT WITH HIJ() from VMC shown above
-  int cre[200], des[200], ncrea = 0, ncreb = 0, ndesa = 0, ndesb = 0;
-  size_t N = bra.norbs;
-  long u, b, k, one = 1;
-  cre[0] = -1;
-  cre[1] = -1;
-  des[0] = -1;
-  des[1] = -1;
-
-  for (int i = 0; i < Determinant::EffDetLen; i++) {
-    u = bra.reprA[i] ^ ket.reprA[i];
-    b = u & bra.reprA[i];  // the cre bits
-    k = u & ket.reprA[i];  // the des bits
-
-    while (b != 0) {
-      int pos = __builtin_ffsl(b);
-      cre[ncrea + ncreb] = 2 * (pos - 1 + i * 64);
-      ncrea++;
-      b &= ~(one << (pos - 1));
-    }
-    while (k != 0) {
-      int pos = __builtin_ffsl(k);
-      des[ndesa + ndesb] = 2 * (pos - 1 + i * 64);
-      ndesa++;
-      k &= ~(one << (pos - 1));
-    }
-
-    u = bra.reprB[i] ^ ket.reprB[i];
-    b = u & bra.reprB[i];  // the cre bits
-    k = u & ket.reprB[i];  // the des bits
-
-    while (b != 0) {
-      int pos = __builtin_ffsl(b);
-      cre[ncrea + ncreb] = 2 * (pos - 1 + i * 64) + 1;
-      ncreb++;
-      b &= ~(one << (pos - 1));
-    }
-    while (k != 0) {
-      int pos = __builtin_ffsl(k);
-      des[ndesa + ndesb] = 2 * (pos - 1 + i * 64) + 1;
-      ndesb++;
-      k &= ~(one << (pos - 1));
-    }
-  }
-
-  if (ncrea + ncreb == 0) {
-    cout << bra << endl;
-    cout << ket << endl;
-    cout << "Use the function for energy" << endl;
-    exit(0);
-  } else if (ncrea == 1 && ncreb == 0) {
-    int c0 = cre[0] / 2, d0 = des[0] / 2;
-    orbDiff = c0 * N + d0;
-
-    return ket.Hij_1ExciteA(c0, d0, I1, I2);
-  } else if (ncrea == 0 && ncreb == 1) {
-    int c0 = cre[0] / 2, d0 = des[0] / 2;
-    return ket.Hij_1ExciteB(c0, d0, I1, I2);
-  } else if (ncrea == 0 && ncreb == 2) {
-    int c0 = cre[0] / 2, d0 = des[0] / 2;
-    int c1 = cre[1] / 2, d1 = des[1] / 2;
-    return ket.Hij_2ExciteBB(c0, d0, c1, d1, I1, I2);
-  } else if (ncrea == 2 && ncreb == 0) {
-    int c0 = cre[0] / 2, d0 = des[0] / 2;
-    int c1 = cre[1] / 2, d1 = des[1] / 2;
-    return ket.Hij_2ExciteAA(c0, d0, c1, d1, I1, I2);
-  } else if (ncrea == 1 && ncreb == 1) {
-    int c0 = cre[0] / 2, d0 = des[0] / 2;
-    int c1 = cre[1] / 2, d1 = des[1] / 2;
-    if (cre[0] % 2 == 0)
-      return ket.Hij_2ExciteAB(c0, d0, c1, d1, I1, I2);
-    else
-      return ket.Hij_2ExciteAB(c1, d1, c0, d0, I1, I2);
-  } else {
-    return 0.;
-  }
 }
 
 size_t hash_value(Determinant const& d) {

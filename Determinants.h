@@ -444,7 +444,8 @@ void updateHijForTReversal(CItype& hij, Determinant& dj, Determinant& dk,
 // determinant
 
 size_t hash_value(Determinant const& d);
-void GetLadderOps(long bits, int ladder_ops[], int n_ops, int ith_rep);
+void GetLadderOps(long bits, int ladder_ops[], int& n_ops, int ith_rep,
+                  bool beta);
 
 CItype Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2, int* closed,
                    int& nclosed);
@@ -456,6 +457,6 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
                              int B, double Energyd);
 
 void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff);
-CItype Hij(const Determinant& bra, const Determinant& ket, const oneInt& I1,
-           const twoInt& I2, const double& coreE, size_t orbDiff);
+CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
+           double& coreE, size_t& orbDiff);
 #endif

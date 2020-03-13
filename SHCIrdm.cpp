@@ -125,8 +125,8 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
   for (size_t k = 0; k < EndIndex; k++) {
     if (k % (nprocs) != proc) continue;
 
-    vector<int> closed(nelec, 0);
-    vector<int> open(norbs - nelec, 0);
+    vector<int> closed;
+    vector<int> open;
     Dets[k].getOpenClosed(open, closed);
 
     for (int n1 = 0; n1 < nelec; n1++) {
@@ -884,24 +884,47 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
     vector<int> open;
     Dets[i].getOpenClosed(open, closed);
 
+    pout << "Open" << std::endl;
+    for (auto o : open) {
+      pout << o << " ";
+    }
+    pout << std::endl;
+
+    pout << "Closed" << std::endl;
+    for (auto c : closed) {
+      pout << c << " ";
+    }
+    pout << std::endl;
+
     //<Di| Gamma |Di>
-    for (int n1 = 0; n1 < nelec; n1++)
+    double old_ii = s2RDM(0, 0);
+    for (int n1 = 0; n1 < nelec; n1++) {
       for (int n2 = 0; n2 < n1; n2++) {
         int orb1 = closed[n1], orb2 = closed[n2];
+
         if (schd.DoSpinRDM)
           twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
               localConj::conj(cibra[i]) * ciket[i];
+        // pout << orb1 << " " << orb2 << " "
+        //      << localConj::conj(cibra[i]) * ciket[i] << std::endl;
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM,
                            localConj::conj(cibra[i]) * ciket[i], nSpatOrbs);
-      }  // end n1 n2
+
+      }  // end n2
+    }    // end n1
+    // pout << s2RDM(0, 0) << std::endl;
+    pout << s2RDM(0, 0) - old_ii << std::endl;
+    // exit(0);
+    // if (i == 3) exit(0);
+    pout << connections[i / commsize].size() << std::endl;
 
     for (int j = 1; j < connections[i / commsize].size(); j++) {
       // if (i == connections[i/commsize][j]) continue;
       int d0 = orbDifference[i / commsize][j] % norbs;
       int c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
 
-      if (orbDifference[i / commsize][j] / norbs / norbs ==
-          0) {  // only single excitation
+      // only single excitation
+      if (orbDifference[i / commsize][j] / norbs / norbs == 0) {
         for (int n1 = 0; n1 < nelec; n1++) {
           double sgn = 1.0;
           int a = max(closed[n1], c0), b = min(closed[n1], c0),
@@ -932,6 +955,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
               nSpatOrbs);
         }  // end n1
 
+        // Double Excitation
       } else {
         int d1 = (orbDifference[i / commsize][j] / norbs / norbs) % norbs;
         int c1 =
@@ -1237,7 +1261,7 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt &I1,
 inline void SHCIrdm::getUniqueIndices(Determinant &bra, Determinant &ket,
                                       vector<int> &cs, vector<int> &ds) {
   // Appends two lists of creation and annihilation operator indices.
-  for (int i = 0; i < bra.norbs; i++) {
+  for (int i = 0; i < bra.n_spinorbs; i++) {
     if (bra.getocc(i) == ket.getocc(i)) {
       continue;
     } else {
@@ -1531,8 +1555,8 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
   boost::mpi::communicator world;
 #endif
 
-  int norbs = Dets[0].norbs;
-  int nSOs = norbs / 2;  // Number of spatial orbitals
+  int norbs = Determinant::n_spinorbs;
+  int nSOs = Determinant::norbs;  // Number of spatial orbitals
 
   // Pairs of determinants
   for (int b = 0; b < DetsSize; b++) {
@@ -1672,8 +1696,8 @@ void SHCIrdm::Evaluate4RDM(Determinant *Dets, int DetsSize, CItype *cibra,
 
       // D=0
       else if (dist == 0) {
-        vector<int> closed(nelec, 0);
-        vector<int> open(norbs - nelec, 0);
+        vector<int> closed;
+        vector<int> open;
         DetsK.getOpenClosed(open, closed);
 
         cs.push_back(0);

@@ -54,6 +54,7 @@ std::vector<std::array<int, 3>> HFDetParams() {
 }
 
 TEST_CASE("Determinants: Basics") {
+  std::cout << "Testing Determinant Basics" << std::endl;
   int norbs, nalpha, nbeta;
 
   auto hf_det_params = HFDetParams();
@@ -74,6 +75,7 @@ TEST_CASE("Determinants: Basics") {
 }
 
 TEST_CASE("Determinants: Parity") {
+  std::cout << std::endl << "Testing Determinants: Parity" << std::endl;
   //
   auto det = HFDeterminantSetup(4, 1, 1);
   std::cout << det << std::endl;
@@ -93,4 +95,45 @@ TEST_CASE("Determinants: Parity") {
   c = 4, d = 0;
   det.parity(d, c, parity);
   REQUIRE(parity == 1.);
+}
+
+TEST_CASE("Determinant Helper Functions: GetLadderOps") {
+  std::cout << std::endl << "Testing GetLadderOps" << std::endl;
+
+  auto bra = HFDeterminantSetup(4, 1, 1);
+  auto ket = bra;
+  ket.setocc(1, false);
+  ket.setocc(3, true);
+
+  std::cout << bra << std::endl;
+  std::cout << ket << std::endl;
+
+  REQUIRE(bra.ExcitationDistance(ket) == 1);
+
+  //
+  long ua, ba, ka, ub, bb, kb;
+  int cre[2], des[2], ncre = 0, ndes = 0;
+  std::cout << cre[0] << " " << cre[1] << std::endl;
+  std::cout << des[0] << " " << des[1] << std::endl;
+  for (int i = 0; i < Determinant::EffDetLen; i++) {
+    // Alpha excitations
+    ua = bra.reprA[i] ^ ket.reprA[i];
+    ba = ua & bra.reprA[i];  // the cre bits
+    ka = ua & ket.reprA[i];  // the des bits
+    GetLadderOps(ba, cre, ncre, i, false);
+    GetLadderOps(ka, des, ndes, i, false);
+
+    // Beta excitations
+    ub = bra.reprB[i] ^ ket.reprB[i];
+    bb = ub & bra.reprB[i];  // the cre bits
+    kb = ub & ket.reprB[i];  // the des bits
+    GetLadderOps(bb, cre, ncre, i, true);
+    GetLadderOps(kb, des, ndes, i, true);
+  }
+
+  std::cout << cre[0] << " " << cre[1] << std::endl;
+  std::cout << des[0] << " " << des[1] << std::endl;
+
+  REQUIRE(ncre == 1);
+  REQUIRE(ndes == 1);
 }
