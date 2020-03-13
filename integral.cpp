@@ -223,6 +223,7 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
 
   Determinant::EffDetLen = (norbs) / 64 + 1;
   Determinant::norbs = norbs;
+  Determinant::n_spinorbs = norbs * 2;
   Determinant::nalpha = nalpha;
   Determinant::nbeta = nbeta;
 

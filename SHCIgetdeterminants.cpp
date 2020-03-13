@@ -78,8 +78,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   int norbs = d.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;
+  vector<int> open;
   d.getOpenClosed(open, closed);
   // d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
@@ -217,8 +217,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
   int norbs = det.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;
+  vector<int> open;
   det.getOpenClosed(open, closed);
   // d.getRepArray(detArray);
   double Energyd = det.Energy(int1, int2, coreE);
@@ -366,8 +366,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
   int norbs = det.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;  //(nelec, 0);
+  vector<int> open;    //(norbs - nelec, 0);
   det.getOpenClosed(open, closed);
   double Energyd = det.Energy(int1, int2, coreE);
   size_t orbDiff;
@@ -514,8 +514,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   int norbs = d.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;  //(nelec, 0);
+  vector<int> open;    //(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
 
   // mono-excited determinants
@@ -635,25 +635,13 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   //-----------------------------------------------------------------------------
 
   // initialize variables
-  int norbs = d.norbs;
+  int norbs = d.n_spinorbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;  //(nelec, 0);
+  vector<int> open;    //(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ? d.numUnpairedElectrons() : 0;
-
-  pout << "Open Orbs ";
-  for (auto o : open) {
-    pout << o << " ";
-  }
-  pout << std::endl;
-
-  pout << "Closed Orbs ";
-  for (auto c : closed) {
-    pout << c << " ";
-  }
-  pout << std::endl;
 
   // mono-excited determinants
   for (int ia = 0; ia < nopen * nclosed; ia++) {
@@ -665,8 +653,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
     CItype integral = I2hb.Singles(
         open[a], closed[i]);  // Hij_1Excite(open[a],closed[i],int1,int2,
                               // &closed[0], nclosed);
-    pout << "NEW DET " << closed[i] << " " << open[a] << " " << integral
-         << std::endl;
 
     if (fabs(integral) > epsilon)
       if (closed[i] % 2 == open[a] % 2)
@@ -679,7 +665,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       Determinant di = d;
       di.setocc(open[a], true);
       di.setocc(closed[i], false);
-      pout << "NEW DET " << di << std::endl;
 
       ////if (schd.enforceSeniority && di.numUnpairedElectrons() >
       /// schd.maxSeniority) continue;
@@ -751,7 +736,6 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
         di.setocc(b, true);
         di.setocc(closed[i], false);
         di.setocc(closed[j], false);
-        pout << "NEW DET " << di << std::endl;
 
         ////if (schd.enforceSeniority && di.numUnpairedElectrons() >
         /// schd.maxSeniority) continue;
@@ -823,8 +807,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
   int norbs = d.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;  //(nelec, 0);
+  vector<int> open;    //(norbs - nelec, 0);
   d.getOpenClosed(open, closed);
   // d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
@@ -979,8 +963,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   int norbs = d.norbs;
   int nclosed = nelec;
   int nopen = norbs - nclosed;
-  vector<int> closed(nelec, 0);
-  vector<int> open(norbs - nelec, 0);
+  vector<int> closed;
+  vector<int> open;
   d.getOpenClosed(open, closed);
   // d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);

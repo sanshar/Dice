@@ -1,11 +1,11 @@
-# Notes About All Things Dice
+# Notes About All Things Dice During Merger w/ VMC
 
 __Wish List__:
-- CMake
-- Doctest 
-- Travis CI
-- ZDice
-- 
+- [ ] CMake
+- [ ] Doctest 
+- [ ] Travis CI
+- [ ] ZDice
+- [ ] Compile with `-Wall` and clear all warnings
 
 
 ## 3/12/2020

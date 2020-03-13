@@ -67,6 +67,30 @@ TEST_CASE("Determinants: Basics") {
     REQUIRE(det.Noccupied() == nalpha + nbeta);
     REQUIRE(det.hasUnpairedElectrons() == !(nalpha == nbeta));
     REQUIRE(det.numUnpairedElectrons() == nalpha - nbeta);
-    // REQUIRE(det.parityOfFlipAlphaBeta() == 1.);
+    REQUIRE(det.parityOfFlipAlphaBeta() == 1.);
+    REQUIRE(det.getNalphaBefore(nalpha - 1) == nalpha - 1);
+    REQUIRE(det.getNbetaBefore(nbeta - 1) == nbeta - 1);
   }
+}
+
+TEST_CASE("Determinants: Parity") {
+  //
+  auto det = HFDeterminantSetup(4, 1, 1);
+  std::cout << det << std::endl;
+  int c = 2, d = 0;
+  double parity = 1.;
+  det.parity(d, c, parity);
+  REQUIRE(parity == -1.);
+
+  c = 2, d = 1;
+  parity = 1.0;
+  det.parity(d, c, parity);
+  REQUIRE(parity == 1.0);
+
+  det.setocc(3, true);
+  std::cout << det << std::endl;
+  parity = 1.;
+  c = 4, d = 0;
+  det.parity(d, c, parity);
+  REQUIRE(parity == 1.);
 }

@@ -164,3 +164,20 @@ void license(char* argv[]) {
   // printf("Cores:            %s\n","TODO");
   // }
 }
+
+// PT message
+void log_pt(schedule& schd) {
+  pout << endl;
+  pout << endl;
+  pout << "**************************************************************"
+       << endl;
+  pout << "PERTURBATION THEORY STEP  " << endl;
+  pout << "**************************************************************"
+       << endl;
+  if (schd.stochastic == true && schd.DoRDM) {
+    schd.DoRDM = false;
+    pout << "(We cannot perform PT RDM with stochastic PT. Disabling RDM.)"
+         << endl
+         << endl;
+  }
+}

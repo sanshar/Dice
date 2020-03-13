@@ -965,7 +965,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 
     for (int i = 0; i < SortedDetsSize; i++) {
       if (i % (commsize) != commrank) continue;
-      pout << "IN SORTEDDETSSIZE" << std::endl;  // JETS: rm
 #ifndef Complex
       SHCIgetdeterminants::getDeterminantsVariationalApprox(
           SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,

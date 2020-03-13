@@ -35,6 +35,8 @@ extern double startofCalc;
 double getTime();
 
 void license(char* argv[]);
+class schedule;
+void log_pt(schedule& schd);
 
 #ifdef Complex
 #define MatrixXx MatrixXcd

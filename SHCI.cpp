@@ -63,42 +63,10 @@ MatrixXd symmetry::product_table;
 using namespace Eigen;
 using namespace boost;
 int HalfDet::norbs = 1;  // spin orbitals
-// int Determinant::norbs = 1;  // spin orbitals
-// int Determinant::EffDetLen = 1;
-// char Determinant::Trev = 0;  // Time reversal
-// Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic>
-// Determinant::LexicalOrder;
-
-// Get the current time
-// double getTime() {
-//   struct timeval start;
-//   gettimeofday(&start, NULL);
-//   return start.tv_sec + 1.e-6 * start.tv_usec;
-// }
-// startofCalc = getTime();
-
-// License
 
 // Read Input
 void readInput(string input, vector<std::vector<int> >& occupied,
                schedule& schd);
-
-// PT message
-void log_pt(schedule& schd) {
-  pout << endl;
-  pout << endl;
-  pout << "**************************************************************"
-       << endl;
-  pout << "PERTURBATION THEORY STEP  " << endl;
-  pout << "**************************************************************"
-       << endl;
-  if (schd.stochastic == true && schd.DoRDM) {
-    schd.DoRDM = false;
-    pout << "(We cannot perform PT RDM with stochastic PT. Disabling RDM.)"
-         << endl
-         << endl;
-  }
-}
 
 // Main
 int main(int argc, char* argv[]) {
@@ -160,8 +128,9 @@ int main(int argc, char* argv[]) {
   // From Old Dice
   readIntegralsAndInitializeDeterminantStaticVariables(schd.integralFile);
 
-  int norbs, nelec;
+  int norbs, nelec, n_spinorbs;
   norbs = Determinant::norbs;
+  n_spinorbs = Determinant::n_spinorbs;
   nelec = Determinant::nalpha + Determinant::nbeta;
   // pout << "norbs " << norbs << std::endl;  // JETS: rm
   // exit(0);                                 // JETS: rm
@@ -188,7 +157,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Setup the lexical table for the determinants
-  norbs *= 2;
+  // norbs *= 2;
   // JETS: These are already set by
   // readIntegralsAndInitializeDeterminantStaticVariables
 
@@ -204,11 +173,11 @@ int main(int argc, char* argv[]) {
 
   // Initialize the Heat-Bath integrals
   std::vector<int> allorbs;
-  for (int i = 0; i < norbs / 2; i++) allorbs.push_back(i);
+  for (int i = 0; i < n_spinorbs / 2; i++) allorbs.push_back(i);
   twoIntHeatBath I2HB(1.e-10);
   twoIntHeatBathSHM I2HBSHM(1.e-10);
-  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs / 2);
-  I2HBSHM.constructClass(norbs / 2, I2HB);
+  if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, n_spinorbs / 2);
+  I2HBSHM.constructClass(n_spinorbs / 2, I2HB);
 
   // int num_thrds; // JETS: num_threads is unused
 
@@ -221,7 +190,7 @@ int main(int argc, char* argv[]) {
   }
 #else
   if (schd.doSOC) {
-    readSOCIntegrals(I1, norbs, "SOC");
+    readSOCIntegrals(I1, n_spinorbs, "SOC");
 #ifndef SERIAL
     mpi::broadcast(world, I1, 0);
 #endif

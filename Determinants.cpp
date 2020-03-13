@@ -1313,8 +1313,8 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
     size_t c0 = cre[0], c1 = cre[1], d1 = des[1], N = bra.norbs, d0 = des[0];
     orbDiff = c1 * N * N * N + d1 * N * N + c0 * N + d0;
   } else {
-    throw "Different by more than 2 exitations.";
-    exit(0);
+    std::cout << "Different by more than 2 exitations." << std::endl;
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -1394,7 +1394,8 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
     cout << ket << endl;
     // cout << "Use the function for energy" << endl;
     // exit(0);
-    throw "Use the function for energy!";
+    std::cout << "Use the function for energy!" << std::endl;
+    exit(EXIT_FAILURE);
   } else if (ncre == 1) {
     size_t c0 = cre[0], N = bra.norbs, d0 = des[0];
     orbDiff = c0 * N + d0;
@@ -1535,39 +1536,53 @@ double EnergyAfterExcitation(vector<int>& closed, int& nclosed, oneInt& I1,
   return E;
 }
 
+/**
+ * @brief Compute the parity of the determinant exciting from start -> end
+ *
+ * @param start Destruction operator IN SPIN ORBITAL BASIS.
+ * @param end  Creation operator IN SPIN ORBITAL BASIS.
+ * @param parity Parity of excitation, modified in function.
+ */
 void Determinant::parity(const int& start, const int& end, double& parity) {
-  if (start % 2 == 0 && end % 2 == 0) {
-    parity = parityA(start, end);
-    return;
-  } else if (start % 2 == 1 && end % 2 == 1) {
-    parity = parityB(start, end);
-    return;
-  } else {
-    std::cout << "Start: " << start << " End: " << end << std::endl;
-    throw "Excitation is not allowed";
+  // for (int i = 0; i < start; i++) {
+  //   if (i % 2 == 0 && getoccA(i / 2)) {
+  //     parity *= -1.;
+  //   } else if (i % 2 == 1 && getoccB(i / 2)) {
+  //     parity *= -1.;
+  //   }
+  // }
+  // for (int i = 0; i < end; i++) {
+  //   if (i % 2 == 0 && getoccA(i / 2)) {
+  //     parity *= -1.;
+  //   } else if (i % 2 == 1 && getoccB(i / 2)) {
+  //     parity *= -1.;
+  //   }
+  // }
+  int a_start = (start % 2 == 0) ? start / 2 : start / 2 + 1;
+  int a_end = (end % 2 == 0) ? end / 2 : end / 2 + 1;
+  int b_start = start / 2;
+  int b_end = end / 2;
+  int n_elec = getNalphaBefore(a_start) + getNbetaBefore(b_start) +
+               getNalphaBefore(a_end) + getNbetaBefore(b_end);
+  parity *= (n_elec % 2 == 0) ? 1. : -1.;
+  if (end > start) {
+    parity *= -1.;
   }
-
   return;
 }
 
+/**
+ * @brief Calculate the parity of a double excitation. The indices should be
+ * given in spin orbital basis. The total string of creation and annihilation
+ * operators is :math:`a^\dagger_a a^\dagger_b a_j a_i`.
+ *
+ * @param i First destruction operator.
+ * @param j Second destruction operator.
+ * @param a Creation operator paired with i.
+ * @param b Creation operator paired with j.
+ * @param sgn Parity of excitation, modified by function.
+ */
 void Determinant::parity(int& i, int& j, int& a, int& b, double& sgn) {
-  /*!
-  Calculates the parity of the double excitation operator on the determinant.
-  Where i -> a and j -> b, i.e. :math:`\Gamma = a^\dagger_i a^\dagger_j a_b a_a`
-
-  :Arguments:
-
-      int& i:
-          Creation operator index.
-      int& j:
-          Creation operator index.
-      int& a:
-          Destruction operator index.
-      int& b:
-          Destruction operator index.
-      double& sgn:
-          Parity, modified in function.
-  */
   parity(min(i, a), max(i, a), sgn);
   setocc(i, false);
   setocc(a, true);
