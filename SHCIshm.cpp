@@ -41,6 +41,9 @@ string shciHelper;
 boost::interprocess::shared_memory_object DetsCISegment;
 boost::interprocess::mapped_region regionDetsCI;
 std::string shciDetsCI;
+boost::interprocess::shared_memory_object CIvecSegment;
+boost::interprocess::mapped_region regionCIvec;
+std::string shciDetsCJ;
 boost::interprocess::shared_memory_object SortedDetsSegment;
 boost::interprocess::mapped_region regionSortedDets;
 std::string shciSortedDets;
@@ -114,6 +117,7 @@ void initSHM() {
   shciint2shm = "SHCIint2shm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciHelper = "SHCIhelpershm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDetsCI = "SHCIDetsCIshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  shciDetsCJ = "SHCIDetsCJshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciSortedDets = "SHCISortedDetsshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shciDavidson = "SHCIDavidsonshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
   shcicMax = "SHCIcMaxshm" + to_string(static_cast<long long>(time(NULL) % 1000000));
@@ -124,6 +128,7 @@ void initSHM() {
   SortedDetsSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciSortedDets.c_str(), boost::interprocess::read_write);
   DavidsonSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDavidson.c_str(), boost::interprocess::read_write);
   cMaxSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shcicMax.c_str(), boost::interprocess::read_write);
+  CIvecSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, shciDetsCJ.c_str(), boost::interprocess::read_write);
 
 }
 

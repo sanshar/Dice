@@ -91,7 +91,8 @@ private:
     & DoSpinOneRDM                            \
     & DoOneRDM                                \
     & DoThreeRDM                              \
-    & DoFourRDM;
+    & DoFourRDM                              \
+    & DoTransitionRDM;
   }
 
 public:
@@ -153,6 +154,7 @@ public:
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
+  bool DoTransitionRDM;
 };
 
 #endif

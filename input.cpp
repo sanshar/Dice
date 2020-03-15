@@ -104,6 +104,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
+  schd.DoTransitionRDM = false;
 
   while (dump.good()) {
     std::string Line;
@@ -285,9 +286,12 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
         cout << Line << endl;
         boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
-    } else if (boost::iequals(ArgName, "maxiter"))
+    } else if (boost::iequals(ArgName, "maxiter")) {
       maxiter = atoi(tok[1].c_str());
-    else {
+    } else if (boost::iequals(ArgName, "DoTRDM")) {
+      schd.DoTransitionRDM = true;
+      schd.DoOneRDM = true;
+    } else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
     }
