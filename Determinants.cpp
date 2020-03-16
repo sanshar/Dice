@@ -1234,7 +1234,7 @@ CItype Determinant::Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2) {
     long reprBit = reprA[I];
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
-      int j = I * 64 + pos - 1;
+      int j = 2 * (I * 64 + pos - 1);  // JETS: convert to spinorbs
       energy += (I2(a, i, j, j) - I2(a, j, j, i));
       reprBit &= ~(one << (pos - 1));
     }
@@ -1242,7 +1242,7 @@ CItype Determinant::Hij_1Excite(int a, int i, oneInt& I1, twoInt& I2) {
     reprBit = reprB[I];
     while (reprBit != 0) {
       int pos = __builtin_ffsl(reprBit);
-      int j = I * 64 + pos - 1;
+      int j = 2 * (I * 64 + pos - 1) + 1;  // JETS: convert to spinorbs
       energy += (I2(a, i, j, j) - I2(a, j, j, i));
       reprBit &= ~(one << (pos - 1));
     }
@@ -1289,19 +1289,6 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
     kb = ub & ket.reprB[i];  // the des bits
     GetLadderOps(bb, cre, ncre, i, true);
     GetLadderOps(kb, des, ndes, i, true);
-
-    // while (b != 0) {
-    //   int pos = __builtin_ffsl(b);
-    //   cre[ncre] = pos - 1 + i * 64;
-    //   ncre++;
-    //   b &= ~(one << (pos - 1));
-    // }
-    // while (k != 0) {
-    //   int pos = __builtin_ffsl(k);
-    //   des[ndes] = pos - 1 + i * 64;
-    //   ndes++;
-    //   k &= ~(one << (pos - 1));
-    // }
   }
 
   size_t N = Determinant::n_spinorbs;
@@ -1319,40 +1306,44 @@ void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
   }
 }
 
-//=============================================================================
-
+/**
+ * @brief GetLadderOps determines the positions of non-zero bits and keeps track
+ * of their total. TODO this is still a bit messy and shoudl really be part of a
+ * larger function used in getOrbDiff() and Hij().
+ *
+ * @param bits A long representing the bits.
+ * @param ladder_ops An empty c style array of the ladder operator indices.
+ * @param n_ops The number of operators, this is modified in the function and
+ * must be a reference.
+ * @param ith_rep The position in the total number of irreps.
+ * @param beta Whether or not the bits represent a beta sting.
+ */
 void GetLadderOps(long bits, int ladder_ops[], int& n_ops, int ith_rep,
                   bool beta) {
   long one = 1;
   while (bits != 0) {
     int pos = __builtin_ffsl(bits);
-    ladder_ops[n_ops] = 2 * (pos - 1 + ith_rep * 64) + beta;
+    ladder_ops[n_ops] =
+        2 * (pos - 1 + ith_rep * 64) + beta;  // JETS: convert to spinorbs
     n_ops++;
     bits &= ~(one << (pos - 1));
   }
 }
 
+/**
+ * @brief Calculates the hamiltonian matrix element connecting the two
+ * determinants bra and ket.
+ *
+ * @param bra The bra determinant.
+ * @param ket The ket determinant.
+ * @param I1 The one-body integrals.
+ * @param I2 The two-body integrals.
+ * @param coreE The core energy in Ha.
+ * @param orbDiff Reference for orital difference, modifies in function.
+ * @return CItype The Hamiltonian element.
+ */
 CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
            double& coreE, size_t& orbDiff) {
-  /*!
-  Calculates the hamiltonian matrix element connecting the two determinants
-  bra and ket.
-
-  :Arguments:
-
-      Determinant& bra:
-          Determinant in bra.
-      Determinant& ket:
-          Determinant in ket.
-      oneInt& I1:
-         One body integrals.
-      twoInt& I2:
-         Two body integrals.
-      double& coreE:
-         Core energy.
-      size_t& orbDiff:
-          Number of orbitals with differing occupations.
-  */
   int cre[2], des[2], ncre = 0, ndes = 0;  // JETS: changed size of cre
 
   long ua, ba, ka;
@@ -1382,8 +1373,6 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
   if (ncre == 0) {
     cout << bra << endl;
     cout << ket << endl;
-    // cout << "Use the function for energy" << endl;
-    // exit(0);
     std::cout << "Use the function for energy!" << std::endl;
     exit(EXIT_FAILURE);
   } else if (ncre == 1) {
@@ -1542,8 +1531,9 @@ void Determinant::parity(const int& start, const int& end, double& parity) {
   int n_elec = getNalphaBefore(a_start) + getNbetaBefore(b_start) +
                getNalphaBefore(a_end) + getNbetaBefore(b_end);
   parity *= (n_elec % 2 == 0) ? 1. : -1.;
-  if (end > start) {
-    parity *= -1.;
+
+  if (getocc(start)) {
+    parity *= -1;
   }
   return;
 }

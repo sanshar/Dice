@@ -95,6 +95,18 @@ TEST_CASE("Determinants: Parity") {
   c = 4, d = 0;
   det.parity(d, c, parity);
   REQUIRE(parity == 1.);
+
+  // H3 Test
+  auto ket = HFDeterminantSetup(3, 2, 1);
+  auto bra = ket;
+  bra.setocc(0, false);
+  bra.setocc(4, true);
+
+  std::cout << bra << "  <---  " << ket << std::endl;
+
+  parity = 1.0;
+  ket.parity(0, 4, parity);
+  REQUIRE(parity == 1);
 }
 
 TEST_CASE("Determinant Helper Functions: GetLadderOps") {
@@ -113,8 +125,7 @@ TEST_CASE("Determinant Helper Functions: GetLadderOps") {
   //
   long ua, ba, ka, ub, bb, kb;
   int cre[2], des[2], ncre = 0, ndes = 0;
-  std::cout << cre[0] << " " << cre[1] << std::endl;
-  std::cout << des[0] << " " << des[1] << std::endl;
+
   for (int i = 0; i < Determinant::EffDetLen; i++) {
     // Alpha excitations
     ua = bra.reprA[i] ^ ket.reprA[i];
@@ -130,10 +141,35 @@ TEST_CASE("Determinant Helper Functions: GetLadderOps") {
     GetLadderOps(bb, cre, ncre, i, true);
     GetLadderOps(kb, des, ndes, i, true);
   }
-
-  std::cout << cre[0] << " " << cre[1] << std::endl;
-  std::cout << des[0] << " " << des[1] << std::endl;
-
+  REQUIRE(cre[0] == 1);
+  REQUIRE(des[0] == 3);
   REQUIRE(ncre == 1);
   REQUIRE(ndes == 1);
+
+  // Double excitation
+  ket.setocc(0, false);
+  ket.setocc(4, true);
+
+  cre[0] = -1, des[0] = -1, ncre = 0, ndes = 0;
+  for (int i = 0; i < Determinant::EffDetLen; i++) {
+    // Alpha excitations
+    ua = bra.reprA[i] ^ ket.reprA[i];
+    ba = ua & bra.reprA[i];  // the cre bits
+    ka = ua & ket.reprA[i];  // the des bits
+    GetLadderOps(ba, cre, ncre, i, false);
+    GetLadderOps(ka, des, ndes, i, false);
+
+    // Beta excitations
+    ub = bra.reprB[i] ^ ket.reprB[i];
+    bb = ub & bra.reprB[i];  // the cre bits
+    kb = ub & ket.reprB[i];  // the des bits
+    GetLadderOps(bb, cre, ncre, i, true);
+    GetLadderOps(kb, des, ndes, i, true);
+  }
+  REQUIRE(des[0] == 4);
+  REQUIRE(des[1] == 3);
+  REQUIRE(cre[0] == 0);
+  REQUIRE(cre[1] == 1);
+  REQUIRE(ncre == 2);
+  REQUIRE(ndes == 2);
 }

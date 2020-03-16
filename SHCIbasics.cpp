@@ -47,6 +47,8 @@
 
 #include "communicate.h"
 
+#include "utils/hamiltonian_dense.hpp"
+
 using namespace std;
 using namespace Eigen;
 using namespace boost;
@@ -1296,6 +1298,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
           }
         }  // for i
       }
+
+      // Print Ham (for debugging only)
+      // HamiltonianDense denseHam(sparseHam);
+      // coreE = coreEbkp;
+      // denseHam.print();
+      // denseHam.diagonalize();
+      // coreE = 0;
+
+      // for (int i = 0; i < DetsSize; i++) {
+      //   pout << SHMDets[i] << std::endl;
+      // }
+
       sparseHam.resize(0);
 
       break;
