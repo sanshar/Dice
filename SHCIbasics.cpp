@@ -58,14 +58,14 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd,
     double coreE, int nelec, int root) {
   if (schd.nPTiter == 0) return 0;
+  double epsilon2 = schd.epsilon2;
+  schd.epsilon2 = schd.epsilon2Large;
   pout << format("Performing semistochastic PT for state: %3i") % (root)
        << endl;
 
   pout << endl
        << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
        << endl;
-  double epsilon2 = schd.epsilon2;
-  schd.epsilon2 = schd.epsilon2Large;
   vector<MatrixXx> vdVector;
   double Psi1Norm;
   double EptLarge = 0.0;
@@ -74,9 +74,9 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
 
+  schd.epsilon2 = epsilon2;
   pout << endl
        << "2/ Stochastic calculation with epsilon2=" << schd.epsilon2 << endl;
-  schd.epsilon2 = epsilon2;
 
   int norbs = Determinant::norbs;
   Determinant *SortedDets;
@@ -408,27 +408,37 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 #endif
 
     if (commrank == 0) {
+      double currentEN = finalE - finalELargeEps + EptLarge;
+      double deviation = abs(abs(currentEN)-abs(AvgenergyEN/currentIter));
+      double thresh = 2.0*pow(schd.epsilon2Large/schd.SampleN, 0.5);
+      /*if (currentIter > 0 && deviation > thresh) {
+        pout << deviation << " " << thresh << " " << schd.epsilon2Large << endl;
+        pout << "PT energy deviates too much, throw away this iteration" << endl;
+      }
+      else { */
       currentIter++;
-      AvgenergyEN += -finalE + finalELargeEps + EptLarge;
-      AvgenergyEN2 += pow(-finalE + finalELargeEps + EptLarge, 2);
+      AvgenergyEN += finalE - finalELargeEps + EptLarge;
+      AvgenergyEN2 += pow(finalE - finalELargeEps + EptLarge, 2);
       stddev = currentIter < 5
                    ? 1e4
                    : pow((currentIter * AvgenergyEN2 - pow(AvgenergyEN, 2)) /
                              currentIter / (currentIter - 1) / currentIter,
                          0.5);
+      //std::cout << format("%6i %18.10f %18.10f %18.10f") % (currentIter) % finalE % finalELargeEps %EptLarge << endl;
       if (currentIter < 5)
         std::cout << format("%6i  %18.10f  %5i %18.10f %10s  %10.2f") %
                          (currentIter) %
-                         (E0 - finalE + finalELargeEps + EptLarge) % (root) %
+                         (E0 + currentEN) % (root) %
                          (E0 + AvgenergyEN / currentIter) % "--" %
                          (getTime() - startofCalc);
       else
         std::cout << format("%6i  %18.10f  %5i %18.10f %10.2e  %10.2f") %
                          (currentIter) %
-                         (E0 - finalE + finalELargeEps + EptLarge) % (root) %
+                         (E0 + currentEN) % (root) %
                          (E0 + AvgenergyEN / currentIter) % stddev %
                          (getTime() - startofCalc);
       pout << endl;
+      //}
     }
 
 #ifndef SERIAL
@@ -444,6 +454,14 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       // pout << "Standard Error : " << stddev << " less than " <<
       // schd.targetError << endl;
       pout << "Semistochastic PT calculation converged" << endl;
+      pout << format("PTEnergy: %18.10f") % (E0 + AvgenergyEN) << " +/- ";
+      pout << format("%8.2e") % (stddev) << endl;
+      pout << format("Time(s):  %10.2f") % (getTime() - startofCalc) << endl;
+      break;
+    }
+    if (currentIter > schd.nPTiter) {
+      pout << "Semistochastic PT calculation not converged" << endl;
+      pout << "exit to prevent waste of time" << endl;
       pout << format("PTEnergy: %18.10f") % (E0 + AvgenergyEN) << " +/- ";
       pout << format("%8.2e") % (stddev) << endl;
       pout << format("Time(s):  %10.2f") % (getTime() - startofCalc) << endl;
@@ -883,10 +901,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
   if (schd.fullrestart)
   {
     bool converged;
+    pout << "read determinant" << endl;
     readVariationalResult(iterstart, ci, Dets, sparseHam, E0, converged, schd,
                           helper2);
-
+    E0.resize(schd.nroots);
+    ci.resize(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
     // after reading restart put dets on shared memory
+    pout << "for shared memory" << endl;
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     DetsSize = Dets.size();
     SortedDetsSize = DetsSize;
@@ -909,13 +930,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     if (proc == 0)
       helper2.PopulateHelpers(SHMDets, DetsSize, 0); 
     helper2.MakeSHMHelpers();
-    if (!(schd.DavidsonType == DIRECT || 
-          (!schd.fullrestart && converged && 
-           iterstart >= schd.epsilon1.size() - 1))) {
+    //if (!(schd.DavidsonType == DIRECT || 
+    //      (!schd.fullrestart && converged && 
+    //       iterstart >= schd.epsilon1.size() - 1))) {
       sparseHam.clear();
       sparseHam.makeFromHelper(helper2, SHMDets, 0, DetsSize, Norbs, I1, I2,
                                schd, coreE, schd.DoRDM || schd.DoOneRDM);
-    }
+    //}
 
     for (int i = 0; i < E0.size(); i++)
       pout << format("%4i %4i  %10.2e  %10.2e -   %18.10f  %10.2f\n") %
@@ -926,7 +947,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
       iterstart++;
     else
       iterstart = 0;
-
     // if the calculation is converged then exit
     if (converged && iterstart >= schd.epsilon1.size()) {
       for (int i = 0; i < E0.size(); i++) E0[i] += coreEbkp;
@@ -1069,7 +1089,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
       DetsSize = Dets.size();
 
-      if (iter==0) {
+      if (iter==0&&!(schd.fullrestart||schd.restart)) {
         const int matSize = schd.nroots;
         MatrixXx trial = MatrixXx::Zero(matSize, matSize);
         for (int i = 0; i < matSize; i++) {
@@ -1123,7 +1143,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
                                schd.DoRDM || schd.DoOneRDM);
     }
     //************
-
+    if (commrank == 0 & schd.outputlevel > 0) {
+      size_t element_count = 0;
+      for (int i=0; i < sparseHam.connections.size(); i++) {
+        element_count += sparseHam.connections[i].size();
+      }
+      size_t memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
+      pout << " number of sparseHam elements " << element_count << endl;
+      pout << " number of determinants " << sparseHam.connections.size() << endl;
+      pout << " estimated memory " << memory_count << endl;
+      pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
+      pout << " time before davidson : " << getTime() - startofCalc << endl;
+    }
     //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous iterations
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets,
                    SortedDetsSegment, regionSortedDets);
@@ -1226,7 +1257,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
         for (int i = 0; i < DetsSize; i++)
           Dets[i] = SHMDets[i];
       }
-      //writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
+      if (schd.io) writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);
       //
       //unpackTrevState(Dets, DetsSize, ci, sparseHam, schd.DoRDM||//schd.doResponse, I1, I2, coreE);
       //if (Determinant::Trev != 0) {

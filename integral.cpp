@@ -46,7 +46,7 @@ bool myfn(CItype i, CItype j) { return std::abs(i) < std::abs(j); }
 
 //=============================================================================
 void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
-                   int &norbs, double &coreE, std::vector<int> &irrep) {
+                   int &norbs, double &coreE, std::vector<int> &irrep, bool readTxt) {
 //-----------------------------------------------------------------------------
   /*!
   Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
@@ -150,7 +150,7 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
 
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
-  
+  if (!readTxt) {  
   auto dump2 = ifstream("FCIDUMP.bin", ios::out | ios::binary);
   if (commrank == 0) {
     I1.store.clear();
@@ -197,13 +197,14 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     coreE = coreEtmp.real();
     dump2.close();
   }
-  
-  if (commrank == 0) {
-    //I1.store.clear();
-    //I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
-    //coreE = 0.0;
+  }
+  else {
+    if (commrank == 0) {
+    I1.store.clear();
+    I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
+    coreE = 0.0;
 
-    /*vector<string> tok;
+    vector<string> tok;
     string msg;
     while (!dump.eof()) {
       std::getline(dump, msg);
@@ -220,14 +221,18 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
       else if (b==c && c==d && d==0)
         continue;//orbital energy
       else if (c==d&&d==0) {
-        cout << I1(a-1, b-1) << " " << integral << setw(4) << a << setw(4) << b << endl;
-        //I1(a-1,b-1) = integral;
+        //cout << I1(a-1, b-1) << " " << integral << setw(4) << a << setw(4) << b << endl;
+        I1(a-1,b-1) = integral;
+        I1(b-1,a-1) = integral;
       }
       else {
-        cout << I2(a-1, b-1, c-1, d-1) << " " << integral << setw(4) << a << setw(4) << b << setw(4) << c << setw(4) << d << endl; 
-        //I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;       
+        //cout << I2(a-1, b-1, c-1, d-1) << " " << integral << setw(4) << a << setw(4) << b << setw(4) << c << setw(4) << d << endl; 
+        I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;       
       }
-    }*/ // while
+    } // while
+    }
+  }
+  if (commrank == 0) {
     dump.close(); 
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;

@@ -154,6 +154,7 @@ public:
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
+  bool ReadTxt;
 };
 
 #endif

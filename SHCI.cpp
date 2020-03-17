@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> irrep;
   
   if (commrank == 0) Time::print_time("begin_integral");
-  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep);
+  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep, schd.ReadTxt);
   if (commrank == 0) Time::print_time("end_integral");
 
   // Check
@@ -294,8 +294,6 @@ int main(int argc, char* argv[]) {
   // Make HF determinant
   vector<Determinant> Dets(HFoccupied.size());
   for (int d = 0; d < HFoccupied.size(); d++) {
-    pout << Dets[d] << " Given HF Energy:  "
-       << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
     for (int i = 0; i < HFoccupied[d].size(); i++) {
       if (Dets[d].getocc(HFoccupied[d][i])) {
         pout << "orbital " << HFoccupied[d][i]
@@ -312,6 +310,8 @@ int main(int argc, char* argv[]) {
         exit(0);
       }
     }
+    pout << Dets[d] << " Given HF Energy:  "
+       << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
   }
   // TODO Make this work with MPI and not print one set from each processor
 
@@ -354,7 +354,7 @@ int main(int argc, char* argv[]) {
         fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
-    }
+    
 
     // #####################################################################
     // Print the 5 most important determinants and their weights
@@ -386,11 +386,10 @@ int main(int argc, char* argv[]) {
       }
     }  // end root
     pout << std::flush;
-    
+    }    
 #ifndef SERIAL
     world.barrier();
 #endif
-
     if (commrank == 0) {
       std::string efile;
       efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
@@ -399,7 +398,6 @@ int main(int argc, char* argv[]) {
         fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
-      
       pout << endl;
       pout << endl;
       pout << "**************************************************************"
@@ -605,11 +603,11 @@ int main(int argc, char* argv[]) {
         }
         fclose(f);
 
-        if (schd.doSOC) {
+//        if (schd.doSOC) {
           for (int j = 0; j < E0.size(); j++)
             pout << str(boost::format("State: %3d,  E: %18.10f, dE: %10.2f\n") %
                         j % (ePT[j]) % ((ePT[j] - ePT[0]) * 219470));
-        }
+//        }
       }  // end if iter!=0
     } else {
 #ifndef SERIAL

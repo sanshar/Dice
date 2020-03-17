@@ -366,6 +366,11 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
 void SHCIrdm::save1RDM_bin(schedule& schd, MatrixXx& oneRDM, int root) {
   int norbs = oneRDM.rows();
   if (commrank==0) {
+    for (int i=0; i<oneRDM.rows(); i++)
+      for (int j=0; j<oneRDM.rows(); j++){
+        if (std::abs(oneRDM(i,j)) < 1.0e-6)
+          oneRDM(i,j)=(0.0,0.0);
+      }
     char file [5000];
     sprintf(file, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, root);
     std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -380,6 +385,11 @@ void SHCIrdm::save1RDM_bin(schedule& schd, MatrixXx& oneRDM, int root) {
 void SHCIrdm::saveRDM_bin(schedule& schd, MatrixXx& twoRDM, int root) {
   int norbs = pow(twoRDM.rows(), 0.5);
   if (commrank==0) {
+    for (int i=0; i<twoRDM.rows(); i++)
+      for (int j=0; j<twoRDM.rows(); j++){
+        if (std::abs(twoRDM(i,j)) < 1.0e-6)
+          twoRDM(i,j)=(0.0,0.0);
+      }
     char file[5000];
     sprintf(file, "%s/Dice_%d_%d.rdm2", schd.prefix[0].c_str(), root, root);
     std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);

@@ -63,7 +63,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.singleList = true;
   schd.io = true;
   schd.nroots = 1;
-  schd.nPTiter = 1000000;
+  schd.nPTiter = 500;
   schd.DoRDM = false;
   schd.DoSpinRDM = false;
   schd.quasiQ = false;
@@ -102,6 +102,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
 
+  schd.ReadTxt = false;
   while (dump.good()) {
 
     std::string Line;
@@ -281,6 +282,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.DoThreeRDM = true;
     else if ( boost::iequals(ArgName, "DoFourRDM") )
       schd.DoFourRDM = true;
+    else if ( boost::iequals(ArgName, "readText") )
+      schd.ReadTxt = true;
     else if (boost::iequals(ArgName, "schedule")) {
 
       std::getline(dump, Line);

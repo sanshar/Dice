@@ -210,6 +210,6 @@ void readIntegrals(
         string fcidump,
         twoInt& I2, oneInt& I1,
         int& nelec, int& norbs, double& coreE,
-        std::vector<int>& irrep);
+        std::vector<int>& irrep, bool readTxt=false);
 
 #endif
