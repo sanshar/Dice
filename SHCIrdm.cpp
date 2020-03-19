@@ -884,18 +884,6 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
     vector<int> open;
     Dets[i].getOpenClosed(open, closed);
 
-    pout << "Open" << std::endl;
-    for (auto o : open) {
-      pout << o << " ";
-    }
-    pout << std::endl;
-
-    pout << "Closed" << std::endl;
-    for (auto c : closed) {
-      pout << c << " ";
-    }
-    pout << std::endl;
-
     //<Di| Gamma |Di>
     double old_ii = s2RDM(0, 0);
     for (int n1 = 0; n1 < nelec; n1++) {
@@ -905,18 +893,11 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
         if (schd.DoSpinRDM)
           twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
               localConj::conj(cibra[i]) * ciket[i];
-        // pout << orb1 << " " << orb2 << " "
-        //      << localConj::conj(cibra[i]) * ciket[i] << std::endl;
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM,
                            localConj::conj(cibra[i]) * ciket[i], nSpatOrbs);
 
       }  // end n2
     }    // end n1
-    // pout << s2RDM(0, 0) << std::endl;
-    pout << s2RDM(0, 0) - old_ii << std::endl;
-    // exit(0);
-    // if (i == 3) exit(0);
-    pout << connections[i / commsize].size() << std::endl;
 
     for (int j = 1; j < connections[i / commsize].size(); j++) {
       // if (i == connections[i/commsize][j]) continue;

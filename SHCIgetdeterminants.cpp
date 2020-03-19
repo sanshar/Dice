@@ -645,14 +645,10 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
 
   // mono-excited determinants
   for (int ia = 0; ia < nopen * nclosed; ia++) {
-    // pout << "INSIDE MONO-EXCITED DETS " << ia << std::endl;  // JETS: rm
-
     int i = ia / nopen, a = ia % nopen;
     if (closed[i] / 2 < schd.ncore || open[a] / 2 >= schd.ncore + schd.nact)
       continue;
-    CItype integral = I2hb.Singles(
-        open[a], closed[i]);  // Hij_1Excite(open[a],closed[i],int1,int2,
-                              // &closed[0], nclosed);
+    CItype integral = I2hb.Singles(open[a], closed[i]);
 
     if (fabs(integral) > epsilon)
       if (closed[i] % 2 == open[a] % 2)

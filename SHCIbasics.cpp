@@ -463,7 +463,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
-  int norbs = Determinant::norbs;
+  int norbs = Determinant::n_spinorbs;
 
   Determinant *SortedDets;
   std::vector<Determinant> SortedDetsvec;
@@ -1007,7 +1007,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
         long maxint = 26843540;
         MPI_Recv(&numDets, 1, MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
-        long totalMemory = numDets * DetLen;
+        long totalMemory = numDets * DetLen * 2;
+        // long totalMemory = numDets * Determinant::EffDetLen * 2;
+        // long totalMemory = numDets * sizeof(uniqueDEH.Det->at(0));
 
         if (totalMemory != 0) {
           uniqueDEH.Det->resize(oldSize + numDets);
@@ -1043,15 +1045,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
         int toproc = proc - ipow(2, level);
         int proc = commrank;
         long numDets = uniqueDEH.Det->size();
-        long maxint = 26843540;
-        long totalMemory = numDets * DetLen;
+        long maxint = 26843540;  // JETS: Why are we batching things this way?
+        long totalMemory = numDets * DetLen * 2;
+        // long totalMemory = numDets * Determinant::EffDetLen * 2;
+        // long totalMemory = numDets * sizeof(uniqueDEH.Det->at(0));
+        // std::cout << "Comparing size " << totalMemory << "  "
+        // << numDets * Determinant::EffDetLen * 2 << std::endl;  //JETS: rm
+
         MPI_Send(&numDets, 1, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
 
-        if (totalMemory != 0) {
+        if (totalMemory != 0) {  // JETS: Would this condition ever be false?
           for (int i = 0; i < (totalMemory / maxint); i++) {
             // MPI_Send(&(uniqueDEH.Det->at(0).repr[0]) + i * maxint, maxint,
             //  MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
-            MPI_Send(uniqueDEH.Det->data() + i * maxint, maxint, MPI_DOUBLE,
+            MPI_Send(&(uniqueDEH.Det->at(0)) + i * maxint, maxint, MPI_DOUBLE,
                      toproc, proc, MPI_COMM_WORLD);
           }
 
@@ -1059,7 +1066,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
           //     &(uniqueDEH.Det->at(0).repr[0]) + (totalMemory / maxint) *
           //     maxint, totalMemory - (totalMemory / maxint) * maxint,
           //     MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
-          MPI_Send(uniqueDEH.Det->data() + (totalMemory / maxint) * maxint,
+          MPI_Send(&(uniqueDEH.Det->at(0)) + (totalMemory / maxint) * maxint,
                    totalMemory - (totalMemory / maxint) * maxint, MPI_DOUBLE,
                    toproc, proc, MPI_COMM_WORLD);
           uniqueDEH.clear();
@@ -1284,7 +1291,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
             SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
 
           } else {
-            pout << "USING EVALUATERDM" << std::endl;  // JETS: rm
             SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize,
                                  SHMci, SHMci, sparseHam.orbDifference, nelec,
                                  schd, i, twoRDM, s2RDM);
