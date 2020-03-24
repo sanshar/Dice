@@ -1384,6 +1384,10 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
     orbDiff = c1 * N * N * N + d1 * N * N + c0 * N + d0;
     return ket.Hij_2Excite(des[0], des[1], cre[0], cre[1], I1, I2);
   } else {
+    // std::cout << std::endl
+    //           << ncre << std::endl
+    //           << bra << std::endl
+    //           << ket << std::endl; // JETS: rm
     return 0.;
   }
 }

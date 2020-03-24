@@ -1,6 +1,7 @@
 #ifndef HAMILTONIAN_DENSE_HPP
 #define HAMILTONIAN_DENSE_HPP
 
+#include <iomanip>
 #include <iostream>
 #include "SHCImakeHamiltonian.h"
 #include "communicate.h"
@@ -30,12 +31,15 @@ class HamiltonianDense {
       }
     }
   }
-  void print() { pout << ham_matrix << std::endl; }
+  void print(int precision = 6) {
+    std::cout << std::setprecision(precision);
+    pout << ham_matrix << std::endl;
+  }
   void diagonalize() {
     Eigen::SelfAdjointEigenSolver<MatrixXx> es(ham_matrix);
-    pout << es.eigenvalues() +
-                Eigen::Matrix<CItype, Eigen::Dynamic, 1>::Ones(n_ci) * coreE
-         << std::endl;
+    // pout << es.eigenvalues() +
+    //             Eigen::Matrix<CItype, Eigen::Dynamic, 1>::Ones(n_ci) * coreE
+    //      << std::endl;
   }
 };
 #endif

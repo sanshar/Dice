@@ -109,7 +109,7 @@ TEST_CASE("Determinants: Parity") {
   REQUIRE(parity == 1);
 }
 
-TEST_CASE("Determinant Helper Functions: GetLadderOps") {
+TEST_CASE("Determinants: GetLadderOps") {
   std::cout << std::endl << "Testing GetLadderOps" << std::endl;
 
   auto bra = HFDeterminantSetup(4, 1, 1);
@@ -172,4 +172,32 @@ TEST_CASE("Determinant Helper Functions: GetLadderOps") {
   REQUIRE(cre[1] == 1);
   REQUIRE(ncre == 2);
   REQUIRE(ndes == 2);
+}
+
+TEST_CASE("Determinants: TREV") {
+  std::cout << std::endl << "Testing Determinants: TREV" << std::endl;
+
+  auto ket = HFDeterminantSetup(4, 1, 0);
+  REQUIRE(ket.parityOfFlipAlphaBeta() == 1.0);
+
+  ket = HFDeterminantSetup(4, 3, 2);
+  std::cout << ket << std::endl;
+  REQUIRE(ket.parityOfFlipAlphaBeta() == 1.0);
+
+  ket = HFDeterminantSetup(4, 2, 3);
+  std::cout << ket << std::endl;
+  REQUIRE(ket.parityOfFlipAlphaBeta() == -1.0);
+
+  ket = HFDeterminantSetup(3, 2, 1);
+  std::cout << ket << std::endl;
+  REQUIRE(ket.isStandard() == true);
+
+  // 2 2 2 a b   2 a b
+  ket = HFDeterminantSetup(8, 6, 6);
+  ket.setoccA(4, false);
+  ket.setoccA(6, true);
+  ket.setoccB(3, false);
+  ket.setoccB(7, true);
+  std::cout << ket << std::endl;
+  REQUIRE(ket.isStandard() == true);
 }

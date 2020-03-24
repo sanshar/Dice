@@ -224,24 +224,28 @@ class Determinant {
     }
   }
 
-  bool isStandard() {  // JETS: MAYBE WORKING NOW
+  /**
+   * @brief Check whether flipping the the bit representation (in the older Dice
+   * style of a,b,a,b..) makes the numerical value of the representation greater
+   * or smaller. If it's larger, then we're already in the standard
+   * representation.
+   *
+   * @return true
+   * @return false
+   */
+  bool isStandard() {
     if (!hasUnpairedElectrons()) return true;
+    for (int i = EffDetLen - 1; i >= 0; i--) {
+      if (reprA[i] > reprB[i]) {
+        return false;
 
-    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    // for (int i = EffDetLen - 1; i >= 0; i--) {
-    //   if (repr[i] < (((repr[i] & even) << 1) + ((repr[i] & odd) >> 1)))
-    //     return false;
-    //   else if (repr[i] > (((repr[i] & even) << 1) + ((repr[i] & odd) >> 1)))
-    //     return true;
-    // }
-    if (Nalpha() > Nbeta()) {
-      return true;
-    } else {
-      cout << "Error finding standard for determinant " << *this << endl;
-      cout << hasUnpairedElectrons() << endl;
-      // exit(0);
-      throw "Problems with standard determinant. Exiting...";
+      } else if (reprA[i] < reprB[i]) {
+        return true;
+      }
     }
+    cout << "Error finding standard for determinant " << *this << endl;
+    cout << hasUnpairedElectrons() << endl;
+    exit(EXIT_FAILURE);
   }
 
   bool hasUnpairedElectrons() {  // JETS: MAYBE WORKING NOW

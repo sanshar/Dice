@@ -1007,26 +1007,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
         long maxint = 26843540;
         MPI_Recv(&numDets, 1, MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD,
                  MPI_STATUS_IGNORE);
-        long totalMemory = numDets * DetLen * 2;
-        // long totalMemory = numDets * Determinant::EffDetLen * 2;
-        // long totalMemory = numDets * sizeof(uniqueDEH.Det->at(0));
+        long totalMemory = numDets * DetLen * 2;  // JETS: Change this
 
         if (totalMemory != 0) {
+          // Send the determinants out to other processors in chunks, the final
+          // send is for the "remainder" that's smaller than the chunk size
           uniqueDEH.Det->resize(oldSize + numDets);
           for (int i = 0; i < (totalMemory / maxint); i++) {
-            // MPI_Recv(&(uniqueDEH.Det->at(oldSize).repr[0]) + i * maxint,
-            // maxint,
-            //          MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD,
-            //          MPI_STATUS_IGNORE);
             MPI_Recv(&(uniqueDEH.Det->at(oldSize)) + i * maxint, maxint,
                      MPI_DOUBLE, getproc, getproc, MPI_COMM_WORLD,
                      MPI_STATUS_IGNORE);
           }
-
-          // MPI_Recv(&(uniqueDEH.Det->at(oldSize).repr[0]) +
-          //              (totalMemory / maxint) * maxint,
-          //          totalMemory - (totalMemory / maxint) * maxint, MPI_DOUBLE,
-          //          getproc, getproc, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
           MPI_Recv(
               &(uniqueDEH.Det->at(oldSize)) + (totalMemory / maxint) * maxint,
               totalMemory - (totalMemory / maxint) * maxint, MPI_DOUBLE,
@@ -1046,26 +1037,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
         int proc = commrank;
         long numDets = uniqueDEH.Det->size();
         long maxint = 26843540;  // JETS: Why are we batching things this way?
-        long totalMemory = numDets * DetLen * 2;
-        // long totalMemory = numDets * Determinant::EffDetLen * 2;
-        // long totalMemory = numDets * sizeof(uniqueDEH.Det->at(0));
-        // std::cout << "Comparing size " << totalMemory << "  "
-        // << numDets * Determinant::EffDetLen * 2 << std::endl;  //JETS: rm
+        long totalMemory = numDets * DetLen * 2;  // JETS: Change this
 
         MPI_Send(&numDets, 1, MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
 
         if (totalMemory != 0) {  // JETS: Would this condition ever be false?
+          // Send the determinants out to other processors in chunks, the final
+          // send is for the "remainder" that's smaller than the chunk size
           for (int i = 0; i < (totalMemory / maxint); i++) {
-            // MPI_Send(&(uniqueDEH.Det->at(0).repr[0]) + i * maxint, maxint,
-            //  MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
             MPI_Send(&(uniqueDEH.Det->at(0)) + i * maxint, maxint, MPI_DOUBLE,
                      toproc, proc, MPI_COMM_WORLD);
           }
-
-          // MPI_Send(
-          //     &(uniqueDEH.Det->at(0).repr[0]) + (totalMemory / maxint) *
-          //     maxint, totalMemory - (totalMemory / maxint) * maxint,
-          //     MPI_DOUBLE, toproc, proc, MPI_COMM_WORLD);
           MPI_Send(&(uniqueDEH.Det->at(0)) + (totalMemory / maxint) * maxint,
                    totalMemory - (totalMemory / maxint) * maxint, MPI_DOUBLE,
                    toproc, proc, MPI_COMM_WORLD);
@@ -1308,9 +1290,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       // Print Ham (for debugging only)
       // HamiltonianDense denseHam(sparseHam);
       // coreE = coreEbkp;
-      // denseHam.print();
+      // denseHam.print(6);
       // denseHam.diagonalize();
       // coreE = 0;
+      // for (int i = 0; i < DetsSize; i++) {
+      //   pout << SHMDets[i] << std::endl;
+      // }
+
+      // size_t orbdiff;
+      // std::cout << "BAD HIJ "
+      //           << Hij(SHMDets[1], SHMDets[4], I1, I2, coreEbkp, orbdiff)
+      //           << std::endl;
 
       // for (int i = 0; i < DetsSize; i++) {
       //   pout << SHMDets[i] << std::endl;
