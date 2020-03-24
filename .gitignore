@@ -28,3 +28,7 @@
 *.doctree
 *.bkp
 output*.dat
+tests/mn_really_quick
+tests/*/shci.e
+tests/*/spatialRDM.*.txt
+tests/__pycache__

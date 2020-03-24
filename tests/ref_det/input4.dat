@@ -1,0 +1,26 @@
+#system
+nocc 9
+0 2 4 6 8 1 3 5 7 
+end
+orbitals ../integrals/cn_FCIDUMP_nosym
+nroots 1
+spin 3
+
+#variational
+schedule 
+0	0.001
+end
+davidsonTol 5e-05
+dE 1e-08
+maxiter 6
+
+#pt
+nPTiter 0
+epsilon2 1e-07
+epsilon2Large 1000
+targetError 0.0001
+sampleN 200
+
+#misc
+noio 
+

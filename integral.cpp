@@ -435,9 +435,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(0,integral/2.);  //beta alpha
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral / 2.); // alpha beta
+            std::complex<double>(0, -integral); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(0, -integral / 2.); // beta alpha
+            std::complex<double>(0, -integral); // beta alpha
       }
     }
 
@@ -466,9 +466,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(integral / 2., 0); // alpha beta
+            std::complex<double>(integral, 0); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(-integral / 2., 0); // beta alpha
+            std::complex<double>(-integral, 0); // beta alpha
         // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(integral/2.,0);  //beta alpha
@@ -500,9 +500,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral / 2); // alpha, alpha
+            std::complex<double>(0, integral); // alpha, alpha
         I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral / 2); // beta, beta
+            std::complex<double>(0, -integral); // beta, beta
         // I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha,
         // alpha I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2);
         // //beta, beta
