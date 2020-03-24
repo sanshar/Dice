@@ -440,7 +440,7 @@ int main(int argc, char* argv[]) {
     pout << endl;
     pout << "**************************************************************"
          << endl;
-    pout << "RDMs CALCULATIONS" << endl;
+    pout << "CALCULATING RDMs" << endl;
     pout << "**************************************************************"
          << endl;
   }
@@ -485,13 +485,6 @@ int main(int argc, char* argv[]) {
     }
   }
 #endif
-
-  // TODO Find permanent home for 3RDM
-  if (schd.DoOneRDM) {
-    pout << "Calculating 1-RDM..." << endl;
-    MatrixXx s1RDM;
-    CItype* ciroot;
-  }
 
   // 3RDM
   if (schd.DoThreeRDM) {

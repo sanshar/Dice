@@ -4,7 +4,7 @@
 printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
-MPICOMMAND="mpirun -np 28"
+MPICOMMAND="mpirun -np 4"
 HCIPATH="../../Dice"
 here=`pwd`
 
@@ -89,6 +89,13 @@ $MPICOMMAND $HCIPATH input4.dat > output4.dat
 python $here/test_energy.py 5e-5 e_spin_3.e
 $MPICOMMAND $HCIPATH input5.dat > output5.dat
 python $here/test_energy.py 5e-5 e_spin_4.e
+
+cd $here/spin1rdm
+printf "...running spin1RDM tests\n"
+$HCIPATH input.dat > output.dat
+python $here/test_spin1RDM.py
+$MPICOMMAND $HCIPATH input.dat > output.dat
+python $here/test_spin1RDM.py
 
 ## Clean up
 cd $here
