@@ -48,6 +48,7 @@ private:
       & printLevel
       & printSCNorms
       & printSCNormFreq
+      & readSCNorms
       & debug
       & decay1
       & decay2
@@ -149,9 +150,10 @@ public:
   bool optimizeRBM;//used in jrbm
   bool printVars;
   bool printGrad;
-  bool printSCNorms;                     //Should we print out the norms of strongly contracted states (in SC-NEVPT2)
-  int printSCNormFreq;                   //How often should we print out norms of strongly contracted states (for printSCNorms option)
-  bool continueMarkovSCPT;               //In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
+  bool printSCNorms;                     // Should we print out the norms of strongly contracted states (in SC-NEVPT2)
+  int printSCNormFreq;                   // How often should we print out norms of strongly contracted states (for printSCNorms option)
+  bool readSCNorms;                      // Do not sample SC norms, but instead read them from previously-printed file
+  bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   HAM Hamiltonian;
   int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
   int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state, for the efficientNEVPT option

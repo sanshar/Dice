@@ -1082,7 +1082,7 @@ class SCPT
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
 
-    createDirForSCNorms();
+    if (schd.printSCNorms) createDirForSCNorms();
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
