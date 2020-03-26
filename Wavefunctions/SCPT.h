@@ -31,6 +31,8 @@
 #include <utility>
 #include <iomanip>
 
+#include <boost/filesystem.hpp>
+
 #ifndef SERIAL
 #include "mpi.h"
 #endif
@@ -80,6 +82,9 @@ class SCPT
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_1h2p_ind;
   unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_2h1p_ind;
   unordered_map<std::array<int,4>, int, boost::hash<std::array<int,4>> > class_2h2p_ind;
+
+  // the names of each of the 9 classes
+  string classNames[NUM_EXCIT_CLASSES] = {"CASCI", "AAAV", "AAVV", "CAAA", "CAAV", "CAVV", "CCAA", "CCAV", "CCVV"};
 
   SCPT()
   {
@@ -143,6 +148,7 @@ class SCPT
     {
       // If the previous class (labelled i-1) is being used, add it to the
       // cumulative counter.
+
       if (classesUsed[i-1]) {
         cumNumCoeffs[i] = cumNumCoeffs[i-1] + numCoeffsPerClass[i-1];
       }
@@ -958,6 +964,95 @@ class SCPT
     }
     fprintf(out_norms, "\n");
   }
+
+  // Create directories where the norm files will be stored
+  void createDirForSCNorms()
+  {
+    // create ./norms
+    boost::filesystem::path pathNorms( boost::filesystem::current_path() / "norms" );
+
+    if (commrank == 0) {
+      if (!boost::filesystem::exists(pathNorms))
+        boost::filesystem::create_directory(pathNorms);
+
+      // create .norms/exact
+      boost::filesystem::path pathNormsExact( boost::filesystem::current_path() / "norms/exact" );
+
+      if (!boost::filesystem::exists(pathNormsExact))
+        boost::filesystem::create_directory(pathNormsExact);
+    }
+
+    // wait for process 0 to create directory
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // create ./norms/proc_i
+    boost::filesystem::path pathNormsProc( boost::filesystem::current_path() / "norms/proc_" );
+    pathNormsProc += to_string(commrank);
+
+    if (!boost::filesystem::exists(pathNormsProc))
+      boost::filesystem::create_directory(pathNormsProc);
+
+    return;
+  }
+
+  // Print norms to output files.
+  // If determClasses is true, only print the norms from classes where the
+  // norms are being found exactly.
+  // Otherwise, print the norms calculated stochastically, summed up until
+  // the current iteration. Also print the current estimate of the the
+  // CASCI energy, and the residence time.
+  void printSCNorms(int& iter, double& deltaT_Tot, double& energyCAS_Tot, VectorXd& norms_Tot, bool determClasses)
+  {
+    if (! determClasses) {
+      // First print the CASCI energy estimate
+      string energyFileName = "norms/proc_" + to_string(commrank) + "/cas_energy_" + to_string(commrank) + ".dat";
+      ofstream out_energy;
+      out_energy.open(energyFileName);
+
+      out_energy << "Iteration: " << iter << endl;
+      out_energy.precision(12);
+      out_energy << scientific;
+      out_energy << "Total summed numerator for the CASCI energy: " << energyCAS_Tot << endl;
+      out_energy << "Total summed residence time: " << deltaT_Tot << endl;
+
+      out_energy.close();
+    }
+
+    // Next print the norms of each of the classes
+    for (int i=1; i<9; i++)
+    {
+      if (classesUsed[i]) {
+
+        if ((determClasses && normsDeterm[i]) || (!determClasses && !normsDeterm[i])) {
+          string fileName;
+          if (!determClasses)
+            fileName = "norms/proc_" + to_string(commrank) + "/norms_" + classNames[i] + "_" + to_string(commrank) + ".dat";
+          else
+            fileName = "norms/exact/norms_" + classNames[i] + "_exact.dat";
+
+          ofstream out_norms;
+          out_norms.open(fileName);
+
+          if (!determClasses)
+            out_norms << "Iteration: " << iter << endl;
+          else
+            out_norms << "Norms calculated deterministically" << endl;
+
+          out_norms.precision(12);
+          out_norms << scientific;
+
+          if (!determClasses)
+            out_norms << "Total summed residence time: " << deltaT_Tot << endl;
+
+          for (int ind = cumNumCoeffs[i]; ind < cumNumCoeffs[i]+numCoeffsPerClass[i]-1; ind++)
+            out_norms << norms_Tot(ind) << endl;
+
+          out_norms.close();
+        }
+
+      }
+    }
+  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
@@ -981,20 +1076,13 @@ class SCPT
     workingArray work;
 
     double ham = 0., hamSample = 0., ovlp = 0.;
-    double deltaT = 0., deltaT_Tot = 0., deltaT_Print = 0.;
-    double energyCAS = 0., energyCAS_Tot = 0., energyCAS_Print = 0.;
+    double deltaT = 0., deltaT_Tot = 0.;
+    double energyCAS = 0., energyCAS_Tot = 0.;
 
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
-    VectorXd norms_Print;
-    if (schd.printSCNorms && commrank == 0) norms_Print.resize(coeffs.size());
 
-    // Print the norm samples to a file. Create the header:
-    FILE * out_norms;
-    if (schd.printSCNorms) {
-      out_norms = fopen("norms", "w");
-      if (commrank == 0) outputNormFileHeader(out_norms);
-    }
+    createDirForSCNorms();
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -1028,27 +1116,8 @@ class SCPT
       energyCAS_Tot += energyCAS;
       norms_Tot += normSamples;
 
-      // Print the norm samples from this iteration, summed across all processes
-      if (schd.printSCNorms && commrank == 0) {
-        // Only print these values out every printSCNormFreq iterations.
-        // The values printed out are summed over intervening iterations.
-        deltaT_Print += deltaT;
-        energyCAS_Print += energyCAS;
-        norms_Print += normSamples;
-
-        if (iter % schd.printSCNormFreq == 0) {
-          fprintf(out_norms, "%14d", iter);
-          fprintf(out_norms, "          %.12e", deltaT_Print);
-          fprintf(out_norms, "          %.12e", energyCAS_Print);
-          for (int ind = 1; ind < numCoeffs; ind++)
-            fprintf(out_norms, "          %.12e", norms_Print(ind));
-          fprintf(out_norms, "\n");
-
-          deltaT_Print = 0.;
-          energyCAS_Print = 0.;
-          norms_Print.setZero();
-        }
-      }
+      if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
+        printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
 
       // Pick the next determinant by the CTMC algorithm
       double nextDetRandom = random() * cumovlpRatio;
@@ -1089,9 +1158,10 @@ class SCPT
         calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
       if (normsDeterm[6])
         calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
-    }
 
-    if (schd.printSCNorms && commrank == 0) fclose(out_norms);
+      if (schd.printSCNorms && commrank == 0)
+        printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, true);
+    }
 
     if (commrank == 0)
     {
