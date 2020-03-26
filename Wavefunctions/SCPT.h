@@ -1069,6 +1069,7 @@ class SCPT
       }
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "About to sample the norms of the strongly contracted states..." << endl << endl;
     double timeNormsInit = getTime();
 
@@ -1078,6 +1079,11 @@ class SCPT
     double ham = 0., hamSample = 0., ovlp = 0.;
     double deltaT = 0., deltaT_Tot = 0.;
     double energyCAS = 0., energyCAS_Tot = 0.;
+
+    if (commrank == 0) {
+      cout << "About to allocate arrays for sampling..." << endl;
+      cout << "Total number of strongly contracted states to sample: " << numCoeffs << endl;
+    }
 
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
@@ -1091,6 +1097,9 @@ class SCPT
     initDets.resize(numCoeffs, walk.d);
     vector<double> largestCoeffs;
     largestCoeffs.resize(numCoeffs, 0.0);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
 
     HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
 
