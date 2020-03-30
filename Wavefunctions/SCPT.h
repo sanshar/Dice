@@ -852,7 +852,7 @@ class SCPT
 
     int iter = 0;
     double cumdeltaT = 0.;
-    int printMod = schd.stochasticIter / 5;
+    int printMod = max(1, schd.stochasticIter / 10);
 
     while (iter < schd.stochasticIter) {
       double cumovlpRatio = 0;
@@ -932,7 +932,7 @@ class SCPT
         double energy_ccvv = 0.0;
         if (classesUsedDeterm[8]) {
           energy_ccvv = get_ccvv_energy();
-          cout << "deterministic CCVV energy:  " << energy_ccvv << endl;
+          cout << "deterministic CCVV energy:  " << setprecision(12) << energy_ccvv << endl;
         }
         cout << "total nevpt2 energy:  " << ene(0) + ene2 + energy_ccvv << endl;
       }
@@ -1064,7 +1064,7 @@ class SCPT
         if (classesUsedDeterm[8])
         {
           energy_ccvv = get_ccvv_energy();
-          cout << endl << "Deterministic CCVV energy:  " << energy_ccvv << endl;
+          cout << endl << "Deterministic CCVV energy:  " << setprecision(12) << energy_ccvv << endl;
         }
       }
     }
@@ -1106,7 +1106,7 @@ class SCPT
     if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
 
     int iter = 1;
-    int printMod = schd.stochasticIterNorms / 10;
+    int printMod = max(1, schd.stochasticIterNorms / 10);
 
     if (commrank == 0)
       cout << "iter: 0" << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
