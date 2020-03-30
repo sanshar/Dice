@@ -1101,7 +1101,9 @@ class SCPT
     MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
 
+    if (commrank == 0) cout << "About to call first instance of HamAndSCNorms..." << endl;
     HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+    if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
 
     int iter = 1;
     int printMod = schd.stochasticIterNorms / 10;
