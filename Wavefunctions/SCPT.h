@@ -1255,7 +1255,7 @@ class SCPT
           if (!determClasses)
             out_norms << "Total summed residence time: " << deltaT_Tot << endl;
 
-          for (int ind = cumNumCoeffs[i]; ind < cumNumCoeffs[i]+numCoeffsPerClass[i]-1; ind++)
+          for (int ind = cumNumCoeffs[i]; ind < cumNumCoeffs[i]+numCoeffsPerClass[i]; ind++)
             out_norms << norms_Tot(ind) << endl;
 
           out_norms.close();
