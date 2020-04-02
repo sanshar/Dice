@@ -163,7 +163,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printVars = input.get("print.vars", false);
     schd.printGrad = input.get("print.grad", false);
     schd.printSCNorms = input.get("print.SCNorms", true);
-    schd.printSCNormFreq = input.get("print.SCNormFreq", 10);
+    schd.printSCNormFreq = input.get("print.SCNormFreq", 1);
     schd.readSCNorms = input.get("print.readSCNorms", false);
     schd.debug = input.get("print.debug", false);
     
