@@ -680,7 +680,8 @@ class SCPT
     vector<int> closed;
     vector<int> open;
     walk.d.getOpenClosed(open, closed);
-    
+
+
     // single excitations
     for (int i = 0; i < closed.size(); i++) {
       bool iCore = closed[i] < nSpinCore;
@@ -820,6 +821,216 @@ class SCPT
       largestCoeffs[ind] = abs(ham0);
     }
   }
+
+  // this is a version of HamAndSCNorms, optimized for the case where only
+  // classes AAAV (class 1) and CAAA (class 3) are needed
+  template<typename Walker>
+  void HamAndSCNormsCAAA_AAAV(Walker &walk, double &ovlp, double &ham, VectorXd &normSamples,
+                     vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                     workingArray& work, bool calcExtraNorms)
+  {
+    int norbs = Determinant::norbs;
+    double ham0;
+
+    morework.setCounterToZero();
+
+    // Get the WF overlap with the walker, ovlp
+    wave.HamAndOvlp(walk, ovlp, ham0, morework, true);
+    ovlp_current = ovlp;
+
+    if (ovlp == 0.) return;
+    ham = walk.d.Energy(I1, I2, coreE);
+
+    // Generate all screened excitations
+    work.setCounterToZero();
+
+    size_t nExcitationsCASCI = 0;
+
+    int nSpinCore = 2*schd.nciCore;
+    int firstSpinVirt = 2*(schd.nciCore + schd.nciAct);
+
+    vector<int> closed;
+    vector<int> open;
+    walk.d.getOpenClosed(open, closed);
+
+    auto ub_1 = upper_bound(open.begin(), open.end(), firstSpinVirt - 1);
+    int indActOpen = std::distance(open.begin(), ub_1);
+
+    auto ub_2 = upper_bound(closed.begin(), closed.end(), nSpinCore - 1);
+    int indCoreClosed = std::distance(closed.begin(), ub_2);
+
+    // single excitations within the CASCI space
+    // loop over all occupied orbitals in the active space
+    for (int i = indCoreClosed; i < closed.size(); i++) {
+      int closedOrb = closed[i];
+      int closedOffset = closedOrb * 2 * norbs;
+
+      // loop over all unoccupied orbitals in the active space
+      for (int a = 0; a < indActOpen; a++) {
+        if (closed[i] % 2 == open[a] % 2 &&
+            abs(I2hb.Singles(closed[i], open[a])) > schd.epsilon)
+        {
+          int ex1 = closedOffset + open[a];
+          int ex2 = 0;
+
+          double tia = walk.d.Hij_1ExciteScreened(open[a], closedOrb, I2hb,
+                                                        schd.screen, false);
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // double excitations within the CASCI space
+    // loop over all closed orbitals in the active space
+    for (int i = indCoreClosed; i < closed.size(); i++) {
+      int closedOrb_i = closed[i];
+      int closedOffset_i = closedOrb_i * 2 * norbs;
+
+      // loop over all closed orbitals in the active space s.t. j<i
+      for (int j = indCoreClosed; j<i; j++) {
+        int closedOrb_j = closed[j];
+        int closedOffset_j = closedOrb_j * 2 * norbs;
+
+        const float *integrals; const short* orbIndices;
+        size_t numIntegrals;
+        I2hbCAS.getIntegralArrayCAS(closedOrb_i, closed[j], integrals, orbIndices, numIntegrals);
+        size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, schd.epsilon, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+        // for all HCI integrals
+        for (size_t index = 0; index < numLargeIntegrals; index++)
+        {
+          // otherwise: generate the determinant corresponding to the current excitation
+          int a = 2 * orbIndices[2 * index] + closedOrb_i % 2,
+              b = 2 * orbIndices[2 * index + 1] + closedOrb_j % 2;
+
+          if (walk.d.getocc(a) || walk.d.getocc(b)) continue;
+
+          int ex1 = closedOffset_i + a;
+          int ex2 = closedOffset_j + b;
+          double tia = integrals[index];
+
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // single excitations for CAAA class
+    // loop over all core orbitals (which will all be occupied)
+    for (int i = 0; i < indCoreClosed; i++) {
+      int closedOrb = closed[i];
+      int closedOffset = closedOrb * 2 * norbs;
+
+      // loop over all open orbitals in the active space
+      for (int a = 0; a < indActOpen; a++) {
+        if (closed[i] % 2 == open[a] % 2 &&
+            abs(I2hb.Singles(closed[i], open[a])) > schd.epsilon)
+        {
+          int ex1 = closedOffset + open[a];
+          int ex2 = 0;
+          double tia = walk.d.Hij_1ExciteScreened(open[a], closedOrb, I2hb,
+                                                        schd.screen, false);
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // double excitations for CAAA class
+    // loop over all closed orbitals in the active space
+    for (int i = indCoreClosed; i < closed.size(); i++) {
+      int closedOrb_i = closed[i];
+      int closedOffset_i = closedOrb_i * 2 * norbs;
+
+      // loop over all core orbitals (which will all be occupied)
+      for (int j = 0; j < indCoreClosed; j++) {
+
+        int closedOrb_j = closed[j];
+        int closedOffset_j = closedOrb_j * 2 * norbs;
+
+        const float *integrals; const short* orbIndices;
+        size_t numIntegrals;
+        I2hbCAS.getIntegralArrayCAS(closedOrb_i, closed[j], integrals, orbIndices, numIntegrals);
+        size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, schd.epsilon, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+        // for all HCI integrals
+        for (size_t index = 0; index < numLargeIntegrals; index++)
+        {
+          int a = 2 * orbIndices[2 * index] + closedOrb_i % 2,
+              b = 2 * orbIndices[2 * index + 1] + closedOrb_j % 2;
+
+          if (walk.d.getocc(a) || walk.d.getocc(b)) continue;
+
+          int ex1 = closedOffset_i + a;
+          int ex2 = closedOffset_j + b;
+          double tia = integrals[index];
+
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // single excitations for AAAV class
+    // loop over all occupied orbitals in the active space
+    for (int i = indCoreClosed; i < closed.size(); i++) {
+      int closedOrb = closed[i];
+      int closedOffset = closedOrb * 2 * norbs;
+
+      // loop over all virtual orbitals (which will all be unoccupied)
+      for (int a = indActOpen; a < open.size(); a++) {
+        if (closed[i] % 2 == open[a] % 2 &&
+            abs(I2hb.Singles(closed[i], open[a])) > schd.epsilon)
+        {
+          int ex1 = closedOffset + open[a];
+          int ex2 = 0;
+
+          double tia = walk.d.Hij_1ExciteScreened(open[a], closedOrb, I2hb,
+                                                        schd.screen, false);
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // double excitations for AAAV class
+    // loop over all virtual orbitals
+    for (int a = firstSpinVirt; a < 2 * norbs; a++) {
+
+      // loop over all open orbitals in the active space
+      for (int b = 0; b < indActOpen; b++) {
+
+        int openOrb_b = open[b];
+
+        const float *integrals; const short* orbIndices;
+        size_t numIntegrals;
+        I2hbCAS.getIntegralArrayCAS(a, open[b], integrals, orbIndices, numIntegrals);
+        size_t numLargeIntegrals = std::lower_bound(integrals, integrals + numIntegrals, schd.epsilon, [](const float &x, float val){ return fabs(x) > val; }) - integrals;
+
+        // for all HCI integrals
+        for (size_t index = 0; index < numLargeIntegrals; index++)
+        {
+          int i = 2 * orbIndices[2 * index] + a % 2,
+              j = 2 * orbIndices[2 * index + 1] + openOrb_b % 2;
+
+          if ( (!walk.d.getocc(i)) || (!walk.d.getocc(j)) ) continue;
+
+          int ex1 = i * 2 * norbs + a;
+          int ex2 = j * 2 * norbs + openOrb_b;
+          double tia = integrals[index];
+
+          AddSCNormsContrib(walk, ovlp, ham, normSamples, initDets, largestCoeffs,
+                            work, calcExtraNorms, ex1, ex2, tia, nExcitationsCASCI);
+        }
+      }
+    }
+
+    // For the CTMC algorithm, only need excitations within the CASCI space.
+    // Update the number of excitations to reflect this
+    work.nExcitations = nExcitationsCASCI;
+  }
+
 
   template<typename Walker>
   double doNEVPT2_CT(Walker& walk) {
