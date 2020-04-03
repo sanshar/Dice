@@ -22,6 +22,7 @@
 #include <list>
 #include <boost/serialization/serialization.hpp>
 #include "Determinants.h"
+#include "OccRestrictions.h"
 
 using namespace std;
 
@@ -91,7 +92,8 @@ private:
     & DoSpinOneRDM                            \
     & DoOneRDM                                \
     & DoThreeRDM                              \
-    & DoFourRDM;
+    & DoFourRDM                               \
+    & restrictions;
   }
 
 public:
@@ -153,6 +155,8 @@ public:
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
+
+  vector<OccRestrictions> restrictions;
 };
 
 #endif

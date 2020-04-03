@@ -22,9 +22,11 @@
 #pragma once
 #include <vector>
 #include <boost/serialization/serialization.hpp>
+#include <iostream>
 
 using namespace std;
 using namespace boost;
+class schedule;
 
 //this class imposes restrictions on the number of electrons in a given
 //subset of orbitals. It works by restricting the determinants that are
@@ -37,53 +39,40 @@ struct OccRestrictions {
   friend class boost::serialization::access;
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
-    for (int i=0; i<DetLen/2; i++)
       ar & minElec
           & maxElec
           & orbs
-          & initElec;
+          & currentElec;
   }
-
+ public:
   int minElec;
   int maxElec;
   vector<int> orbs;
   int currentElec;
-  
+  OccRestrictions() : minElec(0), maxElec(10000) {};
   OccRestrictions(int pmin, int pmax, vector<int>& porbs) :
       minElec(pmin), maxElec(pmax), orbs(porbs) {};
 
 
-  void setElec(vector<int>& closed) {
-    for (int i=0; i<closed.size(); i++)
-      for (int x=0; x<orbs.size(); x++)
-        if (closed[i] == orbs[x]) currentElec++;
-  }
+  void setElec(vector<int>& closed);
   
-  void setElec(int elec){
-    currentElec = elec;
-  }
+  void setElec(int elec);
 
-  bool oneElecAllowed(int i, int a) {
-    int elec = currentElec;
-    for (int x=0; x<orbs.size(); x++) {
-      if (orbs[x] == i) elec--;
-      if (orbs[x] == a) elec++;
-    }
+  bool oneElecAllowed(int i, int a);
 
-    if (elec < minElec || elec > maxElec) return false;
-    return true;
-  }
+  bool twoElecAllowed(int i, int j, int a, int b);
 
-  bool twoElecAllowed(int i, int j, int a, int b) {
-    int elec = currentElec;
-    for (int x=0; x<orbs.size(); x++) {
-      if (orbs[x] == i || orbs[x] == j) elec--;
-      if (orbs[x] == a || orbs[x] == b) elec++;
-    }
-
-    if (elec < minElec || elec > maxElec) return false;
-    return true;
-  }
-  
+  friend ostream& operator<<(ostream& os, OccRestrictions& occ) {
+    os << "restrict, "<<occ.minElec<<","<<occ.maxElec<<"  ";
+    for (int i=0; i<occ.orbs.size(); i++)
+      os <<","<< occ.orbs[i];
+    os << endl;
+    return os;
+  };
 };
+
+void initiateRestrictions(schedule& schd, vector<int>& closed);
+bool satisfiesRestrictions(schedule& schd, int i, int a) ;
+bool satisfiesRestrictions(schedule& schd, int i, int j, int a, int b) ;
+
 

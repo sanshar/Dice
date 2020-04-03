@@ -115,6 +115,11 @@ python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-6
 #$MPICOMMAND $HCIPATH > output.dat
 #python ../test_energy.py 1  1.0e-6
 
+# O2 SHCI tests.
+cd $here/n2_RAS
+printf "...running n2_RAS\n"
+$MPICOMMAND $HCIPATH > output.dat
+python ../test_energy.py  1.0e-5
 
 ## Clean up
 cd $here

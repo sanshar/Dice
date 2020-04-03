@@ -237,6 +237,16 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.quasiQEpsilon = atof(tok[1].c_str());
     } else if (boost::iequals(ArgName, "nblocks"))
       schd.nblocks = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "restrict")) {
+      int minElec = atoi(tok[1].c_str());
+      int maxElec = atoi(tok[2].c_str());
+      std::vector<int> orbs;
+      for (int i=3; i<tok.size(); i++) {
+        orbs.push_back(2*atoi(tok[i].c_str()));
+        orbs.push_back(2*atoi(tok[i].c_str())+1);
+      }
+      schd.restrictions.push_back(OccRestrictions(minElec, maxElec, orbs));
+    }
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))
