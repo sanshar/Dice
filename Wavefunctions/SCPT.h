@@ -1186,7 +1186,7 @@ class SCPT
       if (!boost::filesystem::exists(pathNorms))
         boost::filesystem::create_directory(pathNorms);
 
-      // create .norms/exact
+      // create ./norms/exact
       boost::filesystem::path pathNormsExact( boost::filesystem::current_path() / "norms/exact" );
 
       if (!boost::filesystem::exists(pathNormsExact))
@@ -1202,6 +1202,30 @@ class SCPT
 
     if (!boost::filesystem::exists(pathNormsProc))
       boost::filesystem::create_directory(pathNormsProc);
+
+    return;
+  }
+
+  // Create directories where the init_dets files will be stored
+  void createDirForInitDets()
+  {
+    // create ./init_dets
+    boost::filesystem::path pathInitDets( boost::filesystem::current_path() / "init_dets" );
+
+    if (commrank == 0) {
+      if (!boost::filesystem::exists(pathInitDets))
+        boost::filesystem::create_directory(pathInitDets);
+    }
+
+    // wait for process 0 to create directory
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // create ./init_dets/proc_i
+    boost::filesystem::path pathInitDetsProc( boost::filesystem::current_path() / "init_dets/proc_" );
+    pathInitDetsProc += to_string(commrank);
+
+    if (!boost::filesystem::exists(pathInitDetsProc))
+      boost::filesystem::create_directory(pathInitDetsProc);
 
     return;
   }
@@ -1264,6 +1288,35 @@ class SCPT
       }
     }
   }
+
+  // Print initial determinants to output files
+  // We only need to print out the occupations in the active spaces
+  // The occupations of the core and virtual orbitals are determined
+  // from the label of the SC state, which is fixed by the deterministic
+  // ordering used.
+  void printInitDets(vector<Determinant>& initDets)
+  {
+    // Loop over all classes
+    for (int i=1; i<9; i++)
+    {
+      if (classesUsed[i]) {
+
+        string fileName;
+        fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_" + classNames[i] + "_" + to_string(commrank) + ".dat";
+
+        ofstream out_init_dets;
+        out_init_dets.open(fileName);
+
+        for (int ind = cumNumCoeffs[i]; ind < cumNumCoeffs[i]+numCoeffsPerClass[i]; ind++) {
+          initDets[ind].printActive(out_init_dets);
+          out_init_dets << endl;
+        }
+
+        out_init_dets.close();
+
+      }
+    }
+  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
@@ -1299,7 +1352,8 @@ class SCPT
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
 
-    if (schd.printSCNorms) createDirForSCNorms();
+    if (schd.printSCNorms)  createDirForSCNorms();
+    if (schd.printInitDets) createDirForInitDets();
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -1368,6 +1422,9 @@ class SCPT
 
     energyCAS_Tot /= deltaT_Tot;
     norms_Tot /= deltaT_Tot;
+
+    if (schd.printInitDets)
+      printInitDets(initDets);
 
     if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
     {

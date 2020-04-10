@@ -366,6 +366,21 @@ ostream& operator<<(ostream& os, const Determinant& d) {
   return os;
 }
 
+void Determinant::printActive(ostream& os) {
+  for (int i = schd.nciCore; i < schd.nciCore + schd.nciAct; i++) {
+    if (getoccA(i) == false && getoccB(i) == false)
+      os << 0 << " ";
+    else if (getoccA(i) == true && getoccB(i) == false)
+      os << "a" << " ";
+    else if (getoccA(i) == false && getoccB(i) == true)
+      os << "b" << " ";
+    else if (getoccA(i) == true && getoccB(i) == true)
+      os << 2 << " ";
+    if ( (i+1)%5 == 0)
+      os << "  ";
+  }
+}
+
 size_t hash_value(Determinant const& d) {
   std::size_t seed = 0;
   //boost::hash_combine(seed, d.reprA[0]);

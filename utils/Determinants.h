@@ -148,6 +148,8 @@ class Determinant {
   friend ostream& operator<<(ostream& os, const Determinant& d);
   friend size_t hash_value(Determinant const& d);
 
+  // print the occupations of orbitals within the active space
+  void printActive(ostream& os);
 
   // Get unique processor label for this determinant
   int getProc() const {
