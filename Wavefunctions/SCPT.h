@@ -1293,7 +1293,7 @@ class SCPT
   // We only need to print out the occupations in the active spaces
   // The occupations of the core and virtual orbitals are determined
   // from the label of the SC state, which is fixed by the deterministic
-  // ordering used.
+  // ordering (the same as used in coeffsIndex).
   void printInitDets(vector<Determinant>& initDets)
   {
     // Loop over all classes
@@ -1316,6 +1316,156 @@ class SCPT
 
       }
     }
+  }
+
+  // read determinants in to the initDets array from previously output files
+  void readInitDets(vector<Determinant>& initDets)
+  {
+    string fileName;
+    std::string line;
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+    int numVirt = norbs - first_virtual;
+
+    // For each class, loop over all perturbers in the same order that they
+    // are printed in the init_dets files (which is the same ordering used
+    // in coeffsIndex)
+
+    // Currently this will only read in classes:
+    // AAAV, AAVV, CAAA, CAAV and CCAA
+
+    // First, create a determinant with all core orbitals doubly occupied:
+    Determinant detCAS;
+    for (int i=0; i<schd.nciCore; i++) {
+      detCAS.setoccA(i, true);
+      detCAS.setoccB(i, true);
+    }
+
+    // AAAV
+    fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_AAAV_" + to_string(commrank) + ".dat";
+    ifstream dump;
+    dump.open(fileName);
+    for (int r=2*first_virtual; r<2*norbs; r++) {
+      int ind = cumNumCoeffs[1] + r - 2*first_virtual;
+
+      std::getline(dump, line);
+      Determinant d(detCAS);
+      readDetActive(line, d);
+
+      d.setocc(r, true);
+      initDets[ind] = d;
+    }
+    dump.close();
+
+    // AAVV
+    fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_AAVV_" + to_string(commrank) + ".dat";
+    dump.open(fileName);
+    for (int r=2*first_virtual+1; r<2*norbs; r++) {
+      for (int s=2*first_virtual; s<r; s++) {
+        int R = r - 2*first_virtual - 1;
+        int S = s - 2*first_virtual;
+        int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+
+        std::getline(dump, line);
+        Determinant d(detCAS);
+        readDetActive(line, d);
+
+        d.setocc(r, true);
+        d.setocc(s, true);
+        initDets[ind] = d;
+      }
+    }
+    dump.close();
+
+    // CAAA
+    fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_CAAA_" + to_string(commrank) + ".dat";
+    dump.open(fileName);
+    for (int i=0; i<2*schd.nciCore; i++) {
+      int ind = cumNumCoeffs[3] + i;
+
+      std::getline(dump, line);
+      Determinant d(detCAS);
+      readDetActive(line, d);
+
+      d.setocc(i, false);
+      initDets[ind] = d;
+    }
+    dump.close();
+
+    // CAAV
+    fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_CAAV_" + to_string(commrank) + ".dat";
+    dump.open(fileName);
+    for (int i=0; i<2*schd.nciCore; i++) {
+      for (int r=2*first_virtual; r<2*norbs; r++) {
+        int ind = cumNumCoeffs[4] + 2*numVirt*i + (r - 2*schd.nciCore - 2*schd.nciAct);
+
+        std::getline(dump, line);
+        Determinant d(detCAS);
+        readDetActive(line, d);
+
+        d.setocc(i, false);
+        d.setocc(r, true);
+        initDets[ind] = d;
+      }
+    }
+    dump.close();
+
+    // CCAA
+    fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_CCAA_" + to_string(commrank) + ".dat";
+    dump.open(fileName);
+    for (int i=1; i<2*schd.nciCore; i++) {
+      for (int j=0; j<i; j++) {
+        int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+
+        std::getline(dump, line);
+        Determinant d(detCAS);
+        readDetActive(line, d);
+
+        d.setocc(i, false);
+        d.setocc(j, false);
+        initDets[ind] = d;
+      }
+    }
+    dump.close();
+  }
+
+  // From a given line of an output file, containing only the occupations of
+  // orbitals within the active space, construct the corresponding determinant
+  // (with all core obritals occupied, all virtual orbitals unocuppied).
+  // This is specifically used by for readInitDets
+  void readDetActive(string& line, Determinant& det)
+  {
+    boost::trim_if(line, boost::is_any_of(", \t\n"));
+
+    vector<string> tok;
+    boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+
+    int offset = schd.nciCore;
+
+    for (int i=0; i<schd.nciAct; i++)
+    {
+      if (boost::iequals(tok[i], "2"))
+      {
+        det.setoccA(i+offset, true);
+        det.setoccB(i+offset, true);
+      }
+      else if (boost::iequals(tok[i], "a"))
+      {
+        det.setoccA(i+offset, true);
+        det.setoccB(i+offset, false);
+      }
+      if (boost::iequals(tok[i], "b"))
+      {
+        det.setoccA(i+offset, false);
+        det.setoccB(i+offset, true);
+      }
+      if (boost::iequals(tok[i], "0"))
+      {
+        det.setoccA(i+offset, false);
+        det.setoccB(i+offset, false);
+      }
+    }
+
   }
   
   template<typename Walker>
@@ -1423,8 +1573,13 @@ class SCPT
     energyCAS_Tot /= deltaT_Tot;
     norms_Tot /= deltaT_Tot;
 
-    if (schd.printInitDets)
+    if (schd.readInitDets) {
+      readInitDets(initDets);
+    }
+
+    if (schd.printInitDets) {
       printInitDets(initDets);
+    }
 
     if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
     {

@@ -50,6 +50,7 @@ private:
       & printSCNormFreq
       & readSCNorms
       & printInitDets
+      & readInitDets
       & debug
       & decay1
       & decay2
@@ -156,6 +157,7 @@ public:
   bool readSCNorms;                      // Do not sample SC norms, but instead read them from previously-printed file
   bool printInitDets;                    // Should we print out the initial determinants for sampling the perturber
                                          // energies in SC-NEVPT2?
+  bool readInitDets;                     // Do not find initial dets, but instead read them from previously-printed file
   bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   HAM Hamiltonian;
   int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
