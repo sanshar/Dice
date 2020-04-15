@@ -25,6 +25,7 @@
 #include "igl/slice.h"
 #include "igl/slice_into.h"
 #include "Slater.h"
+#include "MultiSlater.h"
 #include "AGP.h"
 #include "Pfaffian.h"
 #include <unordered_set>
@@ -486,6 +487,291 @@ struct Walker<Corr, Slater> {
     os << "dets\n" << w.refHelper.thetaDet[0][0] << "  " << w.refHelper.thetaDet[0][1] << endl << endl;
     os << "alphaInv\n" << w.refHelper.thetaInv[0] << endl << endl;
     os << "betaInv\n" << w.refHelper.thetaInv[1] << endl << endl;
+    return os;
+  }
+
+};
+
+template<typename Corr>
+struct Walker<Corr, MultiSlater> {
+
+  Determinant d;
+  WalkerHelper<Corr> corrHelper;
+  WalkerHelper<MultiSlater> refHelper;
+  unordered_set<int> excitedOrbs;        //spin orbital indices of excited electrons (in virtual orbitals) in d 
+
+  Walker() {};
+  
+  Walker(Corr &corr, const MultiSlater &ref) 
+  {
+    initDet();
+    refHelper = WalkerHelper<MultiSlater>(ref, d);
+    corrHelper = WalkerHelper<Corr>(corr, d);
+  }
+
+  Walker(Corr &corr, const MultiSlater &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
+
+  Determinant& getDet() {return d;}
+
+  void readBestDeterminant(Determinant& d) const 
+  {
+    if (commrank == 0) {
+      char file[5000];
+      sprintf(file, "BestDeterminant.txt");
+      std::ifstream ifs(file, std::ios::binary);
+      boost::archive::binary_iarchive load(ifs);
+      load >> d;
+    }
+#ifndef SERIAL
+    MPI_Bcast(&d.reprA, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&d.reprB, DetLen, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#endif
+  }
+
+  /**
+   * makes det based on mo coeffs 
+   */
+  void guessBestDeterminant(Determinant& d) const 
+  {
+    int norbs = Determinant::norbs;
+    int nalpha = Determinant::nalpha;
+    int nbeta = Determinant::nbeta;
+
+    d = Determinant();
+    if (boost::iequals(schd.determinantFile, "")) {
+      // choose alpha occupations randomly
+      std::vector<int> bitmask(nalpha, 1);
+      bitmask.resize(norbs, 0); // N-K trailing 0's
+      vector<int> comb;
+      random_shuffle(bitmask.begin(), bitmask.end());
+      for (int i = 0; i < norbs; i++) {
+        if (bitmask[i] == 1) d.setoccA(i, true);
+      }
+
+      // fill beta, trying to avoid occupied alphas as much as possible
+      int nbetaFilled = 0;
+      // first pass, only fill empty orbs
+      for (int i = 0; i < norbs; i++) {
+        if (nbetaFilled == nbeta) break;
+        if (bitmask[i] == 0) { // empty
+          d.setoccB(i, true);
+          nbetaFilled++;
+        }
+      }
+      
+      // if betas leftover, fill sequentially
+      if (nbetaFilled < nbeta) {
+        for (int i = 0; i < norbs; i++) {
+          if (nbetaFilled == nbeta) break;
+          if (bitmask[i] == 1) {// alpha occupied
+            d.setoccB(i, true);
+            nbetaFilled++;
+          }
+        }
+      }
+    }
+    else if (boost::iequals(schd.determinantFile, "bestDet")) {
+      std::vector<Determinant> dets;
+      std::vector<double> ci;
+      readDeterminants(schd.determinantFile, dets, ci);
+      d = dets[0];
+    }
+  }
+
+  void initDet() 
+  {
+    bool readDeterminant = false;
+    char file[5000];
+    sprintf(file, "BestDeterminant.txt");
+
+    {
+      ifstream ofile(file);
+      if (ofile)
+        readDeterminant = true;
+    }
+    if (readDeterminant)
+      readBestDeterminant(d);
+    else
+      guessBestDeterminant(d);
+  }
+
+  double getIndividualDetOverlap(int i) const
+  {
+    return refHelper.ciOverlaps[i];
+  }
+
+  double getDetOverlap(const MultiSlater &ref) const
+  {
+    return refHelper.totalOverlap;
+  }
+
+  double getDetFactor(int i, int a, const MultiSlater &ref) const 
+  {
+    if (i % 2 == 0)
+      return getDetFactor(i / 2, a / 2, 0, ref);
+    else                                   
+      return getDetFactor(i / 2, a / 2, 1, ref);
+  }
+
+  double getDetFactor(int I, int J, int A, int B, const MultiSlater &ref) const 
+  {
+    if (I % 2 == J % 2 && I % 2 == 0)
+      return getDetFactor(I / 2, J / 2, A / 2, B / 2, 0, 0, ref);
+    else if (I % 2 == J % 2 && I % 2 == 1)                  
+      return getDetFactor(I / 2, J / 2, A / 2, B / 2, 1, 1, ref);
+    else if (I % 2 != J % 2 && I % 2 == 0)                  
+      return getDetFactor(I / 2, J / 2, A / 2, B / 2, 0, 1, ref);
+    else                                                    
+      return getDetFactor(I / 2, J / 2, A / 2, B / 2, 1, 0, ref);
+  }
+
+  double getDetFactor(int i, int a, bool sz, const MultiSlater &ref) const
+  {
+    int tableIndexi, tableIndexa;
+    refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz);
+    
+    // make rt slice once, does not change with ci dets
+    complex<double> rtSlice = refHelper.rt(tableIndexa, tableIndexi);
+    VectorXi mCre(1); mCre << tableIndexa; // a
+    VectorXi mDes(1); mDes << tableIndexi; // i
+
+    // calculating < m | psi > 
+    double overlap = ref.ciCoeffs[0] * (rtSlice * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
+    // iterate over rest of ci expansion
+    for (int j = 1; j < ref.numDets; j++) {
+      MatrixXcd rtc_bSlice, tSlice, tcSlice;
+      igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[j][1], rtc_bSlice);
+      igl::slice(refHelper.t, ref.ciExcitations[j][0], mDes, tSlice);
+      igl::slice(refHelper.tc, ref.ciExcitations[j][0], ref.ciExcitations[j][1], tcSlice);
+      MatrixXcd sliceMat = MatrixXcd::Zero(1 + ref.ciExcitations[j][0].size(), 1 + ref.ciExcitations[j][0].size());
+      sliceMat(0, 0) = rtSlice;
+      sliceMat.block(0, 1, 1, ref.ciExcitations[j][0].size()) = rtc_bSlice;
+      sliceMat.block(1, 0, ref.ciExcitations[j][0].size(), 1) = tSlice;
+      sliceMat.block(1, 1, ref.ciExcitations[j][0].size(), ref.ciExcitations[j][0].size()) = tcSlice;
+      //overlap += ref.ciCoeffs[j] * ref.ciParity[j] * (sliceMat.determinant() * refHelper.refOverlap).real();
+      overlap += ref.ciCoeffs[j] * ref.ciParity[j] * (calcDet(sliceMat) * refHelper.refOverlap).real();
+    }
+    return overlap / refHelper.totalOverlap;
+  }
+  
+  double getDetFactor(int i, int j, int a, int b, bool sz1, bool sz2, const MultiSlater &ref) const
+  {
+    int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
+    refHelper.getRelIndices(i, tableIndexi, a, tableIndexa, sz1); 
+    refHelper.getRelIndices(j, tableIndexj, b, tableIndexb, sz2) ;
+    
+    // make rt slice once, does not change with ci dets
+    VectorXi mCre(2); mCre << tableIndexa, tableIndexb; 
+    VectorXi mDes(2); mDes << tableIndexi, tableIndexj;
+    MatrixXcd rtSlice;
+    igl::slice(refHelper.rt, mCre, mDes, rtSlice);
+
+    // calculating < m | psi > 
+    //double overlap = ref.ciCoeffs[0] * (rtSlice.determinant() * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
+    double overlap = ref.ciCoeffs[0] * (calcDet(rtSlice) * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
+    // iterate over rest of ci expansion
+    for (int k = 1; k < ref.numDets; k++) {
+      MatrixXcd rtc_bSlice, tSlice, tcSlice;
+      igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[k][1], rtc_bSlice);
+      igl::slice(refHelper.t, ref.ciExcitations[k][0], mDes, tSlice);
+      igl::slice(refHelper.tc, ref.ciExcitations[k][0], ref.ciExcitations[k][1], tcSlice);
+      MatrixXcd sliceMat = MatrixXcd::Zero(2 + ref.ciExcitations[k][0].size(), 2 + ref.ciExcitations[k][1].size());
+      sliceMat.block(0, 0, 2, 2) = rtSlice;
+      sliceMat.block(0, 2, 2, ref.ciExcitations[k][0].size()) = rtc_bSlice;
+      sliceMat.block(2, 0, ref.ciExcitations[k][0].size(), 2) = tSlice;
+      sliceMat.block(2, 2, ref.ciExcitations[k][0].size(), ref.ciExcitations[k][0].size()) = tcSlice;
+      //overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (sliceMat.determinant() * refHelper.refOverlap).real();
+      overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (calcDet(sliceMat) * refHelper.refOverlap).real();
+    }
+    return overlap / refHelper.totalOverlap;
+
+  }
+ 
+  // to be implemented for mrci/nevpt
+  double getDetFactor(std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
+  {
+    return 0.;
+  }
+
+  void update(int i, int a, bool sz, const MultiSlater &ref, Corr &corr, bool doparity = true)
+  {
+    double p = 1.0;
+    if (doparity) p *= d.parity(a, i, sz);
+    d.setocc(i, sz, false);
+    d.setocc(a, sz, true);
+    int norbs = Determinant::norbs;
+    vector<int> cre{ a + sz * norbs }, des{ i + sz * norbs };
+    refHelper.excitationUpdate(ref, cre, des, sz, p, d);
+    corrHelper.updateHelper(corr, d, i, a, sz);
+  }
+
+  void update(int i, int j, int a, int b, bool sz, const MultiSlater &ref, Corr& corr, bool doparity = true)
+  {
+    double p = 1.0;
+    Determinant dcopy = d;
+    if (doparity) p *= d.parity(a, i, sz);
+    d.setocc(i, sz, false);
+    d.setocc(a, sz, true);
+    if (doparity) p *= d.parity(b, j, sz);
+    d.setocc(j, sz, false);
+    d.setocc(b, sz, true);
+    int norbs = Determinant::norbs;
+    vector<int> cre{ a + sz * norbs, b + sz * norbs }, des{ i + sz * norbs, j + sz * norbs };
+    refHelper.excitationUpdate(ref, cre, des, sz, p, d);
+    corrHelper.updateHelper(corr, d, i, j, a, b, sz);
+  }
+
+  void updateWalker(const MultiSlater &ref, Corr& corr, int ex1, int ex2, bool doparity = true)
+  {
+    int norbs = Determinant::norbs;
+    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+    if (I % 2 == J % 2 && ex2 != 0) {
+      if (I % 2 == 1) {
+        update(I / 2, J / 2, A / 2, B / 2, 1, ref, corr, doparity);
+      }
+      else {
+        update(I / 2, J / 2, A / 2, B / 2, 0, ref, corr, doparity);
+      }
+    }
+    else {
+      if (I % 2 == 0)
+        update(I / 2, A / 2, 0, ref, corr, doparity);
+      else
+        update(I / 2, A / 2, 1, ref, corr, doparity);
+
+      if (ex2 != 0) {
+        if (J % 2 == 1) {
+          update(J / 2, B / 2, 1, ref, corr, doparity);
+        }
+        else {
+          update(J / 2, B / 2, 0, ref, corr, doparity);
+        }
+      }
+    }
+  }
+
+  // not used
+  void exciteWalker(const MultiSlater &ref, Corr& corr, int excite1, int excite2, int norbs)
+  {
+    return;
+  }
+
+  void OverlapWithGradient(const MultiSlater &ref, Eigen::VectorBlock<VectorXd> &grad) const
+  {
+    if (schd.optimizeCiCoeffs) {
+      for (int i = 0; i < ref.numDets; i++) grad[i] += refHelper.ciOverlaps[i] / refHelper.totalOverlap;
+    }
+    // orb gradient to be implemented
+  }
+
+  friend ostream& operator<<(ostream& os, const Walker<Corr, MultiSlater>& w) {
+    os << w.d << endl << endl;
+    os << "t\n" << w.refHelper.t << endl << endl;
+    os << "rt\n" << w.refHelper.rt << endl << endl;
+    os << "tc\n" << w.refHelper.tc << endl << endl;
+    os << "rtc_b\n" << w.refHelper.rtc_b << endl << endl;
+    os << "totalOverlap\n" << w.refHelper.totalOverlap << endl << endl;
     return os;
   }
 

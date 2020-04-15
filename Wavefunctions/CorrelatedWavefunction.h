@@ -251,8 +251,7 @@ struct CorrelatedWavefunction {
                                         work, false);  
   
     //loop over all the screened excitations
-    //cout << "eloc excitations" << endl;
-    //if (schd.debug) cout << "phi0  d.energy" << ham << endl;
+    //if (schd.debug) cout << "eloc excitations\nphi0  d.energy " << ham << endl;
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       double tia = work.HijElement[i];

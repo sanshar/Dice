@@ -116,6 +116,11 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
+  if (schd.wavefunctionType == "jastrowmultislater") {
+    CorrelatedWavefunction<Jastrow, MultiSlater> wave; Walker<Jastrow, MultiSlater> walk;
+    runVMC(wave, walk);
+  }
+  
   if (schd.wavefunctionType == "resonatingwavefunction") {
     ResonatingWavefunction wave; ResonatingWalker walk;
     runVMC(wave, walk);

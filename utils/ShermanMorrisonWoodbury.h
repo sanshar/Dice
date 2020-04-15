@@ -55,6 +55,27 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXcd &inverseIn,
                                                                std::vector<int> &RowIn, const Eigen::MatrixXcd &Hforbs, const bool updateTable);
 
 
+// determinant function specialized for small matrices
+inline std::complex<double> calcDet(const Eigen::MatrixXcd &detSlice) {
+  if (detSlice.rows() == 2) return detSlice(0,0) * detSlice(1,1) - detSlice(0,1) * detSlice(1,0);
+  else if (detSlice.rows() == 3) return detSlice(0,0) * (detSlice(1,1) * detSlice(2,2) - detSlice(1,2) * detSlice(2,1))
+                                       - detSlice(0,1) * (detSlice(1,0) * detSlice(2,2) - detSlice(1,2) * detSlice(2,0))
+                                       + detSlice(0,2) * (detSlice(1,0) * detSlice(2,1) - detSlice(1,1) * detSlice(2,0));
+  else if (detSlice.rows() == 4) return detSlice(0,3) * detSlice(1,2) * detSlice(2,1) * detSlice(3,0) - detSlice(0,2) * detSlice(1,3) * detSlice(2,1) * detSlice(3,0) -
+     detSlice(0,3) * detSlice(1,1) * detSlice(2,2) * detSlice(3,0) + detSlice(0,1) * detSlice(1,3) * detSlice(2,2) * detSlice(3,0) +
+     detSlice(0,2) * detSlice(1,1) * detSlice(2,3) * detSlice(3,0) - detSlice(0,1) * detSlice(1,2) * detSlice(2,3) * detSlice(3,0) -
+     detSlice(0,3) * detSlice(1,2) * detSlice(2,0) * detSlice(3,1) + detSlice(0,2) * detSlice(1,3) * detSlice(2,0) * detSlice(3,1) +
+     detSlice(0,3) * detSlice(1,0) * detSlice(2,2) * detSlice(3,1) - detSlice(0,0) * detSlice(1,3) * detSlice(2,2) * detSlice(3,1) -
+     detSlice(0,2) * detSlice(1,0) * detSlice(2,3) * detSlice(3,1) + detSlice(0,0) * detSlice(1,2) * detSlice(2,3) * detSlice(3,1) +
+     detSlice(0,3) * detSlice(1,1) * detSlice(2,0) * detSlice(3,2) - detSlice(0,1) * detSlice(1,3) * detSlice(2,0) * detSlice(3,2) -
+     detSlice(0,3) * detSlice(1,0) * detSlice(2,1) * detSlice(3,2) + detSlice(0,0) * detSlice(1,3) * detSlice(2,1) * detSlice(3,2) +
+     detSlice(0,1) * detSlice(1,0) * detSlice(2,3) * detSlice(3,2) - detSlice(0,0) * detSlice(1,1) * detSlice(2,3) * detSlice(3,2) -
+     detSlice(0,2) * detSlice(1,1) * detSlice(2,0) * detSlice(3,3) + detSlice(0,1) * detSlice(1,2) * detSlice(2,0) * detSlice(3,3) +
+     detSlice(0,2) * detSlice(1,0) * detSlice(2,1) * detSlice(3,3) - detSlice(0,0) * detSlice(1,2) * detSlice(2,1) * detSlice(3,3) -
+     detSlice(0,1) * detSlice(1,0) * detSlice(2,2) * detSlice(3,3) + detSlice(0,0) * detSlice(1,1) * detSlice(2,2) * detSlice(3,3);
+  else return detSlice.determinant();
+}
+
 //pfaffian of a real matrix using Hessenberg decomposition
 double calcPfaffianH(const Eigen::MatrixXd &mat); 
 //pfaffian of a complex matrix using Parlett-Reid algorithm

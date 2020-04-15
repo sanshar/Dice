@@ -147,8 +147,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.momentum = input.get("optimizer.momentum", 0.);
     schd.stepsize = input.get("optimizer.stepsize", 0.001);
     schd.optimizeOrbs = input.get("optimizer.optimizeOrbs", true);
-    schd.optimizeCps = input.get("optimizer.optimizeCps", true);
-    schd.optimizeJastrow = input.get("optimizer.optimizeJastrow", true);
+    schd.optimizeCiCoeffs = input.get("optimizer.optimizeCiCoeffs", true);
+    schd.optimizeCps = input.get("optimizer.optimizeCps", true); // this is used for all correlators in correlatedwavefunction, not just cps
+    schd.optimizeJastrow = input.get("optimizer.optimizeJastrow", true); // this is misleading, becuase this is only relevant to jrbm
     schd.optimizeRBM = input.get("optimizer.optimizeRBM", true);
     schd.cgIter = input.get("optimizer.cgIter", 15);
     schd.sDiagShift = input.get("optimizer.sDiagShift", 0.01);
@@ -329,4 +330,88 @@ void readDeterminants(std::string input, vector<Determinant> &determinants,
 	  *ciExpansion.rbegin() *= getParityForDiceToAlphaBeta(det);
 	}
     }
+}
+
+void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,
+        std::vector<int>& ciParity, std::vector<double>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  ifstream dump(input.c_str());
+  bool isFirst = true;
+  Determinant refDet;
+  
+  while (dump.good()) {
+    std::string Line;
+    std::getline(dump, Line);
+
+    boost::trim_if(Line, boost::is_any_of(", \t\n"));
+    
+    vector<string> tok;
+    boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+
+    if (tok.size() > 2 ) {
+      if (isFirst) {//first det is ref
+        isFirst = false;
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        ciParity.push_back(1);
+        std::array<VectorXi, 2> empty;
+        ciExcitations.push_back(empty);
+        vector<int> beta; //no ghf det structure, so artificially using vector of ints, alpha followed by beta
+        for (int i=0; i<norbs; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            refDet.setoccA(i, true);
+            refDet.setoccB(i, true);
+            ref.push_back(i);
+            beta.push_back(i + norbs);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            refDet.setoccA(i, true);
+            ref.push_back(i);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            refDet.setoccB(i, true);
+            beta.push_back(i + norbs);
+          }
+        }
+        ref.insert(ref.end(), beta.begin(), beta.end());
+      }
+      else {
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        vector<int> desA, creA, desB, creB;
+        for (int i=0; i<norbs; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            if (!refDet.getoccA(i)) creA.push_back(i);
+            if (!refDet.getoccB(i)) creB.push_back(i);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            if (!refDet.getoccA(i)) creA.push_back(i);
+            if (refDet.getoccB(i)) desB.push_back(i);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            if (refDet.getoccA(i)) desA.push_back(i);
+            if (!refDet.getoccB(i)) creB.push_back(i);
+          }
+          else if (boost::iequals(tok[1+i], "0")) {
+            if (refDet.getoccA(i)) desA.push_back(i);
+            if (refDet.getoccB(i)) desB.push_back(i);
+          }
+        }
+        ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
+        VectorXi cre = VectorXi::Zero(creA.size() + creB.size());
+        VectorXi des = VectorXi::Zero(desA.size() + desB.size());
+        for (int i = 0; i < creA.size(); i++) {
+          des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
+          cre[i] = creA[i];
+        }
+        for (int i = 0; i < creB.size(); i++) {
+          des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
+          cre[i + creA.size()] = creB[i] + norbs;
+        }
+        std::array<VectorXi, 2> excitations;
+        excitations[0] = des;
+        excitations[1] = cre;
+        ciExcitations.push_back(excitations);
+      }
+    }
+  }
 }

@@ -69,6 +69,7 @@ private:
       & doHessian
       & hf
       & optimizeOrbs
+      & optimizeCiCoeffs
       & optimizeCps
       & optimizeJastrow
       & optimizeRBM
@@ -136,6 +137,7 @@ public:
   bool doHessian;                        //This calcules the Hessian and overlap for the linear method
   std::string hf;
   bool optimizeOrbs;
+  bool optimizeCiCoeffs;
   bool optimizeCps;
   bool optimizeJastrow;//used in jrbm
   bool optimizeRBM;//used in jrbm
@@ -261,4 +263,12 @@ void readCorrelator(const std::pair<int, std::string>& p,
  */
 void readDeterminants(std::string input, std::vector<Determinant>& determinants,
         std::vector<double>& ciExpansion);
+
+//reads determinants from Dice, for now assumes rhf dets and converts them into ghf = block_diag(rhf, rhf) 
+//the reference determinant, assumed to be the first in the file, is read in as a list of integers
+//the rest are stored as excitations from ref
+//assumes Dice parity included ci coeffs
+//the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
+void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+        std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 #endif

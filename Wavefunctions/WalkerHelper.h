@@ -25,6 +25,7 @@
 #include "igl/slice_into.h"
 #include "ShermanMorrisonWoodbury.h"
 #include "Slater.h"
+#include "MultiSlater.h"
 #include "AGP.h"
 #include "Pfaffian.h"
 #include "CPS.h"
@@ -229,6 +230,124 @@ class WalkerHelper<Slater>
     relI = std::search_n(closedOrbs[sz].begin(), closedOrbs[sz].end(), 1, i) - closedOrbs[sz].begin() + factor * closedOrbs[0].size();
     //relA = std::search_n(openOrbs[sz].begin(), openOrbs[sz].end(), 1, a) - openOrbs[sz].begin() + factor * openOrbs[0].size();
     relA = a + factor * Determinant::norbs;
+  }
+
+};
+
+template<>
+class WalkerHelper<MultiSlater>
+{
+
+ public:
+  MatrixXcd t;                    // A^{-1}
+  complex<double> refOverlap;     // < n | phi_0 >
+  std::vector<double> ciOverlaps; // Re (< n | phi_i >), include parity
+  double totalOverlap;            // Re (< n | psi >)
+  std::vector<int> closedOrbs;    // set of closed orbitals in the walker
+  MatrixXcd r, c, rt, tc, rtc_b;  // intermediate tables
+
+  WalkerHelper() {};
+  
+  WalkerHelper(const MultiSlater &w, const Determinant &d)
+  {
+    //fill the closed orbs for the walker
+    closedOrbs.clear();
+    vector<int> closedBeta;
+    d.getClosedAlphaBeta(closedOrbs, closedBeta);
+    for (int& c_i : closedBeta) c_i += Determinant::norbs;
+    closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
+    
+    initInvDetsTables(w);
+  }
+
+  void initInvDetsTables(const MultiSlater &w)
+  {
+    int norbs = Determinant::norbs;
+  
+    // inverse and refDet
+    MatrixXcd a;
+    Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
+    auto refCopy = w.ref;
+    Eigen::Map<VectorXi> occColumns(&refCopy[0], refCopy.size());
+    igl::slice(w.getHforbs(), occRows, occColumns, a); 
+    Eigen::FullPivLU<MatrixXcd> lua(a);
+    if (lua.isInvertible()) {
+      t = lua.inverse();
+      refOverlap = lua.determinant();
+    }
+    else {
+      cout << "overlap with zeroth determinant not invertible" << endl;
+      exit(0);
+    }
+    
+    // tables
+    // TODO: change table structure so that only unoccupied orbitals are present in r and c, 
+    // this is not done currently because table updates are easier with all orbitals, but leads to bigger tables
+    VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
+    igl::slice(w.getHforbs(), all, occColumns, r);
+    igl::slice(w.getHforbs(), occRows, all, c);
+    rt = r * t;
+    tc = t * c;
+    rtc_b = rt * c - w.getHforbs();
+
+    // overlaps with phi_i
+    ciOverlaps.clear();
+    ciOverlaps.push_back(refOverlap.real());
+    totalOverlap = w.ciCoeffs[0] * ciOverlaps[0];
+    for (int i = 1; i < w.numDets; i++) {
+      MatrixXcd sliceMat;
+      igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
+      //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
+      ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
+      totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
+    }
+  }
+
+  void excitationUpdate(const MultiSlater &w, vector<int>& cre, vector<int>& des, bool sz, double parity, const Determinant& excitedDet)
+  {
+    // sherman morrison to update inverse
+    // right now only table rt is updated efficiently
+    auto refCopy = w.ref;
+    Eigen::Map<VectorXi> occColumns(&refCopy[0], refCopy.size());
+    MatrixXcd tOld = t;
+    complex<double> overlapOld = refOverlap;
+    MatrixXcd rtOld = rt;
+    calculateInverseDeterminantWithRowChange(tOld, overlapOld, rtOld, t, refOverlap, rt, cre, des, occColumns, closedOrbs, w.getHforbs(), 0);
+    refOverlap *= parity;
+   
+    int norbs = Determinant::norbs;
+    closedOrbs.clear();
+    vector<int> closedBeta;
+    excitedDet.getClosedAlphaBeta(closedOrbs, closedBeta);
+    for (int& c_i : closedBeta) c_i += norbs;
+    closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
+    
+    // TODO: these tables also need efficient updates
+    rt = r * t;
+    Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
+    VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
+    igl::slice(w.getHforbs(), occRows, all, c);
+    tc = t * c;
+    rtc_b = rt * c - w.getHforbs();
+    
+    // overlaps with phi_i
+    ciOverlaps.clear();
+    ciOverlaps.push_back(refOverlap.real());
+    totalOverlap = w.ciCoeffs[0] * ciOverlaps[0];
+    for (int i = 1; i < w.numDets; i++) {
+      MatrixXcd sliceMat;
+      igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
+      //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
+      ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
+      totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
+    }
+  }
+
+  void getRelIndices(int i, int &relI, int a, int &relA, bool sz) const
+  {
+    //relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
+    relI = std::search_n(closedOrbs.begin(), closedOrbs.end(), 1, i + sz * Determinant::norbs) - closedOrbs.begin();
+    relA = a + sz * Determinant::norbs;
   }
 
 };
