@@ -24,6 +24,8 @@
 #include "Determinants.h"
 #include "workingArray.h"
 #include "excitationOperators.h"
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
@@ -52,9 +54,9 @@ class SCPT
   template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-      ar  & wave
-	& coeffs
-    & moEne;
+      ar & wave
+	    ar & coeffs
+      ar & moEne;
     }
 
  public:
@@ -1230,6 +1232,30 @@ class SCPT
     return;
   }
 
+  // Create directories where the norm files will be stored
+  void createDirForNormsBinary()
+  {
+    if (commrank == 0) {
+      // create ./norms
+      boost::filesystem::path pathNorms( boost::filesystem::current_path() / "norm_data" );
+
+      if (!boost::filesystem::exists(pathNorms))
+        boost::filesystem::create_directory(pathNorms);
+    }
+
+    // wait for process 0 to create directory
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // create ./norms/proc_i
+    boost::filesystem::path pathNormsProc( boost::filesystem::current_path() / "norm_data/proc_" );
+    pathNormsProc += to_string(commrank);
+
+    if (!boost::filesystem::exists(pathNormsProc))
+      boost::filesystem::create_directory(pathNormsProc);
+
+    return;
+  }
+
   // Print norms to output files.
   // If determClasses is true, only print the norms from classes where the
   // norms are being found exactly.
@@ -1575,6 +1601,95 @@ class SCPT
     }
 
   }
+
+  void printNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                           double& energyCAS_Tot, VectorXd& norms_Tot)
+  {
+    if (commrank == 0) cout << "About to print norm data..." << endl;
+
+    string name_1 = "norm_data/proc_" + to_string(commrank) + "/norms_" + to_string(commrank) + ".bkp";
+	  ofstream file_1(name_1, std::ios::binary);
+    boost::archive::binary_oarchive oa1(file_1);
+    oa1 << norms_Tot;
+    file_1.close();
+
+    string name_2 = "norm_data/proc_" + to_string(commrank) + "/init_dets_" + to_string(commrank) + ".bkp";
+	  ofstream file_2(name_2, std::ios::binary);
+    boost::archive::binary_oarchive oa2(file_2);
+    oa2 << initDets;
+    file_2.close();
+
+    string name_3 = "norm_data/proc_" + to_string(commrank) + "/coeffs_" + to_string(commrank) + ".bkp";
+	  ofstream file_3(name_3, std::ios::binary);
+    boost::archive::binary_oarchive oa3(file_3);
+    oa3 << largestCoeffs;
+    file_3.close();
+
+    string name_4 = "norm_data/proc_" + to_string(commrank) + "/energy_cas_" + to_string(commrank) + ".bkp";
+	  ofstream file_4(name_4, std::ios::binary);
+    boost::archive::binary_oarchive oa4(file_4);
+    oa4 << energyCAS_Tot;
+    file_4.close();
+
+    if (commrank == 0) cout << "Printing complete." << endl << endl;
+  }
+
+  void readNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                          double& energyCAS_Tot, VectorXd& norms_Tot)
+  {
+    if (commrank == 0) cout << "About to read norm data..." << endl;
+
+    string name_1 = "norm_data/proc_" + to_string(commrank) + "/norms_" + to_string(commrank) + ".bkp";
+	  ifstream file_1(name_1, std::ios::binary);
+    boost::archive::binary_iarchive oa1(file_1);
+    oa1 >> norms_Tot;
+    file_1.close();
+
+    string name_2 = "norm_data/proc_" + to_string(commrank) + "/init_dets_" + to_string(commrank) + ".bkp";
+	  ifstream file_2(name_2, std::ios::binary);
+    boost::archive::binary_iarchive oa2(file_2);
+    oa2 >> initDets;
+    file_2.close();
+
+    string name_3 = "norm_data/proc_" + to_string(commrank) + "/coeffs_" + to_string(commrank) + ".bkp";
+	  ifstream file_3(name_3, std::ios::binary);
+    boost::archive::binary_iarchive oa3(file_3);
+    oa3 >> largestCoeffs;
+    file_3.close();
+
+    string name_4 = "norm_data/proc_" + to_string(commrank) + "/energy_cas_" + to_string(commrank) + ".bkp";
+	  ifstream file_4(name_4, std::ios::binary);
+    boost::archive::binary_iarchive oa4(file_4);
+    oa4 >> energyCAS_Tot;
+    file_4.close();
+
+    if (commrank == 0) cout << "Reading complete." << endl << endl;
+  }
+
+  void readNormDataText(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                        double& energyCAS_Tot, VectorXd& norms_Tot)
+  {
+    // Read in the stochastically-sampled norms
+    if (commrank == 0) cout << "About to read stochastically-sampled norms..." << endl;
+    readStochNorms(deltaT_Tot, energyCAS_Tot, norms_Tot);
+    if (commrank == 0) cout << "Reading complete." << endl;
+
+    energyCAS_Tot /= deltaT_Tot;
+    norms_Tot /= deltaT_Tot;
+
+    if (commrank == 0) cout << "About to read exactly-calculated norms..." << endl;
+    readDetermNorms(norms_Tot);
+    if (commrank == 0) cout << "Reading complete." << endl;
+
+    // Read in the exactly-calculated norms
+    if (schd.readInitDets) {
+      if (commrank == 0) cout << "About to read initial determinants..." << endl;
+      readInitDets(initDets, largestCoeffs);
+      if (commrank == 0) cout << "Reading complete." << endl;
+    }
+
+    if (commrank == 0) cout << endl;
+  }
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk) {
@@ -1610,8 +1725,7 @@ class SCPT
     VectorXd normSamples = VectorXd::Zero(coeffs.size());
     VectorXd norms_Tot = VectorXd::Zero(coeffs.size());
 
-    if (schd.printSCNorms)  createDirForSCNorms();
-    if (schd.printInitDets) createDirForInitDets();
+    if (schd.printSCNorms) createDirForNormsBinary();
 
     // As we calculate the SC norms, we will simultaneously find the determinants
     // within each SC space that have the highest coefficient, as found during
@@ -1624,32 +1738,8 @@ class SCPT
     MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
 
-    if (schd.readSCNorms) // Reading norms from files
+    if (!schd.readSCNorms)
     {
-      // Read in the stochastically-sampled norms
-      if (commrank == 0) cout << "About to read stochastically-sampled norms..." << endl;
-      readStochNorms(deltaT_Tot, energyCAS_Tot, norms_Tot);
-      if (commrank == 0) cout << "Reading complete." << endl;
-
-      energyCAS_Tot /= deltaT_Tot;
-      norms_Tot /= deltaT_Tot;
-
-      if (commrank == 0) cout << "About to read exactly-calculated norms..." << endl;
-      readDetermNorms(norms_Tot);
-      if (commrank == 0) cout << "Reading complete." << endl;
-
-      // Read in the exactly-calculated norms
-      if (schd.readInitDets) {
-        if (commrank == 0) cout << "About to read initial determinants..." << endl;
-        readInitDets(initDets, largestCoeffs);
-        if (commrank == 0) cout << "Reading complete." << endl;
-      }
-
-      if (commrank == 0) cout << endl;
-    }
-    else // Stochastically sampling norms
-    {
-
       if (commrank == 0) cout << "About to call first instance of HamAndSCNorms..." << endl;
       HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
       if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
@@ -1676,8 +1766,8 @@ class SCPT
         energyCAS_Tot += energyCAS;
         norms_Tot += normSamples;
 
-        if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
-          printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
+        //if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
+        //  printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
 
         // Pick the next determinant by the CTMC algorithm
         double nextDetRandom = random() * cumovlpRatio;
@@ -1707,10 +1797,6 @@ class SCPT
       energyCAS_Tot /= deltaT_Tot;
       norms_Tot /= deltaT_Tot;
 
-      if (schd.printInitDets) {
-        printInitDets(initDets, largestCoeffs);
-      }
-
       if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
       {
         MatrixXd oneRDM, twoRDM;
@@ -1735,14 +1821,17 @@ class SCPT
       }
     }
 
+    if (schd.readSCNorms) {
+      readNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot);
+    }
+
+    if (schd.printSCNorms && (!schd.readSCNorms)) {
+      printNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot);
+    }
+
     if (commrank == 0) {
       cout << "Now sampling the NEVPT2 energy..." << endl;
     }
-
-    //cout << "norms and coeffs:" << endl;
-    //for (int i=0; i<numCoeffs; i++) {
-    //  cout << setprecision(12) << norms_Tot[i] << "    " << largestCoeffs[i] << endl;
-    //}
 
     // Next we calculate the SC state energies and the final PT2 energy estimate
     double timeEnergyInit = getTime();
@@ -1753,6 +1842,8 @@ class SCPT
       ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
 
     if (commrank == 0) {
+      cout << "Sampling complete." << endl << endl;
+
       cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
       cout << "CAS energy: " << setprecision(10) << energyCAS_Tot << endl;
       cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
