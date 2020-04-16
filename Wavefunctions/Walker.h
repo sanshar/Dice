@@ -639,17 +639,60 @@ struct Walker<Corr, MultiSlater> {
     double overlap = ref.ciCoeffs[0] * (rtSlice * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
     // iterate over rest of ci expansion
     for (int j = 1; j < ref.numDets; j++) {
-      MatrixXcd rtc_bSlice, tSlice, tcSlice;
-      igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[j][1], rtc_bSlice);
-      igl::slice(refHelper.t, ref.ciExcitations[j][0], mDes, tSlice);
-      igl::slice(refHelper.tc, ref.ciExcitations[j][0], ref.ciExcitations[j][1], tcSlice);
-      MatrixXcd sliceMat = MatrixXcd::Zero(1 + ref.ciExcitations[j][0].size(), 1 + ref.ciExcitations[j][0].size());
-      sliceMat(0, 0) = rtSlice;
-      sliceMat.block(0, 1, 1, ref.ciExcitations[j][0].size()) = rtc_bSlice;
-      sliceMat.block(1, 0, ref.ciExcitations[j][0].size(), 1) = tSlice;
-      sliceMat.block(1, 1, ref.ciExcitations[j][0].size(), ref.ciExcitations[j][0].size()) = tcSlice;
-      //overlap += ref.ciCoeffs[j] * ref.ciParity[j] * (sliceMat.determinant() * refHelper.refOverlap).real();
-      overlap += ref.ciCoeffs[j] * ref.ciParity[j] * (calcDet(sliceMat) * refHelper.refOverlap).real();
+      // hand coding smaller cases to avoid slicing, and ensuing memory allocation costs
+      // psa: ugly code to follow
+      complex<double> detRatio;
+      if (ref.ciExcitations[j][0].size() == 1) {// 2x2 matrix
+        detRatio = rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]);
+      }
+      else if (ref.ciExcitations[j][0].size() == 2) {// 3x3 matrix
+        detRatio =  rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1])
+                 - rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]);
+      }
+      else if (ref.ciExcitations[j][0].size() == 3) {// 4x4 matrix
+        detRatio = rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 - rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 - rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 + rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 + rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 - rtSlice * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][2])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.t(ref.ciExcitations[j][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][1])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][0]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.t(ref.ciExcitations[j][0][1], mDes[0]) * refHelper.tc(ref.ciExcitations[j][0][2], ref.ciExcitations[j][1][0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][2]) * refHelper.tc(ref.ciExcitations[j][0][0], ref.ciExcitations[j][1][1]) * refHelper.tc(ref.ciExcitations[j][0][1], ref.ciExcitations[j][1][0]) * refHelper.t(ref.ciExcitations[j][0][2], mDes[0]);
+      }
+      else {// make a slice for bigger cases
+        MatrixXcd rtc_bSlice, tSlice, tcSlice;
+        igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[j][1], rtc_bSlice);
+        igl::slice(refHelper.t, ref.ciExcitations[j][0], mDes, tSlice);
+        igl::slice(refHelper.tc, ref.ciExcitations[j][0], ref.ciExcitations[j][1], tcSlice);
+        MatrixXcd sliceMat = MatrixXcd::Zero(1 + ref.ciExcitations[j][0].size(), 1 + ref.ciExcitations[j][0].size());
+        sliceMat(0, 0) = rtSlice;
+        sliceMat.block(0, 1, 1, ref.ciExcitations[j][0].size()) = rtc_bSlice;
+        sliceMat.block(1, 0, ref.ciExcitations[j][0].size(), 1) = tSlice;
+        sliceMat.block(1, 1, ref.ciExcitations[j][0].size(), ref.ciExcitations[j][0].size()) = tcSlice;
+        detRatio = calcDet(sliceMat);
+      }
+      overlap += ref.ciCoeffs[j] * ref.ciParity[j] * (detRatio * refHelper.refOverlap).real();
     }
     return overlap / refHelper.totalOverlap;
   }
@@ -665,23 +708,60 @@ struct Walker<Corr, MultiSlater> {
     VectorXi mDes(2); mDes << tableIndexi, tableIndexj;
     MatrixXcd rtSlice;
     igl::slice(refHelper.rt, mCre, mDes, rtSlice);
-
     // calculating < m | psi > 
     //double overlap = ref.ciCoeffs[0] * (rtSlice.determinant() * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
     double overlap = ref.ciCoeffs[0] * (calcDet(rtSlice) * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
     // iterate over rest of ci expansion
     for (int k = 1; k < ref.numDets; k++) {
-      MatrixXcd rtc_bSlice, tSlice, tcSlice;
-      igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[k][1], rtc_bSlice);
-      igl::slice(refHelper.t, ref.ciExcitations[k][0], mDes, tSlice);
-      igl::slice(refHelper.tc, ref.ciExcitations[k][0], ref.ciExcitations[k][1], tcSlice);
-      MatrixXcd sliceMat = MatrixXcd::Zero(2 + ref.ciExcitations[k][0].size(), 2 + ref.ciExcitations[k][1].size());
-      sliceMat.block(0, 0, 2, 2) = rtSlice;
-      sliceMat.block(0, 2, 2, ref.ciExcitations[k][0].size()) = rtc_bSlice;
-      sliceMat.block(2, 0, ref.ciExcitations[k][0].size(), 2) = tSlice;
-      sliceMat.block(2, 2, ref.ciExcitations[k][0].size(), ref.ciExcitations[k][0].size()) = tcSlice;
-      //overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (sliceMat.determinant() * refHelper.refOverlap).real();
-      overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (calcDet(sliceMat) * refHelper.refOverlap).real();
+      complex<double> detRatio;
+      if (ref.ciExcitations[k][0].size() == 1) {// 3x3 det
+        detRatio = rtSlice(0, 0) * rtSlice(1, 1) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0])
+                 - rtSlice(0, 0) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1])
+                 - rtSlice(0, 1) * rtSlice(1, 0) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0])
+                 + rtSlice(0, 1) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 0) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 1) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]);
+      }
+      else if (ref.ciExcitations[k][0].size() == 2) {// 4x4 det
+        detRatio = rtSlice(0, 0) * rtSlice(1, 1) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 - rtSlice(0, 0) * rtSlice(1, 1) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 - rtSlice(0, 0) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 + rtSlice(0, 0) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 + rtSlice(0, 0) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 - rtSlice(0, 0) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 - rtSlice(0, 1) * rtSlice(1, 0) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 + rtSlice(0, 1) * rtSlice(1, 0) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 + rtSlice(0, 1) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 - rtSlice(0, 1) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0])
+                 - rtSlice(0, 1) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 + rtSlice(0, 1) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 0) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 0) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 1) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * rtSlice(1, 1) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][0]) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][1]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * rtSlice(1, 0) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * rtSlice(1, 0) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * rtSlice(1, 1) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.tc(ref.ciExcitations[k][0][1], ref.ciExcitations[k][1][0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * rtSlice(1, 1) * refHelper.tc(ref.ciExcitations[k][0][0], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0])
+                 - refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[0]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[1])
+                 + refHelper.rtc_b(mCre[0], ref.ciExcitations[k][1][1]) * refHelper.rtc_b(mCre[1], ref.ciExcitations[k][1][0]) * refHelper.t(ref.ciExcitations[k][0][0], mDes[1]) * refHelper.t(ref.ciExcitations[k][0][1], mDes[0]);
+      }
+      else {// bigger cases
+        MatrixXcd rtc_bSlice, tSlice, tcSlice;
+        igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[k][1], rtc_bSlice);
+        igl::slice(refHelper.t, ref.ciExcitations[k][0], mDes, tSlice);
+        igl::slice(refHelper.tc, ref.ciExcitations[k][0], ref.ciExcitations[k][1], tcSlice);
+        MatrixXcd sliceMat = MatrixXcd::Zero(2 + ref.ciExcitations[k][0].size(), 2 + ref.ciExcitations[k][1].size());
+        sliceMat.block(0, 0, 2, 2) = rtSlice;
+        sliceMat.block(0, 2, 2, ref.ciExcitations[k][0].size()) = rtc_bSlice;
+        sliceMat.block(2, 0, ref.ciExcitations[k][0].size(), 2) = tSlice;
+        sliceMat.block(2, 2, ref.ciExcitations[k][0].size(), ref.ciExcitations[k][0].size()) = tcSlice;
+        //overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (sliceMat.determinant() * refHelper.refOverlap).real();
+        detRatio = calcDet(sliceMat);
+      }
+      overlap += ref.ciCoeffs[k] * ref.ciParity[k] * (detRatio * refHelper.refOverlap).real();
     }
     return overlap / refHelper.totalOverlap;
 
