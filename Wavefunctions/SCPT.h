@@ -1289,12 +1289,109 @@ class SCPT
     }
   }
 
+  void readStochNorms(double& deltaT_Tot, double& energyCAS_Tot, VectorXd& norms_Tot)
+  {
+    std::string line;
+    vector<string> tok;
+
+    // Read CASCI energy
+    string energyFileName = "norms/proc_" + to_string(commrank) + "/cas_energy_" + to_string(commrank) + ".dat";
+
+    ifstream dump;
+    dump.open(energyFileName);
+
+    // First line contains the iteration number
+    std::getline(dump, line);
+
+    // Second line contains the energy as the final element
+    std::getline(dump, line);
+    boost::trim_if(line, boost::is_any_of(", \t\n"));
+    boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+    energyCAS_Tot = stod(tok.back());
+
+    // Third line contains the residence time as the final element
+    std::getline(dump, line);
+    boost::trim_if(line, boost::is_any_of(", \t\n"));
+    boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+    deltaT_Tot = stod(tok.back());
+
+    dump.close();
+
+    // Read in the stochastically-sampled norms
+    for (int i=1; i<9; i++)
+    {
+      if (classesUsed[i]) {
+        string fileName = "norms/proc_" + to_string(commrank) + "/norms_" +
+                          classNames[i] + "_" + to_string(commrank) + ".dat";
+
+        ifstream dump;
+        dump.open(fileName);
+
+        // First two lines are not needed
+        std::getline(dump, line);
+        std::getline(dump, line);
+
+        int ind = cumNumCoeffs[i];
+
+        // Data starts on line 3
+        std::getline(dump, line);
+        while (dump.good())
+        {
+          boost::trim_if(line, boost::is_any_of(", \t\n"));
+          boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+          norms_Tot[ind] = stod(tok[0]);
+
+          std::getline(dump, line);
+          ind++;
+        }
+
+      }
+    }
+
+  }
+
+  void readDetermNorms(VectorXd& norms_Tot)
+  {
+    std::string line;
+    vector<string> tok;
+
+    // Read in the exactly-calculated norms
+    for (int i=1; i<9; i++)
+    {
+      if (classesUsed[i] && normsDeterm[i]) {
+        string fileName = "norms/exact/norms_" + classNames[i] + "_exact.dat";
+
+        ifstream dump;
+        dump.open(fileName);
+
+        // First line is not needed
+        std::getline(dump, line);
+
+        int ind = cumNumCoeffs[i];
+
+        // Data starts on line 3
+        std::getline(dump, line);
+        while (dump.good())
+        {
+          boost::trim_if(line, boost::is_any_of(", \t\n"));
+          boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+          norms_Tot[ind] = stod(tok[0]);
+
+          std::getline(dump, line);
+          ind++;
+        }
+
+      }
+    }
+
+  }
+
   // Print initial determinants to output files
   // We only need to print out the occupations in the active spaces
   // The occupations of the core and virtual orbitals are determined
   // from the label of the SC state, which is fixed by the deterministic
   // ordering (the same as used in coeffsIndex).
-  void printInitDets(vector<Determinant>& initDets)
+  void printInitDets(vector<Determinant>& initDets, vector<double>& largestCoeffs)
   {
     // Loop over all classes
     for (int i=1; i<9; i++)
@@ -1302,12 +1399,14 @@ class SCPT
       if (classesUsed[i]) {
 
         string fileName;
-        fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_" + classNames[i] + "_" + to_string(commrank) + ".dat";
+        fileName = "init_dets/proc_" + to_string(commrank) + "/init_dets_" +
+                   classNames[i] + "_" + to_string(commrank) + ".dat";
 
         ofstream out_init_dets;
         out_init_dets.open(fileName);
 
         for (int ind = cumNumCoeffs[i]; ind < cumNumCoeffs[i]+numCoeffsPerClass[i]; ind++) {
+          out_init_dets << setprecision(12) << largestCoeffs[ind] << "  ";
           initDets[ind].printActive(out_init_dets);
           out_init_dets << endl;
         }
@@ -1319,10 +1418,12 @@ class SCPT
   }
 
   // read determinants in to the initDets array from previously output files
-  void readInitDets(vector<Determinant>& initDets)
+  void readInitDets(vector<Determinant>& initDets, vector<double>& largestCoeffs)
   {
     string fileName;
     std::string line;
+    double coeff;
+
     int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
     int numVirt = norbs - first_virtual;
@@ -1350,10 +1451,11 @@ class SCPT
 
       std::getline(dump, line);
       Determinant d(detCAS);
-      readDetActive(line, d);
+      readDetActive(line, d, coeff);
 
       d.setocc(r, true);
       initDets[ind] = d;
+      largestCoeffs[ind] = coeff;
     }
     dump.close();
 
@@ -1368,11 +1470,12 @@ class SCPT
 
         std::getline(dump, line);
         Determinant d(detCAS);
-        readDetActive(line, d);
+        readDetActive(line, d, coeff);
 
         d.setocc(r, true);
         d.setocc(s, true);
         initDets[ind] = d;
+        largestCoeffs[ind] = coeff;
       }
     }
     dump.close();
@@ -1385,10 +1488,11 @@ class SCPT
 
       std::getline(dump, line);
       Determinant d(detCAS);
-      readDetActive(line, d);
+      readDetActive(line, d, coeff);
 
       d.setocc(i, false);
       initDets[ind] = d;
+      largestCoeffs[ind] = coeff;
     }
     dump.close();
 
@@ -1401,11 +1505,12 @@ class SCPT
 
         std::getline(dump, line);
         Determinant d(detCAS);
-        readDetActive(line, d);
+        readDetActive(line, d, coeff);
 
         d.setocc(i, false);
         d.setocc(r, true);
         initDets[ind] = d;
+        largestCoeffs[ind] = coeff;
       }
     }
     dump.close();
@@ -1419,11 +1524,12 @@ class SCPT
 
         std::getline(dump, line);
         Determinant d(detCAS);
-        readDetActive(line, d);
+        readDetActive(line, d, coeff);
 
         d.setocc(i, false);
         d.setocc(j, false);
         initDets[ind] = d;
+        largestCoeffs[ind] = coeff;
       }
     }
     dump.close();
@@ -1433,33 +1539,35 @@ class SCPT
   // orbitals within the active space, construct the corresponding determinant
   // (with all core obritals occupied, all virtual orbitals unocuppied).
   // This is specifically used by for readInitDets
-  void readDetActive(string& line, Determinant& det)
+  void readDetActive(string& line, Determinant& det, double& coeff)
   {
     boost::trim_if(line, boost::is_any_of(", \t\n"));
 
     vector<string> tok;
     boost::split(tok, line, boost::is_any_of(", \t\n"), boost::token_compress_on);
 
+    coeff = stod(tok[0]);
+
     int offset = schd.nciCore;
 
     for (int i=0; i<schd.nciAct; i++)
     {
-      if (boost::iequals(tok[i], "2"))
+      if (boost::iequals(tok[i+1], "2"))
       {
         det.setoccA(i+offset, true);
         det.setoccB(i+offset, true);
       }
-      else if (boost::iequals(tok[i], "a"))
+      else if (boost::iequals(tok[i+1], "a"))
       {
         det.setoccA(i+offset, true);
         det.setoccB(i+offset, false);
       }
-      if (boost::iequals(tok[i], "b"))
+      if (boost::iequals(tok[i+1], "b"))
       {
         det.setoccA(i+offset, false);
         det.setoccB(i+offset, true);
       }
-      if (boost::iequals(tok[i], "0"))
+      if (boost::iequals(tok[i+1], "0"))
       {
         det.setoccA(i+offset, false);
         det.setoccB(i+offset, false);
@@ -1516,93 +1624,125 @@ class SCPT
     MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
 
-    if (commrank == 0) cout << "About to call first instance of HamAndSCNorms..." << endl;
-    HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
-    if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
+    if (schd.readSCNorms) // Reading norms from files
+    {
+      // Read in the stochastically-sampled norms
+      if (commrank == 0) cout << "About to read stochastically-sampled norms..." << endl;
+      readStochNorms(deltaT_Tot, energyCAS_Tot, norms_Tot);
+      if (commrank == 0) cout << "Reading complete." << endl;
 
-    int iter = 1;
-    int printMod = max(1, schd.stochasticIterNorms / 10);
+      energyCAS_Tot /= deltaT_Tot;
+      norms_Tot /= deltaT_Tot;
 
-    if (commrank == 0)
-      cout << "iter: 0" << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
+      if (commrank == 0) cout << "About to read exactly-calculated norms..." << endl;
+      readDetermNorms(norms_Tot);
+      if (commrank == 0) cout << "Reading complete." << endl;
 
-    while (iter <= schd.stochasticIterNorms) {
-      double cumovlpRatio = 0;
-      for (int i = 0; i < work.nExcitations; i++) {
-        cumovlpRatio += abs(work.ovlpRatio[i]);
-        work.ovlpRatio[i] = cumovlpRatio;
-      }
-      double deltaT = 1.0 / (cumovlpRatio);
-
-      energyCAS = deltaT * hamSample;
-      normSamples *= deltaT;
-
-      // These hold the running totals
-      deltaT_Tot += deltaT;
-      energyCAS_Tot += energyCAS;
-      norms_Tot += normSamples;
-
-      if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
-        printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
-
-      // Pick the next determinant by the CTMC algorithm
-      double nextDetRandom = random() * cumovlpRatio;
-      int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                     nextDetRandom) - work.ovlpRatio.begin();
-
-      walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-
-      if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
-
-      normSamples.setZero();
-
-      if (schd.stochasticIterNorms - iter < schd.nIterFindInitDets) {
-        // For the final schd.nIterFindInitDets iterations, sample all perturber
-        // norms, even for those being calculated deterministically. This
-        // allows initial determinants to be found for the energy sampling
-        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
-      } else {
-        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+      // Read in the exactly-calculated norms
+      if (schd.readInitDets) {
+        if (commrank == 0) cout << "About to read initial determinants..." << endl;
+        readInitDets(initDets, largestCoeffs);
+        if (commrank == 0) cout << "Reading complete." << endl;
       }
 
-      if (commrank == 0 && (iter % printMod == 0 || iter == 1))
-        cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
-      iter++;
+      if (commrank == 0) cout << endl;
     }
-
-    energyCAS_Tot /= deltaT_Tot;
-    norms_Tot /= deltaT_Tot;
-
-    if (schd.readInitDets) {
-      readInitDets(initDets);
-    }
-
-    if (schd.printInitDets) {
-      printInitDets(initDets);
-    }
-
-    if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
+    else // Stochastically sampling norms
     {
-      MatrixXd oneRDM, twoRDM;
-      readSpinRDM(oneRDM, twoRDM);
 
-      if (normsDeterm[2])
-        calc_AAVV_NormsFromRDMs(twoRDM, norms_Tot);
-      if (normsDeterm[4])
-        calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
-      if (normsDeterm[6])
-        calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
+      if (commrank == 0) cout << "About to call first instance of HamAndSCNorms..." << endl;
+      HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+      if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
 
-      if (schd.printSCNorms && commrank == 0)
-        printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, true);
+      int iter = 1;
+      int printMod = max(1, schd.stochasticIterNorms / 10);
+
+      if (commrank == 0)
+        cout << "iter: 0" << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
+
+      while (iter <= schd.stochasticIterNorms) {
+        double cumovlpRatio = 0;
+        for (int i = 0; i < work.nExcitations; i++) {
+          cumovlpRatio += abs(work.ovlpRatio[i]);
+          work.ovlpRatio[i] = cumovlpRatio;
+        }
+        double deltaT = 1.0 / (cumovlpRatio);
+
+        energyCAS = deltaT * hamSample;
+        normSamples *= deltaT;
+
+        // These hold the running totals
+        deltaT_Tot += deltaT;
+        energyCAS_Tot += energyCAS;
+        norms_Tot += normSamples;
+
+        if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
+          printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
+
+        // Pick the next determinant by the CTMC algorithm
+        double nextDetRandom = random() * cumovlpRatio;
+        int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                       nextDetRandom) - work.ovlpRatio.begin();
+
+        walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+
+        if (walk.excitation_class != 0) cout << "ERROR: walker not in CASCI space!" << endl;
+
+        normSamples.setZero();
+
+        if (schd.stochasticIterNorms - iter < schd.nIterFindInitDets) {
+          // For the final schd.nIterFindInitDets iterations, sample all perturber
+          // norms, even for those being calculated deterministically. This
+          // allows initial determinants to be found for the energy sampling
+          HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
+        } else {
+          HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+        }
+
+        if (commrank == 0 && (iter % printMod == 0 || iter == 1))
+          cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
+        iter++;
+      }
+
+      energyCAS_Tot /= deltaT_Tot;
+      norms_Tot /= deltaT_Tot;
+
+      if (schd.printInitDets) {
+        printInitDets(initDets, largestCoeffs);
+      }
+
+      if (any_of(normsDeterm.begin(), normsDeterm.end(), [](bool i){return i;}) )
+      {
+        MatrixXd oneRDM, twoRDM;
+        readSpinRDM(oneRDM, twoRDM);
+
+        if (normsDeterm[2])
+          calc_AAVV_NormsFromRDMs(twoRDM, norms_Tot);
+        if (normsDeterm[4])
+          calc_CAAV_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
+        if (normsDeterm[6])
+          calc_CCAA_NormsFromRDMs(oneRDM, twoRDM, norms_Tot);
+
+        if (schd.printSCNorms && commrank == 0)
+          printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, true);
+      }
+
+      if (commrank == 0)
+      {
+        cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
+        cout << endl << "Total time for norms calculation:  " << getTime() - timeNormsInit << endl;
+        cout << "Now sampling the NEVPT2 energy..." << endl;
+      }
     }
 
-    if (commrank == 0)
-    {
-      cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
-      cout << endl << "Total time for norms calculation:  " << getTime() - timeNormsInit << endl;
+    if (commrank == 0) {
       cout << "Now sampling the NEVPT2 energy..." << endl;
     }
+
+    //cout << "norms and coeffs:" << endl;
+    //for (int i=0; i<numCoeffs; i++) {
+    //  cout << setprecision(12) << norms_Tot[i] << "    " << largestCoeffs[i] << endl;
+    //}
 
     // Next we calculate the SC state energies and the final PT2 energy estimate
     double timeEnergyInit = getTime();
@@ -1666,6 +1806,9 @@ class SCPT
         numCoeffsToSample += 1;
       }
     }
+
+    //std::mt19937 generator_2;
+    //generator_2 = std::mt19937(1000 + commrank);
 
     double energySample = 0., energyTot = 0;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
