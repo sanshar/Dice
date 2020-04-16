@@ -2511,7 +2511,7 @@ class SCPT
   }
 
   string getfileName() const {
-    return "scci"+wave.getfileName();
+    return "scpt"+wave.getfileName();
   }
 
   void writeWave()
@@ -2520,8 +2520,6 @@ class SCPT
       {
 	char file[5000];
         sprintf(file, (getfileName()+".bkp").c_str() );
-	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	//sprintf(file, "lanczoscpswave.bkp");
 	std::ofstream outfs(file, std::ios::binary);
 	boost::archive::binary_oarchive save(outfs);
 	save << *this;
@@ -2535,8 +2533,6 @@ class SCPT
       {
 	char file[5000];
         sprintf(file, (getfileName()+".bkp").c_str() );
-	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	//sprintf(file, "lanczoscpswave.bkp");
 	std::ifstream infs(file, std::ios::binary);
 	boost::archive::binary_iarchive load(infs);
 	load >> *this;
