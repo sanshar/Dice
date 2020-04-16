@@ -1857,25 +1857,6 @@ class SCPT
         }
       }
 
-      // Get the class 8 norms exactly
-      //int ind;
-      //double norm;
-      //VectorXd normsExact = VectorXd::Zero(coeffs.size());
-
-      //for (int j=1; j<2*schd.nciCore; j++) {
-      //  for (int i=0; i<j; i++) {
-      //    for (int s=2*first_virtual+1; s<2*norbs; s++) {
-      //      for (int r=2*first_virtual; r<s; r++) {
-      //        std::array<int,4> inds = {s, r, j, i};
-      //        auto it1 = class_2h2p_ind.find(inds);
-      //        if (it1 != class_2h2p_ind.end()) {
-      //          ind = 1 + it1->second;
-      //          normsExact(ind) = pow( I2(r, j, s, i) - I2(r, i, s, j), 2);
-      //        }
-      //      }
-      //    }
-      //  }
-      //}
     }
   }
 
