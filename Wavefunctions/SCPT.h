@@ -2470,7 +2470,7 @@ class SCPT
     int nPairs = nSpinOrbsAct * nSpinOrbsAct;
 
     // Construct auxiliary 2-RDM for CCAA class
-    double *twoRDMAux = new double[pow(nSpinOrbsAct, 4)];
+    double *twoRDMAux = new double[(int)pow(nSpinOrbsAct, 4)];
 
     for (int a = 0; a < nSpinOrbsAct; a++) {
       for (int b = 0; b < nSpinOrbsAct; b++) {
