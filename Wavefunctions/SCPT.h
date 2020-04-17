@@ -1815,9 +1815,8 @@ class SCPT
 
       if (commrank == 0)
       {
-        cout << endl << "Calculation of strongly contracted norms complete." << endl << endl;
-        cout << endl << "Total time for norms calculation:  " << getTime() - timeNormsInit << endl;
-        cout << "Now sampling the NEVPT2 energy..." << endl;
+        cout << endl << "Calculation of strongly contracted norms complete." << endl;
+        cout << "Total time for norms calculation:  " << getTime() - timeNormsInit << endl << endl;
       }
     }
 
@@ -1893,6 +1892,8 @@ class SCPT
     pt2_out = fopen(pt2OutName.c_str(), "w");
     fprintf(pt2_out, "# 1. iteration     2. energy             3. class    4. time\n");
 
+    double timeInTotal = getTime();
+
     int iter = 0;
     while (iter < schd.numSCSamples) {
       double timeIn = getTime();
@@ -1919,6 +1920,10 @@ class SCPT
 
       iter++;
     }
+
+    double timeOutTotal = getTime();
+    double timeTotal = timeOutTotal - timeInTotal;
+
     fclose(pt2_out);
 
     energyTot /= iter;
@@ -1936,13 +1941,18 @@ class SCPT
     double energyTotAll[commsize];
     MPI_Gather(&(energyTot), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+    // Gather the total time on each process
+    double timeTotalAll[commsize];
+    MPI_Gather(&(timeTotal), 1, MPI_DOUBLE, &(timeTotalAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
     if (commrank == 0) {
-      double stdDev = 0.;
       FILE * mpi_out;
       mpi_out = fopen("pt2_energies_avg.dat", "w");
-      fprintf(mpi_out, "# 1. proc_label     2. energy\n");
+      fprintf(mpi_out, "# 1. proc_label     2. energy            3. time\n");
+
+      double stdDev = 0.;
       for (int i=0; i<commsize; i++) {
-        fprintf(mpi_out, "%15d    %.12e\n", i, energyTotAll[i]);
+        fprintf(mpi_out, "%15d    %.12e   %.6e\n", i, energyTotAll[i], timeTotalAll[i]);
         energyFinal += energyTotAll[i];
         stdDev += energyTotAll[i] * energyTotAll[i];
       }
@@ -1950,7 +1960,9 @@ class SCPT
       energyFinal /= commsize;
       stdDev /= commsize;
       stdDev -= energyFinal * energyFinal; 
-      cout << "Energy error  " << sqrt(stdDev / commsize) << endl;
+
+      cout.precision(12);
+      cout << "Energy error estimate: " << sqrt(stdDev / commsize) << endl;
     }
     MPI_Bcast(&energyFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
