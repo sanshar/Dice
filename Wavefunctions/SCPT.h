@@ -1828,35 +1828,39 @@ class SCPT
       printNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot);
     }
 
-    if (commrank == 0) {
-      cout << "Now sampling the NEVPT2 energy..." << endl;
-    }
+    if (schd.sampleNEVPT2Energy) {
 
-    // Next we calculate the SC state energies and the final PT2 energy estimate
-    double timeEnergyInit = getTime();
-    double ene2;
-    if (schd.efficientNEVPT)
-      ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
-    if (schd.efficientNEVPT_2)
-      ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
-
-    if (commrank == 0) {
-      cout << "Sampling complete." << endl << endl;
-
-      cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
-      cout << "CAS energy: " << setprecision(10) << energyCAS_Tot << endl;
-      cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
-      cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
-
-      if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
-        if (classesUsedDeterm[8])
-        {
-          cout << "SC-NEVPT2(s) second-order energy with CCVV:  " << energy_ccvv + ene2 << endl;
-          cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
-        }
+      if (commrank == 0) {
+        cout << "Now sampling the NEVPT2 energy..." << endl;
       }
 
-    }
+      // Next we calculate the SC state energies and the final PT2 energy estimate
+      double timeEnergyInit = getTime();
+      double ene2;
+      if (schd.efficientNEVPT)
+        ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      if (schd.efficientNEVPT_2)
+        ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+
+      if (commrank == 0) {
+        cout << "Sampling complete." << endl << endl;
+
+        cout << "Total time for energy sampling " << getTime() - timeEnergyInit << " seconds" << endl;
+        cout << "CAS energy: " << setprecision(10) << energyCAS_Tot << endl;
+        cout << "SC-NEVPT2(s) second-order energy: " << setprecision(10) << ene2 << endl;
+        cout << "Total SC-NEVPT(s) energy: " << setprecision(10) << energyCAS_Tot + ene2 << endl;
+
+        if (any_of(classesUsedDeterm.begin(), classesUsedDeterm.end(), [](bool i){return i;}) ) {
+          if (classesUsedDeterm[8])
+          {
+            cout << "SC-NEVPT2(s) second-order energy with CCVV:  " << energy_ccvv + ene2 << endl;
+            cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
+          }
+        }
+
+      }
+
+    } // If sampling the energy
   }
 
   template<typename Walker>
