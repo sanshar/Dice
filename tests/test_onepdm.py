@@ -34,9 +34,9 @@ def test1RDM(file1: str, file2: str, tol: float):
 
     l2_norm = np.linalg.norm(rdm_1 - rdm_2)
     if l2_norm > float(tol):
-        print("\tFAILED 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
+        print("\tFAILED 1RDM Test: L2-Norm of error = {:.3e} ....".format(l2_norm))
     else:
-        print("\tPASSED 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
+        print("\tPASSED 1RDM Test: L2-Norm of error = {:.3e} ....".format(l2_norm))
 
 
 if __name__ == "__main__":

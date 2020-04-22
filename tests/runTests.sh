@@ -115,11 +115,28 @@ python ../test_twopdm.py spatialRDM.0.0.txt trusted2RDM.txt 1.e-6
 #$MPICOMMAND $HCIPATH > output.dat
 #python ../test_energy.py 1  1.0e-6
 
-# O2 SHCI tests.
+# RASCI Testing
 cd $here/n2_RAS
 printf "...running n2_RAS\n"
 $MPICOMMAND $HCIPATH > output.dat
 python ../test_energy.py  1.0e-5
+
+cd $here/spin1rdm
+printf "...running spin1RDM tests\n"
+$HCIPATH input.dat > output.dat
+python $here/test_spin1RDM.py spin1RDM.0.0.txt spatial1RDM.0.0.txt 1e-8
+$MPICOMMAND $HCIPATH input.dat > output.dat
+python $here/test_spin1RDM.py spin1RDM.0.0.txt spatial1RDM.0.0.txt 1e-8
+
+cd $here/H2He_rdm
+printf "...running H2He RDM Test\n"
+$HCIPATH input.dat > output.dat
+python $here/test_onepdm.py spatial1RDM.0.0.txt pyscf_1RDM.npy 1.e-7
+python $here/test_twopdm.py spatialRDM.0.0.txt pyscf_2RDM.npy 1.e-7
+python $here/test_threepdm.py spatial3RDM.0.0.txt pyscf_3RDM.npy 1.e-7
+python $here/test_spin1RDM.py spin1RDM.0.0.txt spatial1RDM.0.0.txt 1e-7
+python $here/test_rdm_nelec.py ../integrals/H2H2_FCIDUMP_nosym spatial1RDM.0.0.txt spatialRDM.0.0.txt spatial3RDM.0.0.txt 5e-8
+
 
 ## Clean up
 cd $here
