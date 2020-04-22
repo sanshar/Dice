@@ -1,40 +1,45 @@
-#!/usr/bin/python                                                                                                                                             \
+#!/usr/bin/python
 
-import os
-from math import sqrt
-import numpy as N
+import numpy as np
+from rdm_utilities import read_Dice1RDM
 
 
-def run(file1, file2, tol):
+def test1RDM(file1: str, file2: str, tol: float):
+    """Compare the L2 norm for two RDM files. If they are .txt files, we
+    assume they are from Dice and in the Dice RDM format. If they are in .npy
+    we assume they're from PySCF and we process them accordingly, i.e. transpose
+    some indices.
 
-    #int1                                                                                                                                                       \
+    Parameters
+    ----------
+    file1 : str
+        RDM file, either from Dice (.txt) or PySCF (.npy).
+    file2 : str
+        RDM file, either from Dice (.txt) or PySCF (.npy).
+    tol : float
+        Tolerance for L2 error.
+    """
 
-    filer1 = open(file1, "r")
-    filer2 = open(file2, "r")
-    sz = int(filer1.readline().split()[0])
-    sz2 = int(filer2.readline().split()[0])
-    mat1 = N.zeros((sz, sz))
-    mat2 = N.zeros((sz2, sz2))
-    for line in filer1.readlines():
-        linesp = line.split()
-        mat1[int(linesp[0]), int(linesp[1])] = float(linesp[2])
-    for line in filer2.readlines():
-        linesp = line.split()
-        mat2[int(linesp[0]), int(linesp[1])] = float(linesp[2])
-    filer1.close()
-    filer2.close()
-    val = 0.
-    for i in range(0, sz):
-        for j in range(0, sz):
-            res = (mat1[i, j] - mat2[i, j]) * (mat1[i, j] - mat2[i, j])
-            #res = (mat1[i,j] - mat2[j,i])*(mat1[i,j] - mat2[j,i])
-            val = val + res
-    if val > float(tol):
-        print("FAILED ....")
+    rdm_1, rdm_2 = None, None
+
+    if file1.endswith("npy"):
+        rdm_1 = np.load(file1)
     else:
-        print("PASSED ....")
+        rdm_1 = read_Dice1RDM(file1)
+
+    if file2.endswith("npy"):
+        rdm_2 = np.load(file2)
+    else:
+        rdm_2 = read_Dice1RDM(file2)
+
+    l2_norm = np.linalg.norm(rdm_1 - rdm_2)
+    if l2_norm > float(tol):
+        print("\tFAILED 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
+    else:
+        print("\tPASSED 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
 
 
 if __name__ == "__main__":
     import sys
-    run(sys.argv[1], sys.argv[2], sys.argv[3])
+
+    test1RDM(sys.argv[1], sys.argv[2], float(sys.argv[3]))

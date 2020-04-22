@@ -567,13 +567,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
           }
         }
       }
@@ -608,13 +607,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
             CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                              I1, I2, coreE, orbDiff);
             fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-            if (abs(hij) > 1.e-10) {
-              connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  std::abs(DetJ) - 1);
-              Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-              if (DoRDM)
-                orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                    orbDiff);
+            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                std::abs(DetJ) - 1);
+            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+            if (DoRDM) {
+              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                  orbDiff);
             }
           }  //*itb == Bsingle
         }    // k 0->SinglesFromBeta
@@ -640,13 +638,13 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) < 1.e-10) continue;
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-          if (DoRDM)
+          if (DoRDM) {
             orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 orbDiff);
+          }
         }
       }
 
@@ -665,13 +663,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
           }
         }
       }
@@ -691,13 +688,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
           }
         }
       }

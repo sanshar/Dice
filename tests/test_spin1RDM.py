@@ -1,60 +1,40 @@
-import sys
+#!/usr/bin/python
+
 import numpy as np
-from scipy.sparse import coo_matrix
-
-#
-# Setup
-#
-spin_rdm_file = "spin1RDM.0.0.txt"
-spatial_rdm_file = "spatial1RDM.0.0.txt"
-
-tol = 1e-5
-if len(sys.argv) == 2:
-    tol = float(sys.argv[1])
+from rdm_utilities import read_Dice1RDM, read_Dice_spin_1RDM
 
 
-#
-# Read RDMs
-#
-N_spin_orbs, N_spatial_orbs = (0, 0)
-with open(spin_rdm_file, "r") as f:
-    line = f.readline()
-    N_spin_orbs = int(line.split()[0])
-with open(spatial_rdm_file, "r") as f:
-    line = f.readline()
-    N_spatial_orbs = int(line.split()[0])
+def test_spin_1RDM(spinRDM_file: str, spatialRDM_file: str, tol: float):
+    """Trace spin1RDM and compare to spatial 1RDM.
 
-# Test matrix sizes
-if N_spatial_orbs != int(N_spin_orbs / 2):
-    raise AssertionError("SpinRDM and SpatialRDM have uncompatible dimensions")
+    Parameters
+    ----------
+    spinRDM_file : str
+        RDM file from Dice (.txt).
+    spatialRDM_file : str
+        RDM file from Dice (.txt).
+    tol : float
+        Tolerance for L2 error.
+    """
 
-#
-# Load matrices
-#
-data = np.loadtxt(spin_rdm_file, skiprows=1)
-spinRDM = coo_matrix(
-    (data[:, 2], (data[:, 0], data[:, 1])), shape=(N_spin_orbs, N_spin_orbs)
-).toarray()
+    spinRDM = read_Dice_spin_1RDM(spinRDM_file)
+    spatialRDM = read_Dice1RDM(spatialRDM_file)
 
-data = np.loadtxt(spatial_rdm_file, skiprows=1)
-spatialRDM = coo_matrix(
-    (data[:, 2], (data[:, 0], data[:, 1])), shape=(N_spatial_orbs, N_spatial_orbs)
-).toarray()
+    # Trace over spin
+    test_spatial = np.zeros_like(spatialRDM)
+    for i in range(spatialRDM.shape[0]):
+        for j in range(spatialRDM.shape[0]):
+            for k in [0, 1]:
+                test_spatial[i, j] += spinRDM[2 * i + k, 2 * j + k]
 
-#
-# Compare Matrices
-#
-new_spatialRDM = np.zeros_like(spatialRDM)
-for i in range(spatialRDM.shape[0]):
-    for j in range(spatialRDM.shape[1]):
-        for spin1 in [0, 1]:
-            for spin2 in [0, 1]:
-                new_spatialRDM[i, j] += spinRDM[2 * i + spin1, 2 * j + spin2]
+    l2_norm = np.linalg.norm(spatialRDM - test_spatial)
+    if l2_norm > tol:
+        print("\tFAILED Spin 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
+    else:
+        print("\tPASSED Spin 1RDM Test: L2-Norm = {:.3e} ....".format(l2_norm))
 
-diff = np.linalg.norm(new_spatialRDM - spatialRDM)
-if diff > tol:
-    raise AssertionError(
-        "Difference in RDMs ({}) is above tolerance ({})".format(diff, tol)
-    )
-else:
-    print("\tPassed spin1RDM test...")
+
+if __name__ == "__main__":
+    import sys
+
+    test_spin_1RDM(sys.argv[1], sys.argv[2], float(sys.argv[3]))
