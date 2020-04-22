@@ -166,6 +166,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printSCNormFreq = input.get("print.SCNormFreq", 1);
     schd.readSCNorms = input.get("print.readSCNorms", false);
     schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
+    schd.printSCEnergies = input.get("print.SCEnergies", false);
+    schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
     schd.debug = input.get("print.debug", false);
     
     //deprecated, or I don't know what they do

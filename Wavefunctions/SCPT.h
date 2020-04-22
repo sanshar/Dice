@@ -1882,9 +1882,6 @@ class SCPT
       }
     }
 
-    //std::mt19937 generator_2;
-    //generator_2 = std::mt19937(1000 + commrank);
-
     double energySample = 0., energyTot = 0;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -1909,7 +1906,13 @@ class SCPT
 
       this->wave.initWalker(walk, initDets[nextSC]);
 
-      double SCHam = doSCEnergyCTMC(walk, work);
+      double SCHam;
+      if (schd.printSCEnergies) {
+        SCHam = doSCEnergyCTMCPrint(walk, work, iter, schd.nWalkSCEnergies);
+      } else {
+        SCHam = doSCEnergyCTMC(walk, work);
+      }
+
       // If this same SC sector is sampled again, start from the final
       // determinant from this time:
       if (schd.continueMarkovSCPT) initDets[nextSC] = walk.d;
@@ -1980,8 +1983,8 @@ class SCPT
   double doSCEnergyCTMC(Walker& walk, workingArray& work)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
-    double numerator = 0., numerator_MPI = 0., numerator_Tot = 0.;
-    double deltaT = 0., deltaT_Tot = 0., deltaT_MPI = 0.;
+    double numerator = 0., numerator_Tot = 0.;
+    double deltaT = 0., deltaT_Tot = 0.;
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -1998,8 +2001,8 @@ class SCPT
         cumovlpRatio += abs(work.ovlpRatio[i]);
         work.ovlpRatio[i] = cumovlpRatio;
       }
-      deltaT = 1.0 / (cumovlpRatio);
 
+      deltaT = 1.0 / (cumovlpRatio);
       numerator = deltaT*hamSample;
 
       numerator_Tot += numerator;
@@ -2018,6 +2021,81 @@ class SCPT
       iter++;
     }
     double final_ham = numerator_Tot/deltaT_Tot;
+
+    return final_ham;
+  }
+
+  template<typename Walker>
+  double doSCEnergyCTMCPrint(Walker& walk, workingArray& work, int sampleIter, int nWalk)
+  {
+    double ham = 0., hamSample = 0., ovlp = 0.;
+    double numerator = 0., numerator_Tot = 0.;
+    double deltaT = 0., deltaT_Tot = 0.;
+
+    vector<double> numerator_Avg(schd.stochasticIterEachSC, 0.0);
+    vector<double> deltaT_Avg(schd.stochasticIterEachSC, 0.0);
+
+    auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+    Determinant initDet = walk.d;
+
+    FILE * out;
+    string outputFile = "sc_energies.";
+    outputFile.append(to_string(commrank));
+    outputFile.append(".");
+    outputFile.append(to_string(sampleIter));
+
+    out = fopen(outputFile.c_str(), "w");
+    fprintf(out, "# 1. iteration     2. weighted_energy     3. residence_time\n");
+
+    //int coeffsIndexCopy = this->coeffsIndex(walk);
+    //if (coeffsIndexCopy != ind) cout << "ERROR at 1: " << ind << "    " << coeffsIndexCopy << endl;
+
+    for (int i=0; i<nWalk; i++) {
+
+      // Reinitialize the walker
+      this->wave.initWalker(walk, initDet);
+
+      // Now, sample the SC energy in this space
+      FastHamAndOvlp(walk, ovlp, hamSample, work);
+
+      int iter = 0;
+      while (iter < schd.stochasticIterEachSC) {
+        double cumovlpRatio = 0.;
+        for (int i = 0; i < work.nExcitations; i++) {
+          cumovlpRatio += abs(work.ovlpRatio[i]);
+          work.ovlpRatio[i] = cumovlpRatio;
+        }
+        deltaT = 1.0 / (cumovlpRatio);
+
+        numerator = deltaT*hamSample;
+
+        numerator_Avg[iter] += numerator;
+        deltaT_Avg[iter] += deltaT;
+
+        numerator_Tot += numerator;
+        deltaT_Tot += deltaT;
+
+        double nextDetRandom = random() * cumovlpRatio;
+        int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                       nextDetRandom) - work.ovlpRatio.begin();
+
+        walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+
+        //int coeffsIndexCopy = this->coeffsIndex(walk);
+        //if (coeffsIndexCopy != ind) cout << "ERROR at 2: " << ind << "    " << coeffsIndexCopy << endl;
+
+        FastHamAndOvlp(walk, ovlp, hamSample, work);
+        iter++;
+      }
+    }
+
+    double final_ham = numerator_Tot/deltaT_Tot;
+
+    for (int i=0; i<schd.stochasticIterEachSC; i++) {
+      fprintf(out, "%14d    %.12e    %.12e\n", i, numerator_Avg[i], deltaT_Avg[i]);
+    }
+    fclose(out);
 
     return final_ham;
   }

@@ -113,7 +113,9 @@ private:
       & continueMarkovSCPT
       & stochasticIterNorms
       & stochasticIterEachSC
-      & nIterFindInitDets;
+      & nIterFindInitDets
+      & printSCEnergies
+      & nWalkSCEnergies;
   }
 public:
 //General options
@@ -160,6 +162,8 @@ public:
   int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
   int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state, for the efficientNEVPT option
   int nIterFindInitDets;                 // The number of iterations used to find initial determinants for SC-NEVPT2(s) calculations
+  bool printSCEnergies;                  // In SC-NEVPT2(s), print individual samples for the sampling of E_l^k.
+  int nWalkSCEnergies;                   // If printSCEnergies = true, then this specifies how many walkers to use when sampling E_l^k
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
