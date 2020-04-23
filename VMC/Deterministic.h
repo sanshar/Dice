@@ -33,7 +33,7 @@ class Deterministic
   int norbs, nalpha, nbeta;
   vector<Determinant> allDets;
   workingArray work;
-  double ovlp, Eloc;
+  double ovlp, Eloc, locNorm, avgNorm;
   double Overlap;
   VectorXd grad_ratio;
 
@@ -44,22 +44,24 @@ class Deterministic
     nalpha = Determinant::nalpha;
     nbeta = Determinant::nbeta;
     generateAllDeterminants(allDets, norbs, nalpha, nbeta);
-    Overlap = 0.0;
+    Overlap = 0.0, avgNorm = 0.0;
   }
    
   void LocalEnergy(Determinant &D)
   {
-    ovlp = 0.0, Eloc = 0.0;
+    ovlp = 0.0, Eloc = 0.0, locNorm = 0.0;
     w.initWalker(walk, D);
     if (schd.debug) cout << walk << endl;
-    w.HamAndOvlp(walk, ovlp, Eloc, work, false);  
-    if (schd.debug) cout << "ham  " << Eloc << "  ovlp  " << ovlp << endl << endl;
+    w.HamAndOvlp(walk, ovlp, Eloc, work, false);
+    locNorm = work.locNorm * work.locNorm;
+    if (schd.debug) cout << "ham  " << Eloc << "  locNorm  " << locNorm << "  ovlp  " << ovlp << endl << endl;
   }
   
   void UpdateEnergy(double &Energy)
   {
     Overlap += ovlp * ovlp;
     Energy += Eloc * ovlp * ovlp;
+    avgNorm += locNorm * ovlp * ovlp;
   }
 
   void FinishEnergy(double &Energy)
@@ -67,8 +69,10 @@ class Deterministic
 #ifndef SERIAL
     MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &(Energy), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &(avgNorm), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
-    Energy /= Overlap;
+    Energy /= avgNorm;
+    avgNorm /= Overlap;
   }
 
   void LocalGradient()
@@ -79,8 +83,8 @@ class Deterministic
 
   void UpdateGradient(VectorXd &grad, VectorXd &grad_ratio_bar)
   {
-    grad += grad_ratio * Eloc * ovlp * ovlp;
-    grad_ratio_bar += grad_ratio * ovlp * ovlp;
+    grad += grad_ratio * Eloc * ovlp * ovlp / work.locNorm;
+    grad_ratio_bar += grad_ratio * ovlp * ovlp * work.locNorm;
   }
 
   void FinishGradient(VectorXd &grad, VectorXd &grad_ratio_bar, const double &Energy)
@@ -90,6 +94,7 @@ class Deterministic
     MPI_Allreduce(MPI_IN_PLACE, (grad.data()), grad_ratio.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
     grad = (grad - Energy * grad_ratio_bar) / Overlap;
+    grad /= avgNorm;
   }
   
   void UpdateSR(DirectMetric &S)

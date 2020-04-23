@@ -840,7 +840,7 @@ struct Walker<Corr, MultiSlater> {
   void OverlapWithGradient(const MultiSlater &ref, Eigen::VectorBlock<VectorXd> &grad) const
   {
     if (schd.optimizeCiCoeffs) {
-      for (int i = 0; i < ref.numDets; i++) grad[i] += refHelper.ciOverlaps[i] / refHelper.totalOverlap;
+      for (int i = 0; i < ref.numDets; i++) grad[i] += refHelper.ciOverlaps[i] / (refHelper.totalOverlap);
     }
     // orb gradient to be implemented
   }

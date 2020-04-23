@@ -258,6 +258,14 @@ class WalkerHelper<MultiSlater>
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
     
     initInvDetsTables(w);
+    if (commrank == 0) {
+      if (refOverlap.real() == 0 || totalOverlap == 0) {
+        cout << "refOverlap = " << refOverlap << ", totalOverlap = " << totalOverlap << endl;
+        cout << "walker det: " << d << endl;
+        cout << "ciOverlaps\n";
+        for (double ci: ciOverlaps) cout << ci << endl;
+      }
+    }
   }
 
   void initInvDetsTables(const MultiSlater &w)
@@ -276,7 +284,16 @@ class WalkerHelper<MultiSlater>
       refOverlap = lua.determinant();
     }
     else {
-      cout << "overlap with zeroth determinant not invertible" << endl;
+      if (commrank == 0) {
+        cout << "overlap with zeroth determinant not invertible" << endl;
+        cout << "occRows\n" << occRows.transpose() <<  endl;
+        cout << "occColumns\n" << occColumns.transpose() <<  endl;
+        cout << "a\n" << a << endl;
+        cout << "w.Hforbs\n" <<  w.Hforbs << endl;
+      }
+#ifndef SERIAL
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
       exit(0);
     }
     
@@ -340,6 +357,15 @@ class WalkerHelper<MultiSlater>
       //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
       ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
       totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
+    }
+    
+    if (commrank == 0) {
+      if (refOverlap.real() == 0 || totalOverlap == 0) {
+        cout << "refOverlap = " << refOverlap << ", totalOverlap = " << totalOverlap << endl;
+        cout << "walker det: " << excitedDet << endl;
+        cout << "ciOverlaps\n";
+        for (double ci: ciOverlaps) cout << ci << endl;
+      }
     }
   }
 

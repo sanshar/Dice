@@ -32,14 +32,15 @@ class ContinuousTime
   long numVars;
   int norbs, nalpha, nbeta;
   workingArray work;
-  double T, Eloc, ovlp;
-  double S1, oldEnergy;
+  double T, Eloc, ovlp, locNorm;
+  double S1, S2, oldEnergy, avgNorm;  // need to keep track of avgNorm here because getGradient doesn't know about it
   double cumT, cumT2;
   VectorXd grad_ratio;
   int nsample;
-  Statistics Stats; //this is only used to calculate autocorrelation length
+  Statistics Stats, Stats2; //this is only used to calculate autocorrelation length
   Determinant bestDet;
   double bestOvlp;
+  bool multiSlater;
   
   double random()
   {
@@ -55,19 +56,20 @@ class ContinuousTime
     nalpha = Determinant::nalpha;
     nbeta = Determinant::nbeta;
     bestDet = walk->getDet();
-    cumT = 0.0, cumT2 = 0.0, S1 = 0.0, oldEnergy = 0.0, bestOvlp = 0.0; 
+    cumT = 0.0, cumT2 = 0.0, S1 = 0.0, S2 = 0.0, avgNorm = 0.0, oldEnergy = 0.0, bestOvlp = 0.0; 
   }
 
   void LocalEnergy()
   {
-    Eloc = 0.0, ovlp = 0.0;
+    Eloc = 0.0, ovlp = 0.0, locNorm = 0.0;
     if (schd.debug) {
       cout << *walk << endl;
     }
     w->HamAndOvlp(*walk, ovlp, Eloc, work);
+    locNorm= work.locNorm * work.locNorm;
     if (schd.debug) {
       //cout << *walk << endl;
-      cout << "ham  " << Eloc << "  ovlp  " << ovlp << endl << endl;
+      cout << "ham  " << Eloc << "  locNorm  " << locNorm << "  ovlp  " << ovlp << endl << endl;
     }
   }
 
@@ -112,18 +114,24 @@ class ContinuousTime
   void UpdateEnergy(double &Energy)
   {
     oldEnergy = Energy;
+    double oldNorm = avgNorm;
     Energy += T * (Eloc - Energy) / cumT;
+    avgNorm += T * (locNorm - oldNorm) / cumT;
     S1 += T * (Eloc - oldEnergy) * (Eloc - Energy);
+    S2 += T * (locNorm - oldNorm) * (locNorm - avgNorm);
     if (Stats.X.size() < nsample)
     {
       Stats.push_back(Eloc, T);
+      Stats2.push_back(locNorm, T);
     }
   }
   
   void FinishEnergy(double &Energy, double &stddev, double &rk)
   {
     Stats.Block();
+    Stats2.Block();
     rk = Stats.BlockCorrTime();
+    double rk2 = Stats2.BlockCorrTime();
 /*
     if (commrank == 0)
     {
@@ -144,15 +152,23 @@ class ContinuousTime
     }
 */
     S1 /= cumT;
+    S2 /= cumT;
 #ifndef SERIAL
     MPI_Allreduce(MPI_IN_PLACE, &Energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &avgNorm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &S1, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &S2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &rk, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &rk2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &cumT, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &cumT2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     Energy /= commsize;
+    avgNorm /= commsize;
+    Energy /= avgNorm;
     S1 /= commsize;
+    S2 /= commsize;
     rk /= commsize;
+    rk2 /= commsize;
     cumT /= commsize;
     cumT2 /= commsize;
 #endif
@@ -168,8 +184,8 @@ class ContinuousTime
   
   void UpdateGradient(VectorXd &grad, VectorXd &grad_ratio_bar)
   {
-    grad_ratio_bar += T * (grad_ratio - grad_ratio_bar) / cumT;
-    grad += T * (grad_ratio * Eloc - grad) / cumT;
+    grad_ratio_bar += T * (grad_ratio * work.locNorm - grad_ratio_bar) / cumT;
+    grad += T * (grad_ratio * Eloc / work.locNorm - grad) / cumT;
   }
 
   void FinishGradient(VectorXd &grad, VectorXd &grad_ratio_bar, const double &Energy)
@@ -181,6 +197,7 @@ class ContinuousTime
     grad_ratio_bar /= commsize;
 #endif
     grad = (grad - Energy * grad_ratio_bar);
+    grad /= avgNorm;
   }
 
   void UpdateSR(DirectMetric &S)

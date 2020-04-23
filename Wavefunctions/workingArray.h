@@ -30,10 +30,12 @@ struct workingArray {
   vector<size_t> excitation1;
   vector<size_t> excitation2;
   vector<double> HijElement;
+  double locNorm;   // adding this for multiSlater sampling, this is bad jailbreaking, needs to be changed 
   int nExcitations;
 
   workingArray(size_t initialSize = 1000000) {
     nExcitations = 0;
+    locNorm = 1.0;
     ovlpRatio.resize(initialSize);
     excitation1.resize(initialSize);
     excitation2.resize(initialSize);
@@ -70,6 +72,7 @@ struct workingArray {
     excitation2.clear();
     HijElement.clear();
     nExcitations = 0;
+    locNorm = 1.;
   }
 };
 
