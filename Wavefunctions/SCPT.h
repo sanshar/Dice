@@ -1701,9 +1701,18 @@ class SCPT
         if (classesUsedDeterm[8])
         {
           energy_ccvv = get_ccvv_energy();
-          cout << endl << "Deterministic CCVV energy:  " << setprecision(12) << energy_ccvv << endl;
+          cout << endl << "Deterministic CCVV energy:  " << setprecision(12) << energy_ccvv << endl << endl;
         }
       }
+    }
+
+    if (schd.SCEnergiesBurnIn >= schd.stochasticIterEachSC) {
+      if (commrank == 0) {
+        cout << "WARNING: The number of sampling iterations for E_l^k estimation is"
+                " not larger than the number of burn-in iterations. Setting the number"
+                " of burn-in iterations to 0." << endl << endl;
+      }
+      schd.SCEnergiesBurnIn = 0;
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -2002,11 +2011,14 @@ class SCPT
         work.ovlpRatio[i] = cumovlpRatio;
       }
 
-      deltaT = 1.0 / (cumovlpRatio);
-      numerator = deltaT*hamSample;
+      // Only start accumulating data if beyond the burn-in period
+      if (iter >= schd.SCEnergiesBurnIn) {
+        deltaT = 1.0 / (cumovlpRatio);
+        numerator = deltaT*hamSample;
 
-      numerator_Tot += numerator;
-      deltaT_Tot += deltaT;
+        numerator_Tot += numerator;
+        deltaT_Tot += deltaT;
+      }
 
       double nextDetRandom = random() * cumovlpRatio;
       int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
@@ -2066,8 +2078,8 @@ class SCPT
           cumovlpRatio += abs(work.ovlpRatio[i]);
           work.ovlpRatio[i] = cumovlpRatio;
         }
-        deltaT = 1.0 / (cumovlpRatio);
 
+        deltaT = 1.0 / (cumovlpRatio);
         numerator = deltaT*hamSample;
 
         numerator_Avg[iter] += numerator;

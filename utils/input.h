@@ -115,7 +115,8 @@ private:
       & stochasticIterEachSC
       & nIterFindInitDets
       & printSCEnergies
-      & nWalkSCEnergies;
+      & nWalkSCEnergies
+      & SCEnergiesBurnIn;
   }
 public:
 //General options
@@ -159,11 +160,17 @@ public:
   bool sampleNEVPT2Energy;               // If true, then perform sampling of the NEVPT2 energy
   bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   HAM Hamiltonian;
-  int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states, for the efficientNEVPT option
-  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state, for the efficientNEVPT option
-  int nIterFindInitDets;                 // The number of iterations used to find initial determinants for SC-NEVPT2(s) calculations
+  int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states,
+                                         // for the efficientNEVPT option
+  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state,
+                                         // for the efficientNEVPT option
+  int nIterFindInitDets;                 // The number of iterations used to find initial determinants for
+                                         // SC-NEVPT2(s) calculations
   bool printSCEnergies;                  // In SC-NEVPT2(s), print individual samples for the sampling of E_l^k.
-  int nWalkSCEnergies;                   // If printSCEnergies = true, then this specifies how many walkers to use when sampling E_l^k
+  int nWalkSCEnergies;                   // If printSCEnergies = true, then this specifies how many walkers to
+                                         // use when sampling E_l^k
+  int SCEnergiesBurnIn;                  // For SC-NEVPT2(s), this is the number of iterations used for burn in
+                                         //(thrown away), when sampling E_l^k
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
