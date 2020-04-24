@@ -339,6 +339,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
   ifstream dump(input.c_str());
   bool isFirst = true;
   Determinant refDet;
+  VectorXi sizes = VectorXi::Zero(10);
   
   while (dump.good()) {
     std::string Line;
@@ -348,6 +349,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
     
     vector<string> tok;
     boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+
 
     if (tok.size() > 2 ) {
       if (isFirst) {//first det is ref
@@ -411,7 +413,9 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
         excitations[0] = des;
         excitations[1] = cre;
         ciExcitations.push_back(excitations);
+        if (cre.size() < 10) sizes(cre.size())++;
       }
     }
   }
+  if (commrank == 0) cout << "Rankwise number of excitaions " << sizes.transpose() << endl << endl;
 }

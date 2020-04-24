@@ -35,6 +35,7 @@ public:
   Determinant d;
   Walker<Jastrow, MultiSlater> walker;
   MatrixXcd intermediate, s;
+  double updateTime;
 
   // constructors
   // default
@@ -45,6 +46,7 @@ public:
   JastrowMultiSlaterWalker(Jastrow &corr, const MultiSlater &ref, Determinant &pd) 
   {
     d = pd;
+    updateTime = 0.;
     walker = Walker<Jastrow, MultiSlater> (corr, ref, pd);
   };
  
@@ -53,6 +55,7 @@ public:
   {
     walker = Walker<Jastrow, MultiSlater> (corr, ref);
     d = walker.d;
+    updateTime = 0.;
   };
   
   // this is used for storing bestDet
@@ -108,7 +111,9 @@ public:
 
   // used during sampling
   void updateWalker(const MultiSlater &ref, Jastrow &corr, int ex1, int ex2) {
+    double init = getTime();
     walker.updateWalker(ref, corr, ex1, ex2);
+    updateTime += (getTime() - init);
     d = walker.d;
   }
   

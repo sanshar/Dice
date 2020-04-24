@@ -47,10 +47,13 @@ struct JastrowMultiSlater {
   Jastrow corr; //The jastrow factors
   MultiSlater ref; //reference
   MatrixXcd intermediate, s;
+  double intermediateBuildTime, ciIterationTime;
 
   JastrowMultiSlater() {
     intermediate = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
     s = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
+    intermediateBuildTime = 0.;
+    ciIterationTime = 0.;
   };
   MultiSlater& getRef() { return ref; }
   Jastrow& getCorr() { return corr; }
@@ -215,6 +218,7 @@ struct JastrowMultiSlater {
     //MatrixXcd intermediate = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*norbs);
     //loop over all the screened excitations
     //if (schd.debug) cout << "eloc excitations\nphi0  d.energy " << ham << endl;
+    double initTime = getTime();
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       double tia = work.HijElement[i];
@@ -237,64 +241,46 @@ struct JastrowMultiSlater {
       work.ovlpRatio[i] = ovlpRatio;
     }
     s = walk.walker.refHelper.t * intermediate;
-    if (schd.debug) {
-      cout << "\nintermediate\n\n";
-      cout << intermediate << endl << endl;
-      cout << "s\n\n";
-      cout << s << endl << endl;
-      cout << "ham0  " << ham0 << endl << endl;
-    }
+    intermediateBuildTime += (getTime() - initTime);
+   
+
+    initTime = getTime();
     double locES = ref.ciCoeffs[0] * ham0; // singles local energy
+    size_t count4 = 0;
     for (int i = 1; i < ref.numDets; i++) {
       int rank = ref.ciExcitations[i][0].size();
-      complex<double> tcDet(0., 0.), laplaceDet(0., 0.);
-      if (rank == 1) {// 2x2 matrix
-        //tcDet = walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]);
+      complex<double> laplaceDet(0., 0.);
+      if (rank == 1) 
         laplaceDet = -s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]);
-      }
-      else if (rank == 2) // 3x3 matrix
+      else if (rank == 2) 
         laplaceDet = -(s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1])
                      - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0])
                      + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1])
                      - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]));
-      else if (rank == 3) 
-        laplaceDet = -(s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     + s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0])
-                     + s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][2])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][2]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0])
-                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][1])
-                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][2]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][2], ref.ciExcitations[i][1][0]));
+      else if (rank == 4) {
+        for (int mu = 0; mu < rank; mu++) {
+          auto temp = walk.walker.refHelper.tcSlice[count4];
+          for (int t = 0; t < rank; t++) {
+            temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
+          }
+          laplaceDet -= calcDet(temp);
+        }
+        count4++;
+      }
       else {
         MatrixXcd tcSlice;
         igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
-        if (schd.debug)  cout << "tcSlice\n" << tcSlice << endl << endl;
-        //tcDet = calcDet(tcSlice);
         for (int mu = 0; mu < rank; mu++) {
           auto temp = tcSlice;
           for (int t = 0; t < rank; t++) {
             temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
           }
-          if (schd.debug)  cout << "mu  " << mu << "\ntemp\n" << temp << endl << endl;
           laplaceDet -= calcDet(temp);
         }
       }
-      if (schd.debug) 
-        cout << "i " << i << "  parity  " << ref.ciParity[i] << "  tcDet  " << tcDet << "  laplaceDet  " << laplaceDet << "  ei  " << ((tcDet * ham0 + laplaceDet) * walk.walker.refHelper.refOverlap).real() / refOverlap << endl;
       locES += ref.ciCoeffs[i] * (walk.walker.refHelper.ciOverlaps[i] * ham0 + ref.ciParity[i] * (laplaceDet * walk.walker.refHelper.refOverlap).real()) / refOverlap;
     }
-    if (schd.debug) cout << "locES  " << locES << endl;
+    ciIterationTime += (getTime() - initTime);
     ham += locES;
     ham *= ratio;
   }

@@ -125,6 +125,11 @@ int main(int argc, char *argv[])
   if (schd.wavefunctionType == "jastrowmultislater2") {
     JastrowMultiSlater wave; JastrowMultiSlaterWalker walk;
     runVMC(wave, walk);
+    //if (commrank == 0) {
+    //  cout << "intermediate build time: " << wave.intermediateBuildTime << endl;
+    //  cout << "ci iteration time: " << wave.ciIterationTime << endl;
+    //  cout << "walker update time: " << walk.updateTime << endl;
+    //}
   }
   
   if (schd.wavefunctionType == "resonatingwavefunction") {
