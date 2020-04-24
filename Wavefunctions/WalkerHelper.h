@@ -351,12 +351,48 @@ class WalkerHelper<MultiSlater>
     ciOverlaps.clear();
     ciOverlaps.push_back(refOverlap.real());
     totalOverlap = w.ciCoeffs[0] * ciOverlaps[0];
-    for (int i = 1; i < w.numDets; i++) {
-      MatrixXcd sliceMat;
-      igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
-      //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
-      ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
-      totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
+    for (int j = 1; j < w.numDets; j++) {
+      complex<double> sliceDet;
+      if (w.ciExcitations[j][0].size() == 1) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]);
+      else if (w.ciExcitations[j][0].size() == 2) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1])
+- tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]);
+      else if (w.ciExcitations[j][0].size() == 3) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]);
+      else if (w.ciExcitations[j][0].size() == 4) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][3])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][2])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0])
+                                                           - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][1])
+                                                           + tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][3]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][2]) * tc(w.ciExcitations[j][0][2], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][3], w.ciExcitations[j][1][0]);
+      else {
+        MatrixXcd sliceMat;
+        igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
+        sliceDet = calcDet(sliceMat);
+      }
+      ciOverlaps.push_back((sliceDet * refOverlap).real() * w.ciParity[j]);
+      totalOverlap += w.ciCoeffs[j] * ciOverlaps[j];
     }
     
     if (commrank == 0) {

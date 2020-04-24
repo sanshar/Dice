@@ -25,6 +25,20 @@ def detExpression(lst):
         expr = parity + productFS.format(*permElements)
         print(expr)
 
+def column_mat_det(nc):
+    print('{} column{}'.format(nc, 's' if nc > 1 else ''))
+    tc = [ [ f'tc(w.ciExcitations[j][0][{p}], w.ciExcitations[j][1][{t}])' for t in range(nc) ] for p in range(nc) ]
+    detExpression(tc)
+    print('\n')
+
+def laplace_det(nc):
+    print('{} column{}'.format(nc, 's' if nc > 1 else ''))
+    for mu in range(nc):
+        tc = [ [ f'walk.walker.refHelper.tc(ref.ciExcitations[i][0][{p}], ref.ciExcitations[i][1][{t}])' for t in range(nc) ] for p in range(nc) ]
+        tc[mu] = [ f's(ref.ciExcitations[i][0][{mu}], ref.ciExcitations[i][1][{t}])' for t in range(nc) ]
+        detExpression(tc)
+    print('\n')
+
 def row1_mat_det(nc):
     print('1 row {} column{}'.format(nc, 's' if nc > 1 else ''))
     rt = [ 'rtSlice' ]
@@ -46,8 +60,10 @@ def row2_mat_det(nc):
     print('\n')
 
 if __name__ == "__main__":
-    for i in range(4):
-        row1_mat_det(i+1)
+    #for i in range(4):
+    #    row1_mat_det(i+1)
 
+    #for i in range(3):
+    #    row2_mat_det(i+1)
     for i in range(3):
-        row2_mat_det(i+1)
+        laplace_det(i+2)
