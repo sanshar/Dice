@@ -257,6 +257,22 @@ struct JastrowMultiSlater {
                      - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0])
                      + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1])
                      - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]));
+      else if (rank == 3) {
+        Matrix3cd temp;
+        Matrix3cd tcSlice;
+        //igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
+        for (int mu = 0; mu < rank; mu++) 
+          for (int nu = 0; nu < rank; nu++) 
+            tcSlice(mu, nu) = walk.walker.refHelper.tc(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][nu]);
+        
+        for (int mu = 0; mu < rank; mu++) {
+          temp = tcSlice;
+          for (int t = 0; t < rank; t++) {
+            temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
+          }
+          laplaceDet -= temp.determinant();
+        }
+      }
       else if (rank == 4) {
         Matrix4cd temp;
         for (int mu = 0; mu < rank; mu++) {

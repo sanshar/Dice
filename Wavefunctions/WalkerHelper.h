@@ -362,26 +362,42 @@ class WalkerHelper<MultiSlater>
     totalOverlap = w.ciCoeffs[0] * ciOverlaps[0];
     size_t count4 = 0;
     for (int j = 1; j < w.numDets; j++) {
+      int rank = w.ciExcitations[j][0].size();
       complex<double> sliceDet;
-      if (w.ciExcitations[j][0].size() == 1) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]);
-      else if (w.ciExcitations[j][0].size() == 2) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1])
+      if (rank == 1) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]);
+      
+      else if (rank == 2) sliceDet = tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][0]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][1])
 - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]);
-      else if (w.ciExcitations[j][0].size() == 4) {
+      
+      else if (rank == 3) {
         //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
-        for  (int mu = 0; mu < 4; mu++) {
-          for (int nu = 0; nu < 4; nu++) {
-            tcSlice[count4](mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
-          }
-        }
+        Matrix3cd tcSlice;
+        for  (int mu = 0; mu < 3; mu++) 
+          for (int nu = 0; nu < 3; nu++) 
+            tcSlice(mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
         //sliceDet = calcDet(sliceMat);
-        sliceDet = calcDet(tcSlice[count4]);
+        sliceDet = tcSlice.determinant();
+      }
+      
+      else if (rank == 4) {
+        //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
+        for  (int mu = 0; mu < 4; mu++) 
+          for (int nu = 0; nu < 4; nu++) 
+            tcSlice[count4](mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
+        //sliceDet = calcDet(sliceMat);
+        sliceDet = tcSlice[count4].determinant();
         count4++;
       }
+      
       else {
-        MatrixXcd sliceMat;
-        igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
-        sliceDet = calcDet(sliceMat);
+        MatrixXcd sliceMat = MatrixXcd::Zero(rank, rank);
+        //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
+        for  (int mu = 0; mu < rank; mu++) 
+          for (int nu = 0; nu < rank; nu++) 
+            sliceMat(mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
+        sliceDet = sliceMat.determinant();
       }
+      
       ciOverlaps.push_back((sliceDet * refOverlap).real() * w.ciParity[j]);
       totalOverlap += w.ciCoeffs[j] * ciOverlaps[j];
     }
