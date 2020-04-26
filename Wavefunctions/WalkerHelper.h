@@ -317,14 +317,12 @@ class WalkerHelper<MultiSlater>
         Matrix4cd sliceMat;
         igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
         tcSlice.push_back(sliceMat);
-        //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
-        ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
+        ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
         totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
       }
       else {
         MatrixXcd sliceMat;
         igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
-        //ciOverlaps.push_back((sliceMat.determinant() * refOverlap).real() * w.ciParity[i]);
         ciOverlaps.push_back((calcDet(sliceMat) * refOverlap).real() * w.ciParity[i]);
         totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
       }
