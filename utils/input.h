@@ -116,7 +116,8 @@ private:
       & nIterFindInitDets
       & printSCEnergies
       & nWalkSCEnergies
-      & SCEnergiesBurnIn;
+      & SCEnergiesBurnIn
+      & NEVPTBiasCorrection;
   }
 public:
 //General options
@@ -171,6 +172,7 @@ public:
                                          // use when sampling E_l^k
   int SCEnergiesBurnIn;                  // For SC-NEVPT2(s), this is the number of iterations used for burn in
                                          //(thrown away), when sampling E_l^k
+  bool NEVPTBiasCorrection;              // If true, include correction to account for error in E[1/x] expectation value
 
 //Deprecated options for optimizers
 //because now we just use the python implementation

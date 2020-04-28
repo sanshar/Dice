@@ -1891,6 +1891,10 @@ class SCPT
       }
     }
 
+    if (commrank == 0) {
+      cout << "Total cumulative squared norm (process 0): " << totCumNorm << endl << endl;
+    }
+
     double energySample = 0., energyTot = 0;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -1900,7 +1904,8 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iteration     2. energy             3. class    4. time\n");
+    fprintf(pt2_out, "# 1. iteration     2. energy             3. E_0 - E_l^k         4. E_l^K variance      "
+                     "5. class    6. time\n");
 
     double timeInTotal = getTime();
 
@@ -1915,11 +1920,11 @@ class SCPT
 
       this->wave.initWalker(walk, initDets[nextSC]);
 
-      double SCHam;
+      double SCHam, SCHamVar;
       if (schd.printSCEnergies) {
         SCHam = doSCEnergyCTMCPrint(walk, work, iter, schd.nWalkSCEnergies);
       } else {
-        SCHam = doSCEnergyCTMC(walk, work);
+        doSCEnergyCTMC(walk, work, SCHam, SCHamVar);
       }
 
       // If this same SC sector is sampled again, start from the final
@@ -1927,11 +1932,18 @@ class SCPT
       if (schd.continueMarkovSCPT) initDets[nextSC] = walk.d;
 
       energySample = totCumNorm / (energyCAS_Tot - SCHam);
+
+      if (schd.NEVPTBiasCorrection) {
+        energySample += - totCumNorm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
+      }
+
       energyTot += energySample;
 
       double timeOut = getTime();
+      double eDiff = energyCAS_Tot - SCHam;
 
-      fprintf(pt2_out, "%14d    %.12e    %8d    %.4e\n", iter, energySample, walk.excitation_class, timeOut-timeIn);
+      fprintf(pt2_out, "%14d    %.12e    %.12e    %.12e    %8d    %.4e\n",
+              iter, energySample, eDiff, SCHamVar, walk.excitation_class, timeOut-timeIn);
       fflush(pt2_out);
 
       iter++;
@@ -1989,11 +2001,16 @@ class SCPT
   }
 
   template<typename Walker>
-  double doSCEnergyCTMC(Walker& walk, workingArray& work)
+  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
     double numerator = 0., numerator_Tot = 0.;
     double deltaT = 0., deltaT_Tot = 0.;
+
+    int nSampleIters = schd.stochasticIterEachSC - schd.SCEnergiesBurnIn;
+
+    vector<double> x(nSampleIters, 0.0);
+    vector<double> w(nSampleIters, 0.0);
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -2016,6 +2033,10 @@ class SCPT
         deltaT = 1.0 / (cumovlpRatio);
         numerator = deltaT*hamSample;
 
+        int samplingIter = iter - schd.SCEnergiesBurnIn;
+        x[samplingIter] = hamSample;
+        w[samplingIter] = deltaT;
+
         numerator_Tot += numerator;
         deltaT_Tot += deltaT;
       }
@@ -2032,9 +2053,26 @@ class SCPT
       FastHamAndOvlp(walk, ovlp, hamSample, work);
       iter++;
     }
-    double final_ham = numerator_Tot/deltaT_Tot;
 
-    return final_ham;
+    final_ham = numerator_Tot/deltaT_Tot;
+
+    // Estimate the error on final_ham
+    double x_bar = 0.0, x_bar_2 = 0.0, n_eff, W = 0.0, W_2 = 0.0;
+    int n = x.size();
+    for (int i = 0; i < n; i++)
+    {
+        x_bar += w[i] * x[i];
+        x_bar_2 += w[i] * x[i] * x[i];
+        W += w[i];
+        W_2 += w[i] * w[i];
+    }
+    x_bar /= W;
+    x_bar_2 /= W;
+    n_eff = (W * W) / W_2;
+
+    double s_2 = x_bar_2 - x_bar * x_bar;
+    // Final estimate of the variance of the weighted mean
+    var = s_2 / (n_eff - 1.0);
   }
 
   template<typename Walker>

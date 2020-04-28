@@ -114,6 +114,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
     schd.nIterFindInitDets = input.get("sampling.nIterFindInitDets", 1e2);
     schd.SCEnergiesBurnIn = input.get("sampling.SCEnergiesBurnIn", 50);
+    schd.NEVPTBiasCorrection = input.get("sampling.NEVPTBiasCorrection", true);
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
