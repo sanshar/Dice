@@ -87,6 +87,7 @@ class SCPT
 
   // the names of each of the 9 classes
   string classNames[NUM_EXCIT_CLASSES] = {"CASCI", "AAAV", "AAVV", "CAAA", "CAAV", "CAVV", "CCAA", "CCAV", "CCVV"};
+  string classNames2[NUM_EXCIT_CLASSES] = {"CASCI", "   V", "  VV", "   C", "  CV", " CVV", "  CC", " CCV", "CCVV"};
 
   SCPT()
   {
@@ -410,6 +411,82 @@ class SCPT
         return -1;
     }
     else return -1;
+  }
+
+  // This perform the inverse of the coeffsIndex function: given the
+  // index of a perturber, return the external (non-active) orbtials
+  // involved. This only works for the main perturber types used -
+  // V, VV, C, CV, CC. These only have one or two external orbitals,
+  // which this function will return.
+  void getOrbsFromIndex(const int index, int& i, int& j)
+  {
+    int norbs = Determinant::norbs;
+    int firstVirt = 2*(schd.nciCore + schd.nciAct);
+    int numVirt = 2*(norbs - schd.nciCore - schd.nciAct);
+
+    i = -1;
+    j = -1;
+
+    if (index >= cumNumCoeffs[1] && index < cumNumCoeffs[2]) {
+      // AAAV perturber
+      i = index - cumNumCoeffs[1] + firstVirt;
+
+    }
+    else if (index >= cumNumCoeffs[2] && index < cumNumCoeffs[3]) {
+      // AAVV perturber
+      int index2 = index - cumNumCoeffs[2];
+      j = (int) floor(-0.5 + pow(0.25 + 2*index2, 0.5));
+      i = index2 - j*(j+1)/2;
+
+      i += firstVirt;
+      j += firstVirt + 1;
+
+    }
+    else if (index >= cumNumCoeffs[3] && index < cumNumCoeffs[4]) {
+      // CAAA perturber
+      i = index - cumNumCoeffs[3];
+
+    }
+    else if (index >= cumNumCoeffs[4] && index < cumNumCoeffs[5]) {
+      // CAAV perturber
+      int index2 = index - cumNumCoeffs[4];
+      j = index2 % numVirt;
+      i = floor(index2 / numVirt);
+      j += firstVirt;
+
+    }
+    else if (index >= cumNumCoeffs[6] && index < cumNumCoeffs[7]) {
+      // CCAA perturber
+      int index2 = index - cumNumCoeffs[6];
+      j = (int) floor(-0.5 + pow(0.25 + 2*index2, 0.5));
+      i = index2 - j*(j+1)/2;
+      j += 1;
+
+    }
+  }
+
+  // Take two orbital indices i and j, and convert them to a string.
+  // This is intended for use with two orbital obtained from the
+  // getOrbsFromIndex function, which are then to be output to
+  // pt2_energies files.
+  string formatOrbString(const int i, const int j) {
+    string str;
+
+    if (i >= 0 && j == -1) {
+      string tempStr = '(' + to_string(i) + ')';
+      int tempLen = tempStr.length();
+      str = string(10 - tempLen, ' ') + tempStr;
+    }
+    else if (i >= 0 && j >= 0 ) {
+      string tempStr = '(' + to_string(i) + ',' + to_string(j) + ')';
+      int tempLen = tempStr.length();
+      str = string(10 - tempLen, ' ') + tempStr;
+    }
+    else {
+      str = string(10, ' ');
+    }
+
+    return str;
   }
   
   template<typename Walker>
@@ -1878,6 +1955,8 @@ class SCPT
   {
     vector<double> cumNorm;
     cumNorm.resize(numCoeffs, 0.0);
+    vector<int> indexMap;
+    indexMap.resize(numCoeffs, 0);
 
     int numCoeffsToSample = 0;
     double totCumNorm = 0.;
@@ -1887,6 +1966,7 @@ class SCPT
         cumNorm[numCoeffsToSample] = totCumNorm;
         initDets[numCoeffsToSample] = initDets[i];
         largestCoeffs[numCoeffsToSample] = largestCoeffs[i];
+        indexMap[numCoeffsToSample] = i;
         numCoeffsToSample += 1;
       }
     }
@@ -1904,10 +1984,11 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iteration     2. energy             3. E_0 - E_l^k         4. E_l^K variance      "
-                     "5. class    6. time\n");
+    fprintf(pt2_out, "# 1. iter     2. energy             3. E_0 - E_l^k         4. E_l^K variance   "
+                     "5. class    6. C/V orbs     7. time\n");
 
     double timeInTotal = getTime();
+    int orbi, orbj;
 
     int iter = 0;
     while (iter < schd.numSCSamples) {
@@ -1942,8 +2023,13 @@ class SCPT
       double timeOut = getTime();
       double eDiff = energyCAS_Tot - SCHam;
 
-      fprintf(pt2_out, "%14d    %.12e    %.12e    %.12e    %8d    %.4e\n",
-              iter, energySample, eDiff, SCHamVar, walk.excitation_class, timeOut-timeIn);
+      // Get the external orbs of the perturber, for printing
+      getOrbsFromIndex(indexMap[nextSC], orbi, orbj);
+      string orbString = formatOrbString(orbi, orbj);
+
+      fprintf(pt2_out, "%9d    %.12e    %.12e    %.12e      %4s     %10s     %.4e\n",
+              iter, energySample, eDiff, SCHamVar, classNames2[walk.excitation_class].c_str(),
+              orbString.c_str(), timeOut-timeIn);
       fflush(pt2_out);
 
       iter++;
