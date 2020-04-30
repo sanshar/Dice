@@ -1,11 +1,16 @@
 USE_MPI = yes
 USE_INTEL = yes
-#EIGEN=/projects/sash2458/apps/eigen/
-#BOOST=/projects/sash2458/apps/boost_1_57_0/
-#LIBIGL=/projects/sash2458/apps/libigl/include/
-EIGEN=/projects/ilsa8974/apps/eigen/
-BOOST=/projects/ilsa8974/apps/boost_1_66_0/
-LIBIGL=/projects/ilsa8974/apps/libigl/include/
+COMPILE_NUMERIC = yes
+
+EIGEN=/projects/sash2458/newApps/eigen/
+BOOST=/projects/sash2458/newApps/boost_1_67_0/
+LIBIGL=/projects/sash2458/apps/libigl/include/
+PYSCF=/projects/sash2458/newApps/pyscf/pyscf/lib/
+LIBCINT=/projects/sash2458/newApps/pyscf/pyscf/lib/deps/lib
+TACO=/projects/sash2458/newApps/taco/install
+#EIGEN=/projects/ilsa8974/apps/eigen/
+#BOOST=/projects/ilsa8974/apps/boost_1_66_0/
+#LIBIGL=/projects/ilsa8974/apps/libigl/include/
 #MKL=/curc/sw/intel/17.4/mkl/
 
 FLAGS = -std=c++14 -g  -O3 -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-I${MKL}/include #-DComplex
@@ -117,9 +122,15 @@ obj/%.o: VMC/%.cpp
 obj/%.o: FCIQMC/%.cpp  
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 
+ALL= bin/VMC
+ifeq ($(COMPILE_NUMERIC), yes)
+	ALL+= bin/libPeriodic.so
+endif 
 
-all: bin/VMC 
-#bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC	
+all: $(ALL) #bin/VMC bin/libPeriodic.so
+
+bin/libPeriodic.so: 
+	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
 	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
