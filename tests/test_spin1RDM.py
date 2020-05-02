@@ -28,10 +28,23 @@ def test_spin_1RDM(spinRDM_file: str, spatialRDM_file: str, tol: float):
                 test_spatial[i, j] += spinRDM[2 * i + k, 2 * j + k]
 
     l2_norm = np.linalg.norm(spatialRDM - test_spatial)
-    if l2_norm > tol:
-        print("\tFAILED Spin 1RDM Test: L2-Norm of error = {:.3e} ....".format(l2_norm))
+
+    error_per_element = l2_norm / spatialRDM.size
+
+    if error_per_element > float(tol):
+        msg = "\tFailed Spin 1RDM Test: Error per Element: {:.3e}\n".format(
+            error_per_element
+        )
+        msg += "\t                   L2-Norm of Error: {:.3e}\n".format(l2_norm)
+        msg += "\t                   L\u221E-Norm of Error: {:.3e}\n".format(
+            np.max(np.abs(spatialRDM - test_spatial))
+        )
+        print(msg)
     else:
-        print("\tPASSED Spin 1RDM Test: L2-Norm or error = {:.3e} ....".format(l2_norm))
+        msg = "\tPASSED Spin 1RDM Test: Error per Element: {:.3e}".format(
+            error_per_element
+        )
+        print(msg)
 
 
 if __name__ == "__main__":
