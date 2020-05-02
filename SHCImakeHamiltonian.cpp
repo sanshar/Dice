@@ -413,7 +413,7 @@ void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ,
                                           size_t& orbDiff, CItype& hij) {
   //-----------------------------------------------------------------------------
   /*!
-  BM_description
+  Time reversal only supported for singlets.
 
   :Inputs:
 
@@ -435,12 +435,20 @@ void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ,
           The sparse Hamiltonian's element (output)
   */
   //-----------------------------------------------------------------------------
+
+
   if (DetI < 0) {
     hij = 0.0;
   } else if (DetI >= 0 && Determinant::Trev != 0) {
+
+    // If neither has unpaired electrons, then there's nothing to update
     if (!Dets[abs(DetJ) - 1].hasUnpairedElectrons() &&
-        !Dets[abs(DetI) - 1].hasUnpairedElectrons())
-      return;
+        !Dets[abs(DetI) - 1].hasUnpairedElectrons()){
+          return;
+        }
+
+
+    // Not sure why this is calling `updateHijForTReversal`
     if (!Dets[abs(DetJ) - 1].hasUnpairedElectrons() || DetJ > 0) {
       updateHijForTReversal(hij, Dets[std::abs(DetJ) - 1],
                             Dets[std::abs(DetI) - 1], I1, I2, coreE, orbDiff);
@@ -451,14 +459,18 @@ void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ,
         Determinant dj = Dets[std::abs(DetJ) - 1];
         dj.flipAlphaBeta();
         double parity = Dets[std::abs(DetJ) - 1].parityOfFlipAlphaBeta();
-        hij = Determinant::Trev * parity *
+        hij = parity *
               Hij(dj, Dets[std::abs(DetI) - 1], I1, I2, coreE, orbDiff);
 
+        // If they both have unpaired electrons, our matrix elements will
+        // have two factors of 1/sqrt(2) => 1/2.
+        // If only one has unpaired electrons then we just have a factor of
+        // 1/sqrt(2).
         if (Dets[abs(DetI) - 1].hasUnpairedElectrons()) {
           Determinant di = Dets[std::abs(DetI) - 1];
           di.flipAlphaBeta();
-          double parity = Dets[std::abs(DetI) - 1].parityOfFlipAlphaBeta();
-          hij += Determinant::Trev * parity *
+          parity = Dets[std::abs(DetI) - 1].parityOfFlipAlphaBeta();
+          hij += parity *
                  Hij(Dets[std::abs(DetJ) - 1], di, I1, I2, coreE, orbDiff);
           hij /= 2.0;
         } else {
@@ -467,7 +479,7 @@ void SHCImakeHamiltonian::fixForTreversal(Determinant* Dets, int DetI, int DetJ,
 
       }  // connected
     }    // DetJ
-  }      // DetI
+  }      // DetI >=  0 else if statement
 }  // end SHCImakeHamiltonian::fixForTreversal
 
 //=============================================================================

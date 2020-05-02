@@ -35,10 +35,20 @@ def test2RDM(file1: str, file2: str, tol: float):
         rdm_2 = read_Dice2RDM(file2)
 
     l2_norm = np.linalg.norm(rdm_1 - rdm_2)
-    if l2_norm > float(tol):
-        print("\tFAILED 2RDM Test: L2-Norm of error = {:.3e} ....".format(l2_norm))
+    error_per_element = l2_norm / rdm_1.size
+
+    if error_per_element > float(tol):
+        msg = "\tFailed 2RDM Test: Error per Element: {:.3e}\n".format(
+            error_per_element
+        )
+        msg += "\t                   L2-Norm of Error: {:.3e}\n".format(l2_norm)
+        msg += "\t                   L\u221E-Norm of Error: {:.3e}\n".format(
+            np.max(np.abs(rdm_1 - rdm_2))
+        )
+        print(msg)
     else:
-        print("\tPASSED 2RDM Test: L2-Norm of error = {:.3e} ....".format(l2_norm))
+        msg = "\tPASSED 2RDM Test: Error per Element: {:.3e}".format(error_per_element)
+        print(msg)
 
 
 if __name__ == "__main__":
