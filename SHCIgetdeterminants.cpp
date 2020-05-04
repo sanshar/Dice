@@ -28,6 +28,7 @@
 #include "Davidson.h"
 #include "boost/format.hpp"
 #include <fstream>
+#include "OccRestrictions.h"
 
 using namespace std;
 using namespace Eigen;
@@ -502,10 +503,16 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
 
+  initiateRestrictions(schd, closed);
+  
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
+
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+    if (! satisfiesRestrictions(schd, closed[i], open[a])) continue;
+
+    
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
@@ -550,6 +557,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
+      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
+      
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -622,10 +631,14 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
+  initiateRestrictions(schd, closed);
+
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+    if (! satisfiesRestrictions(schd, closed[i], open[a])) continue;
+
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     if (fabs(integral) > epsilon)
@@ -686,6 +699,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
+      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);

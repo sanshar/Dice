@@ -24,9 +24,9 @@ def run(args):
     given_e = struct.unpack("d", file2.read(8))[0]
     if abs(given_e - calc_e) > tol:
         print("\t", given_e, "-", calc_e, " > ", tol)
-        print("\t FAILED Energy Test....")
+        print("\tFAILED Energy Test....")
     else:
-        print("\t PASSED Energy Test....")
+        print("\tPASSED Energy Test....")
 
 
 if __name__ == "__main__":

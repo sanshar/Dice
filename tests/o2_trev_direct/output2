@@ -1,0 +1,113 @@
+
+     ____  _
+    |  _ \(_) ___ ___
+    | | | | |/ __/ _ \
+    | |_| | | (_|  __/
+    |____/|_|\___\___|   v1.0
+
+
+**************************************************************
+Dice  Copyright (C) 2017  Sandeep Sharma
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+Author:       Sandeep Sharma
+Contributors: James E Smith, Adam A Holmes, Bastien Mussard
+For detailed documentation on Dice please visit
+https://sanshar.github.io/Dice/
+and our group page for up to date information on other projects
+http://www.colorado.edu/lab/sharmagroup/
+**************************************************************
+
+User:             jasm3285
+Date:             Sat May  2 15:20:51 2020
+PID:              79942
+
+Path:             ../../Dice
+Commit:           8de8a0ad3832e9009f6c93dd193983decd837235
+Branch:           rdm_bug
+Compilation Date: Apr 22 2020 09:54:18
+
+
+**************************************************************
+INPUT FILE
+**************************************************************
+#system
+nocc 12
+0 2 4 6 8 10 12 1 3 5 7 9 
+orbitals ./FCIDUMP
+nroots 1
+
+#variational
+schedule
+0	1e-12
+end
+davidsonTol 1e-5
+#directdavidson
+dE 1e-14
+maxiter 6
+Treversal 1
+
+#pt
+nPTiter 0
+epsilon2 1e-07
+epsilon2Large 1000
+targetError 0.0001
+sampleN 200
+
+#misc
+noio
+prefix .
+DoRDM
+
+
+
+
+**************************************************************
+SELECTING REFERENCE DETERMINANT(S)
+**************************************************************
+2 2 2 2 2   b b 0  Given HF Energy:         -149.5358284664
+Irrep 5 doesn't match the specified point group symmetry c1
+Skipping Ref. Determinant Search for pointgroup c1
+Using HF as ref determinant
+
+
+**************************************************************
+VARIATIONAL STEP  
+**************************************************************
+Iter Root       Eps1   #Var. Det.               Energy   #Davidson     Time(s)
+   0    0    1.00e-12          25      -149.5984344716          6        0.00
+   1    0    1.00e-12          60      -149.5994788799          6        0.00
+   2    0    1.00e-12          60      -149.5994788799          1        0.00
+   3    0    1.00e-12          60      -149.5994788799          1        0.00
+Performing final tight davidson with tol: 1e-05
+Exiting variational iterations
+
+Calculating 2-RDM
+E(one-body) from 2RDM:     -89.5010497400
+E(two-body) from 2RDM:      38.8257207090
+E from 2RDM:              -149.5994788800
+
+Variational calculation result
+Root             Energy     Time(s)
+   0     -149.5994788800        0.05
+
+Printing most important determinants
+ Det     weight  Determinant string
+State :   0
+   0      -0.6976611992  2 2 2 2 2   b b 0 
+   1      -0.6976611992  2 2 2 2 2   a a 0 
+   2      -0.0747395840  2 2 b b 2   2 2 0 
+   3      -0.0747395840  2 2 a a 2   2 2 0 
+   4      -0.0314802806  2 2 2 b a   2 b b 
+   5       0.0314802806  2 2 b 2 a   b 2 b 
+
+
+**************************************************************
+Returning without error
+**************************************************************
+
+
