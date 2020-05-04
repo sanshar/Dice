@@ -62,7 +62,7 @@ MatrixXd symmetry::product_table;
 // Initialize
 using namespace Eigen;
 using namespace boost;
-int HalfDet::norbs = 1;  // spin orbitals
+// int HalfDet::norbs = 1;  // spin orbitals // JETS: rm
 
 // Read Input
 void readInput(string input, vector<std::vector<int> >& occupied,

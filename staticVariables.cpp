@@ -22,6 +22,7 @@ int Determinant::nbeta = 1;
 int Determinant::EffDetLen = 1;
 char Determinant::Trev = 0;
 std::vector<int> irrep;
+int HalfDet::norbs = Determinant::norbs;
 
 twoInt I2;
 oneInt I1;
@@ -82,32 +83,6 @@ double getTime() {
 double startofCalc;
 
 void license(char* argv[]) {
-  // return;
-  // if (commrank == 0) {
-  //   cout << endl;
-  //   cout << endl;
-  //   cout << "**************************************************************"
-  //        << endl;
-  //   cout << "Dice  Copyright (C) 2017  Sandeep Sharma" << endl;
-  //   cout << "This program is distributed in the hope that it will be useful,"
-  //        << endl;
-  //   cout << "but WITHOUT ANY WARRANTY; without even the implied warranty of"
-  //        << endl;
-  //   cout << "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
-  //   cout << "See the GNU General Public License for more details." << endl;
-  //   cout << endl << endl;
-  //   cout << "Author:       Sandeep Sharma" << endl;
-  //   cout << "Please visit our group page for up to date information on other
-  //   "
-  //           "projects"
-  //        << endl;
-  //   cout << "http://www.colorado.edu/lab/sharmagroup/" << endl;
-  //   cout << "**************************************************************"
-  //        << endl;
-  //   cout << endl;
-  //   cout << endl;
-  // }
-  // void license(char* argv[]) {
   pout << endl;
   pout << "     ____  _\n";
   pout << "    |  _ \\(_) ___ ___\n";
@@ -129,12 +104,13 @@ void license(char* argv[]) {
   pout << endl;
   pout << "Lead Author: Sandeep Sharma" << endl;
   pout << "Contributors (alphabetical): " << endl << endl;
-  pout << "Adam A Holmes" << endl;
-  pout << "Ankit Mahajan" << endl;
-  pout << "Bastien Mussard" << endl;
-  pout << "Iliya Sabzevari" << endl;
-  pout << "James E. T. Smith" << endl;
-  pout << "Xubo Wang" << endl << endl;
+  pout << "Adam A Holmes, "
+       << "Ankit Mahajan, "
+       << "Bastien Mussard, "
+       << "Iliya Sabzevari, " << endl
+       << "James E. T. Smith, "
+       << "Xubo Wang" << endl
+       << endl;
   pout << "For detailed documentation on Dice please visit" << endl;
   pout << "https://sanshar.github.io/Dice/" << endl;
   pout << "and our group page for up to date information on other projects"
@@ -153,16 +129,13 @@ void license(char* argv[]) {
   char date[64];
   strftime(date, sizeof(date), "%c", tm);
 
-  printf("User:             %s\n", user);
-  printf("Date:             %s\n", date);
-  printf("PID:              %d\n", getpid());
-  pout << endl;
-  printf("Path:             %s\n", argv[0]);
-  printf("Commit:           %s\n", git_commit);
-  printf("Branch:           %s\n", git_branch);
-  printf("Compilation Date: %s %s\n", __DATE__, __TIME__);
-  // printf("Cores:            %s\n","TODO");
-  // }
+  pout << "User:             " << user << std::endl;
+  pout << "Date:             " << date << std::endl;
+  pout << "PID:              " << getpid() << std::endl;
+  pout << "Path:             " << argv[0] << std::endl;
+  pout << "Commit:           " << git_commit << std::endl;
+  pout << "Branch:           " << git_branch << std::endl;
+  pout << "Compilation Date: " __DATE__ << " " << __TIME__ << std::endl;
 }
 
 // PT message

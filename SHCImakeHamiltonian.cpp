@@ -234,13 +234,18 @@ void updateAlphaBeta(HalfDet& da, HalfDet& db, std::map<HalfDet, int>& BetaN,
     BetaMajorToDet.resize(itb->second + 1);
     SinglesFromBeta.resize(itb->second + 1);
 
+    // JETS: this seems wasteful, norbs is more orbs than we actually
+    // use at run time
     int norbs = 64 * DetLen;
-    std::vector<int> closedb(norbs / 2);  //, closedb(norbs);
-    std::vector<int> openb(norbs / 2, 0);
-    int nclosedb = db.getOpenClosed(openb, closedb);
-
+    std::vector<int> closedb(norbs);  //, closedb(norbs);
+    std::vector<int> openb(norbs, 0);
+    // std::cout << closedb.size() << " " << openb.size() << std::endl;
+    int nclosedb = db.getOpenClosed(
+        openb, closedb);  // JETS: This function shouldn't have different
+                          // behaviour than it's full det counterpart
+    // std::cout << db << std::endl;
     for (int j = 0; j < nclosedb; j++)
-      for (int k = 0; k < norbs / 2 - nclosedb; k++) {
+      for (int k = 0; k < norbs - nclosedb; k++) {
         HalfDet dbcopy = db;
         dbcopy.setocc(closedb[j], false);
         dbcopy.setocc(openb[k], true);
@@ -262,12 +267,12 @@ void updateAlphaBeta(HalfDet& da, HalfDet& db, std::map<HalfDet, int>& BetaN,
     SinglesFromAlpha.resize(ita->second + 1);
 
     int norbs = 64 * DetLen;
-    std::vector<int> closeda(norbs / 2);  //, closedb(norbs);
-    std::vector<int> opena(norbs / 2, 0);
+    std::vector<int> closeda(norbs);  //, closedb(norbs);
+    std::vector<int> opena(norbs, 0);
     int ncloseda = da.getOpenClosed(opena, closeda);
 
     for (int j = 0; j < ncloseda; j++)
-      for (int k = 0; k < norbs / 2 - ncloseda; k++) {
+      for (int k = 0; k < norbs - ncloseda; k++) {
         HalfDet dacopy = da;
         dacopy.setocc(closeda[j], false);
         dacopy.setocc(opena[k], true);
@@ -350,7 +355,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(
       }
     }
     // printf("Nalpha: %12d,  Nbeta: %12d\n", AlphaN.size(), BetaN.size());
-
+    std::cout << "AlphaMajorToDet size " << AlphaMajorToDet.size() << std::endl;
     size_t max = 0, min = 0, avg = 0;
     for (int i = 0; i < AlphaMajorToBeta.size(); i++) {
       vector<int> betacopy = AlphaMajorToBeta[i];
@@ -880,6 +885,7 @@ void SHCImakeHamiltonian::MakeSMHelpers(
   long intdim = totalMemory;
   long maxint =
       26843540;  // mpi cannot transfer more than these number of doubles
+                 // JETS: Then this should be a global variable
   long maxIter = intdim / maxint;
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);

@@ -3,9 +3,10 @@
 
 #include <iomanip>
 #include <iostream>
-#include "SHCImakeHamiltonian.h"
-#include "communicate.h"
-#include "global.h"
+
+#include "../SHCImakeHamiltonian.h"
+#include "../communicate.h"
+#include "../global.h"
 
 class HamiltonianDense {
  private:

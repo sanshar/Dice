@@ -30,7 +30,7 @@
 #endif
 
 typedef unsigned short ushort;
-const int DetLen = 6;
+const int DetLen = 6;  // JETS: =(
 extern double startofCalc;
 double getTime();
 

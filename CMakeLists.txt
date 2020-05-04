@@ -7,12 +7,15 @@ message(STATUS "\n-- Finding compilers ...\n-- ")
 
 project (Dice CXX)
 set (EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
+set (PROJ_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
+# set(CMAKE_CXX_FLAGS "-g")
 set(CMAKE_CXX_FLAGS "-g -O3")
 option(SERIAL "SERIAL" OFF)
 option(COMPLEX "COMPLEX" OFF)
 option(ENABLE_TESTS "Enable unit tests." OFF)
+# option(MAKE_DEP_GRAPH "Make dependency graph" OFF)
 
 
 #####################
@@ -186,16 +189,31 @@ ENDIF()
 include(CTest)
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(doctest)
+add_subdirectory(unittests)
 
-# Adding individual tests takes three steps:
-# 1) Compile with all source files
-# 2) Add eigen as dependency
-# 3) Link against boost and other libs
-add_executable(test_determinants ${DICE_SOURCE_DIR}/unittests/test_determinants.cpp ${DICE_SOURCE_DIR}/Determinants.cpp ${DICE_SOURCE_DIR}/staticVariables.cpp ${DICE_SOURCE_DIR}/integral.cpp)
-# add_dependencies(test_determinants eigen_project)
-target_link_libraries(test_determinants -L/${Boost_LIBRARY_DIRS} -lboost_serialization -lboost_mpi -lrt)
+####################
+# Dependency Graph #
+####################
 
+# if (MAKE_DEP_GRAPH)
+#   message(STATUS "\n-- Making dependency graph\n--")
+#   find_program(DOT_EXE "dot")
+#   if(DOT_EXE)
+#       message(STATUS "dot found: ${DOT_EXE}")
+#       set(DOT_OUTPUT_TYPE "png" CACHE STRING "Build a dependency graph. Options are dot output types: ps, png, pdf..." )
 
-doctest_discover_tests(test_determinants)
+#       add_custom_target(dependency-graph ALL
+#           COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR} --graphviz=${CMAKE_BINARY_DIR}/graphviz/${PROJECT_NAME}.dot
+#           COMMAND ${DOT_EXE} -T${DOT_OUTPUT_TYPE} ${CMAKE_BINARY_DIR}/graphviz/${PROJECT_NAME}.dot -o ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${DOT_OUTPUT_TYPE}
+#       )
+
+#       add_custom_command(
+#           TARGET dependency-graph POST_BUILD
+#           COMMAND ;
+#           COMMENT
+#           "Dependency graph generated and located at ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.${DOT_OUTPUT_TYPE}"
+#       )
+#   else()
+#       message(STATUS "dot not found!")
+#   endif()
+# endif()

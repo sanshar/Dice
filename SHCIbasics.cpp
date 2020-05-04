@@ -843,7 +843,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
   MatrixXx diag;
 
   size_t norbs = 2. * I2.Direct.rows();
-  int Norbs = norbs;
+  int Norbs = norbs;  // JETS: This stuff has to get consolidated
 
   CItype e0 = SHMDets[0].Energy(I1, I2, coreE);
   size_t orbDiff;
@@ -867,7 +867,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 #ifdef Complex
   SHCImakeHamiltonian::updateSOCconnections(
       SHMDets, 0, DetsSize, SortedDets, sparseHam.connections,
-      sparseHam.orbDifference, sparseHam.Helements, norbs, I1, nelec, false);
+      sparseHam.orbDifference, sparseHam.Helements, Norbs, I1, nelec, false);
 #endif
 
   pout << format("%4s %4s  %10s  %10.2e   %18s   %9s  %10s\n") % ("Iter") %
@@ -964,6 +964,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     cMax.clear();
 
     CItype zero = 0.0;
+    std::cout << "SortedDetSize " << SortedDetsSize << std::endl;
+    std::cout << "uniqueDEH.Det Size " << uniqueDEH.Det->size() << std::endl;
 
     for (int i = 0; i < SortedDetsSize; i++) {
       if (i % (commsize) != commrank) continue;
@@ -979,6 +981,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
           I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec);
 #endif
     }
+    if (iter == 2) {
+      exit(EXIT_FAILURE);
+    }
 
     if (Determinant::Trev != 0) {
       for (int i = 0; i < uniqueDEH.Det->size(); i++)
@@ -987,11 +992,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 
     //*********
     // Remove duplicates and put all the dets on all the nodes
-
+    std::cout << "Before Erase Size " << uniqueDEH.Det->size() << std::endl;
     sort(uniqueDEH.Det->begin(), uniqueDEH.Det->end());
     uniqueDEH.Det->erase(unique(uniqueDEH.Det->begin(), uniqueDEH.Det->end()),
                          uniqueDEH.Det->end());
 
+    std::cout << "Before RemoveOnlyDets Size " << uniqueDEH.Det->size()
+              << std::endl;
     if (Determinant::Trev != 0)
       uniqueDEH.RemoveOnlyDetsPresentIn(SortedDets, SortedDetsSize);
 #ifdef Complex
@@ -1058,6 +1065,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     //*************
 
 #endif
+    pout << "Dets size " << uniqueDEH.Det->size() << std::endl;  // JETS: rm
+    // for (int i = 0; i < uniqueDEH.Det->size(); i++)
+    //   pout << uniqueDEH.Det->at(i) << std::endl;
 
     //**********
     // Resize X0 and dets and sorteddets
@@ -1114,7 +1124,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 #ifdef Complex
     SHCImakeHamiltonian::updateSOCconnections(
         SHMDets, SortedDetsSize, DetsSize, SortedDets, sparseHam.connections,
-        sparseHam.orbDifference, sparseHam.Helements, norbs, I1, nelec, false);
+        sparseHam.orbDifference, sparseHam.Helements, Norbs, I1, nelec, false);
 #endif
 
     SortedDetsSize = DetsSize;

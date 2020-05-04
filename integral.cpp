@@ -226,6 +226,7 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   Determinant::n_spinorbs = norbs * 2;
   Determinant::nalpha = nalpha;
   Determinant::nbeta = nbeta;
+  HalfDet::norbs = Determinant::n_spinorbs;
 
   // initialize the heatbath integrals
   std::vector<int> allorbs;

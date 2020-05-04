@@ -66,12 +66,21 @@ TEST_CASE("Determinants: Basics") {
     REQUIRE(det.Nalpha() == nalpha);
     REQUIRE(det.Nbeta() == nbeta);
     REQUIRE(det.Noccupied() == nalpha + nbeta);
-    REQUIRE(det.hasUnpairedElectrons() == !(nalpha == nbeta));
+    REQUIRE(det.hasUnpairedElectrons() ==
+            !(nalpha == nbeta));  // JETS: only works for HF style ordering
     REQUIRE(det.numUnpairedElectrons() == nalpha - nbeta);
     REQUIRE(det.parityOfFlipAlphaBeta() == 1.);
     REQUIRE(det.getNalphaBefore(nalpha - 1) == nalpha - 1);
     REQUIRE(det.getNbetaBefore(nbeta - 1) == nbeta - 1);
   }
+
+  // Non-HF tests
+  auto det = HFDeterminantSetup(8, 4, 4);
+  det.setocc(6, false);
+  det.setocc(8, true);
+  std::cout << det << std::endl;
+  REQUIRE(det.hasUnpairedElectrons() == true);
+  REQUIRE(det.numUnpairedElectrons() == 2);
 }
 
 TEST_CASE("Determinants: Parity") {
@@ -179,6 +188,9 @@ TEST_CASE("Determinants: TREV") {
 
   auto ket = HFDeterminantSetup(4, 1, 0);
   REQUIRE(ket.parityOfFlipAlphaBeta() == 1.0);
+  REQUIRE(ket.Nalpha() == 1);
+  ket.flipAlphaBeta();
+  REQUIRE(ket.Nalpha() == 0);
 
   ket = HFDeterminantSetup(4, 3, 2);
   std::cout << ket << std::endl;
@@ -190,7 +202,7 @@ TEST_CASE("Determinants: TREV") {
 
   ket = HFDeterminantSetup(3, 2, 1);
   std::cout << ket << std::endl;
-  REQUIRE(ket.isStandard() == true);
+  // REQUIRE(ket.isStandard() == true);
 
   // 2 2 2 a b   2 a b
   ket = HFDeterminantSetup(8, 6, 6);
@@ -199,5 +211,5 @@ TEST_CASE("Determinants: TREV") {
   ket.setoccB(3, false);
   ket.setoccB(7, true);
   std::cout << ket << std::endl;
-  REQUIRE(ket.isStandard() == true);
+  // REQUIRE(ket.isStandard() == true);
 }

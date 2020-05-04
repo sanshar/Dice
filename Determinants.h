@@ -56,19 +56,19 @@ class HalfDet {  // TODO clean this up
   friend class boost::serialization::access;
   template <class Archive>
   void serialize(Archive& ar, const unsigned int version) {
-    for (int i = 0; i < DetLen / 2; i++) ar& repr[i];
+    for (int i = 0; i < DetLen; i++) ar& repr[i];
   }
 
  public:
-  long repr[DetLen / 2];
-  static int norbs;
+  long repr[DetLen];
+  static int norbs;  // JETS: spin orbs + redundant with Determinant::n_spinorbs
   HalfDet() {
-    for (int i = 0; i < DetLen / 2; i++) repr[i] = 0;
+    for (int i = 0; i < DetLen; i++) repr[i] = 0;
   }
 
   // the comparison between determinants is performed
   bool operator<(const HalfDet& d) const {
-    for (int i = DetLen / 2 - 1; i >= 0; i--) {
+    for (int i = DetLen - 1; i >= 0; i--) {
       if (repr[i] < d.repr[i])
         return true;
       else if (repr[i] > d.repr[i])
@@ -78,14 +78,14 @@ class HalfDet {  // TODO clean this up
   }
 
   bool operator==(const HalfDet& d) const {
-    for (int i = DetLen / 2 - 1; i >= 0; i--)
+    for (int i = DetLen - 1; i >= 0; i--)
       if (repr[i] != d.repr[i]) return false;
     return true;
   }
 
   int ExcitationDistance(const HalfDet& d) const {
     int ndiff = 0;
-    for (int i = 0; i < DetLen / 2; i++) {
+    for (int i = 0; i < DetLen; i++) {
       ndiff += BitCount(repr[i] ^ d.repr[i]);
     }
     return ndiff / 2;
@@ -113,7 +113,7 @@ class HalfDet {  // TODO clean this up
 
   int getClosed(vector<int>& closed) {
     int cindex = 0;
-    for (int i = 0; i < 32 * DetLen; i++) {
+    for (int i = 0; i < 64 * DetLen; i++) {
       if (getocc(i)) {
         closed.at(cindex) = i;
         cindex++;
@@ -125,7 +125,7 @@ class HalfDet {  // TODO clean this up
   int getOpenClosed(vector<int>& open, vector<int>& closed) {
     int cindex = 0;
     int oindex = 0;
-    for (int i = 0; i < 32 * DetLen; i++) {
+    for (int i = 0; i < 64 * DetLen; i++) {
       if (getocc(i)) {
         closed.at(cindex) = i;
         cindex++;
@@ -248,13 +248,7 @@ class Determinant {
     exit(EXIT_FAILURE);
   }
 
-  bool hasUnpairedElectrons() {  // JETS: MAYBE WORKING NOW
-    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    // for (int i = EffDetLen - 1; i >= 0; i--) {
-    //   if (((repr[i] & even) << 1) != (repr[i] & odd)) return true;
-    // }
-
-    // JETS
+  bool hasUnpairedElectrons() {
     for (int i = 0; i < DetLen; i++) {
       if (reprA[i] != reprB[i]) {
         return true;
@@ -278,19 +272,6 @@ class Determinant {
   }
 
   double parityOfFlipAlphaBeta() {
-    // unsigned long even = 0x5555555555555555, odd = 0xAAAAAAAAAAAAAAAA;
-    // long temp = 0;
-    // int numpaired = 0;
-    // for (int i = 0; i < EffDetLen; i++) {
-    //   temp = ((repr[i] & even) << 1) & repr[i];
-    //   numpaired += BitCount(temp);
-    // }
-    // double parity1 = numpaired % 2 == 0 ? 1.0 : -1.0;
-    // if (Nbeta() % 2 == 0)
-    //   return parity1;
-    // else
-    //   return -1. * parity1;
-
     long tmp;
     int n_paired = 0;
     for (int i = 0; i < DetLen; i++) {
@@ -336,8 +317,8 @@ class Determinant {
   HalfDet getAlpha() const {
     HalfDet d;
     for (int i = 0; i < EffDetLen; i++)
-      for (int j = 0; j < 32; j++) {
-        d.setocc(i * 32 + j, getocc(i * 64 + j * 2));
+      for (int j = 0; j < 64; j++) {
+        d.setocc(i * 64 + j, getocc(i * 64 + j * 2));
       }
     return d;
   }
@@ -346,8 +327,8 @@ class Determinant {
   HalfDet getBeta() const {
     HalfDet d;
     for (int i = 0; i < EffDetLen; i++)
-      for (int j = 0; j < 32; j++)
-        d.setocc(i * 32 + j, getocc(i * 64 + j * 2 + 1));
+      for (int j = 0; j < 64; j++)
+        d.setocc(i * 64 + j, getocc(i * 64 + j * 2 + 1));
     return d;
   }
   //
