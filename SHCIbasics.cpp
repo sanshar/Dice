@@ -56,19 +56,20 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     Determinant *Dets, CItype *ci, int DetsSize, double &E0, oneInt &I1,
     twoInt &I2, twoIntHeatBathSHM &I2HB, vector<int> &irrep, schedule &schd,
     double coreE, int nelec, int root) {
-  if (schd.nPTiter == 0) return 0;
-  pout << format("Performing semistochastic PT for state: %3i") % (root)
+  if (schd.nPTiter == 0)
+    return 0;
+  pout << format("Performing (semi)stochastic PT for state: %3i") % (root)
        << endl;
 
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
-  pout << endl
-       << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
-       << endl;
   vector<MatrixXx> vdVector;
   double Psi1Norm;
   double EptLarge = 0.0;
   if (schd.epsilon2 < 999)
+    pout << endl
+         << "1/ Deterministic calculation with epsilon2=" << schd.epsilon2
+         << endl;
     EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB,
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
@@ -913,8 +914,17 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       iterstart = 0;
 
     // if the calculation is converged then exit
-    if (converged && iterstart >= schd.epsilon1.size()) {
-      for (int i = 0; i < E0.size(); i++) E0[i] += coreEbkp;
+    if (schd.outputlevel > 0)
+      pout << "Converged: " << converged
+           << " loaded iter: " << iterstart
+           << " max iter: " << schd.epsilon1.size()
+           << " loaded eps1: " << schd.epsilon1[iterstart-1]
+           << " min eps1: " << schd.epsilon1[schd.epsilon1.size()-1]
+           << endl;
+    if (converged && iterstart-1 <= schd.epsilon1.size() &&
+        schd.epsilon1[iterstart-1] <= schd.epsilon1[schd.epsilon1.size()-1]) {
+      for (int i = 0; i < E0.size(); i++)
+        E0[i] += coreEbkp;
       coreE = coreEbkp;
       pout << "# restarting from a converged calculation, moving to "
               "perturbative part.!!"
@@ -1404,11 +1414,13 @@ void SHCIbasics::readVariationalResult(
 
     load >> ci;
     load >> E0;
+    load >> converged;
+    if (schd.outputlevel > 0)
+      pout << "Load converged: " << converged << endl;
     if (schd.onlyperturbative) {
       ifs.close();
       return;
     }
-    load >> converged;
   }
 
   char file[5000];
@@ -1503,11 +1515,13 @@ void SHCIbasics::readVariationalResult(
     load >> iter >> Dets;  // >>sorted ;
     load >> ci;
     load >> E0;
+    load >> converged;
+    if (schd.outputlevel > 0)
+      pout << "Load converged: " << converged << endl;
     if (schd.onlyperturbative) {
       ifs.close();
       return;
     }
-    load >> converged;
   }
 
   /*
