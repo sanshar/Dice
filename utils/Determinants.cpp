@@ -1908,6 +1908,29 @@ void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha
   betaDets.clear();
 }
 
+void generateAllDeterminantsActive(vector<Determinant>& allDets, const Determinant dExternal,
+                                   const int ncore, const int nact, const int nalpha, const int nbeta)
+{
+  vector<vector<int>> alphaDets, betaDets;
+  comb(nact, nalpha, alphaDets);
+  comb(nact, nbeta, betaDets);
+
+  for (int a = 0; a < alphaDets.size(); a++)
+    for (int b = 0; b < betaDets.size(); b++)
+    {
+      // dExternal holds the core and virtual orbitals
+      Determinant d(dExternal);
+      for (int i = 0; i < alphaDets[a].size(); i++)
+        d.setoccA(alphaDets[a][i]+ncore, true);
+      for (int i = 0; i < betaDets[b].size(); i++)
+        d.setoccB(betaDets[b][i]+ncore, true);
+      allDets.push_back(d);
+    }
+
+  alphaDets.clear();
+  betaDets.clear();
+}
+
 // Useful when doing an MRCI/MRPT calculation. This routine only generates
 // determinants within the first-order interacting space of the chosen
 // CAS, using schd.nciCore and schd.nciAct

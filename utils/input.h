@@ -117,21 +117,30 @@ private:
       & printSCEnergies
       & nWalkSCEnergies
       & SCEnergiesBurnIn
-      & NEVPTBiasCorrection;
+      & NEVPTBiasCorrection
+      & exactPerturber
+      & perturberOrb1
+      & perturberOrb2
+      & totResTimeNEVPT
+      & CASEnergy;
   }
 public:
 //General options
-  bool restart;                          //option to restart calculation
-  bool deterministic;                    //Performs a deterministic calculation   
+  bool restart;                          // option to restart calculation
+  bool deterministic;                    // Performs a deterministic calculation
   int printLevel;                        // How much stuff to print
-  bool expCorrelator;                    //exponential correlator parameters, to enforce positivity
+  bool expCorrelator;                    // exponential correlator parameters, to enforce positivity
   bool debug;
-  bool ifComplex;                        //breaks and restores complex conjugation symmetry 
-  bool uagp;                             //brakes S^2 symmetry in uagp
-  bool ciCeption;                        //true, when using ci on top of selectedCI
-  bool determCCVV;                       //In NEVPT2 calculations, calculate the CCVV energy by the exact formula
-  bool efficientNEVPT;                   //More efficient sampling in the SC-NEVPT2(s) method
-  bool efficientNEVPT_2;                 //More efficient sampling in the SC-NEVPT2(s) method - a second approach to this sampling
+  bool ifComplex;                        // breaks and restores complex conjugation symmetry
+  bool uagp;                             // brakes S^2 symmetry in uagp
+  bool ciCeption;                        // true, when using ci on top of selectedCI
+  bool determCCVV;                       // In NEVPT2 calculations, calculate the CCVV energy by the exact formula
+  bool efficientNEVPT;                   // More efficient sampling in the SC-NEVPT2(s) method
+  bool efficientNEVPT_2;                 // More efficient sampling in the SC-NEVPT2(s) method -
+                                         // a second approach to this sampling
+  bool exactPerturber;                   // Exactly calcualte the energy of a perturber in SC-NEVPT2
+  int perturberOrb1;                     // The excited core and virtual (spin) orbitals which define the perturber,
+  int perturberOrb2;                     // in an 'exactPerturber' NEVPT2 calculation
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
@@ -173,6 +182,8 @@ public:
   int SCEnergiesBurnIn;                  // For SC-NEVPT2(s), this is the number of iterations used for burn in
                                          //(thrown away), when sampling E_l^k
   bool NEVPTBiasCorrection;              // If true, include correction to account for error in E[1/x] expectation value
+  double totResTimeNEVPT;                // For NEVPT2, this is the total residence time for each E_l^k sampling
+  double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
 
 //Deprecated options for optimizers
 //because now we just use the python implementation

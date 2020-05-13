@@ -1984,8 +1984,8 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iter     2. energy             3. E_0 - E_l^k         4. E_l^K variance   "
-                     "5. class    6. C/V orbs     7. time\n");
+    fprintf(pt2_out, "# 1. iter    2. energy             3. E_0 - E_l^k         4. E_l^K variance   "
+                     "5. class   6. C/V orbs  7. niters   8. time\n");
 
     double timeInTotal = getTime();
     int orbi, orbj;
@@ -2002,10 +2002,12 @@ class SCPT
       this->wave.initWalker(walk, initDets[nextSC]);
 
       double SCHam, SCHamVar;
+      int SamplingIters;
+
       if (schd.printSCEnergies) {
         SCHam = doSCEnergyCTMCPrint(walk, work, iter, schd.nWalkSCEnergies);
       } else {
-        doSCEnergyCTMC(walk, work, SCHam, SCHamVar);
+        doSCEnergyCTMC(walk, work, SCHam, SCHamVar, SamplingIters);
       }
 
       // If this same SC sector is sampled again, start from the final
@@ -2027,9 +2029,9 @@ class SCPT
       getOrbsFromIndex(indexMap[nextSC], orbi, orbj);
       string orbString = formatOrbString(orbi, orbj);
 
-      fprintf(pt2_out, "%9d    %.12e    %.12e    %.12e      %4s     %10s     %.4e\n",
+      fprintf(pt2_out, "%9d   %.12e    %.12e    %.12e      %4s    %10s   %8d   %.4e\n",
               iter, energySample, eDiff, SCHamVar, classNames2[walk.excitation_class].c_str(),
-              orbString.c_str(), timeOut-timeIn);
+              orbString.c_str(), SamplingIters, timeOut-timeIn);
       fflush(pt2_out);
 
       iter++;
@@ -2087,7 +2089,7 @@ class SCPT
   }
 
   template<typename Walker>
-  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var)
+  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var, int& sampling_iters)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
     double numerator = 0., numerator_Tot = 0.;
@@ -2095,8 +2097,7 @@ class SCPT
 
     int nSampleIters = schd.stochasticIterEachSC - schd.SCEnergiesBurnIn;
 
-    vector<double> x(nSampleIters, 0.0);
-    vector<double> w(nSampleIters, 0.0);
+    vector<double> x, w;
 
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -2107,7 +2108,8 @@ class SCPT
     FastHamAndOvlp(walk, ovlp, hamSample, work);
 
     int iter = 0;
-    while (iter < schd.stochasticIterEachSC) {
+    //while (iter < schd.stochasticIterEachSC) {
+    while (deltaT_Tot < (schd.totResTimeNEVPT - 1.e-15)) {
       double cumovlpRatio = 0.;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -2116,12 +2118,17 @@ class SCPT
 
       // Only start accumulating data if beyond the burn-in period
       if (iter >= schd.SCEnergiesBurnIn) {
+        //double u = random();
+        //double ln_fac = log(1.0/u);
+        //deltaT = ln_fac / (cumovlpRatio);
         deltaT = 1.0 / (cumovlpRatio);
+        //if (deltaT_Tot + deltaT > schd.totResTimeNEVPT) {
+        //  deltaT = schd.totResTimeNEVPT - deltaT_Tot;
+        //}
         numerator = deltaT*hamSample;
 
-        int samplingIter = iter - schd.SCEnergiesBurnIn;
-        x[samplingIter] = hamSample;
-        w[samplingIter] = deltaT;
+        x.push_back(hamSample);
+        w.push_back(deltaT);
 
         numerator_Tot += numerator;
         deltaT_Tot += deltaT;
@@ -2141,6 +2148,8 @@ class SCPT
     }
 
     final_ham = numerator_Tot/deltaT_Tot;
+
+    sampling_iters = iter - schd.SCEnergiesBurnIn + 1;
 
     // Estimate the error on final_ham
     double x_bar = 0.0, x_bar_2 = 0.0, n_eff, W = 0.0, W_2 = 0.0;
@@ -2349,6 +2358,121 @@ class SCPT
     if (commrank == 0) fclose(out);
 
     return final_ham;
+  }
+
+  template<typename Walker>
+  double compareStochPerturberEnergy(Walker& walk, int orb1, int orb2, double CASEnergy, int nsamples) {
+
+    // First, calculate the *exact* perturber energy
+
+    int firstActive = schd.nciCore;
+    int firstVirtual = schd.nciCore + schd.nciAct;
+
+    Determinant dExternal = walk.d;
+
+    // Set the core and virtual orbitals as appropriate
+    for (int i=0; i<2; i++) {
+      int orb;
+
+      if (i == 0) {
+        orb = orb1;
+      } else {
+        orb = orb2;
+      }
+
+      // orb == -1 indicates that this orbital is not in use (i.e. we
+      // only have a singl excitation).
+      if (orb == -1) continue;
+
+      if (orb < 2*firstActive) {
+        if (orb % 2 == 0) {
+          dExternal.setoccA(orb/2, false);
+        } else {
+          dExternal.setoccB(orb/2, false);
+        }
+      } else if (orb >= 2*firstVirtual) {
+        if (orb % 2 == 0) {
+          dExternal.setoccA(orb/2, true);
+        } else {
+          dExternal.setoccB(orb/2, true);
+        }
+      }
+    }
+
+    // Construct a determinant with all active orbitals unoccupied
+    // (but core and virtual occupations are the same)
+    for (int i = firstActive; i<firstVirtual; i++) {
+      dExternal.setoccA(i, false);
+      dExternal.setoccB(i, false);
+    }
+
+    // Get the number of alpha and beta electrons in the active space
+    int nalpha = Determinant::nalpha - dExternal.Nalpha();
+    int nbeta = Determinant::nbeta - dExternal.Nbeta();
+
+    // Generate all determinants in the appropriate S_l^k
+    vector<Determinant> allDets;
+    generateAllDeterminantsActive(allDets, dExternal, schd.nciCore, schd.nciAct, nalpha, nbeta);
+
+    workingArray work;
+    double hamTot = 0., normTot = 0.;
+    double largestOverlap = 0.;
+    Determinant bestDet;
+
+    int nDets = allDets.size();
+
+    for (int i = 0; i < allDets.size(); i++) {
+      wave.initWalker(walk, allDets[i]);
+      if (schd.debug) {
+        cout << "walker\n" << walk << endl;
+      }
+
+      double ovlp = 0., ham = 0.;
+      FastHamAndOvlp(walk, ovlp, ham, work);
+
+      hamTot += ovlp * ovlp * ham;
+      normTot += ovlp * ovlp;
+
+      if (abs(ovlp) > largestOverlap) {
+        largestOverlap = abs(ovlp);
+        bestDet = allDets[i];
+      }
+    }
+
+    double perturberEnergy = hamTot / normTot;
+    cout << "Exact perturber energy, E_l^k: " << setprecision(12) << perturberEnergy << endl;
+
+    // Now generate stochastic samples
+    FILE * pt2_out;
+    string pt2OutName = "stoch_samples_";
+    pt2OutName.append(to_string(commrank));
+    pt2OutName.append(".dat");
+
+    pt2_out = fopen(pt2OutName.c_str(), "w");
+    fprintf(pt2_out, "# 1. iter     2. E_l^k              3. E_l^K variance     4. E_0 - E_l^k         "
+                     "5. 1/(E_0 - E_l^k)   6. niters   7. time\n");
+
+    for (int iter=0; iter<nsamples; iter++) {
+      double SCHam = 0., SCHamVar = 0.;
+      int samplingIters;
+
+      double timeIn = getTime();
+
+      this->wave.initWalker(walk, bestDet);
+      doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+
+      double timeOut = getTime();
+
+      double eDiff = CASEnergy - SCHam;
+      double energySample = 1.0/eDiff;
+
+      fprintf(pt2_out, "%9d    %.12e    %.12e    %.12e    %.12e   %8d   %.4e\n",
+              iter, SCHam, SCHamVar, eDiff, energySample, samplingIters, timeOut-timeIn);
+      fflush(pt2_out);
+    }
+
+    fclose(pt2_out);
+
   }
 
   template<typename Walker>

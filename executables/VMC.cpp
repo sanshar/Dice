@@ -260,7 +260,12 @@ int main(int argc, char *argv[])
     wave.initWalker(walk);
     if (schd.deterministic) {
       wave.doNEVPT2_Deterministic(walk);
-    } else {
+    }
+    else if (schd.exactPerturber) {
+      wave.compareStochPerturberEnergy(walk, schd.perturberOrb1, schd.perturberOrb2,
+                                       schd.CASEnergy, schd.numSCSamples);
+    }
+    else {
       if (schd.efficientNEVPT || schd.efficientNEVPT_2) {
         wave.doNEVPT2_CT_Efficient(walk);
       } else {

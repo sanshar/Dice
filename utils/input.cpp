@@ -115,6 +115,12 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.nIterFindInitDets = input.get("sampling.nIterFindInitDets", 1e2);
     schd.SCEnergiesBurnIn = input.get("sampling.SCEnergiesBurnIn", 50);
     schd.NEVPTBiasCorrection = input.get("sampling.NEVPTBiasCorrection", true);
+    schd.exactPerturber = input.get("sampling.exactPerturber", false);
+    schd.perturberOrb1 = input.get("sampling.perturberOrb1", -1);
+    schd.perturberOrb2 = input.get("sampling.perturberOrb2", -1);
+    schd.totResTimeNEVPT = input.get("sampling.residenceTimeNEVPT", 5.0);
+    schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
+
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
