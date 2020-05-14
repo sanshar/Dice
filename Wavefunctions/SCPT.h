@@ -1984,8 +1984,8 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iter    2. energy             3. E_0 - E_l^k         4. E_l^K variance   "
-                     "5. class   6. C/V orbs  7. niters   8. time\n");
+    fprintf(pt2_out, "# 1. iter    2. energy            3. E_0 - E_l^k        4. E_l^K variance    "
+                     "5. Bias correction  6. class   7. C/V orbs  8. niters   9. time\n");
 
     double timeInTotal = getTime();
     int orbi, orbj;
@@ -2015,9 +2015,10 @@ class SCPT
       if (schd.continueMarkovSCPT) initDets[nextSC] = walk.d;
 
       energySample = totCumNorm / (energyCAS_Tot - SCHam);
+      double biasCorr = - totCumNorm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
 
       if (schd.NEVPTBiasCorrection) {
-        energySample += - totCumNorm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
+        energySample += biasCorr;
       }
 
       energyTot += energySample;
@@ -2029,8 +2030,9 @@ class SCPT
       getOrbsFromIndex(indexMap[nextSC], orbi, orbj);
       string orbString = formatOrbString(orbi, orbj);
 
-      fprintf(pt2_out, "%9d   %.12e    %.12e    %.12e      %4s    %10s   %8d   %.4e\n",
-              iter, energySample, eDiff, SCHamVar, classNames2[walk.excitation_class].c_str(),
+      fprintf(pt2_out, "%9d   %.12e   %.12e   %.12e   %.12e      %4s    %10s   %8d   %.4e\n",
+              iter, energySample, eDiff, SCHamVar, biasCorr,
+              classNames2[walk.excitation_class].c_str(),
               orbString.c_str(), SamplingIters, timeOut-timeIn);
       fflush(pt2_out);
 
@@ -2147,27 +2149,80 @@ class SCPT
       iter++;
     }
 
+    sampling_iters = iter - schd.SCEnergiesBurnIn;
     final_ham = numerator_Tot/deltaT_Tot;
 
-    sampling_iters = iter - schd.SCEnergiesBurnIn + 1;
-
     // Estimate the error on final_ham
-    double x_bar = 0.0, x_bar_2 = 0.0, n_eff, W = 0.0, W_2 = 0.0;
+    var = SCEnergyVar(x, w);
+
+    // Old code for estimating the variance, based on a different estimator
+    //int n = x.size();
+    //double x_bar = 0.0, x_bar_2 = 0.0, n_eff, W = 0.0, W_2 = 0.0;
+    //for (int i = 0; i < n; i++)
+    //{
+    //    x_bar += w[i] * x[i];
+    //    x_bar_2 += w[i] * x[i] * x[i];
+    //    W += w[i];
+    //    W_2 += w[i] * w[i];
+    //}
+    //x_bar /= W;
+    //x_bar_2 /= W;
+    //n_eff = (W * W) / W_2;
+
+    //double s_2 = x_bar_2 - x_bar * x_bar;
+    //// Final estimate of the variance of the weighted mean
+    //var = s_2 / (n_eff - 1.0);
+  }
+
+  // Estimate the variance of the weighted mean used to estimate E_l^k
+  double SCEnergyVar(vector<double>& x, vector<double>& w)
+  {
+    // This uses blocks of data, to account for the serial correlation
     int n = x.size();
+    int block_size = min(n/5, 16);
+    if (block_size < 1) {
+      block_size = 1;
+    }
+
+    int nblocks = n/block_size;
+
+    vector<double> x_1, w_1;
+    x_1.assign(nblocks, 0.0);
+    w_1.assign(nblocks, 0.0);
+
+    for (int i = 0; i < nblocks; i++)
+    {
+      for (int j = 0; j < block_size; j++)
+      {
+        w_1[i] += w[block_size*i + j];
+        x_1[i] += w[block_size*i + j] * x[block_size*i + j];
+      }
+      x_1[i] /= w_1[i];
+    }
+    n = nblocks;
+    x = x_1;
+    w = w_1;
+
+    double x_bar = 0.0, W = 0.0;
     for (int i = 0; i < n; i++)
     {
         x_bar += w[i] * x[i];
-        x_bar_2 += w[i] * x[i] * x[i];
         W += w[i];
-        W_2 += w[i] * w[i];
     }
     x_bar /= W;
-    x_bar_2 /= W;
-    n_eff = (W * W) / W_2;
 
-    double s_2 = x_bar_2 - x_bar * x_bar;
-    // Final estimate of the variance of the weighted mean
-    var = s_2 / (n_eff - 1.0);
+    double var = 0.;
+    for (int i = 0; i < n; i++)
+    {
+      var += pow(w[i]*x[i] - W*x_bar, 2)
+           - 2*x_bar*(w[i] - W)*(w[i]*x[i] - W*x_bar)
+           + pow(x_bar, 2) * pow(w[i] - W, 2);
+    }
+
+    var *= n / (n - 1.0);
+    var /= pow(W, 2);
+
+    return var;
   }
 
   template<typename Walker>
