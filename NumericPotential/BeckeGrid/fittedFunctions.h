@@ -9,6 +9,7 @@ using namespace Eigen;
 using MatrixXdR = Eigen::Matrix<double, Dynamic, Dynamic, RowMajor>;
 
 void getSphericalCoords(MatrixXdR& grid, MatrixXd& SphericalCoords);
+void getBeckePartition(double* coords, int ngrids, double* pbecke);
 
 namespace LebdevGrid{
 int MakeAngularGrid(double *Out, int nPoints);

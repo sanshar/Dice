@@ -1,3 +1,4 @@
+#include "pythonInterface.h"
 #include "fittedFunctions.h"
 #include <iostream>
 
@@ -21,6 +22,25 @@ void getSphericalCoords(MatrixXdR& grid, MatrixXd& SphericalCoords) {
   }
 
 }
+
+void getBeckePartition(double* coords, int ngrids, double* pbecke) {
+  vector<double> fcoord(ngrids*3);
+  vector<double> atmCoord(natm*3);
+
+  for (int i=0; i<ngrids; i++) {
+    fcoord[0*ngrids+i] = coords[i*3+0];
+    fcoord[1*ngrids+i] = coords[i*3+1];
+    fcoord[2*ngrids+i] = coords[i*3+2];
+  }
+  for (int i=0; i<natm; i++) {
+    atmCoord[3*i+0] = env[atm[6*i+1] + 0];
+    atmCoord[3*i+1] = env[atm[6*i+1] + 1];
+    atmCoord[3*i+2] = env[atm[6*i+1] + 2];
+  }
+
+  VXCgen_grid(pbecke, &fcoord[0], &atmCoord[0], NULL, natm, ngrids);
+}
+
 
 void SplineFit::Init(const RawDataOnGrid& potentialYlm){
   zgrid = potentialYlm.zgrid;
