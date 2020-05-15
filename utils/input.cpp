@@ -114,7 +114,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
     schd.nIterFindInitDets = input.get("sampling.nIterFindInitDets", 1e2);
     schd.SCEnergiesBurnIn = input.get("sampling.SCEnergiesBurnIn", 50);
-    schd.NEVPTBiasCorrection = input.get("sampling.NEVPTBiasCorrection", true);
     schd.exactPerturber = input.get("sampling.exactPerturber", false);
     schd.perturberOrb1 = input.get("sampling.perturberOrb1", -1);
     schd.perturberOrb2 = input.get("sampling.perturberOrb2", -1);

@@ -1975,7 +1975,7 @@ class SCPT
       cout << "Total cumulative squared norm (process 0): " << totCumNorm << endl << endl;
     }
 
-    double energySample = 0., energyTot = 0;
+    double energySample = 0., energyTot = 0, biasTot;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     FILE * pt2_out;
@@ -2017,11 +2017,12 @@ class SCPT
       energySample = totCumNorm / (energyCAS_Tot - SCHam);
       double biasCorr = - totCumNorm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
 
-      if (schd.NEVPTBiasCorrection) {
-        energySample += biasCorr;
-      }
+      //if (schd.NEVPTBiasCorrection) {
+      //  energySample += biasCorr;
+      //}
 
       energyTot += energySample;
+      biasTot += biasCorr;
 
       double timeOut = getTime();
       double eDiff = energyCAS_Tot - SCHam;
@@ -2045,9 +2046,10 @@ class SCPT
     fclose(pt2_out);
 
     energyTot /= iter;
+    biasTot /= iter;
 
     // Average over MPI processes
-    double energyFinal = 0.;
+    double energyFinal = 0., biasFinal = 0.;
 #ifndef SERIAL
     // Check how long processes have to wait for other MPI processes to finish
     double timeIn = getTime();
@@ -2058,36 +2060,54 @@ class SCPT
     // Gather and print energy estimates from all MPI processes
     double energyTotAll[commsize];
     MPI_Gather(&(energyTot), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
+    double biasTotAll[commsize];
+    MPI_Gather(&(biasTot), 1, MPI_DOUBLE, &(biasTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // Gather the total time on each process
     double timeTotalAll[commsize];
     MPI_Gather(&(timeTotal), 1, MPI_DOUBLE, &(timeTotalAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     if (commrank == 0) {
+      // Print final estimates from each process
       FILE * mpi_out;
       mpi_out = fopen("pt2_energies_avg.dat", "w");
-      fprintf(mpi_out, "# 1. proc_label     2. energy            3. time\n");
-
-      double stdDev = 0.;
+      fprintf(mpi_out, "# 1. proc label     2. energy            "
+                       "3. bias correction   4. time\n");
       for (int i=0; i<commsize; i++) {
-        fprintf(mpi_out, "%15d    %.12e   %.6e\n", i, energyTotAll[i], timeTotalAll[i]);
-        energyFinal += energyTotAll[i];
-        stdDev += energyTotAll[i] * energyTotAll[i];
+        fprintf(mpi_out, "%15d    %.12e   %.12e   %.6e\n",
+                i, energyTotAll[i], biasTotAll[i], timeTotalAll[i]);
       }
       fclose(mpi_out);
+
+      // Calculate the energy and bias averaged over all processes
+      for (int i=0; i<commsize; i++) {
+        energyFinal += energyTotAll[i];
+        biasFinal += biasTotAll[i];
+      }
       energyFinal /= commsize;
-      stdDev /= commsize;
-      stdDev -= energyFinal * energyFinal; 
+      biasFinal /= commsize;
+
+      // Calculate the standard error for the energy and bias estimates
+      double stdDevEnergy = 0., stdDevBias = 0.;
+      for (int i=0; i<commsize; i++) {
+        stdDevEnergy += pow( energyTotAll[i] - energyFinal, 2 );
+        stdDevBias += pow( biasTotAll[i] - biasFinal, 2 );
+      }
+      stdDevEnergy /= commsize - 1;
+      stdDevBias /= commsize - 1;
 
       cout.precision(12);
-      cout << "Energy error estimate: " << sqrt(stdDev / commsize) << endl;
+      cout << "Energy error estimate: " << sqrt(stdDevEnergy / commsize) << endl;
+      cout << "Bias correction error estimate: " << sqrt(stdDevBias / commsize) << endl;
     }
     MPI_Bcast(&energyFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&biasFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
     energyFinal = energyTot;
+    biasFinal = biasTot;
 #endif
 
-    return energyFinal;
+    // Final energy returned includes the bias correction estimate
+    return energyFinal + biasFinal;
   }
 
   template<typename Walker>
