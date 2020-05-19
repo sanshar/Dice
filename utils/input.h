@@ -117,6 +117,7 @@ private:
       & printSCEnergies
       & nWalkSCEnergies
       & SCEnergiesBurnIn
+      & SCNormsBurnIn
       & exactPerturber
       & perturberOrb1
       & perturberOrb2
@@ -180,6 +181,8 @@ public:
                                          // use when sampling E_l^k
   int SCEnergiesBurnIn;                  // For SC-NEVPT2(s), this is the number of iterations used for burn in
                                          //(thrown away), when sampling E_l^k
+  int SCNormsBurnIn;                     // For SC-NEVPT2(s), this is the number of iterations used for burn in
+                                         //(thrown away), when sampling N_l^k
   double totResTimeNEVPT;                // For NEVPT2, this is the total residence time for each E_l^k sampling
   double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
 

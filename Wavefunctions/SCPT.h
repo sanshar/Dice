@@ -1783,6 +1783,15 @@ class SCPT
       }
     }
 
+    if (schd.SCNormsBurnIn >= schd.stochasticIterEachSC) {
+      if (commrank == 0) {
+        cout << "WARNING: The number of sampling iterations for N_l^k estimation is"
+                " not larger than the number of burn-in iterations. Setting the number"
+                " of burn-in iterations to 0." << endl << endl;
+      }
+      schd.SCNormsBurnIn = 0;
+    }
+
     if (schd.SCEnergiesBurnIn >= schd.stochasticIterEachSC) {
       if (commrank == 0) {
         cout << "WARNING: The number of sampling iterations for E_l^k estimation is"
@@ -1842,15 +1851,19 @@ class SCPT
           cumovlpRatio += abs(work.ovlpRatio[i]);
           work.ovlpRatio[i] = cumovlpRatio;
         }
-        double deltaT = 1.0 / (cumovlpRatio);
 
-        energyCAS = deltaT * hamSample;
-        normSamples *= deltaT;
+        if (iter > schd.SCNormsBurnIn)
+        {
+          double deltaT = 1.0 / (cumovlpRatio);
 
-        // These hold the running totals
-        deltaT_Tot += deltaT;
-        energyCAS_Tot += energyCAS;
-        norms_Tot += normSamples;
+          energyCAS = deltaT * hamSample;
+          normSamples *= deltaT;
+
+          // These hold the running totals
+          deltaT_Tot += deltaT;
+          energyCAS_Tot += energyCAS;
+          norms_Tot += normSamples;
+        }
 
         //if (schd.printSCNorms && iter % schd.printSCNormFreq == 0)
         //  printSCNorms(iter, deltaT_Tot, energyCAS_Tot, norms_Tot, false);
@@ -2016,10 +2029,6 @@ class SCPT
 
       energySample = totCumNorm / (energyCAS_Tot - SCHam);
       double biasCorr = - totCumNorm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
-
-      //if (schd.NEVPTBiasCorrection) {
-      //  energySample += biasCorr;
-      //}
 
       energyTot += energySample;
       biasTot += biasCorr;
