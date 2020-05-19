@@ -2208,6 +2208,14 @@ class SCPT
   {
     // This uses blocks of data, to account for the serial correlation
     int n = x.size();
+
+    // If we only have one sample, we can't estimate the variance, so
+    // just return 0 instead
+    if (n == 1)
+    {
+      return 0.0;
+    }
+
     int block_size = min(n/5, 16);
     if (block_size < 1) {
       block_size = 1;
@@ -2235,8 +2243,8 @@ class SCPT
     double x_bar = 0.0, W = 0.0;
     for (int i = 0; i < n; i++)
     {
-        x_bar += w[i] * x[i];
-        W += w[i];
+      x_bar += w[i] * x[i];
+      W += w[i];
     }
     x_bar /= W;
 
