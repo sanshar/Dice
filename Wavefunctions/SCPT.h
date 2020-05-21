@@ -2139,8 +2139,20 @@ class SCPT
     FastHamAndOvlp(walk, ovlp, hamSample, work);
 
     int iter = 0;
-    //while (iter < schd.stochasticIterEachSC) {
-    while (deltaT_Tot < (schd.totResTimeNEVPT - 1.e-15)) {
+
+    while(true) {
+
+      // Condition for exiting loop:
+      // This depends on what 'mode' we are running in - constant
+      // residence time, or constant iteration count
+      if (schd.fixedResTimeNEVPT) {
+        if (deltaT_Tot >= schd.totResTimeNEVPT)
+          break;
+      } else {
+        if (iter >= schd.stochasticIterEachSC)
+          break;
+      }
+
       double cumovlpRatio = 0.;
       for (int i = 0; i < work.nExcitations; i++) {
         cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -2149,13 +2161,7 @@ class SCPT
 
       // Only start accumulating data if beyond the burn-in period
       if (iter >= schd.SCEnergiesBurnIn) {
-        //double u = random();
-        //double ln_fac = log(1.0/u);
-        //deltaT = ln_fac / (cumovlpRatio);
         deltaT = 1.0 / (cumovlpRatio);
-        //if (deltaT_Tot + deltaT > schd.totResTimeNEVPT) {
-        //  deltaT = schd.totResTimeNEVPT - deltaT_Tot;
-        //}
         numerator = deltaT*hamSample;
 
         x.push_back(hamSample);
@@ -2183,24 +2189,6 @@ class SCPT
 
     // Estimate the error on final_ham
     var = SCEnergyVar(x, w);
-
-    // Old code for estimating the variance, based on a different estimator
-    //int n = x.size();
-    //double x_bar = 0.0, x_bar_2 = 0.0, n_eff, W = 0.0, W_2 = 0.0;
-    //for (int i = 0; i < n; i++)
-    //{
-    //    x_bar += w[i] * x[i];
-    //    x_bar_2 += w[i] * x[i] * x[i];
-    //    W += w[i];
-    //    W_2 += w[i] * w[i];
-    //}
-    //x_bar /= W;
-    //x_bar_2 /= W;
-    //n_eff = (W * W) / W_2;
-
-    //double s_2 = x_bar_2 - x_bar * x_bar;
-    //// Final estimate of the variance of the weighted mean
-    //var = s_2 / (n_eff - 1.0);
   }
 
   // Estimate the variance of the weighted mean used to estimate E_l^k

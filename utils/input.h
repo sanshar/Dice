@@ -121,6 +121,7 @@ private:
       & exactPerturber
       & perturberOrb1
       & perturberOrb2
+      & fixedResTimeNEVPT
       & totResTimeNEVPT
       & CASEnergy;
   }
@@ -183,6 +184,8 @@ public:
                                          //(thrown away), when sampling E_l^k
   int SCNormsBurnIn;                     // For SC-NEVPT2(s), this is the number of iterations used for burn in
                                          //(thrown away), when sampling N_l^k
+  bool fixedResTimeNEVPT;                // If true, estimate E_l^k in SC-NEVPT2 with a fixed residence time.
+                                         // Otherwise, use a fixed iteration count
   double totResTimeNEVPT;                // For NEVPT2, this is the total residence time for each E_l^k sampling
   double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
 
