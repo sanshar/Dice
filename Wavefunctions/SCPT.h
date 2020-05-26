@@ -475,15 +475,15 @@ class SCPT
     if (i >= 0 && j == -1) {
       string tempStr = '(' + to_string(i) + ')';
       int tempLen = tempStr.length();
-      str = string(10 - tempLen, ' ') + tempStr;
+      str = string(12 - tempLen, ' ') + tempStr;
     }
     else if (i >= 0 && j >= 0 ) {
       string tempStr = '(' + to_string(i) + ',' + to_string(j) + ')';
       int tempLen = tempStr.length();
-      str = string(10 - tempLen, ' ') + tempStr;
+      str = string(12 - tempLen, ' ') + tempStr;
     }
     else {
-      str = string(10, ' ');
+      str = string(12, ' ');
     }
 
     return str;
@@ -2040,7 +2040,7 @@ class SCPT
       getOrbsFromIndex(indexMap[nextSC], orbi, orbj);
       string orbString = formatOrbString(orbi, orbj);
 
-      fprintf(pt2_out, "%9d   %.12e   %.12e   %.12e   %.12e      %4s    %10s   %8d   %.4e\n",
+      fprintf(pt2_out, "%9d   %.12e   %.12e   %.12e   %.12e      %4s  %12s   %8d   %.4e\n",
               iter, energySample, eDiff, SCHamVar, biasCorr,
               classNames2[walk.excitation_class].c_str(),
               orbString.c_str(), SamplingIters, timeOut-timeIn);
