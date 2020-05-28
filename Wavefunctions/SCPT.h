@@ -2325,53 +2325,155 @@ class SCPT
     return final_ham;
   }
 
+  // Wrapper function for calling doSCEnergyCTMC, which estimates E_l^k,
+  // given the appropriate input information, and then to print this info
+  // to the provded pt2_out file.
+  // This is designed to be called by sampleAllSCEnergies.
+  template<typename Walker>
+  double SCEnergyWrapper(Walker& walk, int iter, FILE * pt2_out, Determinant& det, double& energyCAS_Tot,
+                         double norm, int orbi, int orbj, workingArray& work) {
+
+    double SCHam = 0., SCHamVar = 0.;
+    int samplingIters = 0;
+
+    double timeIn = getTime();
+
+    this->wave.initWalker(walk, det);
+    //double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
+    doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+
+    double energySample = norm / (energyCAS_Tot - SCHam);
+    double biasCorr = - norm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
+    double eDiff = energyCAS_Tot - SCHam;
+    string orbString = formatOrbString(orbi, orbj);
+
+    double timeOut = getTime();
+
+    fprintf(pt2_out, "%9d   %.12e   %.12e   %.12e   %.12e      %4s  %12s   %8d   %.4e\n",
+            iter, energySample, eDiff, SCHamVar, biasCorr,
+            classNames2[walk.excitation_class].c_str(),
+            orbString.c_str(), samplingIters, timeOut-timeIn);
+    fflush(pt2_out);
+
+    return energySample;
+  }
+
+  // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
+  // CAAV and CCAA) and sample E_l^k for each. The final PT2 energy is
+  // then output as a sum over all of these spaces.
   template<typename Walker>
   double sampleAllSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
                              double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
   {
     int norbs = Determinant::norbs;
     int first_virtual = schd.nciCore + schd.nciAct;
+    int numVirt = norbs - first_virtual;
 
     double ene2 = 0.;
 
-    // Class 1 (0 holes, 1 particle)
+    FILE * pt2_out;
+    string pt2OutName = "pt2_energies_";
+    pt2OutName.append(to_string(commrank));
+    pt2OutName.append(".dat");
+
+    pt2_out = fopen(pt2OutName.c_str(), "w");
+    fprintf(pt2_out, "# 1. iter    2. energy            3. E_0 - E_l^k        4. E_l^K variance    "
+                     "5. Bias correction  6. class   7. C/V orbs  8. niters   9. time\n");
+
+    int iter = 0;
+
+    // AAAV
     for (int r=2*first_virtual; r<2*norbs; r++) {
-      if (commrank == 0) cout << "r: " << r << endl;
       int ind = cumNumCoeffs[1] + r - 2*first_virtual;
       if (norms_Tot(ind) > schd.overlapCutoff) {
         if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << endl;
 
-        string outputFile = "sc_energies.";
-        outputFile.append(to_string(r));
-
-        this->wave.initWalker(walk, initDets[ind]);
-        double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
-        ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
+        int orb1 = r;
+        int orb2 = -1;
+        ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
+                                norms_Tot(ind), orb1, orb2, work);
+        iter++;
       }
     }
 
-    // Class 2 (0 holes, 2 particle)
+    // AAVV
     for (int r=2*first_virtual+1; r<2*norbs; r++) {
       for (int s=2*first_virtual; s<r; s++) {
-        if (commrank == 0) cout << "r: " << r << " s: " << s << endl;
         int R = r - 2*first_virtual - 1;
         int S = s - 2*first_virtual;
         int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
 
         if (norms_Tot(ind) > schd.overlapCutoff) {
-          if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << r << "  " << s << endl;
-
-          string outputFile = "sc_energies.";
-          outputFile.append(to_string(r));
-          outputFile.append("_");
-          outputFile.append(to_string(s));
-
-          this->wave.initWalker(walk, initDets[ind]);
-          double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
-          ene2 += norms_Tot(ind) / (energyCAS_Tot - SCHam);
+          if (largestCoeffs[ind] == 0.0) {
+            cout << "Warning: No initial determinant found. " << r << "  " << s << endl;
+            continue;
+          }
+          int orb1 = r;
+          int orb2 = s;
+          ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
+                                  norms_Tot(ind), orb1, orb2, work);
+          iter++;
         }
       }
     }
+
+    // CAAA
+    for (int i=0; i<2*schd.nciCore; i++) {
+      int ind = cumNumCoeffs[3] + i;
+
+      if (norms_Tot(ind) > schd.overlapCutoff) {
+        if (largestCoeffs[ind] == 0.0) cout << "Error: No initial determinant found. " << i << endl;
+
+        int orb1 = i;
+        int orb2 = -1;
+        ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
+                                norms_Tot(ind), orb1, orb2, work);
+        iter++;
+      }
+    }
+
+    // CAAV
+    for (int i=0; i<2*schd.nciCore; i++) {
+      for (int r=2*first_virtual; r<2*norbs; r++) {
+        int ind = cumNumCoeffs[4] + 2*numVirt*i + (r - 2*schd.nciCore - 2*schd.nciAct);
+
+        if (norms_Tot(ind) > schd.overlapCutoff) {
+          if (largestCoeffs[ind] == 0.0) {
+            cout << "Warning: No initial determinant found. " << i << "  " << r << endl;
+            continue;
+          }
+
+          int orb1 = i;
+          int orb2 = r;
+          ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
+                                  norms_Tot(ind), orb1, orb2, work);
+          iter++;
+        }
+      }
+    }
+
+    // CCAA
+    for (int i=1; i<2*schd.nciCore; i++) {
+      for (int j=0; j<i; j++) {
+        int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+
+        if (norms_Tot(ind) > schd.overlapCutoff) {
+          if (largestCoeffs[ind] == 0.0) {
+            cout << "Warning: No initial determinant found. " << i << "  " << j << endl;
+            continue;
+          }
+
+          int orb1 = i;
+          int orb2 = j;
+          ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
+                                  norms_Tot(ind), orb1, orb2, work);
+          iter++;
+        }
+      }
+    }
+
+    fclose(pt2_out);
+
     return ene2;
   }
 
@@ -2461,7 +2563,7 @@ class SCPT
       }
 
       // orb == -1 indicates that this orbital is not in use (i.e. we
-      // only have a singl excitation).
+      // only have a single excitation).
       if (orb == -1) continue;
 
       if (orb < 2*firstActive) {
@@ -2529,8 +2631,8 @@ class SCPT
     pt2OutName.append(".dat");
 
     pt2_out = fopen(pt2OutName.c_str(), "w");
-    fprintf(pt2_out, "# 1. iter     2. E_l^k              3. E_l^K variance     4. E_0 - E_l^k         "
-                     "5. 1/(E_0 - E_l^k)   6. niters   7. time\n");
+    fprintf(pt2_out, "# 1. iter     2. E_l^k              3. E_l^K variance     4. Bias correction     "
+                     "5. E_0 - E_l^k         6. 1/(E_0 - E_l^k)   7. niters  8. time\n");
 
     for (int iter=0; iter<nsamples; iter++) {
       double SCHam = 0., SCHamVar = 0.;
@@ -2545,9 +2647,13 @@ class SCPT
 
       double eDiff = CASEnergy - SCHam;
       double energySample = 1.0/eDiff;
+      double biasCorr = - SCHamVar / pow( CASEnergy - SCHam, 3);
 
-      fprintf(pt2_out, "%9d    %.12e    %.12e    %.12e    %.12e   %8d   %.4e\n",
-              iter, SCHam, SCHamVar, eDiff, energySample, samplingIters, timeOut-timeIn);
+      // Get the external orbs of the perturber, for printing
+      string orbString = formatOrbString(orb1, orb2);
+
+      fprintf(pt2_out, "%9d    %.12e    %.12e    %.12e    %.12e    %.12e   %8d   %.4e\n",
+              iter, SCHam, SCHamVar, biasCorr, eDiff, energySample, samplingIters, timeOut-timeIn);
       fflush(pt2_out);
     }
 
