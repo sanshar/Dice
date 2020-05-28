@@ -109,6 +109,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.determCCVV = input.get("sampling.determCCVV", false);
     schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
     schd.efficientNEVPT_2 = input.get("sampling.efficientNEVPT_2", false);
+    schd.exactE_NEVPT = input.get("sampling.exactE_NEVPT", false);
     schd.continueMarkovSCPT = input.get("sampling.continueMarkovSCPT", true);
     schd.stochasticIterNorms = input.get("sampling.stochasticIterNorms", 1e4);
     schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);

@@ -1936,7 +1936,7 @@ class SCPT
       // Next we calculate the SC state energies and the final PT2 energy estimate
       double timeEnergyInit = getTime();
       double ene2;
-      if (schd.efficientNEVPT)
+      if (schd.efficientNEVPT || schd.exactE_NEVPT)
         ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
       if (schd.efficientNEVPT_2)
         ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
@@ -2339,8 +2339,13 @@ class SCPT
     double timeIn = getTime();
 
     this->wave.initWalker(walk, det);
-    //double SCHam = doSCEnergyCTMCSync(walk, ind, work, outputFile);
-    doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+
+    if (schd.exactE_NEVPT) {
+      doSCEnergyExact(walk, work, SCHam, SCHamVar, samplingIters);
+    }
+    else {
+      doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+    }
 
     double energySample = norm / (energyCAS_Tot - SCHam);
     double biasCorr = - norm * ( SCHamVar / pow( energyCAS_Tot - SCHam, 3) );
@@ -2540,6 +2545,56 @@ class SCPT
     if (commrank == 0) fclose(out);
 
     return final_ham;
+  }
+
+  template<typename Walker>
+  void doSCEnergyExact(Walker& walk, workingArray& work, double& SCHam, double& SCHamVar, int& samplingIters) {
+
+    int firstActive = schd.nciCore;
+    int firstVirtual = schd.nciCore + schd.nciAct;
+
+    Determinant dExternal = walk.d;
+
+    // Remove all electrons from the active space
+    for (int i = firstActive; i<firstVirtual; i++) {
+      dExternal.setoccA(i, false);
+      dExternal.setoccB(i, false);
+    }
+
+    int nalpha = Determinant::nalpha - dExternal.Nalpha();
+    int nbeta = Determinant::nbeta - dExternal.Nbeta();
+
+    // Generate all determinants in the appropriate S_l^k
+    vector<Determinant> allDets;
+    generateAllDeterminantsActive(allDets, dExternal, schd.nciCore, schd.nciAct, nalpha, nbeta);
+
+    double hamTot = 0., normTot = 0.;
+    double largestOverlap = 0.;
+    Determinant bestDet;
+
+    int nDets = allDets.size();
+
+    for (int i = 0; i < allDets.size(); i++) {
+      wave.initWalker(walk, allDets[i]);
+      if (schd.debug) {
+        cout << "walker\n" << walk << endl;
+      }
+
+      double ovlp = 0., ham = 0.;
+      FastHamAndOvlp(walk, ovlp, ham, work);
+
+      hamTot += ovlp * ovlp * ham;
+      normTot += ovlp * ovlp;
+
+      if (abs(ovlp) > largestOverlap) {
+        largestOverlap = abs(ovlp);
+        bestDet = allDets[i];
+      }
+    }
+
+    SCHam = hamTot / normTot;
+    SCHamVar = 0.;
+    samplingIters = 0;
   }
 
   template<typename Walker>
