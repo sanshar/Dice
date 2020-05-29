@@ -1783,7 +1783,7 @@ class SCPT
       }
     }
 
-    if (schd.SCNormsBurnIn >= schd.stochasticIterEachSC) {
+    if (schd.SCNormsBurnIn >= schd.stochasticIterNorms) {
       if (commrank == 0) {
         cout << "WARNING: The number of sampling iterations for N_l^k estimation is"
                 " not larger than the number of burn-in iterations. Setting the number"
