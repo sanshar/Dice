@@ -1936,10 +1936,15 @@ class SCPT
       // Next we calculate the SC state energies and the final PT2 energy estimate
       double timeEnergyInit = getTime();
       double ene2;
-      if (schd.efficientNEVPT || schd.exactE_NEVPT)
-        ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
-      if (schd.efficientNEVPT_2)
+      if (schd.efficientNEVPT_2) {
         ene2 = sampleSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      }
+      if (schd.efficientNEVPT || schd.exactE_NEVPT) {
+        ene2 = sampleAllSCEnergies(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      }
+      if (schd.NEVPT_writeE || schd.NEVPT_readE) {
+        ene2 = calcAllSCEnergiesExact(walk, initDets, largestCoeffs, energyCAS_Tot, norms_Tot, work);
+      }
 
       if (commrank == 0) {
         cout << "Sampling complete." << endl << endl;
@@ -2330,21 +2335,26 @@ class SCPT
   // to the provded pt2_out file.
   // This is designed to be called by sampleAllSCEnergies.
   template<typename Walker>
-  double SCEnergyWrapper(Walker& walk, int iter, FILE * pt2_out, Determinant& det, double& energyCAS_Tot,
-                         double norm, int orbi, int orbj, workingArray& work) {
+  double SCEnergyWrapper(Walker& walk, int iter, FILE * pt2_out, Determinant& det,
+                         double& energyCAS_Tot, double norm, int orbi, int orbj,
+                         bool exactCalc, bool exactRead, double& SCHam, workingArray& work) {
 
-    double SCHam = 0., SCHamVar = 0.;
+    double SCHamVar = 0.;
     int samplingIters = 0;
 
     double timeIn = getTime();
 
     this->wave.initWalker(walk, det);
 
-    if (schd.exactE_NEVPT) {
-      doSCEnergyExact(walk, work, SCHam, SCHamVar, samplingIters);
-    }
-    else {
-      doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+    // If we have already read in SCHam, then we don't need to
+    // calculate or sample it here.
+    if (!exactRead) {
+      if (exactCalc) {
+        doSCEnergyExact(walk, work, SCHam, SCHamVar, samplingIters);
+      }
+      else {
+        doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
+      }
     }
 
     double energySample = norm / (energyCAS_Tot - SCHam);
@@ -2364,8 +2374,9 @@ class SCPT
   }
 
   // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
-  // CAAV and CCAA) and sample E_l^k for each. The final PT2 energy is
-  // then output as a sum over all of these spaces.
+  // CAAV and CCAA) for which the calculated norm is above the threshold,
+  // and sample E_l^k for each. The final PT2 energy is then output as a
+  // sum over all of these spaces.
   template<typename Walker>
   double sampleAllSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
                              double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
@@ -2374,7 +2385,7 @@ class SCPT
     int first_virtual = schd.nciCore + schd.nciAct;
     int numVirt = norbs - first_virtual;
 
-    double ene2 = 0.;
+    double ene2 = 0., SCHam = 0.;
 
     FILE * pt2_out;
     string pt2OutName = "pt2_energies_";
@@ -2396,7 +2407,7 @@ class SCPT
         int orb1 = r;
         int orb2 = -1;
         ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
-                                norms_Tot(ind), orb1, orb2, work);
+                                norms_Tot(ind), orb1, orb2, schd.exactE_NEVPT, false, SCHam, work);
         iter++;
       }
     }
@@ -2416,7 +2427,7 @@ class SCPT
           int orb1 = r;
           int orb2 = s;
           ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
-                                  norms_Tot(ind), orb1, orb2, work);
+                                  norms_Tot(ind), orb1, orb2, schd.exactE_NEVPT, false, SCHam, work);
           iter++;
         }
       }
@@ -2432,7 +2443,7 @@ class SCPT
         int orb1 = i;
         int orb2 = -1;
         ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
-                                norms_Tot(ind), orb1, orb2, work);
+                                norms_Tot(ind), orb1, orb2, schd.exactE_NEVPT, false, SCHam, work);
         iter++;
       }
     }
@@ -2451,7 +2462,7 @@ class SCPT
           int orb1 = i;
           int orb2 = r;
           ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
-                                  norms_Tot(ind), orb1, orb2, work);
+                                  norms_Tot(ind), orb1, orb2, schd.exactE_NEVPT, false, SCHam, work);
           iter++;
         }
       }
@@ -2471,13 +2482,151 @@ class SCPT
           int orb1 = i;
           int orb2 = j;
           ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDets[ind], energyCAS_Tot,
-                                  norms_Tot(ind), orb1, orb2, work);
+                                  norms_Tot(ind), orb1, orb2, schd.exactE_NEVPT, false, SCHam, work);
           iter++;
         }
       }
     }
 
     fclose(pt2_out);
+
+    return ene2;
+  }
+
+  // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
+  // CAAV and CCAA), and either exactly calculate of read in E_l^k for each.
+  // The final PT2 energy is then output as a sum over all of these spaces.
+  //
+  // The difference between this and sampleAllSCEnergies is that *all*
+  // S_l^k are considered, even if the norm was calculated as zero, if run
+  // in write mode, and all E_l^k are then written out. If run in read mode,
+  // then all E_l^k are read in from this file instead, for quick calculation.
+  template<typename Walker>
+  double calcAllSCEnergiesExact(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                                double& energyCAS_Tot, VectorXd& norms_Tot, workingArray& work)
+  {
+
+    vector<double> exactEnergies;
+
+    if (schd.NEVPT_readE) {
+      string name = "exact_energies.bkp";
+	    ifstream file(name, std::ios::binary);
+      boost::archive::binary_iarchive oa(file);
+      oa >> exactEnergies;
+      file.close();
+    }
+    else {
+      exactEnergies.resize(numCoeffs, 0.0);
+    }
+
+    int norbs = Determinant::norbs;
+    int first_virtual = schd.nciCore + schd.nciAct;
+    int numVirt = norbs - first_virtual;
+
+    double ene2 = 0., SCHam = 0.;
+
+    FILE * pt2_out;
+    string pt2OutName = "pt2_energies_";
+    pt2OutName.append(to_string(commrank));
+    pt2OutName.append(".dat");
+
+    pt2_out = fopen(pt2OutName.c_str(), "w");
+    fprintf(pt2_out, "# 1. iter    2. energy            3. E_0 - E_l^k        4. E_l^K variance    "
+                     "5. Bias correction  6. class   7. C/V orbs  8. niters   9. time\n");
+
+    int iter = 0;
+
+    // AAAV
+    for (int r=2*first_virtual; r<2*norbs; r++) {
+      int ind = cumNumCoeffs[1] + r - 2*first_virtual;
+
+      int orb1 = r;
+      int orb2 = -1;
+      Determinant initDet = generateInitDet(orb1, orb2);
+      if (schd.NEVPT_readE) SCHam = exactEnergies.at(ind);
+      ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDet, energyCAS_Tot,
+                              norms_Tot(ind), orb1, orb2, schd.NEVPT_writeE, schd.NEVPT_readE, SCHam, work);
+      if (schd.NEVPT_writeE) exactEnergies.at(ind) = SCHam;
+      iter++;
+    }
+
+    // AAVV
+    for (int r=2*first_virtual+1; r<2*norbs; r++) {
+      for (int s=2*first_virtual; s<r; s++) {
+        int R = r - 2*first_virtual - 1;
+        int S = s - 2*first_virtual;
+        int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+
+        int orb1 = r;
+        int orb2 = s;
+        Determinant initDet = generateInitDet(orb1, orb2);
+        if (schd.NEVPT_readE) SCHam = exactEnergies.at(ind);
+        ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDet, energyCAS_Tot,
+                                norms_Tot(ind), orb1, orb2, schd.NEVPT_writeE, schd.NEVPT_readE, SCHam, work);
+        if (schd.NEVPT_writeE) exactEnergies.at(ind) = SCHam;
+        exactEnergies.at(ind) = SCHam;
+        iter++;
+      }
+    }
+
+    // CAAA
+    for (int i=0; i<2*schd.nciCore; i++) {
+      int ind = cumNumCoeffs[3] + i;
+
+      int orb1 = i;
+      int orb2 = -1;
+      Determinant initDet = generateInitDet(orb1, orb2);
+      if (schd.NEVPT_readE) SCHam = exactEnergies.at(ind);
+      ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDet, energyCAS_Tot,
+                              norms_Tot(ind), orb1, orb2, schd.NEVPT_writeE, schd.NEVPT_readE, SCHam, work);
+      if (schd.NEVPT_writeE) exactEnergies.at(ind) = SCHam;
+      exactEnergies.at(ind) = SCHam;
+      iter++;
+    }
+
+    // CAAV
+    for (int i=0; i<2*schd.nciCore; i++) {
+      for (int r=2*first_virtual; r<2*norbs; r++) {
+        int ind = cumNumCoeffs[4] + 2*numVirt*i + (r - 2*schd.nciCore - 2*schd.nciAct);
+
+        int orb1 = i;
+        int orb2 = r;
+        Determinant initDet = generateInitDet(orb1, orb2);
+        if (schd.NEVPT_readE) SCHam = exactEnergies.at(ind);
+        ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDet, energyCAS_Tot,
+                                norms_Tot(ind), orb1, orb2, schd.NEVPT_writeE, schd.NEVPT_readE, SCHam, work);
+        if (schd.NEVPT_writeE) exactEnergies.at(ind) = SCHam;
+        exactEnergies.at(ind) = SCHam;
+        iter++;
+      }
+    }
+
+    // CCAA
+    for (int i=1; i<2*schd.nciCore; i++) {
+      for (int j=0; j<i; j++) {
+        int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+
+        int orb1 = i;
+        int orb2 = j;
+        Determinant initDet = generateInitDet(orb1, orb2);
+        if (schd.NEVPT_readE) SCHam = exactEnergies.at(ind);
+        ene2 += SCEnergyWrapper(walk, iter, pt2_out, initDet, energyCAS_Tot,
+                                norms_Tot(ind), orb1, orb2, schd.NEVPT_writeE, schd.NEVPT_readE, SCHam, work);
+        if (schd.NEVPT_writeE) exactEnergies.at(ind) = SCHam;
+        exactEnergies.at(ind) = SCHam;
+        iter++;
+      }
+    }
+
+    fclose(pt2_out);
+
+    if (schd.NEVPT_writeE) {
+      string name = "exact_energies.bkp";
+	    ofstream file(name, std::ios::binary);
+      boost::archive::binary_oarchive oa(file);
+      oa << exactEnergies;
+      file.close();
+    }
 
     return ene2;
   }
@@ -2592,9 +2741,64 @@ class SCPT
       }
     }
 
-    SCHam = hamTot / normTot;
+    if (abs(normTot) > 1.e-12) {
+      SCHam = hamTot / normTot;
+    } else {
+      SCHam = 0.;
+    }
+
     SCHamVar = 0.;
     samplingIters = 0;
+  }
+
+  // Generate an initial determinant with external orbitals orb1 and orb2
+  // set as appropriate, and all orbitals in the active space unoccupied.
+  Determinant generateInitDet(int orb1, int orb2) {
+
+    // The inital determinant at this point, taken from
+    // Wfn.bestDeterminant, has all core orbitals doubly occupied and
+    // all virtual orbitals unoccupied.
+    Determinant initDet = this->wave.bestDeterminant;
+
+    int firstActive = schd.nciCore;
+    int firstVirtual = schd.nciCore + schd.nciAct;
+
+    // Unset all active orbitals
+    for (int i = firstActive; i<firstVirtual; i++) {
+      initDet.setoccA(i, false);
+      initDet.setoccB(i, false);
+    }
+
+    // Set the core and virtual orbitals as appropriate
+    for (int i=0; i<2; i++) {
+      int orb;
+
+      if (i == 0) {
+        orb = orb1;
+      } else {
+        orb = orb2;
+      }
+
+      // orb == -1 indicates that this orbital is not in use (i.e. we
+      // only have a single excitation).
+      if (orb == -1) continue;
+
+      if (orb < 2*firstActive) {
+        if (orb % 2 == 0) {
+          initDet.setoccA(orb/2, false);
+        } else {
+          initDet.setoccB(orb/2, false);
+        }
+      } else if (orb >= 2*firstVirtual) {
+        if (orb % 2 == 0) {
+          initDet.setoccA(orb/2, true);
+        } else {
+          initDet.setoccB(orb/2, true);
+        }
+      }
+    }
+
+    return initDet;
   }
 
   template<typename Walker>

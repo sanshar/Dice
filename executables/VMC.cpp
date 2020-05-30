@@ -266,7 +266,9 @@ int main(int argc, char *argv[])
                                        schd.CASEnergy, schd.numSCSamples);
     }
     else {
-      if (schd.efficientNEVPT || schd.efficientNEVPT_2 || schd.exactE_NEVPT) {
+      bool new_NEVPT = schd.efficientNEVPT || schd.efficientNEVPT_2 || schd.exactE_NEVPT ||
+                       schd.NEVPT_readE || schd.NEVPT_writeE;
+      if (new_NEVPT) {
         wave.doNEVPT2_CT_Efficient(walk);
       } else {
         wave.doNEVPT2_CT(walk);

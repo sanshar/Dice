@@ -96,6 +96,8 @@ private:
       & efficientNEVPT
       & efficientNEVPT_2
       & exactE_NEVPT
+      & NEVPT_writeE
+      & NEVPT_readE
       & actWidth
       & overlapCutoff
       & diagMethod
@@ -142,6 +144,10 @@ public:
                                          // a second approach to this sampling
   bool exactE_NEVPT;                     // Follows the efficient approach to SC-NEVPT2(s), but the energies
                                          // E_l^k are all calculated exactly, without statistical error
+  bool NEVPT_writeE;                     // These options are used to exactly calculate the energies of all NEVPT2
+  bool NEVPT_readE;                      //   perturbers, and print them. The second option can then be
+                                         //   used to read them back in again (for example if using different
+                                         //   norms with a different seed) without recalculating them
   bool exactPerturber;                   // Exactly calcualte the energy of a perturber in SC-NEVPT2
   int perturberOrb1;                     // The excited core and virtual (spin) orbitals which define the perturber,
   int perturberOrb2;                     // in an 'exactPerturber' NEVPT2 calculation
