@@ -1833,6 +1833,8 @@ class SCPT
     MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
 
+    // If we are generating the norms stochastically here, rather than
+    // reading them back in:
     if (!schd.readSCNorms)
     {
       if (commrank == 0) cout << "About to call first instance of HamAndSCNorms..." << endl;
@@ -1840,12 +1842,30 @@ class SCPT
       if (commrank == 0) cout << "First instance of HamAndSCNorms complete." << endl;
 
       int iter = 1;
-      int printMod = max(1, schd.stochasticIterNorms / 10);
 
-      if (commrank == 0)
+      if (schd.fixedResTimeNEVPT_Norm) {
+        int printMod = 10;
+      } else {
+        int printMod = max(1, schd.stochasticIterNorms / 10);
+      }
+
+      if (commrank == 0) {
         cout << "iter: 0" << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
+      }
 
-      while (iter <= schd.stochasticIterNorms) {
+      while (true) {
+
+        // Condition for exiting loop:
+        // This depends on what 'mode' we are running in - constant
+        // residence time, or constant iteration count
+        if (schd.fixedResTimeNEVPT_Norm) {
+          if (deltaT_Tot >= schd.resTimeNEVPT_norm)
+            break;
+        } else {
+          if (iter > schd.stochasticIterNorms)
+            break;
+        }
+
         double cumovlpRatio = 0;
         for (int i = 0; i < work.nExcitations; i++) {
           cumovlpRatio += abs(work.ovlpRatio[i]);
@@ -1892,6 +1912,8 @@ class SCPT
           cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
         iter++;
       }
+      int samplingIters = iter - schd.SCNormsBurnIn;
+      cout << "proc: " << commrank << "  samplingIters: " << samplingIters << endl;
 
       energyCAS_Tot /= deltaT_Tot;
       norms_Tot /= deltaT_Tot;
@@ -2020,12 +2042,12 @@ class SCPT
       this->wave.initWalker(walk, initDets[nextSC]);
 
       double SCHam, SCHamVar;
-      int SamplingIters;
+      int samplingIters;
 
       if (schd.printSCEnergies) {
         SCHam = doSCEnergyCTMCPrint(walk, work, iter, schd.nWalkSCEnergies);
       } else {
-        doSCEnergyCTMC(walk, work, SCHam, SCHamVar, SamplingIters);
+        doSCEnergyCTMC(walk, work, SCHam, SCHamVar, samplingIters);
       }
 
       // If this same SC sector is sampled again, start from the final
@@ -2048,7 +2070,7 @@ class SCPT
       fprintf(pt2_out, "%9d   %.12e   %.12e   %.12e   %.12e      %4s  %12s   %8d   %.4e\n",
               iter, energySample, eDiff, SCHamVar, biasCorr,
               classNames2[walk.excitation_class].c_str(),
-              orbString.c_str(), SamplingIters, timeOut-timeIn);
+              orbString.c_str(), samplingIters, timeOut-timeIn);
       fflush(pt2_out);
 
       iter++;
@@ -2125,7 +2147,7 @@ class SCPT
   }
 
   template<typename Walker>
-  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var, int& sampling_iters)
+  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var, int& samplingIters)
   {
     double ham = 0., hamSample = 0., ovlp = 0.;
     double numerator = 0., numerator_Tot = 0.;
@@ -2145,13 +2167,13 @@ class SCPT
 
     int iter = 0;
 
-    while(true) {
+    while (true) {
 
       // Condition for exiting loop:
       // This depends on what 'mode' we are running in - constant
       // residence time, or constant iteration count
-      if (schd.fixedResTimeNEVPT) {
-        if (deltaT_Tot >= schd.totResTimeNEVPT)
+      if (schd.fixedResTimeNEVPT_Ene) {
+        if (deltaT_Tot >= schd.resTimeNEVPT_Ene)
           break;
       } else {
         if (iter >= schd.stochasticIterEachSC)
@@ -2189,7 +2211,7 @@ class SCPT
       iter++;
     }
 
-    sampling_iters = iter - schd.SCEnergiesBurnIn;
+    samplingIters = iter - schd.SCEnergiesBurnIn;
     final_ham = numerator_Tot/deltaT_Tot;
 
     // Estimate the error on final_ham

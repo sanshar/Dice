@@ -121,8 +121,10 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.exactPerturber = input.get("sampling.exactPerturber", false);
     schd.perturberOrb1 = input.get("sampling.perturberOrb1", -1);
     schd.perturberOrb2 = input.get("sampling.perturberOrb2", -1);
-    schd.fixedResTimeNEVPT = input.get("sampling.fixedResTimeNEVPT", true);
-    schd.totResTimeNEVPT = input.get("sampling.residenceTimeNEVPT", 5.0);
+    schd.fixedResTimeNEVPT_Ene = input.get("sampling.fixedResTimeNEVPT_Ene", true);
+    schd.fixedResTimeNEVPT_Norm = input.get("sampling.fixedResTimeNEVPT_Norm", false);
+    schd.resTimeNEVPT_Ene = input.get("sampling.resTimeNEVPT_Ene", 5.0);
+    schd.resTimeNEVPT_Norm = input.get("sampling.resTimeNEVPT_Norm", 5.0);
     schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
 
     //gfmc 
