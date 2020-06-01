@@ -1843,10 +1843,11 @@ class SCPT
 
       int iter = 1;
 
+      int printMod;
       if (schd.fixedResTimeNEVPT_Norm) {
-        int printMod = 10;
+        printMod = 10;
       } else {
-        int printMod = max(1, schd.stochasticIterNorms / 10);
+        printMod = max(1, schd.stochasticIterNorms / 10);
       }
 
       if (commrank == 0) {
@@ -1859,7 +1860,7 @@ class SCPT
         // This depends on what 'mode' we are running in - constant
         // residence time, or constant iteration count
         if (schd.fixedResTimeNEVPT_Norm) {
-          if (deltaT_Tot >= schd.resTimeNEVPT_norm)
+          if (deltaT_Tot >= schd.resTimeNEVPT_Norm)
             break;
         } else {
           if (iter > schd.stochasticIterNorms)
@@ -1899,21 +1900,28 @@ class SCPT
 
         normSamples.setZero();
 
-        if (schd.stochasticIterNorms - iter < schd.nIterFindInitDets) {
-          // For the final schd.nIterFindInitDets iterations, sample all perturber
-          // norms, even for those being calculated deterministically. This
-          // allows initial determinants to be found for the energy sampling
-          HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, true);
+        // For schd.nIterFindInitDets iterations, we want to sample the
+        // norms for *all* S_l^k, including those for which we can find
+        // N_l^k exactly (this allows us to generate initital determinants).
+        // This is the condition for the iterations in which we do this:
+        bool sampleAllNorms;
+        if (schd.fixedResTimeNEVPT_Norm) {
+          // In this case, we use the first schd.nIterFindInitDets iterations
+          // *after* the burn-in period.
+          sampleAllNorms = (iter >= schd.SCNormsBurnIn) && (iter < schd.SCNormsBurnIn + schd.nIterFindInitDets);
         } else {
-          HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, false);
+          // In this case, we just use the final schd.nIterFindInitDets iterations.
+          sampleAllNorms = schd.stochasticIterNorms - schd.nIterFindInitDets < iter;
         }
+
+        HamAndSCNorms(walk, ovlp, hamSample, normSamples, initDets, largestCoeffs, work, sampleAllNorms);
 
         if (commrank == 0 && (iter % printMod == 0 || iter == 1))
           cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
         iter++;
       }
       int samplingIters = iter - schd.SCNormsBurnIn;
-      cout << "proc: " << commrank << "  samplingIters: " << samplingIters << endl;
+      //cout << "proc: " << commrank << "  samplingIters: " << samplingIters << endl;
 
       energyCAS_Tot /= deltaT_Tot;
       norms_Tot /= deltaT_Tot;
