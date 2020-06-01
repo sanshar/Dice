@@ -106,6 +106,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
+    // SC-NEVPT2(s) sampling options:
     schd.determCCVV = input.get("sampling.determCCVV", false);
     schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
     schd.efficientNEVPT_2 = input.get("sampling.efficientNEVPT_2", false);
@@ -176,13 +177,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printLevel = input.get("print.level", 0);
     schd.printVars = input.get("print.vars", false);
     schd.printGrad = input.get("print.grad", false);
+    schd.debug = input.get("print.debug", false);
+    // SC-NEVPT(2) print options:
     schd.printSCNorms = input.get("print.SCNorms", true);
     schd.printSCNormFreq = input.get("print.SCNormFreq", 1);
     schd.readSCNorms = input.get("print.readSCNorms", false);
     schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
     schd.printSCEnergies = input.get("print.SCEnergies", false);
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
-    schd.debug = input.get("print.debug", false);
     
     //deprecated, or I don't know what they do
     schd.actWidth = input.get("wavefunction.actWidth", 100);

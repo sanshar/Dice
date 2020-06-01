@@ -46,10 +46,6 @@ private:
       & maxIter
       & avgIter
       & printLevel
-      & printSCNorms
-      & printSCNormFreq
-      & readSCNorms
-      & sampleNEVPT2Energy
       & debug
       & decay1
       & decay2
@@ -57,7 +53,6 @@ private:
       & beta
       & method
       & stochasticIter
-      & numSCSamples
       & _sgdIter
       & momentum
       & integralSampleSize
@@ -92,12 +87,6 @@ private:
       & ifComplex
       & uagp
       & ciCeption
-      & determCCVV
-      & efficientNEVPT
-      & efficientNEVPT_2
-      & exactE_NEVPT
-      & NEVPT_writeE
-      & NEVPT_readE
       & actWidth
       & overlapCutoff
       & diagMethod
@@ -113,6 +102,19 @@ private:
       & initialPop
       & targetPop
       & numHidden
+
+      // Options related to SC-NEVPT(s):
+      & numSCSamples
+      & printSCNorms
+      & printSCNormFreq
+      & readSCNorms
+      & sampleNEVPT2Energy
+      & determCCVV
+      & efficientNEVPT
+      & efficientNEVPT_2
+      & exactE_NEVPT
+      & NEVPT_writeE
+      & NEVPT_readE
       & continueMarkovSCPT
       & stochasticIterNorms
       & stochasticIterEachSC
@@ -122,13 +124,13 @@ private:
       & SCEnergiesBurnIn
       & SCNormsBurnIn
       & exactPerturber
+      & CASEnergy
       & perturberOrb1
       & perturberOrb2
       & fixedResTimeNEVPT_Ene
       & fixedResTimeNEVPT_Norm
       & resTimeNEVPT_Ene
-      & resTimeNEVPT_Norm
-      & CASEnergy;
+      & resTimeNEVPT_Norm;
   }
 public:
 //General options
@@ -140,19 +142,6 @@ public:
   bool ifComplex;                        // breaks and restores complex conjugation symmetry
   bool uagp;                             // brakes S^2 symmetry in uagp
   bool ciCeption;                        // true, when using ci on top of selectedCI
-  bool determCCVV;                       // In NEVPT2 calculations, calculate the CCVV energy by the exact formula
-  bool efficientNEVPT;                   // More efficient sampling in the SC-NEVPT2(s) method
-  bool efficientNEVPT_2;                 // More efficient sampling in the SC-NEVPT2(s) method -
-                                         // a second approach to this sampling
-  bool exactE_NEVPT;                     // Follows the efficient approach to SC-NEVPT2(s), but the energies
-                                         // E_l^k are all calculated exactly, without statistical error
-  bool NEVPT_writeE;                     // These options are used to exactly calculate the energies of all NEVPT2
-  bool NEVPT_readE;                      //   perturbers, and print them. The second option can then be
-                                         //   used to read them back in again (for example if using different
-                                         //   norms with a different seed) without recalculating them
-  bool exactPerturber;                   // Exactly calcualte the energy of a perturber in SC-NEVPT2
-  int perturberOrb1;                     // The excited core and virtual (spin) orbitals which define the perturber,
-  int perturberOrb2;                     // in an 'exactPerturber' NEVPT2 calculation
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
@@ -162,7 +151,6 @@ public:
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    // Number of stochastic steps
-  int numSCSamples;                      // When performing SC-NEVPT2 with the efficientNEVPT_2 algorithm, how many samples of 1/(E_0-E_l^k) to take?
   int integralSampleSize;                // This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
   int seed;                              // seed for the random number generator
   double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
@@ -176,12 +164,31 @@ public:
   bool optimizeRBM;//used in jrbm
   bool printVars;
   bool printGrad;
+  HAM Hamiltonian;
+
+// SC-NEVPT2(s) options:
+  bool determCCVV;                       // In NEVPT2 calculations, calculate the CCVV energy by the exact formula
+  bool efficientNEVPT;                   // More efficient sampling in the SC-NEVPT2(s) method
+  bool efficientNEVPT_2;                 // More efficient sampling in the SC-NEVPT2(s) method -
+                                         // a second approach to this sampling
+  bool exactE_NEVPT;                     // Follows the efficient approach to SC-NEVPT2(s), but the energies
+                                         // E_l^k are all calculated exactly, without statistical error
+  bool NEVPT_writeE;                     // These options are used to exactly calculate the energies of all NEVPT2
+  bool NEVPT_readE;                      //   perturbers, and print them. The second option can then be
+                                         //   used to read them back in again (for example if using different
+                                         //   norms with a different seed) without recalculating them
+  bool exactPerturber;                   // Exactly calcualte the energy of a perturber in SC-NEVPT2
+  double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
+  int perturberOrb1;                     // The excited core and virtual (spin) orbitals which define the perturber,
+  int perturberOrb2;                     // in an 'exactPerturber' NEVPT2 calculation
+  int numSCSamples;                      // When performing SC-NEVPT2 with the efficientNEVPT_2 algorithm, how
+                                         // many samples of 1/(E_0-E_l^k) to take?
   bool printSCNorms;                     // Should we print out the norms of strongly contracted states (in SC-NEVPT2)
-  int printSCNormFreq;                   // How often should we print out norms of strongly contracted states (for printSCNorms option)
+  int printSCNormFreq;                   // How often should we print out norms of strongly contracted states (for
+                                         // printSCNorms option)
   bool readSCNorms;                      // Do not sample SC norms, but instead read them from previously-printed file
   bool sampleNEVPT2Energy;               // If true, then perform sampling of the NEVPT2 energy
   bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
-  HAM Hamiltonian;
   int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states,
                                          // for the efficientNEVPT option
   int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state,
@@ -201,7 +208,6 @@ public:
                                          // Otherwise, use a fixed iteration count
   double resTimeNEVPT_Ene;               // For NEVPT2, this is the total residence time for each E_l^k sampling
   double resTimeNEVPT_Norm;              // For NEVPT2, this is the total residence time for each N_l^k sampling
-  double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
