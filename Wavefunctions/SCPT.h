@@ -1920,7 +1920,7 @@ class SCPT
           cout << "iter: " << iter << "  t: " << setprecision(6) << getTime() - startofCalc << endl;
         iter++;
       }
-      int samplingIters = iter - schd.SCNormsBurnIn;
+      int samplingIters = iter - schd.SCNormsBurnIn - 1;
       //cout << "proc: " << commrank << "  samplingIters: " << samplingIters << endl;
 
       energyCAS_Tot /= deltaT_Tot;
