@@ -182,6 +182,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printSCNorms = input.get("print.SCNorms", true);
     schd.printSCNormFreq = input.get("print.SCNormFreq", 1);
     schd.readSCNorms = input.get("print.readSCNorms", false);
+    schd.continueSCNorms = input.get("print.continueSCNorms", false);
     schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
     schd.printSCEnergies = input.get("print.SCEnergies", false);
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);

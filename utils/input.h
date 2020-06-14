@@ -108,6 +108,7 @@ private:
       & printSCNorms
       & printSCNormFreq
       & readSCNorms
+      & continueSCNorms
       & sampleNEVPT2Energy
       & determCCVV
       & efficientNEVPT
@@ -187,6 +188,7 @@ public:
   int printSCNormFreq;                   // How often should we print out norms of strongly contracted states (for
                                          // printSCNorms option)
   bool readSCNorms;                      // Do not sample SC norms, but instead read them from previously-printed file
+  bool continueSCNorms;                  // Read SC norms from files, and then continue sampling them
   bool sampleNEVPT2Energy;               // If true, then perform sampling of the NEVPT2 energy
   bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
   int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states,

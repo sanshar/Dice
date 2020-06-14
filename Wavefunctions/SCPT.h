@@ -1680,7 +1680,7 @@ class SCPT
   }
 
   void printNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
-                           double& energyCAS_Tot, VectorXd& norms_Tot)
+                           double& energyCAS_Tot, VectorXd& norms_Tot, double& deltaT_Tot)
   {
     if (commrank == 0) cout << "About to print norm data..." << endl;
 
@@ -1708,11 +1708,17 @@ class SCPT
     oa4 << energyCAS_Tot;
     file_4.close();
 
+    string name_5 = "norm_data/proc_" + to_string(commrank) + "/delta_t_" + to_string(commrank) + ".bkp";
+	  ofstream file_5(name_5, std::ios::binary);
+    boost::archive::binary_oarchive oa5(file_5);
+    oa5 << deltaT_Tot;
+    file_5.close();
+
     if (commrank == 0) cout << "Printing complete." << endl << endl;
   }
 
   void readNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
-                          double& energyCAS_Tot, VectorXd& norms_Tot)
+                          double& energyCAS_Tot, VectorXd& norms_Tot, double& deltaT_Tot, bool readDeltaT)
   {
     if (commrank == 0) cout << "About to read norm data..." << endl;
 
@@ -1739,6 +1745,14 @@ class SCPT
     boost::archive::binary_iarchive oa4(file_4);
     oa4 >> energyCAS_Tot;
     file_4.close();
+
+    if (readDeltaT) {
+      string name_5 = "norm_data/proc_" + to_string(commrank) + "/delta_t_" + to_string(commrank) + ".bkp";
+	    ifstream file_5(name_5, std::ios::binary);
+      boost::archive::binary_iarchive oa5(file_5);
+      oa5 >> deltaT_Tot;
+      file_5.close();
+    }
 
     if (commrank == 0) cout << "Reading complete." << endl << endl;
   }
@@ -1832,6 +1846,12 @@ class SCPT
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "Allocation of sampling arrays now finished." << endl << endl;
+
+    if (schd.continueSCNorms) {
+      readNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot, deltaT_Tot, true);
+      energyCAS_Tot *= deltaT_Tot;
+      norms_Tot *= deltaT_Tot;
+    }
 
     // If we are generating the norms stochastically here, rather than
     // reading them back in:
@@ -1950,11 +1970,11 @@ class SCPT
     }
 
     if (schd.readSCNorms) {
-      readNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot);
+      readNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot, deltaT_Tot, false);
     }
 
     if (schd.printSCNorms && (!schd.readSCNorms)) {
-      printNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot);
+      printNormDataBinary(initDets, largestCoeffs, energyCAS_Tot, norms_Tot, deltaT_Tot);
     }
 
     if (schd.sampleNEVPT2Energy) {
