@@ -2043,7 +2043,7 @@ class SCPT
       cout << "Total cumulative squared norm (process 0): " << totCumNorm << endl << endl;
     }
 
-    double energySample = 0., energyTot = 0, biasTot;
+    double energySample = 0., energyTot = 0, biasTot = 0;
     auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
     FILE * pt2_out;
