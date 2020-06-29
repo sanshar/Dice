@@ -3033,49 +3033,49 @@ class SCPT
     SCNorm = SCNorm / overlapTotCASCI;
 
     // Print the exact squared norms
-    if (commrank == 0) {
-      cout << "Exact norms:" << endl;
-      int numVirt = norbs - schd.nciCore - schd.nciAct;
-      int first_virtual = schd.nciCore + schd.nciAct;
+    //if (commrank == 0) {
+    //  cout << "Exact norms:" << endl;
+    //  int numVirt = norbs - schd.nciCore - schd.nciAct;
+    //  int first_virtual = schd.nciCore + schd.nciAct;
 
-      cout << "Class AAAV: " << endl;
-      for (int r=2*first_virtual; r<2*norbs; r++) {
-        int ind = cumNumCoeffs[1] + r - 2*first_virtual;
-        cout << "r: " << r << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
-      }
+    //  cout << "Class AAAV: " << endl;
+    //  for (int r=2*first_virtual; r<2*norbs; r++) {
+    //    int ind = cumNumCoeffs[1] + r - 2*first_virtual;
+    //    cout << "r: " << r << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
+    //  }
 
-      cout << "Class AAVV: " << endl;
-      for (int r=2*first_virtual+1; r<2*norbs; r++) {
-        for (int s=2*first_virtual; s<r; s++) {
-          int R = r - 2*first_virtual - 1;
-          int S = s - 2*first_virtual;
-          int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
-          cout << "r: " << r << " s: " << s << " norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
-        }
-      }
+    //  cout << "Class AAVV: " << endl;
+    //  for (int r=2*first_virtual+1; r<2*norbs; r++) {
+    //    for (int s=2*first_virtual; s<r; s++) {
+    //      int R = r - 2*first_virtual - 1;
+    //      int S = s - 2*first_virtual;
+    //      int ind = cumNumCoeffs[2] + R*(R+1)/2 + S;
+    //      cout << "r: " << r << " s: " << s << " norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
+    //    }
+    //  }
 
-      cout << "Class CAAA: " << endl;
-      for (int i=0; i<2*schd.nciCore; i++) {
-        int ind = cumNumCoeffs[3] + i;
-        cout << "i: " << i << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
-      }
+    //  cout << "Class CAAA: " << endl;
+    //  for (int i=0; i<2*schd.nciCore; i++) {
+    //    int ind = cumNumCoeffs[3] + i;
+    //    cout << "i: " << i << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
+    //  }
 
-      cout << "Class CAAV: " << endl;
-      for (int i=0; i<2*schd.nciCore; i++) {
-        for (int r=2*first_virtual; r<2*norbs; r++) {
-          int ind = cumNumCoeffs[4] + 2*numVirt*i + (r - 2*schd.nciCore - 2*schd.nciAct);
-          cout << "i: " << i << " r: " << r << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
-        }
-      }
+    //  cout << "Class CAAV: " << endl;
+    //  for (int i=0; i<2*schd.nciCore; i++) {
+    //    for (int r=2*first_virtual; r<2*norbs; r++) {
+    //      int ind = cumNumCoeffs[4] + 2*numVirt*i + (r - 2*schd.nciCore - 2*schd.nciAct);
+    //      cout << "i: " << i << " r: " << r << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
+    //    }
+    //  }
 
-      cout << "Class CCAA: " << endl;
-      for (int i=1; i<2*schd.nciCore; i++) {
-        for (int j=0; j<i; j++) {
-          int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
-          cout << "i: " << i << " j: " << j << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
-        }
-      }
-    }
+    //  cout << "Class CCAA: " << endl;
+    //  for (int i=1; i<2*schd.nciCore; i++) {
+    //    for (int j=0; j<i; j++) {
+    //      int ind = cumNumCoeffs[6] + (i-1)*i/2 + j;
+    //      cout << "i: " << i << " j: " << j << "  norm: " << setprecision(12) << norm(ind) / norm(0) << endl;
+    //    }
+    //  }
+    //}
 
     std::vector<int> largeNormIndices;
     int counter = 0;
@@ -3098,8 +3098,8 @@ class SCPT
     
     if (commrank == 0) {
       cout << "ref energy   " << setprecision(12) << ene(0) << endl;
-      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
       cout << "waveEne  " << waveEne << endl;
+      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
     }
   }
 

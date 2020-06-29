@@ -197,6 +197,26 @@ then
     ../clean.sh
 fi
 
+cd $here/NEVPT2/n2_vdz/continue_norms
+../../clean.sh
+printf "...running NEVPT2/n2_vdz/continue_norms\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../clean.sh
+fi
+
+cd $here/NEVPT2/h4_631g/determ
+../../clean.sh
+printf "...running NEVPT2/h4_631g/determ\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../clean.sh
+fi
+
 # SC-NEVPT2 single perturber
 
 cd $here/NEVPT2/n2_vdz/single_perturber
