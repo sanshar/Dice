@@ -1231,7 +1231,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, false);
       E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
     for (int i = 0; i < E0.size(); i++) {
-      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") %
+      pout << format("%4i %4i  %12.8e  %10.2e   %18.10f  %9i  %10.2f\n") %
                   (iter) % (i) % schd.epsilon1[iter] % DetsSize %
                   (E0[i] + coreEbkp) % (numIter) % (getTime() - startofCalc);
     }

@@ -311,7 +311,7 @@ int main(int argc, char* argv[]) {
       }
     }
     pout << Dets[d] << " Given HF Energy:  "
-       << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
+       << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
   // TODO Make this work with MPI and not print one set from each processor
 
