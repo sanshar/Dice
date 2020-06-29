@@ -1,6 +1,6 @@
 #!/bin/bash
 
-printf "\n\nRunning Tests for VMC/GFMC/FCIQMC\n"
+printf "\n\nRunning Tests for VMC/GFMC/NEVPT2/FCIQMC\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
@@ -8,6 +8,7 @@ VMCPATH="../../bin/VMC vmc.json"
 CIPATH="../../bin/VMC ci.json"
 LANCZOSPATH="../../bin/VMC lanczos.dat"
 GFMCPATH="../../bin/GFMC gfmc.json"
+NEVPTPATH="../../../../bin/VMC nevpt.json"
 FCIQMCPATH="../../../bin/FCIQMC fciqmc.json"
 here=`pwd`
 tol=1.0e-7
@@ -181,6 +182,30 @@ $MPICOMMAND $VMCPATH > vmc.out
 python2 ../testEnergy.py 'vmc' $tol
 if [ $clean == 1 ]
 then    
+    ../clean.sh
+fi
+
+# SC-NEVPT2 tests
+
+cd $here/NEVPT2/n2_vdz/stoch
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/stoch\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../clean.sh
+fi
+
+# SC-NEVPT2 single perturber
+
+cd $here/NEVPT2/n2_vdz/single_perturber
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/single_perturber\n"
+$NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'single_perturber' $tol
+if [ $clean == 1 ]
+then
     ../clean.sh
 fi
 

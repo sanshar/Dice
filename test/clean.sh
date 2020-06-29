@@ -8,5 +8,8 @@ find . -name cpsslaterwave.bkp|xargs rm >/dev/null 2>&1
 find . -name vmc.out | xargs rm >/dev/null 2>&1
 find . -name gfmc.out | xargs rm >/dev/null 2>&1
 find . -name ci.out | xargs rm >/dev/null 2>&1
+find . -name nevpt.out | xargs rm >/dev/null 2>&1
+find . -name pt_energies* | xargs rm >/dev/null 2>&1
+find . -name stoch_samples_* | xargs rm >/dev/null 2>&1
+find . -name norm_data | xargs rm >/dev/null 2>&1
 find . -name fciqmc.out | xargs rm >/dev/null 2>&1
-
