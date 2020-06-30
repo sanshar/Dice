@@ -1,0 +1,70 @@
+{
+    "wavefunction": {
+        "name": "scpt",
+        "numAct": "8",
+        "numCore": "2",
+        "overlapCutoff": "1.0e-8",
+        "determinants": "dets"
+    },
+    "sampling": {
+        "stochasticIterNorms": "160",
+        "nIterFindInitDets": "10",
+        "epsilon": "1.0e-8",
+        "seed": "59801",
+        "NEVPT_readE": "true",
+        "determCCVV": "true"
+    }
+}
+
+Reading integrals
+Finished reading integrals
+Starting heat bath integral construction
+Finished heat bath integral construction
+Reading active space determinants
+Finished reading determinants, hash table bucket count: 2048
+Integrals and wave function preparation finished in 0.0326481 s
+
+Deterministic CCVV energy:  -0.00032345018087
+
+About to sample the norms of the strongly contracted states...
+
+About to allocate arrays for sampling...
+Total number of strongly contracted states to sample: 821
+Allocation of sampling arrays now finished.
+
+About to call first instance of HamAndSCNorms...
+First instance of HamAndSCNorms complete.
+iter: 0  t: 0.0475402
+iter: 1  t: 0.0513031
+iter: 16  t: 0.109271
+iter: 32  t: 0.170853
+iter: 48  t: 0.23229
+iter: 64  t: 0.293726
+iter: 80  t: 0.355293
+iter: 96  t: 0.416659
+iter: 112  t: 0.478196
+iter: 128  t: 0.539799
+iter: 144  t: 0.601198
+iter: 160  t: 0.693809
+Calculating AAVV norms...
+AAVV norms calculated. Time taken: 0.09144
+Calculating CAAV norms...
+CAAV norms calculated. Time taken: 0.0907061
+Calculating CCAA norms...
+CCAA norms calculated. Time taken: 0.00113106
+
+Calculation of strongly contracted norms complete.
+Total time for norms calculation:  0.84572
+
+About to print norm data...
+Printing complete.
+
+Now sampling the NEVPT2 energy...
+Sampling complete.
+
+Total time for energy sampling 0.00871992 seconds
+CAS energy: -109.0347099
+SC-NEVPT2(s) second-order energy: -0.1492222162
+Total SC-NEVPT(s) energy: -109.1839321
+SC-NEVPT2(s) second-order energy with CCVV:  -0.1495456664
+Total SC-NEVPT2(s) energy with CCVV:  -109.1842556
