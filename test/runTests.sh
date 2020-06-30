@@ -198,23 +198,13 @@ then
 fi
 
 cd $here/NEVPT2/n2_vdz/continue_norms
-../../clean_wo_bkp.sh
+../../../clean_wo_bkp.sh
 printf "...running NEVPT2/n2_vdz/continue_norms\n"
 $MPICOMMAND $NEVPTPATH > nevpt.out
 python2 ../../../testEnergy.py 'nevpt' $tol
 if [ $clean == 1 ]
 then
     ../../../clean_wo_bkp.sh
-fi
-
-cd $here/NEVPT2/h4_631g/determ
-../../../clean.sh
-printf "...running NEVPT2/h4_631g/determ\n"
-$MPICOMMAND $NEVPTPATH > nevpt.out
-python2 ../../../testEnergy.py 'nevpt' $tol
-if [ $clean == 1 ]
-then
-    ../../../clean.sh
 fi
 
 cd $here/NEVPT2/n2_vdz/write_exact_energies
@@ -235,6 +225,26 @@ python2 ../../../testEnergy.py 'nevpt' $tol
 if [ $clean == 1 ]
 then
     ../../../clean_wo_bkp.sh
+fi
+
+cd $here/NEVPT2/h4_631g/determ
+../../../clean.sh
+printf "...running NEVPT2/h4_631g/determ\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/NEVPT2/polyacetylene/stoch
+../../../clean.sh
+printf "...running NEVPT2/polyacetylene/stoch\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
 fi
 
 # SC-NEVPT2 single perturber
