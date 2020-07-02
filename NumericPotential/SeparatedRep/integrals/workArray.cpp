@@ -1,15 +1,15 @@
 #include "workArray.h"
 
 
-tensor Sx_2d({120,120});
-tensor Sy_2d ({120,120});
-tensor Sz_2d ({120,120});
-tensor Sx2_2d({120,120});
-tensor Sy2_2d({120,120});
-tensor Sz2_2d({120,120});
-tensor S_2d  ({120,120});
-vector<double> normA(120), normB(120);
 const int Lmax = 7;
+tensor Sx_2d({Lmax+3,Lmax+3});
+tensor Sy_2d ({Lmax+3,Lmax+3});
+tensor Sz_2d ({Lmax+3,Lmax+3});
+tensor Sx2_2d({Lmax+3,Lmax+3});
+tensor Sy2_2d({Lmax+3,Lmax+3});
+tensor Sz2_2d({Lmax+3,Lmax+3});
+tensor S_2d  ({120,120});
+vector<double> normA(Lmax+3), normB(Lmax+3);
 vector<vector<int>> CartOrder((Lmax+1) * (Lmax+2) * (Lmax+3)/6, vector<int>(3));
 Coulomb_14_8_8 coulomb_14_8_8;
 Coulomb_14_14_8 coulomb_14_14_8;
@@ -17,28 +17,28 @@ Coulomb_14_14_8 coulomb_14_14_8;
 vector<double> workArray(200); //only need 4*Lmax
 tensor DerivativeToPolynomial({18, 18});
 
-tensor Sx_3d({50,50,50});
-tensor Sy_3d({50,50,50});
-tensor Sz_3d({50,50,50});
-tensor Sx2_3d({50,50,50});
-tensor Sy2_3d({50,50,50});
-tensor Sz2_3d({50,50,50});
-tensor S_3d({50,50,50});
-tensor Coeffx_3d({50,50,50});
-tensor Coeffy_3d({50,50,50});
-tensor Coeffz_3d({50,50,50});
-tensor powExpAPlusExpB({1000});
-tensor powExpA({1000});
-tensor powExpB({1000});
-tensor powExpC({1000});
-tensor powPIOverLx({1000});
-tensor powPIOverLy({1000});
-tensor powPIOverLz({1000});
-vector<double> expaPow(1000), expbPow(1000);
-tensor Ci({1000});
-tensor Cj({1000});
-tensor Ck({1000});
-tensor teri({1000, 1000, 1000});
+tensor Sx_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Sy_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Sz_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Sx2_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Sy2_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Sz2_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor S_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Coeffx_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Coeffy_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor Coeffz_3d({Lmax+1,Lmax+1,Lmax+1});
+tensor powExpAPlusExpB({100});
+tensor powExpA({2*Lmax+3});
+tensor powExpB({2*Lmax+3});
+tensor powExpC({2*Lmax+3});
+tensor powPIOverLx({2*Lmax+3});
+tensor powPIOverLy({2*Lmax+3});
+tensor powPIOverLz({2*Lmax+3});
+vector<double> expaPow(2*Lmax+3), expbPow(2*Lmax+3);
+tensor Ci({2*Lmax+3});
+tensor Cj({2*Lmax+3});
+tensor Ck({2*Lmax+3});
+tensor teri({2*Lmax+3, 2*Lmax+3, 2*Lmax+3});
 
 void initWorkArray() {
 

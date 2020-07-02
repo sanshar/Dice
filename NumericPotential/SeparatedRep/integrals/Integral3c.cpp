@@ -1,9 +1,15 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <cstdlib>
+#include <ctime>
+#include <chrono>
 
 #include "primitives.h"
 #include "workArray.h"
+
+using namespace std;
+using namespace std::chrono;
 
 void initArraySize(vector<int> coeffSize, vector<int> S2size,
                    vector<int> Ssize) {
@@ -34,7 +40,8 @@ void generateCoefficientMatrix(int LA, int LB, double expA, double expB,
       
       for (int m=0; m<=i; m++)
         for (int l=0; l<=j; l++) {
-          double prefactor = pow(-1, i-m) * nChoosek(i, m) * nChoosek(j, l);
+          //double prefactor = pow(-1, i-m) * nChoosek(i, m) * nChoosek(j, l);
+          double prefactor = ((i-m)%2 == 0 ? 1. : -1.) * nChoosek(i, m) * nChoosek(j, l);
           Coeff_3d(i, j, m+l) += prefactor * expbPow[i-m] * expaPow[j-l];
           //Coeff_3d(i, j, m+l) += prefactor * pow(expB * ABx/p, i-m) * pow(expA * ABx/p, j-l);
         }
@@ -67,7 +74,7 @@ double calc1DOvlpPeriodicSumB(int LA, double Ax, double expA,
         calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, t, 0, Lx, Sx_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
         calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, 0, 0, Lx, Sx2_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
         
-        contract_IJK_IJL_LK(&Sx_3d, &Coeffx_3d, &Sx_2d, productfactor, beta); 
+        contract_IJK_IJL_LK( &Sx_3d, &Coeffx_3d,  &Sx_2d, productfactor, beta); 
         contract_IJK_IJL_LK(&Sx2_3d, &Coeffx_3d, &Sx2_2d, productfactor, beta);
       }
       
@@ -80,15 +87,15 @@ double calc1DOvlpPeriodicSumB(int LA, double Ax, double expA,
         generateCoefficientMatrix(LA, LB, expA, expB, ABx, p, Coeffx_3d);
         calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, t, 0, Lx, Sx_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
         calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, 0, 0, Lx, Sx2_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
+        
         contract_IJK_IJL_LK(&Sx_3d, &Coeffx_3d, &Sx_2d, productfactor, 1.0); 
         contract_IJK_IJL_LK(&Sx2_3d, &Coeffx_3d, &Sx2_2d, productfactor, 1.0); 
       }
       else 
         beta = 1.0;
-      
-      if (exp(-mu * (Ax - (Bx + (nx+1) * Lx)) *  (Ax - (Bx + (nx+1) * Lx)) ) < 1.e-10  &&
-          exp(-mu * (Ax - (Bx - (nx+1) * Lx)) *  (Ax - (Bx - (nx+1) * Lx)) ) < 1.e-10 )
-        break;
+
+      double max = min (abs(Ax - (Bx + (nx+1) * Lx)), abs(Ax - (Bx - (nx+1) * Lx )));
+      if (exp(-mu*max*max) < 1.e-10) break;
     }
   }
   else if (expB <= 0.3/Lx/Lx) {//then theta function A is just a constant
@@ -188,6 +195,8 @@ void calcCoulombIntegralPeriodic_noTranslations(
   int IB0 = (LB)*(LB+1)*(LB+2)/6;
   int IC0 = (LC)*(LC+1)*(LC+2)/6;
 
+  double prevt = -1.0;
+  
   for (int i=0; i<coulomb.exponents.size(); i++) {
     double expG = coulomb.exponents[i], wtG = coulomb.weights[i];
     
@@ -196,15 +205,18 @@ void calcCoulombIntegralPeriodic_noTranslations(
     double prefactor = pow(M_PI*M_PI*M_PI/(expG*p*expC), 1.5) * normC / (Lx * Ly * Lz);
     
     
-    calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, t, 0, Lx, Sx_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
-    calc1DOvlpPeriodic(LA+LB, Py, p, LC, Cy, expC, t, 0, Ly, Sy_2d, &workArray[0], powPIOverLy, powExpAPlusExpB, powExpC);
-    calc1DOvlpPeriodic(LA+LB, Pz, p, LC, Cz, expC, t, 0, Lz, Sz_2d, &workArray[0], powPIOverLz, powExpAPlusExpB, powExpC);
-
-    //bkground terms
-    calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, 0, 0, Lx, Sx2_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
-    calc1DOvlpPeriodic(LA+LB, Py, p, LC, Cy, expC, 0, 0, Ly, Sy2_2d, &workArray[0], powPIOverLy, powExpAPlusExpB, powExpC);
-    calc1DOvlpPeriodic(LA+LB, Pz, p, LC, Cz, expC, 0, 0, Lz, Sz2_2d, &workArray[0], powPIOverLz, powExpAPlusExpB, powExpC);
-
+    if (abs(prevt - t) > 1.e-6) {
+      calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, t, 0, Lx, Sx_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
+      calc1DOvlpPeriodic(LA+LB, Py, p, LC, Cy, expC, t, 0, Ly, Sy_2d, &workArray[0], powPIOverLy, powExpAPlusExpB, powExpC);
+      calc1DOvlpPeriodic(LA+LB, Pz, p, LC, Cz, expC, t, 0, Lz, Sz_2d, &workArray[0], powPIOverLz, powExpAPlusExpB, powExpC);
+      
+      //bkground terms
+      calc1DOvlpPeriodic(LA+LB, Px, p, LC, Cx, expC, 0, 0, Lx, Sx2_2d, &workArray[0], powPIOverLx, powExpAPlusExpB, powExpC);
+      calc1DOvlpPeriodic(LA+LB, Py, p, LC, Cy, expC, 0, 0, Ly, Sy2_2d, &workArray[0], powPIOverLy, powExpAPlusExpB, powExpC);
+      calc1DOvlpPeriodic(LA+LB, Pz, p, LC, Cz, expC, 0, 0, Lz, Sz2_2d, &workArray[0], powPIOverLz, powExpAPlusExpB, powExpC);
+    }
+    prevt = t;
+    
     contract_IJK_IJL_LK(&Sx_3d, &Coeffx_3d, &Sx_2d); 
     contract_IJK_IJL_LK(&Sy_3d, &Coeffy_3d, &Sy_2d); 
     contract_IJK_IJL_LK(&Sz_3d, &Coeffz_3d, &Sz_2d);
@@ -276,7 +288,10 @@ void calcCoulombIntegralPeriodic_BTranslations(
   initArraySize({LA+1, LB+1, LA+LB+1}, {LA+1, LB+1, LC+1}, {LA+LB+1, LC+1});
   Sx_3d.setZero(); Sy_3d.setZero(); Sz_3d.setZero();
 
+  //cout << (LA+1)*(LA+2)/2<<"  "<< (LB+1)*(LB+2)/2<<"  "<< (LC+1)*(LC+2)/2<<"  "<<(LA+1)*(LA+2)*(LB+1)*(LB+2) * (LC+1)*(LC+2)/8<<"  "<<endl;
+
   double prevt = -1.0;
+  int nterms = 0;
   //for (int i=155; i<156; i++) {
   for (int i=0; i<coulomb.exponents.size(); i++) {
     double expG = coulomb.exponents[i], wtG = coulomb.weights[i];
@@ -286,24 +301,22 @@ void calcCoulombIntegralPeriodic_BTranslations(
     double t = expG * p * expC / (expG*p + expG*expC + p*expC);
     double prefactor = pow(M_PI*M_PI*M_PI/(expG*p*expC), 1.5) * normA * normB * normC / (Lx * Ly * Lz);
 
-    //if (t < 0.3/Lx/Lx && t < 0.3/Ly/Ly && t < 0.3/Lz/Lz) continue;
+    if (t < 0.4/Lx/Lx && t < 0.4/Ly/Ly && t < 0.4/Lz/Lz) continue;
     //if (abs(prefactor*wtG) < 1.e-10) continue;
     if ( abs(prevt - t) > 1.e-6) {
       //generate summation over x-traslations
-      //if (t/Lx > 0.3)
       calc1DOvlpPeriodicSumB(LA, Ax, expA, LB, Bx, expB, LC, Cx, expC, expG, 0, Lx, Sx_3d, Sx2_3d, powPIOverLx);
-      //if (t/Ly > 0.3)
       calc1DOvlpPeriodicSumB(LA, Ay, expA, LB, By, expB, LC, Cy, expC, expG, 0, Ly, Sy_3d, Sy2_3d, powPIOverLy);
-      //if (t/Lz > 0.3)
       calc1DOvlpPeriodicSumB(LA, Az, expA, LB, Bz, expB, LC, Cz, expC, expG, 0, Lz, Sz_3d, Sz2_3d, powPIOverLz);
     }
-    
+    if (abs(prefactor * wtG) < 1.e-12) break;
     prevt = t;
     
     int IA0 = (LA)*(LA+1)*(LA+2)/6;
     int IB0 = (LB)*(LB+1)*(LB+2)/6;
     int IC0 = (LC)*(LC+1)*(LC+2)/6;
 
+    //double maxInt = 0.0;
     for (int a = 0; a< (LA+1)*(LA+2)/2; a++)
     for (int b = 0; b< (LB+1)*(LB+2)/2; b++)
     for (int c = 0; c< (LC+1)*(LC+2)/2; c++)
@@ -317,9 +330,11 @@ void calcCoulombIntegralPeriodic_BTranslations(
    Sx2_3d(apow[0],bpow[0],cpow[0]) * Sy2_3d(apow[1],bpow[1],cpow[1]) * Sz2_3d(apow[2],bpow[2],cpow[2]));
       
     }
-    //cout << i<<"  "<<expG<<"  "<<wtG<<"  "<<Int3d(0,0,0)<<endl;
+    nterms++;
+    //cout << i<<"  "<<prefactor<<"  "<<wtG<<"  "<<prefactor*wtG<<"  "<<t<<"  "<<Int3d(0,0,0)<<endl;
   }
-  
+  //cout << nterms<<" "<<coulomb.exponents.size()<<endl;
+  //exit(0);
 }
 
 void calcShellIntegral(double* integrals, int sh1, int sh2, int sh3, int* ao_loc,
@@ -420,26 +435,28 @@ void calcIntegral_3c(double* integrals, int* shls, int* ao_loc,
       n3 = ao_loc[shls[5]] - ao_loc[shls[4]];
 
   
-  for(int sh1 = shls[0]; sh1 < shls[1]; sh1++) 
+  for(int sh1 = shls[0]; sh1 < shls[1]; sh1++) {
+    cout << sh1<<"  "<<shls[1]<<endl;
   for(int sh2 = shls[2]; sh2 <= sh1; sh2++) 
+
     //for(int sh2 = shls[2]; sh2 < shls[3]; sh2++) 
-  for(int sh3 = shls[4]; sh3 < shls[5]; sh3++) {
-    //cout << sh1<<"  "<<shls[1]<<"  "<<sh2<<"  "<<shls[3]<<"  "<<sh3<<"  "<<shls[5]<<endl;
-    calcShellIntegral(teri.vals, sh1, sh2, sh3, ao_loc, atm, natm, bas, nbas, env, Lattice);
-
-    teri.dimensions = {ao_loc[sh1+1] - ao_loc[sh1],
-                       ao_loc[sh2+1] - ao_loc[sh2],
-                       ao_loc[sh3+1] - ao_loc[sh3]};
-    
-    for (int i = ao_loc[sh1] - ao_loc[shls[0]]; i < ao_loc[sh1+1] - ao_loc[shls[0]]; i++) 
-    for (int j = ao_loc[sh2] - ao_loc[shls[2]]; j < ao_loc[sh2+1] - ao_loc[shls[2]]; j++) 
-    for (int k = ao_loc[sh3] - ao_loc[shls[4]]; k < ao_loc[sh3+1] - ao_loc[shls[4]]; k++) {
-      integrals[i*n2*n3 + j*n3 + k] = teri(i - (ao_loc[sh1] - ao_loc[shls[0]]),
-                                           j - (ao_loc[sh2] - ao_loc[shls[2]]),
-                                           k - (ao_loc[sh3] - ao_loc[shls[4]]));
-    }
-  }//sh
-
+    for(int sh3 = shls[4]; sh3 < shls[5]; sh3++) {
+      //cout << sh1<<"  "<<shls[1]<<"  "<<sh2<<"  "<<shls[3]<<"  "<<sh3<<"  "<<shls[5]<<endl;
+      calcShellIntegral(teri.vals, sh1, sh2, sh3, ao_loc, atm, natm, bas, nbas, env, Lattice);
+      
+      teri.dimensions = {ao_loc[sh1+1] - ao_loc[sh1],
+                         ao_loc[sh2+1] - ao_loc[sh2],
+                         ao_loc[sh3+1] - ao_loc[sh3]};
+      
+      for (int i = ao_loc[sh1] - ao_loc[shls[0]]; i < ao_loc[sh1+1] - ao_loc[shls[0]]; i++) 
+      for (int j = ao_loc[sh2] - ao_loc[shls[2]]; j < ao_loc[sh2+1] - ao_loc[shls[2]]; j++) 
+      for (int k = ao_loc[sh3] - ao_loc[shls[4]]; k < ao_loc[sh3+1] - ao_loc[shls[4]]; k++) {
+        integrals[i*n2*n3 + j*n3 + k] = teri(i - (ao_loc[sh1] - ao_loc[shls[0]]),
+                                             j - (ao_loc[sh2] - ao_loc[shls[2]]),
+                                             k - (ao_loc[sh3] - ao_loc[shls[4]]));
+      }
+    }//sh
+  }
 }
 
 
