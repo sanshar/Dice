@@ -79,8 +79,10 @@ class Lanczos
     //double rk = 0;
     Eigen::VectorXd lanczosCoeffs = Eigen::VectorXd::Zero(4);
     alpha = alphaInit;
+    auto initTime = getTime();
     if (schd.deterministic) getLanczosCoeffsDeterministic(wave, walk, alpha, lanczosCoeffs);
     else getLanczosCoeffsContinuousTime(wave, walk, alpha, lanczosCoeffs, stddev, rk, schd.stochasticIter, 1.e-5);
+    
 
     double a = lanczosCoeffs[2]/lanczosCoeffs[3];
     double b = lanczosCoeffs[1]/lanczosCoeffs[3];
@@ -94,7 +96,9 @@ class Lanczos
     double eP = (a * pow(alphaP, 2) + 2 * b * alphaP + c) / (b * pow(alphaP, 2) + 2 * c * alphaP + 1);
     double eM = (a * pow(alphaM, 2) + 2 * b * alphaM + c) / (b * pow(alphaM, 2) + 2 * c * alphaM + 1);
     if (commrank == 0) {
+      cout << "wall time: " << getTime() - initTime << endl;
       cout << "coeffs\n" << lanczosCoeffs << endl; 
+      cout << "stddev\n" << stddev << endl; 
       //cout << "a  " << a << "  b  " << b << "  b  " << "   c  " << c << endl;
       cout << "alpha(+/-)   " << alphaP << "   " << alphaM << endl;
       cout << "energy(+/-)   " << eP << "   " << eM << endl;
