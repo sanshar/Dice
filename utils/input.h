@@ -44,6 +44,7 @@ private:
       & tol & correlatorFiles
       & fullRestart
       & wavefunctionType
+      & ghfDets
       & numResonants
       & singleJastrow
       & readTransOrbs
@@ -58,6 +59,7 @@ private:
       & beta
       & method
       & stochasticIter
+      & burnIter
       & _sgdIter
       & momentum
       & integralSampleSize
@@ -76,6 +78,8 @@ private:
       & printVars
       & printGrad
       & Hamiltonian
+      & useLastDet
+      & useLogTime
       & ctmc
       & nwalk
       & tau
@@ -91,6 +95,7 @@ private:
       & uagp
       & ciCeption
       & actWidth
+      & lanczosEpsilon
       & overlapCutoff
       & diagMethod
       & powerShift
@@ -123,14 +128,16 @@ public:
   std::map<int, std::string> correlatorFiles;
   std::string determinantFile;
   int numResonants;
+  bool ghfDets;
   bool singleJastrow;
   bool readTransOrbs;
   int numPermutations;
 
 //Used in the stochastic calculation of E and PT evaluation
   int stochasticIter;                    //Number of stochastic steps
+  int burnIter;                          //Number of burn in steps
   int integralSampleSize;                //This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
-  int seed;                              // seed for the random number generator
+  size_t seed;                              // seed for the random number generator
   double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
   double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals
   double screen;                         //This is the screening parameter, any integral below this is ignored
@@ -139,11 +146,13 @@ public:
   bool optimizeOrbs;
   bool optimizeCiCoeffs;
   bool optimizeCps;
-  bool optimizeJastrow;//used in jrbm
-  bool optimizeRBM;//used in jrbm
+  bool optimizeJastrow;                  //used in jrbm
+  bool optimizeRBM;                      //used in jrbm
   bool printVars;
   bool printGrad;
   HAM Hamiltonian;
+  bool useLastDet;                       //stores last det instead of bestdet
+  bool useLogTime;                       //uses log sampled time in CTMC
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
@@ -184,6 +193,7 @@ public:
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   double actWidth; //used in lanczos
+  double lanczosEpsilon; //used in lanczos
   double overlapCutoff; //used in SCCI
   std::string diagMethod;
   double powerShift;
@@ -270,5 +280,8 @@ void readDeterminants(std::string input, std::vector<Determinant>& determinants,
 //assumes Dice parity included ci coeffs
 //the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
 void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+        std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
+
+void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 #endif

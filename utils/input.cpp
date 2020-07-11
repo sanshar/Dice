@@ -76,6 +76,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
 	    schd.correlatorFiles[siteSize] = file;
       }
     }
+    
+    //jastrow multislater
+    schd.ghfDets = input.get("wavefunction.ghfDets", false);
 
     //resonating wave function
     schd.numResonants = input.get("wavefunction.numResonants", 1);
@@ -92,6 +95,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     else schd.ciCeption = false;
     schd.determinantFile = input.get("wavefunction.determinants", ""); //used for both sci and starting det
     schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
+    schd.lanczosEpsilon = input.get("wavefunction.lanczosEpsilon", 1.e-8); //lanczos
 
     //rbm
     schd.numHidden = input.get("wavefunction.numHidden", 1);
@@ -108,14 +112,19 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ctmc = input.get("sampling.ctmc", true); //if this is false, metropolis is used!
     schd.deterministic = input.get("sampling.deterministic", false);
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
+    schd.burnIter = input.get("sampling.burnIter", 0);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
     schd.seed = input.get("sampling.seed", getTime());
+    schd.useLastDet = input.get("sampling.useLastDet", false);
+    schd.useLogTime = input.get("sampling.useLogTime", false);
+    
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
     schd.tau = input.get("sampling.tau", 0.001);
     schd.fn_factor = input.get("sampling.fn_factor", 1.0);
     schd.nGeneration = input.get("sampling.nGeneration", 30.0);
+    
     //FCIQMC options
     schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
     schd.mainMemoryFac = input.get("sampling.mainMemoryFac", 5.0);
@@ -418,4 +427,91 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
     }
   }
   if (commrank == 0) cout << "Rankwise number of excitaions " << sizes.transpose() << endl << endl;
+}
+
+void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,
+        std::vector<int>& ciParity, std::vector<double>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  ifstream dump(input.c_str());
+  bool isFirst = true;
+  Determinant refDet;
+
+  std::vector<int> open;
+
+  while (dump.good()) {
+    std::string Line;
+    std::getline(dump, Line);
+
+    boost::trim_if(Line, boost::is_any_of(", \t\n"));
+    
+    vector<string> tok;
+    boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+
+    if (tok.size() > 2 ) {
+      if (isFirst) {//first det is ref
+        isFirst = false;
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        ciParity.push_back(1);
+        std::array<VectorXi, 2> empty;
+        ciExcitations.push_back(empty);
+        for (int i=0; i<norbs; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            refDet.setoccA(2*i, true);
+            refDet.setoccA(2*i+1, true);
+            ref.push_back(2*i);
+            ref.push_back(2*i+1);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            refDet.setoccA(2*i, true);
+            ref.push_back(2*i);
+            open.push_back(2*i+1);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            refDet.setoccA(2*i+1, true);
+            ref.push_back(2*i+1);
+            open.push_back(2*i);
+          }
+          else if (boost::iequals(tok[1+i], "0")) {
+            open.push_back(2*i);
+            open.push_back(2*i+1);
+          }
+        }
+      }
+      else {
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        vector<int> des, cre;
+        for (int i=0; i<norbs; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            if (!refDet.getoccA(2*i)) cre.push_back(2*i);
+            if (!refDet.getoccA(2*i+1)) cre.push_back(2*i+1);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            if (!refDet.getoccA(2*i)) cre.push_back(2*i);
+            if (refDet.getoccA(2*i+1)) des.push_back(2*i+1);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            if (refDet.getoccA(2*i)) des.push_back(2*i);
+            if (!refDet.getoccA(2*i+1)) cre.push_back(2*i+1);
+          }
+          else if (boost::iequals(tok[1+i], "0")) {
+            if (refDet.getoccA(2*i)) des.push_back(2*i);
+            if (refDet.getoccA(2*i+1)) des.push_back(2*i+1);
+          }
+        }
+        ciParity.push_back(refDet.parityA(cre, des));
+        VectorXi creV = VectorXi::Zero(cre.size());
+        VectorXi desV = VectorXi::Zero(des.size());
+        for (int i = 0; i < cre.size(); i++) {
+          desV[i] = std::search_n(ref.begin(), ref.end(), 1, des[i]) - ref.begin();
+          //creV[i] = std::search_n(open.begin(), open.end(), 1, cre[i]) - open.begin();
+          creV[i] = cre[i];
+        }
+        std::array<VectorXi, 2> excitations;
+        excitations[0] = desV;
+        excitations[1] = creV;
+        ciExcitations.push_back(excitations);
+      }
+    }
+  }
 }
