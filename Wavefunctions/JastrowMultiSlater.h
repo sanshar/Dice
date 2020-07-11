@@ -206,6 +206,7 @@ struct JastrowMultiSlater {
     double ratio = walk.walker.refHelper.totalOverlap / refOverlap;  // < n | psi > / < n | psi_0 >
     ham = walk.d.Energy(I1, I2, coreE) * ratio;
     double ham0 = 0.; // < n | H' | psi_0 > / < n | psi_0 > , where H' indicates H w/o diagonal element
+    complex<double> complexHam0(0., 0.); // above ratio without complex projection
 
     intermediate.setZero();
     work.setCounterToZero();
@@ -226,21 +227,25 @@ struct JastrowMultiSlater {
       int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
       int tableIndexi, tableIndexa;
       walk.walker.refHelper.getRelIndices(I/2, tableIndexi, A/2, tableIndexa, I%2);
-      //int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
 
       double jia =  walk.walker.corrHelper.OverlapRatio(I, A, corr, walk.d, walk.d);
-      double ovlpRatio = jia * walk.getDetFactor(I, A, ref);  // < m | psi_0 > / < n | psi_0 >
+      complex<double> complexRefOverlapRatio = walk.getDetFactorComplex(I, A, ref); // ratio without complex projection
+      //double ovlpRatio = jia * walk.getDetFactor(I, A, ref);  // < m | psi_0 > / < n | psi_0 >
+      double ovlpRatio = jia * (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | psi_0 > / < n | psi_0 >
       
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham0 += tia * ovlpRatio;
+      complexHam0 += tia * jia * complexRefOverlapRatio;
       intermediate.row(tableIndexi) += tia * jia * walk.walker.refHelper.rtc_b.row(tableIndexa);
-      if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  jia  " << jia << "  ovlpRatio  " << ovlpRatio << endl;
+      if (schd.debug) cout << I << "  " << A << "  " << J << "  " << B << "  tia  " << tia << "  jia  " << jia << "  ovlpRatio  " << ovlpRatio << endl;
 
       work.ovlpRatio[i] = ovlpRatio;
     }
     s = walk.walker.refHelper.t * intermediate;
+    if (schd.debug) cout << "s\n" << s << endl;
     intermediateBuildTime += (getTime() - initTime);
    
 
@@ -285,17 +290,22 @@ struct JastrowMultiSlater {
         count4++;
       }
       else {
-        MatrixXcd tcSlice;
-        igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
+        MatrixXcd tcSlice = MatrixXcd::Zero(rank, rank);
+        //igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
+        for (int mu = 0; mu < rank; mu++) 
+          for (int nu = 0; nu < rank; nu++) 
+            tcSlice(mu, nu) = walk.walker.refHelper.tc(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][nu]);
+        
+        MatrixXcd temp = MatrixXcd::Zero(rank, rank);
         for (int mu = 0; mu < rank; mu++) {
-          auto temp = tcSlice;
+          temp = tcSlice;
           for (int t = 0; t < rank; t++) {
             temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
           }
-          laplaceDet -= calcDet(temp);
+          laplaceDet -= temp.determinant();
         }
       }
-      locES += ref.ciCoeffs[i] * (walk.walker.refHelper.ciOverlaps[i] * ham0 + ref.ciParity[i] * (laplaceDet * walk.walker.refHelper.refOverlap).real()) / refOverlap;
+      locES += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam0 + ref.ciParity[i] * laplaceDet) * walk.walker.refHelper.refOverlap).real() / refOverlap;
     }
     ciIterationTime += (getTime() - initTime);
     ham += locES;

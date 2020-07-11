@@ -58,7 +58,8 @@ void MultiSlater::initHforbs()
 void MultiSlater::initCiExpansion()
 {
   string fname = "dets";
-  readDeterminants(fname, ref, ciExcitations, ciParity, ciCoeffs);
+  if (schd.ghfDets) readDeterminantsGHF(fname, ref, ciExcitations, ciParity, ciCoeffs);
+  else readDeterminants(fname, ref, ciExcitations, ciParity, ciCoeffs);
   numDets = ciCoeffs.size();
 }
 
