@@ -82,10 +82,19 @@ public:
 
   complex<double> getDetFactorComplex(int i, int a, const MultiSlater &ref) const 
   {
-    if (i % 2 == 0)
-      return getDetFactorComplex(i / 2, a / 2, 0, ref);
-    else
-      return getDetFactorComplex(i / 2, a / 2, 1, ref);
+    int tableIndexi, tableIndexa;
+    walker.refHelper.getRelIndices(i/2, tableIndexi, a/2, tableIndexa, i%2);
+    return walker.refHelper.rt(tableIndexa, tableIndexi);
+  }
+  
+  complex<double> getDetFactorComplex(int i, int j, int a, int b, const MultiSlater &ref) const 
+  {
+    int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
+    walker.refHelper.getRelIndices(i/2, tableIndexi, a/2, tableIndexa, i%2);
+    walker.refHelper.getRelIndices(j/2, tableIndexj, b/2, tableIndexb, j%2);
+    complex<double> sliceDet = walker.refHelper.rt(tableIndexa, tableIndexi) * walker.refHelper.rt(tableIndexb, tableIndexj)
+                             - walker.refHelper.rt(tableIndexa, tableIndexj) * walker.refHelper.rt(tableIndexb, tableIndexi);
+    return sliceDet;
   }
   
   double getDetFactor(int I, int J, int A, int B, const MultiSlater &ref) const 

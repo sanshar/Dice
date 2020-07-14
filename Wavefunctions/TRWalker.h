@@ -32,9 +32,9 @@ class TRWalker
 {
 
 public:
-  array<Walker<Jastrow, Slater>, 2> walkerPair;
+  std::array<Walker<Jastrow, Slater>, 2> walkerPair;
   Determinant d;
-  array<double, 2> overlaps;
+  std::array<double, 2> overlaps;
   double totalOverlap;
 
   // constructors
