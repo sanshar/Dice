@@ -47,12 +47,16 @@ struct JastrowMultiSlater {
   
   Jastrow corr; //The jastrow factors
   MultiSlater ref; //reference
-  MatrixXcd intermediate, s;
+  //MatrixXcd intermediate, s;
   double intermediateBuildTime, ciIterationTime;
 
   JastrowMultiSlater() {
-    intermediate = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
-    s = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
+    //intermediate = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
+    //s = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
+    //int nelec = Determinant::nalpha + Determinant::nbeta;
+    //int nholes = 2*Determinat::norbs - nelec;
+    //intermediate = MatrixXcd::Zero(nelec, 2*Determinant::norbs);
+    //s = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*Determinant::norbs);
     intermediateBuildTime = 0.;
     ciIterationTime = 0.;
   };
@@ -201,9 +205,8 @@ struct JastrowMultiSlater {
                   workingArray& work, bool fillExcitations=true) 
   {
     int norbs = Determinant::norbs;
-    int nalpha = Determinant::nalpha;
-    int nbeta = Determinant::nbeta;
-    int nelec = nalpha + nbeta;
+    int nelec = Determinant::nalpha + Determinant::nbeta;
+    int nholes = 2*norbs - nelec;
 
     double refOverlap = walk.walker.refHelper.refOverlap.real(); // < n | phi_0 > 
     ovlp = corr.Overlap(walk.d) * refOverlap;  // < n | psi_0 > 
@@ -215,8 +218,10 @@ struct JastrowMultiSlater {
     complex<double> complexHam2(0., 0.); // above ratio without complex projection
 
 
-    Tensor<complex<double>, 4, RowMajor> h(nelec, nelec, 2*norbs, 2*norbs);
+    //Tensor<complex<double>, 4, RowMajor> h(nelec, nelec, 2*norbs, 2*norbs);
+    Tensor<complex<double>, 4, RowMajor> h(nelec, nelec, nholes, nholes);
     h.setZero();
+    MatrixXcd intermediate = MatrixXcd::Zero(nelec, nholes);
     intermediate.setZero();
     work.setCounterToZero();
     work.locNorm = ratio;  // < psi | psi > / < psi_0 | psi_0 > sample sqrt
@@ -281,24 +286,34 @@ struct JastrowMultiSlater {
 
       work.ovlpRatio[i] = ovlpRatio;
     }
-    s = walk.walker.refHelper.t * intermediate;
+    MatrixXcd s = walk.walker.refHelper.t * intermediate;
  
     // double excitation intermediates
     Tensor<complex<double>, 2, RowMajor> t (nelec, nelec);
-    Tensor<complex<double>, 2, RowMajor> rt (2*norbs, nelec);
-    Tensor<complex<double>, 2, RowMajor> rtc_b (2*norbs, 2*norbs);
+    Tensor<complex<double>, 2, RowMajor> rt (nholes, nelec);
+    Tensor<complex<double>, 2, RowMajor> rtc_b (nholes, nholes);
+    //Tensor<complex<double>, 2, RowMajor> rt (2*norbs, nelec);
+    //Tensor<complex<double>, 2, RowMajor> rtc_b (2*norbs, 2*norbs);
     
     for (int i = 0; i < nelec; i++)
       for  (int j = 0; j < nelec; j++)
         t(i, j) = walk.walker.refHelper.t(i, j);
     
-    for (int i = 0; i < 2*norbs; i++)
+    for (int i = 0; i < nholes; i++)
       for  (int j = 0; j < nelec; j++)
         rt(i, j) = walk.walker.refHelper.rt(i, j);
     
-    for (int i = 0; i < 2*norbs; i++)
-      for  (int j = 0; j < 2*norbs; j++) 
+    for (int i = 0; i < nholes; i++)
+      for  (int j = 0; j < nholes; j++) 
         rtc_b(i, j) = walk.walker.refHelper.rtc_b(i, j);
+    
+    //for (int i = 0; i < 2*norbs; i++)
+    //  for  (int j = 0; j < nelec; j++)
+    //    rt(i, j) = walk.walker.refHelper.rt(i, j);
+    //
+    //for (int i = 0; i < 2*norbs; i++)
+    //  for  (int j = 0; j < 2*norbs; j++) 
+    //    rtc_b(i, j) = walk.walker.refHelper.rtc_b(i, j);
    
     
     Eigen::array<IndexPair<int>, 2> prodDims0 = { IndexPair<int>(2, 0), IndexPair<int>(0, 1) };
@@ -317,17 +332,27 @@ struct JastrowMultiSlater {
     Eigen::array<IndexPair<int>, 1> trans0 = { IndexPair<int>(0, 1) };
     Eigen::array<IndexPair<int>, 1> trans1 = { IndexPair<int>(0, 0) };
     Tensor<complex<double>, 4, RowMajor> hbar = h.contract(t, trans0).contract(t, trans0).contract(rtc_b, trans1).contract(rtc_b, trans1);
-    Tensor<complex<double>, 4, RowMajor> d2 (nelec, nelec, 2*norbs, 2*norbs);
+    //Tensor<complex<double>, 4, RowMajor> d2 (nelec, nelec, 2*norbs, 2*norbs);
+    Tensor<complex<double>, 4, RowMajor> d2 (nelec, nelec, nholes, nholes);
     for (int i = 0; i < nelec; i++) {
       for (int j = 0; j < nelec; j++) {
-        for (int a  = 0; a < 2*norbs; a++) { 
-          for (int b = 0; b < 2*norbs; b++) {
+        for (int a  = 0; a < nholes; a++) { 
+          for (int b = 0; b < nholes; b++) {
             d2(i,j,a,b) = hbar(i,j,a,b) - hbar(i,j,b,a) - hbar(j,i,a,b) + hbar(j,i,b,a); 
           }
         }
       }
     }
-    
+    //for (int i = 0; i < nelec; i++) {
+    //  for (int j = 0; j < nelec; j++) {
+    //    for (int a  = 0; a < 2*norbs; a++) { 
+    //      for (int b = 0; b < 2*norbs; b++) {
+    //        d2(i,j,a,b) = hbar(i,j,a,b) - hbar(i,j,b,a) - hbar(j,i,a,b) + hbar(j,i,b,a); 
+    //      }
+    //    }
+    //  }
+    //}
+    //
 
     if (schd.debug) {
       cout << "s\n" << s << endl << endl;
@@ -337,8 +362,8 @@ struct JastrowMultiSlater {
       for (int i = 0; i < nelec; i++) {
         for (int  j = 0; j < nelec; j++) {
           cout << "slice " << i << "  " << j << endl;
-          for (int a = 0; a < 2*norbs; a++) {
-            for (int b = 0; b < 2*norbs; b++) {
+          for (int a = 0; a < nholes; a++) {
+            for (int b = 0; b < nholes; b++) {
               cout << h(i, j, a, b) << " ";
             }
             cout << endl;
@@ -351,8 +376,8 @@ struct JastrowMultiSlater {
       for (int i = 0; i < nelec; i++) {
         for (int  j = 0; j < nelec; j++) {
           cout << "slice " << i << "  " << j << endl;
-          for (int a = 0; a < 2*norbs; a++) {
-            for (int b = 0; b < 2*norbs; b++) {
+          for (int a = 0; a < nholes; a++) {
+            for (int b = 0; b < nholes; b++) {
               cout << d2(i, j, a, b) << " ";
             }
             cout << endl;

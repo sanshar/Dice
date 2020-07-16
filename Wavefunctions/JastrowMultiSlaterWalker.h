@@ -151,7 +151,7 @@ public:
     if (schd.optimizeOrbs) {
       int norbs = Determinant::norbs, nclosed = walker.refHelper.closedOrbs.size(), nvirt = 2*norbs - nclosed;
       // building the y matrix
-      MatrixXcd yMat = MatrixXcd::Zero(2*norbs, nclosed);
+      MatrixXcd yMat = MatrixXcd::Zero(nvirt, nclosed);
       int count4 = 0;
       for (int i = 1; i < ref.numDets; i++) {
         int rank = ref.ciExcitations[i][0].size();
@@ -206,16 +206,16 @@ public:
       }
       
       
-      std::vector<int> all(2*norbs);
-      std::iota(all.begin(), all.end(), 0);
-      std::vector<int> virt(nvirt);
-      std::set_difference(all.begin(), all.end(), ref.ref.begin(), ref.ref.end(), virt.begin());
+      //std::vector<int> all(2*norbs);
+      //std::iota(all.begin(), all.end(), 0);
+      //std::vector<int> virt(nvirt);
+      //std::set_difference(all.begin(), all.end(), ref.ref.begin(), ref.ref.end(), virt.begin());
       
       
       for (int i = 0; i < nclosed; i++) {
         for (int j = 0; j < nvirt; j++) {
-          grad[ref.numDets + 4 * walker.refHelper.closedOrbs[i] * norbs + 2 * virt[j]] = yt(virt[j], i).real() / (walker.refHelper.refOverlap.real());
-          grad[ref.numDets + 4 * walker.refHelper.closedOrbs[i] * norbs + 2 * virt[j] + 1] = -yt(virt[j], i).imag() / (walker.refHelper.refOverlap.real());
+          grad[ref.numDets + 4 * walker.refHelper.closedOrbs[i] * norbs + 2 * walker.refHelper.openOrbs[j]] = yt(j, i).real() / (walker.refHelper.refOverlap.real());
+          grad[ref.numDets + 4 * walker.refHelper.closedOrbs[i] * norbs + 2 * walker.refHelper.openOrbs[j] + 1] = -yt(j, i).imag() / (walker.refHelper.refOverlap.real());
         }
       }
     }

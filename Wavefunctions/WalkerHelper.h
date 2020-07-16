@@ -245,8 +245,8 @@ class WalkerHelper<MultiSlater>
   double totalOverlap;            // Re (< n | psi >)
   std::vector<complex<double>> ciOverlapRatios; // < n | phi_i > / < n | phi_0 >, include parity, for orb gradient
   complex<double> totalComplexOverlap;  // < n | psi >, for orb gradient
-  std::vector<int> closedOrbs;    // set of closed orbitals in the walker
-  MatrixXcd r, c, rt, tc, rtc_b;  // intermediate tables
+  std::vector<int> closedOrbs, openOrbs;    // set of closed and open orbitals in the walker
+  MatrixXcd r, c, b, rt, tc, rtc_b;  // intermediate tables
   vector<Matrix4cd> tcSlice;      // intermediate tables
 
   WalkerHelper() {};
@@ -255,10 +255,13 @@ class WalkerHelper<MultiSlater>
   {
     //fill the closed orbs for the walker
     closedOrbs.clear();
-    vector<int> closedBeta;
-    d.getClosedAlphaBeta(closedOrbs, closedBeta);
+    openOrbs.clear();
+    vector<int> closedBeta, openBeta;
+    d.getOpenClosedAlphaBeta(openOrbs, closedOrbs, openBeta, closedBeta);
     for (int& c_i : closedBeta) c_i += Determinant::norbs;
+    for (int& o_i : openBeta) o_i += Determinant::norbs;
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
+    openOrbs.insert(openOrbs.end(), openBeta.begin(), openBeta.end());
     
     initInvDetsTables(w);
     if (commrank == 0) {
@@ -303,12 +306,19 @@ class WalkerHelper<MultiSlater>
     // tables
     // TODO: change table structure so that only unoccupied orbitals are present in r and c, 
     // this is not done currently because table updates are easier with all orbitals, but leads to bigger tables
-    VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
-    igl::slice(w.getHforbs(), all, occColumns, r);
-    igl::slice(w.getHforbs(), occRows, all, c);
+    //VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
+    auto openCopy = w.open;
+    Eigen::Map<VectorXi> openColumns(&openCopy[0], openCopy.size());
+    Eigen::Map<VectorXi> openRows(&openOrbs[0], openOrbs.size());
+    //igl::slice(w.getHforbs(), all, occColumns, r);
+    //igl::slice(w.getHforbs(), occRows, all, c);
+    igl::slice(w.getHforbs(), openRows, occColumns, r);
+    igl::slice(w.getHforbs(), occRows, openColumns, c);
+    igl::slice(w.getHforbs(), openRows, openColumns, b);
     rt = r * t;
     tc = t * c;
-    rtc_b = rt * c - w.getHforbs();
+    rtc_b = rt * c - b;
+    //rtc_b = rt * c - w.getHforbs();
 
     // overlaps with phi_i
     ciOverlaps.clear();
@@ -354,18 +364,27 @@ class WalkerHelper<MultiSlater>
    
     int norbs = Determinant::norbs;
     closedOrbs.clear();
-    vector<int> closedBeta;
-    excitedDet.getClosedAlphaBeta(closedOrbs, closedBeta);
+    openOrbs.clear();
+    vector<int> closedBeta, openBeta;
+    excitedDet.getOpenClosedAlphaBeta(openOrbs, closedOrbs, openBeta, closedBeta);
     for (int& c_i : closedBeta) c_i += norbs;
+    for (int& o_i : openBeta) o_i += norbs;
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
+    openOrbs.insert(openOrbs.end(), openBeta.begin(), openBeta.end());
     
     // TODO: these tables also need efficient updates
-    rt = r * t;
+    auto openCopy = w.open;
+    Eigen::Map<VectorXi> openColumns(&openCopy[0], openCopy.size());
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
-    VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
-    igl::slice(w.getHforbs(), occRows, all, c);
+    Eigen::Map<VectorXi> openRows(&openOrbs[0], openOrbs.size());
+    //VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
+    igl::slice(w.getHforbs(), openRows, occColumns, r);
+    igl::slice(w.getHforbs(), occRows, openColumns, c);
+    igl::slice(w.getHforbs(), openRows, openColumns, b);
+    rt = r * t;
     tc = t * c;
-    rtc_b = rt * c - w.getHforbs();
+    rtc_b = rt * c - b;
+    //rtc_b = rt * c - w.getHforbs();
     
     // overlaps with phi_i
     ciOverlaps.clear();
@@ -432,7 +451,8 @@ class WalkerHelper<MultiSlater>
   {
     //relI = std::lower_bound(closedOrbs[sz].begin(), closedOrbs[sz].end(), i) - closedOrbs[sz].begin();
     relI = std::search_n(closedOrbs.begin(), closedOrbs.end(), 1, i + sz * Determinant::norbs) - closedOrbs.begin();
-    relA = a + sz * Determinant::norbs;
+    relA = std::search_n(openOrbs.begin(), openOrbs.end(), 1, a + sz * Determinant::norbs) - openOrbs.begin();
+    //relA = a + sz * Determinant::norbs;
   }
 
 };

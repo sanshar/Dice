@@ -59,7 +59,7 @@ void MultiSlater::initCiExpansion()
 {
   string fname = "dets";
   if (schd.ghfDets) readDeterminantsGHF(fname, ref, ciExcitations, ciParity, ciCoeffs);
-  else readDeterminants(fname, ref, ciExcitations, ciParity, ciCoeffs);
+  else readDeterminants(fname, ref, open, ciExcitations, ciParity, ciCoeffs);
   numDets = ciCoeffs.size();
 }
 

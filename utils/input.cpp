@@ -341,7 +341,7 @@ void readDeterminants(std::string input, vector<Determinant> &determinants,
     }
 }
 
-void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,
+void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs)
 {
   int norbs = Determinant::norbs;
@@ -367,24 +367,31 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
         ciParity.push_back(1);
         std::array<VectorXi, 2> empty;
         ciExcitations.push_back(empty);
-        vector<int> beta; //no ghf det structure, so artificially using vector of ints, alpha followed by beta
+        vector<int> closedBeta, openBeta; //no ghf det structure, so artificially using vector of ints, alpha followed by beta
         for (int i=0; i<norbs; i++) {
           if (boost::iequals(tok[1+i], "2")) {
             refDet.setoccA(i, true);
             refDet.setoccB(i, true);
             ref.push_back(i);
-            beta.push_back(i + norbs);
+            closedBeta.push_back(i + norbs);
           }
           else if (boost::iequals(tok[1+i], "a")) {
             refDet.setoccA(i, true);
             ref.push_back(i);
+            openBeta.push_back(i + norbs);
           }
           else if (boost::iequals(tok[1+i], "b")) {
             refDet.setoccB(i, true);
-            beta.push_back(i + norbs);
+            closedBeta.push_back(i + norbs);
+            open.push_back(i);
+          }
+          else if (boost::iequals(tok[1+i], "0")) {
+            open.push_back(i);
+            openBeta.push_back(i + norbs);
           }
         }
-        ref.insert(ref.end(), beta.begin(), beta.end());
+        ref.insert(ref.end(), closedBeta.begin(), closedBeta.end());
+        open.insert(open.end(), openBeta.begin(), openBeta.end());
       }
       else {
         ciCoeffs.push_back(atof(tok[0].c_str()));
@@ -412,11 +419,13 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
         VectorXi des = VectorXi::Zero(desA.size() + desB.size());
         for (int i = 0; i < creA.size(); i++) {
           des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
-          cre[i] = creA[i];
+          cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
+          //cre[i] = creA[i];
         }
         for (int i = 0; i < creB.size(); i++) {
           des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
-          cre[i + creA.size()] = creB[i] + norbs;
+          cre[i + creA.size()] = std::search_n(open.begin(), open.end(), 1, creB[i] + norbs) - open.begin();
+          //cre[i + creA.size()] = creB[i] + norbs;
         }
         std::array<VectorXi, 2> excitations;
         excitations[0] = des;
@@ -426,7 +435,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std:
       }
     }
   }
-  if (commrank == 0) cout << "Rankwise number of excitaions " << sizes.transpose() << endl << endl;
+  if (commrank == 0) cout << "Rankwise number of excitations " << sizes.transpose() << endl << endl;
 }
 
 void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,

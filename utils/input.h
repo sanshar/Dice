@@ -279,7 +279,7 @@ void readDeterminants(std::string input, std::vector<Determinant>& determinants,
 //the rest are stored as excitations from ref
 //assumes Dice parity included ci coeffs
 //the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
-void readDeterminants(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 
 void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
