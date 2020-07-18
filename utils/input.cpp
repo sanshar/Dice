@@ -394,7 +394,6 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
         open.insert(open.end(), openBeta.begin(), openBeta.end());
       }
       else {
-        ciCoeffs.push_back(atof(tok[0].c_str()));
         vector<int> desA, creA, desB, creB;
         for (int i=0; i<norbs; i++) {
           if (boost::iequals(tok[1+i], "2")) {
@@ -414,7 +413,6 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
             if (refDet.getoccB(i)) desB.push_back(i);
           }
         }
-        ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
         VectorXi cre = VectorXi::Zero(creA.size() + creB.size());
         VectorXi des = VectorXi::Zero(desA.size() + desB.size());
         for (int i = 0; i < creA.size(); i++) {
@@ -430,6 +428,9 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
         std::array<VectorXi, 2> excitations;
         excitations[0] = des;
         excitations[1] = cre;
+        //if (cre.size()%2 != 0) continue;
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
         ciExcitations.push_back(excitations);
         if (cre.size() < 10) sizes(cre.size())++;
       }

@@ -199,8 +199,7 @@ struct JastrowMultiSlater {
 
 
   // this needs to be cleaned up, some of the necessary functions already exist
-  // only single excitations for now
-  void HamAndOvlp(const JastrowMultiSlaterWalker &walk,
+  void HamAndOvlpDouble(const JastrowMultiSlaterWalker &walk,
                   double &ovlp, double &ham, 
                   workingArray& work, bool fillExcitations=true) 
   {
@@ -209,8 +208,10 @@ struct JastrowMultiSlater {
     int nholes = 2*norbs - nelec;
 
     double refOverlap = walk.walker.refHelper.refOverlap.real(); // < n | phi_0 > 
-    ovlp = corr.Overlap(walk.d) * refOverlap;  // < n | psi_0 > 
+    double j_n = corr.Overlap(walk.d);  // J[n]
+    ovlp = j_n * refOverlap;  // < n | psi_0 > 
     double ratio = walk.walker.refHelper.totalOverlap / refOverlap;  // < n | psi > / < n | psi_0 >
+    //double ratio = walk.walker.refHelper.totalOverlap * j_n / refOverlap;  // < n | psi > / < n | phi_0 >
     ham = walk.d.Energy(I1, I2, coreE) * ratio;
     double ham1 = 0.; // < n | H' | psi_0 > / < n | psi_0 > , where H' indicates the one particle part
     complex<double> complexHam1(0., 0.); // above ratio without complex projection
@@ -251,8 +252,11 @@ struct JastrowMultiSlater {
         complexRefOverlapRatio = walk.getDetFactorComplex(I, A, ref); // ratio without complex projection
         intermediate.row(tableIndexi) += tia * jia * walk.walker.refHelper.rtc_b.row(tableIndexa);
         ovlpRatio = jia * (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | psi_0 > / < n | psi_0 >
+        //ovlpRatio = (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | phi_0 > / < n | phi_0 >
         ham1 += tia * ovlpRatio;
+        //ham1 += tia * jia * j_n * ovlpRatio;
         complexHam1 += tia * jia * complexRefOverlapRatio;
+        //complexHam1 += tia * jia * j_n * complexRefOverlapRatio;
       }
       else {
         int tableIndexi, tableIndexa, tableIndexj, tableIndexb;
@@ -273,9 +277,12 @@ struct JastrowMultiSlater {
         jia = walk.walker.corrHelper.OverlapRatio(I, J, A, B, corr, walk.d, walk.d);
         complexRefOverlapRatio = walk.getDetFactorComplex(I, J, A, B, ref); // ratio without complex projection
         ovlpRatio = jia * (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | psi_0 > / < n | psi_0 >
+        //ovlpRatio = (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | phi_0 > / < n | phi_0 >
         h(tableIndexi, tableIndexj, tableIndexa, tableIndexb) = tia * jia; 
         ham2 += tia * ovlpRatio;
         complexHam2 += tia * jia * complexRefOverlapRatio;
+        //ham2 += tia * jia * j_n * ovlpRatio;
+        //complexHam2 += tia * jia * j_n * complexRefOverlapRatio;
       }
       //double ovlpRatio = jia * walk.getDetFactor(I, A, ref);  // < m | psi_0 > / < n | psi_0 >
       
@@ -569,6 +576,147 @@ struct JastrowMultiSlater {
     ciIterationTime += (getTime() - initTime);
     ham += (locES1 + locES2);
     ham *= ratio;
+  }
+  
+  // this needs to be cleaned up, some of the necessary functions already exist
+  // only single excitations for now
+  void HamAndOvlpSingle(const JastrowMultiSlaterWalker &walk,
+                  double &ovlp, double &ham, 
+                  workingArray& work, bool fillExcitations=true) 
+  {
+    int norbs = Determinant::norbs;
+    int nelec = Determinant::nalpha + Determinant::nbeta;
+    int nholes = 2*norbs - nelec;
+
+    double refOverlap = walk.walker.refHelper.refOverlap.real(); // < n | phi_0 > 
+    ovlp = corr.Overlap(walk.d) * refOverlap;  // < n | psi_0 > 
+    double ratio = walk.walker.refHelper.totalOverlap / refOverlap;  // < n | psi > / < n | psi_0 >
+    ham = walk.d.Energy(I1, I2, coreE) * ratio;
+    double ham1 = 0.; // < n | H' | psi_0 > / < n | psi_0 > , where H' indicates the one particle part
+    complex<double> complexHam1(0., 0.); // above ratio without complex projection
+
+
+    //Tensor<complex<double>, 4, RowMajor> h(nelec, nelec, 2*norbs, 2*norbs);
+    MatrixXcd intermediate = MatrixXcd::Zero(nelec, nholes);
+    intermediate.setZero();
+    work.setCounterToZero();
+    work.locNorm = ratio;  // < psi | psi > / < psi_0 | psi_0 > sample sqrt
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false); 
+  
+    //MatrixXcd intermediate = MatrixXcd::Zero(Determinant::nalpha + Determinant::nbeta, 2*norbs);
+    //loop over all the screened excitations
+    //if (schd.debug) cout << "eloc excitations\nphi0  d.energy " << ham << endl;
+    double initTime = getTime();
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+    
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+
+      double jia = 0.;
+      complex<double> complexRefOverlapRatio(0., 0.);
+      double ovlpRatio = 0.;
+      int tableIndexi, tableIndexa;
+      walk.walker.refHelper.getRelIndices(I/2, tableIndexi, A/2, tableIndexa, I%2);
+      jia =  walk.walker.corrHelper.OverlapRatio(I, A, corr, walk.d, walk.d);
+      complexRefOverlapRatio = walk.getDetFactorComplex(I, A, ref); // ratio without complex projection
+      intermediate.row(tableIndexi) += tia * jia * walk.walker.refHelper.rtc_b.row(tableIndexa);
+      ovlpRatio = jia * (complexRefOverlapRatio * walk.walker.refHelper.refOverlap).real() / refOverlap;  // < m | psi_0 > / < n | psi_0 >
+      ham1 += tia * ovlpRatio;
+      complexHam1 += tia * jia * complexRefOverlapRatio;
+      
+      //double ovlpRatio = jia * walk.getDetFactor(I, A, ref);  // < m | psi_0 > / < n | psi_0 >
+      
+      //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+      //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
+
+      if (schd.debug) cout << I << "  " << A <<  "  tia  " << tia << "  jia  " << jia << "  ovlpRatio  " << ovlpRatio << endl;
+
+      work.ovlpRatio[i] = ovlpRatio;
+    }
+    MatrixXcd s = walk.walker.refHelper.t * intermediate;
+ 
+    intermediateBuildTime += (getTime() - initTime);
+   
+
+    initTime = getTime();
+    double locES1 = ref.ciCoeffs[0] * ham1; // singles local energy
+    size_t count4 = 0;
+    for (int i = 1; i < ref.numDets; i++) {
+      int rank = ref.ciExcitations[i][0].size();
+      complex<double> laplaceDet1(0., 0.);
+      if (rank == 1) { 
+        laplaceDet1 = -s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]);
+      }
+      else if (rank == 2) { 
+        laplaceDet1 = -(s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1])
+                     - s(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * walk.walker.refHelper.tc(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0])
+                     + walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][0]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][1])
+                     - walk.walker.refHelper.tc(ref.ciExcitations[i][0][0], ref.ciExcitations[i][1][1]) * s(ref.ciExcitations[i][0][1], ref.ciExcitations[i][1][0]));
+      }
+      else if (rank == 3) {
+        Matrix3cd temp;
+        Matrix3cd tcSlice;
+        //igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
+        for (int mu = 0; mu < rank; mu++) 
+          for (int nu = 0; nu < rank; nu++) 
+            tcSlice(mu, nu) = walk.walker.refHelper.tc(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][nu]);
+        
+        for (int mu = 0; mu < rank; mu++) {
+          temp = tcSlice;
+          for (int t = 0; t < rank; t++) {
+            temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
+          }
+          laplaceDet1 -= temp.determinant();
+          
+        }
+      }
+      else if (rank == 4) {
+        Matrix4cd temp;
+        for (int mu = 0; mu < rank; mu++) {
+          temp = walk.walker.refHelper.tcSlice[count4];
+          for (int t = 0; t < rank; t++) {
+            temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
+          }
+          laplaceDet1 -= temp.determinant();
+        }
+        
+        count4++;
+      }
+      else {
+        MatrixXcd tcSlice = MatrixXcd::Zero(rank, rank);
+        //igl::slice(walk.walker.refHelper.tc, ref.ciExcitations[i][0], ref.ciExcitations[i][1], tcSlice);
+        for (int mu = 0; mu < rank; mu++) 
+          for (int nu = 0; nu < rank; nu++) 
+            tcSlice(mu, nu) = walk.walker.refHelper.tc(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][nu]);
+        
+        MatrixXcd temp = MatrixXcd::Zero(rank, rank);
+        for (int mu = 0; mu < rank; mu++) {
+          temp = tcSlice;
+          for (int t = 0; t < rank; t++) {
+            temp(mu, t) = s(ref.ciExcitations[i][0][mu], ref.ciExcitations[i][1][t]);
+          }
+          laplaceDet1 -= temp.determinant();
+        }
+      }
+      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + ref.ciParity[i] * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+    }
+    ciIterationTime += (getTime() - initTime);
+    ham += locES1;
+    ham *= ratio;
+  }
+
+  void HamAndOvlp(const JastrowMultiSlaterWalker &walk,
+                  double &ovlp, double &ham, 
+                  workingArray& work, bool fillExcitations=true) 
+  {
+    if (schd.Hamiltonian == HUBBARD) 
+      HamAndOvlpSingle(walk, ovlp, ham, work, fillExcitations);
+    else 
+      HamAndOvlpDouble(walk, ovlp, ham, work, fillExcitations);
   }
 
   
