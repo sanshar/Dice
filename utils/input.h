@@ -86,6 +86,7 @@ private:
       & fn_factor
       & nGeneration
       & excitationLevel
+      & normSampleThreshold
       & numActive
       & nciAct
       & sDiagShift
@@ -129,6 +130,7 @@ public:
   std::string determinantFile;
   int numResonants;
   bool ghfDets;
+  double normSampleThreshold;
   bool singleJastrow;
   bool readTransOrbs;
   int numPermutations;
@@ -211,6 +213,7 @@ public:
 
   //options for rbm
   int numHidden;
+
 };
 
 /**
@@ -282,6 +285,6 @@ void readDeterminants(std::string input, std::vector<Determinant>& determinants,
 void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 
-void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 #endif

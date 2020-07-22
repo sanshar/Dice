@@ -37,7 +37,7 @@ class ContinuousTime
   double cumT, cumT2;
   VectorXd grad_ratio;
   int nsample;
-  Statistics Stats, Stats2; //this is only used to calculate autocorrelation length
+  Statistics Stats, Stats2, multiEloc; //this is only used to calculate autocorrelation length
   Determinant bestDet;
   double bestOvlp;
   bool multiSlater;
@@ -81,11 +81,13 @@ class ContinuousTime
       cumOvlp += abs(work.ovlpRatio[i]);
       work.ovlpRatio[i] = cumOvlp;
     }
-    T = 1.0 / cumOvlp;
+    if (locNorm < schd.normSampleThreshold) T = 1.0 / cumOvlp;
+    else T = 0.;
     double nextDetRand = random() * cumOvlp;
     int nextDet = lower_bound(work.ovlpRatio.begin(), work.ovlpRatio.begin() + work.nExcitations, nextDetRand) - work.ovlpRatio.begin();
     cumT += T;
     cumT2 += T * T;
+    multiEloc.push_back(Eloc, locNorm, ovlp, walk->getDet(), T);
     walk->updateWalker(w->getRef(), w->getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
   }
 
@@ -125,32 +127,13 @@ class ContinuousTime
       Stats2.push_back(locNorm, T);
     }
   }
-  
+ 
   void FinishEnergy(double &Energy, double &stddev, double &rk)
   {
     Stats.Block();
     Stats2.Block();
     rk = Stats.BlockCorrTime();
     double rk2 = Stats2.BlockCorrTime();
-/*
-    if (commrank == 0)
-    {
-      Stats.WriteBlock();
-      cout << "Block rk:\t" << rk << endl;
-    }
-    Stats.CorrFunc();
-    rk = Stats.IntCorrTime();
-    if (commrank == 0)
-    {
-      Stats.WriteCorrFunc();
-      cout << "CorrFunc rk:\t" << rk << endl;
-    }
-    rk = calcTcorr(Stats.X);
-    if (commrank == 0)
-    {
-      cout << "OldCorrFunc rk:\t" << rk << endl;
-    }
-*/
     S1 /= cumT;
     S2 /= cumT;
 #ifndef SERIAL
@@ -181,6 +164,7 @@ class ContinuousTime
       MPI_Gather(&(energyProc), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
       Energy *= cumT;
       avgNorm *= cumT;
+      cumT2 = cumT; // this is being done to preserve cumT for the gradient average
       MPI_Allreduce(MPI_IN_PLACE, &Energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE, &avgNorm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       MPI_Allreduce(MPI_IN_PLACE, &cumT, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -196,6 +180,7 @@ class ContinuousTime
     double neff = commsize * (cumT * cumT) / cumT2;
     stddev = sqrt(rk * S1 / neff);
 #endif
+    if (schd.printLevel > 10) multiEloc.writeSamples(Energy, stddev, avgNorm);
   }
 
   void LocalGradient()
@@ -210,13 +195,24 @@ class ContinuousTime
     grad += T * (grad_ratio * Eloc / work.locNorm - grad) / cumT;
   }
 
+  // this function is tangled with the finisgenergy function, need to be called in sequence, should be combined 
   void FinishGradient(VectorXd &grad, VectorXd &grad_ratio_bar, const double &Energy)
   {
 #ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, (grad_ratio_bar.data()), grad_ratio_bar.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, (grad.data()), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    grad /= commsize;
-    grad_ratio_bar /= commsize;
+    if (commsize < 21) {
+      MPI_Allreduce(MPI_IN_PLACE, (grad_ratio_bar.data()), grad_ratio_bar.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, (grad.data()), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      grad /= commsize;
+      grad_ratio_bar /= commsize;
+    }
+    else {
+      grad *= cumT2;
+      grad_ratio_bar *= cumT2;
+      MPI_Allreduce(MPI_IN_PLACE, (grad_ratio_bar.data()), grad_ratio_bar.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, (grad.data()), grad.rows(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      grad /= cumT;
+      grad_ratio_bar /= cumT;
+    }
 #endif
     grad = (grad - Energy * grad_ratio_bar);
     grad /= avgNorm;

@@ -117,6 +117,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.seed = input.get("sampling.seed", getTime());
     schd.useLastDet = input.get("sampling.useLastDet", false);
     schd.useLogTime = input.get("sampling.useLogTime", false);
+    schd.normSampleThreshold = input.get("sampling.normSampleThreshold", 5.);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -428,7 +429,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
         std::array<VectorXi, 2> excitations;
         excitations[0] = des;
         excitations[1] = cre;
-        //if (cre.size()%2 != 0) continue;
+        //if (cre.size() > schd.ciTruncationLevel) continue;
         ciCoeffs.push_back(atof(tok[0].c_str()));
         ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
         ciExcitations.push_back(excitations);
@@ -439,15 +440,13 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
   if (commrank == 0) cout << "Rankwise number of excitations " << sizes.transpose() << endl << endl;
 }
 
-void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,
+void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs)
 {
   int norbs = Determinant::norbs;
   ifstream dump(input.c_str());
   bool isFirst = true;
   Determinant refDet;
-
-  std::vector<int> open;
 
   while (dump.good()) {
     std::string Line;
@@ -514,8 +513,8 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<s
         VectorXi desV = VectorXi::Zero(des.size());
         for (int i = 0; i < cre.size(); i++) {
           desV[i] = std::search_n(ref.begin(), ref.end(), 1, des[i]) - ref.begin();
-          //creV[i] = std::search_n(open.begin(), open.end(), 1, cre[i]) - open.begin();
-          creV[i] = cre[i];
+          creV[i] = std::search_n(open.begin(), open.end(), 1, cre[i]) - open.begin();
+          //creV[i] = cre[i];
         }
         std::array<VectorXi, 2> excitations;
         excitations[0] = desV;
