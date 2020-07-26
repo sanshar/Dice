@@ -52,37 +52,36 @@ int main(int argc, char** argv) {
   int n1 = ao_loc[shls[1]] - ao_loc[shls[0]]; 
   int n2 = ao_loc[shls[3]] - ao_loc[shls[2]]; 
   int n3 = ao_loc[shls[5]] - ao_loc[shls[4]];
-  //cout << n1<<"  "<<n2<<"  "<<n3<<endl;
+  cout << n1<<"  "<<n2<<"  "<<n3<<endl;
   
-  vector<double> integrals(n1*n2*n3, 0.0);
+  vector<double> integrals(n1*n2, 0.0);
   auto start = high_resolution_clock::now();
   auto stop = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>(stop - start);
 
 
   initPeriodic(&shls[0], &ao_loc[0], &atm[0], atm.size()/6,
-               &bas[0], bas.size()/8, &env[0],
+               &bas[0], bas.size()/8/2, &env[0],
                &Lattice[0]);
+  
   //basis.PrintAligned(cout, 8);
   cout << Lattice[0]<<"  "<<Lattice[1]<<"  "<<Lattice[2]<<endl;
   LatticeSum latsum(&Lattice[0]);
   cout << latsum.KLattice[0]<<"  "<<latsum.KLattice[3]<<"  "<<latsum.KLattice[4]<<endl;
 
-  int sh1 = 1, sh2 = 1;
+  int sh1 = 0, sh2 = 0;
+  //cout << basis.BasisShells[sh1].exponents[0]<<endl;
   //basis.BasisShells[sh1].exponents[0] = 20.; basis.BasisShells[sh2].exponents[0] = 20.;
   int nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
   int nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
 
-  for (int i = 0 ; i <basis.BasisShells.size(); i++) {
-    for (int j = 0 ; j <=i; j++) {
-      sh1 = i; sh2 = j;
-      nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
-      nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
-      EvalInt2e2c(&integrals[0], 1, nbas1, &basis.BasisShells[sh1],
-                  &basis.BasisShells[sh2], 1.0, false, latsum, Mem);
-    }
-  }
+  //CoulombKernel kernel;
+  OverlapKernel kernel;
+  //KineticKernel kernel;
   
+  EvalInt2e2c(&integrals[0], 1, nbas1, &basis.BasisShells[sh1],
+              &basis.BasisShells[sh2], 1.0, false, &kernel, latsum, Mem);
+
   for (int i=0; i<nbas1; i++) {
     for (int j=0; j<nbas2; j++)
       printf("%13.8f  ", integrals[i + j * nbas1]);
@@ -90,10 +89,38 @@ int main(int argc, char** argv) {
     //cout << boost::format("%9.4e" %(integrals[i + j * nbas1]))<<"  ";
     cout << endl;
   }
+  //exit(0);
+  start = high_resolution_clock::now();
+  int nbas = 0;
+  for (int i = 0 ; i <basis.BasisShells.size(); i++) {
+    nbas += basis.BasisShells[i].nCo * (2 * basis.BasisShells[i].l + 1);
+  }
 
+  int inbas = 0, jnbas = 0;
+  for (int i = 0 ; i <basis.BasisShells.size(); i++) {
+    sh1 = i;
+    nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
+    jnbas = 0;
+    for (int j = 0 ; j <=i; j++) {
+      sh2 = j;
+      nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
+      EvalInt2e2c(&integrals[inbas + jnbas * nbas], 1, nbas, &basis.BasisShells[sh1],
+                  &basis.BasisShells[sh2], 1.0, false, &kernel, latsum, Mem);
+      jnbas += nbas2;
+    }
+    inbas += nbas1;
+  }
+
+  for (int i=0; i<nbas; i++)
+    for (int j=i+1; j<nbas; j++) {
+      integrals[i + j*nbas] = integrals[j +i*nbas];
+    }
   stop = high_resolution_clock::now();
   duration = duration_cast<microseconds>(stop - start);
   cout <<"Executation time: "<< duration.count()/1e6 << endl;
+
+  vector<double> ovlp;
+  readFile(ovlp, "kin.npy");
   exit(0);
   /*
   */
