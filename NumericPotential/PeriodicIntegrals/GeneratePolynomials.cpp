@@ -16,11 +16,11 @@ double getHermiteReciprocal(int l, double* pOut,
     return 1.0;
   }
   else if (l == 1) {
-    double SinVal = -sin((Gx * Tx + Gy * Ty + Gz * Tz)) * ExpVal;
-    pOut[0] += Scale * (Gx) * SinVal;
-    pOut[1] += Scale * (Gy) * SinVal;
-    pOut[2] += Scale * (Gz) * SinVal;
-    return std::max(Gx, std::max(Gy, Gz));
+    double SinVal = -sin((Gx * Tx + Gy * Ty + Gz * Tz)) * ExpVal * Scale;
+    pOut[0] += (Gx) * SinVal;
+    pOut[1] += (Gy) * SinVal;
+    pOut[2] += (Gz) * SinVal;
+    return std::max(std::abs(Gx), std::max(std::abs(Gy), std::abs(Gz)));
   }
   else if (l == 2) {
     double CosVal = -cos((Gx * Tx + Gy * Ty + Gz * Tz)) * ExpVal * Scale;
@@ -44,7 +44,7 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[7] +=  SinVal * Gx * Gx * Gz; //2 0 1
     pOut[8] +=  SinVal * Gy * Gy * Gz; //0 2 1
     pOut[9] +=  SinVal * Gx * Gy * Gz; //1 1 1
-    return std::max(Gx*Gx*Gx, std::max(Gy*Gy*Gy, Gz*Gz*Gz));
+    return std::max(std::abs(Gx*Gx*Gx), std::max(std::abs(Gy*Gy*Gy), std::abs(Gz*Gz*Gz)));
   }
   else if (l == 4) {
     double Gx0=1., Gx1, Gx2, Gx3, Gx4;
@@ -69,7 +69,7 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 12 ]+= Cosval * Gx1 * Gy1 * Gz2;
     pOut[ 13 ]+= Cosval * Gx1 * Gy2 * Gz1;
     pOut[ 14 ]+= Cosval * Gx2 * Gy1 * Gz1;
-    return std::max(Gx4, std::max(Gy4, Gz4));
+    return std::max(std::abs(Gx4), std::max(std::abs(Gy4), std::abs(Gz4)));
   }
   else if (l == 5) {
     double Gx0=1., Gx1, Gx2, Gx4, Gx3, Gx5;
@@ -100,7 +100,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 18 ]+= Sinval * Gx1 * Gy2 * Gz2;
     pOut[ 19 ]+= Sinval * Gx2 * Gy1 * Gz2;
     pOut[ 20 ]+= Sinval * Gx2 * Gy2 * Gz1;
-    return std::max(Gx5, std::max(Gy5, Gz5));
+    return std::max(std::abs(Gx5), std::max(std::abs(Gy5), std::abs(Gz5)));
+    //return std::max(Gx5, std::max(Gy5, Gz5));
   }
   else if (l == 6) {
     double Gx0=1., Gx1, Gx2, Gx4, Gx3, Gx5, Gx6;
@@ -141,7 +142,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 25 ]+= Cosval * Gx2 * Gy3 * Gz1;
     pOut[ 26 ]+= Cosval * Gx2 * Gy1 * Gz3;
     pOut[ 27 ]+= Cosval * Gx2 * Gy2 * Gz2;
-    return std::max(Gx6, std::max(Gy6, Gz6));
+    return std::max(std::abs(Gx6), std::max(std::abs(Gy6), std::abs(Gz6)));
+    //return std::max(Gx6, std::max(Gy6, Gz6));
   }
   else if (l == 7) {
     double Gx0=1., Gx1, Gx2, Gx4, Gx3, Gx5, Gx6, Gx7;
@@ -187,7 +189,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 33 ]+= Sinval * Gx3 * Gy2 * Gz2;
     pOut[ 34 ]+= Sinval * Gx2 * Gy3 * Gz2;
     pOut[ 35 ]+= Sinval * Gx2 * Gy2 * Gz3;
-    return std::max(Gx7, std::max(Gy7, Gz7));
+    return std::max(std::abs(Gx7), std::max(std::abs(Gy7), std::abs(Gz7)));
+    //return std::max(Gx7, std::max(Gy7, Gz7));
   }
   else if (l == 8) {
     double Gx0=1., Gx1, Gx2, Gx4, Gx3, Gx5, Gx6, Gx7, Gx8;
@@ -307,7 +310,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 52 ]+= Sinval * Gx4 * Gy2 * Gz3;
     pOut[ 53 ]+= Sinval * Gx2 * Gy4 * Gz3;
     pOut[ 54 ]+= Sinval * Gx3 * Gy3 * Gz3;
-    return std::max(Gx9, std::max(Gy9, Gz9));
+    return std::max(std::abs(Gx9), std::max(std::abs(Gy9), std::abs(Gz9)));
+    //return std::max(Gx9, std::max(Gy9, Gz9));
     
   }
   else if (l == 10) {
@@ -384,7 +388,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 63 ]+= Cosval * Gx3 * Gy3 * Gz4;
     pOut[ 64 ]+= Cosval * Gx3 * Gy4 * Gz3;
     pOut[ 65 ]+= Cosval * Gx4 * Gy3 * Gz3;
-    return std::max(Gx10, std::max(Gy10, Gz10));
+    return std::max(std::abs(Gx10), std::max(std::abs(Gy10), std::abs(Gz10)));
+    //return std::max(Gx10, std::max(Gy10, Gz10));
     
   }
   else if (l == 11) {
@@ -473,7 +478,8 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 75 ]+= Sinval * Gx3 * Gy4 * Gz4;
     pOut[ 76 ]+= Sinval * Gx4 * Gy3 * Gz4;
     pOut[ 77 ]+= Sinval * Gx4 * Gy4 * Gz3;
-    return std::max(Gx11, std::max(Gy11, Gz11));
+    return std::max(std::abs(Gx11), std::max(std::abs(Gy11), std::abs(Gz11)));
+    //return std::max(Gx11, std::max(Gy11, Gz11));
     
   }
   else if (l == 12) {
