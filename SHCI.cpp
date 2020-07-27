@@ -49,7 +49,6 @@
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
-#include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"
 #include "communicate.h"
@@ -58,6 +57,7 @@
 MatrixXd symmetry::product_table;
 #include <algorithm>
 #include <boost/bind.hpp>
+#include "cdfci.h"
 
 // Initialize
 using namespace Eigen;
@@ -122,8 +122,8 @@ void license(char* argv[]) {
   printf("PID:              %d\n", getpid());
   pout << endl;
   printf("Path:             %s\n", argv[0]);
-  printf("Commit:           %s\n", git_commit);
-  printf("Branch:           %s\n", git_branch);
+  //printf("Commit:           %s\n", git_commit);
+  //printf("Branch:           %s\n", git_branch);
   printf("Compilation Date: %s %s\n", __DATE__, __TIME__);
   // printf("Cores:            %s\n","TODO");
 }
@@ -213,18 +213,6 @@ int main(int argc, char* argv[]) {
     exit(0);
   }
 
-  // LCC
-  if (schd.doLCC) {
-    // no nact was given in the input file
-    if (schd.nact == 1000000)
-      schd.nact = norbs - schd.ncore;
-    else if (schd.nact + schd.ncore > norbs) {
-      pout << "core + active orbitals = " << schd.nact + schd.ncore;
-      pout << " greater than orbitals " << norbs << endl;
-      exit(0);
-    }
-  }
-
   // Setup the lexical table for the determinants
   norbs *= 2;
   Determinant::norbs = norbs;  // spin orbitals
@@ -308,7 +296,7 @@ int main(int argc, char* argv[]) {
   // Check and make sure that
 
   symmetry molSym(schd.pointGroup, irrep);
-
+/*
   if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
       molSym.init_success) {
     vector<Determinant> tempDets(Dets);
@@ -359,7 +347,7 @@ int main(int argc, char* argv[]) {
     pout << "Skipping Ref. Determinant Search for pointgroup "
          << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
   }  // End if (Search for Ref. Det)
-
+*/
   schd.HF = Dets[0];
 
   if (commrank == 0) {
@@ -382,8 +370,9 @@ int main(int argc, char* argv[]) {
   pout << "**************************************************************"
        << endl;
 
-  vector<double> E0 = SHCIbasics::DoVariational(
+  vector<double> E0 = cdfci::DoVariational(
       ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+  exit(0);
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
@@ -572,19 +561,7 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
     // SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
     return 0;
 #endif
-  } else if (schd.doLCC) {
-    log_pt(schd);
-#ifndef Complex
-    for (int root = 0; root < schd.nroots; root++) {
-      CItype* ciroot;
-      SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
-      LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
-                 schd, coreE, nelec, root);
-    }
-#else
-    pout << " Not for Complex" << endl;
-#endif
-  } else if (!schd.stochastic && schd.nblocks == 1) {
+  }  else if (!schd.stochastic && schd.nblocks == 1) {
     log_pt(schd);
     double ePT = 0.0;
     std::string efile;
@@ -755,10 +732,10 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
         schd.restart = false;
         schd.fullrestart = false;
         schd.DoRDM = false;
-        E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
+        E0 = cdfci::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
                                        coreE, nelec, false);
         var[iter + 1] = E0[0];
-
+        exit(0);
         DetsSize = Dets.size();
 #ifndef SERIAL
         mpi::broadcast(world, DetsSize, 0);
