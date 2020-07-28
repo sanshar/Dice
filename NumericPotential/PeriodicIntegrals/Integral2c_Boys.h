@@ -4,22 +4,8 @@
 #include "Kernel.h"
 
 class BasisShell;
+class LatticeSum;
 
-
-struct LatticeSum {
-
-  double RVolume, KVolume;
-  vector<double> RLattice, KLattice;
-  
-  vector<double> Rcoord;
-  vector<double> Rdist;
-
-  vector<double> Kcoord;
-  vector<double> Kdist;
-
-  double Eta2Rho;
-  LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho=15.0);
-};
 
 double calcCoulombIntegralPeriodic_Boys(int n1, double Ax, double Ay, double Az,
                                         double expA, double normA,
@@ -33,7 +19,7 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
                            double Tx, double Ty, double Tz,
                            double PrefactorExt, double* pInv2Alpha, double* pInv2Gamma,
                            Kernel* kernel,
-                           LatticeSum& latsum, int rindex, ct::FMemoryStack &Mem);
+                           LatticeSum& latsum, ct::FMemoryStack &Mem);
 
 void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
                        BasisShell *pC, double Tx, double Ty, double Tz,

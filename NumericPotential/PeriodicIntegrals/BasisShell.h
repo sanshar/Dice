@@ -49,6 +49,7 @@ struct BasisSet
     }
     xout << endl;
   }
+  int getNbas();
 };
 
 double RawGaussNorm(double fExp, unsigned l);

@@ -11,62 +11,10 @@
 #include "IrBoysFn.h"
 #include "BasisShell.h"
 #include "Integral2c_Boys.h"
+#include "LatticeSum.h"
 
 using namespace std;
 using namespace ir;
-
-double dotProduct(double* vA, double* vB) {
-  return vA[0] * vB[0] + vA[1] * vB[1] + vA[2] * vB[2];
-};
-
-void crossProduct(double* v_A, double* v_B, double* c_P, double factor=1.) {
-  c_P[0] = factor * (v_A[1] * v_B[2] - v_A[2] * v_B[1]);
-  c_P[1] = -factor * (v_A[0] * v_B[2] - v_A[2] * v_B[0]);
-  c_P[2] = factor * (v_A[0] * v_B[1] - v_A[1] * v_B[0]);
-};
-
-double getKLattice(double* KLattice, double* Lattice) {
-  vector<double> cross(3);
-  crossProduct(&Lattice[3], &Lattice[6], &cross[0]);
-  double Volume = dotProduct(&Lattice[0], &cross[0]);
-  
-  crossProduct(&Lattice[3], &Lattice[6], &KLattice[0], 2*M_PI/Volume);
-  crossProduct(&Lattice[6], &Lattice[0], &KLattice[3], 2*M_PI/Volume);
-  crossProduct(&Lattice[0], &Lattice[3], &KLattice[6], 2*M_PI/Volume);
-  return Volume;
-};
-
-double dist(double a, double b, double c) {
-  return a*a + b*b + c*c;
-}
-
-void getRelativeCoords(BasisShell *pA, BasisShell *pC, LatticeSum& latsum,
-                       double& Tx, double& Ty, double& Tz) {
-  double Txmin = pA->Xcoord - pC->Xcoord,
-      Tymin = pA->Ycoord - pC->Ycoord,
-      Tzmin = pA->Zcoord - pC->Zcoord;
-  Tx = Txmin; Ty = Tymin; Tz = Tzmin;
-
-  if (Txmin == 0 && Tymin == 0 && Tzmin == 0) {
-    return;
-  }
-
-  for (int nx=-1; nx<=1; nx++)
-  for (int ny=-1; ny<=1; ny++)
-  for (int nz=-1; nz<=1; nz++)
-  {
-    if (dist(Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[3] + nz * latsum.RLattice[6],
-             Ty + nx * latsum.RLattice[1] + ny * latsum.RLattice[4] + nz * latsum.RLattice[7],
-             Tz + nx * latsum.RLattice[2] + ny * latsum.RLattice[5] + nz * latsum.RLattice[8])
-        < dist(Txmin, Tymin, Tzmin))  {
-      Txmin = Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[3] + nz * latsum.RLattice[6];
-      Tymin = Tx + nx * latsum.RLattice[1] + ny * latsum.RLattice[4] + nz * latsum.RLattice[7];
-      Tzmin = Tz + nx * latsum.RLattice[2] + ny * latsum.RLattice[5] + nz * latsum.RLattice[8];
-    }
-  }
-
-  Tx = Txmin; Ty = Tymin; Tz = Tzmin;
-}
 
 
 void Add2(double * pOut, double const * pIn, double f, size_t n)
@@ -90,101 +38,6 @@ void Add2(double * pOut, double const * pIn, double f, size_t n)
 }
 
 
-LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho) {
-  
-  //int nr = 1, nk = 10;
-  int ir = 0; int Nr = 2*nr+1;
-  vector<double> Rcoordcopy(3*Nr*Nr*Nr), Rdistcopy(Nr*Nr*Nr);
-
-  int Nrkeep =  Nr*Nr*Nr;
-  Rcoord.resize(3*Nrkeep);
-  Rdist.resize(Nrkeep);
-
-  //rvals
-  for (int i = -nr; i<=nr ; i++)
-  for (int j = -nr; j<=nr ; j++)
-  for (int k = -nr; k<=nr ; k++) {
-    Rcoordcopy[3*ir+0] = i * Lattice[0] + j * Lattice[3] + k * Lattice[6];
-    Rcoordcopy[3*ir+1] = i * Lattice[1] + j * Lattice[4] + k * Lattice[7];
-    Rcoordcopy[3*ir+2] = i * Lattice[2] + j * Lattice[5] + k * Lattice[8];
-
-    Rdistcopy[ir] = Rcoordcopy[3*ir+0] * Rcoordcopy[3*ir+0]
-        +  Rcoordcopy[3*ir+1] * Rcoordcopy[3*ir+1]
-        +  Rcoordcopy[3*ir+2] * Rcoordcopy[3*ir+2];
-    ir++;
-  }
-  
-  //sort rcoord and rdist in ascending order
-  std::vector<int> idx(Nr*Nr*Nr);
-  std::iota(idx.begin(), idx.end(), 0);
-  std::stable_sort(idx.begin(), idx.end(),
-                   [&Rdistcopy](size_t i1, size_t i2) {return Rdistcopy[i1] < Rdistcopy[i2];});
-  for (int i=0; i<Nrkeep; i++) {
-    Rdist[i] = Rdistcopy[idx[i]];
-    Rcoord[3*i+0] = Rcoordcopy[3*idx[i]+0];
-    Rcoord[3*i+1] = Rcoordcopy[3*idx[i]+1];
-    Rcoord[3*i+2] = Rcoordcopy[3*idx[i]+2];
-  }
-
-  
-  //make klattice
-  KLattice.resize(9), RLattice.resize(9);
-  for (int i=0; i<9; i++) RLattice[i] = Lattice[i];
-  RVolume = getKLattice(&KLattice[0], Lattice);
-
-  int Nk = 2*nk +1;
-  vector<double> Kcoordcopy(3*(Nk*Nk*Nk-1)), Kdistcopy(Nk*Nk*Nk-1);
-  Kcoord.resize(3 * (Nk*Nk*Nk-1));
-  Kdist.resize(Nk*Nk*Nk-1);
-
-  ir = 0;
-  //kvals
-  for (int i = -nk; i<=nk ; i++)
-  for (int j = -nk; j<=nk ; j++)
-  for (int k = -nk; k<=nk ; k++) {
-    if (i == 0 && j == 0 && k == 0) continue;
-    Kcoordcopy[3*ir+0] = i * KLattice[0] + j * KLattice[3] + k * KLattice[6];
-    Kcoordcopy[3*ir+1] = i * KLattice[1] + j * KLattice[4] + k * KLattice[7];
-    Kcoordcopy[3*ir+2] = i * KLattice[2] + j * KLattice[5] + k * KLattice[8];
-
-    Kdistcopy[ir] = Kcoordcopy[3*ir+0] * Kcoordcopy[3*ir+0]
-                 +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
-                 +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
-
-    ir++;
-  }
-
-  idx.resize(Nk*Nk*Nk-1);
-  std::iota(idx.begin(), idx.end(), 0);
-  std::stable_sort(idx.begin(), idx.end(),
-                   [&Kdistcopy](size_t i1, size_t i2) {return Kdistcopy[i1] < Kdistcopy[i2];});
-  
-  for (int i=0; i<idx.size(); i++) {
-    Kdist[i] = Kdistcopy[idx[i]];
-    Kcoord[3*i+0] = Kcoordcopy[3*idx[i]+0];
-    Kcoord[3*i+1] = Kcoordcopy[3*idx[i]+1];
-    Kcoord[3*i+2] = Kcoordcopy[3*idx[i]+2];
-  }
-
-  //_Eta2Rho = 5.;
-  //Eta2Rho = _Eta2Rho;
-  //Eta2Rho = _Eta2Rho * Kdist[0]/4/M_PI/M_PI;
-  Eta2Rho  = _Eta2Rho / (nr==0 ? 1 : Rdist[1]) ;
-  cout << Eta2Rho<<" eta2 "<<_Eta2Rho<<"  "<<Kdist[0]<<"  "<<Rdist[1]<<endl;
-
-
-  //cout << omega<<"  "<<_Eta2Rho<<endl;
-  //one can check the error if the real summation is truncated at n=1 (this is conservative)
-  //with the given Eta2Rho
-  /*
-  double boys, boyseta;
-  IrBoysFn(&boys, 2.* Rdist[1] * (Eta2Rho+1.), 0, 1.);
-  IrBoysFn(&boyseta, 2 * Rdist[1] * Eta2Rho, 0, 1.);
-  double error = boys - sqrt(Eta2Rho/(Eta2Rho+1)) * boyseta;
-  cout << Eta2Rho<<"  "<<_Eta2Rho<<"  "<<Rdist[1]<<"  "<<error<<endl;
-  */
-}
-
 
 // output: contracted kernels Fm(rho,T), format: (TotalL+1) x nCoA x nCoC
 void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
@@ -192,16 +45,14 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
                            double Tx, double Ty, double Tz,
                            double PrefactorExt, double* pInv2Alpha, double* pInv2Gamma,
                            Kernel* kernel,
-                           LatticeSum& latsum, int rindex, ct::FMemoryStack &Mem)
+                           LatticeSum& latsum, ct::FMemoryStack &Mem)
 {  
   double t = Tx*Tx + Ty*Ty + Tz*Tz;
   double *pFmT;
   Mem.Alloc(pFmT, TotalL + 1); // FmT for current primitive.
 
-  int kernelIdx = 0;//coulomb
-  if (kernel->getname().compare("overlap") == 0) kernelIdx = 1;//overlap
-  else if (kernel->getname().compare("kinetic") == 0) kernelIdx = 2;//kinetic
-
+  double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
+  
   // loop over primitives (that's all the per primitive stuff there is)
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
@@ -220,12 +71,12 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
     
     //If eta is smaller than desiredrho then no contribution from real space
     double eta = 1.0;
-    if (Rho <= latsum.Eta2Rho) continue;
+    if (Rho <= Eta2Rho) continue;
     else {
-      eta = sqrt(latsum.Eta2Rho/Rho);
+      eta = sqrt(Eta2Rho/Rho);
     }
 
-    if (Rho > latsum.Eta2Rho &&  kernelIdx != 0) eta = 1.0;
+    if (Rho > Eta2Rho &&  kernel->getname() != coulombKernel) eta = 1.0;
 
     // calculate derivatives (D/Dt)^m exp(-rho t) with t = (A-C)^2.
     kernel->getValueRSpace(pFmT, Rho*t, TotalL, Prefactor, Rho, eta, Mem);
@@ -239,6 +90,8 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
       RhoPow *= -2*Rho;
     }
 
+    if (pFmT[TotalL+1] < 1.e-12) continue;
+    
     // contract (lamely). However, normally either nCo
     // or nFn, or TotalL (or even all of them at the same time)
     // will be small, so I guess it's okay.
@@ -261,22 +114,29 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   
   double* pOutR_loc, *pCoFmT, *pDataR_LapC;
 
-  bool isKinetic = kernel->getname().compare("kinetic") == 0 ? true : false;
-  int L = TotalLab +  (isKinetic? 2 : 0);
+  int L = TotalLab +  (kernel->getname() == kineticKernel ? 2 : 0);
 
   Mem.ClearAlloc(pOutR_loc, (TotalLab+1)*(TotalLab+2)/2 * TotalCo);
   Mem.ClearAlloc(pDataR_LapC, (L+1)*(L+2)/2);
-
-
+  
+  size_t *Tidx; //indexed such that T will increase
+  latsum.getIncreasingIndex(Tidx, Tx, Ty, Tz, Mem);
+  
   for (int r = 0; r<latsum.Rdist.size(); r++) {
+
+    double Tx_r = Tx + latsum.Rcoord[3*Tidx[r]+0],
+           Ty_r = Ty + latsum.Rcoord[3*Tidx[r]+1],
+           Tz_r = Tz + latsum.Rcoord[3*Tidx[r]+2];
+    /*
     double Tx_r = Tx + latsum.Rcoord[3*r+0],
            Ty_r = Ty + latsum.Rcoord[3*r+1],
            Tz_r = Tz + latsum.Rcoord[3*r+2];
+    */
 
     
     Mem.ClearAlloc(pCoFmT, (L+1) * TotalCo);
     Int2e2c_EvalCoKernels(pCoFmT, L, pA, pC, Tx_r, Ty_r, Tz_r, Prefactor,
-                          pInv2Alpha, pInv2Gamma, kernel, latsum, r, Mem);
+                          pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
 
 
     //go from [0]^m -> [r]^0 using mcmurchie-davidson
@@ -287,7 +147,7 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
           *pFmT = &pCoFmT[(L+1) * (iCoA + pA->nCo*iCoC)],
           *pDataR_ = &pOutR_loc[nCartY(TotalLab) * (iCoA + pA->nCo*iCoC)];
     
-      if (isKinetic) {
+      if (kernel->getname() == kineticKernel) {
          ShellMdrr(pDataR_LapC, pFmT, Tx_r, Ty_r, Tz_r, L);
          ShellLaplace(pDataR_, pDataR_LapC, 1, L - 2);
       }
@@ -295,21 +155,22 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
         ShellMdrr(pDataR_, pFmT, Tx_r, Ty_r, Tz_r, L);
     }
 
-    //double maxPout = 0;
+    double maxPout = 0;
     for (int i=0; i<(TotalLab+1)*(TotalLab+2)/2 * TotalCo; i++) {
       pOutR[i] += pOutR_loc[i];
-      //maxPout = max(maxPout, abs(pOutR_loc[i]));
+      maxPout = max(maxPout, abs(pOutR_loc[i]));
       pOutR_loc[i] = 0.0; 
     }
     
     Mem.Free(pCoFmT);
-    //if (maxPout < 1.e-16) return;
+    if (maxPout < 1.e-12) {
+      break;
+    }
   }
 }
 
 void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Tx, double Ty, double Tz, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
 {
-  bool isKinetic = kernel->getname().compare("kinetic") == 0 ? true : false;
   int L = TotalLab ;
 
   int LA = pA->l, LC = pC->l;
@@ -317,15 +178,10 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
   //calcualte the reciprocal space contribution
   double background ;   
   double *pReciprocalSum;
-  Mem.Alloc(pReciprocalSum, (L+1)*(L+1)/2);
+  Mem.Alloc(pReciprocalSum, (L+1)*(L+2)/2);
 
-  int kernelIdx = 0;//coulomb
-  if (kernel->getname().compare("overlap") == 0) kernelIdx = 1;//overlap
-  else if (kernel->getname().compare("kinetic") == 0) kernelIdx = 2;//kinetic
+  double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
 
-
-    //if (Eta2rho * latsum.Kdist[0] > 12.) continue;
-  //double Lx = 1.0, Ly = 1.0, Lz = 1.0;
   //now go back to calculating contribution from reciprocal space
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
@@ -336,27 +192,28 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
         InvEta = 1./(Alpha + Gamma),
         Rho = (Alpha * Gamma)*InvEta; // = (Alpha * Gamma)*/(Alpha + Gamma)
     
+    //if (Rho < latsum.Kdist[0]/120) continue;
     
-    double Eta = Rho <= latsum.Eta2Rho ? 1. : sqrt(latsum.Eta2Rho/Rho);
-    double Omega = Rho <= latsum.Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
+    double Eta = Rho <= Eta2Rho ? 1. : sqrt(Eta2Rho/Rho);
+    double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
     double Eta2rho = Eta * Eta * Rho;
 
     //coulomb kernel always includes reciprocal space summations
-    if (Rho > latsum.Eta2Rho && kernelIdx != 0) continue; 
-    else if (Rho <= latsum.Eta2Rho &&  kernelIdx != 0) Eta2rho = Rho;
+    if (Rho > Eta2Rho && kernel->getname() != coulombKernel) continue; 
+    else if (Rho <= Eta2Rho &&  kernel->getname() != coulombKernel) Eta2rho = Rho;
 
-    
     double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];    
-    if (kernelIdx == 0) scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
-    else if (kernelIdx == 1 || kernelIdx == 2) scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
+    if (kernel->getname() == coulombKernel) scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
+    else if (kernel->getname() != coulombKernel) scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
     
-    
+
+
     for (int i=0; i<(L+1)*(L+2)/2; i++)
       pReciprocalSum[i] = 0.0;
     
-
+    
     //this is ugly, in coulomb kernel the G=0 term is discarded but not in others
-    if (kernelIdx == 1) {
+    if (kernel->getname() == overlapKernel) {
       double expVal = kernel->getValueKSpace(0, 1.0, Eta2rho);
       double maxG = getHermiteReciprocal(L, pReciprocalSum,
                                          0., 0., 0., Tx, Ty, Tz, expVal, scale);
@@ -364,21 +221,22 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
     
     for (int k=0; k<latsum.Kdist.size(); k++) {
       double expVal = kernel->getValueKSpace(latsum.Kdist[k], 1.0, Eta2rho);
-
+      
       double maxG = getHermiteReciprocal(L, pReciprocalSum,
                                          latsum.Kcoord[3*k+0],
                                          latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
                                          Tx, Ty, Tz,
                                          expVal, scale);
-
+      
       if (abs(maxG * scale * expVal) < 1.e-12) {
         break;
       }
     }      
-
-
+    
+    
+    
     //the background term, only applies to coulomb kernel
-    if (!(Rho <= latsum.Eta2Rho) && LA == 0 && LC == 0 && kernelIdx == 0) {
+    if (!(Rho <= Eta2Rho) && LA == 0 && LC == 0 && kernel->getname() == coulombKernel) {
       pReciprocalSum[0] -= M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
           * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
     }
@@ -403,7 +261,7 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
 {
   //CHANGE THIS to minimum distance between A and periodic image of C
   double Tx, Ty, Tz;
-  getRelativeCoords(pA, pC, latsum, Tx, Ty, Tz);
+  latsum.getRelativeCoords(pA, pC, Tx, Ty, Tz);
   
   TotalCo = pA->nCo * pC->nCo;
   
@@ -413,7 +271,7 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   Mem.ClearAlloc(pOutR, (L+1)*(L+2)/2 * TotalCo);
   
   makeRealSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-
+  //return;
   makeReciprocalSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
 
   
