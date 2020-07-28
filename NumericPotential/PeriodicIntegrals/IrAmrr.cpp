@@ -1,4 +1,4 @@
-/* Copyright (c) 2012  Gerald Knizia
+/* Copyright (c) 2012-2020 Gerald Knizia
  * 
  * This file is part of the IR/WMME program
  * (See https://sites.psu.edu/knizia/)
@@ -13,10 +13,10 @@
  * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
- * along with bfint (LICENSE). If not, see http://www.gnu.org/licenses/
+ * along with ir/wmme (LICENSE). If not, see http://www.gnu.org/licenses/
  */
 
-/* IrAmrr.cpp v20150520 EST [storm, Gerald Knizia] */
+/* IrAmrr.cpp v20181231 EST [storm, Gerald Knizia] */
 #include <stddef.h> // for size_t
 #include "IrAmrr.h" // for cart_index_t, IR_RP, and assert
 
@@ -102,7 +102,7 @@ static const double sd49 = 4.5825756949558407;
 // Calculate (a0|0)^0 from [0]^m, for a = 0..lab, m = 0..lab (both inclusive).
 // PmA is P - A, PmQ is P - Q, InvEta is 1/Eta. See PCCP 6 5119 (2004) eq. 11.
 // Output is ordered as AngCompsFull(lab).
-void OsrrA(double * pOut, double * pGm, unsigned lab, double PmAx, double PmAy, double PmAz, double PmQx, double PmQy, double PmQz, double rho, double InvEta)
+void OsrrA(double *IR_RP pOut, double *IR_RP pGm, unsigned lab, double PmAx, double PmAy, double PmAz, double PmQx, double PmQy, double PmQz, double rho, double InvEta)
 {
    // m + lab == 0
    pOut[0] = pGm[0];
@@ -2133,12 +2133,12 @@ void OsrrA(double * pOut, double * pGm, unsigned lab, double PmAx, double PmAy, 
    // 3.38 steps per component, 2.23 kb stack
    if (lab == 14) return;
    // If you get here we ran out of angular momenta. Regenerate with larger Lab.
-   //assert(0);
+   assert(0);
 }
 
 // Cartesian -> Solid harmonic transforms: Transform a matrix
 // N x nCartY(l) to N x (2*l+1).
-static void ShTrC6(double * pOut, double const * pIn, size_t N)
+static void ShTrC6(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[N*0], z1 = pIn[N*1], z3 = pIn[N*3], z4 = pIn[N*4], z5 = pIn[N*5], z7 = pIn[N*7], z9 = pIn[N*9], za = pIn[N*10], zb = pIn[N*11], zc = pIn[N*12], zd = pIn[N*13], ze = pIn[N*14], zf = pIn[N*15], z10 = pIn[N*16], z11 = pIn[N*17], z13 = pIn[N*19], z14 = pIn[N*20], z15 = pIn[N*21], z16 = pIn[N*22], z17 = pIn[N*23], z18 = pIn[N*24], z19 = pIn[N*25], z1a = pIn[N*26], z1b = pIn[N*27];
@@ -2161,7 +2161,7 @@ static void ShTrC6(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC5(double * pOut, double const * pIn, size_t N)
+static void ShTrC5(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[N*0], z1 = pIn[N*1], z3 = pIn[N*3], z5 = pIn[N*5], z7 = pIn[N*7], z8 = pIn[N*8], z9 = pIn[N*9], za = pIn[N*10], zb = pIn[N*11], zc = pIn[N*12], zd = pIn[N*13], ze = pIn[N*14], zf = pIn[N*15], z10 = pIn[N*16], z12 = pIn[N*18], z13 = pIn[N*19], z14 = pIn[N*20];
@@ -2182,7 +2182,7 @@ static void ShTrC5(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC4(double * pOut, double const * pIn, size_t N)
+static void ShTrC4(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[N*0], z1 = pIn[N*1], z3 = pIn[N*3], z4 = pIn[N*4], z5 = pIn[N*5], z7 = pIn[N*7], z9 = pIn[N*9], za = pIn[N*10], zb = pIn[N*11], zd = pIn[N*13], ze = pIn[N*14];
@@ -2201,7 +2201,7 @@ static void ShTrC4(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC3(double * pOut, double const * pIn, size_t N)
+static void ShTrC3(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[N*0], z1 = pIn[N*1], z3 = pIn[N*3], z5 = pIn[N*5], z7 = pIn[N*7], z8 = pIn[N*8];
@@ -2218,7 +2218,7 @@ static void ShTrC3(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC2(double * pOut, double const * pIn, size_t N)
+static void ShTrC2(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[N*0], z1 = pIn[N*1];
@@ -2233,7 +2233,7 @@ static void ShTrC2(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC1(double * pOut, double const * pIn, size_t N)
+static void ShTrC1(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[N*0] = pIn[N*0];
@@ -2245,7 +2245,7 @@ static void ShTrC1(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC0(double * pOut, double const * pIn, size_t N)
+static void ShTrC0(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[N*0] = pIn[N*0];
@@ -2257,7 +2257,7 @@ static void ShTrC0(double * pOut, double const * pIn, size_t N)
 
 // Cartesian -> Solid harmonic transform: Transform a matrix
 // N x nCartY(l) to N x (2*l+1).
-void ShTrN(double * pOut, double const * pIn, size_t N, unsigned l)
+void ShTrN(double *IR_RP pOut, double const *IR_RP pIn, size_t N, unsigned l)
 {
    switch(l) {
       case 0: return ShTrC0(pOut, pIn, N);
@@ -2268,7 +2268,7 @@ void ShTrN(double * pOut, double const * pIn, size_t N, unsigned l)
       case 5: return ShTrC5(pOut, pIn, N);
       case 6: return ShTrC6(pOut, pIn, N);
    }
-   //assert(0);
+   assert(0);
 }
 
 // Calculate (a0|c)^m from (a0|c-1x)^{m+1}, for a = la..lab
@@ -2276,7 +2276,7 @@ void ShTrN(double * pOut, double const * pIn, size_t N, unsigned l)
 // fPmQi = PmQ[i] * rho/zeta_c; i2e = .5/eta_ABC = .5/(zeta_a + zeta_b + zeta_c)
 // note: the la is not for performance reasons (would likely make the actual recurrence
 //       slower for small lab) but for preventing overwriting lower components.
-static void OsrrB_KerM_x(double * pOut, double const * pIn, double fPmQx, unsigned la, unsigned lab, double i2e)
+static void OsrrB_KerM_x(double *IR_RP pOut, double const *IR_RP pIn, double fPmQx, unsigned la, unsigned lab, double i2e)
 {
    switch(la) {
    case 0:
@@ -2990,7 +2990,7 @@ static void OsrrB_KerM_x(double * pOut, double const * pIn, double fPmQx, unsign
       pOut[679] = fPmQx*pIn[679] + 4*i2e*pIn[556];
       if (lab == 14) return;
    }
-   //assert(0);
+   assert(0);
 }
 
 // Calculate (a0|c)^m from (a0|c-1y)^{m+1}, for a = la..lab
@@ -2998,7 +2998,7 @@ static void OsrrB_KerM_x(double * pOut, double const * pIn, double fPmQx, unsign
 // fPmQi = PmQ[i] * rho/zeta_c; i2e = .5/eta_ABC = .5/(zeta_a + zeta_b + zeta_c)
 // note: the la is not for performance reasons (would likely make the actual recurrence
 //       slower for small lab) but for preventing overwriting lower components.
-static void OsrrB_KerM_y(double * pOut, double const * pIn, double fPmQy, unsigned la, unsigned lab, double i2e)
+static void OsrrB_KerM_y(double *IR_RP pOut, double const *IR_RP pIn, double fPmQy, unsigned la, unsigned lab, double i2e)
 {
    switch(la) {
    case 0:
@@ -3712,7 +3712,7 @@ static void OsrrB_KerM_y(double * pOut, double const * pIn, double fPmQy, unsign
       pOut[679] = fPmQy*pIn[679] + 5*i2e*pIn[559];
       if (lab == 14) return;
    }
-   //assert(0);
+   assert(0);
 }
 
 // Calculate (a0|c)^m from (a0|c-1z)^{m+1}, for a = la..lab
@@ -3720,7 +3720,7 @@ static void OsrrB_KerM_y(double * pOut, double const * pIn, double fPmQy, unsign
 // fPmQi = PmQ[i] * rho/zeta_c; i2e = .5/eta_ABC = .5/(zeta_a + zeta_b + zeta_c)
 // note: the la is not for performance reasons (would likely make the actual recurrence
 //       slower for small lab) but for preventing overwriting lower components.
-static void OsrrB_KerM_z(double * pOut, double const * pIn, double fPmQz, unsigned la, unsigned lab, double i2e)
+static void OsrrB_KerM_z(double *IR_RP pOut, double const *IR_RP pIn, double fPmQz, unsigned la, unsigned lab, double i2e)
 {
    switch(la) {
    case 0:
@@ -4434,14 +4434,14 @@ static void OsrrB_KerM_z(double * pOut, double const * pIn, double fPmQz, unsign
       pOut[679] = fPmQz*pIn[679] + 5*i2e*pIn[558];
       if (lab == 14) return;
    }
-   //assert(0);
+   assert(0);
 }
 
 // Calculate (a0|c)^0 from (a0|0)^{m}, for a = la..lab
 // Output is [nCartX(lab) - nCartX(la-1)] x (2*lc+1). Input is nCartX(lab).
 // pMem must hold memory for nCartX(lab) x nCartX(lc) doubles.
 // InvEtaABC = 1/(ZetaA+ZetaB+ZetaC); PmQ = (P-Q); riz = rho/zeta_c
-void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsigned lab, unsigned lc, double fPmQx, double fPmQy, double fPmQz, double InvEtaABC, double riz)
+void OsrrB_3c_shc(double *IR_RP pOut, double const *IR_RP pIn, double *IR_RP pMem, int la, unsigned lab, unsigned lc, double fPmQx, double fPmQy, double fPmQz, double InvEtaABC, double riz)
 {
    size_t nCompA = nCartX(lab);
    size_t iCompA = nCartX(la-1);
@@ -4455,7 +4455,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          return;
       }
       case 1: {
-         double * pOut_ = pOut - iCompA;
+         double *IR_RP pOut_ = pOut - iCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pIn[0], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pIn[0], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pIn[0], fPmQz, la, lab, i2e);
@@ -4466,7 +4466,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          OsrrB_KerM_x(&pMem[ 0*nCompA], &pIn[0], fPmQx, la1, lab, i2e);
          OsrrB_KerM_y(&pMem[ 1*nCompA], &pIn[0], fPmQy, la1, lab, i2e);
          OsrrB_KerM_z(&pMem[ 2*nCompA], &pIn[0], fPmQz, la1, lab, i2e);
-         double * pOut_ = pMem + 3 * nCompA;
+         double *IR_RP pOut_ = pMem + 3 * nCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pMem[ 0*nCompA], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pMem[ 1*nCompA], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pMem[ 2*nCompA], fPmQz, la, lab, i2e);
@@ -4486,7 +4486,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          OsrrB_KerM_y(&pMem[ 4*nCompA], &pMem[ 1*nCompA], fPmQy, la1, lab, i2e);
          OsrrB_KerM_z(&pMem[ 5*nCompA], &pMem[ 2*nCompA], fPmQz, la1, lab, i2e);
          OsrrB_KerM_y(&pMem[ 6*nCompA], &pMem[ 2*nCompA], fPmQy, la1, lab, i2e);
-         double * pOut_ = pMem + 7 * nCompA;
+         double *IR_RP pOut_ = pMem + 7 * nCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pMem[ 3*nCompA], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pMem[ 4*nCompA], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pMem[ 5*nCompA], fPmQz, la, lab, i2e);
@@ -4516,7 +4516,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          OsrrB_KerM_x(&pMem[ 9*nCompA], &pMem[ 4*nCompA], fPmQx, la1, lab, i2e);
          OsrrB_KerM_y(&pMem[10*nCompA], &pMem[ 5*nCompA], fPmQy, la1, lab, i2e);
          OsrrB_KerM_z(&pMem[11*nCompA], &pMem[ 3*nCompA], fPmQz, la1, lab, i2e);
-         double * pOut_ = pMem + 12 * nCompA;
+         double *IR_RP pOut_ = pMem + 12 * nCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pMem[ 6*nCompA], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pMem[ 7*nCompA], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pMem[ 8*nCompA], fPmQz, la, lab, i2e);
@@ -4560,7 +4560,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          OsrrB_KerM_x(&pMem[17*nCompA], &pMem[ 9*nCompA], fPmQx, la1, lab, i2e);
          OsrrB_KerM_y(&pMem[18*nCompA], &pMem[10*nCompA], fPmQy, la1, lab, i2e);
          OsrrB_KerM_x(&pMem[19*nCompA], &pMem[10*nCompA], fPmQx, la1, lab, i2e);
-         double * pOut_ = pMem + 20 * nCompA;
+         double *IR_RP pOut_ = pMem + 20 * nCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pMem[11*nCompA], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pMem[12*nCompA], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pMem[13*nCompA], fPmQz, la, lab, i2e);
@@ -4620,7 +4620,7 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          OsrrB_KerM_y(&pMem[26*nCompA], &pMem[14*nCompA], fPmQy, la1, lab, i2e);
          OsrrB_KerM_z(&pMem[27*nCompA], &pMem[13*nCompA], fPmQz, la1, lab, i2e);
          OsrrB_KerM_x(&pMem[28*nCompA], &pMem[16*nCompA], fPmQx, la1, lab, i2e);
-         double * pOut_ = pMem + 29 * nCompA;
+         double *IR_RP pOut_ = pMem + 29 * nCompA;
          OsrrB_KerM_x(&pOut_[ 0*nCompA_Out], &pMem[17*nCompA], fPmQx, la, lab, i2e);
          OsrrB_KerM_y(&pOut_[ 1*nCompA_Out], &pMem[18*nCompA], fPmQy, la, lab, i2e);
          OsrrB_KerM_z(&pOut_[ 2*nCompA_Out], &pMem[19*nCompA], fPmQz, la, lab, i2e);
@@ -4653,20 +4653,20 @@ void OsrrB_3c_shc(double * pOut, double const * pIn, double * pMem, int la, unsi
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // Calculate (a0|c)^0 from (a0|0)^{m}, for a = la..lab
 // Output is [nCartX(lab) - nCartX(la-1)] x nCartY(lc). Input is nCartX(lab).
 // pMem must hold memory for nCartX(lab) x nCartX(lc) doubles.
 // InvEtaABC = 1/(ZetaA+ZetaB+ZetaC); PmQ = (P-Q); riz = rho/zeta_c
-void OsrrB_3c_cac(double * pOut, double const * pIn, double * pMem, int la, unsigned lab, unsigned lc, double fPmQx, double fPmQy, double fPmQz, double InvEtaABC, double riz)
+void OsrrB_3c_cac(double *IR_RP pOut, double const *IR_RP pIn, double *IR_RP pMem, int la, unsigned lab, unsigned lc, double fPmQx, double fPmQy, double fPmQz, double InvEtaABC, double riz)
 {
    size_t nCompA = nCartX(lab);
    size_t iCompA = nCartX(la-1);
    size_t nCompA_Out = nCompA - iCompA;
    double i2e = .5 * InvEtaABC;
-   double * pOut_ = pOut - iCompA;
+   double *IR_RP pOut_ = pOut - iCompA;
    fPmQx *= riz; fPmQy *= riz; fPmQz *= riz;
    switch(lc) {
       case 0: {
@@ -4862,7 +4862,7 @@ void OsrrB_3c_cac(double * pOut, double const * pIn, double * pMem, int la, unsi
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // cart_vec_t representations of the components in CartX(14)
@@ -10061,7 +10061,7 @@ static const cart_index_t iCartYY_ab14_a14[120] = {
 // indices for nCartX(lab-la) set of nCartY(la) monomials need to be input manually (via ii).
 // The actual parameters are thus: N == nSets (e.g., nCartX(lab-la)), ii: nCartY(la) x N integer array.
 // M: number of sets to transform (M could in principle be done as an outer loop over the function)
-void ShTrN_Indirect(double * pOut, size_t so, double const * pIn, size_t si, unsigned la, cart_index_t const *ii, size_t N, size_t M)
+void ShTrN_Indirect(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t si, unsigned la, cart_index_t const *ii, size_t N, size_t M)
 {
    switch(la) {
       case 0: {
@@ -10175,14 +10175,14 @@ void ShTrN_Indirect(double * pOut, size_t so, double const * pIn, size_t si, uns
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 
 // Factorize a matrix (nCartX(lab)-nCartX(a-1)) x M into nCartX(lab-la) x (2*la+1) x M. Now la < lb is also allowed.
-void ShTrA_XY(double * pOut, double const * pIn, unsigned la, unsigned lab, size_t M)
+void ShTrA_XY(double *IR_RP pOut, double const *IR_RP pIn, unsigned la, unsigned lab, size_t M)
 {
-   //assert(lab >= la);
+   assert(lab >= la);
    #define C_AB_A(lab,la) ((lab*(lab+1))/2 + la)
    switch(C_AB_A(lab,la)) {
       case C_AB_A( 0, 0): return ShTrN_Indirect(pOut,  1, pIn,   1, 0, &iCartXY_ab0_a0[0],  1, M); // case: 0
@@ -10257,14 +10257,14 @@ void ShTrA_XY(double * pOut, double const * pIn, unsigned la, unsigned lab, size
       case C_AB_A(12, 6): return ShTrN_Indirect(pOut,1092, pIn, 399, 6, &iCartXY_ab12_a6[0], 84, M); // case: 84
    }
    #undef C_AB_A
-   //assert(0);
+   assert(0);
 }
 
 
 // Factorize a matrix nCartX(lab) x M into nCartX(lab-la) x (2*la+1) x M. Now la < lb is also allowed.
-void ShTrA_XfY(double * pOut, double const * pIn, unsigned la, unsigned lab, size_t M)
+void ShTrA_XfY(double *IR_RP pOut, double const *IR_RP pIn, unsigned la, unsigned lab, size_t M)
 {
-   //assert(lab >= la);
+   assert(lab >= la);
    #define C_AB_A(lab,la) ((lab*(lab+1))/2 + la)
    switch(C_AB_A(lab,la)) {
       case C_AB_A( 0, 0): return ShTrN_Indirect(pOut,  1, pIn +  0,   1, 0, &iCartXY_ab0_a0[0],  1, M); // case: 0
@@ -10353,14 +10353,14 @@ void ShTrA_XfY(double * pOut, double const * pIn, unsigned la, unsigned lab, siz
       case C_AB_A(14, 6): return ShTrN_Indirect(pOut,2145, pIn + 56, 680, 6, &iCartXY_ab14_a6[0],165, M); // case: 111
    }
    #undef C_AB_A
-   //assert(0);
+   assert(0);
 }
 
 
 // Factorize a matrix nCartY(lab) x M into nCartY(lab-la) x (2*la+1) x M. Now la < lb also allowed.
-void ShTrA_YY(double * pOut, double const * pIn, unsigned la, unsigned lab, size_t M)
+void ShTrA_YY(double *IR_RP pOut, double const *IR_RP pIn, unsigned la, unsigned lab, size_t M)
 {
-   //assert(lab >= la);
+   assert(lab >= la);
    #define C_AB_A(lab,la) ((lab*(lab+1))/2 + la)
    switch(C_AB_A(lab,la)) {
       case C_AB_A( 0, 0): return ShTrN_Indirect(pOut,  1, pIn,   1, 0, &iCartYY_ab0_a0[0],  1, M); // case: 0
@@ -10485,12 +10485,12 @@ void ShTrA_YY(double * pOut, double const * pIn, unsigned la, unsigned lab, size
       case C_AB_A(14,14): return ShTrN_Indirect(pOut, 29, pIn, 120,14, &iCartYY_ab14_a14[0],  1, M); // case: 119
    }
    #undef C_AB_A
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians CartX[(x-A)^lb], centered at A, to solid harmoincs Slm(x-B), centered at B.
 // Input is nCartX(lb) x nCount, output is (2l+1); sa indexes Count, sb indexes Slm(x-B).
-void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
+void OsrrC(double *IR_RP pOut, size_t sa, size_t sb, double const *IR_RP p0Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
 {
    // About the prefetches: Yes, I am aware of the fact that they should be pointless, especially the ones
    // on lb=0 and lb=1. But DOES make a difference. On my dual Xeon E5-2687W v3 they increase integration
@@ -10500,9 +10500,9 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
    switch(lb) {
       case 0: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 1 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
+            double const *IR_RP pAx0 = p0Z + 1 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
             double a_000 = pAx0[0];
             // 1.00 steps per component, 0.01 kb stack
             pOut_[sb*0] = a_000;
@@ -10511,11 +10511,11 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 1: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 4 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
+            double const *IR_RP pAx0 = p0Z + 4 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double b_010 = AmBy*pAx0[0] + pAx0[2];
             double b_001 = AmBz*pAx0[0] + pAx0[3];
@@ -10528,13 +10528,13 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 2: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 10 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
+            double const *IR_RP pAx0 = p0Z + 10 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -10561,15 +10561,15 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 3: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 20 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
+            double const *IR_RP pAx0 = p0Z + 20 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -10629,17 +10629,17 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 4: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 35 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
+            double const *IR_RP pAx0 = p0Z + 35 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -10761,19 +10761,19 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 5: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 56 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
-            //IR_PREFETCH_W(&pOut_[sb*9]);
-            //IR_PREFETCH_W(&pOut_[sb*10]);
+            double const *IR_RP pAx0 = p0Z + 56 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
+            IR_PREFETCH_W(&pOut_[sb*9]);
+            IR_PREFETCH_W(&pOut_[sb*10]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -11010,21 +11010,21 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
       }
       case 6: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 84 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
-            //IR_PREFETCH_W(&pOut_[sb*9]);
-            //IR_PREFETCH_W(&pOut_[sb*10]);
-            //IR_PREFETCH_W(&pOut_[sb*11]);
-            //IR_PREFETCH_W(&pOut_[sb*12]);
+            double const *IR_RP pAx0 = p0Z + 84 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
+            IR_PREFETCH_W(&pOut_[sb*9]);
+            IR_PREFETCH_W(&pOut_[sb*10]);
+            IR_PREFETCH_W(&pOut_[sb*11]);
+            IR_PREFETCH_W(&pOut_[sb*12]);
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -11436,12 +11436,12 @@ void OsrrC(double * pOut, size_t sa, size_t sb, double const * p0Z, double AmBx,
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // Cartesian -> Solid harmonic transforms: Transform a matrix
 // nCartY(l) x N to N x (2*l+1).
-static void ShTrC6_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC6_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z11 = pIn[17], z13 = pIn[19], z14 = pIn[20], z15 = pIn[21], z16 = pIn[22], z17 = pIn[23], z18 = pIn[24], z19 = pIn[25], z1a = pIn[26], z1b = pIn[27];
@@ -11464,7 +11464,7 @@ static void ShTrC6_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC5_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC5_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z12 = pIn[18], z13 = pIn[19], z14 = pIn[20];
@@ -11485,7 +11485,7 @@ static void ShTrC5_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC4_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC4_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zd = pIn[13], ze = pIn[14];
@@ -11504,7 +11504,7 @@ static void ShTrC4_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC3_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC3_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8];
@@ -11521,7 +11521,7 @@ static void ShTrC3_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC2_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC2_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1];
@@ -11536,7 +11536,7 @@ static void ShTrC2_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC1_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC1_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[N*0] = pIn[0];
@@ -11548,7 +11548,7 @@ static void ShTrC1_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC0_TN(double * pOut, double const * pIn, size_t N)
+static void ShTrC0_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[N*0] = pIn[0];
@@ -11558,7 +11558,7 @@ static void ShTrC0_TN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC6_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC6_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z11 = pIn[17], z13 = pIn[19], z14 = pIn[20], z15 = pIn[21], z16 = pIn[22], z17 = pIn[23], z18 = pIn[24], z19 = pIn[25], z1a = pIn[26], z1b = pIn[27];
@@ -11581,7 +11581,7 @@ static void ShTrC6_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC5_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC5_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z12 = pIn[18], z13 = pIn[19], z14 = pIn[20];
@@ -11602,7 +11602,7 @@ static void ShTrC5_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC4_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC4_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zd = pIn[13], ze = pIn[14];
@@ -11621,7 +11621,7 @@ static void ShTrC4_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC3_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC3_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8];
@@ -11638,7 +11638,7 @@ static void ShTrC3_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC2_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC2_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1];
@@ -11653,7 +11653,7 @@ static void ShTrC2_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC1_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC1_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[so*0] = pIn[0];
@@ -11665,7 +11665,7 @@ static void ShTrC1_NsN(double * pOut, size_t so, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC0_NsN(double * pOut, size_t so, double const * pIn, size_t N)
+static void ShTrC0_NsN(double *IR_RP pOut, size_t so, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[so*0] = pIn[0];
@@ -11677,7 +11677,7 @@ static void ShTrC0_NsN(double * pOut, size_t so, double const * pIn, size_t N)
 
 // Cartesian -> Solid harmonic transform: Transform a matrix
 // nCartY(l) x N to N x (2*l+1).
-void ShTrN_TN(double * pOut, double const * pIn, size_t N, unsigned l)
+void ShTrN_TN(double *IR_RP pOut, double const *IR_RP pIn, size_t N, unsigned l)
 {
    switch(l) {
       case 0: return ShTrC0_TN(pOut, pIn, N);
@@ -11688,14 +11688,14 @@ void ShTrN_TN(double * pOut, double const * pIn, size_t N, unsigned l)
       case 5: return ShTrC5_TN(pOut, pIn, N);
       case 6: return ShTrC6_TN(pOut, pIn, N);
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians centered at A and multiplied by (2 ZetaA)^n, to 1st derivative integrals with respect to A at center A.
 // input p0Z: nCartX(lb-1) x nCount matrix of unscaled (a0| sets.
 // input p2Z: nCartX(lb+1) x nCount matrix of (2 ZetaA)^1-scaled (a0| sets.
 // output is nCartX(lb) x nCartY(la) x 3 x nCount, with middle dimension for derivatives x y z. Linear output, no strides.
-void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned lab, unsigned la, size_t nCount)
+void AmrrDerivA1(double *IR_RP pOut, double const *IR_RP p0Z, double const *IR_RP p2Z, unsigned lab, unsigned la, size_t nCount)
 {
    unsigned const
       lb = lab - la;
@@ -11704,7 +11704,7 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
    switch(la) {
       case 0: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+1)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+1)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[1*3];
@@ -11723,8 +11723,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 1: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+0)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+0)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+2)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[3*3];
@@ -11753,8 +11753,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 2: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+1)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+1)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+3)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[6*3];
@@ -11798,8 +11798,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 3: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+2)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+4)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[10*3];
@@ -11863,8 +11863,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 4: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+3)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+5)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[15*3];
@@ -11953,8 +11953,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 5: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+4)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+6)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+6)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[21*3];
@@ -12073,8 +12073,8 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
       }
       case 6: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+5)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+7)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+7)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[28*3];
@@ -12227,7 +12227,7 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians centered at A and multiplied by (2 ZetaA)^n, to 2nd derivative integrals with respect to A at center A.
@@ -12235,7 +12235,7 @@ void AmrrDerivA1(double * pOut, double const * p0Z, double const * p2Z, unsigned
 // input p2Z: nCartX(lb+0) x nCount matrix of (2 ZetaA)^1-scaled (a0| sets.
 // input p4Z: nCartX(lb+2) x nCount matrix of (2 ZetaA)^2-scaled (a0| sets.
 // output is nCartX(lb) x nCartY(la) x 6 x nCount, with middle dimension for derivatives xx yy zz xy xz yz. Linear output, no strides.
-void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double const * p4Z, unsigned lab, unsigned la, size_t nCount)
+void AmrrDerivA2(double *IR_RP pOut, double const *IR_RP p0Z, double const *IR_RP p2Z, double const *IR_RP p4Z, unsigned lab, unsigned la, size_t nCount)
 {
    unsigned const
       lb = lab - la;
@@ -12244,8 +12244,8 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
    switch(la) {
       case 0: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+0)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+0)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+2)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[1*6];
@@ -12274,8 +12274,8 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 1: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+1)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+1)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+3)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[3*6];
@@ -12328,9 +12328,9 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 2: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+0)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+2)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+0)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+4)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[6*6];
@@ -12422,9 +12422,9 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 3: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+1)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+3)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+1)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+5)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[10*6];
@@ -12570,9 +12570,9 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 4: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+2)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+4)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+6)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+6)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[15*6];
@@ -12787,9 +12787,9 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 5: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+3)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+5)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+7)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+7)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[21*6];
@@ -13088,9 +13088,9 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
       }
       case 6: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx0 = &p0Z[nCartX(lb+4)*ic];
-            double const * pAx1 = &p2Z[nCartX(lb+6)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+8)*ic];
+            double const *IR_RP pAx0 = &p0Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+6)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+8)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[28*6];
@@ -13487,14 +13487,14 @@ void AmrrDerivA2(double * pOut, double const * p0Z, double const * p2Z, double c
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians centered at A and multiplied by (2 ZetaA)^n, to 0th derivative integrals with respect to A at center A.
 // input p2Z: nCartX(lb+2) x nCount matrix of (2 ZetaA)^1-scaled (a0| sets.
 // input p4Z: nCartX(lb+4) x nCount matrix of (2 ZetaA)^2-scaled (a0| sets.
 // output is nCartX(lb) x nCartY(la) x 1 x nCount, with middle dimension for derivatives s. Linear output, no strides.
-void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigned lab, unsigned la, size_t nCount)
+void AmrrDerivA0L(double *IR_RP pOut, double const *IR_RP p2Z, double const *IR_RP p4Z, unsigned lab, unsigned la, size_t nCount)
 {
    unsigned const
       lb = lab - la;
@@ -13503,8 +13503,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
    switch(la) {
       case 0: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+0)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+0)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+2)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[1*1];
@@ -13522,8 +13522,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 1: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+1)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+1)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+3)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[3*1];
@@ -13551,8 +13551,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 2: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+2)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+2)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+4)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[6*1];
@@ -13592,8 +13592,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 3: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+3)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+3)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+5)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[10*1];
@@ -13647,8 +13647,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 4: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+4)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+6)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+4)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+6)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[15*1];
@@ -13719,8 +13719,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 5: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+5)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+7)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+5)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+7)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[21*1];
@@ -13811,8 +13811,8 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
       }
       case 6: {
          for (size_t ic = 0; ic < nCount; ++ ic) {
-            double const * pAx1 = &p2Z[nCartX(lb+6)*ic];
-            double const * pAx2 = &p4Z[nCartX(lb+8)*ic];
+            double const *IR_RP pAx1 = &p2Z[nCartX(lb+6)*ic];
+            double const *IR_RP pAx2 = &p4Z[nCartX(lb+8)*ic];
             for (size_t xb = 0; xb < nAcB; ++ xb) {
                cart_vec_t const *ivb = &iv2x[ix2v[xb]];
                double T[28*1];
@@ -13925,20 +13925,20 @@ void AmrrDerivA0L(double * pOut, double const * p2Z, double const * p4Z, unsigne
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians centered at A and multiplied by (2 ZetaB)^n, to 1st derivative integrals with respect to B at center B.
 // input p0Z: nCartX(lb-1) x nCount matrix of unscaled (a0| sets.
 // input p2Z: nCartX(lb+1) x nCount matrix of (2 ZetaB)^1-scaled (a0| sets.
 // output is (2lb+1) x 3 x nCount, with strides sb (for Slm(x-B)), sd (for derivatives x y z), and sa (for nCount).
-void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0Z, double const * p2Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
+void OsrrC_dB1(double *IR_RP pOut, size_t sa, size_t sb, size_t sd, double const *IR_RP p0Z, double const *IR_RP p2Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
 {
    switch(lb) {
       case 0: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 4 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx1 = p2Z + 4 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double b_010_1 = AmBy*pAx1[0] + pAx1[2];
             double b_001_1 = AmBz*pAx1[0] + pAx1[3];
@@ -13954,9 +13954,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 1: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 1 * ia;
-            double const * pAx1 = p2Z + 10 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 1 * ia;
+            double const *IR_RP pAx1 = p2Z + 10 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -13996,9 +13996,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 2: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 4 * ia;
-            double const * pAx1 = p2Z + 20 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 4 * ia;
+            double const *IR_RP pAx1 = p2Z + 20 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
@@ -14087,9 +14087,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 3: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 10 * ia;
-            double const * pAx1 = p2Z + 35 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 10 * ia;
+            double const *IR_RP pAx1 = p2Z + 35 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -14268,9 +14268,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 4: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 20 * ia;
-            double const * pAx1 = p2Z + 56 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 20 * ia;
+            double const *IR_RP pAx1 = p2Z + 56 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -14614,9 +14614,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 5: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 35 * ia;
-            double const * pAx1 = p2Z + 84 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 35 * ia;
+            double const *IR_RP pAx1 = p2Z + 84 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -15218,9 +15218,9 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 6: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 56 * ia;
-            double const * pAx1 = p2Z + 120 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 56 * ia;
+            double const *IR_RP pAx1 = p2Z + 120 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -16222,7 +16222,7 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians centered at A and multiplied by (2 ZetaB)^n, to 2nd derivative integrals with respect to B at center B.
@@ -16230,14 +16230,14 @@ void OsrrC_dB1(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
 // input p2Z: nCartX(lb+0) x nCount matrix of (2 ZetaB)^1-scaled (a0| sets.
 // input p4Z: nCartX(lb+2) x nCount matrix of (2 ZetaB)^2-scaled (a0| sets.
 // output is (2lb+1) x 6 x nCount, with strides sb (for Slm(x-B)), sd (for derivatives xx yy zz xy xz yz), and sa (for nCount).
-void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0Z, double const * p2Z, double const * p4Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
+void OsrrC_dB2(double *IR_RP pOut, size_t sa, size_t sb, size_t sd, double const *IR_RP p0Z, double const *IR_RP p2Z, double const *IR_RP p4Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
 {
    switch(lb) {
       case 0: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 1 * ia;
-            double const * pAx2 = p4Z + 10 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx1 = p2Z + 1 * ia;
+            double const *IR_RP pAx2 = p4Z + 10 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100_2 = AmBx*pAx2[0] + pAx2[1];
             double r_100_100_2 = AmBx*pAx2[1] + pAx2[4];
             double r_010_100_2 = AmBx*pAx2[2] + pAx2[7];
@@ -16274,9 +16274,9 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 1: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 4 * ia;
-            double const * pAx2 = p4Z + 20 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx1 = p2Z + 4 * ia;
+            double const *IR_RP pAx2 = p4Z + 20 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double b_100_2 = AmBx*pAx2[0] + pAx2[1];
             double r_100_100_2 = AmBx*pAx2[1] + pAx2[4];
@@ -16377,10 +16377,10 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 2: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 1 * ia;
-            double const * pAx1 = p2Z + 10 * ia;
-            double const * pAx2 = p4Z + 35 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 1 * ia;
+            double const *IR_RP pAx1 = p2Z + 10 * ia;
+            double const *IR_RP pAx2 = p4Z + 35 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -16595,10 +16595,10 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 3: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 4 * ia;
-            double const * pAx1 = p2Z + 20 * ia;
-            double const * pAx2 = p4Z + 56 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 4 * ia;
+            double const *IR_RP pAx1 = p2Z + 20 * ia;
+            double const *IR_RP pAx2 = p4Z + 56 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
@@ -17014,10 +17014,10 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 4: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 10 * ia;
-            double const * pAx1 = p2Z + 35 * ia;
-            double const * pAx2 = p4Z + 84 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 10 * ia;
+            double const *IR_RP pAx1 = p2Z + 35 * ia;
+            double const *IR_RP pAx2 = p4Z + 84 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -17745,10 +17745,10 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 5: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 20 * ia;
-            double const * pAx1 = p2Z + 56 * ia;
-            double const * pAx2 = p4Z + 120 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 20 * ia;
+            double const *IR_RP pAx1 = p2Z + 56 * ia;
+            double const *IR_RP pAx2 = p4Z + 120 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -18959,10 +18959,10 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
       }
       case 6: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx0 = p0Z + 35 * ia;
-            double const * pAx1 = p2Z + 84 * ia;
-            double const * pAx2 = p4Z + 165 * ia;
-            double * pOut_ = pOut + sa * ia;
+            double const *IR_RP pAx0 = p0Z + 35 * ia;
+            double const *IR_RP pAx1 = p2Z + 84 * ia;
+            double const *IR_RP pAx2 = p4Z + 165 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
             double b_100 = AmBx*pAx0[0] + pAx0[1];
             double r_100_100 = AmBx*pAx0[1] + pAx0[4];
             double r_010_100 = AmBx*pAx0[2] + pAx0[7];
@@ -20886,12 +20886,12 @@ void OsrrC_dB2(double * pOut, size_t sa, size_t sb, size_t sd, double const * p0
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // transform cartesians CartX[(x-A)^lb], centered at A, to solid harmoincs Slm(x-B), centered at B.
 // Input is nCartX(lb) x nCount, output is (2l+1); sa indexes Count, sb indexes Slm(x-B).
-void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double const * p4Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
+void OsrrC_dB0L(double *IR_RP pOut, size_t sa, size_t sb, double const *IR_RP p2Z, double const *IR_RP p4Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount)
 {
    // About the prefetches: Yes, I am aware of the fact that they should be pointless, especially the ones
    // on lb=0 and lb=1. But DOES make a difference. On my dual Xeon E5-2687W v3 they increase integration
@@ -20901,10 +20901,10 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
    switch(lb) {
       case 0: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 1 * ia;
-            double const * pAx2 = p4Z + 10 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
+            double const *IR_RP pAx1 = p2Z + 1 * ia;
+            double const *IR_RP pAx2 = p4Z + 10 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
             double b_100_2 = AmBx*pAx2[0] + pAx2[1];
             double r_100_100_2 = AmBx*pAx2[1] + pAx2[4];
             double b_010_2 = AmBy*pAx2[0] + pAx2[2];
@@ -20922,12 +20922,12 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 1: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 4 * ia;
-            double const * pAx2 = p4Z + 20 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
+            double const *IR_RP pAx1 = p2Z + 4 * ia;
+            double const *IR_RP pAx2 = p4Z + 20 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double b_100_2 = AmBx*pAx2[0] + pAx2[1];
             double r_100_100_2 = AmBx*pAx2[1] + pAx2[4];
@@ -20985,14 +20985,14 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 2: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 10 * ia;
-            double const * pAx2 = p4Z + 35 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
+            double const *IR_RP pAx1 = p2Z + 10 * ia;
+            double const *IR_RP pAx2 = p4Z + 35 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -21131,16 +21131,16 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 3: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 20 * ia;
-            double const * pAx2 = p4Z + 56 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
+            double const *IR_RP pAx1 = p2Z + 20 * ia;
+            double const *IR_RP pAx2 = p4Z + 56 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -21429,18 +21429,18 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 4: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 35 * ia;
-            double const * pAx2 = p4Z + 84 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
+            double const *IR_RP pAx1 = p2Z + 35 * ia;
+            double const *IR_RP pAx2 = p4Z + 84 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -21970,20 +21970,20 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 5: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 56 * ia;
-            double const * pAx2 = p4Z + 120 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
-            //IR_PREFETCH_W(&pOut_[sb*9]);
-            //IR_PREFETCH_W(&pOut_[sb*10]);
+            double const *IR_RP pAx1 = p2Z + 56 * ia;
+            double const *IR_RP pAx2 = p4Z + 120 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
+            IR_PREFETCH_W(&pOut_[sb*9]);
+            IR_PREFETCH_W(&pOut_[sb*10]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -22895,22 +22895,22 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
       }
       case 6: {
          for (size_t ia = 0; ia < nCount; ++ ia) {
-            double const * pAx1 = p2Z + 84 * ia;
-            double const * pAx2 = p4Z + 165 * ia;
-            double * pOut_ = pOut + sa * ia;
-            //IR_PREFETCH_W(&pOut_[sb*0]);
-            //IR_PREFETCH_W(&pOut_[sb*1]);
-            //IR_PREFETCH_W(&pOut_[sb*2]);
-            //IR_PREFETCH_W(&pOut_[sb*3]);
-            //IR_PREFETCH_W(&pOut_[sb*4]);
-            //IR_PREFETCH_W(&pOut_[sb*5]);
-            //IR_PREFETCH_W(&pOut_[sb*6]);
-            //IR_PREFETCH_W(&pOut_[sb*7]);
-            //IR_PREFETCH_W(&pOut_[sb*8]);
-            //IR_PREFETCH_W(&pOut_[sb*9]);
-            //IR_PREFETCH_W(&pOut_[sb*10]);
-            //IR_PREFETCH_W(&pOut_[sb*11]);
-            //IR_PREFETCH_W(&pOut_[sb*12]);
+            double const *IR_RP pAx1 = p2Z + 84 * ia;
+            double const *IR_RP pAx2 = p4Z + 165 * ia;
+            double *IR_RP pOut_ = pOut + sa * ia;
+            IR_PREFETCH_W(&pOut_[sb*0]);
+            IR_PREFETCH_W(&pOut_[sb*1]);
+            IR_PREFETCH_W(&pOut_[sb*2]);
+            IR_PREFETCH_W(&pOut_[sb*3]);
+            IR_PREFETCH_W(&pOut_[sb*4]);
+            IR_PREFETCH_W(&pOut_[sb*5]);
+            IR_PREFETCH_W(&pOut_[sb*6]);
+            IR_PREFETCH_W(&pOut_[sb*7]);
+            IR_PREFETCH_W(&pOut_[sb*8]);
+            IR_PREFETCH_W(&pOut_[sb*9]);
+            IR_PREFETCH_W(&pOut_[sb*10]);
+            IR_PREFETCH_W(&pOut_[sb*11]);
+            IR_PREFETCH_W(&pOut_[sb*12]);
             double b_100_1 = AmBx*pAx1[0] + pAx1[1];
             double r_100_100_1 = AmBx*pAx1[1] + pAx1[4];
             double r_010_100_1 = AmBx*pAx1[2] + pAx1[7];
@@ -24394,11 +24394,11 @@ void OsrrC_dB0L(double * pOut, size_t sa, size_t sb, double const * p2Z, double 
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 // Solid harmonic -> cartesian transform: Transform a matrix (2*l+1) x N to nCartY(l) x N
-static void CaTrC6(double * pOut, double const * pIn, size_t N)
+static void CaTrC6(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0]*sd2b - pIn[3]*sd33 + pIn[5]*sd37 - pIn[9]*sd41;
@@ -24434,7 +24434,7 @@ static void CaTrC6(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC5(double * pOut, double const * pIn, size_t N)
+static void CaTrC5(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0]*sd17 - pIn[3]*sd1c + pIn[9]*sd26;
@@ -24463,7 +24463,7 @@ static void CaTrC5(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC4(double * pOut, double const * pIn, size_t N)
+static void CaTrC4(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0]*sda + pIn[3]*sd10 - pIn[5]*sd12;
@@ -24486,7 +24486,7 @@ static void CaTrC4(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC3(double * pOut, double const * pIn, size_t N)
+static void CaTrC3(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = -pIn[0]*sd3 + pIn[3]*sd6;
@@ -24504,7 +24504,7 @@ static void CaTrC3(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC2(double * pOut, double const * pIn, size_t N)
+static void CaTrC2(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = -pIn[0]*sd0 + pIn[3]*sd2;
@@ -24518,7 +24518,7 @@ static void CaTrC2(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC1(double * pOut, double const * pIn, size_t N)
+static void CaTrC1(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0];
@@ -24529,7 +24529,7 @@ static void CaTrC1(double * pOut, double const * pIn, size_t N)
    }
 }
 
-static void CaTrC0(double * pOut, double const * pIn, size_t N)
+static void CaTrC0(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0];
@@ -24539,7 +24539,7 @@ static void CaTrC0(double * pOut, double const * pIn, size_t N)
 }
 
 // Solid harmonic -> cartesian transform: Transform a matrix (2*l+1) x N to nCartY(l) x N
-void CaTrC(double * pOut, double const * pIn, size_t N, unsigned l)
+void CaTrC(double *IR_RP pOut, double const *IR_RP pIn, size_t N, unsigned l)
 {
    switch(l) {
       case 0: return CaTrC0(pOut, pIn, N);
@@ -24550,11 +24550,11 @@ void CaTrC(double * pOut, double const * pIn, size_t N, unsigned l)
       case 5: return CaTrC5(pOut, pIn, N);
       case 6: return CaTrC6(pOut, pIn, N);
    }
-   //assert(0);
+   assert(0);
 }
 
 // Solid harmonic -> cartesian transform: Transform single (2*l+1) to nCartY(l)
-static void CaTrA6(double * pOut, double const * pIn, size_t si)
+static void CaTrA6(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = pIn[si*0]*sd2b - pIn[si*3]*sd33 + pIn[si*5]*sd37 - pIn[si*9]*sd41;
    pOut[1] = -pIn[si*0]*sd2b - pIn[si*3]*sd33 - pIn[si*5]*sd37 - pIn[si*9]*sd41;
@@ -24586,7 +24586,7 @@ static void CaTrA6(double * pOut, double const * pIn, size_t si)
    pOut[27] = -pIn[si*3]*sd36 + pIn[si*9]*sd44;
 }
 
-static void CaTrA5(double * pOut, double const * pIn, size_t si)
+static void CaTrA5(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = pIn[si*0]*sd17 - pIn[si*3]*sd1c + pIn[si*9]*sd26;
    pOut[1] = pIn[si*1]*sd17 + pIn[si*5]*sd1c + pIn[si*7]*sd26;
@@ -24611,7 +24611,7 @@ static void CaTrA5(double * pOut, double const * pIn, size_t si)
    pOut[20] = -pIn[si*6]*sd23 + pIn[si*8]*sd28;
 }
 
-static void CaTrA4(double * pOut, double const * pIn, size_t si)
+static void CaTrA4(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = pIn[si*0]*sda + pIn[si*3]*sd10 - pIn[si*5]*sd12;
    pOut[1] = pIn[si*0]*sda + pIn[si*3]*sd10 + pIn[si*5]*sd12;
@@ -24630,7 +24630,7 @@ static void CaTrA4(double * pOut, double const * pIn, size_t si)
    pOut[14] = -pIn[si*4]*sd7 + pIn[si*8]*sd16;
 }
 
-static void CaTrA3(double * pOut, double const * pIn, size_t si)
+static void CaTrA3(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = -pIn[si*0]*sd3 + pIn[si*3]*sd6;
    pOut[1] = -pIn[si*1]*sd3 - pIn[si*5]*sd6;
@@ -24644,7 +24644,7 @@ static void CaTrA3(double * pOut, double const * pIn, size_t si)
    pOut[9] = pIn[si*4]*sd8;
 }
 
-static void CaTrA2(double * pOut, double const * pIn, size_t si)
+static void CaTrA2(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = -pIn[si*0]*sd0 + pIn[si*3]*sd2;
    pOut[1] = -pIn[si*0]*sd0 - pIn[si*3]*sd2;
@@ -24654,20 +24654,20 @@ static void CaTrA2(double * pOut, double const * pIn, size_t si)
    pOut[5] = pIn[si*4]*sd1;
 }
 
-static void CaTrA1(double * pOut, double const * pIn, size_t si)
+static void CaTrA1(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = pIn[si*0];
    pOut[1] = pIn[si*1];
    pOut[2] = pIn[si*2];
 }
 
-static void CaTrA0(double * pOut, double const * pIn, size_t si)
+static void CaTrA0(double *IR_RP pOut, double const *IR_RP pIn, size_t si)
 {
    pOut[0] = pIn[si*0];
 }
 
 // Solid harmonic -> cartesian transform: Transform single (2*l+1) to nCartY(l)
-void CaTrA(double * pOut, double const * pIn, size_t si, unsigned l)
+void CaTrA(double *IR_RP pOut, double const *IR_RP pIn, size_t si, unsigned l)
 {
    switch(l) {
       case 0: return CaTrA0(pOut, pIn, si);
@@ -24678,11 +24678,11 @@ void CaTrA(double * pOut, double const * pIn, size_t si, unsigned l)
       case 5: return CaTrA5(pOut, pIn, si);
       case 6: return CaTrA6(pOut, pIn, si);
    }
-   //assert(0);
+   assert(0);
 }
 
 // Expand solid harmonic S[l=lb,m](r-B) centered at B into cartesians of degree 0..lb centered at A.
-void OsrrRx(double * pOut, double const * pIn, size_t si, double AmBx, double AmBy, double AmBz, unsigned lb)
+void OsrrRx(double *IR_RP pOut, double const *IR_RP pIn, size_t si, double AmBx, double AmBy, double AmBz, unsigned lb)
 {
    double p0, p1, p2, p3, p4, p5;
    switch (lb) {
@@ -24738,7 +24738,7 @@ void OsrrRx(double * pOut, double const * pIn, size_t si, double AmBx, double Am
          goto _osrr_rx5;
       }
    }
-   //assert(0);
+   assert(0);
    _osrr_rx5:
    pOut[35] = p5*(6*AmBx*pOut[56] + AmBy*pOut[59] + AmBz*pOut[61]);
    pOut[36] = p5*(AmBx*pOut[60] + 6*AmBy*pOut[57] + AmBz*pOut[63]);
@@ -24804,7 +24804,7 @@ void OsrrRx(double * pOut, double const * pIn, size_t si, double AmBx, double Am
 
 // Cartesian -> Solid harmonic transforms: Transform a matrix
 // nCartY(l) x N to (2*l+1) x N.
-static void ShTrC6_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC6_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z11 = pIn[17], z13 = pIn[19], z14 = pIn[20], z15 = pIn[21], z16 = pIn[22], z17 = pIn[23], z18 = pIn[24], z19 = pIn[25], z1a = pIn[26], z1b = pIn[27];
@@ -24827,7 +24827,7 @@ static void ShTrC6_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC5_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC5_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8], z9 = pIn[9], za = pIn[10], zb = pIn[11], zc = pIn[12], zd = pIn[13], ze = pIn[14], zf = pIn[15], z10 = pIn[16], z12 = pIn[18], z13 = pIn[19], z14 = pIn[20];
@@ -24848,7 +24848,7 @@ static void ShTrC5_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC4_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC4_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z4 = pIn[4], z5 = pIn[5], z7 = pIn[7], z9 = pIn[9], za = pIn[10], zb = pIn[11], zd = pIn[13], ze = pIn[14];
@@ -24867,7 +24867,7 @@ static void ShTrC4_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC3_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC3_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1], z3 = pIn[3], z5 = pIn[5], z7 = pIn[7], z8 = pIn[8];
@@ -24884,7 +24884,7 @@ static void ShTrC3_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC2_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC2_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       double z0 = pIn[0], z1 = pIn[1];
@@ -24899,7 +24899,7 @@ static void ShTrC2_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC1_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC1_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0];
@@ -24911,7 +24911,7 @@ static void ShTrC1_NN(double * pOut, double const * pIn, size_t N)
    return;
 }
 
-static void ShTrC0_NN(double * pOut, double const * pIn, size_t N)
+static void ShTrC0_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N)
 {
    for (size_t i = 0; i < N; ++ i) {
       pOut[0] = pIn[0];
@@ -24923,7 +24923,7 @@ static void ShTrC0_NN(double * pOut, double const * pIn, size_t N)
 
 // Cartesian -> Solid harmonic transform: Transform a matrix
 // nCartY(l) x N to (2*l+1) x N.
-void ShTrN_NN(double * pOut, double const * pIn, size_t N, unsigned l)
+void ShTrN_NN(double *IR_RP pOut, double const *IR_RP pIn, size_t N, unsigned l)
 {
    switch(l) {
       case 0: return ShTrC0_NN(pOut, pIn, N);
@@ -24934,3534 +24934,2193 @@ void ShTrN_NN(double * pOut, double const * pIn, size_t N, unsigned l)
       case 5: return ShTrC5_NN(pOut, pIn, N);
       case 6: return ShTrC6_NN(pOut, pIn, N);
    }
-   //assert(0);
+   assert(0);
+}
+
+// calculate Shell-MDRR intermediates [CartY(1)]^(m) from [CartY(0)]^(m+1)
+inline void ShellMdrr_MakeL1(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP /*pInL2*/, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0];
+   pOut[1] = Ry*pInL1[0];
+   pOut[2] = Rz*pInL1[0];
+   // 1.00 flops and 2.00 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(2)]^(m) from [CartY(1)]^(m+1) and [CartY(0)]^(m+1)
+inline void ShellMdrr_MakeL2(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + pInL2[0];
+   pOut[1] = Ry*pInL1[1] + pInL2[0];
+   pOut[2] = Rz*pInL1[2] + pInL2[0];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rz*pInL1[0];
+   pOut[5] = Rz*pInL1[1];
+   // 1.50 flops and 2.50 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(3)]^(m) from [CartY(2)]^(m+1) and [CartY(1)]^(m+1)
+inline void ShellMdrr_MakeL3(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 2*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 2*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 2*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Rz*pInL1[3];
+   // 1.60 flops and 2.30 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(4)]^(m) from [CartY(3)]^(m+1) and [CartY(2)]^(m+1)
+static void ShellMdrr_MakeL4(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 3*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 3*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 3*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Rx*pInL1[3] + pInL2[1];
+   pOut[10] = Rx*pInL1[4] + pInL2[2];
+   pOut[11] = Ry*pInL1[6] + pInL2[2];
+   pOut[12] = Ry*pInL1[4];
+   pOut[13] = Rz*pInL1[3];
+   pOut[14] = Rz*pInL1[5];
+   // 1.60 flops and 2.40 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(5)]^(m) from [CartY(4)]^(m+1) and [CartY(3)]^(m+1)
+static void ShellMdrr_MakeL5(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 4*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 4*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 4*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rz*pInL1[3];
+   pOut[16] = Rz*pInL1[4];
+   pOut[17] = Ry*pInL1[6];
+   pOut[18] = Rx*pInL1[11];
+   pOut[19] = Ry*pInL1[10];
+   pOut[20] = Rz*pInL1[9];
+   // 1.57 flops and 2.43 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(6)]^(m) from [CartY(5)]^(m+1) and [CartY(4)]^(m+1)
+static void ShellMdrr_MakeL6(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 5*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 5*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 5*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[17] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[18] = Ry*pInL1[4];
+   pOut[19] = Rz*pInL1[3];
+   pOut[20] = Rz*pInL1[5];
+   pOut[21] = Ry*pInL1[10];
+   pOut[22] = Rx*pInL1[12];
+   pOut[23] = Rz*pInL1[9];
+   pOut[24] = Rx*pInL1[14];
+   pOut[25] = Rz*pInL1[11];
+   pOut[26] = Ry*pInL1[13];
+   pOut[27] = Rx*pInL1[18] + pInL2[11];
+   // 1.68 flops and 2.46 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(7)]^(m) from [CartY(6)]^(m+1) and [CartY(5)]^(m+1)
+static void ShellMdrr_MakeL7(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 6*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 6*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 6*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Rz*pInL1[3];
+   pOut[22] = Rz*pInL1[4];
+   pOut[23] = Ry*pInL1[6];
+   pOut[24] = Rx*pInL1[13];
+   pOut[25] = Rx*pInL1[14];
+   pOut[26] = Ry*pInL1[10];
+   pOut[27] = Ry*pInL1[12];
+   pOut[28] = Rz*pInL1[9];
+   pOut[29] = Rz*pInL1[11];
+   pOut[30] = Rz*pInL1[15];
+   pOut[31] = Ry*pInL1[16];
+   pOut[32] = Rx*pInL1[17];
+   pOut[33] = Ry*pInL1[21] + pInL2[10];
+   pOut[34] = Rx*pInL1[22] + pInL2[12];
+   pOut[35] = Rx*pInL1[24] + pInL2[14];
+   // 1.75 flops and 2.50 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(8)]^(m) from [CartY(7)]^(m+1) and [CartY(6)]^(m+1)
+static void ShellMdrr_MakeL8(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 7*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 7*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 7*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[22] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[23] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[24] = Ry*pInL1[4];
+   pOut[25] = Rz*pInL1[3];
+   pOut[26] = Rz*pInL1[5];
+   pOut[27] = Ry*pInL1[10];
+   pOut[28] = Rx*pInL1[12];
+   pOut[29] = Rz*pInL1[9];
+   pOut[30] = Rx*pInL1[14];
+   pOut[31] = Rz*pInL1[11];
+   pOut[32] = Ry*pInL1[13];
+   pOut[33] = Ry*pInL1[16];
+   pOut[34] = Rx*pInL1[18];
+   pOut[35] = Rz*pInL1[15];
+   pOut[36] = Rx*pInL1[20];
+   pOut[37] = Rz*pInL1[17];
+   pOut[38] = Ry*pInL1[19];
+   pOut[39] = Ry*pInL1[26] + pInL2[10];
+   pOut[40] = Rx*pInL1[24] + pInL2[13];
+   pOut[41] = Rx*pInL1[25] + pInL2[14];
+   pOut[42] = Rz*pInL1[30] + pInL2[15];
+   pOut[43] = Ry*pInL1[31] + pInL2[16];
+   pOut[44] = Rx*pInL1[32] + pInL2[17];
+   // 1.80 flops and 2.53 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(9)]^(m) from [CartY(8)]^(m+1) and [CartY(7)]^(m+1)
+static void ShellMdrr_MakeL9(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 8*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 8*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 8*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[15] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[17] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[16] + 3*pInL2[11];
+   pOut[24] = Rz*pInL1[19] + 3*pInL2[12];
+   pOut[25] = Rx*pInL1[18] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[20] + 3*pInL2[14];
+   pOut[27] = Rz*pInL1[3];
+   pOut[28] = Rz*pInL1[4];
+   pOut[29] = Ry*pInL1[6];
+   pOut[30] = Rx*pInL1[13];
+   pOut[31] = Rx*pInL1[14];
+   pOut[32] = Ry*pInL1[10];
+   pOut[33] = Ry*pInL1[12];
+   pOut[34] = Rz*pInL1[9];
+   pOut[35] = Rz*pInL1[11];
+   pOut[36] = Rz*pInL1[15];
+   pOut[37] = Ry*pInL1[17];
+   pOut[38] = Rz*pInL1[16];
+   pOut[39] = Ry*pInL1[18];
+   pOut[40] = Rx*pInL1[19];
+   pOut[41] = Rx*pInL1[20];
+   pOut[42] = Rx*pInL1[23];
+   pOut[43] = Ry*pInL1[22];
+   pOut[44] = Rz*pInL1[21];
+   pOut[45] = Ry*pInL1[27] + pInL2[10];
+   pOut[46] = Rx*pInL1[28] + pInL2[12];
+   pOut[47] = Rx*pInL1[30] + pInL2[14];
+   pOut[48] = Rz*pInL1[35] + pInL2[15];
+   pOut[49] = Ry*pInL1[33] + pInL2[16];
+   pOut[50] = Rz*pInL1[37] + pInL2[17];
+   pOut[51] = Rx*pInL1[34] + pInL2[18];
+   pOut[52] = Ry*pInL1[38] + pInL2[19];
+   pOut[53] = Rx*pInL1[36] + pInL2[20];
+   pOut[54] = Rz*pInL1[42] + 2*pInL2[30];
+   // 1.85 flops and 2.56 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(10)]^(m) from [CartY(9)]^(m+1) and [CartY(8)]^(m+1)
+static void ShellMdrr_MakeL10(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 9*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 9*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 9*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[17] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[19] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[24] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[25] = Rz*pInL1[20] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[27] = Ry*pInL1[21] + 4*pInL2[15];
+   pOut[28] = Rz*pInL1[22] + 4*pInL2[17];
+   pOut[29] = Rz*pInL1[24] + 4*pInL2[19];
+   pOut[30] = Ry*pInL1[4];
+   pOut[31] = Rz*pInL1[3];
+   pOut[32] = Rz*pInL1[5];
+   pOut[33] = Ry*pInL1[10];
+   pOut[34] = Rx*pInL1[12];
+   pOut[35] = Rz*pInL1[9];
+   pOut[36] = Rx*pInL1[14];
+   pOut[37] = Rz*pInL1[11];
+   pOut[38] = Ry*pInL1[13];
+   pOut[39] = Ry*pInL1[16];
+   pOut[40] = Rx*pInL1[18];
+   pOut[41] = Rz*pInL1[15];
+   pOut[42] = Rx*pInL1[20];
+   pOut[43] = Rz*pInL1[17];
+   pOut[44] = Ry*pInL1[19];
+   pOut[45] = Ry*pInL1[22];
+   pOut[46] = Rx*pInL1[24];
+   pOut[47] = Rz*pInL1[21];
+   pOut[48] = Rx*pInL1[26];
+   pOut[49] = Rz*pInL1[23];
+   pOut[50] = Ry*pInL1[25];
+   pOut[51] = Ry*pInL1[32] + pInL2[10];
+   pOut[52] = Rx*pInL1[30] + pInL2[13];
+   pOut[53] = Rx*pInL1[31] + pInL2[14];
+   pOut[54] = Rz*pInL1[36] + pInL2[15];
+   pOut[55] = Rz*pInL1[38] + pInL2[16];
+   pOut[56] = Ry*pInL1[37] + pInL2[17];
+   pOut[57] = Ry*pInL1[39] + pInL2[18];
+   pOut[58] = Rx*pInL1[40] + pInL2[19];
+   pOut[59] = Rx*pInL1[41] + pInL2[20];
+   pOut[60] = Rz*pInL1[44] + pInL2[21];
+   pOut[61] = Ry*pInL1[43] + pInL2[22];
+   pOut[62] = Rx*pInL1[42] + pInL2[23];
+   pOut[63] = Ry*pInL1[49] + 2*pInL2[33];
+   pOut[64] = Rz*pInL1[48] + 2*pInL2[35];
+   pOut[65] = Rz*pInL1[50] + 2*pInL2[37];
+   // 1.91 flops and 2.59 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(11)]^(m) from [CartY(10)]^(m+1) and [CartY(9)]^(m+1)
+static void ShellMdrr_MakeL11(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 10*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 10*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 10*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[15] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[17] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[16] + 3*pInL2[11];
+   pOut[24] = Rz*pInL1[19] + 3*pInL2[12];
+   pOut[25] = Rx*pInL1[18] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[20] + 3*pInL2[14];
+   pOut[27] = Rx*pInL1[23] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[24] + 4*pInL2[16];
+   pOut[29] = Ry*pInL1[21] + 4*pInL2[17];
+   pOut[30] = Ry*pInL1[26] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[22] + 4*pInL2[19];
+   pOut[32] = Rz*pInL1[25] + 4*pInL2[20];
+   pOut[33] = Rz*pInL1[3];
+   pOut[34] = Rz*pInL1[4];
+   pOut[35] = Ry*pInL1[6];
+   pOut[36] = Rx*pInL1[13];
+   pOut[37] = Rx*pInL1[14];
+   pOut[38] = Ry*pInL1[10];
+   pOut[39] = Ry*pInL1[12];
+   pOut[40] = Rz*pInL1[9];
+   pOut[41] = Rz*pInL1[11];
+   pOut[42] = Rz*pInL1[15];
+   pOut[43] = Ry*pInL1[17];
+   pOut[44] = Rz*pInL1[16];
+   pOut[45] = Ry*pInL1[18];
+   pOut[46] = Rx*pInL1[19];
+   pOut[47] = Rx*pInL1[20];
+   pOut[48] = Rx*pInL1[25];
+   pOut[49] = Rx*pInL1[26];
+   pOut[50] = Ry*pInL1[22];
+   pOut[51] = Ry*pInL1[24];
+   pOut[52] = Rz*pInL1[21];
+   pOut[53] = Rz*pInL1[23];
+   pOut[54] = Rz*pInL1[27];
+   pOut[55] = Ry*pInL1[28];
+   pOut[56] = Rx*pInL1[29];
+   pOut[57] = Ry*pInL1[33] + pInL2[10];
+   pOut[58] = Rx*pInL1[34] + pInL2[12];
+   pOut[59] = Rx*pInL1[36] + pInL2[14];
+   pOut[60] = Rz*pInL1[41] + pInL2[15];
+   pOut[61] = Ry*pInL1[39] + pInL2[16];
+   pOut[62] = Rz*pInL1[43] + pInL2[17];
+   pOut[63] = Rx*pInL1[40] + pInL2[18];
+   pOut[64] = Ry*pInL1[44] + pInL2[19];
+   pOut[65] = Rx*pInL1[42] + pInL2[20];
+   pOut[66] = Rz*pInL1[47] + pInL2[21];
+   pOut[67] = Ry*pInL1[45] + pInL2[22];
+   pOut[68] = Rz*pInL1[49] + pInL2[23];
+   pOut[69] = Rx*pInL1[46] + pInL2[24];
+   pOut[70] = Ry*pInL1[50] + pInL2[25];
+   pOut[71] = Rx*pInL1[48] + pInL2[26];
+   pOut[72] = Rz*pInL1[54] + 2*pInL2[36];
+   pOut[73] = Rz*pInL1[55] + 2*pInL2[38];
+   pOut[74] = Ry*pInL1[57] + 2*pInL2[39];
+   pOut[75] = Rx*pInL1[62] + 2*pInL2[42];
+   pOut[76] = Ry*pInL1[61] + 2*pInL2[43];
+   pOut[77] = Rz*pInL1[60] + 2*pInL2[44];
+   // 1.96 flops and 2.62 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(12)]^(m) from [CartY(11)]^(m+1) and [CartY(10)]^(m+1)
+static void ShellMdrr_MakeL12(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 11*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 11*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 11*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[17] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[19] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[24] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[25] = Rz*pInL1[20] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[27] = Ry*pInL1[21] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[23] + 4*pInL2[16];
+   pOut[29] = Rz*pInL1[22] + 4*pInL2[17];
+   pOut[30] = Rx*pInL1[25] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[24] + 4*pInL2[19];
+   pOut[32] = Ry*pInL1[26] + 4*pInL2[20];
+   pOut[33] = Rx*pInL1[27] + 5*pInL2[23];
+   pOut[34] = Rx*pInL1[28] + 5*pInL2[24];
+   pOut[35] = Ry*pInL1[30] + 5*pInL2[26];
+   pOut[36] = Ry*pInL1[4];
+   pOut[37] = Rz*pInL1[3];
+   pOut[38] = Rz*pInL1[5];
+   pOut[39] = Ry*pInL1[10];
+   pOut[40] = Rx*pInL1[12];
+   pOut[41] = Rz*pInL1[9];
+   pOut[42] = Rx*pInL1[14];
+   pOut[43] = Rz*pInL1[11];
+   pOut[44] = Ry*pInL1[13];
+   pOut[45] = Ry*pInL1[16];
+   pOut[46] = Rx*pInL1[18];
+   pOut[47] = Rz*pInL1[15];
+   pOut[48] = Rx*pInL1[20];
+   pOut[49] = Rz*pInL1[17];
+   pOut[50] = Ry*pInL1[19];
+   pOut[51] = Ry*pInL1[22];
+   pOut[52] = Rx*pInL1[24];
+   pOut[53] = Rz*pInL1[21];
+   pOut[54] = Rx*pInL1[26];
+   pOut[55] = Rz*pInL1[23];
+   pOut[56] = Ry*pInL1[25];
+   pOut[57] = Ry*pInL1[28];
+   pOut[58] = Rx*pInL1[30];
+   pOut[59] = Rz*pInL1[27];
+   pOut[60] = Rx*pInL1[32];
+   pOut[61] = Rz*pInL1[29];
+   pOut[62] = Ry*pInL1[31];
+   pOut[63] = Ry*pInL1[38] + pInL2[10];
+   pOut[64] = Rx*pInL1[36] + pInL2[13];
+   pOut[65] = Rx*pInL1[37] + pInL2[14];
+   pOut[66] = Rz*pInL1[42] + pInL2[15];
+   pOut[67] = Rz*pInL1[44] + pInL2[16];
+   pOut[68] = Ry*pInL1[43] + pInL2[17];
+   pOut[69] = Ry*pInL1[45] + pInL2[18];
+   pOut[70] = Rx*pInL1[46] + pInL2[19];
+   pOut[71] = Rx*pInL1[47] + pInL2[20];
+   pOut[72] = Rz*pInL1[52] + pInL2[21];
+   pOut[73] = Ry*pInL1[50] + pInL2[22];
+   pOut[74] = Rz*pInL1[53] + pInL2[23];
+   pOut[75] = Ry*pInL1[51] + pInL2[24];
+   pOut[76] = Rx*pInL1[48] + pInL2[25];
+   pOut[77] = Rx*pInL1[49] + pInL2[26];
+   pOut[78] = Rz*pInL1[54] + pInL2[27];
+   pOut[79] = Ry*pInL1[55] + pInL2[28];
+   pOut[80] = Rx*pInL1[56] + pInL2[29];
+   pOut[81] = Ry*pInL1[61] + 2*pInL2[39];
+   pOut[82] = Rz*pInL1[60] + 2*pInL2[41];
+   pOut[83] = Rz*pInL1[62] + 2*pInL2[43];
+   pOut[84] = Ry*pInL1[67] + 2*pInL2[45];
+   pOut[85] = Rx*pInL1[69] + 2*pInL2[46];
+   pOut[86] = Rz*pInL1[66] + 2*pInL2[47];
+   pOut[87] = Rx*pInL1[71] + 2*pInL2[48];
+   pOut[88] = Rz*pInL1[68] + 2*pInL2[49];
+   pOut[89] = Ry*pInL1[70] + 2*pInL2[50];
+   pOut[90] = Rx*pInL1[75] + 3*pInL2[62];
+   // 2.01 flops and 2.64 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(13)]^(m) from [CartY(12)]^(m+1) and [CartY(11)]^(m+1)
+static void ShellMdrr_MakeL13(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 12*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 12*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 12*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[15] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[17] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[16] + 3*pInL2[11];
+   pOut[24] = Rz*pInL1[19] + 3*pInL2[12];
+   pOut[25] = Rx*pInL1[18] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[20] + 3*pInL2[14];
+   pOut[27] = Rx*pInL1[23] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[24] + 4*pInL2[16];
+   pOut[29] = Ry*pInL1[21] + 4*pInL2[17];
+   pOut[30] = Ry*pInL1[26] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[22] + 4*pInL2[19];
+   pOut[32] = Rz*pInL1[25] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[27] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[29] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[28] + 5*pInL2[23];
+   pOut[36] = Rz*pInL1[31] + 5*pInL2[24];
+   pOut[37] = Rx*pInL1[30] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[32] + 5*pInL2[26];
+   pOut[39] = Rz*pInL1[3];
+   pOut[40] = Rz*pInL1[4];
+   pOut[41] = Ry*pInL1[6];
+   pOut[42] = Rx*pInL1[13];
+   pOut[43] = Rx*pInL1[14];
+   pOut[44] = Ry*pInL1[10];
+   pOut[45] = Ry*pInL1[12];
+   pOut[46] = Rz*pInL1[9];
+   pOut[47] = Rz*pInL1[11];
+   pOut[48] = Rz*pInL1[15];
+   pOut[49] = Ry*pInL1[17];
+   pOut[50] = Rz*pInL1[16];
+   pOut[51] = Ry*pInL1[18];
+   pOut[52] = Rx*pInL1[19];
+   pOut[53] = Rx*pInL1[20];
+   pOut[54] = Rx*pInL1[25];
+   pOut[55] = Rx*pInL1[26];
+   pOut[56] = Ry*pInL1[22];
+   pOut[57] = Ry*pInL1[24];
+   pOut[58] = Rz*pInL1[21];
+   pOut[59] = Rz*pInL1[23];
+   pOut[60] = Rz*pInL1[27];
+   pOut[61] = Ry*pInL1[29];
+   pOut[62] = Rz*pInL1[28];
+   pOut[63] = Ry*pInL1[30];
+   pOut[64] = Rx*pInL1[31];
+   pOut[65] = Rx*pInL1[32];
+   pOut[66] = Rx*pInL1[35];
+   pOut[67] = Ry*pInL1[34];
+   pOut[68] = Rz*pInL1[33];
+   pOut[69] = Ry*pInL1[39] + pInL2[10];
+   pOut[70] = Rx*pInL1[40] + pInL2[12];
+   pOut[71] = Rx*pInL1[42] + pInL2[14];
+   pOut[72] = Rz*pInL1[47] + pInL2[15];
+   pOut[73] = Ry*pInL1[45] + pInL2[16];
+   pOut[74] = Rz*pInL1[49] + pInL2[17];
+   pOut[75] = Rx*pInL1[46] + pInL2[18];
+   pOut[76] = Ry*pInL1[50] + pInL2[19];
+   pOut[77] = Rx*pInL1[48] + pInL2[20];
+   pOut[78] = Rz*pInL1[53] + pInL2[21];
+   pOut[79] = Ry*pInL1[51] + pInL2[22];
+   pOut[80] = Rz*pInL1[55] + pInL2[23];
+   pOut[81] = Rx*pInL1[52] + pInL2[24];
+   pOut[82] = Ry*pInL1[56] + pInL2[25];
+   pOut[83] = Rx*pInL1[54] + pInL2[26];
+   pOut[84] = Rz*pInL1[59] + pInL2[27];
+   pOut[85] = Ry*pInL1[57] + pInL2[28];
+   pOut[86] = Rz*pInL1[61] + pInL2[29];
+   pOut[87] = Rx*pInL1[58] + pInL2[30];
+   pOut[88] = Ry*pInL1[62] + pInL2[31];
+   pOut[89] = Rx*pInL1[60] + pInL2[32];
+   pOut[90] = Rz*pInL1[66] + 2*pInL2[42];
+   pOut[91] = Rz*pInL1[67] + 2*pInL2[44];
+   pOut[92] = Ry*pInL1[69] + 2*pInL2[45];
+   pOut[93] = Rx*pInL1[76] + 2*pInL2[48];
+   pOut[94] = Rx*pInL1[77] + 2*pInL2[49];
+   pOut[95] = Ry*pInL1[73] + 2*pInL2[50];
+   pOut[96] = Ry*pInL1[75] + 2*pInL2[51];
+   pOut[97] = Rz*pInL1[72] + 2*pInL2[52];
+   pOut[98] = Rz*pInL1[74] + 2*pInL2[53];
+   pOut[99] = Rz*pInL1[78] + 2*pInL2[54];
+   pOut[100] = Ry*pInL1[79] + 2*pInL2[55];
+   pOut[101] = Rx*pInL1[80] + 2*pInL2[56];
+   pOut[102] = Ry*pInL1[84] + 3*pInL2[67];
+   pOut[103] = Rx*pInL1[85] + 3*pInL2[69];
+   pOut[104] = Rx*pInL1[87] + 3*pInL2[71];
+   // 2.06 flops and 2.66 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(14)]^(m) from [CartY(13)]^(m+1) and [CartY(12)]^(m+1)
+static void ShellMdrr_MakeL14(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 13*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 13*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 13*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[17] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[19] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[24] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[25] = Rz*pInL1[20] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[27] = Ry*pInL1[21] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[23] + 4*pInL2[16];
+   pOut[29] = Rz*pInL1[22] + 4*pInL2[17];
+   pOut[30] = Rx*pInL1[25] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[24] + 4*pInL2[19];
+   pOut[32] = Ry*pInL1[26] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[29] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[31] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[27] + 5*pInL2[23];
+   pOut[36] = Rx*pInL1[28] + 5*pInL2[24];
+   pOut[37] = Rz*pInL1[32] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[30] + 5*pInL2[26];
+   pOut[39] = Ry*pInL1[33] + 6*pInL2[27];
+   pOut[40] = Rz*pInL1[34] + 6*pInL2[29];
+   pOut[41] = Rz*pInL1[36] + 6*pInL2[31];
+   pOut[42] = Ry*pInL1[4];
+   pOut[43] = Rz*pInL1[3];
+   pOut[44] = Rz*pInL1[5];
+   pOut[45] = Ry*pInL1[10];
+   pOut[46] = Rx*pInL1[12];
+   pOut[47] = Rz*pInL1[9];
+   pOut[48] = Rx*pInL1[14];
+   pOut[49] = Rz*pInL1[11];
+   pOut[50] = Ry*pInL1[13];
+   pOut[51] = Ry*pInL1[16];
+   pOut[52] = Rx*pInL1[18];
+   pOut[53] = Rz*pInL1[15];
+   pOut[54] = Rx*pInL1[20];
+   pOut[55] = Rz*pInL1[17];
+   pOut[56] = Ry*pInL1[19];
+   pOut[57] = Ry*pInL1[22];
+   pOut[58] = Rx*pInL1[24];
+   pOut[59] = Rz*pInL1[21];
+   pOut[60] = Rx*pInL1[26];
+   pOut[61] = Rz*pInL1[23];
+   pOut[62] = Ry*pInL1[25];
+   pOut[63] = Ry*pInL1[28];
+   pOut[64] = Rx*pInL1[30];
+   pOut[65] = Rz*pInL1[27];
+   pOut[66] = Rx*pInL1[32];
+   pOut[67] = Rz*pInL1[29];
+   pOut[68] = Ry*pInL1[31];
+   pOut[69] = Ry*pInL1[34];
+   pOut[70] = Rx*pInL1[36];
+   pOut[71] = Rz*pInL1[33];
+   pOut[72] = Rx*pInL1[38];
+   pOut[73] = Rz*pInL1[35];
+   pOut[74] = Ry*pInL1[37];
+   pOut[75] = Ry*pInL1[44] + pInL2[10];
+   pOut[76] = Rx*pInL1[42] + pInL2[13];
+   pOut[77] = Rx*pInL1[43] + pInL2[14];
+   pOut[78] = Rz*pInL1[48] + pInL2[15];
+   pOut[79] = Rz*pInL1[50] + pInL2[16];
+   pOut[80] = Ry*pInL1[49] + pInL2[17];
+   pOut[81] = Ry*pInL1[51] + pInL2[18];
+   pOut[82] = Rx*pInL1[52] + pInL2[19];
+   pOut[83] = Rx*pInL1[53] + pInL2[20];
+   pOut[84] = Rz*pInL1[58] + pInL2[21];
+   pOut[85] = Ry*pInL1[56] + pInL2[22];
+   pOut[86] = Rz*pInL1[59] + pInL2[23];
+   pOut[87] = Ry*pInL1[57] + pInL2[24];
+   pOut[88] = Rx*pInL1[54] + pInL2[25];
+   pOut[89] = Rx*pInL1[55] + pInL2[26];
+   pOut[90] = Rz*pInL1[60] + pInL2[27];
+   pOut[91] = Rz*pInL1[62] + pInL2[28];
+   pOut[92] = Ry*pInL1[61] + pInL2[29];
+   pOut[93] = Ry*pInL1[63] + pInL2[30];
+   pOut[94] = Rx*pInL1[64] + pInL2[31];
+   pOut[95] = Rx*pInL1[65] + pInL2[32];
+   pOut[96] = Rz*pInL1[68] + pInL2[33];
+   pOut[97] = Ry*pInL1[67] + pInL2[34];
+   pOut[98] = Rx*pInL1[66] + pInL2[35];
+   pOut[99] = Ry*pInL1[73] + 2*pInL2[45];
+   pOut[100] = Rz*pInL1[72] + 2*pInL2[47];
+   pOut[101] = Rz*pInL1[74] + 2*pInL2[49];
+   pOut[102] = Ry*pInL1[79] + 2*pInL2[51];
+   pOut[103] = Rx*pInL1[81] + 2*pInL2[52];
+   pOut[104] = Rz*pInL1[78] + 2*pInL2[53];
+   pOut[105] = Rx*pInL1[83] + 2*pInL2[54];
+   pOut[106] = Rz*pInL1[80] + 2*pInL2[55];
+   pOut[107] = Ry*pInL1[82] + 2*pInL2[56];
+   pOut[108] = Ry*pInL1[85] + 2*pInL2[57];
+   pOut[109] = Rx*pInL1[87] + 2*pInL2[58];
+   pOut[110] = Rz*pInL1[84] + 2*pInL2[59];
+   pOut[111] = Rx*pInL1[89] + 2*pInL2[60];
+   pOut[112] = Rz*pInL1[86] + 2*pInL2[61];
+   pOut[113] = Ry*pInL1[88] + 2*pInL2[62];
+   pOut[114] = Ry*pInL1[95] + 3*pInL2[73];
+   pOut[115] = Rx*pInL1[93] + 3*pInL2[76];
+   pOut[116] = Rx*pInL1[94] + 3*pInL2[77];
+   pOut[117] = Rz*pInL1[99] + 3*pInL2[78];
+   pOut[118] = Ry*pInL1[100] + 3*pInL2[79];
+   pOut[119] = Rx*pInL1[101] + 3*pInL2[80];
+   // 2.10 flops and 2.67 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(15)]^(m) from [CartY(14)]^(m+1) and [CartY(13)]^(m+1)
+static void ShellMdrr_MakeL15(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 14*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 14*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 14*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[15] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[17] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[16] + 3*pInL2[11];
+   pOut[24] = Rz*pInL1[19] + 3*pInL2[12];
+   pOut[25] = Rx*pInL1[18] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[20] + 3*pInL2[14];
+   pOut[27] = Rx*pInL1[23] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[24] + 4*pInL2[16];
+   pOut[29] = Ry*pInL1[21] + 4*pInL2[17];
+   pOut[30] = Ry*pInL1[26] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[22] + 4*pInL2[19];
+   pOut[32] = Rz*pInL1[25] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[27] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[29] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[28] + 5*pInL2[23];
+   pOut[36] = Rz*pInL1[31] + 5*pInL2[24];
+   pOut[37] = Rx*pInL1[30] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[32] + 5*pInL2[26];
+   pOut[39] = Rx*pInL1[35] + 6*pInL2[27];
+   pOut[40] = Rx*pInL1[36] + 6*pInL2[28];
+   pOut[41] = Ry*pInL1[33] + 6*pInL2[29];
+   pOut[42] = Ry*pInL1[38] + 6*pInL2[30];
+   pOut[43] = Rz*pInL1[34] + 6*pInL2[31];
+   pOut[44] = Rz*pInL1[37] + 6*pInL2[32];
+   pOut[45] = Rz*pInL1[3];
+   pOut[46] = Rz*pInL1[4];
+   pOut[47] = Ry*pInL1[6];
+   pOut[48] = Rx*pInL1[13];
+   pOut[49] = Rx*pInL1[14];
+   pOut[50] = Ry*pInL1[10];
+   pOut[51] = Ry*pInL1[12];
+   pOut[52] = Rz*pInL1[9];
+   pOut[53] = Rz*pInL1[11];
+   pOut[54] = Rz*pInL1[15];
+   pOut[55] = Ry*pInL1[17];
+   pOut[56] = Rz*pInL1[16];
+   pOut[57] = Ry*pInL1[18];
+   pOut[58] = Rx*pInL1[19];
+   pOut[59] = Rx*pInL1[20];
+   pOut[60] = Rx*pInL1[25];
+   pOut[61] = Rx*pInL1[26];
+   pOut[62] = Ry*pInL1[22];
+   pOut[63] = Ry*pInL1[24];
+   pOut[64] = Rz*pInL1[21];
+   pOut[65] = Rz*pInL1[23];
+   pOut[66] = Rz*pInL1[27];
+   pOut[67] = Ry*pInL1[29];
+   pOut[68] = Rz*pInL1[28];
+   pOut[69] = Ry*pInL1[30];
+   pOut[70] = Rx*pInL1[31];
+   pOut[71] = Rx*pInL1[32];
+   pOut[72] = Rx*pInL1[37];
+   pOut[73] = Rx*pInL1[38];
+   pOut[74] = Ry*pInL1[34];
+   pOut[75] = Ry*pInL1[36];
+   pOut[76] = Rz*pInL1[33];
+   pOut[77] = Rz*pInL1[35];
+   pOut[78] = Rz*pInL1[39];
+   pOut[79] = Ry*pInL1[40];
+   pOut[80] = Rx*pInL1[41];
+   pOut[81] = Ry*pInL1[45] + pInL2[10];
+   pOut[82] = Rx*pInL1[46] + pInL2[12];
+   pOut[83] = Rx*pInL1[48] + pInL2[14];
+   pOut[84] = Rz*pInL1[53] + pInL2[15];
+   pOut[85] = Ry*pInL1[51] + pInL2[16];
+   pOut[86] = Rz*pInL1[55] + pInL2[17];
+   pOut[87] = Rx*pInL1[52] + pInL2[18];
+   pOut[88] = Ry*pInL1[56] + pInL2[19];
+   pOut[89] = Rx*pInL1[54] + pInL2[20];
+   pOut[90] = Rz*pInL1[59] + pInL2[21];
+   pOut[91] = Ry*pInL1[57] + pInL2[22];
+   pOut[92] = Rz*pInL1[61] + pInL2[23];
+   pOut[93] = Rx*pInL1[58] + pInL2[24];
+   pOut[94] = Ry*pInL1[62] + pInL2[25];
+   pOut[95] = Rx*pInL1[60] + pInL2[26];
+   pOut[96] = Rz*pInL1[65] + pInL2[27];
+   pOut[97] = Ry*pInL1[63] + pInL2[28];
+   pOut[98] = Rz*pInL1[67] + pInL2[29];
+   pOut[99] = Rx*pInL1[64] + pInL2[30];
+   pOut[100] = Ry*pInL1[68] + pInL2[31];
+   pOut[101] = Rx*pInL1[66] + pInL2[32];
+   pOut[102] = Rz*pInL1[71] + pInL2[33];
+   pOut[103] = Ry*pInL1[69] + pInL2[34];
+   pOut[104] = Rz*pInL1[73] + pInL2[35];
+   pOut[105] = Rx*pInL1[70] + pInL2[36];
+   pOut[106] = Ry*pInL1[74] + pInL2[37];
+   pOut[107] = Rx*pInL1[72] + pInL2[38];
+   pOut[108] = Rz*pInL1[78] + 2*pInL2[48];
+   pOut[109] = Rz*pInL1[79] + 2*pInL2[50];
+   pOut[110] = Ry*pInL1[81] + 2*pInL2[51];
+   pOut[111] = Rx*pInL1[88] + 2*pInL2[54];
+   pOut[112] = Rx*pInL1[89] + 2*pInL2[55];
+   pOut[113] = Ry*pInL1[85] + 2*pInL2[56];
+   pOut[114] = Ry*pInL1[87] + 2*pInL2[57];
+   pOut[115] = Rz*pInL1[84] + 2*pInL2[58];
+   pOut[116] = Rz*pInL1[86] + 2*pInL2[59];
+   pOut[117] = Rz*pInL1[90] + 2*pInL2[60];
+   pOut[118] = Ry*pInL1[92] + 2*pInL2[61];
+   pOut[119] = Rz*pInL1[91] + 2*pInL2[62];
+   pOut[120] = Ry*pInL1[93] + 2*pInL2[63];
+   pOut[121] = Rx*pInL1[94] + 2*pInL2[64];
+   pOut[122] = Rx*pInL1[95] + 2*pInL2[65];
+   pOut[123] = Rx*pInL1[98] + 2*pInL2[66];
+   pOut[124] = Ry*pInL1[97] + 2*pInL2[67];
+   pOut[125] = Rz*pInL1[96] + 2*pInL2[68];
+   pOut[126] = Ry*pInL1[102] + 3*pInL2[79];
+   pOut[127] = Rx*pInL1[103] + 3*pInL2[81];
+   pOut[128] = Rx*pInL1[105] + 3*pInL2[83];
+   pOut[129] = Rz*pInL1[110] + 3*pInL2[84];
+   pOut[130] = Ry*pInL1[108] + 3*pInL2[85];
+   pOut[131] = Rz*pInL1[112] + 3*pInL2[86];
+   pOut[132] = Rx*pInL1[109] + 3*pInL2[87];
+   pOut[133] = Ry*pInL1[113] + 3*pInL2[88];
+   pOut[134] = Rx*pInL1[111] + 3*pInL2[89];
+   pOut[135] = Rz*pInL1[117] + 4*pInL2[99];
+   // 2.14 flops and 2.69 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(16)]^(m) from [CartY(15)]^(m+1) and [CartY(14)]^(m+1)
+static void ShellMdrr_MakeL16(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 15*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 15*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 15*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[17] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[19] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[24] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[25] = Rz*pInL1[20] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[27] = Ry*pInL1[21] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[23] + 4*pInL2[16];
+   pOut[29] = Rz*pInL1[22] + 4*pInL2[17];
+   pOut[30] = Rx*pInL1[25] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[24] + 4*pInL2[19];
+   pOut[32] = Ry*pInL1[26] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[29] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[31] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[27] + 5*pInL2[23];
+   pOut[36] = Rx*pInL1[28] + 5*pInL2[24];
+   pOut[37] = Rz*pInL1[32] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[30] + 5*pInL2[26];
+   pOut[39] = Ry*pInL1[33] + 6*pInL2[27];
+   pOut[40] = Rx*pInL1[35] + 6*pInL2[28];
+   pOut[41] = Rz*pInL1[34] + 6*pInL2[29];
+   pOut[42] = Rx*pInL1[37] + 6*pInL2[30];
+   pOut[43] = Rz*pInL1[36] + 6*pInL2[31];
+   pOut[44] = Ry*pInL1[38] + 6*pInL2[32];
+   pOut[45] = Rx*pInL1[39] + 7*pInL2[35];
+   pOut[46] = Rx*pInL1[40] + 7*pInL2[36];
+   pOut[47] = Ry*pInL1[42] + 7*pInL2[38];
+   pOut[48] = Ry*pInL1[4];
+   pOut[49] = Rz*pInL1[3];
+   pOut[50] = Rz*pInL1[5];
+   pOut[51] = Ry*pInL1[10];
+   pOut[52] = Rx*pInL1[12];
+   pOut[53] = Rz*pInL1[9];
+   pOut[54] = Rx*pInL1[14];
+   pOut[55] = Rz*pInL1[11];
+   pOut[56] = Ry*pInL1[13];
+   pOut[57] = Ry*pInL1[16];
+   pOut[58] = Rx*pInL1[18];
+   pOut[59] = Rz*pInL1[15];
+   pOut[60] = Rx*pInL1[20];
+   pOut[61] = Rz*pInL1[17];
+   pOut[62] = Ry*pInL1[19];
+   pOut[63] = Ry*pInL1[22];
+   pOut[64] = Rx*pInL1[24];
+   pOut[65] = Rz*pInL1[21];
+   pOut[66] = Rx*pInL1[26];
+   pOut[67] = Rz*pInL1[23];
+   pOut[68] = Ry*pInL1[25];
+   pOut[69] = Ry*pInL1[28];
+   pOut[70] = Rx*pInL1[30];
+   pOut[71] = Rz*pInL1[27];
+   pOut[72] = Rx*pInL1[32];
+   pOut[73] = Rz*pInL1[29];
+   pOut[74] = Ry*pInL1[31];
+   pOut[75] = Ry*pInL1[34];
+   pOut[76] = Rx*pInL1[36];
+   pOut[77] = Rz*pInL1[33];
+   pOut[78] = Rx*pInL1[38];
+   pOut[79] = Rz*pInL1[35];
+   pOut[80] = Ry*pInL1[37];
+   pOut[81] = Ry*pInL1[40];
+   pOut[82] = Rx*pInL1[42];
+   pOut[83] = Rz*pInL1[39];
+   pOut[84] = Rx*pInL1[44];
+   pOut[85] = Rz*pInL1[41];
+   pOut[86] = Ry*pInL1[43];
+   pOut[87] = Ry*pInL1[50] + pInL2[10];
+   pOut[88] = Rx*pInL1[48] + pInL2[13];
+   pOut[89] = Rx*pInL1[49] + pInL2[14];
+   pOut[90] = Rz*pInL1[54] + pInL2[15];
+   pOut[91] = Rz*pInL1[56] + pInL2[16];
+   pOut[92] = Ry*pInL1[55] + pInL2[17];
+   pOut[93] = Ry*pInL1[57] + pInL2[18];
+   pOut[94] = Rx*pInL1[58] + pInL2[19];
+   pOut[95] = Rx*pInL1[59] + pInL2[20];
+   pOut[96] = Rz*pInL1[64] + pInL2[21];
+   pOut[97] = Ry*pInL1[62] + pInL2[22];
+   pOut[98] = Rz*pInL1[65] + pInL2[23];
+   pOut[99] = Ry*pInL1[63] + pInL2[24];
+   pOut[100] = Rx*pInL1[60] + pInL2[25];
+   pOut[101] = Rx*pInL1[61] + pInL2[26];
+   pOut[102] = Rz*pInL1[66] + pInL2[27];
+   pOut[103] = Rz*pInL1[68] + pInL2[28];
+   pOut[104] = Ry*pInL1[67] + pInL2[29];
+   pOut[105] = Ry*pInL1[69] + pInL2[30];
+   pOut[106] = Rx*pInL1[70] + pInL2[31];
+   pOut[107] = Rx*pInL1[71] + pInL2[32];
+   pOut[108] = Rz*pInL1[76] + pInL2[33];
+   pOut[109] = Ry*pInL1[74] + pInL2[34];
+   pOut[110] = Rz*pInL1[77] + pInL2[35];
+   pOut[111] = Ry*pInL1[75] + pInL2[36];
+   pOut[112] = Rx*pInL1[72] + pInL2[37];
+   pOut[113] = Rx*pInL1[73] + pInL2[38];
+   pOut[114] = Rz*pInL1[78] + pInL2[39];
+   pOut[115] = Ry*pInL1[79] + pInL2[40];
+   pOut[116] = Rx*pInL1[80] + pInL2[41];
+   pOut[117] = Ry*pInL1[85] + 2*pInL2[51];
+   pOut[118] = Rz*pInL1[84] + 2*pInL2[53];
+   pOut[119] = Rz*pInL1[86] + 2*pInL2[55];
+   pOut[120] = Ry*pInL1[91] + 2*pInL2[57];
+   pOut[121] = Rx*pInL1[93] + 2*pInL2[58];
+   pOut[122] = Rz*pInL1[90] + 2*pInL2[59];
+   pOut[123] = Rx*pInL1[95] + 2*pInL2[60];
+   pOut[124] = Rz*pInL1[92] + 2*pInL2[61];
+   pOut[125] = Ry*pInL1[94] + 2*pInL2[62];
+   pOut[126] = Ry*pInL1[97] + 2*pInL2[63];
+   pOut[127] = Rx*pInL1[99] + 2*pInL2[64];
+   pOut[128] = Rz*pInL1[96] + 2*pInL2[65];
+   pOut[129] = Rx*pInL1[101] + 2*pInL2[66];
+   pOut[130] = Rz*pInL1[98] + 2*pInL2[67];
+   pOut[131] = Ry*pInL1[100] + 2*pInL2[68];
+   pOut[132] = Ry*pInL1[103] + 2*pInL2[69];
+   pOut[133] = Rx*pInL1[105] + 2*pInL2[70];
+   pOut[134] = Rz*pInL1[102] + 2*pInL2[71];
+   pOut[135] = Rx*pInL1[107] + 2*pInL2[72];
+   pOut[136] = Rz*pInL1[104] + 2*pInL2[73];
+   pOut[137] = Ry*pInL1[106] + 2*pInL2[74];
+   pOut[138] = Ry*pInL1[113] + 3*pInL2[85];
+   pOut[139] = Rx*pInL1[111] + 3*pInL2[88];
+   pOut[140] = Rx*pInL1[112] + 3*pInL2[89];
+   pOut[141] = Rz*pInL1[117] + 3*pInL2[90];
+   pOut[142] = Rz*pInL1[119] + 3*pInL2[91];
+   pOut[143] = Ry*pInL1[118] + 3*pInL2[92];
+   pOut[144] = Ry*pInL1[120] + 3*pInL2[93];
+   pOut[145] = Rx*pInL1[121] + 3*pInL2[94];
+   pOut[146] = Rx*pInL1[122] + 3*pInL2[95];
+   pOut[147] = Rz*pInL1[125] + 3*pInL2[96];
+   pOut[148] = Ry*pInL1[124] + 3*pInL2[97];
+   pOut[149] = Rx*pInL1[123] + 3*pInL2[98];
+   pOut[150] = Ry*pInL1[130] + 4*pInL2[108];
+   pOut[151] = Rz*pInL1[129] + 4*pInL2[110];
+   pOut[152] = Rz*pInL1[131] + 4*pInL2[112];
+   // 2.18 flops and 2.71 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(17)]^(m) from [CartY(16)]^(m+1) and [CartY(15)]^(m+1)
+static void ShellMdrr_MakeL17(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 16*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 16*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 16*pInL2[2];
+   pOut[3] = Rx*pInL1[1];
+   pOut[4] = Rx*pInL1[2];
+   pOut[5] = Ry*pInL1[0];
+   pOut[6] = Ry*pInL1[2];
+   pOut[7] = Rz*pInL1[0];
+   pOut[8] = Rz*pInL1[1];
+   pOut[9] = Ry*pInL1[3] + pInL2[0];
+   pOut[10] = Rz*pInL1[5] + pInL2[0];
+   pOut[11] = Rx*pInL1[4] + pInL2[1];
+   pOut[12] = Rz*pInL1[7] + pInL2[1];
+   pOut[13] = Rx*pInL1[6] + pInL2[2];
+   pOut[14] = Ry*pInL1[8] + pInL2[2];
+   pOut[15] = Rx*pInL1[11] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[12] + 2*pInL2[4];
+   pOut[17] = Ry*pInL1[9] + 2*pInL2[5];
+   pOut[18] = Ry*pInL1[14] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[10] + 2*pInL2[7];
+   pOut[20] = Rz*pInL1[13] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[15] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[17] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[16] + 3*pInL2[11];
+   pOut[24] = Rz*pInL1[19] + 3*pInL2[12];
+   pOut[25] = Rx*pInL1[18] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[20] + 3*pInL2[14];
+   pOut[27] = Rx*pInL1[23] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[24] + 4*pInL2[16];
+   pOut[29] = Ry*pInL1[21] + 4*pInL2[17];
+   pOut[30] = Ry*pInL1[26] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[22] + 4*pInL2[19];
+   pOut[32] = Rz*pInL1[25] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[27] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[29] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[28] + 5*pInL2[23];
+   pOut[36] = Rz*pInL1[31] + 5*pInL2[24];
+   pOut[37] = Rx*pInL1[30] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[32] + 5*pInL2[26];
+   pOut[39] = Rx*pInL1[35] + 6*pInL2[27];
+   pOut[40] = Rx*pInL1[36] + 6*pInL2[28];
+   pOut[41] = Ry*pInL1[33] + 6*pInL2[29];
+   pOut[42] = Ry*pInL1[38] + 6*pInL2[30];
+   pOut[43] = Rz*pInL1[34] + 6*pInL2[31];
+   pOut[44] = Rz*pInL1[37] + 6*pInL2[32];
+   pOut[45] = Ry*pInL1[39] + 7*pInL2[33];
+   pOut[46] = Rz*pInL1[41] + 7*pInL2[34];
+   pOut[47] = Rx*pInL1[40] + 7*pInL2[35];
+   pOut[48] = Rz*pInL1[43] + 7*pInL2[36];
+   pOut[49] = Rx*pInL1[42] + 7*pInL2[37];
+   pOut[50] = Ry*pInL1[44] + 7*pInL2[38];
+   pOut[51] = Rz*pInL1[3];
+   pOut[52] = Rz*pInL1[4];
+   pOut[53] = Ry*pInL1[6];
+   pOut[54] = Rx*pInL1[13];
+   pOut[55] = Rx*pInL1[14];
+   pOut[56] = Ry*pInL1[10];
+   pOut[57] = Ry*pInL1[12];
+   pOut[58] = Rz*pInL1[9];
+   pOut[59] = Rz*pInL1[11];
+   pOut[60] = Rz*pInL1[15];
+   pOut[61] = Ry*pInL1[17];
+   pOut[62] = Rz*pInL1[16];
+   pOut[63] = Ry*pInL1[18];
+   pOut[64] = Rx*pInL1[19];
+   pOut[65] = Rx*pInL1[20];
+   pOut[66] = Rx*pInL1[25];
+   pOut[67] = Rx*pInL1[26];
+   pOut[68] = Ry*pInL1[22];
+   pOut[69] = Ry*pInL1[24];
+   pOut[70] = Rz*pInL1[21];
+   pOut[71] = Rz*pInL1[23];
+   pOut[72] = Rz*pInL1[27];
+   pOut[73] = Ry*pInL1[29];
+   pOut[74] = Rz*pInL1[28];
+   pOut[75] = Ry*pInL1[30];
+   pOut[76] = Rx*pInL1[31];
+   pOut[77] = Rx*pInL1[32];
+   pOut[78] = Rx*pInL1[37];
+   pOut[79] = Rx*pInL1[38];
+   pOut[80] = Ry*pInL1[34];
+   pOut[81] = Ry*pInL1[36];
+   pOut[82] = Rz*pInL1[33];
+   pOut[83] = Rz*pInL1[35];
+   pOut[84] = Rz*pInL1[39];
+   pOut[85] = Ry*pInL1[41];
+   pOut[86] = Rz*pInL1[40];
+   pOut[87] = Ry*pInL1[42];
+   pOut[88] = Rx*pInL1[43];
+   pOut[89] = Rx*pInL1[44];
+   pOut[90] = Rx*pInL1[47];
+   pOut[91] = Ry*pInL1[46];
+   pOut[92] = Rz*pInL1[45];
+   pOut[93] = Ry*pInL1[51] + pInL2[10];
+   pOut[94] = Rx*pInL1[52] + pInL2[12];
+   pOut[95] = Rx*pInL1[54] + pInL2[14];
+   pOut[96] = Rz*pInL1[59] + pInL2[15];
+   pOut[97] = Ry*pInL1[57] + pInL2[16];
+   pOut[98] = Rz*pInL1[61] + pInL2[17];
+   pOut[99] = Rx*pInL1[58] + pInL2[18];
+   pOut[100] = Ry*pInL1[62] + pInL2[19];
+   pOut[101] = Rx*pInL1[60] + pInL2[20];
+   pOut[102] = Rz*pInL1[65] + pInL2[21];
+   pOut[103] = Ry*pInL1[63] + pInL2[22];
+   pOut[104] = Rz*pInL1[67] + pInL2[23];
+   pOut[105] = Rx*pInL1[64] + pInL2[24];
+   pOut[106] = Ry*pInL1[68] + pInL2[25];
+   pOut[107] = Rx*pInL1[66] + pInL2[26];
+   pOut[108] = Rz*pInL1[71] + pInL2[27];
+   pOut[109] = Ry*pInL1[69] + pInL2[28];
+   pOut[110] = Rz*pInL1[73] + pInL2[29];
+   pOut[111] = Rx*pInL1[70] + pInL2[30];
+   pOut[112] = Ry*pInL1[74] + pInL2[31];
+   pOut[113] = Rx*pInL1[72] + pInL2[32];
+   pOut[114] = Rz*pInL1[77] + pInL2[33];
+   pOut[115] = Ry*pInL1[75] + pInL2[34];
+   pOut[116] = Rz*pInL1[79] + pInL2[35];
+   pOut[117] = Rx*pInL1[76] + pInL2[36];
+   pOut[118] = Ry*pInL1[80] + pInL2[37];
+   pOut[119] = Rx*pInL1[78] + pInL2[38];
+   pOut[120] = Rz*pInL1[83] + pInL2[39];
+   pOut[121] = Ry*pInL1[81] + pInL2[40];
+   pOut[122] = Rz*pInL1[85] + pInL2[41];
+   pOut[123] = Rx*pInL1[82] + pInL2[42];
+   pOut[124] = Ry*pInL1[86] + pInL2[43];
+   pOut[125] = Rx*pInL1[84] + pInL2[44];
+   pOut[126] = Rz*pInL1[90] + 2*pInL2[54];
+   pOut[127] = Rz*pInL1[91] + 2*pInL2[56];
+   pOut[128] = Ry*pInL1[93] + 2*pInL2[57];
+   pOut[129] = Rx*pInL1[100] + 2*pInL2[60];
+   pOut[130] = Rx*pInL1[101] + 2*pInL2[61];
+   pOut[131] = Ry*pInL1[97] + 2*pInL2[62];
+   pOut[132] = Ry*pInL1[99] + 2*pInL2[63];
+   pOut[133] = Rz*pInL1[96] + 2*pInL2[64];
+   pOut[134] = Rz*pInL1[98] + 2*pInL2[65];
+   pOut[135] = Rz*pInL1[102] + 2*pInL2[66];
+   pOut[136] = Ry*pInL1[104] + 2*pInL2[67];
+   pOut[137] = Rz*pInL1[103] + 2*pInL2[68];
+   pOut[138] = Ry*pInL1[105] + 2*pInL2[69];
+   pOut[139] = Rx*pInL1[106] + 2*pInL2[70];
+   pOut[140] = Rx*pInL1[107] + 2*pInL2[71];
+   pOut[141] = Rx*pInL1[112] + 2*pInL2[72];
+   pOut[142] = Rx*pInL1[113] + 2*pInL2[73];
+   pOut[143] = Ry*pInL1[109] + 2*pInL2[74];
+   pOut[144] = Ry*pInL1[111] + 2*pInL2[75];
+   pOut[145] = Rz*pInL1[108] + 2*pInL2[76];
+   pOut[146] = Rz*pInL1[110] + 2*pInL2[77];
+   pOut[147] = Rz*pInL1[114] + 2*pInL2[78];
+   pOut[148] = Ry*pInL1[115] + 2*pInL2[79];
+   pOut[149] = Rx*pInL1[116] + 2*pInL2[80];
+   pOut[150] = Ry*pInL1[120] + 3*pInL2[91];
+   pOut[151] = Rx*pInL1[121] + 3*pInL2[93];
+   pOut[152] = Rx*pInL1[123] + 3*pInL2[95];
+   pOut[153] = Rz*pInL1[128] + 3*pInL2[96];
+   pOut[154] = Ry*pInL1[126] + 3*pInL2[97];
+   pOut[155] = Rz*pInL1[130] + 3*pInL2[98];
+   pOut[156] = Rx*pInL1[127] + 3*pInL2[99];
+   pOut[157] = Ry*pInL1[131] + 3*pInL2[100];
+   pOut[158] = Rx*pInL1[129] + 3*pInL2[101];
+   pOut[159] = Rz*pInL1[134] + 3*pInL2[102];
+   pOut[160] = Ry*pInL1[132] + 3*pInL2[103];
+   pOut[161] = Rz*pInL1[136] + 3*pInL2[104];
+   pOut[162] = Rx*pInL1[133] + 3*pInL2[105];
+   pOut[163] = Ry*pInL1[137] + 3*pInL2[106];
+   pOut[164] = Rx*pInL1[135] + 3*pInL2[107];
+   pOut[165] = Rz*pInL1[141] + 4*pInL2[117];
+   pOut[166] = Rz*pInL1[142] + 4*pInL2[119];
+   pOut[167] = Ry*pInL1[144] + 4*pInL2[120];
+   pOut[168] = Rx*pInL1[149] + 4*pInL2[123];
+   pOut[169] = Ry*pInL1[148] + 4*pInL2[124];
+   pOut[170] = Rz*pInL1[147] + 4*pInL2[125];
+   // 2.21 flops and 2.72 mops per component
+}
+
+// calculate Shell-MDRR intermediates [CartY(18)]^(m) from [CartY(17)]^(m+1) and [CartY(16)]^(m+1)
+static void ShellMdrr_MakeL18(double *IR_RP pOut, double const *IR_RP pInL1, double const *IR_RP pInL2, double Rx, double Ry, double Rz)
+{
+   pOut[0] = Rx*pInL1[0] + 17*pInL2[0];
+   pOut[1] = Ry*pInL1[1] + 17*pInL2[1];
+   pOut[2] = Rz*pInL1[2] + 17*pInL2[2];
+   pOut[3] = Ry*pInL1[0];
+   pOut[4] = Rx*pInL1[1];
+   pOut[5] = Rz*pInL1[0];
+   pOut[6] = Rx*pInL1[2];
+   pOut[7] = Rz*pInL1[1];
+   pOut[8] = Ry*pInL1[2];
+   pOut[9] = Ry*pInL1[5] + pInL2[0];
+   pOut[10] = Rz*pInL1[7] + pInL2[0];
+   pOut[11] = Rx*pInL1[3] + pInL2[1];
+   pOut[12] = Rx*pInL1[4] + pInL2[2];
+   pOut[13] = Rz*pInL1[8] + pInL2[1];
+   pOut[14] = Ry*pInL1[6] + pInL2[2];
+   pOut[15] = Ry*pInL1[9] + 2*pInL2[3];
+   pOut[16] = Rx*pInL1[11] + 2*pInL2[4];
+   pOut[17] = Rz*pInL1[10] + 2*pInL2[5];
+   pOut[18] = Rx*pInL1[13] + 2*pInL2[6];
+   pOut[19] = Rz*pInL1[12] + 2*pInL2[7];
+   pOut[20] = Ry*pInL1[14] + 2*pInL2[8];
+   pOut[21] = Ry*pInL1[17] + 3*pInL2[9];
+   pOut[22] = Rz*pInL1[19] + 3*pInL2[10];
+   pOut[23] = Rx*pInL1[15] + 3*pInL2[11];
+   pOut[24] = Rx*pInL1[16] + 3*pInL2[12];
+   pOut[25] = Rz*pInL1[20] + 3*pInL2[13];
+   pOut[26] = Ry*pInL1[18] + 3*pInL2[14];
+   pOut[27] = Ry*pInL1[21] + 4*pInL2[15];
+   pOut[28] = Rx*pInL1[23] + 4*pInL2[16];
+   pOut[29] = Rz*pInL1[22] + 4*pInL2[17];
+   pOut[30] = Rx*pInL1[25] + 4*pInL2[18];
+   pOut[31] = Rz*pInL1[24] + 4*pInL2[19];
+   pOut[32] = Ry*pInL1[26] + 4*pInL2[20];
+   pOut[33] = Ry*pInL1[29] + 5*pInL2[21];
+   pOut[34] = Rz*pInL1[31] + 5*pInL2[22];
+   pOut[35] = Rx*pInL1[27] + 5*pInL2[23];
+   pOut[36] = Rx*pInL1[28] + 5*pInL2[24];
+   pOut[37] = Rz*pInL1[32] + 5*pInL2[25];
+   pOut[38] = Ry*pInL1[30] + 5*pInL2[26];
+   pOut[39] = Ry*pInL1[33] + 6*pInL2[27];
+   pOut[40] = Rx*pInL1[35] + 6*pInL2[28];
+   pOut[41] = Rz*pInL1[34] + 6*pInL2[29];
+   pOut[42] = Rx*pInL1[37] + 6*pInL2[30];
+   pOut[43] = Rz*pInL1[36] + 6*pInL2[31];
+   pOut[44] = Ry*pInL1[38] + 6*pInL2[32];
+   pOut[45] = Ry*pInL1[41] + 7*pInL2[33];
+   pOut[46] = Rz*pInL1[43] + 7*pInL2[34];
+   pOut[47] = Rx*pInL1[39] + 7*pInL2[35];
+   pOut[48] = Rx*pInL1[40] + 7*pInL2[36];
+   pOut[49] = Rz*pInL1[44] + 7*pInL2[37];
+   pOut[50] = Ry*pInL1[42] + 7*pInL2[38];
+   pOut[51] = Ry*pInL1[45] + 8*pInL2[39];
+   pOut[52] = Rz*pInL1[46] + 8*pInL2[41];
+   pOut[53] = Rz*pInL1[48] + 8*pInL2[43];
+   pOut[54] = Ry*pInL1[4];
+   pOut[55] = Rz*pInL1[3];
+   pOut[56] = Rz*pInL1[5];
+   pOut[57] = Ry*pInL1[10];
+   pOut[58] = Rx*pInL1[12];
+   pOut[59] = Rz*pInL1[9];
+   pOut[60] = Rx*pInL1[14];
+   pOut[61] = Rz*pInL1[11];
+   pOut[62] = Ry*pInL1[13];
+   pOut[63] = Ry*pInL1[16];
+   pOut[64] = Rx*pInL1[18];
+   pOut[65] = Rz*pInL1[15];
+   pOut[66] = Rx*pInL1[20];
+   pOut[67] = Rz*pInL1[17];
+   pOut[68] = Ry*pInL1[19];
+   pOut[69] = Ry*pInL1[22];
+   pOut[70] = Rx*pInL1[24];
+   pOut[71] = Rz*pInL1[21];
+   pOut[72] = Rx*pInL1[26];
+   pOut[73] = Rz*pInL1[23];
+   pOut[74] = Ry*pInL1[25];
+   pOut[75] = Ry*pInL1[28];
+   pOut[76] = Rx*pInL1[30];
+   pOut[77] = Rz*pInL1[27];
+   pOut[78] = Rx*pInL1[32];
+   pOut[79] = Rz*pInL1[29];
+   pOut[80] = Ry*pInL1[31];
+   pOut[81] = Ry*pInL1[34];
+   pOut[82] = Rx*pInL1[36];
+   pOut[83] = Rz*pInL1[33];
+   pOut[84] = Rx*pInL1[38];
+   pOut[85] = Rz*pInL1[35];
+   pOut[86] = Ry*pInL1[37];
+   pOut[87] = Ry*pInL1[40];
+   pOut[88] = Rx*pInL1[42];
+   pOut[89] = Rz*pInL1[39];
+   pOut[90] = Rx*pInL1[44];
+   pOut[91] = Rz*pInL1[41];
+   pOut[92] = Ry*pInL1[43];
+   pOut[93] = Ry*pInL1[46];
+   pOut[94] = Rx*pInL1[48];
+   pOut[95] = Rz*pInL1[45];
+   pOut[96] = Rx*pInL1[50];
+   pOut[97] = Rz*pInL1[47];
+   pOut[98] = Ry*pInL1[49];
+   pOut[99] = Ry*pInL1[56] + pInL2[10];
+   pOut[100] = Rx*pInL1[54] + pInL2[13];
+   pOut[101] = Rx*pInL1[55] + pInL2[14];
+   pOut[102] = Rz*pInL1[60] + pInL2[15];
+   pOut[103] = Rz*pInL1[62] + pInL2[16];
+   pOut[104] = Ry*pInL1[61] + pInL2[17];
+   pOut[105] = Ry*pInL1[63] + pInL2[18];
+   pOut[106] = Rx*pInL1[64] + pInL2[19];
+   pOut[107] = Rx*pInL1[65] + pInL2[20];
+   pOut[108] = Rz*pInL1[70] + pInL2[21];
+   pOut[109] = Ry*pInL1[68] + pInL2[22];
+   pOut[110] = Rz*pInL1[71] + pInL2[23];
+   pOut[111] = Ry*pInL1[69] + pInL2[24];
+   pOut[112] = Rx*pInL1[66] + pInL2[25];
+   pOut[113] = Rx*pInL1[67] + pInL2[26];
+   pOut[114] = Rz*pInL1[72] + pInL2[27];
+   pOut[115] = Rz*pInL1[74] + pInL2[28];
+   pOut[116] = Ry*pInL1[73] + pInL2[29];
+   pOut[117] = Ry*pInL1[75] + pInL2[30];
+   pOut[118] = Rx*pInL1[76] + pInL2[31];
+   pOut[119] = Rx*pInL1[77] + pInL2[32];
+   pOut[120] = Rz*pInL1[82] + pInL2[33];
+   pOut[121] = Ry*pInL1[80] + pInL2[34];
+   pOut[122] = Rz*pInL1[83] + pInL2[35];
+   pOut[123] = Ry*pInL1[81] + pInL2[36];
+   pOut[124] = Rx*pInL1[78] + pInL2[37];
+   pOut[125] = Rx*pInL1[79] + pInL2[38];
+   pOut[126] = Rz*pInL1[84] + pInL2[39];
+   pOut[127] = Rz*pInL1[86] + pInL2[40];
+   pOut[128] = Ry*pInL1[85] + pInL2[41];
+   pOut[129] = Ry*pInL1[87] + pInL2[42];
+   pOut[130] = Rx*pInL1[88] + pInL2[43];
+   pOut[131] = Rx*pInL1[89] + pInL2[44];
+   pOut[132] = Rz*pInL1[92] + pInL2[45];
+   pOut[133] = Ry*pInL1[91] + pInL2[46];
+   pOut[134] = Rx*pInL1[90] + pInL2[47];
+   pOut[135] = Ry*pInL1[97] + 2*pInL2[57];
+   pOut[136] = Rz*pInL1[96] + 2*pInL2[59];
+   pOut[137] = Rz*pInL1[98] + 2*pInL2[61];
+   pOut[138] = Ry*pInL1[103] + 2*pInL2[63];
+   pOut[139] = Rx*pInL1[105] + 2*pInL2[64];
+   pOut[140] = Rz*pInL1[102] + 2*pInL2[65];
+   pOut[141] = Rx*pInL1[107] + 2*pInL2[66];
+   pOut[142] = Rz*pInL1[104] + 2*pInL2[67];
+   pOut[143] = Ry*pInL1[106] + 2*pInL2[68];
+   pOut[144] = Ry*pInL1[109] + 2*pInL2[69];
+   pOut[145] = Rx*pInL1[111] + 2*pInL2[70];
+   pOut[146] = Rz*pInL1[108] + 2*pInL2[71];
+   pOut[147] = Rx*pInL1[113] + 2*pInL2[72];
+   pOut[148] = Rz*pInL1[110] + 2*pInL2[73];
+   pOut[149] = Ry*pInL1[112] + 2*pInL2[74];
+   pOut[150] = Ry*pInL1[115] + 2*pInL2[75];
+   pOut[151] = Rx*pInL1[117] + 2*pInL2[76];
+   pOut[152] = Rz*pInL1[114] + 2*pInL2[77];
+   pOut[153] = Rx*pInL1[119] + 2*pInL2[78];
+   pOut[154] = Rz*pInL1[116] + 2*pInL2[79];
+   pOut[155] = Ry*pInL1[118] + 2*pInL2[80];
+   pOut[156] = Ry*pInL1[121] + 2*pInL2[81];
+   pOut[157] = Rx*pInL1[123] + 2*pInL2[82];
+   pOut[158] = Rz*pInL1[120] + 2*pInL2[83];
+   pOut[159] = Rx*pInL1[125] + 2*pInL2[84];
+   pOut[160] = Rz*pInL1[122] + 2*pInL2[85];
+   pOut[161] = Ry*pInL1[124] + 2*pInL2[86];
+   pOut[162] = Ry*pInL1[131] + 3*pInL2[97];
+   pOut[163] = Rx*pInL1[129] + 3*pInL2[100];
+   pOut[164] = Rx*pInL1[130] + 3*pInL2[101];
+   pOut[165] = Rz*pInL1[135] + 3*pInL2[102];
+   pOut[166] = Rz*pInL1[137] + 3*pInL2[103];
+   pOut[167] = Ry*pInL1[136] + 3*pInL2[104];
+   pOut[168] = Ry*pInL1[138] + 3*pInL2[105];
+   pOut[169] = Rx*pInL1[139] + 3*pInL2[106];
+   pOut[170] = Rx*pInL1[140] + 3*pInL2[107];
+   pOut[171] = Rz*pInL1[145] + 3*pInL2[108];
+   pOut[172] = Ry*pInL1[143] + 3*pInL2[109];
+   pOut[173] = Rz*pInL1[146] + 3*pInL2[110];
+   pOut[174] = Ry*pInL1[144] + 3*pInL2[111];
+   pOut[175] = Rx*pInL1[141] + 3*pInL2[112];
+   pOut[176] = Rx*pInL1[142] + 3*pInL2[113];
+   pOut[177] = Rz*pInL1[147] + 3*pInL2[114];
+   pOut[178] = Ry*pInL1[148] + 3*pInL2[115];
+   pOut[179] = Rx*pInL1[149] + 3*pInL2[116];
+   pOut[180] = Ry*pInL1[154] + 4*pInL2[126];
+   pOut[181] = Rz*pInL1[153] + 4*pInL2[128];
+   pOut[182] = Rz*pInL1[155] + 4*pInL2[130];
+   pOut[183] = Ry*pInL1[160] + 4*pInL2[132];
+   pOut[184] = Rx*pInL1[162] + 4*pInL2[133];
+   pOut[185] = Rz*pInL1[159] + 4*pInL2[134];
+   pOut[186] = Rx*pInL1[164] + 4*pInL2[135];
+   pOut[187] = Rz*pInL1[161] + 4*pInL2[136];
+   pOut[188] = Ry*pInL1[163] + 4*pInL2[137];
+   pOut[189] = Rx*pInL1[168] + 5*pInL2[149];
+   // 2.24 flops and 2.73 mops per component
+}
+
+inline void ShellMdrr0(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   pOut[0] = pIn[0];                                                              // make [0]^0
+   // 0.00 flops and 2.00 mops per component, 0.00 kb stack
+}
+
+inline void ShellMdrr1(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   ShellMdrr_MakeL1(pOut, &pIn[1], 0, Rx, Ry, Rz);                                // make [1]^0
+   // 1.00 flops and 2.00 mops per component, 0.00 kb stack
+}
+
+inline void ShellMdrr2(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_1[3]; ShellMdrr_MakeL1(r_1_1, &pIn[2], 0, Rx, Ry, Rz);              // make [1]^1
+   ShellMdrr_MakeL2(pOut, r_1_1, &pIn[1], Rx, Ry, Rz);                            // make [2]^0
+   // 2.00 flops and 3.50 mops per component, 0.02 kb stack
+}
+
+inline void ShellMdrr3(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_1[3]; ShellMdrr_MakeL1(r_1_1, &pIn[2], 0, Rx, Ry, Rz);              // make [1]^1
+   double r_1_2[3]; ShellMdrr_MakeL1(r_1_2, &pIn[3], 0, Rx, Ry, Rz);              // make [1]^2
+   double r_2_1[6]; ShellMdrr_MakeL2(r_2_1, r_1_2, &pIn[2], Rx, Ry, Rz);          // make [2]^1
+   ShellMdrr_MakeL3(pOut, r_2_1, r_1_1, Rx, Ry, Rz);                              // make [3]^0
+   // 3.10 flops and 5.00 mops per component, 0.09 kb stack
+}
+
+static void ShellMdrr4(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_2[3]; ShellMdrr_MakeL1(r_1_2, &pIn[3], 0, Rx, Ry, Rz);              // make [1]^2
+   double r_1_3[3]; ShellMdrr_MakeL1(r_1_3, &pIn[4], 0, Rx, Ry, Rz);              // make [1]^3
+   double r_2_1[6]; ShellMdrr_MakeL2(r_2_1, r_1_2, &pIn[2], Rx, Ry, Rz);          // make [2]^1
+   double r_2_2[6]; ShellMdrr_MakeL2(r_2_2, r_1_3, &pIn[3], Rx, Ry, Rz);          // make [2]^2
+   double r_3_1[10]; ShellMdrr_MakeL3(r_3_1, r_2_2, r_1_2, Rx, Ry, Rz);           // make [3]^1
+   ShellMdrr_MakeL4(pOut, r_3_1, r_2_1, Rx, Ry, Rz);                              // make [4]^0
+   // 4.27 flops and 6.73 mops per component, 0.22 kb stack
+}
+
+static void ShellMdrr5(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_2[3]; ShellMdrr_MakeL1(r_1_2, &pIn[3], 0, Rx, Ry, Rz);              // make [1]^2
+   double r_1_3[3]; ShellMdrr_MakeL1(r_1_3, &pIn[4], 0, Rx, Ry, Rz);              // make [1]^3
+   double r_1_4[3]; ShellMdrr_MakeL1(r_1_4, &pIn[5], 0, Rx, Ry, Rz);              // make [1]^4
+   double r_2_2[6]; ShellMdrr_MakeL2(r_2_2, r_1_3, &pIn[3], Rx, Ry, Rz);          // make [2]^2
+   double r_2_3[6]; ShellMdrr_MakeL2(r_2_3, r_1_4, &pIn[4], Rx, Ry, Rz);          // make [2]^3
+   double r_3_1[10]; ShellMdrr_MakeL3(r_3_1, r_2_2, r_1_2, Rx, Ry, Rz);           // make [3]^1
+   double r_3_2[10]; ShellMdrr_MakeL3(r_3_2, r_2_3, r_1_3, Rx, Ry, Rz);           // make [3]^2
+   double r_4_1[15]; ShellMdrr_MakeL4(r_4_1, r_3_2, r_2_2, Rx, Ry, Rz);           // make [4]^1
+   ShellMdrr_MakeL5(pOut, r_4_1, r_3_1, Rx, Ry, Rz);                              // make [5]^0
+   // 5.52 flops and 8.62 mops per component, 0.44 kb stack
+}
+
+static void ShellMdrr6(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_3[3]; ShellMdrr_MakeL1(r_1_3, &pIn[4], 0, Rx, Ry, Rz);              // make [1]^3
+   double r_1_4[3]; ShellMdrr_MakeL1(r_1_4, &pIn[5], 0, Rx, Ry, Rz);              // make [1]^4
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_2_2[6]; ShellMdrr_MakeL2(r_2_2, r_1_3, &pIn[3], Rx, Ry, Rz);          // make [2]^2
+   double r_2_3[6]; ShellMdrr_MakeL2(r_2_3, r_1_4, &pIn[4], Rx, Ry, Rz);          // make [2]^3
+   double r_2_4[6]; ShellMdrr_MakeL2(r_2_4, r_1_5, &pIn[5], Rx, Ry, Rz);          // make [2]^4
+   double r_3_2[10]; ShellMdrr_MakeL3(r_3_2, r_2_3, r_1_3, Rx, Ry, Rz);           // make [3]^2
+   double r_3_3[10]; ShellMdrr_MakeL3(r_3_3, r_2_4, r_1_4, Rx, Ry, Rz);           // make [3]^3
+   double r_4_1[15]; ShellMdrr_MakeL4(r_4_1, r_3_2, r_2_2, Rx, Ry, Rz);           // make [4]^1
+   double r_4_2[15]; ShellMdrr_MakeL4(r_4_2, r_3_3, r_2_3, Rx, Ry, Rz);           // make [4]^2
+   double r_5_1[21]; ShellMdrr_MakeL5(r_5_1, r_4_2, r_3_2, Rx, Ry, Rz);           // make [5]^1
+   ShellMdrr_MakeL6(pOut, r_5_1, r_4_1, Rx, Ry, Rz);                              // make [6]^0
+   // 7.00 flops and 10.75 mops per component, 0.77 kb stack
+}
+
+static void ShellMdrr7(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_3[3]; ShellMdrr_MakeL1(r_1_3, &pIn[4], 0, Rx, Ry, Rz);              // make [1]^3
+   double r_1_4[3]; ShellMdrr_MakeL1(r_1_4, &pIn[5], 0, Rx, Ry, Rz);              // make [1]^4
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_2_3[6]; ShellMdrr_MakeL2(r_2_3, r_1_4, &pIn[4], Rx, Ry, Rz);          // make [2]^3
+   double r_2_4[6]; ShellMdrr_MakeL2(r_2_4, r_1_5, &pIn[5], Rx, Ry, Rz);          // make [2]^4
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_3_2[10]; ShellMdrr_MakeL3(r_3_2, r_2_3, r_1_3, Rx, Ry, Rz);           // make [3]^2
+   double r_3_3[10]; ShellMdrr_MakeL3(r_3_3, r_2_4, r_1_4, Rx, Ry, Rz);           // make [3]^3
+   double r_3_4[10]; ShellMdrr_MakeL3(r_3_4, r_2_5, r_1_5, Rx, Ry, Rz);           // make [3]^4
+   double r_4_2[15]; ShellMdrr_MakeL4(r_4_2, r_3_3, r_2_3, Rx, Ry, Rz);           // make [4]^2
+   double r_4_3[15]; ShellMdrr_MakeL4(r_4_3, r_3_4, r_2_4, Rx, Ry, Rz);           // make [4]^3
+   double r_5_1[21]; ShellMdrr_MakeL5(r_5_1, r_4_2, r_3_2, Rx, Ry, Rz);           // make [5]^1
+   double r_5_2[21]; ShellMdrr_MakeL5(r_5_2, r_4_3, r_3_3, Rx, Ry, Rz);           // make [5]^2
+   double r_6_1[28]; ShellMdrr_MakeL6(r_6_1, r_5_2, r_4_2, Rx, Ry, Rz);           // make [6]^1
+   ShellMdrr_MakeL7(pOut, r_6_1, r_5_1, Rx, Ry, Rz);                              // make [7]^0
+   // 8.64 flops and 13.08 mops per component, 1.25 kb stack
+}
+
+static void ShellMdrr8(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_4[3]; ShellMdrr_MakeL1(r_1_4, &pIn[5], 0, Rx, Ry, Rz);              // make [1]^4
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_2_3[6]; ShellMdrr_MakeL2(r_2_3, r_1_4, &pIn[4], Rx, Ry, Rz);          // make [2]^3
+   double r_2_4[6]; ShellMdrr_MakeL2(r_2_4, r_1_5, &pIn[5], Rx, Ry, Rz);          // make [2]^4
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_3_3[10]; ShellMdrr_MakeL3(r_3_3, r_2_4, r_1_4, Rx, Ry, Rz);           // make [3]^3
+   double r_3_4[10]; ShellMdrr_MakeL3(r_3_4, r_2_5, r_1_5, Rx, Ry, Rz);           // make [3]^4
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_4_2[15]; ShellMdrr_MakeL4(r_4_2, r_3_3, r_2_3, Rx, Ry, Rz);           // make [4]^2
+   double r_4_3[15]; ShellMdrr_MakeL4(r_4_3, r_3_4, r_2_4, Rx, Ry, Rz);           // make [4]^3
+   double r_4_4[15]; ShellMdrr_MakeL4(r_4_4, r_3_5, r_2_5, Rx, Ry, Rz);           // make [4]^4
+   double r_5_2[21]; ShellMdrr_MakeL5(r_5_2, r_4_3, r_3_3, Rx, Ry, Rz);           // make [5]^2
+   double r_5_3[21]; ShellMdrr_MakeL5(r_5_3, r_4_4, r_3_4, Rx, Ry, Rz);           // make [5]^3
+   double r_6_1[28]; ShellMdrr_MakeL6(r_6_1, r_5_2, r_4_2, Rx, Ry, Rz);           // make [6]^1
+   double r_6_2[28]; ShellMdrr_MakeL6(r_6_2, r_5_3, r_4_3, Rx, Ry, Rz);           // make [6]^2
+   double r_7_1[36]; ShellMdrr_MakeL7(r_7_1, r_6_2, r_5_2, Rx, Ry, Rz);           // make [7]^1
+   ShellMdrr_MakeL8(pOut, r_7_1, r_6_1, Rx, Ry, Rz);                              // make [8]^0
+   // 10.49 flops and 15.67 mops per component, 1.91 kb stack
+}
+
+static void ShellMdrr9(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_4[3]; ShellMdrr_MakeL1(r_1_4, &pIn[5], 0, Rx, Ry, Rz);              // make [1]^4
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_2_4[6]; ShellMdrr_MakeL2(r_2_4, r_1_5, &pIn[5], Rx, Ry, Rz);          // make [2]^4
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_3_3[10]; ShellMdrr_MakeL3(r_3_3, r_2_4, r_1_4, Rx, Ry, Rz);           // make [3]^3
+   double r_3_4[10]; ShellMdrr_MakeL3(r_3_4, r_2_5, r_1_5, Rx, Ry, Rz);           // make [3]^4
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_4_3[15]; ShellMdrr_MakeL4(r_4_3, r_3_4, r_2_4, Rx, Ry, Rz);           // make [4]^3
+   double r_4_4[15]; ShellMdrr_MakeL4(r_4_4, r_3_5, r_2_5, Rx, Ry, Rz);           // make [4]^4
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_5_2[21]; ShellMdrr_MakeL5(r_5_2, r_4_3, r_3_3, Rx, Ry, Rz);           // make [5]^2
+   double r_5_3[21]; ShellMdrr_MakeL5(r_5_3, r_4_4, r_3_4, Rx, Ry, Rz);           // make [5]^3
+   double r_5_4[21]; ShellMdrr_MakeL5(r_5_4, r_4_5, r_3_5, Rx, Ry, Rz);           // make [5]^4
+   double r_6_2[28]; ShellMdrr_MakeL6(r_6_2, r_5_3, r_4_3, Rx, Ry, Rz);           // make [6]^2
+   double r_6_3[28]; ShellMdrr_MakeL6(r_6_3, r_5_4, r_4_4, Rx, Ry, Rz);           // make [6]^3
+   double r_7_1[36]; ShellMdrr_MakeL7(r_7_1, r_6_2, r_5_2, Rx, Ry, Rz);           // make [7]^1
+   double r_7_2[36]; ShellMdrr_MakeL7(r_7_2, r_6_3, r_5_3, Rx, Ry, Rz);           // make [7]^2
+   double r_8_1[45]; ShellMdrr_MakeL8(r_8_1, r_7_2, r_6_2, Rx, Ry, Rz);           // make [8]^1
+   ShellMdrr_MakeL9(pOut, r_8_1, r_7_1, Rx, Ry, Rz);                              // make [9]^0
+   // 12.53 flops and 18.47 mops per component, 2.81 kb stack
+}
+
+static void ShellMdrr10(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_2_4[6]; ShellMdrr_MakeL2(r_2_4, r_1_5, &pIn[5], Rx, Ry, Rz);          // make [2]^4
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_3_4[10]; ShellMdrr_MakeL3(r_3_4, r_2_5, r_1_5, Rx, Ry, Rz);           // make [3]^4
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_4_3[15]; ShellMdrr_MakeL4(r_4_3, r_3_4, r_2_4, Rx, Ry, Rz);           // make [4]^3
+   double r_4_4[15]; ShellMdrr_MakeL4(r_4_4, r_3_5, r_2_5, Rx, Ry, Rz);           // make [4]^4
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_5_3[21]; ShellMdrr_MakeL5(r_5_3, r_4_4, r_3_4, Rx, Ry, Rz);           // make [5]^3
+   double r_5_4[21]; ShellMdrr_MakeL5(r_5_4, r_4_5, r_3_5, Rx, Ry, Rz);           // make [5]^4
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_6_2[28]; ShellMdrr_MakeL6(r_6_2, r_5_3, r_4_3, Rx, Ry, Rz);           // make [6]^2
+   double r_6_3[28]; ShellMdrr_MakeL6(r_6_3, r_5_4, r_4_4, Rx, Ry, Rz);           // make [6]^3
+   double r_6_4[28]; ShellMdrr_MakeL6(r_6_4, r_5_5, r_4_5, Rx, Ry, Rz);           // make [6]^4
+   double r_7_2[36]; ShellMdrr_MakeL7(r_7_2, r_6_3, r_5_3, Rx, Ry, Rz);           // make [7]^2
+   double r_7_3[36]; ShellMdrr_MakeL7(r_7_3, r_6_4, r_5_4, Rx, Ry, Rz);           // make [7]^3
+   double r_8_1[45]; ShellMdrr_MakeL8(r_8_1, r_7_2, r_6_2, Rx, Ry, Rz);           // make [8]^1
+   double r_8_2[45]; ShellMdrr_MakeL8(r_8_2, r_7_3, r_6_3, Rx, Ry, Rz);           // make [8]^2
+   double r_9_1[55]; ShellMdrr_MakeL9(r_9_1, r_8_2, r_7_2, Rx, Ry, Rz);           // make [9]^1
+   ShellMdrr_MakeL10(pOut, r_9_1, r_8_1, Rx, Ry, Rz);                             // make [10]^0
+   // 14.79 flops and 21.53 mops per component, 3.98 kb stack
+}
+
+static void ShellMdrr11(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_5[3]; ShellMdrr_MakeL1(r_1_5, &pIn[6], 0, Rx, Ry, Rz);              // make [1]^5
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_3_4[10]; ShellMdrr_MakeL3(r_3_4, r_2_5, r_1_5, Rx, Ry, Rz);           // make [3]^4
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_4_4[15]; ShellMdrr_MakeL4(r_4_4, r_3_5, r_2_5, Rx, Ry, Rz);           // make [4]^4
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_5_3[21]; ShellMdrr_MakeL5(r_5_3, r_4_4, r_3_4, Rx, Ry, Rz);           // make [5]^3
+   double r_5_4[21]; ShellMdrr_MakeL5(r_5_4, r_4_5, r_3_5, Rx, Ry, Rz);           // make [5]^4
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_6_3[28]; ShellMdrr_MakeL6(r_6_3, r_5_4, r_4_4, Rx, Ry, Rz);           // make [6]^3
+   double r_6_4[28]; ShellMdrr_MakeL6(r_6_4, r_5_5, r_4_5, Rx, Ry, Rz);           // make [6]^4
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_7_2[36]; ShellMdrr_MakeL7(r_7_2, r_6_3, r_5_3, Rx, Ry, Rz);           // make [7]^2
+   double r_7_3[36]; ShellMdrr_MakeL7(r_7_3, r_6_4, r_5_4, Rx, Ry, Rz);           // make [7]^3
+   double r_7_4[36]; ShellMdrr_MakeL7(r_7_4, r_6_5, r_5_5, Rx, Ry, Rz);           // make [7]^4
+   double r_8_2[45]; ShellMdrr_MakeL8(r_8_2, r_7_3, r_6_3, Rx, Ry, Rz);           // make [8]^2
+   double r_8_3[45]; ShellMdrr_MakeL8(r_8_3, r_7_4, r_6_4, Rx, Ry, Rz);           // make [8]^3
+   double r_9_1[55]; ShellMdrr_MakeL9(r_9_1, r_8_2, r_7_2, Rx, Ry, Rz);           // make [9]^1
+   double r_9_2[55]; ShellMdrr_MakeL9(r_9_2, r_8_3, r_7_3, Rx, Ry, Rz);           // make [9]^2
+   double r_a_1[66]; ShellMdrr_MakeL10(r_a_1, r_9_2, r_8_2, Rx, Ry, Rz);          // make [10]^1
+   ShellMdrr_MakeL11(pOut, r_a_1, r_9_1, Rx, Ry, Rz);                             // make [11]^0
+   // 17.26 flops and 24.82 mops per component, 5.47 kb stack
+}
+
+static void ShellMdrr12(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_2_5[6]; ShellMdrr_MakeL2(r_2_5, r_1_6, &pIn[6], Rx, Ry, Rz);          // make [2]^5
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_4_4[15]; ShellMdrr_MakeL4(r_4_4, r_3_5, r_2_5, Rx, Ry, Rz);           // make [4]^4
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_5_4[21]; ShellMdrr_MakeL5(r_5_4, r_4_5, r_3_5, Rx, Ry, Rz);           // make [5]^4
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_6_3[28]; ShellMdrr_MakeL6(r_6_3, r_5_4, r_4_4, Rx, Ry, Rz);           // make [6]^3
+   double r_6_4[28]; ShellMdrr_MakeL6(r_6_4, r_5_5, r_4_5, Rx, Ry, Rz);           // make [6]^4
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_7_3[36]; ShellMdrr_MakeL7(r_7_3, r_6_4, r_5_4, Rx, Ry, Rz);           // make [7]^3
+   double r_7_4[36]; ShellMdrr_MakeL7(r_7_4, r_6_5, r_5_5, Rx, Ry, Rz);           // make [7]^4
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_8_2[45]; ShellMdrr_MakeL8(r_8_2, r_7_3, r_6_3, Rx, Ry, Rz);           // make [8]^2
+   double r_8_3[45]; ShellMdrr_MakeL8(r_8_3, r_7_4, r_6_4, Rx, Ry, Rz);           // make [8]^3
+   double r_8_4[45]; ShellMdrr_MakeL8(r_8_4, r_7_5, r_6_5, Rx, Ry, Rz);           // make [8]^4
+   double r_9_2[55]; ShellMdrr_MakeL9(r_9_2, r_8_3, r_7_3, Rx, Ry, Rz);           // make [9]^2
+   double r_9_3[55]; ShellMdrr_MakeL9(r_9_3, r_8_4, r_7_4, Rx, Ry, Rz);           // make [9]^3
+   double r_a_1[66]; ShellMdrr_MakeL10(r_a_1, r_9_2, r_8_2, Rx, Ry, Rz);          // make [10]^1
+   double r_a_2[66]; ShellMdrr_MakeL10(r_a_2, r_9_3, r_8_3, Rx, Ry, Rz);          // make [10]^2
+   double r_b_1[78]; ShellMdrr_MakeL11(r_b_1, r_a_2, r_9_2, Rx, Ry, Rz);          // make [11]^1
+   ShellMdrr_MakeL12(pOut, r_b_1, r_a_1, Rx, Ry, Rz);                             // make [12]^0
+   // 19.96 flops and 28.36 mops per component, 7.33 kb stack
+}
+
+static void ShellMdrr13(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_6[3]; ShellMdrr_MakeL1(r_1_6, &pIn[7], 0, Rx, Ry, Rz);              // make [1]^6
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_3_5[10]; ShellMdrr_MakeL3(r_3_5, r_2_6, r_1_6, Rx, Ry, Rz);           // make [3]^5
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_5_4[21]; ShellMdrr_MakeL5(r_5_4, r_4_5, r_3_5, Rx, Ry, Rz);           // make [5]^4
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_6_4[28]; ShellMdrr_MakeL6(r_6_4, r_5_5, r_4_5, Rx, Ry, Rz);           // make [6]^4
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_7_3[36]; ShellMdrr_MakeL7(r_7_3, r_6_4, r_5_4, Rx, Ry, Rz);           // make [7]^3
+   double r_7_4[36]; ShellMdrr_MakeL7(r_7_4, r_6_5, r_5_5, Rx, Ry, Rz);           // make [7]^4
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_8_3[45]; ShellMdrr_MakeL8(r_8_3, r_7_4, r_6_4, Rx, Ry, Rz);           // make [8]^3
+   double r_8_4[45]; ShellMdrr_MakeL8(r_8_4, r_7_5, r_6_5, Rx, Ry, Rz);           // make [8]^4
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_9_2[55]; ShellMdrr_MakeL9(r_9_2, r_8_3, r_7_3, Rx, Ry, Rz);           // make [9]^2
+   double r_9_3[55]; ShellMdrr_MakeL9(r_9_3, r_8_4, r_7_4, Rx, Ry, Rz);           // make [9]^3
+   double r_9_4[55]; ShellMdrr_MakeL9(r_9_4, r_8_5, r_7_5, Rx, Ry, Rz);           // make [9]^4
+   double r_a_2[66]; ShellMdrr_MakeL10(r_a_2, r_9_3, r_8_3, Rx, Ry, Rz);          // make [10]^2
+   double r_a_3[66]; ShellMdrr_MakeL10(r_a_3, r_9_4, r_8_4, Rx, Ry, Rz);          // make [10]^3
+   double r_b_1[78]; ShellMdrr_MakeL11(r_b_1, r_a_2, r_9_2, Rx, Ry, Rz);          // make [11]^1
+   double r_b_2[78]; ShellMdrr_MakeL11(r_b_2, r_a_3, r_9_3, Rx, Ry, Rz);          // make [11]^2
+   double r_c_1[91]; ShellMdrr_MakeL12(r_c_1, r_b_2, r_a_2, Rx, Ry, Rz);          // make [12]^1
+   ShellMdrr_MakeL13(pOut, r_c_1, r_b_1, Rx, Ry, Rz);                             // make [13]^0
+   // 22.88 flops and 32.14 mops per component, 9.62 kb stack
+}
+
+static void ShellMdrr14(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_1_d[3]; ShellMdrr_MakeL1(r_1_d, &pIn[14], 0, Rx, Ry, Rz);             // make [1]^13
+   double r_2_6[6]; ShellMdrr_MakeL2(r_2_6, r_1_7, &pIn[7], Rx, Ry, Rz);          // make [2]^6
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_2_c[6]; ShellMdrr_MakeL2(r_2_c, r_1_d, &pIn[13], Rx, Ry, Rz);         // make [2]^12
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_3_b[10]; ShellMdrr_MakeL3(r_3_b, r_2_c, r_1_c, Rx, Ry, Rz);           // make [3]^11
+   double r_4_5[15]; ShellMdrr_MakeL4(r_4_5, r_3_6, r_2_6, Rx, Ry, Rz);           // make [4]^5
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_4_a[15]; ShellMdrr_MakeL4(r_4_a, r_3_b, r_2_b, Rx, Ry, Rz);           // make [4]^10
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_5_9[21]; ShellMdrr_MakeL5(r_5_9, r_4_a, r_3_a, Rx, Ry, Rz);           // make [5]^9
+   double r_6_4[28]; ShellMdrr_MakeL6(r_6_4, r_5_5, r_4_5, Rx, Ry, Rz);           // make [6]^4
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_6_8[28]; ShellMdrr_MakeL6(r_6_8, r_5_9, r_4_9, Rx, Ry, Rz);           // make [6]^8
+   double r_7_4[36]; ShellMdrr_MakeL7(r_7_4, r_6_5, r_5_5, Rx, Ry, Rz);           // make [7]^4
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_7_7[36]; ShellMdrr_MakeL7(r_7_7, r_6_8, r_5_8, Rx, Ry, Rz);           // make [7]^7
+   double r_8_3[45]; ShellMdrr_MakeL8(r_8_3, r_7_4, r_6_4, Rx, Ry, Rz);           // make [8]^3
+   double r_8_4[45]; ShellMdrr_MakeL8(r_8_4, r_7_5, r_6_5, Rx, Ry, Rz);           // make [8]^4
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_8_6[45]; ShellMdrr_MakeL8(r_8_6, r_7_7, r_6_7, Rx, Ry, Rz);           // make [8]^6
+   double r_9_3[55]; ShellMdrr_MakeL9(r_9_3, r_8_4, r_7_4, Rx, Ry, Rz);           // make [9]^3
+   double r_9_4[55]; ShellMdrr_MakeL9(r_9_4, r_8_5, r_7_5, Rx, Ry, Rz);           // make [9]^4
+   double r_9_5[55]; ShellMdrr_MakeL9(r_9_5, r_8_6, r_7_6, Rx, Ry, Rz);           // make [9]^5
+   double r_a_2[66]; ShellMdrr_MakeL10(r_a_2, r_9_3, r_8_3, Rx, Ry, Rz);          // make [10]^2
+   double r_a_3[66]; ShellMdrr_MakeL10(r_a_3, r_9_4, r_8_4, Rx, Ry, Rz);          // make [10]^3
+   double r_a_4[66]; ShellMdrr_MakeL10(r_a_4, r_9_5, r_8_5, Rx, Ry, Rz);          // make [10]^4
+   double r_b_2[78]; ShellMdrr_MakeL11(r_b_2, r_a_3, r_9_3, Rx, Ry, Rz);          // make [11]^2
+   double r_b_3[78]; ShellMdrr_MakeL11(r_b_3, r_a_4, r_9_4, Rx, Ry, Rz);          // make [11]^3
+   double r_c_1[91]; ShellMdrr_MakeL12(r_c_1, r_b_2, r_a_2, Rx, Ry, Rz);          // make [12]^1
+   double r_c_2[91]; ShellMdrr_MakeL12(r_c_2, r_b_3, r_a_3, Rx, Ry, Rz);          // make [12]^2
+   double r_d_1[105]; ShellMdrr_MakeL13(r_d_1, r_c_2, r_b_2, Rx, Ry, Rz);         // make [13]^1
+   ShellMdrr_MakeL14(pOut, r_d_1, r_c_1, Rx, Ry, Rz);                             // make [14]^0
+   // 26.03 flops and 36.17 mops per component, 12.41 kb stack
+}
+
+static void ShellMdrr15(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_7[3]; ShellMdrr_MakeL1(r_1_7, &pIn[8], 0, Rx, Ry, Rz);              // make [1]^7
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_1_d[3]; ShellMdrr_MakeL1(r_1_d, &pIn[14], 0, Rx, Ry, Rz);             // make [1]^13
+   double r_1_e[3]; ShellMdrr_MakeL1(r_1_e, &pIn[15], 0, Rx, Ry, Rz);             // make [1]^14
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_2_c[6]; ShellMdrr_MakeL2(r_2_c, r_1_d, &pIn[13], Rx, Ry, Rz);         // make [2]^12
+   double r_2_d[6]; ShellMdrr_MakeL2(r_2_d, r_1_e, &pIn[14], Rx, Ry, Rz);         // make [2]^13
+   double r_3_6[10]; ShellMdrr_MakeL3(r_3_6, r_2_7, r_1_7, Rx, Ry, Rz);           // make [3]^6
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_3_b[10]; ShellMdrr_MakeL3(r_3_b, r_2_c, r_1_c, Rx, Ry, Rz);           // make [3]^11
+   double r_3_c[10]; ShellMdrr_MakeL3(r_3_c, r_2_d, r_1_d, Rx, Ry, Rz);           // make [3]^12
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_4_a[15]; ShellMdrr_MakeL4(r_4_a, r_3_b, r_2_b, Rx, Ry, Rz);           // make [4]^10
+   double r_4_b[15]; ShellMdrr_MakeL4(r_4_b, r_3_c, r_2_c, Rx, Ry, Rz);           // make [4]^11
+   double r_5_5[21]; ShellMdrr_MakeL5(r_5_5, r_4_6, r_3_6, Rx, Ry, Rz);           // make [5]^5
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_5_9[21]; ShellMdrr_MakeL5(r_5_9, r_4_a, r_3_a, Rx, Ry, Rz);           // make [5]^9
+   double r_5_a[21]; ShellMdrr_MakeL5(r_5_a, r_4_b, r_3_b, Rx, Ry, Rz);           // make [5]^10
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_6_8[28]; ShellMdrr_MakeL6(r_6_8, r_5_9, r_4_9, Rx, Ry, Rz);           // make [6]^8
+   double r_6_9[28]; ShellMdrr_MakeL6(r_6_9, r_5_a, r_4_a, Rx, Ry, Rz);           // make [6]^9
+   double r_7_4[36]; ShellMdrr_MakeL7(r_7_4, r_6_5, r_5_5, Rx, Ry, Rz);           // make [7]^4
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_7_7[36]; ShellMdrr_MakeL7(r_7_7, r_6_8, r_5_8, Rx, Ry, Rz);           // make [7]^7
+   double r_7_8[36]; ShellMdrr_MakeL7(r_7_8, r_6_9, r_5_9, Rx, Ry, Rz);           // make [7]^8
+   double r_8_4[45]; ShellMdrr_MakeL8(r_8_4, r_7_5, r_6_5, Rx, Ry, Rz);           // make [8]^4
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_8_6[45]; ShellMdrr_MakeL8(r_8_6, r_7_7, r_6_7, Rx, Ry, Rz);           // make [8]^6
+   double r_8_7[45]; ShellMdrr_MakeL8(r_8_7, r_7_8, r_6_8, Rx, Ry, Rz);           // make [8]^7
+   double r_9_3[55]; ShellMdrr_MakeL9(r_9_3, r_8_4, r_7_4, Rx, Ry, Rz);           // make [9]^3
+   double r_9_4[55]; ShellMdrr_MakeL9(r_9_4, r_8_5, r_7_5, Rx, Ry, Rz);           // make [9]^4
+   double r_9_5[55]; ShellMdrr_MakeL9(r_9_5, r_8_6, r_7_6, Rx, Ry, Rz);           // make [9]^5
+   double r_9_6[55]; ShellMdrr_MakeL9(r_9_6, r_8_7, r_7_7, Rx, Ry, Rz);           // make [9]^6
+   double r_a_3[66]; ShellMdrr_MakeL10(r_a_3, r_9_4, r_8_4, Rx, Ry, Rz);          // make [10]^3
+   double r_a_4[66]; ShellMdrr_MakeL10(r_a_4, r_9_5, r_8_5, Rx, Ry, Rz);          // make [10]^4
+   double r_a_5[66]; ShellMdrr_MakeL10(r_a_5, r_9_6, r_8_6, Rx, Ry, Rz);          // make [10]^5
+   double r_b_2[78]; ShellMdrr_MakeL11(r_b_2, r_a_3, r_9_3, Rx, Ry, Rz);          // make [11]^2
+   double r_b_3[78]; ShellMdrr_MakeL11(r_b_3, r_a_4, r_9_4, Rx, Ry, Rz);          // make [11]^3
+   double r_b_4[78]; ShellMdrr_MakeL11(r_b_4, r_a_5, r_9_5, Rx, Ry, Rz);          // make [11]^4
+   double r_c_2[91]; ShellMdrr_MakeL12(r_c_2, r_b_3, r_a_3, Rx, Ry, Rz);          // make [12]^2
+   double r_c_3[91]; ShellMdrr_MakeL12(r_c_3, r_b_4, r_a_4, Rx, Ry, Rz);          // make [12]^3
+   double r_d_1[105]; ShellMdrr_MakeL13(r_d_1, r_c_2, r_b_2, Rx, Ry, Rz);         // make [13]^1
+   double r_d_2[105]; ShellMdrr_MakeL13(r_d_2, r_c_3, r_b_3, Rx, Ry, Rz);         // make [13]^2
+   double r_e_1[120]; ShellMdrr_MakeL14(r_e_1, r_d_2, r_c_2, Rx, Ry, Rz);         // make [14]^1
+   ShellMdrr_MakeL15(pOut, r_e_1, r_d_1, Rx, Ry, Rz);                             // make [15]^0
+   // 29.42 flops and 40.45 mops per component, 15.75 kb stack
+}
+
+static void ShellMdrr16(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_1_d[3]; ShellMdrr_MakeL1(r_1_d, &pIn[14], 0, Rx, Ry, Rz);             // make [1]^13
+   double r_1_e[3]; ShellMdrr_MakeL1(r_1_e, &pIn[15], 0, Rx, Ry, Rz);             // make [1]^14
+   double r_1_f[3]; ShellMdrr_MakeL1(r_1_f, &pIn[16], 0, Rx, Ry, Rz);             // make [1]^15
+   double r_2_7[6]; ShellMdrr_MakeL2(r_2_7, r_1_8, &pIn[8], Rx, Ry, Rz);          // make [2]^7
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_2_c[6]; ShellMdrr_MakeL2(r_2_c, r_1_d, &pIn[13], Rx, Ry, Rz);         // make [2]^12
+   double r_2_d[6]; ShellMdrr_MakeL2(r_2_d, r_1_e, &pIn[14], Rx, Ry, Rz);         // make [2]^13
+   double r_2_e[6]; ShellMdrr_MakeL2(r_2_e, r_1_f, &pIn[15], Rx, Ry, Rz);         // make [2]^14
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_3_b[10]; ShellMdrr_MakeL3(r_3_b, r_2_c, r_1_c, Rx, Ry, Rz);           // make [3]^11
+   double r_3_c[10]; ShellMdrr_MakeL3(r_3_c, r_2_d, r_1_d, Rx, Ry, Rz);           // make [3]^12
+   double r_3_d[10]; ShellMdrr_MakeL3(r_3_d, r_2_e, r_1_e, Rx, Ry, Rz);           // make [3]^13
+   double r_4_6[15]; ShellMdrr_MakeL4(r_4_6, r_3_7, r_2_7, Rx, Ry, Rz);           // make [4]^6
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_4_a[15]; ShellMdrr_MakeL4(r_4_a, r_3_b, r_2_b, Rx, Ry, Rz);           // make [4]^10
+   double r_4_b[15]; ShellMdrr_MakeL4(r_4_b, r_3_c, r_2_c, Rx, Ry, Rz);           // make [4]^11
+   double r_4_c[15]; ShellMdrr_MakeL4(r_4_c, r_3_d, r_2_d, Rx, Ry, Rz);           // make [4]^12
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_5_9[21]; ShellMdrr_MakeL5(r_5_9, r_4_a, r_3_a, Rx, Ry, Rz);           // make [5]^9
+   double r_5_a[21]; ShellMdrr_MakeL5(r_5_a, r_4_b, r_3_b, Rx, Ry, Rz);           // make [5]^10
+   double r_5_b[21]; ShellMdrr_MakeL5(r_5_b, r_4_c, r_3_c, Rx, Ry, Rz);           // make [5]^11
+   double r_6_5[28]; ShellMdrr_MakeL6(r_6_5, r_5_6, r_4_6, Rx, Ry, Rz);           // make [6]^5
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_6_8[28]; ShellMdrr_MakeL6(r_6_8, r_5_9, r_4_9, Rx, Ry, Rz);           // make [6]^8
+   double r_6_9[28]; ShellMdrr_MakeL6(r_6_9, r_5_a, r_4_a, Rx, Ry, Rz);           // make [6]^9
+   double r_6_a[28]; ShellMdrr_MakeL6(r_6_a, r_5_b, r_4_b, Rx, Ry, Rz);           // make [6]^10
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_7_7[36]; ShellMdrr_MakeL7(r_7_7, r_6_8, r_5_8, Rx, Ry, Rz);           // make [7]^7
+   double r_7_8[36]; ShellMdrr_MakeL7(r_7_8, r_6_9, r_5_9, Rx, Ry, Rz);           // make [7]^8
+   double r_7_9[36]; ShellMdrr_MakeL7(r_7_9, r_6_a, r_5_a, Rx, Ry, Rz);           // make [7]^9
+   double r_8_4[45]; ShellMdrr_MakeL8(r_8_4, r_7_5, r_6_5, Rx, Ry, Rz);           // make [8]^4
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_8_6[45]; ShellMdrr_MakeL8(r_8_6, r_7_7, r_6_7, Rx, Ry, Rz);           // make [8]^6
+   double r_8_7[45]; ShellMdrr_MakeL8(r_8_7, r_7_8, r_6_8, Rx, Ry, Rz);           // make [8]^7
+   double r_8_8[45]; ShellMdrr_MakeL8(r_8_8, r_7_9, r_6_9, Rx, Ry, Rz);           // make [8]^8
+   double r_9_4[55]; ShellMdrr_MakeL9(r_9_4, r_8_5, r_7_5, Rx, Ry, Rz);           // make [9]^4
+   double r_9_5[55]; ShellMdrr_MakeL9(r_9_5, r_8_6, r_7_6, Rx, Ry, Rz);           // make [9]^5
+   double r_9_6[55]; ShellMdrr_MakeL9(r_9_6, r_8_7, r_7_7, Rx, Ry, Rz);           // make [9]^6
+   double r_9_7[55]; ShellMdrr_MakeL9(r_9_7, r_8_8, r_7_8, Rx, Ry, Rz);           // make [9]^7
+   double r_a_3[66]; ShellMdrr_MakeL10(r_a_3, r_9_4, r_8_4, Rx, Ry, Rz);          // make [10]^3
+   double r_a_4[66]; ShellMdrr_MakeL10(r_a_4, r_9_5, r_8_5, Rx, Ry, Rz);          // make [10]^4
+   double r_a_5[66]; ShellMdrr_MakeL10(r_a_5, r_9_6, r_8_6, Rx, Ry, Rz);          // make [10]^5
+   double r_a_6[66]; ShellMdrr_MakeL10(r_a_6, r_9_7, r_8_7, Rx, Ry, Rz);          // make [10]^6
+   double r_b_3[78]; ShellMdrr_MakeL11(r_b_3, r_a_4, r_9_4, Rx, Ry, Rz);          // make [11]^3
+   double r_b_4[78]; ShellMdrr_MakeL11(r_b_4, r_a_5, r_9_5, Rx, Ry, Rz);          // make [11]^4
+   double r_b_5[78]; ShellMdrr_MakeL11(r_b_5, r_a_6, r_9_6, Rx, Ry, Rz);          // make [11]^5
+   double r_c_2[91]; ShellMdrr_MakeL12(r_c_2, r_b_3, r_a_3, Rx, Ry, Rz);          // make [12]^2
+   double r_c_3[91]; ShellMdrr_MakeL12(r_c_3, r_b_4, r_a_4, Rx, Ry, Rz);          // make [12]^3
+   double r_c_4[91]; ShellMdrr_MakeL12(r_c_4, r_b_5, r_a_5, Rx, Ry, Rz);          // make [12]^4
+   double r_d_2[105]; ShellMdrr_MakeL13(r_d_2, r_c_3, r_b_3, Rx, Ry, Rz);         // make [13]^2
+   double r_d_3[105]; ShellMdrr_MakeL13(r_d_3, r_c_4, r_b_4, Rx, Ry, Rz);         // make [13]^3
+   double r_e_1[120]; ShellMdrr_MakeL14(r_e_1, r_d_2, r_c_2, Rx, Ry, Rz);         // make [14]^1
+   double r_e_2[120]; ShellMdrr_MakeL14(r_e_2, r_d_3, r_c_3, Rx, Ry, Rz);         // make [14]^2
+   double r_f_1[136]; ShellMdrr_MakeL15(r_f_1, r_e_2, r_d_2, Rx, Ry, Rz);         // make [15]^1
+   ShellMdrr_MakeL16(pOut, r_f_1, r_e_1, Rx, Ry, Rz);                             // make [16]^0
+   // 33.05 flops and 44.97 mops per component, 19.71 kb stack
+}
+
+static void ShellMdrr17(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_8[3]; ShellMdrr_MakeL1(r_1_8, &pIn[9], 0, Rx, Ry, Rz);              // make [1]^8
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_1_d[3]; ShellMdrr_MakeL1(r_1_d, &pIn[14], 0, Rx, Ry, Rz);             // make [1]^13
+   double r_1_e[3]; ShellMdrr_MakeL1(r_1_e, &pIn[15], 0, Rx, Ry, Rz);             // make [1]^14
+   double r_1_f[3]; ShellMdrr_MakeL1(r_1_f, &pIn[16], 0, Rx, Ry, Rz);             // make [1]^15
+   double r_1_g[3]; ShellMdrr_MakeL1(r_1_g, &pIn[17], 0, Rx, Ry, Rz);             // make [1]^16
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_2_c[6]; ShellMdrr_MakeL2(r_2_c, r_1_d, &pIn[13], Rx, Ry, Rz);         // make [2]^12
+   double r_2_d[6]; ShellMdrr_MakeL2(r_2_d, r_1_e, &pIn[14], Rx, Ry, Rz);         // make [2]^13
+   double r_2_e[6]; ShellMdrr_MakeL2(r_2_e, r_1_f, &pIn[15], Rx, Ry, Rz);         // make [2]^14
+   double r_2_f[6]; ShellMdrr_MakeL2(r_2_f, r_1_g, &pIn[16], Rx, Ry, Rz);         // make [2]^15
+   double r_3_7[10]; ShellMdrr_MakeL3(r_3_7, r_2_8, r_1_8, Rx, Ry, Rz);           // make [3]^7
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_3_b[10]; ShellMdrr_MakeL3(r_3_b, r_2_c, r_1_c, Rx, Ry, Rz);           // make [3]^11
+   double r_3_c[10]; ShellMdrr_MakeL3(r_3_c, r_2_d, r_1_d, Rx, Ry, Rz);           // make [3]^12
+   double r_3_d[10]; ShellMdrr_MakeL3(r_3_d, r_2_e, r_1_e, Rx, Ry, Rz);           // make [3]^13
+   double r_3_e[10]; ShellMdrr_MakeL3(r_3_e, r_2_f, r_1_f, Rx, Ry, Rz);           // make [3]^14
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_4_a[15]; ShellMdrr_MakeL4(r_4_a, r_3_b, r_2_b, Rx, Ry, Rz);           // make [4]^10
+   double r_4_b[15]; ShellMdrr_MakeL4(r_4_b, r_3_c, r_2_c, Rx, Ry, Rz);           // make [4]^11
+   double r_4_c[15]; ShellMdrr_MakeL4(r_4_c, r_3_d, r_2_d, Rx, Ry, Rz);           // make [4]^12
+   double r_4_d[15]; ShellMdrr_MakeL4(r_4_d, r_3_e, r_2_e, Rx, Ry, Rz);           // make [4]^13
+   double r_5_6[21]; ShellMdrr_MakeL5(r_5_6, r_4_7, r_3_7, Rx, Ry, Rz);           // make [5]^6
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_5_9[21]; ShellMdrr_MakeL5(r_5_9, r_4_a, r_3_a, Rx, Ry, Rz);           // make [5]^9
+   double r_5_a[21]; ShellMdrr_MakeL5(r_5_a, r_4_b, r_3_b, Rx, Ry, Rz);           // make [5]^10
+   double r_5_b[21]; ShellMdrr_MakeL5(r_5_b, r_4_c, r_3_c, Rx, Ry, Rz);           // make [5]^11
+   double r_5_c[21]; ShellMdrr_MakeL5(r_5_c, r_4_d, r_3_d, Rx, Ry, Rz);           // make [5]^12
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_6_8[28]; ShellMdrr_MakeL6(r_6_8, r_5_9, r_4_9, Rx, Ry, Rz);           // make [6]^8
+   double r_6_9[28]; ShellMdrr_MakeL6(r_6_9, r_5_a, r_4_a, Rx, Ry, Rz);           // make [6]^9
+   double r_6_a[28]; ShellMdrr_MakeL6(r_6_a, r_5_b, r_4_b, Rx, Ry, Rz);           // make [6]^10
+   double r_6_b[28]; ShellMdrr_MakeL6(r_6_b, r_5_c, r_4_c, Rx, Ry, Rz);           // make [6]^11
+   double r_7_5[36]; ShellMdrr_MakeL7(r_7_5, r_6_6, r_5_6, Rx, Ry, Rz);           // make [7]^5
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_7_7[36]; ShellMdrr_MakeL7(r_7_7, r_6_8, r_5_8, Rx, Ry, Rz);           // make [7]^7
+   double r_7_8[36]; ShellMdrr_MakeL7(r_7_8, r_6_9, r_5_9, Rx, Ry, Rz);           // make [7]^8
+   double r_7_9[36]; ShellMdrr_MakeL7(r_7_9, r_6_a, r_5_a, Rx, Ry, Rz);           // make [7]^9
+   double r_7_a[36]; ShellMdrr_MakeL7(r_7_a, r_6_b, r_5_b, Rx, Ry, Rz);           // make [7]^10
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_8_6[45]; ShellMdrr_MakeL8(r_8_6, r_7_7, r_6_7, Rx, Ry, Rz);           // make [8]^6
+   double r_8_7[45]; ShellMdrr_MakeL8(r_8_7, r_7_8, r_6_8, Rx, Ry, Rz);           // make [8]^7
+   double r_8_8[45]; ShellMdrr_MakeL8(r_8_8, r_7_9, r_6_9, Rx, Ry, Rz);           // make [8]^8
+   double r_8_9[45]; ShellMdrr_MakeL8(r_8_9, r_7_a, r_6_a, Rx, Ry, Rz);           // make [8]^9
+   double r_9_4[55]; ShellMdrr_MakeL9(r_9_4, r_8_5, r_7_5, Rx, Ry, Rz);           // make [9]^4
+   double r_9_5[55]; ShellMdrr_MakeL9(r_9_5, r_8_6, r_7_6, Rx, Ry, Rz);           // make [9]^5
+   double r_9_6[55]; ShellMdrr_MakeL9(r_9_6, r_8_7, r_7_7, Rx, Ry, Rz);           // make [9]^6
+   double r_9_7[55]; ShellMdrr_MakeL9(r_9_7, r_8_8, r_7_8, Rx, Ry, Rz);           // make [9]^7
+   double r_9_8[55]; ShellMdrr_MakeL9(r_9_8, r_8_9, r_7_9, Rx, Ry, Rz);           // make [9]^8
+   double r_a_4[66]; ShellMdrr_MakeL10(r_a_4, r_9_5, r_8_5, Rx, Ry, Rz);          // make [10]^4
+   double r_a_5[66]; ShellMdrr_MakeL10(r_a_5, r_9_6, r_8_6, Rx, Ry, Rz);          // make [10]^5
+   double r_a_6[66]; ShellMdrr_MakeL10(r_a_6, r_9_7, r_8_7, Rx, Ry, Rz);          // make [10]^6
+   double r_a_7[66]; ShellMdrr_MakeL10(r_a_7, r_9_8, r_8_8, Rx, Ry, Rz);          // make [10]^7
+   double r_b_3[78]; ShellMdrr_MakeL11(r_b_3, r_a_4, r_9_4, Rx, Ry, Rz);          // make [11]^3
+   double r_b_4[78]; ShellMdrr_MakeL11(r_b_4, r_a_5, r_9_5, Rx, Ry, Rz);          // make [11]^4
+   double r_b_5[78]; ShellMdrr_MakeL11(r_b_5, r_a_6, r_9_6, Rx, Ry, Rz);          // make [11]^5
+   double r_b_6[78]; ShellMdrr_MakeL11(r_b_6, r_a_7, r_9_7, Rx, Ry, Rz);          // make [11]^6
+   double r_c_3[91]; ShellMdrr_MakeL12(r_c_3, r_b_4, r_a_4, Rx, Ry, Rz);          // make [12]^3
+   double r_c_4[91]; ShellMdrr_MakeL12(r_c_4, r_b_5, r_a_5, Rx, Ry, Rz);          // make [12]^4
+   double r_c_5[91]; ShellMdrr_MakeL12(r_c_5, r_b_6, r_a_6, Rx, Ry, Rz);          // make [12]^5
+   double r_d_2[105]; ShellMdrr_MakeL13(r_d_2, r_c_3, r_b_3, Rx, Ry, Rz);         // make [13]^2
+   double r_d_3[105]; ShellMdrr_MakeL13(r_d_3, r_c_4, r_b_4, Rx, Ry, Rz);         // make [13]^3
+   double r_d_4[105]; ShellMdrr_MakeL13(r_d_4, r_c_5, r_b_5, Rx, Ry, Rz);         // make [13]^4
+   double r_e_2[120]; ShellMdrr_MakeL14(r_e_2, r_d_3, r_c_3, Rx, Ry, Rz);         // make [14]^2
+   double r_e_3[120]; ShellMdrr_MakeL14(r_e_3, r_d_4, r_c_4, Rx, Ry, Rz);         // make [14]^3
+   double r_f_1[136]; ShellMdrr_MakeL15(r_f_1, r_e_2, r_d_2, Rx, Ry, Rz);         // make [15]^1
+   double r_f_2[136]; ShellMdrr_MakeL15(r_f_2, r_e_3, r_d_3, Rx, Ry, Rz);         // make [15]^2
+   double r_g_1[153]; ShellMdrr_MakeL16(r_g_1, r_f_2, r_e_2, Rx, Ry, Rz);         // make [16]^1
+   ShellMdrr_MakeL17(pOut, r_g_1, r_f_1, Rx, Ry, Rz);                             // make [17]^0
+   // 36.91 flops and 49.74 mops per component, 24.38 kb stack
+}
+
+static void ShellMdrr18(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz)
+{
+   double r_1_9[3]; ShellMdrr_MakeL1(r_1_9, &pIn[10], 0, Rx, Ry, Rz);             // make [1]^9
+   double r_1_a[3]; ShellMdrr_MakeL1(r_1_a, &pIn[11], 0, Rx, Ry, Rz);             // make [1]^10
+   double r_1_b[3]; ShellMdrr_MakeL1(r_1_b, &pIn[12], 0, Rx, Ry, Rz);             // make [1]^11
+   double r_1_c[3]; ShellMdrr_MakeL1(r_1_c, &pIn[13], 0, Rx, Ry, Rz);             // make [1]^12
+   double r_1_d[3]; ShellMdrr_MakeL1(r_1_d, &pIn[14], 0, Rx, Ry, Rz);             // make [1]^13
+   double r_1_e[3]; ShellMdrr_MakeL1(r_1_e, &pIn[15], 0, Rx, Ry, Rz);             // make [1]^14
+   double r_1_f[3]; ShellMdrr_MakeL1(r_1_f, &pIn[16], 0, Rx, Ry, Rz);             // make [1]^15
+   double r_1_g[3]; ShellMdrr_MakeL1(r_1_g, &pIn[17], 0, Rx, Ry, Rz);             // make [1]^16
+   double r_1_h[3]; ShellMdrr_MakeL1(r_1_h, &pIn[18], 0, Rx, Ry, Rz);             // make [1]^17
+   double r_2_8[6]; ShellMdrr_MakeL2(r_2_8, r_1_9, &pIn[9], Rx, Ry, Rz);          // make [2]^8
+   double r_2_9[6]; ShellMdrr_MakeL2(r_2_9, r_1_a, &pIn[10], Rx, Ry, Rz);         // make [2]^9
+   double r_2_a[6]; ShellMdrr_MakeL2(r_2_a, r_1_b, &pIn[11], Rx, Ry, Rz);         // make [2]^10
+   double r_2_b[6]; ShellMdrr_MakeL2(r_2_b, r_1_c, &pIn[12], Rx, Ry, Rz);         // make [2]^11
+   double r_2_c[6]; ShellMdrr_MakeL2(r_2_c, r_1_d, &pIn[13], Rx, Ry, Rz);         // make [2]^12
+   double r_2_d[6]; ShellMdrr_MakeL2(r_2_d, r_1_e, &pIn[14], Rx, Ry, Rz);         // make [2]^13
+   double r_2_e[6]; ShellMdrr_MakeL2(r_2_e, r_1_f, &pIn[15], Rx, Ry, Rz);         // make [2]^14
+   double r_2_f[6]; ShellMdrr_MakeL2(r_2_f, r_1_g, &pIn[16], Rx, Ry, Rz);         // make [2]^15
+   double r_2_g[6]; ShellMdrr_MakeL2(r_2_g, r_1_h, &pIn[17], Rx, Ry, Rz);         // make [2]^16
+   double r_3_8[10]; ShellMdrr_MakeL3(r_3_8, r_2_9, r_1_9, Rx, Ry, Rz);           // make [3]^8
+   double r_3_9[10]; ShellMdrr_MakeL3(r_3_9, r_2_a, r_1_a, Rx, Ry, Rz);           // make [3]^9
+   double r_3_a[10]; ShellMdrr_MakeL3(r_3_a, r_2_b, r_1_b, Rx, Ry, Rz);           // make [3]^10
+   double r_3_b[10]; ShellMdrr_MakeL3(r_3_b, r_2_c, r_1_c, Rx, Ry, Rz);           // make [3]^11
+   double r_3_c[10]; ShellMdrr_MakeL3(r_3_c, r_2_d, r_1_d, Rx, Ry, Rz);           // make [3]^12
+   double r_3_d[10]; ShellMdrr_MakeL3(r_3_d, r_2_e, r_1_e, Rx, Ry, Rz);           // make [3]^13
+   double r_3_e[10]; ShellMdrr_MakeL3(r_3_e, r_2_f, r_1_f, Rx, Ry, Rz);           // make [3]^14
+   double r_3_f[10]; ShellMdrr_MakeL3(r_3_f, r_2_g, r_1_g, Rx, Ry, Rz);           // make [3]^15
+   double r_4_7[15]; ShellMdrr_MakeL4(r_4_7, r_3_8, r_2_8, Rx, Ry, Rz);           // make [4]^7
+   double r_4_8[15]; ShellMdrr_MakeL4(r_4_8, r_3_9, r_2_9, Rx, Ry, Rz);           // make [4]^8
+   double r_4_9[15]; ShellMdrr_MakeL4(r_4_9, r_3_a, r_2_a, Rx, Ry, Rz);           // make [4]^9
+   double r_4_a[15]; ShellMdrr_MakeL4(r_4_a, r_3_b, r_2_b, Rx, Ry, Rz);           // make [4]^10
+   double r_4_b[15]; ShellMdrr_MakeL4(r_4_b, r_3_c, r_2_c, Rx, Ry, Rz);           // make [4]^11
+   double r_4_c[15]; ShellMdrr_MakeL4(r_4_c, r_3_d, r_2_d, Rx, Ry, Rz);           // make [4]^12
+   double r_4_d[15]; ShellMdrr_MakeL4(r_4_d, r_3_e, r_2_e, Rx, Ry, Rz);           // make [4]^13
+   double r_4_e[15]; ShellMdrr_MakeL4(r_4_e, r_3_f, r_2_f, Rx, Ry, Rz);           // make [4]^14
+   double r_5_7[21]; ShellMdrr_MakeL5(r_5_7, r_4_8, r_3_8, Rx, Ry, Rz);           // make [5]^7
+   double r_5_8[21]; ShellMdrr_MakeL5(r_5_8, r_4_9, r_3_9, Rx, Ry, Rz);           // make [5]^8
+   double r_5_9[21]; ShellMdrr_MakeL5(r_5_9, r_4_a, r_3_a, Rx, Ry, Rz);           // make [5]^9
+   double r_5_a[21]; ShellMdrr_MakeL5(r_5_a, r_4_b, r_3_b, Rx, Ry, Rz);           // make [5]^10
+   double r_5_b[21]; ShellMdrr_MakeL5(r_5_b, r_4_c, r_3_c, Rx, Ry, Rz);           // make [5]^11
+   double r_5_c[21]; ShellMdrr_MakeL5(r_5_c, r_4_d, r_3_d, Rx, Ry, Rz);           // make [5]^12
+   double r_5_d[21]; ShellMdrr_MakeL5(r_5_d, r_4_e, r_3_e, Rx, Ry, Rz);           // make [5]^13
+   double r_6_6[28]; ShellMdrr_MakeL6(r_6_6, r_5_7, r_4_7, Rx, Ry, Rz);           // make [6]^6
+   double r_6_7[28]; ShellMdrr_MakeL6(r_6_7, r_5_8, r_4_8, Rx, Ry, Rz);           // make [6]^7
+   double r_6_8[28]; ShellMdrr_MakeL6(r_6_8, r_5_9, r_4_9, Rx, Ry, Rz);           // make [6]^8
+   double r_6_9[28]; ShellMdrr_MakeL6(r_6_9, r_5_a, r_4_a, Rx, Ry, Rz);           // make [6]^9
+   double r_6_a[28]; ShellMdrr_MakeL6(r_6_a, r_5_b, r_4_b, Rx, Ry, Rz);           // make [6]^10
+   double r_6_b[28]; ShellMdrr_MakeL6(r_6_b, r_5_c, r_4_c, Rx, Ry, Rz);           // make [6]^11
+   double r_6_c[28]; ShellMdrr_MakeL6(r_6_c, r_5_d, r_4_d, Rx, Ry, Rz);           // make [6]^12
+   double r_7_6[36]; ShellMdrr_MakeL7(r_7_6, r_6_7, r_5_7, Rx, Ry, Rz);           // make [7]^6
+   double r_7_7[36]; ShellMdrr_MakeL7(r_7_7, r_6_8, r_5_8, Rx, Ry, Rz);           // make [7]^7
+   double r_7_8[36]; ShellMdrr_MakeL7(r_7_8, r_6_9, r_5_9, Rx, Ry, Rz);           // make [7]^8
+   double r_7_9[36]; ShellMdrr_MakeL7(r_7_9, r_6_a, r_5_a, Rx, Ry, Rz);           // make [7]^9
+   double r_7_a[36]; ShellMdrr_MakeL7(r_7_a, r_6_b, r_5_b, Rx, Ry, Rz);           // make [7]^10
+   double r_7_b[36]; ShellMdrr_MakeL7(r_7_b, r_6_c, r_5_c, Rx, Ry, Rz);           // make [7]^11
+   double r_8_5[45]; ShellMdrr_MakeL8(r_8_5, r_7_6, r_6_6, Rx, Ry, Rz);           // make [8]^5
+   double r_8_6[45]; ShellMdrr_MakeL8(r_8_6, r_7_7, r_6_7, Rx, Ry, Rz);           // make [8]^6
+   double r_8_7[45]; ShellMdrr_MakeL8(r_8_7, r_7_8, r_6_8, Rx, Ry, Rz);           // make [8]^7
+   double r_8_8[45]; ShellMdrr_MakeL8(r_8_8, r_7_9, r_6_9, Rx, Ry, Rz);           // make [8]^8
+   double r_8_9[45]; ShellMdrr_MakeL8(r_8_9, r_7_a, r_6_a, Rx, Ry, Rz);           // make [8]^9
+   double r_8_a[45]; ShellMdrr_MakeL8(r_8_a, r_7_b, r_6_b, Rx, Ry, Rz);           // make [8]^10
+   double r_9_5[55]; ShellMdrr_MakeL9(r_9_5, r_8_6, r_7_6, Rx, Ry, Rz);           // make [9]^5
+   double r_9_6[55]; ShellMdrr_MakeL9(r_9_6, r_8_7, r_7_7, Rx, Ry, Rz);           // make [9]^6
+   double r_9_7[55]; ShellMdrr_MakeL9(r_9_7, r_8_8, r_7_8, Rx, Ry, Rz);           // make [9]^7
+   double r_9_8[55]; ShellMdrr_MakeL9(r_9_8, r_8_9, r_7_9, Rx, Ry, Rz);           // make [9]^8
+   double r_9_9[55]; ShellMdrr_MakeL9(r_9_9, r_8_a, r_7_a, Rx, Ry, Rz);           // make [9]^9
+   double r_a_4[66]; ShellMdrr_MakeL10(r_a_4, r_9_5, r_8_5, Rx, Ry, Rz);          // make [10]^4
+   double r_a_5[66]; ShellMdrr_MakeL10(r_a_5, r_9_6, r_8_6, Rx, Ry, Rz);          // make [10]^5
+   double r_a_6[66]; ShellMdrr_MakeL10(r_a_6, r_9_7, r_8_7, Rx, Ry, Rz);          // make [10]^6
+   double r_a_7[66]; ShellMdrr_MakeL10(r_a_7, r_9_8, r_8_8, Rx, Ry, Rz);          // make [10]^7
+   double r_a_8[66]; ShellMdrr_MakeL10(r_a_8, r_9_9, r_8_9, Rx, Ry, Rz);          // make [10]^8
+   double r_b_4[78]; ShellMdrr_MakeL11(r_b_4, r_a_5, r_9_5, Rx, Ry, Rz);          // make [11]^4
+   double r_b_5[78]; ShellMdrr_MakeL11(r_b_5, r_a_6, r_9_6, Rx, Ry, Rz);          // make [11]^5
+   double r_b_6[78]; ShellMdrr_MakeL11(r_b_6, r_a_7, r_9_7, Rx, Ry, Rz);          // make [11]^6
+   double r_b_7[78]; ShellMdrr_MakeL11(r_b_7, r_a_8, r_9_8, Rx, Ry, Rz);          // make [11]^7
+   double r_c_3[91]; ShellMdrr_MakeL12(r_c_3, r_b_4, r_a_4, Rx, Ry, Rz);          // make [12]^3
+   double r_c_4[91]; ShellMdrr_MakeL12(r_c_4, r_b_5, r_a_5, Rx, Ry, Rz);          // make [12]^4
+   double r_c_5[91]; ShellMdrr_MakeL12(r_c_5, r_b_6, r_a_6, Rx, Ry, Rz);          // make [12]^5
+   double r_c_6[91]; ShellMdrr_MakeL12(r_c_6, r_b_7, r_a_7, Rx, Ry, Rz);          // make [12]^6
+   double r_d_3[105]; ShellMdrr_MakeL13(r_d_3, r_c_4, r_b_4, Rx, Ry, Rz);         // make [13]^3
+   double r_d_4[105]; ShellMdrr_MakeL13(r_d_4, r_c_5, r_b_5, Rx, Ry, Rz);         // make [13]^4
+   double r_d_5[105]; ShellMdrr_MakeL13(r_d_5, r_c_6, r_b_6, Rx, Ry, Rz);         // make [13]^5
+   double r_e_2[120]; ShellMdrr_MakeL14(r_e_2, r_d_3, r_c_3, Rx, Ry, Rz);         // make [14]^2
+   double r_e_3[120]; ShellMdrr_MakeL14(r_e_3, r_d_4, r_c_4, Rx, Ry, Rz);         // make [14]^3
+   double r_e_4[120]; ShellMdrr_MakeL14(r_e_4, r_d_5, r_c_5, Rx, Ry, Rz);         // make [14]^4
+   double r_f_2[136]; ShellMdrr_MakeL15(r_f_2, r_e_3, r_d_3, Rx, Ry, Rz);         // make [15]^2
+   double r_f_3[136]; ShellMdrr_MakeL15(r_f_3, r_e_4, r_d_4, Rx, Ry, Rz);         // make [15]^3
+   double r_g_1[153]; ShellMdrr_MakeL16(r_g_1, r_f_2, r_e_2, Rx, Ry, Rz);         // make [16]^1
+   double r_g_2[153]; ShellMdrr_MakeL16(r_g_2, r_f_3, r_e_3, Rx, Ry, Rz);         // make [16]^2
+   double r_h_1[171]; ShellMdrr_MakeL17(r_h_1, r_g_2, r_f_2, Rx, Ry, Rz);         // make [17]^1
+   ShellMdrr_MakeL18(pOut, r_h_1, r_g_1, Rx, Ry, Rz);                             // make [18]^0
+   // 41.01 flops and 54.76 mops per component, 29.80 kb stack
 }
 
 // calculate [CartY(lab)]^0 from [0]^m. Effectively, this function calculates
 //    D^r f(t)
-// from f^[m](t) = (D/Dt)^m f(t) and R, where t = R^2, D^r means \prod_i (D/D{R_i})^{r_x},
+// from f^[m](t) = (2 rho D/Dt)^m f(t) and R, where t = rho R^2, D^r means \prod_i (D/D{R_i})^{r_x},
 // and f is some arbitrary scalar function (of which you supply the m'th derivatives with
 // respect to t as [0]^m).
-void ShellMdrr(double * pOut, double const * pIn, double Rx, double Ry, double Rz, unsigned lab)
+void ShellMdrr(double *IR_RP pOut, double const *IR_RP pIn, double Rx, double Ry, double Rz, unsigned lab)
 {
-   pIn += lab;
-   if (lab == 0) {
-      pOut[0] = pIn[0];
-      return;
+   switch(lab) {
+      case 0: return ShellMdrr0(pOut, pIn, Rx, Ry, Rz);
+      case 1: return ShellMdrr1(pOut, pIn, Rx, Ry, Rz);
+      case 2: return ShellMdrr2(pOut, pIn, Rx, Ry, Rz);
+      case 3: return ShellMdrr3(pOut, pIn, Rx, Ry, Rz);
+      case 4: return ShellMdrr4(pOut, pIn, Rx, Ry, Rz);
+      case 5: return ShellMdrr5(pOut, pIn, Rx, Ry, Rz);
+      case 6: return ShellMdrr6(pOut, pIn, Rx, Ry, Rz);
+      case 7: return ShellMdrr7(pOut, pIn, Rx, Ry, Rz);
+      case 8: return ShellMdrr8(pOut, pIn, Rx, Ry, Rz);
+      case 9: return ShellMdrr9(pOut, pIn, Rx, Ry, Rz);
+      case 10: return ShellMdrr10(pOut, pIn, Rx, Ry, Rz);
+      case 11: return ShellMdrr11(pOut, pIn, Rx, Ry, Rz);
+      case 12: return ShellMdrr12(pOut, pIn, Rx, Ry, Rz);
+      case 13: return ShellMdrr13(pOut, pIn, Rx, Ry, Rz);
+      case 14: return ShellMdrr14(pOut, pIn, Rx, Ry, Rz);
+      case 15: return ShellMdrr15(pOut, pIn, Rx, Ry, Rz);
+      case 16: return ShellMdrr16(pOut, pIn, Rx, Ry, Rz);
+      case 17: return ShellMdrr17(pOut, pIn, Rx, Ry, Rz);
+      case 18: return ShellMdrr18(pOut, pIn, Rx, Ry, Rz);
    }
-   if (lab == 1) {
-      pOut[0] = Rx*pIn[0];
-      pOut[1] = Ry*pIn[0];
-      pOut[2] = Rz*pIn[0];
-      return;
-   }
-   double r_100_1 = Rx*pIn[0];
-   double r_010_1 = Ry*pIn[0];
-   double r_001_1 = Rz*pIn[0];
-   if (lab == 2) {
-      pOut[0] = Rx*r_100_1 - pIn[-1];
-      pOut[1] = Ry*r_010_1 - pIn[-1];
-      pOut[2] = Rz*r_001_1 - pIn[-1];
-      pOut[3] = Ry*r_100_1;
-      pOut[4] = Rz*r_100_1;
-      pOut[5] = Rz*r_010_1;
-      return;
-   }
-   double r_100_2 = Rx*pIn[-1];
-   double r_010_2 = Ry*pIn[-1];
-   double r_001_2 = Rz*pIn[-1];
-   double r_200_2 = Rx*r_100_1 - pIn[-1];
-   double r_020_2 = Ry*r_010_1 - pIn[-1];
-   double r_002_2 = Rz*r_001_1 - pIn[-1];
-   double r_110_2 = Ry*r_100_1;
-   if (lab == 3) {
-      pOut[0] = Rx*r_200_2 - 2*r_100_2;
-      pOut[1] = Ry*r_020_2 - 2*r_010_2;
-      pOut[2] = Rz*r_002_2 - 2*r_001_2;
-      pOut[3] = Rx*r_020_2;
-      pOut[4] = Rx*r_002_2;
-      pOut[5] = Ry*r_200_2;
-      pOut[6] = Ry*r_002_2;
-      pOut[7] = Rz*r_200_2;
-      pOut[8] = Rz*r_020_2;
-      pOut[9] = Rz*r_110_2;
-      return;
-   }
-   double r_200_3 = Rx*r_100_2 - pIn[-2];
-   double r_020_3 = Ry*r_010_2 - pIn[-2];
-   double r_002_3 = Rz*r_001_2 - pIn[-2];
-   double r_300_3 = Rx*r_200_2 - 2*r_100_2;
-   double r_030_3 = Ry*r_020_2 - 2*r_010_2;
-   double r_003_3 = Rz*r_002_2 - 2*r_001_2;
-   double r_120_3 = Rx*r_020_2;
-   double r_102_3 = Rx*r_002_2;
-   double r_210_3 = Ry*r_200_2;
-   double r_012_3 = Ry*r_002_2;
-   if (lab == 4) {
-      pOut[0] = Rx*r_300_3 - 3*r_200_3;
-      pOut[1] = Ry*r_030_3 - 3*r_020_3;
-      pOut[2] = Rz*r_003_3 - 3*r_002_3;
-      pOut[3] = Ry*r_300_3;
-      pOut[4] = Rx*r_030_3;
-      pOut[5] = Rz*r_300_3;
-      pOut[6] = Rx*r_003_3;
-      pOut[7] = Rz*r_030_3;
-      pOut[8] = Ry*r_003_3;
-      pOut[9] = Rx*r_120_3 - r_020_3;
-      pOut[10] = Rx*r_102_3 - r_002_3;
-      pOut[11] = Ry*r_012_3 - r_002_3;
-      pOut[12] = Ry*r_102_3;
-      pOut[13] = Rz*r_120_3;
-      pOut[14] = Rz*r_210_3;
-      return;
-   }
-   double r_100_3 = Rx*pIn[-2];
-   double r_010_3 = Ry*pIn[-2];
-   double r_001_3 = Rz*pIn[-2];
-   double r_300_4 = Rx*r_200_3 - 2*r_100_3;
-   double r_030_4 = Ry*r_020_3 - 2*r_010_3;
-   double r_003_4 = Rz*r_002_3 - 2*r_001_3;
-   double r_400_4 = Rx*r_300_3 - 3*r_200_3;
-   double r_040_4 = Ry*r_030_3 - 3*r_020_3;
-   double r_004_4 = Rz*r_003_3 - 3*r_002_3;
-   double r_310_4 = Ry*r_300_3;
-   double r_130_4 = Rx*r_030_3;
-   double r_301_4 = Rz*r_300_3;
-   double r_103_4 = Rx*r_003_3;
-   double r_031_4 = Rz*r_030_3;
-   double r_013_4 = Ry*r_003_3;
-   double r_220_4 = Rx*r_120_3 - r_020_3;
-   double r_202_4 = Rx*r_102_3 - r_002_3;
-   double r_022_4 = Ry*r_012_3 - r_002_3;
-   if (lab == 5) {
-      pOut[0] = Rx*r_400_4 - 4*r_300_4;
-      pOut[1] = Ry*r_040_4 - 4*r_030_4;
-      pOut[2] = Rz*r_004_4 - 4*r_003_4;
-      pOut[3] = Rx*r_040_4;
-      pOut[4] = Rx*r_004_4;
-      pOut[5] = Ry*r_400_4;
-      pOut[6] = Ry*r_004_4;
-      pOut[7] = Rz*r_400_4;
-      pOut[8] = Rz*r_040_4;
-      pOut[9] = Ry*r_310_4 - r_300_4;
-      pOut[10] = Rz*r_301_4 - r_300_4;
-      pOut[11] = Rx*r_130_4 - r_030_4;
-      pOut[12] = Rz*r_031_4 - r_030_4;
-      pOut[13] = Rx*r_103_4 - r_003_4;
-      pOut[14] = Ry*r_013_4 - r_003_4;
-      pOut[15] = Rz*r_310_4;
-      pOut[16] = Rz*r_130_4;
-      pOut[17] = Ry*r_103_4;
-      pOut[18] = Rx*r_022_4;
-      pOut[19] = Ry*r_202_4;
-      pOut[20] = Rz*r_220_4;
-      return;
-   }
-   double r_200_4 = Rx*r_100_3 - pIn[-3];
-   double r_020_4 = Ry*r_010_3 - pIn[-3];
-   double r_002_4 = Rz*r_001_3 - pIn[-3];
-   double r_012_4 = Ry*r_002_3;
-   double r_400_5 = Rx*r_300_4 - 3*r_200_4;
-   double r_040_5 = Ry*r_030_4 - 3*r_020_4;
-   double r_004_5 = Rz*r_003_4 - 3*r_002_4;
-   double r_310_5 = Ry*r_300_4;
-   double r_301_5 = Rz*r_300_4;
-   double r_031_5 = Rz*r_030_4;
-   double r_022_5 = Ry*r_012_4 - r_002_4;
-   double r_500_5 = Rx*r_400_4 - 4*r_300_4;
-   double r_050_5 = Ry*r_040_4 - 4*r_030_4;
-   double r_005_5 = Rz*r_004_4 - 4*r_003_4;
-   double r_140_5 = Rx*r_040_4;
-   double r_104_5 = Rx*r_004_4;
-   double r_410_5 = Ry*r_400_4;
-   double r_014_5 = Ry*r_004_4;
-   double r_401_5 = Rz*r_400_4;
-   double r_041_5 = Rz*r_040_4;
-   double r_320_5 = Ry*r_310_4 - r_300_4;
-   double r_302_5 = Rz*r_301_4 - r_300_4;
-   double r_230_5 = Rx*r_130_4 - r_030_4;
-   double r_032_5 = Rz*r_031_4 - r_030_4;
-   double r_203_5 = Rx*r_103_4 - r_003_4;
-   double r_023_5 = Ry*r_013_4 - r_003_4;
-   double r_122_5 = Rx*r_022_4;
-   if (lab == 6) {
-      pOut[0] = Rx*r_500_5 - 5*r_400_5;
-      pOut[1] = Ry*r_050_5 - 5*r_040_5;
-      pOut[2] = Rz*r_005_5 - 5*r_004_5;
-      pOut[3] = Ry*r_500_5;
-      pOut[4] = Rx*r_050_5;
-      pOut[5] = Rz*r_500_5;
-      pOut[6] = Rx*r_005_5;
-      pOut[7] = Rz*r_050_5;
-      pOut[8] = Ry*r_005_5;
-      pOut[9] = Ry*r_410_5 - r_400_5;
-      pOut[10] = Rz*r_401_5 - r_400_5;
-      pOut[11] = Rx*r_140_5 - r_040_5;
-      pOut[12] = Rx*r_104_5 - r_004_5;
-      pOut[13] = Rz*r_041_5 - r_040_5;
-      pOut[14] = Ry*r_014_5 - r_004_5;
-      pOut[15] = Ry*r_320_5 - 2*r_310_5;
-      pOut[16] = Rz*r_302_5 - 2*r_301_5;
-      pOut[17] = Rz*r_032_5 - 2*r_031_5;
-      pOut[18] = Ry*r_104_5;
-      pOut[19] = Rz*r_140_5;
-      pOut[20] = Rz*r_410_5;
-      pOut[21] = Ry*r_302_5;
-      pOut[22] = Rx*r_032_5;
-      pOut[23] = Rz*r_320_5;
-      pOut[24] = Rx*r_023_5;
-      pOut[25] = Rz*r_230_5;
-      pOut[26] = Ry*r_203_5;
-      pOut[27] = Rx*r_122_5 - r_022_5;
-      return;
-   }
-   double r_100_4 = Rx*pIn[-3];
-   double r_010_4 = Ry*pIn[-3];
-   double r_001_4 = Rz*pIn[-3];
-   double r_300_5 = Rx*r_200_4 - 2*r_100_4;
-   double r_030_5 = Ry*r_020_4 - 2*r_010_4;
-   double r_003_5 = Rz*r_002_4 - 2*r_001_4;
-   double r_013_5 = Ry*r_003_4;
-   double r_500_6 = Rx*r_400_5 - 4*r_300_5;
-   double r_050_6 = Ry*r_040_5 - 4*r_030_5;
-   double r_005_6 = Rz*r_004_5 - 4*r_003_5;
-   double r_140_6 = Rx*r_040_5;
-   double r_104_6 = Rx*r_004_5;
-   double r_410_6 = Ry*r_400_5;
-   double r_014_6 = Ry*r_004_5;
-   double r_401_6 = Rz*r_400_5;
-   double r_041_6 = Rz*r_040_5;
-   double r_302_6 = Rz*r_301_5 - r_300_5;
-   double r_032_6 = Rz*r_031_5 - r_030_5;
-   double r_023_6 = Ry*r_013_5 - r_003_5;
-   double r_600_6 = Rx*r_500_5 - 5*r_400_5;
-   double r_060_6 = Ry*r_050_5 - 5*r_040_5;
-   double r_006_6 = Rz*r_005_5 - 5*r_004_5;
-   double r_510_6 = Ry*r_500_5;
-   double r_150_6 = Rx*r_050_5;
-   double r_501_6 = Rz*r_500_5;
-   double r_105_6 = Rx*r_005_5;
-   double r_051_6 = Rz*r_050_5;
-   double r_015_6 = Ry*r_005_5;
-   double r_420_6 = Ry*r_410_5 - r_400_5;
-   double r_402_6 = Rz*r_401_5 - r_400_5;
-   double r_240_6 = Rx*r_140_5 - r_040_5;
-   double r_204_6 = Rx*r_104_5 - r_004_5;
-   double r_042_6 = Rz*r_041_5 - r_040_5;
-   double r_024_6 = Ry*r_014_5 - r_004_5;
-   double r_330_6 = Ry*r_320_5 - 2*r_310_5;
-   double r_303_6 = Rz*r_302_5 - 2*r_301_5;
-   double r_033_6 = Rz*r_032_5 - 2*r_031_5;
-   double r_312_6 = Ry*r_302_5;
-   double r_132_6 = Rx*r_032_5;
-   double r_123_6 = Rx*r_023_5;
-   if (lab == 7) {
-      pOut[0] = Rx*r_600_6 - 6*r_500_6;
-      pOut[1] = Ry*r_060_6 - 6*r_050_6;
-      pOut[2] = Rz*r_006_6 - 6*r_005_6;
-      pOut[3] = Rx*r_060_6;
-      pOut[4] = Rx*r_006_6;
-      pOut[5] = Ry*r_600_6;
-      pOut[6] = Ry*r_006_6;
-      pOut[7] = Rz*r_600_6;
-      pOut[8] = Rz*r_060_6;
-      pOut[9] = Ry*r_510_6 - r_500_6;
-      pOut[10] = Rz*r_501_6 - r_500_6;
-      pOut[11] = Rx*r_150_6 - r_050_6;
-      pOut[12] = Rz*r_051_6 - r_050_6;
-      pOut[13] = Rx*r_105_6 - r_005_6;
-      pOut[14] = Ry*r_015_6 - r_005_6;
-      pOut[15] = Rx*r_240_6 - 2*r_140_6;
-      pOut[16] = Rx*r_204_6 - 2*r_104_6;
-      pOut[17] = Ry*r_420_6 - 2*r_410_6;
-      pOut[18] = Ry*r_024_6 - 2*r_014_6;
-      pOut[19] = Rz*r_402_6 - 2*r_401_6;
-      pOut[20] = Rz*r_042_6 - 2*r_041_6;
-      pOut[21] = Rz*r_510_6;
-      pOut[22] = Rz*r_150_6;
-      pOut[23] = Ry*r_105_6;
-      pOut[24] = Rx*r_042_6;
-      pOut[25] = Rx*r_024_6;
-      pOut[26] = Ry*r_402_6;
-      pOut[27] = Ry*r_204_6;
-      pOut[28] = Rz*r_420_6;
-      pOut[29] = Rz*r_240_6;
-      pOut[30] = Rz*r_330_6;
-      pOut[31] = Ry*r_303_6;
-      pOut[32] = Rx*r_033_6;
-      pOut[33] = Ry*r_312_6 - r_302_6;
-      pOut[34] = Rx*r_132_6 - r_032_6;
-      pOut[35] = Rx*r_123_6 - r_023_6;
-      return;
-   }
-   double r_200_5 = Rx*r_100_4 - pIn[-4];
-   double r_020_5 = Ry*r_010_4 - pIn[-4];
-   double r_002_5 = Rz*r_001_4 - pIn[-4];
-   double r_400_6 = Rx*r_300_5 - 3*r_200_5;
-   double r_040_6 = Ry*r_030_5 - 3*r_020_5;
-   double r_004_6 = Rz*r_003_5 - 3*r_002_5;
-   double r_310_6 = Ry*r_300_5;
-   double r_301_6 = Rz*r_300_5;
-   double r_031_6 = Rz*r_030_5;
-   double r_320_6 = Ry*r_310_5 - r_300_5;
-   double r_600_7 = Rx*r_500_6 - 5*r_400_6;
-   double r_060_7 = Ry*r_050_6 - 5*r_040_6;
-   double r_006_7 = Rz*r_005_6 - 5*r_004_6;
-   double r_510_7 = Ry*r_500_6;
-   double r_150_7 = Rx*r_050_6;
-   double r_501_7 = Rz*r_500_6;
-   double r_105_7 = Rx*r_005_6;
-   double r_051_7 = Rz*r_050_6;
-   double r_015_7 = Ry*r_005_6;
-   double r_402_7 = Rz*r_401_6 - r_400_6;
-   double r_240_7 = Rx*r_140_6 - r_040_6;
-   double r_204_7 = Rx*r_104_6 - r_004_6;
-   double r_042_7 = Rz*r_041_6 - r_040_6;
-   double r_024_7 = Ry*r_014_6 - r_004_6;
-   double r_330_7 = Ry*r_320_6 - 2*r_310_6;
-   double r_303_7 = Rz*r_302_6 - 2*r_301_6;
-   double r_033_7 = Rz*r_032_6 - 2*r_031_6;
-   double r_700_7 = Rx*r_600_6 - 6*r_500_6;
-   double r_070_7 = Ry*r_060_6 - 6*r_050_6;
-   double r_007_7 = Rz*r_006_6 - 6*r_005_6;
-   double r_160_7 = Rx*r_060_6;
-   double r_106_7 = Rx*r_006_6;
-   double r_610_7 = Ry*r_600_6;
-   double r_016_7 = Ry*r_006_6;
-   double r_601_7 = Rz*r_600_6;
-   double r_061_7 = Rz*r_060_6;
-   double r_520_7 = Ry*r_510_6 - r_500_6;
-   double r_502_7 = Rz*r_501_6 - r_500_6;
-   double r_250_7 = Rx*r_150_6 - r_050_6;
-   double r_052_7 = Rz*r_051_6 - r_050_6;
-   double r_205_7 = Rx*r_105_6 - r_005_6;
-   double r_025_7 = Ry*r_015_6 - r_005_6;
-   double r_340_7 = Rx*r_240_6 - 2*r_140_6;
-   double r_304_7 = Rx*r_204_6 - 2*r_104_6;
-   double r_430_7 = Ry*r_420_6 - 2*r_410_6;
-   double r_034_7 = Ry*r_024_6 - 2*r_014_6;
-   double r_403_7 = Rz*r_402_6 - 2*r_401_6;
-   double r_043_7 = Rz*r_042_6 - 2*r_041_6;
-   double r_142_7 = Rx*r_042_6;
-   double r_124_7 = Rx*r_024_6;
-   double r_412_7 = Ry*r_402_6;
-   double r_331_7 = Rz*r_330_6;
-   double r_313_7 = Ry*r_303_6;
-   double r_133_7 = Rx*r_033_6;
-   if (lab == 8) {
-      pOut[0] = Rx*r_700_7 - 7*r_600_7;
-      pOut[1] = Ry*r_070_7 - 7*r_060_7;
-      pOut[2] = Rz*r_007_7 - 7*r_006_7;
-      pOut[3] = Ry*r_700_7;
-      pOut[4] = Rx*r_070_7;
-      pOut[5] = Rz*r_700_7;
-      pOut[6] = Rx*r_007_7;
-      pOut[7] = Rz*r_070_7;
-      pOut[8] = Ry*r_007_7;
-      pOut[9] = Ry*r_610_7 - r_600_7;
-      pOut[10] = Rz*r_601_7 - r_600_7;
-      pOut[11] = Rx*r_160_7 - r_060_7;
-      pOut[12] = Rx*r_106_7 - r_006_7;
-      pOut[13] = Rz*r_061_7 - r_060_7;
-      pOut[14] = Ry*r_016_7 - r_006_7;
-      pOut[15] = Ry*r_520_7 - 2*r_510_7;
-      pOut[16] = Rx*r_250_7 - 2*r_150_7;
-      pOut[17] = Rz*r_502_7 - 2*r_501_7;
-      pOut[18] = Rx*r_205_7 - 2*r_105_7;
-      pOut[19] = Rz*r_052_7 - 2*r_051_7;
-      pOut[20] = Ry*r_025_7 - 2*r_015_7;
-      pOut[21] = Rx*r_340_7 - 3*r_240_7;
-      pOut[22] = Rx*r_304_7 - 3*r_204_7;
-      pOut[23] = Ry*r_034_7 - 3*r_024_7;
-      pOut[24] = Ry*r_106_7;
-      pOut[25] = Rz*r_160_7;
-      pOut[26] = Rz*r_610_7;
-      pOut[27] = Ry*r_502_7;
-      pOut[28] = Rx*r_052_7;
-      pOut[29] = Rz*r_520_7;
-      pOut[30] = Rx*r_025_7;
-      pOut[31] = Rz*r_250_7;
-      pOut[32] = Ry*r_205_7;
-      pOut[33] = Ry*r_304_7;
-      pOut[34] = Rx*r_034_7;
-      pOut[35] = Rz*r_340_7;
-      pOut[36] = Rx*r_043_7;
-      pOut[37] = Rz*r_430_7;
-      pOut[38] = Ry*r_403_7;
-      pOut[39] = Ry*r_412_7 - r_402_7;
-      pOut[40] = Rx*r_142_7 - r_042_7;
-      pOut[41] = Rx*r_124_7 - r_024_7;
-      pOut[42] = Rz*r_331_7 - r_330_7;
-      pOut[43] = Ry*r_313_7 - r_303_7;
-      pOut[44] = Rx*r_133_7 - r_033_7;
-      return;
-   }
-   double r_100_5 = Rx*pIn[-4];
-   double r_010_5 = Ry*pIn[-4];
-   double r_001_5 = Rz*pIn[-4];
-   double r_300_6 = Rx*r_200_5 - 2*r_100_5;
-   double r_030_6 = Ry*r_020_5 - 2*r_010_5;
-   double r_003_6 = Rz*r_002_5 - 2*r_001_5;
-   double r_500_7 = Rx*r_400_6 - 4*r_300_6;
-   double r_050_7 = Ry*r_040_6 - 4*r_030_6;
-   double r_005_7 = Rz*r_004_6 - 4*r_003_6;
-   double r_140_7 = Rx*r_040_6;
-   double r_104_7 = Rx*r_004_6;
-   double r_410_7 = Ry*r_400_6;
-   double r_014_7 = Ry*r_004_6;
-   double r_401_7 = Rz*r_400_6;
-   double r_041_7 = Rz*r_040_6;
-   double r_420_7 = Ry*r_410_6 - r_400_6;
-   double r_700_8 = Rx*r_600_7 - 6*r_500_7;
-   double r_070_8 = Ry*r_060_7 - 6*r_050_7;
-   double r_007_8 = Rz*r_006_7 - 6*r_005_7;
-   double r_160_8 = Rx*r_060_7;
-   double r_106_8 = Rx*r_006_7;
-   double r_610_8 = Ry*r_600_7;
-   double r_016_8 = Ry*r_006_7;
-   double r_601_8 = Rz*r_600_7;
-   double r_061_8 = Rz*r_060_7;
-   double r_520_8 = Ry*r_510_7 - r_500_7;
-   double r_502_8 = Rz*r_501_7 - r_500_7;
-   double r_250_8 = Rx*r_150_7 - r_050_7;
-   double r_052_8 = Rz*r_051_7 - r_050_7;
-   double r_205_8 = Rx*r_105_7 - r_005_7;
-   double r_025_8 = Ry*r_015_7 - r_005_7;
-   double r_340_8 = Rx*r_240_7 - 2*r_140_7;
-   double r_304_8 = Rx*r_204_7 - 2*r_104_7;
-   double r_430_8 = Ry*r_420_7 - 2*r_410_7;
-   double r_034_8 = Ry*r_024_7 - 2*r_014_7;
-   double r_403_8 = Rz*r_402_7 - 2*r_401_7;
-   double r_043_8 = Rz*r_042_7 - 2*r_041_7;
-   double r_331_8 = Rz*r_330_7;
-   double r_800_8 = Rx*r_700_7 - 7*r_600_7;
-   double r_080_8 = Ry*r_070_7 - 7*r_060_7;
-   double r_008_8 = Rz*r_007_7 - 7*r_006_7;
-   double r_710_8 = Ry*r_700_7;
-   double r_170_8 = Rx*r_070_7;
-   double r_701_8 = Rz*r_700_7;
-   double r_107_8 = Rx*r_007_7;
-   double r_071_8 = Rz*r_070_7;
-   double r_017_8 = Ry*r_007_7;
-   double r_620_8 = Ry*r_610_7 - r_600_7;
-   double r_602_8 = Rz*r_601_7 - r_600_7;
-   double r_260_8 = Rx*r_160_7 - r_060_7;
-   double r_206_8 = Rx*r_106_7 - r_006_7;
-   double r_062_8 = Rz*r_061_7 - r_060_7;
-   double r_026_8 = Ry*r_016_7 - r_006_7;
-   double r_530_8 = Ry*r_520_7 - 2*r_510_7;
-   double r_350_8 = Rx*r_250_7 - 2*r_150_7;
-   double r_503_8 = Rz*r_502_7 - 2*r_501_7;
-   double r_305_8 = Rx*r_205_7 - 2*r_105_7;
-   double r_053_8 = Rz*r_052_7 - 2*r_051_7;
-   double r_035_8 = Ry*r_025_7 - 2*r_015_7;
-   double r_440_8 = Rx*r_340_7 - 3*r_240_7;
-   double r_404_8 = Rx*r_304_7 - 3*r_204_7;
-   double r_044_8 = Ry*r_034_7 - 3*r_024_7;
-   double r_512_8 = Ry*r_502_7;
-   double r_152_8 = Rx*r_052_7;
-   double r_125_8 = Rx*r_025_7;
-   double r_314_8 = Ry*r_304_7;
-   double r_134_8 = Rx*r_034_7;
-   double r_341_8 = Rz*r_340_7;
-   double r_143_8 = Rx*r_043_7;
-   double r_431_8 = Rz*r_430_7;
-   double r_413_8 = Ry*r_403_7;
-   double r_332_8 = Rz*r_331_7 - r_330_7;
-   if (lab == 9) {
-      pOut[0] = Rx*r_800_8 - 8*r_700_8;
-      pOut[1] = Ry*r_080_8 - 8*r_070_8;
-      pOut[2] = Rz*r_008_8 - 8*r_007_8;
-      pOut[3] = Rx*r_080_8;
-      pOut[4] = Rx*r_008_8;
-      pOut[5] = Ry*r_800_8;
-      pOut[6] = Ry*r_008_8;
-      pOut[7] = Rz*r_800_8;
-      pOut[8] = Rz*r_080_8;
-      pOut[9] = Ry*r_710_8 - r_700_8;
-      pOut[10] = Rz*r_701_8 - r_700_8;
-      pOut[11] = Rx*r_170_8 - r_070_8;
-      pOut[12] = Rz*r_071_8 - r_070_8;
-      pOut[13] = Rx*r_107_8 - r_007_8;
-      pOut[14] = Ry*r_017_8 - r_007_8;
-      pOut[15] = Rx*r_260_8 - 2*r_160_8;
-      pOut[16] = Rx*r_206_8 - 2*r_106_8;
-      pOut[17] = Ry*r_620_8 - 2*r_610_8;
-      pOut[18] = Ry*r_026_8 - 2*r_016_8;
-      pOut[19] = Rz*r_602_8 - 2*r_601_8;
-      pOut[20] = Rz*r_062_8 - 2*r_061_8;
-      pOut[21] = Ry*r_530_8 - 3*r_520_8;
-      pOut[22] = Rz*r_503_8 - 3*r_502_8;
-      pOut[23] = Rx*r_350_8 - 3*r_250_8;
-      pOut[24] = Rz*r_053_8 - 3*r_052_8;
-      pOut[25] = Rx*r_305_8 - 3*r_205_8;
-      pOut[26] = Ry*r_035_8 - 3*r_025_8;
-      pOut[27] = Rz*r_710_8;
-      pOut[28] = Rz*r_170_8;
-      pOut[29] = Ry*r_107_8;
-      pOut[30] = Rx*r_062_8;
-      pOut[31] = Rx*r_026_8;
-      pOut[32] = Ry*r_602_8;
-      pOut[33] = Ry*r_206_8;
-      pOut[34] = Rz*r_620_8;
-      pOut[35] = Rz*r_260_8;
-      pOut[36] = Rz*r_530_8;
-      pOut[37] = Ry*r_503_8;
-      pOut[38] = Rz*r_350_8;
-      pOut[39] = Ry*r_305_8;
-      pOut[40] = Rx*r_053_8;
-      pOut[41] = Rx*r_035_8;
-      pOut[42] = Rx*r_044_8;
-      pOut[43] = Ry*r_404_8;
-      pOut[44] = Rz*r_440_8;
-      pOut[45] = Ry*r_512_8 - r_502_8;
-      pOut[46] = Rx*r_152_8 - r_052_8;
-      pOut[47] = Rx*r_125_8 - r_025_8;
-      pOut[48] = Rz*r_341_8 - r_340_8;
-      pOut[49] = Ry*r_314_8 - r_304_8;
-      pOut[50] = Rz*r_431_8 - r_430_8;
-      pOut[51] = Rx*r_134_8 - r_034_8;
-      pOut[52] = Ry*r_413_8 - r_403_8;
-      pOut[53] = Rx*r_143_8 - r_043_8;
-      pOut[54] = Rz*r_332_8 - 2*r_331_8;
-      return;
-   }
-   double r_200_6 = Rx*r_100_5 - pIn[-5];
-   double r_020_6 = Ry*r_010_5 - pIn[-5];
-   double r_002_6 = Rz*r_001_5 - pIn[-5];
-   double r_400_7 = Rx*r_300_6 - 3*r_200_6;
-   double r_040_7 = Ry*r_030_6 - 3*r_020_6;
-   double r_004_7 = Rz*r_003_6 - 3*r_002_6;
-   double r_600_8 = Rx*r_500_7 - 5*r_400_7;
-   double r_060_8 = Ry*r_050_7 - 5*r_040_7;
-   double r_006_8 = Rz*r_005_7 - 5*r_004_7;
-   double r_510_8 = Ry*r_500_7;
-   double r_150_8 = Rx*r_050_7;
-   double r_501_8 = Rz*r_500_7;
-   double r_105_8 = Rx*r_005_7;
-   double r_051_8 = Rz*r_050_7;
-   double r_015_8 = Ry*r_005_7;
-   double r_240_8 = Rx*r_140_7 - r_040_7;
-   double r_204_8 = Rx*r_104_7 - r_004_7;
-   double r_024_8 = Ry*r_014_7 - r_004_7;
-   double r_800_9 = Rx*r_700_8 - 7*r_600_8;
-   double r_080_9 = Ry*r_070_8 - 7*r_060_8;
-   double r_008_9 = Rz*r_007_8 - 7*r_006_8;
-   double r_710_9 = Ry*r_700_8;
-   double r_170_9 = Rx*r_070_8;
-   double r_701_9 = Rz*r_700_8;
-   double r_107_9 = Rx*r_007_8;
-   double r_071_9 = Rz*r_070_8;
-   double r_017_9 = Ry*r_007_8;
-   double r_620_9 = Ry*r_610_8 - r_600_8;
-   double r_602_9 = Rz*r_601_8 - r_600_8;
-   double r_260_9 = Rx*r_160_8 - r_060_8;
-   double r_206_9 = Rx*r_106_8 - r_006_8;
-   double r_062_9 = Rz*r_061_8 - r_060_8;
-   double r_026_9 = Ry*r_016_8 - r_006_8;
-   double r_530_9 = Ry*r_520_8 - 2*r_510_8;
-   double r_350_9 = Rx*r_250_8 - 2*r_150_8;
-   double r_503_9 = Rz*r_502_8 - 2*r_501_8;
-   double r_305_9 = Rx*r_205_8 - 2*r_105_8;
-   double r_053_9 = Rz*r_052_8 - 2*r_051_8;
-   double r_035_9 = Ry*r_025_8 - 2*r_015_8;
-   double r_440_9 = Rx*r_340_8 - 3*r_240_8;
-   double r_404_9 = Rx*r_304_8 - 3*r_204_8;
-   double r_044_9 = Ry*r_034_8 - 3*r_024_8;
-   double r_314_9 = Ry*r_304_8;
-   double r_341_9 = Rz*r_340_8;
-   double r_431_9 = Rz*r_430_8;
-   double r_900_9 = Rx*r_800_8 - 8*r_700_8;
-   double r_090_9 = Ry*r_080_8 - 8*r_070_8;
-   double r_009_9 = Rz*r_008_8 - 8*r_007_8;
-   double r_180_9 = Rx*r_080_8;
-   double r_108_9 = Rx*r_008_8;
-   double r_810_9 = Ry*r_800_8;
-   double r_018_9 = Ry*r_008_8;
-   double r_801_9 = Rz*r_800_8;
-   double r_081_9 = Rz*r_080_8;
-   double r_720_9 = Ry*r_710_8 - r_700_8;
-   double r_702_9 = Rz*r_701_8 - r_700_8;
-   double r_270_9 = Rx*r_170_8 - r_070_8;
-   double r_072_9 = Rz*r_071_8 - r_070_8;
-   double r_207_9 = Rx*r_107_8 - r_007_8;
-   double r_027_9 = Ry*r_017_8 - r_007_8;
-   double r_360_9 = Rx*r_260_8 - 2*r_160_8;
-   double r_306_9 = Rx*r_206_8 - 2*r_106_8;
-   double r_630_9 = Ry*r_620_8 - 2*r_610_8;
-   double r_036_9 = Ry*r_026_8 - 2*r_016_8;
-   double r_603_9 = Rz*r_602_8 - 2*r_601_8;
-   double r_063_9 = Rz*r_062_8 - 2*r_061_8;
-   double r_540_9 = Ry*r_530_8 - 3*r_520_8;
-   double r_504_9 = Rz*r_503_8 - 3*r_502_8;
-   double r_450_9 = Rx*r_350_8 - 3*r_250_8;
-   double r_054_9 = Rz*r_053_8 - 3*r_052_8;
-   double r_405_9 = Rx*r_305_8 - 3*r_205_8;
-   double r_045_9 = Ry*r_035_8 - 3*r_025_8;
-   double r_162_9 = Rx*r_062_8;
-   double r_126_9 = Rx*r_026_8;
-   double r_612_9 = Ry*r_602_8;
-   double r_531_9 = Rz*r_530_8;
-   double r_513_9 = Ry*r_503_8;
-   double r_351_9 = Rz*r_350_8;
-   double r_315_9 = Ry*r_305_8;
-   double r_153_9 = Rx*r_053_8;
-   double r_135_9 = Rx*r_035_8;
-   double r_144_9 = Rx*r_044_8;
-   double r_414_9 = Ry*r_404_8;
-   double r_441_9 = Rz*r_440_8;
-   double r_342_9 = Rz*r_341_8 - r_340_8;
-   double r_324_9 = Ry*r_314_8 - r_304_8;
-   double r_432_9 = Rz*r_431_8 - r_430_8;
-   if (lab == 10) {
-      pOut[0] = Rx*r_900_9 - 9*r_800_9;
-      pOut[1] = Ry*r_090_9 - 9*r_080_9;
-      pOut[2] = Rz*r_009_9 - 9*r_008_9;
-      pOut[3] = Ry*r_900_9;
-      pOut[4] = Rx*r_090_9;
-      pOut[5] = Rz*r_900_9;
-      pOut[6] = Rx*r_009_9;
-      pOut[7] = Rz*r_090_9;
-      pOut[8] = Ry*r_009_9;
-      pOut[9] = Ry*r_810_9 - r_800_9;
-      pOut[10] = Rz*r_801_9 - r_800_9;
-      pOut[11] = Rx*r_180_9 - r_080_9;
-      pOut[12] = Rx*r_108_9 - r_008_9;
-      pOut[13] = Rz*r_081_9 - r_080_9;
-      pOut[14] = Ry*r_018_9 - r_008_9;
-      pOut[15] = Ry*r_720_9 - 2*r_710_9;
-      pOut[16] = Rx*r_270_9 - 2*r_170_9;
-      pOut[17] = Rz*r_702_9 - 2*r_701_9;
-      pOut[18] = Rx*r_207_9 - 2*r_107_9;
-      pOut[19] = Rz*r_072_9 - 2*r_071_9;
-      pOut[20] = Ry*r_027_9 - 2*r_017_9;
-      pOut[21] = Ry*r_630_9 - 3*r_620_9;
-      pOut[22] = Rz*r_603_9 - 3*r_602_9;
-      pOut[23] = Rx*r_360_9 - 3*r_260_9;
-      pOut[24] = Rx*r_306_9 - 3*r_206_9;
-      pOut[25] = Rz*r_063_9 - 3*r_062_9;
-      pOut[26] = Ry*r_036_9 - 3*r_026_9;
-      pOut[27] = Ry*r_540_9 - 4*r_530_9;
-      pOut[28] = Rz*r_504_9 - 4*r_503_9;
-      pOut[29] = Rz*r_054_9 - 4*r_053_9;
-      pOut[30] = Ry*r_108_9;
-      pOut[31] = Rz*r_180_9;
-      pOut[32] = Rz*r_810_9;
-      pOut[33] = Ry*r_702_9;
-      pOut[34] = Rx*r_072_9;
-      pOut[35] = Rz*r_720_9;
-      pOut[36] = Rx*r_027_9;
-      pOut[37] = Rz*r_270_9;
-      pOut[38] = Ry*r_207_9;
-      pOut[39] = Ry*r_306_9;
-      pOut[40] = Rx*r_036_9;
-      pOut[41] = Rz*r_360_9;
-      pOut[42] = Rx*r_063_9;
-      pOut[43] = Rz*r_630_9;
-      pOut[44] = Ry*r_603_9;
-      pOut[45] = Ry*r_504_9;
-      pOut[46] = Rx*r_054_9;
-      pOut[47] = Rz*r_540_9;
-      pOut[48] = Rx*r_045_9;
-      pOut[49] = Rz*r_450_9;
-      pOut[50] = Ry*r_405_9;
-      pOut[51] = Ry*r_612_9 - r_602_9;
-      pOut[52] = Rx*r_162_9 - r_062_9;
-      pOut[53] = Rx*r_126_9 - r_026_9;
-      pOut[54] = Rz*r_531_9 - r_530_9;
-      pOut[55] = Rz*r_351_9 - r_350_9;
-      pOut[56] = Ry*r_513_9 - r_503_9;
-      pOut[57] = Ry*r_315_9 - r_305_9;
-      pOut[58] = Rx*r_153_9 - r_053_9;
-      pOut[59] = Rx*r_135_9 - r_035_9;
-      pOut[60] = Rz*r_441_9 - r_440_9;
-      pOut[61] = Ry*r_414_9 - r_404_9;
-      pOut[62] = Rx*r_144_9 - r_044_9;
-      pOut[63] = Ry*r_324_9 - 2*r_314_9;
-      pOut[64] = Rz*r_342_9 - 2*r_341_9;
-      pOut[65] = Rz*r_432_9 - 2*r_431_9;
-      return;
-   }
-   double r_100_6 = Rx*pIn[-5];
-   double r_010_6 = Ry*pIn[-5];
-   double r_001_6 = Rz*pIn[-5];
-   double r_300_7 = Rx*r_200_6 - 2*r_100_6;
-   double r_030_7 = Ry*r_020_6 - 2*r_010_6;
-   double r_003_7 = Rz*r_002_6 - 2*r_001_6;
-   double r_500_8 = Rx*r_400_7 - 4*r_300_7;
-   double r_050_8 = Ry*r_040_7 - 4*r_030_7;
-   double r_005_8 = Rz*r_004_7 - 4*r_003_7;
-   double r_700_9 = Rx*r_600_8 - 6*r_500_8;
-   double r_070_9 = Ry*r_060_8 - 6*r_050_8;
-   double r_007_9 = Rz*r_006_8 - 6*r_005_8;
-   double r_160_9 = Rx*r_060_8;
-   double r_106_9 = Rx*r_006_8;
-   double r_610_9 = Ry*r_600_8;
-   double r_016_9 = Ry*r_006_8;
-   double r_601_9 = Rz*r_600_8;
-   double r_061_9 = Rz*r_060_8;
-   double r_520_9 = Ry*r_510_8 - r_500_8;
-   double r_502_9 = Rz*r_501_8 - r_500_8;
-   double r_250_9 = Rx*r_150_8 - r_050_8;
-   double r_052_9 = Rz*r_051_8 - r_050_8;
-   double r_205_9 = Rx*r_105_8 - r_005_8;
-   double r_025_9 = Ry*r_015_8 - r_005_8;
-   double r_900_a = Rx*r_800_9 - 8*r_700_9;
-   double r_090_a = Ry*r_080_9 - 8*r_070_9;
-   double r_009_a = Rz*r_008_9 - 8*r_007_9;
-   double r_180_a = Rx*r_080_9;
-   double r_108_a = Rx*r_008_9;
-   double r_810_a = Ry*r_800_9;
-   double r_018_a = Ry*r_008_9;
-   double r_801_a = Rz*r_800_9;
-   double r_081_a = Rz*r_080_9;
-   double r_720_a = Ry*r_710_9 - r_700_9;
-   double r_702_a = Rz*r_701_9 - r_700_9;
-   double r_270_a = Rx*r_170_9 - r_070_9;
-   double r_072_a = Rz*r_071_9 - r_070_9;
-   double r_207_a = Rx*r_107_9 - r_007_9;
-   double r_027_a = Ry*r_017_9 - r_007_9;
-   double r_360_a = Rx*r_260_9 - 2*r_160_9;
-   double r_306_a = Rx*r_206_9 - 2*r_106_9;
-   double r_630_a = Ry*r_620_9 - 2*r_610_9;
-   double r_036_a = Ry*r_026_9 - 2*r_016_9;
-   double r_603_a = Rz*r_602_9 - 2*r_601_9;
-   double r_063_a = Rz*r_062_9 - 2*r_061_9;
-   double r_540_a = Ry*r_530_9 - 3*r_520_9;
-   double r_504_a = Rz*r_503_9 - 3*r_502_9;
-   double r_450_a = Rx*r_350_9 - 3*r_250_9;
-   double r_054_a = Rz*r_053_9 - 3*r_052_9;
-   double r_405_a = Rx*r_305_9 - 3*r_205_9;
-   double r_045_a = Ry*r_035_9 - 3*r_025_9;
-   double r_531_a = Rz*r_530_9;
-   double r_351_a = Rz*r_350_9;
-   double r_315_a = Ry*r_305_9;
-   double r_144_a = Rx*r_044_9;
-   double r_414_a = Ry*r_404_9;
-   double r_441_a = Rz*r_440_9;
-   double r_a00_a = Rx*r_900_9 - 9*r_800_9;
-   double r_0a0_a = Ry*r_090_9 - 9*r_080_9;
-   double r_00a_a = Rz*r_009_9 - 9*r_008_9;
-   double r_910_a = Ry*r_900_9;
-   double r_190_a = Rx*r_090_9;
-   double r_901_a = Rz*r_900_9;
-   double r_109_a = Rx*r_009_9;
-   double r_091_a = Rz*r_090_9;
-   double r_019_a = Ry*r_009_9;
-   double r_820_a = Ry*r_810_9 - r_800_9;
-   double r_802_a = Rz*r_801_9 - r_800_9;
-   double r_280_a = Rx*r_180_9 - r_080_9;
-   double r_208_a = Rx*r_108_9 - r_008_9;
-   double r_082_a = Rz*r_081_9 - r_080_9;
-   double r_028_a = Ry*r_018_9 - r_008_9;
-   double r_730_a = Ry*r_720_9 - 2*r_710_9;
-   double r_370_a = Rx*r_270_9 - 2*r_170_9;
-   double r_703_a = Rz*r_702_9 - 2*r_701_9;
-   double r_307_a = Rx*r_207_9 - 2*r_107_9;
-   double r_073_a = Rz*r_072_9 - 2*r_071_9;
-   double r_037_a = Ry*r_027_9 - 2*r_017_9;
-   double r_640_a = Ry*r_630_9 - 3*r_620_9;
-   double r_604_a = Rz*r_603_9 - 3*r_602_9;
-   double r_460_a = Rx*r_360_9 - 3*r_260_9;
-   double r_406_a = Rx*r_306_9 - 3*r_206_9;
-   double r_064_a = Rz*r_063_9 - 3*r_062_9;
-   double r_046_a = Ry*r_036_9 - 3*r_026_9;
-   double r_550_a = Ry*r_540_9 - 4*r_530_9;
-   double r_505_a = Rz*r_504_9 - 4*r_503_9;
-   double r_055_a = Rz*r_054_9 - 4*r_053_9;
-   double r_712_a = Ry*r_702_9;
-   double r_172_a = Rx*r_072_9;
-   double r_127_a = Rx*r_027_9;
-   double r_316_a = Ry*r_306_9;
-   double r_136_a = Rx*r_036_9;
-   double r_361_a = Rz*r_360_9;
-   double r_163_a = Rx*r_063_9;
-   double r_631_a = Rz*r_630_9;
-   double r_613_a = Ry*r_603_9;
-   double r_514_a = Ry*r_504_9;
-   double r_154_a = Rx*r_054_9;
-   double r_541_a = Rz*r_540_9;
-   double r_145_a = Rx*r_045_9;
-   double r_451_a = Rz*r_450_9;
-   double r_415_a = Ry*r_405_9;
-   double r_532_a = Rz*r_531_9 - r_530_9;
-   double r_352_a = Rz*r_351_9 - r_350_9;
-   double r_325_a = Ry*r_315_9 - r_305_9;
-   double r_442_a = Rz*r_441_9 - r_440_9;
-   double r_424_a = Ry*r_414_9 - r_404_9;
-   double r_244_a = Rx*r_144_9 - r_044_9;
-   if (lab == 11) {
-      pOut[0] = Rx*r_a00_a - 10*r_900_a;
-      pOut[1] = Ry*r_0a0_a - 10*r_090_a;
-      pOut[2] = Rz*r_00a_a - 10*r_009_a;
-      pOut[3] = Rx*r_0a0_a;
-      pOut[4] = Rx*r_00a_a;
-      pOut[5] = Ry*r_a00_a;
-      pOut[6] = Ry*r_00a_a;
-      pOut[7] = Rz*r_a00_a;
-      pOut[8] = Rz*r_0a0_a;
-      pOut[9] = Ry*r_910_a - r_900_a;
-      pOut[10] = Rz*r_901_a - r_900_a;
-      pOut[11] = Rx*r_190_a - r_090_a;
-      pOut[12] = Rz*r_091_a - r_090_a;
-      pOut[13] = Rx*r_109_a - r_009_a;
-      pOut[14] = Ry*r_019_a - r_009_a;
-      pOut[15] = Rx*r_280_a - 2*r_180_a;
-      pOut[16] = Rx*r_208_a - 2*r_108_a;
-      pOut[17] = Ry*r_820_a - 2*r_810_a;
-      pOut[18] = Ry*r_028_a - 2*r_018_a;
-      pOut[19] = Rz*r_802_a - 2*r_801_a;
-      pOut[20] = Rz*r_082_a - 2*r_081_a;
-      pOut[21] = Ry*r_730_a - 3*r_720_a;
-      pOut[22] = Rz*r_703_a - 3*r_702_a;
-      pOut[23] = Rx*r_370_a - 3*r_270_a;
-      pOut[24] = Rz*r_073_a - 3*r_072_a;
-      pOut[25] = Rx*r_307_a - 3*r_207_a;
-      pOut[26] = Ry*r_037_a - 3*r_027_a;
-      pOut[27] = Rx*r_460_a - 4*r_360_a;
-      pOut[28] = Rx*r_406_a - 4*r_306_a;
-      pOut[29] = Ry*r_640_a - 4*r_630_a;
-      pOut[30] = Ry*r_046_a - 4*r_036_a;
-      pOut[31] = Rz*r_604_a - 4*r_603_a;
-      pOut[32] = Rz*r_064_a - 4*r_063_a;
-      pOut[33] = Rz*r_910_a;
-      pOut[34] = Rz*r_190_a;
-      pOut[35] = Ry*r_109_a;
-      pOut[36] = Rx*r_082_a;
-      pOut[37] = Rx*r_028_a;
-      pOut[38] = Ry*r_802_a;
-      pOut[39] = Ry*r_208_a;
-      pOut[40] = Rz*r_820_a;
-      pOut[41] = Rz*r_280_a;
-      pOut[42] = Rz*r_730_a;
-      pOut[43] = Ry*r_703_a;
-      pOut[44] = Rz*r_370_a;
-      pOut[45] = Ry*r_307_a;
-      pOut[46] = Rx*r_073_a;
-      pOut[47] = Rx*r_037_a;
-      pOut[48] = Rx*r_064_a;
-      pOut[49] = Rx*r_046_a;
-      pOut[50] = Ry*r_604_a;
-      pOut[51] = Ry*r_406_a;
-      pOut[52] = Rz*r_640_a;
-      pOut[53] = Rz*r_460_a;
-      pOut[54] = Rz*r_550_a;
-      pOut[55] = Ry*r_505_a;
-      pOut[56] = Rx*r_055_a;
-      pOut[57] = Ry*r_712_a - r_702_a;
-      pOut[58] = Rx*r_172_a - r_072_a;
-      pOut[59] = Rx*r_127_a - r_027_a;
-      pOut[60] = Rz*r_361_a - r_360_a;
-      pOut[61] = Ry*r_316_a - r_306_a;
-      pOut[62] = Rz*r_631_a - r_630_a;
-      pOut[63] = Rx*r_136_a - r_036_a;
-      pOut[64] = Ry*r_613_a - r_603_a;
-      pOut[65] = Rx*r_163_a - r_063_a;
-      pOut[66] = Rz*r_541_a - r_540_a;
-      pOut[67] = Ry*r_514_a - r_504_a;
-      pOut[68] = Rz*r_451_a - r_450_a;
-      pOut[69] = Rx*r_154_a - r_054_a;
-      pOut[70] = Ry*r_415_a - r_405_a;
-      pOut[71] = Rx*r_145_a - r_045_a;
-      pOut[72] = Rz*r_532_a - 2*r_531_a;
-      pOut[73] = Rz*r_352_a - 2*r_351_a;
-      pOut[74] = Ry*r_325_a - 2*r_315_a;
-      pOut[75] = Rx*r_244_a - 2*r_144_a;
-      pOut[76] = Ry*r_424_a - 2*r_414_a;
-      pOut[77] = Rz*r_442_a - 2*r_441_a;
-      return;
-   }
-   double r_200_7 = Rx*r_100_6 - pIn[-6];
-   double r_020_7 = Ry*r_010_6 - pIn[-6];
-   double r_002_7 = Rz*r_001_6 - pIn[-6];
-   double r_400_8 = Rx*r_300_7 - 3*r_200_7;
-   double r_040_8 = Ry*r_030_7 - 3*r_020_7;
-   double r_004_8 = Rz*r_003_7 - 3*r_002_7;
-   double r_014_8 = Ry*r_004_7;
-   double r_600_9 = Rx*r_500_8 - 5*r_400_8;
-   double r_060_9 = Ry*r_050_8 - 5*r_040_8;
-   double r_006_9 = Rz*r_005_8 - 5*r_004_8;
-   double r_510_9 = Ry*r_500_8;
-   double r_501_9 = Rz*r_500_8;
-   double r_051_9 = Rz*r_050_8;
-   double r_024_9 = Ry*r_014_8 - r_004_8;
-   double r_034_9 = Ry*r_024_8 - 2*r_014_8;
-   double r_800_a = Rx*r_700_9 - 7*r_600_9;
-   double r_080_a = Ry*r_070_9 - 7*r_060_9;
-   double r_008_a = Rz*r_007_9 - 7*r_006_9;
-   double r_710_a = Ry*r_700_9;
-   double r_170_a = Rx*r_070_9;
-   double r_701_a = Rz*r_700_9;
-   double r_107_a = Rx*r_007_9;
-   double r_071_a = Rz*r_070_9;
-   double r_017_a = Ry*r_007_9;
-   double r_620_a = Ry*r_610_9 - r_600_9;
-   double r_602_a = Rz*r_601_9 - r_600_9;
-   double r_260_a = Rx*r_160_9 - r_060_9;
-   double r_206_a = Rx*r_106_9 - r_006_9;
-   double r_062_a = Rz*r_061_9 - r_060_9;
-   double r_026_a = Ry*r_016_9 - r_006_9;
-   double r_530_a = Ry*r_520_9 - 2*r_510_9;
-   double r_503_a = Rz*r_502_9 - 2*r_501_9;
-   double r_053_a = Rz*r_052_9 - 2*r_051_9;
-   double r_044_a = Ry*r_034_9 - 3*r_024_9;
-   double r_a00_b = Rx*r_900_a - 9*r_800_a;
-   double r_0a0_b = Ry*r_090_a - 9*r_080_a;
-   double r_00a_b = Rz*r_009_a - 9*r_008_a;
-   double r_910_b = Ry*r_900_a;
-   double r_190_b = Rx*r_090_a;
-   double r_901_b = Rz*r_900_a;
-   double r_109_b = Rx*r_009_a;
-   double r_091_b = Rz*r_090_a;
-   double r_019_b = Ry*r_009_a;
-   double r_820_b = Ry*r_810_a - r_800_a;
-   double r_802_b = Rz*r_801_a - r_800_a;
-   double r_280_b = Rx*r_180_a - r_080_a;
-   double r_208_b = Rx*r_108_a - r_008_a;
-   double r_082_b = Rz*r_081_a - r_080_a;
-   double r_028_b = Ry*r_018_a - r_008_a;
-   double r_730_b = Ry*r_720_a - 2*r_710_a;
-   double r_370_b = Rx*r_270_a - 2*r_170_a;
-   double r_703_b = Rz*r_702_a - 2*r_701_a;
-   double r_307_b = Rx*r_207_a - 2*r_107_a;
-   double r_073_b = Rz*r_072_a - 2*r_071_a;
-   double r_037_b = Ry*r_027_a - 2*r_017_a;
-   double r_640_b = Ry*r_630_a - 3*r_620_a;
-   double r_604_b = Rz*r_603_a - 3*r_602_a;
-   double r_460_b = Rx*r_360_a - 3*r_260_a;
-   double r_406_b = Rx*r_306_a - 3*r_206_a;
-   double r_064_b = Rz*r_063_a - 3*r_062_a;
-   double r_046_b = Ry*r_036_a - 3*r_026_a;
-   double r_550_b = Ry*r_540_a - 4*r_530_a;
-   double r_505_b = Rz*r_504_a - 4*r_503_a;
-   double r_055_b = Rz*r_054_a - 4*r_053_a;
-   double r_316_b = Ry*r_306_a;
-   double r_361_b = Rz*r_360_a;
-   double r_631_b = Rz*r_630_a;
-   double r_514_b = Ry*r_504_a;
-   double r_154_b = Rx*r_054_a;
-   double r_541_b = Rz*r_540_a;
-   double r_145_b = Rx*r_045_a;
-   double r_451_b = Rz*r_450_a;
-   double r_415_b = Ry*r_405_a;
-   double r_244_b = Rx*r_144_a - r_044_a;
-   double r_b00_b = Rx*r_a00_a - 10*r_900_a;
-   double r_0b0_b = Ry*r_0a0_a - 10*r_090_a;
-   double r_00b_b = Rz*r_00a_a - 10*r_009_a;
-   double r_1a0_b = Rx*r_0a0_a;
-   double r_10a_b = Rx*r_00a_a;
-   double r_a10_b = Ry*r_a00_a;
-   double r_01a_b = Ry*r_00a_a;
-   double r_a01_b = Rz*r_a00_a;
-   double r_0a1_b = Rz*r_0a0_a;
-   double r_920_b = Ry*r_910_a - r_900_a;
-   double r_902_b = Rz*r_901_a - r_900_a;
-   double r_290_b = Rx*r_190_a - r_090_a;
-   double r_092_b = Rz*r_091_a - r_090_a;
-   double r_209_b = Rx*r_109_a - r_009_a;
-   double r_029_b = Ry*r_019_a - r_009_a;
-   double r_380_b = Rx*r_280_a - 2*r_180_a;
-   double r_308_b = Rx*r_208_a - 2*r_108_a;
-   double r_830_b = Ry*r_820_a - 2*r_810_a;
-   double r_038_b = Ry*r_028_a - 2*r_018_a;
-   double r_803_b = Rz*r_802_a - 2*r_801_a;
-   double r_083_b = Rz*r_082_a - 2*r_081_a;
-   double r_740_b = Ry*r_730_a - 3*r_720_a;
-   double r_704_b = Rz*r_703_a - 3*r_702_a;
-   double r_470_b = Rx*r_370_a - 3*r_270_a;
-   double r_074_b = Rz*r_073_a - 3*r_072_a;
-   double r_407_b = Rx*r_307_a - 3*r_207_a;
-   double r_047_b = Ry*r_037_a - 3*r_027_a;
-   double r_560_b = Rx*r_460_a - 4*r_360_a;
-   double r_506_b = Rx*r_406_a - 4*r_306_a;
-   double r_650_b = Ry*r_640_a - 4*r_630_a;
-   double r_056_b = Ry*r_046_a - 4*r_036_a;
-   double r_605_b = Rz*r_604_a - 4*r_603_a;
-   double r_065_b = Rz*r_064_a - 4*r_063_a;
-   double r_182_b = Rx*r_082_a;
-   double r_128_b = Rx*r_028_a;
-   double r_812_b = Ry*r_802_a;
-   double r_731_b = Rz*r_730_a;
-   double r_713_b = Ry*r_703_a;
-   double r_371_b = Rz*r_370_a;
-   double r_317_b = Ry*r_307_a;
-   double r_173_b = Rx*r_073_a;
-   double r_137_b = Rx*r_037_a;
-   double r_164_b = Rx*r_064_a;
-   double r_146_b = Rx*r_046_a;
-   double r_614_b = Ry*r_604_a;
-   double r_416_b = Ry*r_406_a;
-   double r_641_b = Rz*r_640_a;
-   double r_461_b = Rz*r_460_a;
-   double r_551_b = Rz*r_550_a;
-   double r_515_b = Ry*r_505_a;
-   double r_155_b = Rx*r_055_a;
-   double r_362_b = Rz*r_361_a - r_360_a;
-   double r_326_b = Ry*r_316_a - r_306_a;
-   double r_632_b = Rz*r_631_a - r_630_a;
-   double r_542_b = Rz*r_541_a - r_540_a;
-   double r_524_b = Ry*r_514_a - r_504_a;
-   double r_452_b = Rz*r_451_a - r_450_a;
-   double r_254_b = Rx*r_154_a - r_054_a;
-   double r_425_b = Ry*r_415_a - r_405_a;
-   double r_245_b = Rx*r_145_a - r_045_a;
-   double r_344_b = Rx*r_244_a - 2*r_144_a;
-   if (lab == 12) {
-      pOut[0] = Rx*r_b00_b - 11*r_a00_b;
-      pOut[1] = Ry*r_0b0_b - 11*r_0a0_b;
-      pOut[2] = Rz*r_00b_b - 11*r_00a_b;
-      pOut[3] = Ry*r_b00_b;
-      pOut[4] = Rx*r_0b0_b;
-      pOut[5] = Rz*r_b00_b;
-      pOut[6] = Rx*r_00b_b;
-      pOut[7] = Rz*r_0b0_b;
-      pOut[8] = Ry*r_00b_b;
-      pOut[9] = Ry*r_a10_b - r_a00_b;
-      pOut[10] = Rz*r_a01_b - r_a00_b;
-      pOut[11] = Rx*r_1a0_b - r_0a0_b;
-      pOut[12] = Rx*r_10a_b - r_00a_b;
-      pOut[13] = Rz*r_0a1_b - r_0a0_b;
-      pOut[14] = Ry*r_01a_b - r_00a_b;
-      pOut[15] = Ry*r_920_b - 2*r_910_b;
-      pOut[16] = Rx*r_290_b - 2*r_190_b;
-      pOut[17] = Rz*r_902_b - 2*r_901_b;
-      pOut[18] = Rx*r_209_b - 2*r_109_b;
-      pOut[19] = Rz*r_092_b - 2*r_091_b;
-      pOut[20] = Ry*r_029_b - 2*r_019_b;
-      pOut[21] = Ry*r_830_b - 3*r_820_b;
-      pOut[22] = Rz*r_803_b - 3*r_802_b;
-      pOut[23] = Rx*r_380_b - 3*r_280_b;
-      pOut[24] = Rx*r_308_b - 3*r_208_b;
-      pOut[25] = Rz*r_083_b - 3*r_082_b;
-      pOut[26] = Ry*r_038_b - 3*r_028_b;
-      pOut[27] = Ry*r_740_b - 4*r_730_b;
-      pOut[28] = Rx*r_470_b - 4*r_370_b;
-      pOut[29] = Rz*r_704_b - 4*r_703_b;
-      pOut[30] = Rx*r_407_b - 4*r_307_b;
-      pOut[31] = Rz*r_074_b - 4*r_073_b;
-      pOut[32] = Ry*r_047_b - 4*r_037_b;
-      pOut[33] = Rx*r_560_b - 5*r_460_b;
-      pOut[34] = Rx*r_506_b - 5*r_406_b;
-      pOut[35] = Ry*r_056_b - 5*r_046_b;
-      pOut[36] = Ry*r_10a_b;
-      pOut[37] = Rz*r_1a0_b;
-      pOut[38] = Rz*r_a10_b;
-      pOut[39] = Ry*r_902_b;
-      pOut[40] = Rx*r_092_b;
-      pOut[41] = Rz*r_920_b;
-      pOut[42] = Rx*r_029_b;
-      pOut[43] = Rz*r_290_b;
-      pOut[44] = Ry*r_209_b;
-      pOut[45] = Ry*r_308_b;
-      pOut[46] = Rx*r_038_b;
-      pOut[47] = Rz*r_380_b;
-      pOut[48] = Rx*r_083_b;
-      pOut[49] = Rz*r_830_b;
-      pOut[50] = Ry*r_803_b;
-      pOut[51] = Ry*r_704_b;
-      pOut[52] = Rx*r_074_b;
-      pOut[53] = Rz*r_740_b;
-      pOut[54] = Rx*r_047_b;
-      pOut[55] = Rz*r_470_b;
-      pOut[56] = Ry*r_407_b;
-      pOut[57] = Ry*r_506_b;
-      pOut[58] = Rx*r_056_b;
-      pOut[59] = Rz*r_560_b;
-      pOut[60] = Rx*r_065_b;
-      pOut[61] = Rz*r_650_b;
-      pOut[62] = Ry*r_605_b;
-      pOut[63] = Ry*r_812_b - r_802_b;
-      pOut[64] = Rx*r_182_b - r_082_b;
-      pOut[65] = Rx*r_128_b - r_028_b;
-      pOut[66] = Rz*r_731_b - r_730_b;
-      pOut[67] = Rz*r_371_b - r_370_b;
-      pOut[68] = Ry*r_713_b - r_703_b;
-      pOut[69] = Ry*r_317_b - r_307_b;
-      pOut[70] = Rx*r_173_b - r_073_b;
-      pOut[71] = Rx*r_137_b - r_037_b;
-      pOut[72] = Rz*r_641_b - r_640_b;
-      pOut[73] = Ry*r_614_b - r_604_b;
-      pOut[74] = Rz*r_461_b - r_460_b;
-      pOut[75] = Ry*r_416_b - r_406_b;
-      pOut[76] = Rx*r_164_b - r_064_b;
-      pOut[77] = Rx*r_146_b - r_046_b;
-      pOut[78] = Rz*r_551_b - r_550_b;
-      pOut[79] = Ry*r_515_b - r_505_b;
-      pOut[80] = Rx*r_155_b - r_055_b;
-      pOut[81] = Ry*r_326_b - 2*r_316_b;
-      pOut[82] = Rz*r_362_b - 2*r_361_b;
-      pOut[83] = Rz*r_632_b - 2*r_631_b;
-      pOut[84] = Ry*r_524_b - 2*r_514_b;
-      pOut[85] = Rx*r_254_b - 2*r_154_b;
-      pOut[86] = Rz*r_542_b - 2*r_541_b;
-      pOut[87] = Rx*r_245_b - 2*r_145_b;
-      pOut[88] = Rz*r_452_b - 2*r_451_b;
-      pOut[89] = Ry*r_425_b - 2*r_415_b;
-      pOut[90] = Rx*r_344_b - 3*r_244_b;
-      return;
-   }
-   double r_100_7 = Rx*pIn[-6];
-   double r_010_7 = Ry*pIn[-6];
-   double r_001_7 = Rz*pIn[-6];
-   double r_300_8 = Rx*r_200_7 - 2*r_100_7;
-   double r_030_8 = Ry*r_020_7 - 2*r_010_7;
-   double r_003_8 = Rz*r_002_7 - 2*r_001_7;
-   double r_500_9 = Rx*r_400_8 - 4*r_300_8;
-   double r_050_9 = Ry*r_040_8 - 4*r_030_8;
-   double r_005_9 = Rz*r_004_8 - 4*r_003_8;
-   double r_015_9 = Ry*r_005_8;
-   double r_700_a = Rx*r_600_9 - 6*r_500_9;
-   double r_070_a = Ry*r_060_9 - 6*r_050_9;
-   double r_007_a = Rz*r_006_9 - 6*r_005_9;
-   double r_160_a = Rx*r_060_9;
-   double r_106_a = Rx*r_006_9;
-   double r_610_a = Ry*r_600_9;
-   double r_016_a = Ry*r_006_9;
-   double r_601_a = Rz*r_600_9;
-   double r_061_a = Rz*r_060_9;
-   double r_502_a = Rz*r_501_9 - r_500_9;
-   double r_052_a = Rz*r_051_9 - r_050_9;
-   double r_025_a = Ry*r_015_9 - r_005_9;
-   double r_035_a = Ry*r_025_9 - 2*r_015_9;
-   double r_900_b = Rx*r_800_a - 8*r_700_a;
-   double r_090_b = Ry*r_080_a - 8*r_070_a;
-   double r_009_b = Rz*r_008_a - 8*r_007_a;
-   double r_180_b = Rx*r_080_a;
-   double r_108_b = Rx*r_008_a;
-   double r_810_b = Ry*r_800_a;
-   double r_018_b = Ry*r_008_a;
-   double r_801_b = Rz*r_800_a;
-   double r_081_b = Rz*r_080_a;
-   double r_720_b = Ry*r_710_a - r_700_a;
-   double r_702_b = Rz*r_701_a - r_700_a;
-   double r_270_b = Rx*r_170_a - r_070_a;
-   double r_072_b = Rz*r_071_a - r_070_a;
-   double r_207_b = Rx*r_107_a - r_007_a;
-   double r_027_b = Ry*r_017_a - r_007_a;
-   double r_360_b = Rx*r_260_a - 2*r_160_a;
-   double r_306_b = Rx*r_206_a - 2*r_106_a;
-   double r_630_b = Ry*r_620_a - 2*r_610_a;
-   double r_036_b = Ry*r_026_a - 2*r_016_a;
-   double r_603_b = Rz*r_602_a - 2*r_601_a;
-   double r_063_b = Rz*r_062_a - 2*r_061_a;
-   double r_504_b = Rz*r_503_a - 3*r_502_a;
-   double r_054_b = Rz*r_053_a - 3*r_052_a;
-   double r_045_b = Ry*r_035_a - 3*r_025_a;
-   double r_b00_c = Rx*r_a00_b - 10*r_900_b;
-   double r_0b0_c = Ry*r_0a0_b - 10*r_090_b;
-   double r_00b_c = Rz*r_00a_b - 10*r_009_b;
-   double r_1a0_c = Rx*r_0a0_b;
-   double r_10a_c = Rx*r_00a_b;
-   double r_a10_c = Ry*r_a00_b;
-   double r_01a_c = Ry*r_00a_b;
-   double r_a01_c = Rz*r_a00_b;
-   double r_0a1_c = Rz*r_0a0_b;
-   double r_920_c = Ry*r_910_b - r_900_b;
-   double r_902_c = Rz*r_901_b - r_900_b;
-   double r_290_c = Rx*r_190_b - r_090_b;
-   double r_092_c = Rz*r_091_b - r_090_b;
-   double r_209_c = Rx*r_109_b - r_009_b;
-   double r_029_c = Ry*r_019_b - r_009_b;
-   double r_380_c = Rx*r_280_b - 2*r_180_b;
-   double r_308_c = Rx*r_208_b - 2*r_108_b;
-   double r_830_c = Ry*r_820_b - 2*r_810_b;
-   double r_038_c = Ry*r_028_b - 2*r_018_b;
-   double r_803_c = Rz*r_802_b - 2*r_801_b;
-   double r_083_c = Rz*r_082_b - 2*r_081_b;
-   double r_740_c = Ry*r_730_b - 3*r_720_b;
-   double r_704_c = Rz*r_703_b - 3*r_702_b;
-   double r_470_c = Rx*r_370_b - 3*r_270_b;
-   double r_074_c = Rz*r_073_b - 3*r_072_b;
-   double r_407_c = Rx*r_307_b - 3*r_207_b;
-   double r_047_c = Ry*r_037_b - 3*r_027_b;
-   double r_560_c = Rx*r_460_b - 4*r_360_b;
-   double r_506_c = Rx*r_406_b - 4*r_306_b;
-   double r_650_c = Ry*r_640_b - 4*r_630_b;
-   double r_056_c = Ry*r_046_b - 4*r_036_b;
-   double r_605_c = Rz*r_604_b - 4*r_603_b;
-   double r_065_c = Rz*r_064_b - 4*r_063_b;
-   double r_731_c = Rz*r_730_b;
-   double r_371_c = Rz*r_370_b;
-   double r_317_c = Ry*r_307_b;
-   double r_164_c = Rx*r_064_b;
-   double r_146_c = Rx*r_046_b;
-   double r_614_c = Ry*r_604_b;
-   double r_416_c = Ry*r_406_b;
-   double r_641_c = Rz*r_640_b;
-   double r_461_c = Rz*r_460_b;
-   double r_551_c = Rz*r_550_b;
-   double r_515_c = Ry*r_505_b;
-   double r_155_c = Rx*r_055_b;
-   double r_524_c = Ry*r_514_b - r_504_b;
-   double r_254_c = Rx*r_154_b - r_054_b;
-   double r_245_c = Rx*r_145_b - r_045_b;
-   double r_c00_c = Rx*r_b00_b - 11*r_a00_b;
-   double r_0c0_c = Ry*r_0b0_b - 11*r_0a0_b;
-   double r_00c_c = Rz*r_00b_b - 11*r_00a_b;
-   double r_b10_c = Ry*r_b00_b;
-   double r_1b0_c = Rx*r_0b0_b;
-   double r_b01_c = Rz*r_b00_b;
-   double r_10b_c = Rx*r_00b_b;
-   double r_0b1_c = Rz*r_0b0_b;
-   double r_01b_c = Ry*r_00b_b;
-   double r_a20_c = Ry*r_a10_b - r_a00_b;
-   double r_a02_c = Rz*r_a01_b - r_a00_b;
-   double r_2a0_c = Rx*r_1a0_b - r_0a0_b;
-   double r_20a_c = Rx*r_10a_b - r_00a_b;
-   double r_0a2_c = Rz*r_0a1_b - r_0a0_b;
-   double r_02a_c = Ry*r_01a_b - r_00a_b;
-   double r_930_c = Ry*r_920_b - 2*r_910_b;
-   double r_390_c = Rx*r_290_b - 2*r_190_b;
-   double r_903_c = Rz*r_902_b - 2*r_901_b;
-   double r_309_c = Rx*r_209_b - 2*r_109_b;
-   double r_093_c = Rz*r_092_b - 2*r_091_b;
-   double r_039_c = Ry*r_029_b - 2*r_019_b;
-   double r_840_c = Ry*r_830_b - 3*r_820_b;
-   double r_804_c = Rz*r_803_b - 3*r_802_b;
-   double r_480_c = Rx*r_380_b - 3*r_280_b;
-   double r_408_c = Rx*r_308_b - 3*r_208_b;
-   double r_084_c = Rz*r_083_b - 3*r_082_b;
-   double r_048_c = Ry*r_038_b - 3*r_028_b;
-   double r_750_c = Ry*r_740_b - 4*r_730_b;
-   double r_570_c = Rx*r_470_b - 4*r_370_b;
-   double r_705_c = Rz*r_704_b - 4*r_703_b;
-   double r_507_c = Rx*r_407_b - 4*r_307_b;
-   double r_075_c = Rz*r_074_b - 4*r_073_b;
-   double r_057_c = Ry*r_047_b - 4*r_037_b;
-   double r_660_c = Rx*r_560_b - 5*r_460_b;
-   double r_606_c = Rx*r_506_b - 5*r_406_b;
-   double r_066_c = Ry*r_056_b - 5*r_046_b;
-   double r_912_c = Ry*r_902_b;
-   double r_192_c = Rx*r_092_b;
-   double r_129_c = Rx*r_029_b;
-   double r_318_c = Ry*r_308_b;
-   double r_138_c = Rx*r_038_b;
-   double r_381_c = Rz*r_380_b;
-   double r_183_c = Rx*r_083_b;
-   double r_831_c = Rz*r_830_b;
-   double r_813_c = Ry*r_803_b;
-   double r_714_c = Ry*r_704_b;
-   double r_174_c = Rx*r_074_b;
-   double r_741_c = Rz*r_740_b;
-   double r_147_c = Rx*r_047_b;
-   double r_471_c = Rz*r_470_b;
-   double r_417_c = Ry*r_407_b;
-   double r_516_c = Ry*r_506_b;
-   double r_156_c = Rx*r_056_b;
-   double r_561_c = Rz*r_560_b;
-   double r_165_c = Rx*r_065_b;
-   double r_651_c = Rz*r_650_b;
-   double r_615_c = Ry*r_605_b;
-   double r_732_c = Rz*r_731_b - r_730_b;
-   double r_372_c = Rz*r_371_b - r_370_b;
-   double r_327_c = Ry*r_317_b - r_307_b;
-   double r_642_c = Rz*r_641_b - r_640_b;
-   double r_624_c = Ry*r_614_b - r_604_b;
-   double r_462_c = Rz*r_461_b - r_460_b;
-   double r_426_c = Ry*r_416_b - r_406_b;
-   double r_264_c = Rx*r_164_b - r_064_b;
-   double r_246_c = Rx*r_146_b - r_046_b;
-   double r_552_c = Rz*r_551_b - r_550_b;
-   double r_525_c = Ry*r_515_b - r_505_b;
-   double r_255_c = Rx*r_155_b - r_055_b;
-   double r_534_c = Ry*r_524_b - 2*r_514_b;
-   double r_354_c = Rx*r_254_b - 2*r_154_b;
-   double r_345_c = Rx*r_245_b - 2*r_145_b;
-   if (lab == 13) {
-      pOut[0] = Rx*r_c00_c - 12*r_b00_c;
-      pOut[1] = Ry*r_0c0_c - 12*r_0b0_c;
-      pOut[2] = Rz*r_00c_c - 12*r_00b_c;
-      pOut[3] = Rx*r_0c0_c;
-      pOut[4] = Rx*r_00c_c;
-      pOut[5] = Ry*r_c00_c;
-      pOut[6] = Ry*r_00c_c;
-      pOut[7] = Rz*r_c00_c;
-      pOut[8] = Rz*r_0c0_c;
-      pOut[9] = Ry*r_b10_c - r_b00_c;
-      pOut[10] = Rz*r_b01_c - r_b00_c;
-      pOut[11] = Rx*r_1b0_c - r_0b0_c;
-      pOut[12] = Rz*r_0b1_c - r_0b0_c;
-      pOut[13] = Rx*r_10b_c - r_00b_c;
-      pOut[14] = Ry*r_01b_c - r_00b_c;
-      pOut[15] = Rx*r_2a0_c - 2*r_1a0_c;
-      pOut[16] = Rx*r_20a_c - 2*r_10a_c;
-      pOut[17] = Ry*r_a20_c - 2*r_a10_c;
-      pOut[18] = Ry*r_02a_c - 2*r_01a_c;
-      pOut[19] = Rz*r_a02_c - 2*r_a01_c;
-      pOut[20] = Rz*r_0a2_c - 2*r_0a1_c;
-      pOut[21] = Ry*r_930_c - 3*r_920_c;
-      pOut[22] = Rz*r_903_c - 3*r_902_c;
-      pOut[23] = Rx*r_390_c - 3*r_290_c;
-      pOut[24] = Rz*r_093_c - 3*r_092_c;
-      pOut[25] = Rx*r_309_c - 3*r_209_c;
-      pOut[26] = Ry*r_039_c - 3*r_029_c;
-      pOut[27] = Rx*r_480_c - 4*r_380_c;
-      pOut[28] = Rx*r_408_c - 4*r_308_c;
-      pOut[29] = Ry*r_840_c - 4*r_830_c;
-      pOut[30] = Ry*r_048_c - 4*r_038_c;
-      pOut[31] = Rz*r_804_c - 4*r_803_c;
-      pOut[32] = Rz*r_084_c - 4*r_083_c;
-      pOut[33] = Ry*r_750_c - 5*r_740_c;
-      pOut[34] = Rz*r_705_c - 5*r_704_c;
-      pOut[35] = Rx*r_570_c - 5*r_470_c;
-      pOut[36] = Rz*r_075_c - 5*r_074_c;
-      pOut[37] = Rx*r_507_c - 5*r_407_c;
-      pOut[38] = Ry*r_057_c - 5*r_047_c;
-      pOut[39] = Rz*r_b10_c;
-      pOut[40] = Rz*r_1b0_c;
-      pOut[41] = Ry*r_10b_c;
-      pOut[42] = Rx*r_0a2_c;
-      pOut[43] = Rx*r_02a_c;
-      pOut[44] = Ry*r_a02_c;
-      pOut[45] = Ry*r_20a_c;
-      pOut[46] = Rz*r_a20_c;
-      pOut[47] = Rz*r_2a0_c;
-      pOut[48] = Rz*r_930_c;
-      pOut[49] = Ry*r_903_c;
-      pOut[50] = Rz*r_390_c;
-      pOut[51] = Ry*r_309_c;
-      pOut[52] = Rx*r_093_c;
-      pOut[53] = Rx*r_039_c;
-      pOut[54] = Rx*r_084_c;
-      pOut[55] = Rx*r_048_c;
-      pOut[56] = Ry*r_804_c;
-      pOut[57] = Ry*r_408_c;
-      pOut[58] = Rz*r_840_c;
-      pOut[59] = Rz*r_480_c;
-      pOut[60] = Rz*r_750_c;
-      pOut[61] = Ry*r_705_c;
-      pOut[62] = Rz*r_570_c;
-      pOut[63] = Ry*r_507_c;
-      pOut[64] = Rx*r_075_c;
-      pOut[65] = Rx*r_057_c;
-      pOut[66] = Rx*r_066_c;
-      pOut[67] = Ry*r_606_c;
-      pOut[68] = Rz*r_660_c;
-      pOut[69] = Ry*r_912_c - r_902_c;
-      pOut[70] = Rx*r_192_c - r_092_c;
-      pOut[71] = Rx*r_129_c - r_029_c;
-      pOut[72] = Rz*r_381_c - r_380_c;
-      pOut[73] = Ry*r_318_c - r_308_c;
-      pOut[74] = Rz*r_831_c - r_830_c;
-      pOut[75] = Rx*r_138_c - r_038_c;
-      pOut[76] = Ry*r_813_c - r_803_c;
-      pOut[77] = Rx*r_183_c - r_083_c;
-      pOut[78] = Rz*r_741_c - r_740_c;
-      pOut[79] = Ry*r_714_c - r_704_c;
-      pOut[80] = Rz*r_471_c - r_470_c;
-      pOut[81] = Rx*r_174_c - r_074_c;
-      pOut[82] = Ry*r_417_c - r_407_c;
-      pOut[83] = Rx*r_147_c - r_047_c;
-      pOut[84] = Rz*r_561_c - r_560_c;
-      pOut[85] = Ry*r_516_c - r_506_c;
-      pOut[86] = Rz*r_651_c - r_650_c;
-      pOut[87] = Rx*r_156_c - r_056_c;
-      pOut[88] = Ry*r_615_c - r_605_c;
-      pOut[89] = Rx*r_165_c - r_065_c;
-      pOut[90] = Rz*r_732_c - 2*r_731_c;
-      pOut[91] = Rz*r_372_c - 2*r_371_c;
-      pOut[92] = Ry*r_327_c - 2*r_317_c;
-      pOut[93] = Rx*r_264_c - 2*r_164_c;
-      pOut[94] = Rx*r_246_c - 2*r_146_c;
-      pOut[95] = Ry*r_624_c - 2*r_614_c;
-      pOut[96] = Ry*r_426_c - 2*r_416_c;
-      pOut[97] = Rz*r_642_c - 2*r_641_c;
-      pOut[98] = Rz*r_462_c - 2*r_461_c;
-      pOut[99] = Rz*r_552_c - 2*r_551_c;
-      pOut[100] = Ry*r_525_c - 2*r_515_c;
-      pOut[101] = Rx*r_255_c - 2*r_155_c;
-      pOut[102] = Ry*r_534_c - 3*r_524_c;
-      pOut[103] = Rx*r_354_c - 3*r_254_c;
-      pOut[104] = Rx*r_345_c - 3*r_245_c;
-      return;
-   }
-   double r_200_8 = Rx*r_100_7 - pIn[-7];
-   double r_020_8 = Ry*r_010_7 - pIn[-7];
-   double r_002_8 = Rz*r_001_7 - pIn[-7];
-   double r_400_9 = Rx*r_300_8 - 3*r_200_8;
-   double r_040_9 = Ry*r_030_8 - 3*r_020_8;
-   double r_004_9 = Rz*r_003_8 - 3*r_002_8;
-   double r_600_a = Rx*r_500_9 - 5*r_400_9;
-   double r_060_a = Ry*r_050_9 - 5*r_040_9;
-   double r_006_a = Rz*r_005_9 - 5*r_004_9;
-   double r_510_a = Ry*r_500_9;
-   double r_501_a = Rz*r_500_9;
-   double r_051_a = Rz*r_050_9;
-   double r_520_a = Ry*r_510_9 - r_500_9;
-   double r_800_b = Rx*r_700_a - 7*r_600_a;
-   double r_080_b = Ry*r_070_a - 7*r_060_a;
-   double r_008_b = Rz*r_007_a - 7*r_006_a;
-   double r_710_b = Ry*r_700_a;
-   double r_170_b = Rx*r_070_a;
-   double r_701_b = Rz*r_700_a;
-   double r_107_b = Rx*r_007_a;
-   double r_071_b = Rz*r_070_a;
-   double r_017_b = Ry*r_007_a;
-   double r_602_b = Rz*r_601_a - r_600_a;
-   double r_260_b = Rx*r_160_a - r_060_a;
-   double r_206_b = Rx*r_106_a - r_006_a;
-   double r_062_b = Rz*r_061_a - r_060_a;
-   double r_026_b = Ry*r_016_a - r_006_a;
-   double r_530_b = Ry*r_520_a - 2*r_510_a;
-   double r_503_b = Rz*r_502_a - 2*r_501_a;
-   double r_053_b = Rz*r_052_a - 2*r_051_a;
-   double r_540_b = Ry*r_530_a - 3*r_520_a;
-   double r_a00_c = Rx*r_900_b - 9*r_800_b;
-   double r_0a0_c = Ry*r_090_b - 9*r_080_b;
-   double r_00a_c = Rz*r_009_b - 9*r_008_b;
-   double r_910_c = Ry*r_900_b;
-   double r_190_c = Rx*r_090_b;
-   double r_901_c = Rz*r_900_b;
-   double r_109_c = Rx*r_009_b;
-   double r_091_c = Rz*r_090_b;
-   double r_019_c = Ry*r_009_b;
-   double r_820_c = Ry*r_810_b - r_800_b;
-   double r_802_c = Rz*r_801_b - r_800_b;
-   double r_280_c = Rx*r_180_b - r_080_b;
-   double r_208_c = Rx*r_108_b - r_008_b;
-   double r_082_c = Rz*r_081_b - r_080_b;
-   double r_028_c = Ry*r_018_b - r_008_b;
-   double r_730_c = Ry*r_720_b - 2*r_710_b;
-   double r_370_c = Rx*r_270_b - 2*r_170_b;
-   double r_703_c = Rz*r_702_b - 2*r_701_b;
-   double r_307_c = Rx*r_207_b - 2*r_107_b;
-   double r_073_c = Rz*r_072_b - 2*r_071_b;
-   double r_037_c = Ry*r_027_b - 2*r_017_b;
-   double r_604_c = Rz*r_603_b - 3*r_602_b;
-   double r_460_c = Rx*r_360_b - 3*r_260_b;
-   double r_406_c = Rx*r_306_b - 3*r_206_b;
-   double r_064_c = Rz*r_063_b - 3*r_062_b;
-   double r_046_c = Ry*r_036_b - 3*r_026_b;
-   double r_550_c = Ry*r_540_b - 4*r_530_b;
-   double r_505_c = Rz*r_504_b - 4*r_503_b;
-   double r_055_c = Rz*r_054_b - 4*r_053_b;
-   double r_c00_d = Rx*r_b00_c - 11*r_a00_c;
-   double r_0c0_d = Ry*r_0b0_c - 11*r_0a0_c;
-   double r_00c_d = Rz*r_00b_c - 11*r_00a_c;
-   double r_b10_d = Ry*r_b00_c;
-   double r_1b0_d = Rx*r_0b0_c;
-   double r_b01_d = Rz*r_b00_c;
-   double r_10b_d = Rx*r_00b_c;
-   double r_0b1_d = Rz*r_0b0_c;
-   double r_01b_d = Ry*r_00b_c;
-   double r_a20_d = Ry*r_a10_c - r_a00_c;
-   double r_a02_d = Rz*r_a01_c - r_a00_c;
-   double r_2a0_d = Rx*r_1a0_c - r_0a0_c;
-   double r_20a_d = Rx*r_10a_c - r_00a_c;
-   double r_0a2_d = Rz*r_0a1_c - r_0a0_c;
-   double r_02a_d = Ry*r_01a_c - r_00a_c;
-   double r_930_d = Ry*r_920_c - 2*r_910_c;
-   double r_390_d = Rx*r_290_c - 2*r_190_c;
-   double r_903_d = Rz*r_902_c - 2*r_901_c;
-   double r_309_d = Rx*r_209_c - 2*r_109_c;
-   double r_093_d = Rz*r_092_c - 2*r_091_c;
-   double r_039_d = Ry*r_029_c - 2*r_019_c;
-   double r_840_d = Ry*r_830_c - 3*r_820_c;
-   double r_804_d = Rz*r_803_c - 3*r_802_c;
-   double r_480_d = Rx*r_380_c - 3*r_280_c;
-   double r_408_d = Rx*r_308_c - 3*r_208_c;
-   double r_084_d = Rz*r_083_c - 3*r_082_c;
-   double r_048_d = Ry*r_038_c - 3*r_028_c;
-   double r_750_d = Ry*r_740_c - 4*r_730_c;
-   double r_570_d = Rx*r_470_c - 4*r_370_c;
-   double r_705_d = Rz*r_704_c - 4*r_703_c;
-   double r_507_d = Rx*r_407_c - 4*r_307_c;
-   double r_075_d = Rz*r_074_c - 4*r_073_c;
-   double r_057_d = Ry*r_047_c - 4*r_037_c;
-   double r_660_d = Rx*r_560_c - 5*r_460_c;
-   double r_606_d = Rx*r_506_c - 5*r_406_c;
-   double r_066_d = Ry*r_056_c - 5*r_046_c;
-   double r_318_d = Ry*r_308_c;
-   double r_381_d = Rz*r_380_c;
-   double r_831_d = Rz*r_830_c;
-   double r_714_d = Ry*r_704_c;
-   double r_174_d = Rx*r_074_c;
-   double r_741_d = Rz*r_740_c;
-   double r_147_d = Rx*r_047_c;
-   double r_471_d = Rz*r_470_c;
-   double r_417_d = Ry*r_407_c;
-   double r_516_d = Ry*r_506_c;
-   double r_156_d = Rx*r_056_c;
-   double r_561_d = Rz*r_560_c;
-   double r_165_d = Rx*r_065_c;
-   double r_651_d = Rz*r_650_c;
-   double r_615_d = Ry*r_605_c;
-   double r_624_d = Ry*r_614_c - r_604_c;
-   double r_264_d = Rx*r_164_c - r_064_c;
-   double r_246_d = Rx*r_146_c - r_046_c;
-   double r_552_d = Rz*r_551_c - r_550_c;
-   double r_525_d = Ry*r_515_c - r_505_c;
-   double r_255_d = Rx*r_155_c - r_055_c;
-   double r_d00_d = Rx*r_c00_c - 12*r_b00_c;
-   double r_0d0_d = Ry*r_0c0_c - 12*r_0b0_c;
-   double r_00d_d = Rz*r_00c_c - 12*r_00b_c;
-   double r_1c0_d = Rx*r_0c0_c;
-   double r_10c_d = Rx*r_00c_c;
-   double r_c10_d = Ry*r_c00_c;
-   double r_01c_d = Ry*r_00c_c;
-   double r_c01_d = Rz*r_c00_c;
-   double r_0c1_d = Rz*r_0c0_c;
-   double r_b20_d = Ry*r_b10_c - r_b00_c;
-   double r_b02_d = Rz*r_b01_c - r_b00_c;
-   double r_2b0_d = Rx*r_1b0_c - r_0b0_c;
-   double r_0b2_d = Rz*r_0b1_c - r_0b0_c;
-   double r_20b_d = Rx*r_10b_c - r_00b_c;
-   double r_02b_d = Ry*r_01b_c - r_00b_c;
-   double r_3a0_d = Rx*r_2a0_c - 2*r_1a0_c;
-   double r_30a_d = Rx*r_20a_c - 2*r_10a_c;
-   double r_a30_d = Ry*r_a20_c - 2*r_a10_c;
-   double r_03a_d = Ry*r_02a_c - 2*r_01a_c;
-   double r_a03_d = Rz*r_a02_c - 2*r_a01_c;
-   double r_0a3_d = Rz*r_0a2_c - 2*r_0a1_c;
-   double r_940_d = Ry*r_930_c - 3*r_920_c;
-   double r_904_d = Rz*r_903_c - 3*r_902_c;
-   double r_490_d = Rx*r_390_c - 3*r_290_c;
-   double r_094_d = Rz*r_093_c - 3*r_092_c;
-   double r_409_d = Rx*r_309_c - 3*r_209_c;
-   double r_049_d = Ry*r_039_c - 3*r_029_c;
-   double r_580_d = Rx*r_480_c - 4*r_380_c;
-   double r_508_d = Rx*r_408_c - 4*r_308_c;
-   double r_850_d = Ry*r_840_c - 4*r_830_c;
-   double r_058_d = Ry*r_048_c - 4*r_038_c;
-   double r_805_d = Rz*r_804_c - 4*r_803_c;
-   double r_085_d = Rz*r_084_c - 4*r_083_c;
-   double r_760_d = Ry*r_750_c - 5*r_740_c;
-   double r_706_d = Rz*r_705_c - 5*r_704_c;
-   double r_670_d = Rx*r_570_c - 5*r_470_c;
-   double r_076_d = Rz*r_075_c - 5*r_074_c;
-   double r_607_d = Rx*r_507_c - 5*r_407_c;
-   double r_067_d = Ry*r_057_c - 5*r_047_c;
-   double r_1a2_d = Rx*r_0a2_c;
-   double r_12a_d = Rx*r_02a_c;
-   double r_a12_d = Ry*r_a02_c;
-   double r_931_d = Rz*r_930_c;
-   double r_913_d = Ry*r_903_c;
-   double r_391_d = Rz*r_390_c;
-   double r_319_d = Ry*r_309_c;
-   double r_193_d = Rx*r_093_c;
-   double r_139_d = Rx*r_039_c;
-   double r_184_d = Rx*r_084_c;
-   double r_148_d = Rx*r_048_c;
-   double r_814_d = Ry*r_804_c;
-   double r_418_d = Ry*r_408_c;
-   double r_841_d = Rz*r_840_c;
-   double r_481_d = Rz*r_480_c;
-   double r_751_d = Rz*r_750_c;
-   double r_715_d = Ry*r_705_c;
-   double r_571_d = Rz*r_570_c;
-   double r_517_d = Ry*r_507_c;
-   double r_175_d = Rx*r_075_c;
-   double r_157_d = Rx*r_057_c;
-   double r_166_d = Rx*r_066_c;
-   double r_616_d = Ry*r_606_c;
-   double r_661_d = Rz*r_660_c;
-   double r_382_d = Rz*r_381_c - r_380_c;
-   double r_328_d = Ry*r_318_c - r_308_c;
-   double r_832_d = Rz*r_831_c - r_830_c;
-   double r_742_d = Rz*r_741_c - r_740_c;
-   double r_724_d = Ry*r_714_c - r_704_c;
-   double r_472_d = Rz*r_471_c - r_470_c;
-   double r_274_d = Rx*r_174_c - r_074_c;
-   double r_427_d = Ry*r_417_c - r_407_c;
-   double r_247_d = Rx*r_147_c - r_047_c;
-   double r_562_d = Rz*r_561_c - r_560_c;
-   double r_526_d = Ry*r_516_c - r_506_c;
-   double r_652_d = Rz*r_651_c - r_650_c;
-   double r_256_d = Rx*r_156_c - r_056_c;
-   double r_625_d = Ry*r_615_c - r_605_c;
-   double r_265_d = Rx*r_165_c - r_065_c;
-   double r_364_d = Rx*r_264_c - 2*r_164_c;
-   double r_346_d = Rx*r_246_c - 2*r_146_c;
-   double r_634_d = Ry*r_624_c - 2*r_614_c;
-   double r_553_d = Rz*r_552_c - 2*r_551_c;
-   double r_535_d = Ry*r_525_c - 2*r_515_c;
-   double r_355_d = Rx*r_255_c - 2*r_155_c;
-   if (lab == 14) {
-      pOut[0] = Rx*r_d00_d - 13*r_c00_d;
-      pOut[1] = Ry*r_0d0_d - 13*r_0c0_d;
-      pOut[2] = Rz*r_00d_d - 13*r_00c_d;
-      pOut[3] = Ry*r_d00_d;
-      pOut[4] = Rx*r_0d0_d;
-      pOut[5] = Rz*r_d00_d;
-      pOut[6] = Rx*r_00d_d;
-      pOut[7] = Rz*r_0d0_d;
-      pOut[8] = Ry*r_00d_d;
-      pOut[9] = Ry*r_c10_d - r_c00_d;
-      pOut[10] = Rz*r_c01_d - r_c00_d;
-      pOut[11] = Rx*r_1c0_d - r_0c0_d;
-      pOut[12] = Rx*r_10c_d - r_00c_d;
-      pOut[13] = Rz*r_0c1_d - r_0c0_d;
-      pOut[14] = Ry*r_01c_d - r_00c_d;
-      pOut[15] = Ry*r_b20_d - 2*r_b10_d;
-      pOut[16] = Rx*r_2b0_d - 2*r_1b0_d;
-      pOut[17] = Rz*r_b02_d - 2*r_b01_d;
-      pOut[18] = Rx*r_20b_d - 2*r_10b_d;
-      pOut[19] = Rz*r_0b2_d - 2*r_0b1_d;
-      pOut[20] = Ry*r_02b_d - 2*r_01b_d;
-      pOut[21] = Ry*r_a30_d - 3*r_a20_d;
-      pOut[22] = Rz*r_a03_d - 3*r_a02_d;
-      pOut[23] = Rx*r_3a0_d - 3*r_2a0_d;
-      pOut[24] = Rx*r_30a_d - 3*r_20a_d;
-      pOut[25] = Rz*r_0a3_d - 3*r_0a2_d;
-      pOut[26] = Ry*r_03a_d - 3*r_02a_d;
-      pOut[27] = Ry*r_940_d - 4*r_930_d;
-      pOut[28] = Rx*r_490_d - 4*r_390_d;
-      pOut[29] = Rz*r_904_d - 4*r_903_d;
-      pOut[30] = Rx*r_409_d - 4*r_309_d;
-      pOut[31] = Rz*r_094_d - 4*r_093_d;
-      pOut[32] = Ry*r_049_d - 4*r_039_d;
-      pOut[33] = Ry*r_850_d - 5*r_840_d;
-      pOut[34] = Rz*r_805_d - 5*r_804_d;
-      pOut[35] = Rx*r_580_d - 5*r_480_d;
-      pOut[36] = Rx*r_508_d - 5*r_408_d;
-      pOut[37] = Rz*r_085_d - 5*r_084_d;
-      pOut[38] = Ry*r_058_d - 5*r_048_d;
-      pOut[39] = Ry*r_760_d - 6*r_750_d;
-      pOut[40] = Rz*r_706_d - 6*r_705_d;
-      pOut[41] = Rz*r_076_d - 6*r_075_d;
-      pOut[42] = Ry*r_10c_d;
-      pOut[43] = Rz*r_1c0_d;
-      pOut[44] = Rz*r_c10_d;
-      pOut[45] = Ry*r_b02_d;
-      pOut[46] = Rx*r_0b2_d;
-      pOut[47] = Rz*r_b20_d;
-      pOut[48] = Rx*r_02b_d;
-      pOut[49] = Rz*r_2b0_d;
-      pOut[50] = Ry*r_20b_d;
-      pOut[51] = Ry*r_30a_d;
-      pOut[52] = Rx*r_03a_d;
-      pOut[53] = Rz*r_3a0_d;
-      pOut[54] = Rx*r_0a3_d;
-      pOut[55] = Rz*r_a30_d;
-      pOut[56] = Ry*r_a03_d;
-      pOut[57] = Ry*r_904_d;
-      pOut[58] = Rx*r_094_d;
-      pOut[59] = Rz*r_940_d;
-      pOut[60] = Rx*r_049_d;
-      pOut[61] = Rz*r_490_d;
-      pOut[62] = Ry*r_409_d;
-      pOut[63] = Ry*r_508_d;
-      pOut[64] = Rx*r_058_d;
-      pOut[65] = Rz*r_580_d;
-      pOut[66] = Rx*r_085_d;
-      pOut[67] = Rz*r_850_d;
-      pOut[68] = Ry*r_805_d;
-      pOut[69] = Ry*r_706_d;
-      pOut[70] = Rx*r_076_d;
-      pOut[71] = Rz*r_760_d;
-      pOut[72] = Rx*r_067_d;
-      pOut[73] = Rz*r_670_d;
-      pOut[74] = Ry*r_607_d;
-      pOut[75] = Ry*r_a12_d - r_a02_d;
-      pOut[76] = Rx*r_1a2_d - r_0a2_d;
-      pOut[77] = Rx*r_12a_d - r_02a_d;
-      pOut[78] = Rz*r_931_d - r_930_d;
-      pOut[79] = Rz*r_391_d - r_390_d;
-      pOut[80] = Ry*r_913_d - r_903_d;
-      pOut[81] = Ry*r_319_d - r_309_d;
-      pOut[82] = Rx*r_193_d - r_093_d;
-      pOut[83] = Rx*r_139_d - r_039_d;
-      pOut[84] = Rz*r_841_d - r_840_d;
-      pOut[85] = Ry*r_814_d - r_804_d;
-      pOut[86] = Rz*r_481_d - r_480_d;
-      pOut[87] = Ry*r_418_d - r_408_d;
-      pOut[88] = Rx*r_184_d - r_084_d;
-      pOut[89] = Rx*r_148_d - r_048_d;
-      pOut[90] = Rz*r_751_d - r_750_d;
-      pOut[91] = Rz*r_571_d - r_570_d;
-      pOut[92] = Ry*r_715_d - r_705_d;
-      pOut[93] = Ry*r_517_d - r_507_d;
-      pOut[94] = Rx*r_175_d - r_075_d;
-      pOut[95] = Rx*r_157_d - r_057_d;
-      pOut[96] = Rz*r_661_d - r_660_d;
-      pOut[97] = Ry*r_616_d - r_606_d;
-      pOut[98] = Rx*r_166_d - r_066_d;
-      pOut[99] = Ry*r_328_d - 2*r_318_d;
-      pOut[100] = Rz*r_382_d - 2*r_381_d;
-      pOut[101] = Rz*r_832_d - 2*r_831_d;
-      pOut[102] = Ry*r_724_d - 2*r_714_d;
-      pOut[103] = Rx*r_274_d - 2*r_174_d;
-      pOut[104] = Rz*r_742_d - 2*r_741_d;
-      pOut[105] = Rx*r_247_d - 2*r_147_d;
-      pOut[106] = Rz*r_472_d - 2*r_471_d;
-      pOut[107] = Ry*r_427_d - 2*r_417_d;
-      pOut[108] = Ry*r_526_d - 2*r_516_d;
-      pOut[109] = Rx*r_256_d - 2*r_156_d;
-      pOut[110] = Rz*r_562_d - 2*r_561_d;
-      pOut[111] = Rx*r_265_d - 2*r_165_d;
-      pOut[112] = Rz*r_652_d - 2*r_651_d;
-      pOut[113] = Ry*r_625_d - 2*r_615_d;
-      pOut[114] = Ry*r_634_d - 3*r_624_d;
-      pOut[115] = Rx*r_364_d - 3*r_264_d;
-      pOut[116] = Rx*r_346_d - 3*r_246_d;
-      pOut[117] = Rz*r_553_d - 3*r_552_d;
-      pOut[118] = Ry*r_535_d - 3*r_525_d;
-      pOut[119] = Rx*r_355_d - 3*r_255_d;
-      return;
-   }
-   double r_100_8 = Rx*pIn[-7];
-   double r_010_8 = Ry*pIn[-7];
-   double r_001_8 = Rz*pIn[-7];
-   double r_300_9 = Rx*r_200_8 - 2*r_100_8;
-   double r_030_9 = Ry*r_020_8 - 2*r_010_8;
-   double r_003_9 = Rz*r_002_8 - 2*r_001_8;
-   double r_500_a = Rx*r_400_9 - 4*r_300_9;
-   double r_050_a = Ry*r_040_9 - 4*r_030_9;
-   double r_005_a = Rz*r_004_9 - 4*r_003_9;
-   double r_700_b = Rx*r_600_a - 6*r_500_a;
-   double r_070_b = Ry*r_060_a - 6*r_050_a;
-   double r_007_b = Rz*r_006_a - 6*r_005_a;
-   double r_160_b = Rx*r_060_a;
-   double r_106_b = Rx*r_006_a;
-   double r_610_b = Ry*r_600_a;
-   double r_016_b = Ry*r_006_a;
-   double r_601_b = Rz*r_600_a;
-   double r_061_b = Rz*r_060_a;
-   double r_620_b = Ry*r_610_a - r_600_a;
-   double r_900_c = Rx*r_800_b - 8*r_700_b;
-   double r_090_c = Ry*r_080_b - 8*r_070_b;
-   double r_009_c = Rz*r_008_b - 8*r_007_b;
-   double r_180_c = Rx*r_080_b;
-   double r_108_c = Rx*r_008_b;
-   double r_810_c = Ry*r_800_b;
-   double r_018_c = Ry*r_008_b;
-   double r_801_c = Rz*r_800_b;
-   double r_081_c = Rz*r_080_b;
-   double r_720_c = Ry*r_710_b - r_700_b;
-   double r_702_c = Rz*r_701_b - r_700_b;
-   double r_270_c = Rx*r_170_b - r_070_b;
-   double r_072_c = Rz*r_071_b - r_070_b;
-   double r_207_c = Rx*r_107_b - r_007_b;
-   double r_027_c = Ry*r_017_b - r_007_b;
-   double r_360_c = Rx*r_260_b - 2*r_160_b;
-   double r_306_c = Rx*r_206_b - 2*r_106_b;
-   double r_630_c = Ry*r_620_b - 2*r_610_b;
-   double r_036_c = Ry*r_026_b - 2*r_016_b;
-   double r_603_c = Rz*r_602_b - 2*r_601_b;
-   double r_063_c = Rz*r_062_b - 2*r_061_b;
-   double r_640_c = Ry*r_630_b - 3*r_620_b;
-   double r_b00_d = Rx*r_a00_c - 10*r_900_c;
-   double r_0b0_d = Ry*r_0a0_c - 10*r_090_c;
-   double r_00b_d = Rz*r_00a_c - 10*r_009_c;
-   double r_1a0_d = Rx*r_0a0_c;
-   double r_10a_d = Rx*r_00a_c;
-   double r_a10_d = Ry*r_a00_c;
-   double r_01a_d = Ry*r_00a_c;
-   double r_a01_d = Rz*r_a00_c;
-   double r_0a1_d = Rz*r_0a0_c;
-   double r_920_d = Ry*r_910_c - r_900_c;
-   double r_902_d = Rz*r_901_c - r_900_c;
-   double r_290_d = Rx*r_190_c - r_090_c;
-   double r_092_d = Rz*r_091_c - r_090_c;
-   double r_209_d = Rx*r_109_c - r_009_c;
-   double r_029_d = Ry*r_019_c - r_009_c;
-   double r_380_d = Rx*r_280_c - 2*r_180_c;
-   double r_308_d = Rx*r_208_c - 2*r_108_c;
-   double r_830_d = Ry*r_820_c - 2*r_810_c;
-   double r_038_d = Ry*r_028_c - 2*r_018_c;
-   double r_803_d = Rz*r_802_c - 2*r_801_c;
-   double r_083_d = Rz*r_082_c - 2*r_081_c;
-   double r_740_d = Ry*r_730_c - 3*r_720_c;
-   double r_704_d = Rz*r_703_c - 3*r_702_c;
-   double r_470_d = Rx*r_370_c - 3*r_270_c;
-   double r_074_d = Rz*r_073_c - 3*r_072_c;
-   double r_407_d = Rx*r_307_c - 3*r_207_c;
-   double r_047_d = Ry*r_037_c - 3*r_027_c;
-   double r_560_d = Rx*r_460_c - 4*r_360_c;
-   double r_506_d = Rx*r_406_c - 4*r_306_c;
-   double r_650_d = Ry*r_640_c - 4*r_630_c;
-   double r_056_d = Ry*r_046_c - 4*r_036_c;
-   double r_605_d = Rz*r_604_c - 4*r_603_c;
-   double r_065_d = Rz*r_064_c - 4*r_063_c;
-   double r_551_d = Rz*r_550_c;
-   double r_d00_e = Rx*r_c00_d - 12*r_b00_d;
-   double r_0d0_e = Ry*r_0c0_d - 12*r_0b0_d;
-   double r_00d_e = Rz*r_00c_d - 12*r_00b_d;
-   double r_1c0_e = Rx*r_0c0_d;
-   double r_10c_e = Rx*r_00c_d;
-   double r_c10_e = Ry*r_c00_d;
-   double r_01c_e = Ry*r_00c_d;
-   double r_c01_e = Rz*r_c00_d;
-   double r_0c1_e = Rz*r_0c0_d;
-   double r_b20_e = Ry*r_b10_d - r_b00_d;
-   double r_b02_e = Rz*r_b01_d - r_b00_d;
-   double r_2b0_e = Rx*r_1b0_d - r_0b0_d;
-   double r_0b2_e = Rz*r_0b1_d - r_0b0_d;
-   double r_20b_e = Rx*r_10b_d - r_00b_d;
-   double r_02b_e = Ry*r_01b_d - r_00b_d;
-   double r_3a0_e = Rx*r_2a0_d - 2*r_1a0_d;
-   double r_30a_e = Rx*r_20a_d - 2*r_10a_d;
-   double r_a30_e = Ry*r_a20_d - 2*r_a10_d;
-   double r_03a_e = Ry*r_02a_d - 2*r_01a_d;
-   double r_a03_e = Rz*r_a02_d - 2*r_a01_d;
-   double r_0a3_e = Rz*r_0a2_d - 2*r_0a1_d;
-   double r_940_e = Ry*r_930_d - 3*r_920_d;
-   double r_904_e = Rz*r_903_d - 3*r_902_d;
-   double r_490_e = Rx*r_390_d - 3*r_290_d;
-   double r_094_e = Rz*r_093_d - 3*r_092_d;
-   double r_409_e = Rx*r_309_d - 3*r_209_d;
-   double r_049_e = Ry*r_039_d - 3*r_029_d;
-   double r_580_e = Rx*r_480_d - 4*r_380_d;
-   double r_508_e = Rx*r_408_d - 4*r_308_d;
-   double r_850_e = Ry*r_840_d - 4*r_830_d;
-   double r_058_e = Ry*r_048_d - 4*r_038_d;
-   double r_805_e = Rz*r_804_d - 4*r_803_d;
-   double r_085_e = Rz*r_084_d - 4*r_083_d;
-   double r_760_e = Ry*r_750_d - 5*r_740_d;
-   double r_706_e = Rz*r_705_d - 5*r_704_d;
-   double r_670_e = Rx*r_570_d - 5*r_470_d;
-   double r_076_e = Rz*r_075_d - 5*r_074_d;
-   double r_607_e = Rx*r_507_d - 5*r_407_d;
-   double r_067_e = Ry*r_057_d - 5*r_047_d;
-   double r_931_e = Rz*r_930_d;
-   double r_391_e = Rz*r_390_d;
-   double r_319_e = Ry*r_309_d;
-   double r_184_e = Rx*r_084_d;
-   double r_148_e = Rx*r_048_d;
-   double r_814_e = Ry*r_804_d;
-   double r_418_e = Ry*r_408_d;
-   double r_841_e = Rz*r_840_d;
-   double r_481_e = Rz*r_480_d;
-   double r_751_e = Rz*r_750_d;
-   double r_715_e = Ry*r_705_d;
-   double r_571_e = Rz*r_570_d;
-   double r_517_e = Ry*r_507_d;
-   double r_175_e = Rx*r_075_d;
-   double r_157_e = Rx*r_057_d;
-   double r_166_e = Rx*r_066_d;
-   double r_616_e = Ry*r_606_d;
-   double r_661_e = Rz*r_660_d;
-   double r_724_e = Ry*r_714_d - r_704_d;
-   double r_274_e = Rx*r_174_d - r_074_d;
-   double r_247_e = Rx*r_147_d - r_047_d;
-   double r_562_e = Rz*r_561_d - r_560_d;
-   double r_526_e = Ry*r_516_d - r_506_d;
-   double r_652_e = Rz*r_651_d - r_650_d;
-   double r_256_e = Rx*r_156_d - r_056_d;
-   double r_625_e = Ry*r_615_d - r_605_d;
-   double r_265_e = Rx*r_165_d - r_065_d;
-   double r_553_e = Rz*r_552_d - 2*r_551_d;
-   double r_e00_e = Rx*r_d00_d - 13*r_c00_d;
-   double r_0e0_e = Ry*r_0d0_d - 13*r_0c0_d;
-   double r_00e_e = Rz*r_00d_d - 13*r_00c_d;
-   double r_d10_e = Ry*r_d00_d;
-   double r_1d0_e = Rx*r_0d0_d;
-   double r_d01_e = Rz*r_d00_d;
-   double r_10d_e = Rx*r_00d_d;
-   double r_0d1_e = Rz*r_0d0_d;
-   double r_01d_e = Ry*r_00d_d;
-   double r_c20_e = Ry*r_c10_d - r_c00_d;
-   double r_c02_e = Rz*r_c01_d - r_c00_d;
-   double r_2c0_e = Rx*r_1c0_d - r_0c0_d;
-   double r_20c_e = Rx*r_10c_d - r_00c_d;
-   double r_0c2_e = Rz*r_0c1_d - r_0c0_d;
-   double r_02c_e = Ry*r_01c_d - r_00c_d;
-   double r_b30_e = Ry*r_b20_d - 2*r_b10_d;
-   double r_3b0_e = Rx*r_2b0_d - 2*r_1b0_d;
-   double r_b03_e = Rz*r_b02_d - 2*r_b01_d;
-   double r_30b_e = Rx*r_20b_d - 2*r_10b_d;
-   double r_0b3_e = Rz*r_0b2_d - 2*r_0b1_d;
-   double r_03b_e = Ry*r_02b_d - 2*r_01b_d;
-   double r_a40_e = Ry*r_a30_d - 3*r_a20_d;
-   double r_a04_e = Rz*r_a03_d - 3*r_a02_d;
-   double r_4a0_e = Rx*r_3a0_d - 3*r_2a0_d;
-   double r_40a_e = Rx*r_30a_d - 3*r_20a_d;
-   double r_0a4_e = Rz*r_0a3_d - 3*r_0a2_d;
-   double r_04a_e = Ry*r_03a_d - 3*r_02a_d;
-   double r_950_e = Ry*r_940_d - 4*r_930_d;
-   double r_590_e = Rx*r_490_d - 4*r_390_d;
-   double r_905_e = Rz*r_904_d - 4*r_903_d;
-   double r_509_e = Rx*r_409_d - 4*r_309_d;
-   double r_095_e = Rz*r_094_d - 4*r_093_d;
-   double r_059_e = Ry*r_049_d - 4*r_039_d;
-   double r_860_e = Ry*r_850_d - 5*r_840_d;
-   double r_806_e = Rz*r_805_d - 5*r_804_d;
-   double r_680_e = Rx*r_580_d - 5*r_480_d;
-   double r_608_e = Rx*r_508_d - 5*r_408_d;
-   double r_086_e = Rz*r_085_d - 5*r_084_d;
-   double r_068_e = Ry*r_058_d - 5*r_048_d;
-   double r_770_e = Ry*r_760_d - 6*r_750_d;
-   double r_707_e = Rz*r_706_d - 6*r_705_d;
-   double r_077_e = Rz*r_076_d - 6*r_075_d;
-   double r_b12_e = Ry*r_b02_d;
-   double r_1b2_e = Rx*r_0b2_d;
-   double r_12b_e = Rx*r_02b_d;
-   double r_31a_e = Ry*r_30a_d;
-   double r_13a_e = Rx*r_03a_d;
-   double r_3a1_e = Rz*r_3a0_d;
-   double r_1a3_e = Rx*r_0a3_d;
-   double r_a31_e = Rz*r_a30_d;
-   double r_a13_e = Ry*r_a03_d;
-   double r_914_e = Ry*r_904_d;
-   double r_194_e = Rx*r_094_d;
-   double r_941_e = Rz*r_940_d;
-   double r_149_e = Rx*r_049_d;
-   double r_491_e = Rz*r_490_d;
-   double r_419_e = Ry*r_409_d;
-   double r_518_e = Ry*r_508_d;
-   double r_158_e = Rx*r_058_d;
-   double r_581_e = Rz*r_580_d;
-   double r_185_e = Rx*r_085_d;
-   double r_851_e = Rz*r_850_d;
-   double r_815_e = Ry*r_805_d;
-   double r_716_e = Ry*r_706_d;
-   double r_176_e = Rx*r_076_d;
-   double r_761_e = Rz*r_760_d;
-   double r_167_e = Rx*r_067_d;
-   double r_671_e = Rz*r_670_d;
-   double r_617_e = Ry*r_607_d;
-   double r_932_e = Rz*r_931_d - r_930_d;
-   double r_392_e = Rz*r_391_d - r_390_d;
-   double r_329_e = Ry*r_319_d - r_309_d;
-   double r_842_e = Rz*r_841_d - r_840_d;
-   double r_824_e = Ry*r_814_d - r_804_d;
-   double r_482_e = Rz*r_481_d - r_480_d;
-   double r_428_e = Ry*r_418_d - r_408_d;
-   double r_284_e = Rx*r_184_d - r_084_d;
-   double r_248_e = Rx*r_148_d - r_048_d;
-   double r_752_e = Rz*r_751_d - r_750_d;
-   double r_572_e = Rz*r_571_d - r_570_d;
-   double r_725_e = Ry*r_715_d - r_705_d;
-   double r_527_e = Ry*r_517_d - r_507_d;
-   double r_275_e = Rx*r_175_d - r_075_d;
-   double r_257_e = Rx*r_157_d - r_057_d;
-   double r_662_e = Rz*r_661_d - r_660_d;
-   double r_626_e = Ry*r_616_d - r_606_d;
-   double r_266_e = Rx*r_166_d - r_066_d;
-   double r_734_e = Ry*r_724_d - 2*r_714_d;
-   double r_374_e = Rx*r_274_d - 2*r_174_d;
-   double r_347_e = Rx*r_247_d - 2*r_147_d;
-   double r_536_e = Ry*r_526_d - 2*r_516_d;
-   double r_356_e = Rx*r_256_d - 2*r_156_d;
-   double r_563_e = Rz*r_562_d - 2*r_561_d;
-   double r_365_e = Rx*r_265_d - 2*r_165_d;
-   double r_653_e = Rz*r_652_d - 2*r_651_d;
-   double r_635_e = Ry*r_625_d - 2*r_615_d;
-   double r_554_e = Rz*r_553_d - 3*r_552_d;
-   if (lab == 15) {
-      pOut[0] = Rx*r_e00_e - 14*r_d00_e;
-      pOut[1] = Ry*r_0e0_e - 14*r_0d0_e;
-      pOut[2] = Rz*r_00e_e - 14*r_00d_e;
-      pOut[3] = Rx*r_0e0_e;
-      pOut[4] = Rx*r_00e_e;
-      pOut[5] = Ry*r_e00_e;
-      pOut[6] = Ry*r_00e_e;
-      pOut[7] = Rz*r_e00_e;
-      pOut[8] = Rz*r_0e0_e;
-      pOut[9] = Ry*r_d10_e - r_d00_e;
-      pOut[10] = Rz*r_d01_e - r_d00_e;
-      pOut[11] = Rx*r_1d0_e - r_0d0_e;
-      pOut[12] = Rz*r_0d1_e - r_0d0_e;
-      pOut[13] = Rx*r_10d_e - r_00d_e;
-      pOut[14] = Ry*r_01d_e - r_00d_e;
-      pOut[15] = Rx*r_2c0_e - 2*r_1c0_e;
-      pOut[16] = Rx*r_20c_e - 2*r_10c_e;
-      pOut[17] = Ry*r_c20_e - 2*r_c10_e;
-      pOut[18] = Ry*r_02c_e - 2*r_01c_e;
-      pOut[19] = Rz*r_c02_e - 2*r_c01_e;
-      pOut[20] = Rz*r_0c2_e - 2*r_0c1_e;
-      pOut[21] = Ry*r_b30_e - 3*r_b20_e;
-      pOut[22] = Rz*r_b03_e - 3*r_b02_e;
-      pOut[23] = Rx*r_3b0_e - 3*r_2b0_e;
-      pOut[24] = Rz*r_0b3_e - 3*r_0b2_e;
-      pOut[25] = Rx*r_30b_e - 3*r_20b_e;
-      pOut[26] = Ry*r_03b_e - 3*r_02b_e;
-      pOut[27] = Rx*r_4a0_e - 4*r_3a0_e;
-      pOut[28] = Rx*r_40a_e - 4*r_30a_e;
-      pOut[29] = Ry*r_a40_e - 4*r_a30_e;
-      pOut[30] = Ry*r_04a_e - 4*r_03a_e;
-      pOut[31] = Rz*r_a04_e - 4*r_a03_e;
-      pOut[32] = Rz*r_0a4_e - 4*r_0a3_e;
-      pOut[33] = Ry*r_950_e - 5*r_940_e;
-      pOut[34] = Rz*r_905_e - 5*r_904_e;
-      pOut[35] = Rx*r_590_e - 5*r_490_e;
-      pOut[36] = Rz*r_095_e - 5*r_094_e;
-      pOut[37] = Rx*r_509_e - 5*r_409_e;
-      pOut[38] = Ry*r_059_e - 5*r_049_e;
-      pOut[39] = Rx*r_680_e - 6*r_580_e;
-      pOut[40] = Rx*r_608_e - 6*r_508_e;
-      pOut[41] = Ry*r_860_e - 6*r_850_e;
-      pOut[42] = Ry*r_068_e - 6*r_058_e;
-      pOut[43] = Rz*r_806_e - 6*r_805_e;
-      pOut[44] = Rz*r_086_e - 6*r_085_e;
-      pOut[45] = Rz*r_d10_e;
-      pOut[46] = Rz*r_1d0_e;
-      pOut[47] = Ry*r_10d_e;
-      pOut[48] = Rx*r_0c2_e;
-      pOut[49] = Rx*r_02c_e;
-      pOut[50] = Ry*r_c02_e;
-      pOut[51] = Ry*r_20c_e;
-      pOut[52] = Rz*r_c20_e;
-      pOut[53] = Rz*r_2c0_e;
-      pOut[54] = Rz*r_b30_e;
-      pOut[55] = Ry*r_b03_e;
-      pOut[56] = Rz*r_3b0_e;
-      pOut[57] = Ry*r_30b_e;
-      pOut[58] = Rx*r_0b3_e;
-      pOut[59] = Rx*r_03b_e;
-      pOut[60] = Rx*r_0a4_e;
-      pOut[61] = Rx*r_04a_e;
-      pOut[62] = Ry*r_a04_e;
-      pOut[63] = Ry*r_40a_e;
-      pOut[64] = Rz*r_a40_e;
-      pOut[65] = Rz*r_4a0_e;
-      pOut[66] = Rz*r_950_e;
-      pOut[67] = Ry*r_905_e;
-      pOut[68] = Rz*r_590_e;
-      pOut[69] = Ry*r_509_e;
-      pOut[70] = Rx*r_095_e;
-      pOut[71] = Rx*r_059_e;
-      pOut[72] = Rx*r_086_e;
-      pOut[73] = Rx*r_068_e;
-      pOut[74] = Ry*r_806_e;
-      pOut[75] = Ry*r_608_e;
-      pOut[76] = Rz*r_860_e;
-      pOut[77] = Rz*r_680_e;
-      pOut[78] = Rz*r_770_e;
-      pOut[79] = Ry*r_707_e;
-      pOut[80] = Rx*r_077_e;
-      pOut[81] = Ry*r_b12_e - r_b02_e;
-      pOut[82] = Rx*r_1b2_e - r_0b2_e;
-      pOut[83] = Rx*r_12b_e - r_02b_e;
-      pOut[84] = Rz*r_3a1_e - r_3a0_e;
-      pOut[85] = Ry*r_31a_e - r_30a_e;
-      pOut[86] = Rz*r_a31_e - r_a30_e;
-      pOut[87] = Rx*r_13a_e - r_03a_e;
-      pOut[88] = Ry*r_a13_e - r_a03_e;
-      pOut[89] = Rx*r_1a3_e - r_0a3_e;
-      pOut[90] = Rz*r_941_e - r_940_e;
-      pOut[91] = Ry*r_914_e - r_904_e;
-      pOut[92] = Rz*r_491_e - r_490_e;
-      pOut[93] = Rx*r_194_e - r_094_e;
-      pOut[94] = Ry*r_419_e - r_409_e;
-      pOut[95] = Rx*r_149_e - r_049_e;
-      pOut[96] = Rz*r_581_e - r_580_e;
-      pOut[97] = Ry*r_518_e - r_508_e;
-      pOut[98] = Rz*r_851_e - r_850_e;
-      pOut[99] = Rx*r_158_e - r_058_e;
-      pOut[100] = Ry*r_815_e - r_805_e;
-      pOut[101] = Rx*r_185_e - r_085_e;
-      pOut[102] = Rz*r_761_e - r_760_e;
-      pOut[103] = Ry*r_716_e - r_706_e;
-      pOut[104] = Rz*r_671_e - r_670_e;
-      pOut[105] = Rx*r_176_e - r_076_e;
-      pOut[106] = Ry*r_617_e - r_607_e;
-      pOut[107] = Rx*r_167_e - r_067_e;
-      pOut[108] = Rz*r_932_e - 2*r_931_e;
-      pOut[109] = Rz*r_392_e - 2*r_391_e;
-      pOut[110] = Ry*r_329_e - 2*r_319_e;
-      pOut[111] = Rx*r_284_e - 2*r_184_e;
-      pOut[112] = Rx*r_248_e - 2*r_148_e;
-      pOut[113] = Ry*r_824_e - 2*r_814_e;
-      pOut[114] = Ry*r_428_e - 2*r_418_e;
-      pOut[115] = Rz*r_842_e - 2*r_841_e;
-      pOut[116] = Rz*r_482_e - 2*r_481_e;
-      pOut[117] = Rz*r_752_e - 2*r_751_e;
-      pOut[118] = Ry*r_725_e - 2*r_715_e;
-      pOut[119] = Rz*r_572_e - 2*r_571_e;
-      pOut[120] = Ry*r_527_e - 2*r_517_e;
-      pOut[121] = Rx*r_275_e - 2*r_175_e;
-      pOut[122] = Rx*r_257_e - 2*r_157_e;
-      pOut[123] = Rx*r_266_e - 2*r_166_e;
-      pOut[124] = Ry*r_626_e - 2*r_616_e;
-      pOut[125] = Rz*r_662_e - 2*r_661_e;
-      pOut[126] = Ry*r_734_e - 3*r_724_e;
-      pOut[127] = Rx*r_374_e - 3*r_274_e;
-      pOut[128] = Rx*r_347_e - 3*r_247_e;
-      pOut[129] = Rz*r_563_e - 3*r_562_e;
-      pOut[130] = Ry*r_536_e - 3*r_526_e;
-      pOut[131] = Rz*r_653_e - 3*r_652_e;
-      pOut[132] = Rx*r_356_e - 3*r_256_e;
-      pOut[133] = Ry*r_635_e - 3*r_625_e;
-      pOut[134] = Rx*r_365_e - 3*r_265_e;
-      pOut[135] = Rz*r_554_e - 4*r_553_e;
-      return;
-   }
-   double r_200_9 = Rx*r_100_8 - pIn[-8];
-   double r_020_9 = Ry*r_010_8 - pIn[-8];
-   double r_002_9 = Rz*r_001_8 - pIn[-8];
-   double r_400_a = Rx*r_300_9 - 3*r_200_9;
-   double r_040_a = Ry*r_030_9 - 3*r_020_9;
-   double r_004_a = Rz*r_003_9 - 3*r_002_9;
-   double r_600_b = Rx*r_500_a - 5*r_400_a;
-   double r_060_b = Ry*r_050_a - 5*r_040_a;
-   double r_006_b = Rz*r_005_a - 5*r_004_a;
-   double r_800_c = Rx*r_700_b - 7*r_600_b;
-   double r_080_c = Ry*r_070_b - 7*r_060_b;
-   double r_008_c = Rz*r_007_b - 7*r_006_b;
-   double r_710_c = Ry*r_700_b;
-   double r_170_c = Rx*r_070_b;
-   double r_701_c = Rz*r_700_b;
-   double r_107_c = Rx*r_007_b;
-   double r_071_c = Rz*r_070_b;
-   double r_017_c = Ry*r_007_b;
-   double r_260_c = Rx*r_160_b - r_060_b;
-   double r_206_c = Rx*r_106_b - r_006_b;
-   double r_026_c = Ry*r_016_b - r_006_b;
-   double r_a00_d = Rx*r_900_c - 9*r_800_c;
-   double r_0a0_d = Ry*r_090_c - 9*r_080_c;
-   double r_00a_d = Rz*r_009_c - 9*r_008_c;
-   double r_910_d = Ry*r_900_c;
-   double r_190_d = Rx*r_090_c;
-   double r_901_d = Rz*r_900_c;
-   double r_109_d = Rx*r_009_c;
-   double r_091_d = Rz*r_090_c;
-   double r_019_d = Ry*r_009_c;
-   double r_820_d = Ry*r_810_c - r_800_c;
-   double r_802_d = Rz*r_801_c - r_800_c;
-   double r_280_d = Rx*r_180_c - r_080_c;
-   double r_208_d = Rx*r_108_c - r_008_c;
-   double r_082_d = Rz*r_081_c - r_080_c;
-   double r_028_d = Ry*r_018_c - r_008_c;
-   double r_730_d = Ry*r_720_c - 2*r_710_c;
-   double r_370_d = Rx*r_270_c - 2*r_170_c;
-   double r_703_d = Rz*r_702_c - 2*r_701_c;
-   double r_307_d = Rx*r_207_c - 2*r_107_c;
-   double r_073_d = Rz*r_072_c - 2*r_071_c;
-   double r_037_d = Ry*r_027_c - 2*r_017_c;
-   double r_460_d = Rx*r_360_c - 3*r_260_c;
-   double r_406_d = Rx*r_306_c - 3*r_206_c;
-   double r_046_d = Ry*r_036_c - 3*r_026_c;
-   double r_c00_e = Rx*r_b00_d - 11*r_a00_d;
-   double r_0c0_e = Ry*r_0b0_d - 11*r_0a0_d;
-   double r_00c_e = Rz*r_00b_d - 11*r_00a_d;
-   double r_b10_e = Ry*r_b00_d;
-   double r_1b0_e = Rx*r_0b0_d;
-   double r_b01_e = Rz*r_b00_d;
-   double r_10b_e = Rx*r_00b_d;
-   double r_0b1_e = Rz*r_0b0_d;
-   double r_01b_e = Ry*r_00b_d;
-   double r_a20_e = Ry*r_a10_d - r_a00_d;
-   double r_a02_e = Rz*r_a01_d - r_a00_d;
-   double r_2a0_e = Rx*r_1a0_d - r_0a0_d;
-   double r_20a_e = Rx*r_10a_d - r_00a_d;
-   double r_0a2_e = Rz*r_0a1_d - r_0a0_d;
-   double r_02a_e = Ry*r_01a_d - r_00a_d;
-   double r_930_e = Ry*r_920_d - 2*r_910_d;
-   double r_390_e = Rx*r_290_d - 2*r_190_d;
-   double r_903_e = Rz*r_902_d - 2*r_901_d;
-   double r_309_e = Rx*r_209_d - 2*r_109_d;
-   double r_093_e = Rz*r_092_d - 2*r_091_d;
-   double r_039_e = Ry*r_029_d - 2*r_019_d;
-   double r_840_e = Ry*r_830_d - 3*r_820_d;
-   double r_804_e = Rz*r_803_d - 3*r_802_d;
-   double r_480_e = Rx*r_380_d - 3*r_280_d;
-   double r_408_e = Rx*r_308_d - 3*r_208_d;
-   double r_084_e = Rz*r_083_d - 3*r_082_d;
-   double r_048_e = Ry*r_038_d - 3*r_028_d;
-   double r_750_e = Ry*r_740_d - 4*r_730_d;
-   double r_570_e = Rx*r_470_d - 4*r_370_d;
-   double r_705_e = Rz*r_704_d - 4*r_703_d;
-   double r_507_e = Rx*r_407_d - 4*r_307_d;
-   double r_075_e = Rz*r_074_d - 4*r_073_d;
-   double r_057_e = Ry*r_047_d - 4*r_037_d;
-   double r_660_e = Rx*r_560_d - 5*r_460_d;
-   double r_606_e = Rx*r_506_d - 5*r_406_d;
-   double r_066_e = Ry*r_056_d - 5*r_046_d;
-   double r_516_e = Ry*r_506_d;
-   double r_561_e = Rz*r_560_d;
-   double r_651_e = Rz*r_650_d;
-   double r_e00_f = Rx*r_d00_e - 13*r_c00_e;
-   double r_0e0_f = Ry*r_0d0_e - 13*r_0c0_e;
-   double r_00e_f = Rz*r_00d_e - 13*r_00c_e;
-   double r_d10_f = Ry*r_d00_e;
-   double r_1d0_f = Rx*r_0d0_e;
-   double r_d01_f = Rz*r_d00_e;
-   double r_10d_f = Rx*r_00d_e;
-   double r_0d1_f = Rz*r_0d0_e;
-   double r_01d_f = Ry*r_00d_e;
-   double r_c20_f = Ry*r_c10_e - r_c00_e;
-   double r_c02_f = Rz*r_c01_e - r_c00_e;
-   double r_2c0_f = Rx*r_1c0_e - r_0c0_e;
-   double r_20c_f = Rx*r_10c_e - r_00c_e;
-   double r_0c2_f = Rz*r_0c1_e - r_0c0_e;
-   double r_02c_f = Ry*r_01c_e - r_00c_e;
-   double r_b30_f = Ry*r_b20_e - 2*r_b10_e;
-   double r_3b0_f = Rx*r_2b0_e - 2*r_1b0_e;
-   double r_b03_f = Rz*r_b02_e - 2*r_b01_e;
-   double r_30b_f = Rx*r_20b_e - 2*r_10b_e;
-   double r_0b3_f = Rz*r_0b2_e - 2*r_0b1_e;
-   double r_03b_f = Ry*r_02b_e - 2*r_01b_e;
-   double r_a40_f = Ry*r_a30_e - 3*r_a20_e;
-   double r_a04_f = Rz*r_a03_e - 3*r_a02_e;
-   double r_4a0_f = Rx*r_3a0_e - 3*r_2a0_e;
-   double r_40a_f = Rx*r_30a_e - 3*r_20a_e;
-   double r_0a4_f = Rz*r_0a3_e - 3*r_0a2_e;
-   double r_04a_f = Ry*r_03a_e - 3*r_02a_e;
-   double r_950_f = Ry*r_940_e - 4*r_930_e;
-   double r_590_f = Rx*r_490_e - 4*r_390_e;
-   double r_905_f = Rz*r_904_e - 4*r_903_e;
-   double r_509_f = Rx*r_409_e - 4*r_309_e;
-   double r_095_f = Rz*r_094_e - 4*r_093_e;
-   double r_059_f = Ry*r_049_e - 4*r_039_e;
-   double r_860_f = Ry*r_850_e - 5*r_840_e;
-   double r_806_f = Rz*r_805_e - 5*r_804_e;
-   double r_680_f = Rx*r_580_e - 5*r_480_e;
-   double r_608_f = Rx*r_508_e - 5*r_408_e;
-   double r_086_f = Rz*r_085_e - 5*r_084_e;
-   double r_068_f = Ry*r_058_e - 5*r_048_e;
-   double r_770_f = Ry*r_760_e - 6*r_750_e;
-   double r_707_f = Rz*r_706_e - 6*r_705_e;
-   double r_077_f = Rz*r_076_e - 6*r_075_e;
-   double r_31a_f = Ry*r_30a_e;
-   double r_3a1_f = Rz*r_3a0_e;
-   double r_a31_f = Rz*r_a30_e;
-   double r_914_f = Ry*r_904_e;
-   double r_194_f = Rx*r_094_e;
-   double r_941_f = Rz*r_940_e;
-   double r_149_f = Rx*r_049_e;
-   double r_491_f = Rz*r_490_e;
-   double r_419_f = Ry*r_409_e;
-   double r_518_f = Ry*r_508_e;
-   double r_158_f = Rx*r_058_e;
-   double r_581_f = Rz*r_580_e;
-   double r_185_f = Rx*r_085_e;
-   double r_851_f = Rz*r_850_e;
-   double r_815_f = Ry*r_805_e;
-   double r_716_f = Ry*r_706_e;
-   double r_176_f = Rx*r_076_e;
-   double r_761_f = Rz*r_760_e;
-   double r_167_f = Rx*r_067_e;
-   double r_671_f = Rz*r_670_e;
-   double r_617_f = Ry*r_607_e;
-   double r_824_f = Ry*r_814_e - r_804_e;
-   double r_284_f = Rx*r_184_e - r_084_e;
-   double r_248_f = Rx*r_148_e - r_048_e;
-   double r_752_f = Rz*r_751_e - r_750_e;
-   double r_572_f = Rz*r_571_e - r_570_e;
-   double r_725_f = Ry*r_715_e - r_705_e;
-   double r_527_f = Ry*r_517_e - r_507_e;
-   double r_275_f = Rx*r_175_e - r_075_e;
-   double r_257_f = Rx*r_157_e - r_057_e;
-   double r_662_f = Rz*r_661_e - r_660_e;
-   double r_626_f = Ry*r_616_e - r_606_e;
-   double r_266_f = Rx*r_166_e - r_066_e;
-   double r_536_f = Ry*r_526_e - 2*r_516_e;
-   double r_563_f = Rz*r_562_e - 2*r_561_e;
-   double r_653_f = Rz*r_652_e - 2*r_651_e;
-   double r_f00_f = Rx*r_e00_e - 14*r_d00_e;
-   double r_0f0_f = Ry*r_0e0_e - 14*r_0d0_e;
-   double r_00f_f = Rz*r_00e_e - 14*r_00d_e;
-   double r_1e0_f = Rx*r_0e0_e;
-   double r_10e_f = Rx*r_00e_e;
-   double r_e10_f = Ry*r_e00_e;
-   double r_01e_f = Ry*r_00e_e;
-   double r_e01_f = Rz*r_e00_e;
-   double r_0e1_f = Rz*r_0e0_e;
-   double r_d20_f = Ry*r_d10_e - r_d00_e;
-   double r_d02_f = Rz*r_d01_e - r_d00_e;
-   double r_2d0_f = Rx*r_1d0_e - r_0d0_e;
-   double r_0d2_f = Rz*r_0d1_e - r_0d0_e;
-   double r_20d_f = Rx*r_10d_e - r_00d_e;
-   double r_02d_f = Ry*r_01d_e - r_00d_e;
-   double r_3c0_f = Rx*r_2c0_e - 2*r_1c0_e;
-   double r_30c_f = Rx*r_20c_e - 2*r_10c_e;
-   double r_c30_f = Ry*r_c20_e - 2*r_c10_e;
-   double r_03c_f = Ry*r_02c_e - 2*r_01c_e;
-   double r_c03_f = Rz*r_c02_e - 2*r_c01_e;
-   double r_0c3_f = Rz*r_0c2_e - 2*r_0c1_e;
-   double r_b40_f = Ry*r_b30_e - 3*r_b20_e;
-   double r_b04_f = Rz*r_b03_e - 3*r_b02_e;
-   double r_4b0_f = Rx*r_3b0_e - 3*r_2b0_e;
-   double r_0b4_f = Rz*r_0b3_e - 3*r_0b2_e;
-   double r_40b_f = Rx*r_30b_e - 3*r_20b_e;
-   double r_04b_f = Ry*r_03b_e - 3*r_02b_e;
-   double r_5a0_f = Rx*r_4a0_e - 4*r_3a0_e;
-   double r_50a_f = Rx*r_40a_e - 4*r_30a_e;
-   double r_a50_f = Ry*r_a40_e - 4*r_a30_e;
-   double r_05a_f = Ry*r_04a_e - 4*r_03a_e;
-   double r_a05_f = Rz*r_a04_e - 4*r_a03_e;
-   double r_0a5_f = Rz*r_0a4_e - 4*r_0a3_e;
-   double r_960_f = Ry*r_950_e - 5*r_940_e;
-   double r_906_f = Rz*r_905_e - 5*r_904_e;
-   double r_690_f = Rx*r_590_e - 5*r_490_e;
-   double r_096_f = Rz*r_095_e - 5*r_094_e;
-   double r_609_f = Rx*r_509_e - 5*r_409_e;
-   double r_069_f = Ry*r_059_e - 5*r_049_e;
-   double r_780_f = Rx*r_680_e - 6*r_580_e;
-   double r_708_f = Rx*r_608_e - 6*r_508_e;
-   double r_870_f = Ry*r_860_e - 6*r_850_e;
-   double r_078_f = Ry*r_068_e - 6*r_058_e;
-   double r_807_f = Rz*r_806_e - 6*r_805_e;
-   double r_087_f = Rz*r_086_e - 6*r_085_e;
-   double r_1c2_f = Rx*r_0c2_e;
-   double r_12c_f = Rx*r_02c_e;
-   double r_c12_f = Ry*r_c02_e;
-   double r_b31_f = Rz*r_b30_e;
-   double r_b13_f = Ry*r_b03_e;
-   double r_3b1_f = Rz*r_3b0_e;
-   double r_31b_f = Ry*r_30b_e;
-   double r_1b3_f = Rx*r_0b3_e;
-   double r_13b_f = Rx*r_03b_e;
-   double r_1a4_f = Rx*r_0a4_e;
-   double r_14a_f = Rx*r_04a_e;
-   double r_a14_f = Ry*r_a04_e;
-   double r_41a_f = Ry*r_40a_e;
-   double r_a41_f = Rz*r_a40_e;
-   double r_4a1_f = Rz*r_4a0_e;
-   double r_951_f = Rz*r_950_e;
-   double r_915_f = Ry*r_905_e;
-   double r_591_f = Rz*r_590_e;
-   double r_519_f = Ry*r_509_e;
-   double r_195_f = Rx*r_095_e;
-   double r_159_f = Rx*r_059_e;
-   double r_186_f = Rx*r_086_e;
-   double r_168_f = Rx*r_068_e;
-   double r_816_f = Ry*r_806_e;
-   double r_618_f = Ry*r_608_e;
-   double r_861_f = Rz*r_860_e;
-   double r_681_f = Rz*r_680_e;
-   double r_771_f = Rz*r_770_e;
-   double r_717_f = Ry*r_707_e;
-   double r_177_f = Rx*r_077_e;
-   double r_3a2_f = Rz*r_3a1_e - r_3a0_e;
-   double r_32a_f = Ry*r_31a_e - r_30a_e;
-   double r_a32_f = Rz*r_a31_e - r_a30_e;
-   double r_942_f = Rz*r_941_e - r_940_e;
-   double r_924_f = Ry*r_914_e - r_904_e;
-   double r_492_f = Rz*r_491_e - r_490_e;
-   double r_294_f = Rx*r_194_e - r_094_e;
-   double r_429_f = Ry*r_419_e - r_409_e;
-   double r_249_f = Rx*r_149_e - r_049_e;
-   double r_582_f = Rz*r_581_e - r_580_e;
-   double r_528_f = Ry*r_518_e - r_508_e;
-   double r_852_f = Rz*r_851_e - r_850_e;
-   double r_258_f = Rx*r_158_e - r_058_e;
-   double r_825_f = Ry*r_815_e - r_805_e;
-   double r_285_f = Rx*r_185_e - r_085_e;
-   double r_762_f = Rz*r_761_e - r_760_e;
-   double r_726_f = Ry*r_716_e - r_706_e;
-   double r_672_f = Rz*r_671_e - r_670_e;
-   double r_276_f = Rx*r_176_e - r_076_e;
-   double r_627_f = Ry*r_617_e - r_607_e;
-   double r_267_f = Rx*r_167_e - r_067_e;
-   double r_384_f = Rx*r_284_e - 2*r_184_e;
-   double r_348_f = Rx*r_248_e - 2*r_148_e;
-   double r_834_f = Ry*r_824_e - 2*r_814_e;
-   double r_753_f = Rz*r_752_e - 2*r_751_e;
-   double r_735_f = Ry*r_725_e - 2*r_715_e;
-   double r_573_f = Rz*r_572_e - 2*r_571_e;
-   double r_537_f = Ry*r_527_e - 2*r_517_e;
-   double r_375_f = Rx*r_275_e - 2*r_175_e;
-   double r_357_f = Rx*r_257_e - 2*r_157_e;
-   double r_366_f = Rx*r_266_e - 2*r_166_e;
-   double r_636_f = Ry*r_626_e - 2*r_616_e;
-   double r_663_f = Rz*r_662_e - 2*r_661_e;
-   double r_564_f = Rz*r_563_e - 3*r_562_e;
-   double r_546_f = Ry*r_536_e - 3*r_526_e;
-   double r_654_f = Rz*r_653_e - 3*r_652_e;
-   if (lab == 16) {
-      pOut[0] = Rx*r_f00_f - 15*r_e00_f;
-      pOut[1] = Ry*r_0f0_f - 15*r_0e0_f;
-      pOut[2] = Rz*r_00f_f - 15*r_00e_f;
-      pOut[3] = Ry*r_f00_f;
-      pOut[4] = Rx*r_0f0_f;
-      pOut[5] = Rz*r_f00_f;
-      pOut[6] = Rx*r_00f_f;
-      pOut[7] = Rz*r_0f0_f;
-      pOut[8] = Ry*r_00f_f;
-      pOut[9] = Ry*r_e10_f - r_e00_f;
-      pOut[10] = Rz*r_e01_f - r_e00_f;
-      pOut[11] = Rx*r_1e0_f - r_0e0_f;
-      pOut[12] = Rx*r_10e_f - r_00e_f;
-      pOut[13] = Rz*r_0e1_f - r_0e0_f;
-      pOut[14] = Ry*r_01e_f - r_00e_f;
-      pOut[15] = Ry*r_d20_f - 2*r_d10_f;
-      pOut[16] = Rx*r_2d0_f - 2*r_1d0_f;
-      pOut[17] = Rz*r_d02_f - 2*r_d01_f;
-      pOut[18] = Rx*r_20d_f - 2*r_10d_f;
-      pOut[19] = Rz*r_0d2_f - 2*r_0d1_f;
-      pOut[20] = Ry*r_02d_f - 2*r_01d_f;
-      pOut[21] = Ry*r_c30_f - 3*r_c20_f;
-      pOut[22] = Rz*r_c03_f - 3*r_c02_f;
-      pOut[23] = Rx*r_3c0_f - 3*r_2c0_f;
-      pOut[24] = Rx*r_30c_f - 3*r_20c_f;
-      pOut[25] = Rz*r_0c3_f - 3*r_0c2_f;
-      pOut[26] = Ry*r_03c_f - 3*r_02c_f;
-      pOut[27] = Ry*r_b40_f - 4*r_b30_f;
-      pOut[28] = Rx*r_4b0_f - 4*r_3b0_f;
-      pOut[29] = Rz*r_b04_f - 4*r_b03_f;
-      pOut[30] = Rx*r_40b_f - 4*r_30b_f;
-      pOut[31] = Rz*r_0b4_f - 4*r_0b3_f;
-      pOut[32] = Ry*r_04b_f - 4*r_03b_f;
-      pOut[33] = Ry*r_a50_f - 5*r_a40_f;
-      pOut[34] = Rz*r_a05_f - 5*r_a04_f;
-      pOut[35] = Rx*r_5a0_f - 5*r_4a0_f;
-      pOut[36] = Rx*r_50a_f - 5*r_40a_f;
-      pOut[37] = Rz*r_0a5_f - 5*r_0a4_f;
-      pOut[38] = Ry*r_05a_f - 5*r_04a_f;
-      pOut[39] = Ry*r_960_f - 6*r_950_f;
-      pOut[40] = Rx*r_690_f - 6*r_590_f;
-      pOut[41] = Rz*r_906_f - 6*r_905_f;
-      pOut[42] = Rx*r_609_f - 6*r_509_f;
-      pOut[43] = Rz*r_096_f - 6*r_095_f;
-      pOut[44] = Ry*r_069_f - 6*r_059_f;
-      pOut[45] = Rx*r_780_f - 7*r_680_f;
-      pOut[46] = Rx*r_708_f - 7*r_608_f;
-      pOut[47] = Ry*r_078_f - 7*r_068_f;
-      pOut[48] = Ry*r_10e_f;
-      pOut[49] = Rz*r_1e0_f;
-      pOut[50] = Rz*r_e10_f;
-      pOut[51] = Ry*r_d02_f;
-      pOut[52] = Rx*r_0d2_f;
-      pOut[53] = Rz*r_d20_f;
-      pOut[54] = Rx*r_02d_f;
-      pOut[55] = Rz*r_2d0_f;
-      pOut[56] = Ry*r_20d_f;
-      pOut[57] = Ry*r_30c_f;
-      pOut[58] = Rx*r_03c_f;
-      pOut[59] = Rz*r_3c0_f;
-      pOut[60] = Rx*r_0c3_f;
-      pOut[61] = Rz*r_c30_f;
-      pOut[62] = Ry*r_c03_f;
-      pOut[63] = Ry*r_b04_f;
-      pOut[64] = Rx*r_0b4_f;
-      pOut[65] = Rz*r_b40_f;
-      pOut[66] = Rx*r_04b_f;
-      pOut[67] = Rz*r_4b0_f;
-      pOut[68] = Ry*r_40b_f;
-      pOut[69] = Ry*r_50a_f;
-      pOut[70] = Rx*r_05a_f;
-      pOut[71] = Rz*r_5a0_f;
-      pOut[72] = Rx*r_0a5_f;
-      pOut[73] = Rz*r_a50_f;
-      pOut[74] = Ry*r_a05_f;
-      pOut[75] = Ry*r_906_f;
-      pOut[76] = Rx*r_096_f;
-      pOut[77] = Rz*r_960_f;
-      pOut[78] = Rx*r_069_f;
-      pOut[79] = Rz*r_690_f;
-      pOut[80] = Ry*r_609_f;
-      pOut[81] = Ry*r_708_f;
-      pOut[82] = Rx*r_078_f;
-      pOut[83] = Rz*r_780_f;
-      pOut[84] = Rx*r_087_f;
-      pOut[85] = Rz*r_870_f;
-      pOut[86] = Ry*r_807_f;
-      pOut[87] = Ry*r_c12_f - r_c02_f;
-      pOut[88] = Rx*r_1c2_f - r_0c2_f;
-      pOut[89] = Rx*r_12c_f - r_02c_f;
-      pOut[90] = Rz*r_b31_f - r_b30_f;
-      pOut[91] = Rz*r_3b1_f - r_3b0_f;
-      pOut[92] = Ry*r_b13_f - r_b03_f;
-      pOut[93] = Ry*r_31b_f - r_30b_f;
-      pOut[94] = Rx*r_1b3_f - r_0b3_f;
-      pOut[95] = Rx*r_13b_f - r_03b_f;
-      pOut[96] = Rz*r_a41_f - r_a40_f;
-      pOut[97] = Ry*r_a14_f - r_a04_f;
-      pOut[98] = Rz*r_4a1_f - r_4a0_f;
-      pOut[99] = Ry*r_41a_f - r_40a_f;
-      pOut[100] = Rx*r_1a4_f - r_0a4_f;
-      pOut[101] = Rx*r_14a_f - r_04a_f;
-      pOut[102] = Rz*r_951_f - r_950_f;
-      pOut[103] = Rz*r_591_f - r_590_f;
-      pOut[104] = Ry*r_915_f - r_905_f;
-      pOut[105] = Ry*r_519_f - r_509_f;
-      pOut[106] = Rx*r_195_f - r_095_f;
-      pOut[107] = Rx*r_159_f - r_059_f;
-      pOut[108] = Rz*r_861_f - r_860_f;
-      pOut[109] = Ry*r_816_f - r_806_f;
-      pOut[110] = Rz*r_681_f - r_680_f;
-      pOut[111] = Ry*r_618_f - r_608_f;
-      pOut[112] = Rx*r_186_f - r_086_f;
-      pOut[113] = Rx*r_168_f - r_068_f;
-      pOut[114] = Rz*r_771_f - r_770_f;
-      pOut[115] = Ry*r_717_f - r_707_f;
-      pOut[116] = Rx*r_177_f - r_077_f;
-      pOut[117] = Ry*r_32a_f - 2*r_31a_f;
-      pOut[118] = Rz*r_3a2_f - 2*r_3a1_f;
-      pOut[119] = Rz*r_a32_f - 2*r_a31_f;
-      pOut[120] = Ry*r_924_f - 2*r_914_f;
-      pOut[121] = Rx*r_294_f - 2*r_194_f;
-      pOut[122] = Rz*r_942_f - 2*r_941_f;
-      pOut[123] = Rx*r_249_f - 2*r_149_f;
-      pOut[124] = Rz*r_492_f - 2*r_491_f;
-      pOut[125] = Ry*r_429_f - 2*r_419_f;
-      pOut[126] = Ry*r_528_f - 2*r_518_f;
-      pOut[127] = Rx*r_258_f - 2*r_158_f;
-      pOut[128] = Rz*r_582_f - 2*r_581_f;
-      pOut[129] = Rx*r_285_f - 2*r_185_f;
-      pOut[130] = Rz*r_852_f - 2*r_851_f;
-      pOut[131] = Ry*r_825_f - 2*r_815_f;
-      pOut[132] = Ry*r_726_f - 2*r_716_f;
-      pOut[133] = Rx*r_276_f - 2*r_176_f;
-      pOut[134] = Rz*r_762_f - 2*r_761_f;
-      pOut[135] = Rx*r_267_f - 2*r_167_f;
-      pOut[136] = Rz*r_672_f - 2*r_671_f;
-      pOut[137] = Ry*r_627_f - 2*r_617_f;
-      pOut[138] = Ry*r_834_f - 3*r_824_f;
-      pOut[139] = Rx*r_384_f - 3*r_284_f;
-      pOut[140] = Rx*r_348_f - 3*r_248_f;
-      pOut[141] = Rz*r_753_f - 3*r_752_f;
-      pOut[142] = Rz*r_573_f - 3*r_572_f;
-      pOut[143] = Ry*r_735_f - 3*r_725_f;
-      pOut[144] = Ry*r_537_f - 3*r_527_f;
-      pOut[145] = Rx*r_375_f - 3*r_275_f;
-      pOut[146] = Rx*r_357_f - 3*r_257_f;
-      pOut[147] = Rz*r_663_f - 3*r_662_f;
-      pOut[148] = Ry*r_636_f - 3*r_626_f;
-      pOut[149] = Rx*r_366_f - 3*r_266_f;
-      pOut[150] = Ry*r_546_f - 4*r_536_f;
-      pOut[151] = Rz*r_564_f - 4*r_563_f;
-      pOut[152] = Rz*r_654_f - 4*r_653_f;
-      return;
-   }
-   double r_100_9 = Rx*pIn[-8];
-   double r_010_9 = Ry*pIn[-8];
-   double r_001_9 = Rz*pIn[-8];
-   double r_300_a = Rx*r_200_9 - 2*r_100_9;
-   double r_030_a = Ry*r_020_9 - 2*r_010_9;
-   double r_003_a = Rz*r_002_9 - 2*r_001_9;
-   double r_500_b = Rx*r_400_a - 4*r_300_a;
-   double r_050_b = Ry*r_040_a - 4*r_030_a;
-   double r_005_b = Rz*r_004_a - 4*r_003_a;
-   double r_700_c = Rx*r_600_b - 6*r_500_b;
-   double r_070_c = Ry*r_060_b - 6*r_050_b;
-   double r_007_c = Rz*r_006_b - 6*r_005_b;
-   double r_900_d = Rx*r_800_c - 8*r_700_c;
-   double r_090_d = Ry*r_080_c - 8*r_070_c;
-   double r_009_d = Rz*r_008_c - 8*r_007_c;
-   double r_180_d = Rx*r_080_c;
-   double r_108_d = Rx*r_008_c;
-   double r_810_d = Ry*r_800_c;
-   double r_018_d = Ry*r_008_c;
-   double r_801_d = Rz*r_800_c;
-   double r_081_d = Rz*r_080_c;
-   double r_720_d = Ry*r_710_c - r_700_c;
-   double r_702_d = Rz*r_701_c - r_700_c;
-   double r_270_d = Rx*r_170_c - r_070_c;
-   double r_072_d = Rz*r_071_c - r_070_c;
-   double r_207_d = Rx*r_107_c - r_007_c;
-   double r_027_d = Ry*r_017_c - r_007_c;
-   double r_b00_e = Rx*r_a00_d - 10*r_900_d;
-   double r_0b0_e = Ry*r_0a0_d - 10*r_090_d;
-   double r_00b_e = Rz*r_00a_d - 10*r_009_d;
-   double r_1a0_e = Rx*r_0a0_d;
-   double r_10a_e = Rx*r_00a_d;
-   double r_a10_e = Ry*r_a00_d;
-   double r_01a_e = Ry*r_00a_d;
-   double r_a01_e = Rz*r_a00_d;
-   double r_0a1_e = Rz*r_0a0_d;
-   double r_920_e = Ry*r_910_d - r_900_d;
-   double r_902_e = Rz*r_901_d - r_900_d;
-   double r_290_e = Rx*r_190_d - r_090_d;
-   double r_092_e = Rz*r_091_d - r_090_d;
-   double r_209_e = Rx*r_109_d - r_009_d;
-   double r_029_e = Ry*r_019_d - r_009_d;
-   double r_380_e = Rx*r_280_d - 2*r_180_d;
-   double r_308_e = Rx*r_208_d - 2*r_108_d;
-   double r_830_e = Ry*r_820_d - 2*r_810_d;
-   double r_038_e = Ry*r_028_d - 2*r_018_d;
-   double r_803_e = Rz*r_802_d - 2*r_801_d;
-   double r_083_e = Rz*r_082_d - 2*r_081_d;
-   double r_740_e = Ry*r_730_d - 3*r_720_d;
-   double r_704_e = Rz*r_703_d - 3*r_702_d;
-   double r_470_e = Rx*r_370_d - 3*r_270_d;
-   double r_074_e = Rz*r_073_d - 3*r_072_d;
-   double r_407_e = Rx*r_307_d - 3*r_207_d;
-   double r_047_e = Ry*r_037_d - 3*r_027_d;
-   double r_d00_f = Rx*r_c00_e - 12*r_b00_e;
-   double r_0d0_f = Ry*r_0c0_e - 12*r_0b0_e;
-   double r_00d_f = Rz*r_00c_e - 12*r_00b_e;
-   double r_1c0_f = Rx*r_0c0_e;
-   double r_10c_f = Rx*r_00c_e;
-   double r_c10_f = Ry*r_c00_e;
-   double r_01c_f = Ry*r_00c_e;
-   double r_c01_f = Rz*r_c00_e;
-   double r_0c1_f = Rz*r_0c0_e;
-   double r_b20_f = Ry*r_b10_e - r_b00_e;
-   double r_b02_f = Rz*r_b01_e - r_b00_e;
-   double r_2b0_f = Rx*r_1b0_e - r_0b0_e;
-   double r_0b2_f = Rz*r_0b1_e - r_0b0_e;
-   double r_20b_f = Rx*r_10b_e - r_00b_e;
-   double r_02b_f = Ry*r_01b_e - r_00b_e;
-   double r_3a0_f = Rx*r_2a0_e - 2*r_1a0_e;
-   double r_30a_f = Rx*r_20a_e - 2*r_10a_e;
-   double r_a30_f = Ry*r_a20_e - 2*r_a10_e;
-   double r_03a_f = Ry*r_02a_e - 2*r_01a_e;
-   double r_a03_f = Rz*r_a02_e - 2*r_a01_e;
-   double r_0a3_f = Rz*r_0a2_e - 2*r_0a1_e;
-   double r_940_f = Ry*r_930_e - 3*r_920_e;
-   double r_904_f = Rz*r_903_e - 3*r_902_e;
-   double r_490_f = Rx*r_390_e - 3*r_290_e;
-   double r_094_f = Rz*r_093_e - 3*r_092_e;
-   double r_409_f = Rx*r_309_e - 3*r_209_e;
-   double r_049_f = Ry*r_039_e - 3*r_029_e;
-   double r_580_f = Rx*r_480_e - 4*r_380_e;
-   double r_508_f = Rx*r_408_e - 4*r_308_e;
-   double r_850_f = Ry*r_840_e - 4*r_830_e;
-   double r_058_f = Ry*r_048_e - 4*r_038_e;
-   double r_805_f = Rz*r_804_e - 4*r_803_e;
-   double r_085_f = Rz*r_084_e - 4*r_083_e;
-   double r_760_f = Ry*r_750_e - 5*r_740_e;
-   double r_706_f = Rz*r_705_e - 5*r_704_e;
-   double r_670_f = Rx*r_570_e - 5*r_470_e;
-   double r_076_f = Rz*r_075_e - 5*r_074_e;
-   double r_607_f = Rx*r_507_e - 5*r_407_e;
-   double r_067_f = Ry*r_057_e - 5*r_047_e;
-   double r_751_f = Rz*r_750_e;
-   double r_571_f = Rz*r_570_e;
-   double r_517_f = Ry*r_507_e;
-   double r_166_f = Rx*r_066_e;
-   double r_616_f = Ry*r_606_e;
-   double r_661_f = Rz*r_660_e;
-   double r_f00_g = Rx*r_e00_f - 14*r_d00_f;
-   double r_0f0_g = Ry*r_0e0_f - 14*r_0d0_f;
-   double r_00f_g = Rz*r_00e_f - 14*r_00d_f;
-   double r_1e0_g = Rx*r_0e0_f;
-   double r_10e_g = Rx*r_00e_f;
-   double r_e10_g = Ry*r_e00_f;
-   double r_01e_g = Ry*r_00e_f;
-   double r_e01_g = Rz*r_e00_f;
-   double r_0e1_g = Rz*r_0e0_f;
-   double r_d20_g = Ry*r_d10_f - r_d00_f;
-   double r_d02_g = Rz*r_d01_f - r_d00_f;
-   double r_2d0_g = Rx*r_1d0_f - r_0d0_f;
-   double r_0d2_g = Rz*r_0d1_f - r_0d0_f;
-   double r_20d_g = Rx*r_10d_f - r_00d_f;
-   double r_02d_g = Ry*r_01d_f - r_00d_f;
-   double r_3c0_g = Rx*r_2c0_f - 2*r_1c0_f;
-   double r_30c_g = Rx*r_20c_f - 2*r_10c_f;
-   double r_c30_g = Ry*r_c20_f - 2*r_c10_f;
-   double r_03c_g = Ry*r_02c_f - 2*r_01c_f;
-   double r_c03_g = Rz*r_c02_f - 2*r_c01_f;
-   double r_0c3_g = Rz*r_0c2_f - 2*r_0c1_f;
-   double r_b40_g = Ry*r_b30_f - 3*r_b20_f;
-   double r_b04_g = Rz*r_b03_f - 3*r_b02_f;
-   double r_4b0_g = Rx*r_3b0_f - 3*r_2b0_f;
-   double r_0b4_g = Rz*r_0b3_f - 3*r_0b2_f;
-   double r_40b_g = Rx*r_30b_f - 3*r_20b_f;
-   double r_04b_g = Ry*r_03b_f - 3*r_02b_f;
-   double r_5a0_g = Rx*r_4a0_f - 4*r_3a0_f;
-   double r_50a_g = Rx*r_40a_f - 4*r_30a_f;
-   double r_a50_g = Ry*r_a40_f - 4*r_a30_f;
-   double r_05a_g = Ry*r_04a_f - 4*r_03a_f;
-   double r_a05_g = Rz*r_a04_f - 4*r_a03_f;
-   double r_0a5_g = Rz*r_0a4_f - 4*r_0a3_f;
-   double r_960_g = Ry*r_950_f - 5*r_940_f;
-   double r_906_g = Rz*r_905_f - 5*r_904_f;
-   double r_690_g = Rx*r_590_f - 5*r_490_f;
-   double r_096_g = Rz*r_095_f - 5*r_094_f;
-   double r_609_g = Rx*r_509_f - 5*r_409_f;
-   double r_069_g = Ry*r_059_f - 5*r_049_f;
-   double r_780_g = Rx*r_680_f - 6*r_580_f;
-   double r_708_g = Rx*r_608_f - 6*r_508_f;
-   double r_870_g = Ry*r_860_f - 6*r_850_f;
-   double r_078_g = Ry*r_068_f - 6*r_058_f;
-   double r_807_g = Rz*r_806_f - 6*r_805_f;
-   double r_087_g = Rz*r_086_f - 6*r_085_f;
-   double r_b31_g = Rz*r_b30_f;
-   double r_3b1_g = Rz*r_3b0_f;
-   double r_31b_g = Ry*r_30b_f;
-   double r_1a4_g = Rx*r_0a4_f;
-   double r_14a_g = Rx*r_04a_f;
-   double r_a14_g = Ry*r_a04_f;
-   double r_41a_g = Ry*r_40a_f;
-   double r_a41_g = Rz*r_a40_f;
-   double r_4a1_g = Rz*r_4a0_f;
-   double r_951_g = Rz*r_950_f;
-   double r_915_g = Ry*r_905_f;
-   double r_591_g = Rz*r_590_f;
-   double r_519_g = Ry*r_509_f;
-   double r_195_g = Rx*r_095_f;
-   double r_159_g = Rx*r_059_f;
-   double r_186_g = Rx*r_086_f;
-   double r_168_g = Rx*r_068_f;
-   double r_816_g = Ry*r_806_f;
-   double r_618_g = Ry*r_608_f;
-   double r_861_g = Rz*r_860_f;
-   double r_681_g = Rz*r_680_f;
-   double r_771_g = Rz*r_770_f;
-   double r_717_g = Ry*r_707_f;
-   double r_177_g = Rx*r_077_f;
-   double r_924_g = Ry*r_914_f - r_904_f;
-   double r_294_g = Rx*r_194_f - r_094_f;
-   double r_249_g = Rx*r_149_f - r_049_f;
-   double r_582_g = Rz*r_581_f - r_580_f;
-   double r_528_g = Ry*r_518_f - r_508_f;
-   double r_852_g = Rz*r_851_f - r_850_f;
-   double r_258_g = Rx*r_158_f - r_058_f;
-   double r_825_g = Ry*r_815_f - r_805_f;
-   double r_285_g = Rx*r_185_f - r_085_f;
-   double r_762_g = Rz*r_761_f - r_760_f;
-   double r_726_g = Ry*r_716_f - r_706_f;
-   double r_672_g = Rz*r_671_f - r_670_f;
-   double r_276_g = Rx*r_176_f - r_076_f;
-   double r_627_g = Ry*r_617_f - r_607_f;
-   double r_267_g = Rx*r_167_f - r_067_f;
-   double r_753_g = Rz*r_752_f - 2*r_751_f;
-   double r_573_g = Rz*r_572_f - 2*r_571_f;
-   double r_537_g = Ry*r_527_f - 2*r_517_f;
-   double r_366_g = Rx*r_266_f - 2*r_166_f;
-   double r_636_g = Ry*r_626_f - 2*r_616_f;
-   double r_663_g = Rz*r_662_f - 2*r_661_f;
-   double r_g00_g = Rx*r_f00_f - 15*r_e00_f;
-   double r_0g0_g = Ry*r_0f0_f - 15*r_0e0_f;
-   double r_00g_g = Rz*r_00f_f - 15*r_00e_f;
-   double r_f10_g = Ry*r_f00_f;
-   double r_1f0_g = Rx*r_0f0_f;
-   double r_f01_g = Rz*r_f00_f;
-   double r_10f_g = Rx*r_00f_f;
-   double r_0f1_g = Rz*r_0f0_f;
-   double r_01f_g = Ry*r_00f_f;
-   double r_e20_g = Ry*r_e10_f - r_e00_f;
-   double r_e02_g = Rz*r_e01_f - r_e00_f;
-   double r_2e0_g = Rx*r_1e0_f - r_0e0_f;
-   double r_20e_g = Rx*r_10e_f - r_00e_f;
-   double r_0e2_g = Rz*r_0e1_f - r_0e0_f;
-   double r_02e_g = Ry*r_01e_f - r_00e_f;
-   double r_d30_g = Ry*r_d20_f - 2*r_d10_f;
-   double r_3d0_g = Rx*r_2d0_f - 2*r_1d0_f;
-   double r_d03_g = Rz*r_d02_f - 2*r_d01_f;
-   double r_30d_g = Rx*r_20d_f - 2*r_10d_f;
-   double r_0d3_g = Rz*r_0d2_f - 2*r_0d1_f;
-   double r_03d_g = Ry*r_02d_f - 2*r_01d_f;
-   double r_c40_g = Ry*r_c30_f - 3*r_c20_f;
-   double r_c04_g = Rz*r_c03_f - 3*r_c02_f;
-   double r_4c0_g = Rx*r_3c0_f - 3*r_2c0_f;
-   double r_40c_g = Rx*r_30c_f - 3*r_20c_f;
-   double r_0c4_g = Rz*r_0c3_f - 3*r_0c2_f;
-   double r_04c_g = Ry*r_03c_f - 3*r_02c_f;
-   double r_b50_g = Ry*r_b40_f - 4*r_b30_f;
-   double r_5b0_g = Rx*r_4b0_f - 4*r_3b0_f;
-   double r_b05_g = Rz*r_b04_f - 4*r_b03_f;
-   double r_50b_g = Rx*r_40b_f - 4*r_30b_f;
-   double r_0b5_g = Rz*r_0b4_f - 4*r_0b3_f;
-   double r_05b_g = Ry*r_04b_f - 4*r_03b_f;
-   double r_a60_g = Ry*r_a50_f - 5*r_a40_f;
-   double r_a06_g = Rz*r_a05_f - 5*r_a04_f;
-   double r_6a0_g = Rx*r_5a0_f - 5*r_4a0_f;
-   double r_60a_g = Rx*r_50a_f - 5*r_40a_f;
-   double r_0a6_g = Rz*r_0a5_f - 5*r_0a4_f;
-   double r_06a_g = Ry*r_05a_f - 5*r_04a_f;
-   double r_970_g = Ry*r_960_f - 6*r_950_f;
-   double r_790_g = Rx*r_690_f - 6*r_590_f;
-   double r_907_g = Rz*r_906_f - 6*r_905_f;
-   double r_709_g = Rx*r_609_f - 6*r_509_f;
-   double r_097_g = Rz*r_096_f - 6*r_095_f;
-   double r_079_g = Ry*r_069_f - 6*r_059_f;
-   double r_880_g = Rx*r_780_f - 7*r_680_f;
-   double r_808_g = Rx*r_708_f - 7*r_608_f;
-   double r_088_g = Ry*r_078_f - 7*r_068_f;
-   double r_d12_g = Ry*r_d02_f;
-   double r_1d2_g = Rx*r_0d2_f;
-   double r_12d_g = Rx*r_02d_f;
-   double r_31c_g = Ry*r_30c_f;
-   double r_13c_g = Rx*r_03c_f;
-   double r_3c1_g = Rz*r_3c0_f;
-   double r_1c3_g = Rx*r_0c3_f;
-   double r_c31_g = Rz*r_c30_f;
-   double r_c13_g = Ry*r_c03_f;
-   double r_b14_g = Ry*r_b04_f;
-   double r_1b4_g = Rx*r_0b4_f;
-   double r_b41_g = Rz*r_b40_f;
-   double r_14b_g = Rx*r_04b_f;
-   double r_4b1_g = Rz*r_4b0_f;
-   double r_41b_g = Ry*r_40b_f;
-   double r_51a_g = Ry*r_50a_f;
-   double r_15a_g = Rx*r_05a_f;
-   double r_5a1_g = Rz*r_5a0_f;
-   double r_1a5_g = Rx*r_0a5_f;
-   double r_a51_g = Rz*r_a50_f;
-   double r_a15_g = Ry*r_a05_f;
-   double r_916_g = Ry*r_906_f;
-   double r_196_g = Rx*r_096_f;
-   double r_961_g = Rz*r_960_f;
-   double r_169_g = Rx*r_069_f;
-   double r_691_g = Rz*r_690_f;
-   double r_619_g = Ry*r_609_f;
-   double r_718_g = Ry*r_708_f;
-   double r_178_g = Rx*r_078_f;
-   double r_781_g = Rz*r_780_f;
-   double r_187_g = Rx*r_087_f;
-   double r_871_g = Rz*r_870_f;
-   double r_817_g = Ry*r_807_f;
-   double r_b32_g = Rz*r_b31_f - r_b30_f;
-   double r_3b2_g = Rz*r_3b1_f - r_3b0_f;
-   double r_32b_g = Ry*r_31b_f - r_30b_f;
-   double r_a42_g = Rz*r_a41_f - r_a40_f;
-   double r_a24_g = Ry*r_a14_f - r_a04_f;
-   double r_4a2_g = Rz*r_4a1_f - r_4a0_f;
-   double r_42a_g = Ry*r_41a_f - r_40a_f;
-   double r_2a4_g = Rx*r_1a4_f - r_0a4_f;
-   double r_24a_g = Rx*r_14a_f - r_04a_f;
-   double r_952_g = Rz*r_951_f - r_950_f;
-   double r_592_g = Rz*r_591_f - r_590_f;
-   double r_925_g = Ry*r_915_f - r_905_f;
-   double r_529_g = Ry*r_519_f - r_509_f;
-   double r_295_g = Rx*r_195_f - r_095_f;
-   double r_259_g = Rx*r_159_f - r_059_f;
-   double r_862_g = Rz*r_861_f - r_860_f;
-   double r_826_g = Ry*r_816_f - r_806_f;
-   double r_682_g = Rz*r_681_f - r_680_f;
-   double r_628_g = Ry*r_618_f - r_608_f;
-   double r_286_g = Rx*r_186_f - r_086_f;
-   double r_268_g = Rx*r_168_f - r_068_f;
-   double r_772_g = Rz*r_771_f - r_770_f;
-   double r_727_g = Ry*r_717_f - r_707_f;
-   double r_277_g = Rx*r_177_f - r_077_f;
-   double r_934_g = Ry*r_924_f - 2*r_914_f;
-   double r_394_g = Rx*r_294_f - 2*r_194_f;
-   double r_349_g = Rx*r_249_f - 2*r_149_f;
-   double r_538_g = Ry*r_528_f - 2*r_518_f;
-   double r_358_g = Rx*r_258_f - 2*r_158_f;
-   double r_583_g = Rz*r_582_f - 2*r_581_f;
-   double r_385_g = Rx*r_285_f - 2*r_185_f;
-   double r_853_g = Rz*r_852_f - 2*r_851_f;
-   double r_835_g = Ry*r_825_f - 2*r_815_f;
-   double r_736_g = Ry*r_726_f - 2*r_716_f;
-   double r_376_g = Rx*r_276_f - 2*r_176_f;
-   double r_763_g = Rz*r_762_f - 2*r_761_f;
-   double r_367_g = Rx*r_267_f - 2*r_167_f;
-   double r_673_g = Rz*r_672_f - 2*r_671_f;
-   double r_637_g = Ry*r_627_f - 2*r_617_f;
-   double r_754_g = Rz*r_753_f - 3*r_752_f;
-   double r_574_g = Rz*r_573_f - 3*r_572_f;
-   double r_547_g = Ry*r_537_f - 3*r_527_f;
-   double r_664_g = Rz*r_663_f - 3*r_662_f;
-   double r_646_g = Ry*r_636_f - 3*r_626_f;
-   double r_466_g = Rx*r_366_f - 3*r_266_f;
-   if (lab == 17) {
-      pOut[0] = Rx*r_g00_g - 16*r_f00_g;
-      pOut[1] = Ry*r_0g0_g - 16*r_0f0_g;
-      pOut[2] = Rz*r_00g_g - 16*r_00f_g;
-      pOut[3] = Rx*r_0g0_g;
-      pOut[4] = Rx*r_00g_g;
-      pOut[5] = Ry*r_g00_g;
-      pOut[6] = Ry*r_00g_g;
-      pOut[7] = Rz*r_g00_g;
-      pOut[8] = Rz*r_0g0_g;
-      pOut[9] = Ry*r_f10_g - r_f00_g;
-      pOut[10] = Rz*r_f01_g - r_f00_g;
-      pOut[11] = Rx*r_1f0_g - r_0f0_g;
-      pOut[12] = Rz*r_0f1_g - r_0f0_g;
-      pOut[13] = Rx*r_10f_g - r_00f_g;
-      pOut[14] = Ry*r_01f_g - r_00f_g;
-      pOut[15] = Rx*r_2e0_g - 2*r_1e0_g;
-      pOut[16] = Rx*r_20e_g - 2*r_10e_g;
-      pOut[17] = Ry*r_e20_g - 2*r_e10_g;
-      pOut[18] = Ry*r_02e_g - 2*r_01e_g;
-      pOut[19] = Rz*r_e02_g - 2*r_e01_g;
-      pOut[20] = Rz*r_0e2_g - 2*r_0e1_g;
-      pOut[21] = Ry*r_d30_g - 3*r_d20_g;
-      pOut[22] = Rz*r_d03_g - 3*r_d02_g;
-      pOut[23] = Rx*r_3d0_g - 3*r_2d0_g;
-      pOut[24] = Rz*r_0d3_g - 3*r_0d2_g;
-      pOut[25] = Rx*r_30d_g - 3*r_20d_g;
-      pOut[26] = Ry*r_03d_g - 3*r_02d_g;
-      pOut[27] = Rx*r_4c0_g - 4*r_3c0_g;
-      pOut[28] = Rx*r_40c_g - 4*r_30c_g;
-      pOut[29] = Ry*r_c40_g - 4*r_c30_g;
-      pOut[30] = Ry*r_04c_g - 4*r_03c_g;
-      pOut[31] = Rz*r_c04_g - 4*r_c03_g;
-      pOut[32] = Rz*r_0c4_g - 4*r_0c3_g;
-      pOut[33] = Ry*r_b50_g - 5*r_b40_g;
-      pOut[34] = Rz*r_b05_g - 5*r_b04_g;
-      pOut[35] = Rx*r_5b0_g - 5*r_4b0_g;
-      pOut[36] = Rz*r_0b5_g - 5*r_0b4_g;
-      pOut[37] = Rx*r_50b_g - 5*r_40b_g;
-      pOut[38] = Ry*r_05b_g - 5*r_04b_g;
-      pOut[39] = Rx*r_6a0_g - 6*r_5a0_g;
-      pOut[40] = Rx*r_60a_g - 6*r_50a_g;
-      pOut[41] = Ry*r_a60_g - 6*r_a50_g;
-      pOut[42] = Ry*r_06a_g - 6*r_05a_g;
-      pOut[43] = Rz*r_a06_g - 6*r_a05_g;
-      pOut[44] = Rz*r_0a6_g - 6*r_0a5_g;
-      pOut[45] = Ry*r_970_g - 7*r_960_g;
-      pOut[46] = Rz*r_907_g - 7*r_906_g;
-      pOut[47] = Rx*r_790_g - 7*r_690_g;
-      pOut[48] = Rz*r_097_g - 7*r_096_g;
-      pOut[49] = Rx*r_709_g - 7*r_609_g;
-      pOut[50] = Ry*r_079_g - 7*r_069_g;
-      pOut[51] = Rz*r_f10_g;
-      pOut[52] = Rz*r_1f0_g;
-      pOut[53] = Ry*r_10f_g;
-      pOut[54] = Rx*r_0e2_g;
-      pOut[55] = Rx*r_02e_g;
-      pOut[56] = Ry*r_e02_g;
-      pOut[57] = Ry*r_20e_g;
-      pOut[58] = Rz*r_e20_g;
-      pOut[59] = Rz*r_2e0_g;
-      pOut[60] = Rz*r_d30_g;
-      pOut[61] = Ry*r_d03_g;
-      pOut[62] = Rz*r_3d0_g;
-      pOut[63] = Ry*r_30d_g;
-      pOut[64] = Rx*r_0d3_g;
-      pOut[65] = Rx*r_03d_g;
-      pOut[66] = Rx*r_0c4_g;
-      pOut[67] = Rx*r_04c_g;
-      pOut[68] = Ry*r_c04_g;
-      pOut[69] = Ry*r_40c_g;
-      pOut[70] = Rz*r_c40_g;
-      pOut[71] = Rz*r_4c0_g;
-      pOut[72] = Rz*r_b50_g;
-      pOut[73] = Ry*r_b05_g;
-      pOut[74] = Rz*r_5b0_g;
-      pOut[75] = Ry*r_50b_g;
-      pOut[76] = Rx*r_0b5_g;
-      pOut[77] = Rx*r_05b_g;
-      pOut[78] = Rx*r_0a6_g;
-      pOut[79] = Rx*r_06a_g;
-      pOut[80] = Ry*r_a06_g;
-      pOut[81] = Ry*r_60a_g;
-      pOut[82] = Rz*r_a60_g;
-      pOut[83] = Rz*r_6a0_g;
-      pOut[84] = Rz*r_970_g;
-      pOut[85] = Ry*r_907_g;
-      pOut[86] = Rz*r_790_g;
-      pOut[87] = Ry*r_709_g;
-      pOut[88] = Rx*r_097_g;
-      pOut[89] = Rx*r_079_g;
-      pOut[90] = Rx*r_088_g;
-      pOut[91] = Ry*r_808_g;
-      pOut[92] = Rz*r_880_g;
-      pOut[93] = Ry*r_d12_g - r_d02_g;
-      pOut[94] = Rx*r_1d2_g - r_0d2_g;
-      pOut[95] = Rx*r_12d_g - r_02d_g;
-      pOut[96] = Rz*r_3c1_g - r_3c0_g;
-      pOut[97] = Ry*r_31c_g - r_30c_g;
-      pOut[98] = Rz*r_c31_g - r_c30_g;
-      pOut[99] = Rx*r_13c_g - r_03c_g;
-      pOut[100] = Ry*r_c13_g - r_c03_g;
-      pOut[101] = Rx*r_1c3_g - r_0c3_g;
-      pOut[102] = Rz*r_b41_g - r_b40_g;
-      pOut[103] = Ry*r_b14_g - r_b04_g;
-      pOut[104] = Rz*r_4b1_g - r_4b0_g;
-      pOut[105] = Rx*r_1b4_g - r_0b4_g;
-      pOut[106] = Ry*r_41b_g - r_40b_g;
-      pOut[107] = Rx*r_14b_g - r_04b_g;
-      pOut[108] = Rz*r_5a1_g - r_5a0_g;
-      pOut[109] = Ry*r_51a_g - r_50a_g;
-      pOut[110] = Rz*r_a51_g - r_a50_g;
-      pOut[111] = Rx*r_15a_g - r_05a_g;
-      pOut[112] = Ry*r_a15_g - r_a05_g;
-      pOut[113] = Rx*r_1a5_g - r_0a5_g;
-      pOut[114] = Rz*r_961_g - r_960_g;
-      pOut[115] = Ry*r_916_g - r_906_g;
-      pOut[116] = Rz*r_691_g - r_690_g;
-      pOut[117] = Rx*r_196_g - r_096_g;
-      pOut[118] = Ry*r_619_g - r_609_g;
-      pOut[119] = Rx*r_169_g - r_069_g;
-      pOut[120] = Rz*r_781_g - r_780_g;
-      pOut[121] = Ry*r_718_g - r_708_g;
-      pOut[122] = Rz*r_871_g - r_870_g;
-      pOut[123] = Rx*r_178_g - r_078_g;
-      pOut[124] = Ry*r_817_g - r_807_g;
-      pOut[125] = Rx*r_187_g - r_087_g;
-      pOut[126] = Rz*r_b32_g - 2*r_b31_g;
-      pOut[127] = Rz*r_3b2_g - 2*r_3b1_g;
-      pOut[128] = Ry*r_32b_g - 2*r_31b_g;
-      pOut[129] = Rx*r_2a4_g - 2*r_1a4_g;
-      pOut[130] = Rx*r_24a_g - 2*r_14a_g;
-      pOut[131] = Ry*r_a24_g - 2*r_a14_g;
-      pOut[132] = Ry*r_42a_g - 2*r_41a_g;
-      pOut[133] = Rz*r_a42_g - 2*r_a41_g;
-      pOut[134] = Rz*r_4a2_g - 2*r_4a1_g;
-      pOut[135] = Rz*r_952_g - 2*r_951_g;
-      pOut[136] = Ry*r_925_g - 2*r_915_g;
-      pOut[137] = Rz*r_592_g - 2*r_591_g;
-      pOut[138] = Ry*r_529_g - 2*r_519_g;
-      pOut[139] = Rx*r_295_g - 2*r_195_g;
-      pOut[140] = Rx*r_259_g - 2*r_159_g;
-      pOut[141] = Rx*r_286_g - 2*r_186_g;
-      pOut[142] = Rx*r_268_g - 2*r_168_g;
-      pOut[143] = Ry*r_826_g - 2*r_816_g;
-      pOut[144] = Ry*r_628_g - 2*r_618_g;
-      pOut[145] = Rz*r_862_g - 2*r_861_g;
-      pOut[146] = Rz*r_682_g - 2*r_681_g;
-      pOut[147] = Rz*r_772_g - 2*r_771_g;
-      pOut[148] = Ry*r_727_g - 2*r_717_g;
-      pOut[149] = Rx*r_277_g - 2*r_177_g;
-      pOut[150] = Ry*r_934_g - 3*r_924_g;
-      pOut[151] = Rx*r_394_g - 3*r_294_g;
-      pOut[152] = Rx*r_349_g - 3*r_249_g;
-      pOut[153] = Rz*r_583_g - 3*r_582_g;
-      pOut[154] = Ry*r_538_g - 3*r_528_g;
-      pOut[155] = Rz*r_853_g - 3*r_852_g;
-      pOut[156] = Rx*r_358_g - 3*r_258_g;
-      pOut[157] = Ry*r_835_g - 3*r_825_g;
-      pOut[158] = Rx*r_385_g - 3*r_285_g;
-      pOut[159] = Rz*r_763_g - 3*r_762_g;
-      pOut[160] = Ry*r_736_g - 3*r_726_g;
-      pOut[161] = Rz*r_673_g - 3*r_672_g;
-      pOut[162] = Rx*r_376_g - 3*r_276_g;
-      pOut[163] = Ry*r_637_g - 3*r_627_g;
-      pOut[164] = Rx*r_367_g - 3*r_267_g;
-      pOut[165] = Rz*r_754_g - 4*r_753_g;
-      pOut[166] = Rz*r_574_g - 4*r_573_g;
-      pOut[167] = Ry*r_547_g - 4*r_537_g;
-      pOut[168] = Rx*r_466_g - 4*r_366_g;
-      pOut[169] = Ry*r_646_g - 4*r_636_g;
-      pOut[170] = Rz*r_664_g - 4*r_663_g;
-      return;
-   }
-   double r_200_a = Rx*r_100_9 - pIn[-9];
-   double r_020_a = Ry*r_010_9 - pIn[-9];
-   double r_002_a = Rz*r_001_9 - pIn[-9];
-   double r_400_b = Rx*r_300_a - 3*r_200_a;
-   double r_040_b = Ry*r_030_a - 3*r_020_a;
-   double r_004_b = Rz*r_003_a - 3*r_002_a;
-   double r_600_c = Rx*r_500_b - 5*r_400_b;
-   double r_060_c = Ry*r_050_b - 5*r_040_b;
-   double r_006_c = Rz*r_005_b - 5*r_004_b;
-   double r_016_c = Ry*r_006_b;
-   double r_800_d = Rx*r_700_c - 7*r_600_c;
-   double r_080_d = Ry*r_070_c - 7*r_060_c;
-   double r_008_d = Rz*r_007_c - 7*r_006_c;
-   double r_710_d = Ry*r_700_c;
-   double r_701_d = Rz*r_700_c;
-   double r_071_d = Rz*r_070_c;
-   double r_026_d = Ry*r_016_c - r_006_c;
-   double r_036_d = Ry*r_026_c - 2*r_016_c;
-   double r_a00_e = Rx*r_900_d - 9*r_800_d;
-   double r_0a0_e = Ry*r_090_d - 9*r_080_d;
-   double r_00a_e = Rz*r_009_d - 9*r_008_d;
-   double r_910_e = Ry*r_900_d;
-   double r_190_e = Rx*r_090_d;
-   double r_901_e = Rz*r_900_d;
-   double r_109_e = Rx*r_009_d;
-   double r_091_e = Rz*r_090_d;
-   double r_019_e = Ry*r_009_d;
-   double r_820_e = Ry*r_810_d - r_800_d;
-   double r_802_e = Rz*r_801_d - r_800_d;
-   double r_280_e = Rx*r_180_d - r_080_d;
-   double r_208_e = Rx*r_108_d - r_008_d;
-   double r_082_e = Rz*r_081_d - r_080_d;
-   double r_028_e = Ry*r_018_d - r_008_d;
-   double r_730_e = Ry*r_720_d - 2*r_710_d;
-   double r_703_e = Rz*r_702_d - 2*r_701_d;
-   double r_073_e = Rz*r_072_d - 2*r_071_d;
-   double r_046_e = Ry*r_036_d - 3*r_026_d;
-   double r_056_e = Ry*r_046_d - 4*r_036_d;
-   double r_c00_f = Rx*r_b00_e - 11*r_a00_e;
-   double r_0c0_f = Ry*r_0b0_e - 11*r_0a0_e;
-   double r_00c_f = Rz*r_00b_e - 11*r_00a_e;
-   double r_b10_f = Ry*r_b00_e;
-   double r_1b0_f = Rx*r_0b0_e;
-   double r_b01_f = Rz*r_b00_e;
-   double r_10b_f = Rx*r_00b_e;
-   double r_0b1_f = Rz*r_0b0_e;
-   double r_01b_f = Ry*r_00b_e;
-   double r_a20_f = Ry*r_a10_e - r_a00_e;
-   double r_a02_f = Rz*r_a01_e - r_a00_e;
-   double r_2a0_f = Rx*r_1a0_e - r_0a0_e;
-   double r_20a_f = Rx*r_10a_e - r_00a_e;
-   double r_0a2_f = Rz*r_0a1_e - r_0a0_e;
-   double r_02a_f = Ry*r_01a_e - r_00a_e;
-   double r_930_f = Ry*r_920_e - 2*r_910_e;
-   double r_390_f = Rx*r_290_e - 2*r_190_e;
-   double r_903_f = Rz*r_902_e - 2*r_901_e;
-   double r_309_f = Rx*r_209_e - 2*r_109_e;
-   double r_093_f = Rz*r_092_e - 2*r_091_e;
-   double r_039_f = Ry*r_029_e - 2*r_019_e;
-   double r_840_f = Ry*r_830_e - 3*r_820_e;
-   double r_804_f = Rz*r_803_e - 3*r_802_e;
-   double r_480_f = Rx*r_380_e - 3*r_280_e;
-   double r_408_f = Rx*r_308_e - 3*r_208_e;
-   double r_084_f = Rz*r_083_e - 3*r_082_e;
-   double r_048_f = Ry*r_038_e - 3*r_028_e;
-   double r_750_f = Ry*r_740_e - 4*r_730_e;
-   double r_705_f = Rz*r_704_e - 4*r_703_e;
-   double r_075_f = Rz*r_074_e - 4*r_073_e;
-   double r_066_f = Ry*r_056_e - 5*r_046_e;
-   double r_e00_g = Rx*r_d00_f - 13*r_c00_f;
-   double r_0e0_g = Ry*r_0d0_f - 13*r_0c0_f;
-   double r_00e_g = Rz*r_00d_f - 13*r_00c_f;
-   double r_d10_g = Ry*r_d00_f;
-   double r_1d0_g = Rx*r_0d0_f;
-   double r_d01_g = Rz*r_d00_f;
-   double r_10d_g = Rx*r_00d_f;
-   double r_0d1_g = Rz*r_0d0_f;
-   double r_01d_g = Ry*r_00d_f;
-   double r_c20_g = Ry*r_c10_f - r_c00_f;
-   double r_c02_g = Rz*r_c01_f - r_c00_f;
-   double r_2c0_g = Rx*r_1c0_f - r_0c0_f;
-   double r_20c_g = Rx*r_10c_f - r_00c_f;
-   double r_0c2_g = Rz*r_0c1_f - r_0c0_f;
-   double r_02c_g = Ry*r_01c_f - r_00c_f;
-   double r_b30_g = Ry*r_b20_f - 2*r_b10_f;
-   double r_3b0_g = Rx*r_2b0_f - 2*r_1b0_f;
-   double r_b03_g = Rz*r_b02_f - 2*r_b01_f;
-   double r_30b_g = Rx*r_20b_f - 2*r_10b_f;
-   double r_0b3_g = Rz*r_0b2_f - 2*r_0b1_f;
-   double r_03b_g = Ry*r_02b_f - 2*r_01b_f;
-   double r_a40_g = Ry*r_a30_f - 3*r_a20_f;
-   double r_a04_g = Rz*r_a03_f - 3*r_a02_f;
-   double r_4a0_g = Rx*r_3a0_f - 3*r_2a0_f;
-   double r_40a_g = Rx*r_30a_f - 3*r_20a_f;
-   double r_0a4_g = Rz*r_0a3_f - 3*r_0a2_f;
-   double r_04a_g = Ry*r_03a_f - 3*r_02a_f;
-   double r_950_g = Ry*r_940_f - 4*r_930_f;
-   double r_590_g = Rx*r_490_f - 4*r_390_f;
-   double r_905_g = Rz*r_904_f - 4*r_903_f;
-   double r_509_g = Rx*r_409_f - 4*r_309_f;
-   double r_095_g = Rz*r_094_f - 4*r_093_f;
-   double r_059_g = Ry*r_049_f - 4*r_039_f;
-   double r_860_g = Ry*r_850_f - 5*r_840_f;
-   double r_806_g = Rz*r_805_f - 5*r_804_f;
-   double r_680_g = Rx*r_580_f - 5*r_480_f;
-   double r_608_g = Rx*r_508_f - 5*r_408_f;
-   double r_086_g = Rz*r_085_f - 5*r_084_f;
-   double r_068_g = Ry*r_058_f - 5*r_048_f;
-   double r_770_g = Ry*r_760_f - 6*r_750_f;
-   double r_707_g = Rz*r_706_f - 6*r_705_f;
-   double r_077_g = Rz*r_076_f - 6*r_075_f;
-   double r_518_g = Ry*r_508_f;
-   double r_581_g = Rz*r_580_f;
-   double r_851_g = Rz*r_850_f;
-   double r_716_g = Ry*r_706_f;
-   double r_176_g = Rx*r_076_f;
-   double r_761_g = Rz*r_760_f;
-   double r_167_g = Rx*r_067_f;
-   double r_671_g = Rz*r_670_f;
-   double r_617_g = Ry*r_607_f;
-   double r_266_g = Rx*r_166_f - r_066_f;
-   double r_g00_h = Rx*r_f00_g - 15*r_e00_g;
-   double r_0g0_h = Ry*r_0f0_g - 15*r_0e0_g;
-   double r_00g_h = Rz*r_00f_g - 15*r_00e_g;
-   double r_f10_h = Ry*r_f00_g;
-   double r_1f0_h = Rx*r_0f0_g;
-   double r_f01_h = Rz*r_f00_g;
-   double r_10f_h = Rx*r_00f_g;
-   double r_0f1_h = Rz*r_0f0_g;
-   double r_01f_h = Ry*r_00f_g;
-   double r_e20_h = Ry*r_e10_g - r_e00_g;
-   double r_e02_h = Rz*r_e01_g - r_e00_g;
-   double r_2e0_h = Rx*r_1e0_g - r_0e0_g;
-   double r_20e_h = Rx*r_10e_g - r_00e_g;
-   double r_0e2_h = Rz*r_0e1_g - r_0e0_g;
-   double r_02e_h = Ry*r_01e_g - r_00e_g;
-   double r_d30_h = Ry*r_d20_g - 2*r_d10_g;
-   double r_3d0_h = Rx*r_2d0_g - 2*r_1d0_g;
-   double r_d03_h = Rz*r_d02_g - 2*r_d01_g;
-   double r_30d_h = Rx*r_20d_g - 2*r_10d_g;
-   double r_0d3_h = Rz*r_0d2_g - 2*r_0d1_g;
-   double r_03d_h = Ry*r_02d_g - 2*r_01d_g;
-   double r_c40_h = Ry*r_c30_g - 3*r_c20_g;
-   double r_c04_h = Rz*r_c03_g - 3*r_c02_g;
-   double r_4c0_h = Rx*r_3c0_g - 3*r_2c0_g;
-   double r_40c_h = Rx*r_30c_g - 3*r_20c_g;
-   double r_0c4_h = Rz*r_0c3_g - 3*r_0c2_g;
-   double r_04c_h = Ry*r_03c_g - 3*r_02c_g;
-   double r_b50_h = Ry*r_b40_g - 4*r_b30_g;
-   double r_5b0_h = Rx*r_4b0_g - 4*r_3b0_g;
-   double r_b05_h = Rz*r_b04_g - 4*r_b03_g;
-   double r_50b_h = Rx*r_40b_g - 4*r_30b_g;
-   double r_0b5_h = Rz*r_0b4_g - 4*r_0b3_g;
-   double r_05b_h = Ry*r_04b_g - 4*r_03b_g;
-   double r_a60_h = Ry*r_a50_g - 5*r_a40_g;
-   double r_a06_h = Rz*r_a05_g - 5*r_a04_g;
-   double r_6a0_h = Rx*r_5a0_g - 5*r_4a0_g;
-   double r_60a_h = Rx*r_50a_g - 5*r_40a_g;
-   double r_0a6_h = Rz*r_0a5_g - 5*r_0a4_g;
-   double r_06a_h = Ry*r_05a_g - 5*r_04a_g;
-   double r_970_h = Ry*r_960_g - 6*r_950_g;
-   double r_790_h = Rx*r_690_g - 6*r_590_g;
-   double r_907_h = Rz*r_906_g - 6*r_905_g;
-   double r_709_h = Rx*r_609_g - 6*r_509_g;
-   double r_097_h = Rz*r_096_g - 6*r_095_g;
-   double r_079_h = Ry*r_069_g - 6*r_059_g;
-   double r_880_h = Rx*r_780_g - 7*r_680_g;
-   double r_808_h = Rx*r_708_g - 7*r_608_g;
-   double r_088_h = Ry*r_078_g - 7*r_068_g;
-   double r_31c_h = Ry*r_30c_g;
-   double r_3c1_h = Rz*r_3c0_g;
-   double r_c31_h = Rz*r_c30_g;
-   double r_b14_h = Ry*r_b04_g;
-   double r_1b4_h = Rx*r_0b4_g;
-   double r_b41_h = Rz*r_b40_g;
-   double r_14b_h = Rx*r_04b_g;
-   double r_4b1_h = Rz*r_4b0_g;
-   double r_41b_h = Ry*r_40b_g;
-   double r_51a_h = Ry*r_50a_g;
-   double r_15a_h = Rx*r_05a_g;
-   double r_5a1_h = Rz*r_5a0_g;
-   double r_1a5_h = Rx*r_0a5_g;
-   double r_a51_h = Rz*r_a50_g;
-   double r_a15_h = Ry*r_a05_g;
-   double r_916_h = Ry*r_906_g;
-   double r_196_h = Rx*r_096_g;
-   double r_961_h = Rz*r_960_g;
-   double r_169_h = Rx*r_069_g;
-   double r_691_h = Rz*r_690_g;
-   double r_619_h = Ry*r_609_g;
-   double r_718_h = Ry*r_708_g;
-   double r_178_h = Rx*r_078_g;
-   double r_781_h = Rz*r_780_g;
-   double r_187_h = Rx*r_087_g;
-   double r_871_h = Rz*r_870_g;
-   double r_817_h = Ry*r_807_g;
-   double r_a24_h = Ry*r_a14_g - r_a04_g;
-   double r_2a4_h = Rx*r_1a4_g - r_0a4_g;
-   double r_24a_h = Rx*r_14a_g - r_04a_g;
-   double r_952_h = Rz*r_951_g - r_950_g;
-   double r_592_h = Rz*r_591_g - r_590_g;
-   double r_925_h = Ry*r_915_g - r_905_g;
-   double r_529_h = Ry*r_519_g - r_509_g;
-   double r_295_h = Rx*r_195_g - r_095_g;
-   double r_259_h = Rx*r_159_g - r_059_g;
-   double r_862_h = Rz*r_861_g - r_860_g;
-   double r_826_h = Ry*r_816_g - r_806_g;
-   double r_682_h = Rz*r_681_g - r_680_g;
-   double r_628_h = Ry*r_618_g - r_608_g;
-   double r_286_h = Rx*r_186_g - r_086_g;
-   double r_268_h = Rx*r_168_g - r_068_g;
-   double r_772_h = Rz*r_771_g - r_770_g;
-   double r_727_h = Ry*r_717_g - r_707_g;
-   double r_277_h = Rx*r_177_g - r_077_g;
-   double r_538_h = Ry*r_528_g - 2*r_518_g;
-   double r_583_h = Rz*r_582_g - 2*r_581_g;
-   double r_853_h = Rz*r_852_g - 2*r_851_g;
-   double r_736_h = Ry*r_726_g - 2*r_716_g;
-   double r_376_h = Rx*r_276_g - 2*r_176_g;
-   double r_763_h = Rz*r_762_g - 2*r_761_g;
-   double r_367_h = Rx*r_267_g - 2*r_167_g;
-   double r_673_h = Rz*r_672_g - 2*r_671_g;
-   double r_637_h = Ry*r_627_g - 2*r_617_g;
-   double r_466_h = Rx*r_366_g - 3*r_266_g;
-   double r_h00_h = Rx*r_g00_g - 16*r_f00_g;
-   double r_0h0_h = Ry*r_0g0_g - 16*r_0f0_g;
-   double r_00h_h = Rz*r_00g_g - 16*r_00f_g;
-   double r_1g0_h = Rx*r_0g0_g;
-   double r_10g_h = Rx*r_00g_g;
-   double r_g10_h = Ry*r_g00_g;
-   double r_01g_h = Ry*r_00g_g;
-   double r_g01_h = Rz*r_g00_g;
-   double r_0g1_h = Rz*r_0g0_g;
-   double r_f20_h = Ry*r_f10_g - r_f00_g;
-   double r_f02_h = Rz*r_f01_g - r_f00_g;
-   double r_2f0_h = Rx*r_1f0_g - r_0f0_g;
-   double r_0f2_h = Rz*r_0f1_g - r_0f0_g;
-   double r_20f_h = Rx*r_10f_g - r_00f_g;
-   double r_02f_h = Ry*r_01f_g - r_00f_g;
-   double r_3e0_h = Rx*r_2e0_g - 2*r_1e0_g;
-   double r_30e_h = Rx*r_20e_g - 2*r_10e_g;
-   double r_e30_h = Ry*r_e20_g - 2*r_e10_g;
-   double r_03e_h = Ry*r_02e_g - 2*r_01e_g;
-   double r_e03_h = Rz*r_e02_g - 2*r_e01_g;
-   double r_0e3_h = Rz*r_0e2_g - 2*r_0e1_g;
-   double r_d40_h = Ry*r_d30_g - 3*r_d20_g;
-   double r_d04_h = Rz*r_d03_g - 3*r_d02_g;
-   double r_4d0_h = Rx*r_3d0_g - 3*r_2d0_g;
-   double r_0d4_h = Rz*r_0d3_g - 3*r_0d2_g;
-   double r_40d_h = Rx*r_30d_g - 3*r_20d_g;
-   double r_04d_h = Ry*r_03d_g - 3*r_02d_g;
-   double r_5c0_h = Rx*r_4c0_g - 4*r_3c0_g;
-   double r_50c_h = Rx*r_40c_g - 4*r_30c_g;
-   double r_c50_h = Ry*r_c40_g - 4*r_c30_g;
-   double r_05c_h = Ry*r_04c_g - 4*r_03c_g;
-   double r_c05_h = Rz*r_c04_g - 4*r_c03_g;
-   double r_0c5_h = Rz*r_0c4_g - 4*r_0c3_g;
-   double r_b60_h = Ry*r_b50_g - 5*r_b40_g;
-   double r_b06_h = Rz*r_b05_g - 5*r_b04_g;
-   double r_6b0_h = Rx*r_5b0_g - 5*r_4b0_g;
-   double r_0b6_h = Rz*r_0b5_g - 5*r_0b4_g;
-   double r_60b_h = Rx*r_50b_g - 5*r_40b_g;
-   double r_06b_h = Ry*r_05b_g - 5*r_04b_g;
-   double r_7a0_h = Rx*r_6a0_g - 6*r_5a0_g;
-   double r_70a_h = Rx*r_60a_g - 6*r_50a_g;
-   double r_a70_h = Ry*r_a60_g - 6*r_a50_g;
-   double r_07a_h = Ry*r_06a_g - 6*r_05a_g;
-   double r_a07_h = Rz*r_a06_g - 6*r_a05_g;
-   double r_0a7_h = Rz*r_0a6_g - 6*r_0a5_g;
-   double r_980_h = Ry*r_970_g - 7*r_960_g;
-   double r_908_h = Rz*r_907_g - 7*r_906_g;
-   double r_890_h = Rx*r_790_g - 7*r_690_g;
-   double r_098_h = Rz*r_097_g - 7*r_096_g;
-   double r_809_h = Rx*r_709_g - 7*r_609_g;
-   double r_089_h = Ry*r_079_g - 7*r_069_g;
-   double r_1e2_h = Rx*r_0e2_g;
-   double r_12e_h = Rx*r_02e_g;
-   double r_e12_h = Ry*r_e02_g;
-   double r_d31_h = Rz*r_d30_g;
-   double r_d13_h = Ry*r_d03_g;
-   double r_3d1_h = Rz*r_3d0_g;
-   double r_31d_h = Ry*r_30d_g;
-   double r_1d3_h = Rx*r_0d3_g;
-   double r_13d_h = Rx*r_03d_g;
-   double r_1c4_h = Rx*r_0c4_g;
-   double r_14c_h = Rx*r_04c_g;
-   double r_c14_h = Ry*r_c04_g;
-   double r_41c_h = Ry*r_40c_g;
-   double r_c41_h = Rz*r_c40_g;
-   double r_4c1_h = Rz*r_4c0_g;
-   double r_b51_h = Rz*r_b50_g;
-   double r_b15_h = Ry*r_b05_g;
-   double r_5b1_h = Rz*r_5b0_g;
-   double r_51b_h = Ry*r_50b_g;
-   double r_1b5_h = Rx*r_0b5_g;
-   double r_15b_h = Rx*r_05b_g;
-   double r_1a6_h = Rx*r_0a6_g;
-   double r_16a_h = Rx*r_06a_g;
-   double r_a16_h = Ry*r_a06_g;
-   double r_61a_h = Ry*r_60a_g;
-   double r_a61_h = Rz*r_a60_g;
-   double r_6a1_h = Rz*r_6a0_g;
-   double r_971_h = Rz*r_970_g;
-   double r_917_h = Ry*r_907_g;
-   double r_791_h = Rz*r_790_g;
-   double r_719_h = Ry*r_709_g;
-   double r_197_h = Rx*r_097_g;
-   double r_179_h = Rx*r_079_g;
-   double r_188_h = Rx*r_088_g;
-   double r_818_h = Ry*r_808_g;
-   double r_881_h = Rz*r_880_g;
-   double r_3c2_h = Rz*r_3c1_g - r_3c0_g;
-   double r_32c_h = Ry*r_31c_g - r_30c_g;
-   double r_c32_h = Rz*r_c31_g - r_c30_g;
-   double r_b42_h = Rz*r_b41_g - r_b40_g;
-   double r_b24_h = Ry*r_b14_g - r_b04_g;
-   double r_4b2_h = Rz*r_4b1_g - r_4b0_g;
-   double r_2b4_h = Rx*r_1b4_g - r_0b4_g;
-   double r_42b_h = Ry*r_41b_g - r_40b_g;
-   double r_24b_h = Rx*r_14b_g - r_04b_g;
-   double r_5a2_h = Rz*r_5a1_g - r_5a0_g;
-   double r_52a_h = Ry*r_51a_g - r_50a_g;
-   double r_a52_h = Rz*r_a51_g - r_a50_g;
-   double r_25a_h = Rx*r_15a_g - r_05a_g;
-   double r_a25_h = Ry*r_a15_g - r_a05_g;
-   double r_2a5_h = Rx*r_1a5_g - r_0a5_g;
-   double r_962_h = Rz*r_961_g - r_960_g;
-   double r_926_h = Ry*r_916_g - r_906_g;
-   double r_692_h = Rz*r_691_g - r_690_g;
-   double r_296_h = Rx*r_196_g - r_096_g;
-   double r_629_h = Ry*r_619_g - r_609_g;
-   double r_269_h = Rx*r_169_g - r_069_g;
-   double r_782_h = Rz*r_781_g - r_780_g;
-   double r_728_h = Ry*r_718_g - r_708_g;
-   double r_872_h = Rz*r_871_g - r_870_g;
-   double r_278_h = Rx*r_178_g - r_078_g;
-   double r_827_h = Ry*r_817_g - r_807_g;
-   double r_287_h = Rx*r_187_g - r_087_g;
-   double r_3a4_h = Rx*r_2a4_g - 2*r_1a4_g;
-   double r_34a_h = Rx*r_24a_g - 2*r_14a_g;
-   double r_a34_h = Ry*r_a24_g - 2*r_a14_g;
-   double r_953_h = Rz*r_952_g - 2*r_951_g;
-   double r_935_h = Ry*r_925_g - 2*r_915_g;
-   double r_593_h = Rz*r_592_g - 2*r_591_g;
-   double r_539_h = Ry*r_529_g - 2*r_519_g;
-   double r_395_h = Rx*r_295_g - 2*r_195_g;
-   double r_359_h = Rx*r_259_g - 2*r_159_g;
-   double r_386_h = Rx*r_286_g - 2*r_186_g;
-   double r_368_h = Rx*r_268_g - 2*r_168_g;
-   double r_836_h = Ry*r_826_g - 2*r_816_g;
-   double r_638_h = Ry*r_628_g - 2*r_618_g;
-   double r_863_h = Rz*r_862_g - 2*r_861_g;
-   double r_683_h = Rz*r_682_g - 2*r_681_g;
-   double r_773_h = Rz*r_772_g - 2*r_771_g;
-   double r_737_h = Ry*r_727_g - 2*r_717_g;
-   double r_377_h = Rx*r_277_g - 2*r_177_g;
-   double r_584_h = Rz*r_583_g - 3*r_582_g;
-   double r_548_h = Ry*r_538_g - 3*r_528_g;
-   double r_854_h = Rz*r_853_g - 3*r_852_g;
-   double r_764_h = Rz*r_763_g - 3*r_762_g;
-   double r_746_h = Ry*r_736_g - 3*r_726_g;
-   double r_674_h = Rz*r_673_g - 3*r_672_g;
-   double r_476_h = Rx*r_376_g - 3*r_276_g;
-   double r_647_h = Ry*r_637_g - 3*r_627_g;
-   double r_467_h = Rx*r_367_g - 3*r_267_g;
-   double r_566_h = Rx*r_466_g - 4*r_366_g;
-   if (lab == 18) {
-      pOut[0] = Rx*r_h00_h - 17*r_g00_h;
-      pOut[1] = Ry*r_0h0_h - 17*r_0g0_h;
-      pOut[2] = Rz*r_00h_h - 17*r_00g_h;
-      pOut[3] = Ry*r_h00_h;
-      pOut[4] = Rx*r_0h0_h;
-      pOut[5] = Rz*r_h00_h;
-      pOut[6] = Rx*r_00h_h;
-      pOut[7] = Rz*r_0h0_h;
-      pOut[8] = Ry*r_00h_h;
-      pOut[9] = Ry*r_g10_h - r_g00_h;
-      pOut[10] = Rz*r_g01_h - r_g00_h;
-      pOut[11] = Rx*r_1g0_h - r_0g0_h;
-      pOut[12] = Rx*r_10g_h - r_00g_h;
-      pOut[13] = Rz*r_0g1_h - r_0g0_h;
-      pOut[14] = Ry*r_01g_h - r_00g_h;
-      pOut[15] = Ry*r_f20_h - 2*r_f10_h;
-      pOut[16] = Rx*r_2f0_h - 2*r_1f0_h;
-      pOut[17] = Rz*r_f02_h - 2*r_f01_h;
-      pOut[18] = Rx*r_20f_h - 2*r_10f_h;
-      pOut[19] = Rz*r_0f2_h - 2*r_0f1_h;
-      pOut[20] = Ry*r_02f_h - 2*r_01f_h;
-      pOut[21] = Ry*r_e30_h - 3*r_e20_h;
-      pOut[22] = Rz*r_e03_h - 3*r_e02_h;
-      pOut[23] = Rx*r_3e0_h - 3*r_2e0_h;
-      pOut[24] = Rx*r_30e_h - 3*r_20e_h;
-      pOut[25] = Rz*r_0e3_h - 3*r_0e2_h;
-      pOut[26] = Ry*r_03e_h - 3*r_02e_h;
-      pOut[27] = Ry*r_d40_h - 4*r_d30_h;
-      pOut[28] = Rx*r_4d0_h - 4*r_3d0_h;
-      pOut[29] = Rz*r_d04_h - 4*r_d03_h;
-      pOut[30] = Rx*r_40d_h - 4*r_30d_h;
-      pOut[31] = Rz*r_0d4_h - 4*r_0d3_h;
-      pOut[32] = Ry*r_04d_h - 4*r_03d_h;
-      pOut[33] = Ry*r_c50_h - 5*r_c40_h;
-      pOut[34] = Rz*r_c05_h - 5*r_c04_h;
-      pOut[35] = Rx*r_5c0_h - 5*r_4c0_h;
-      pOut[36] = Rx*r_50c_h - 5*r_40c_h;
-      pOut[37] = Rz*r_0c5_h - 5*r_0c4_h;
-      pOut[38] = Ry*r_05c_h - 5*r_04c_h;
-      pOut[39] = Ry*r_b60_h - 6*r_b50_h;
-      pOut[40] = Rx*r_6b0_h - 6*r_5b0_h;
-      pOut[41] = Rz*r_b06_h - 6*r_b05_h;
-      pOut[42] = Rx*r_60b_h - 6*r_50b_h;
-      pOut[43] = Rz*r_0b6_h - 6*r_0b5_h;
-      pOut[44] = Ry*r_06b_h - 6*r_05b_h;
-      pOut[45] = Ry*r_a70_h - 7*r_a60_h;
-      pOut[46] = Rz*r_a07_h - 7*r_a06_h;
-      pOut[47] = Rx*r_7a0_h - 7*r_6a0_h;
-      pOut[48] = Rx*r_70a_h - 7*r_60a_h;
-      pOut[49] = Rz*r_0a7_h - 7*r_0a6_h;
-      pOut[50] = Ry*r_07a_h - 7*r_06a_h;
-      pOut[51] = Ry*r_980_h - 8*r_970_h;
-      pOut[52] = Rz*r_908_h - 8*r_907_h;
-      pOut[53] = Rz*r_098_h - 8*r_097_h;
-      pOut[54] = Ry*r_10g_h;
-      pOut[55] = Rz*r_1g0_h;
-      pOut[56] = Rz*r_g10_h;
-      pOut[57] = Ry*r_f02_h;
-      pOut[58] = Rx*r_0f2_h;
-      pOut[59] = Rz*r_f20_h;
-      pOut[60] = Rx*r_02f_h;
-      pOut[61] = Rz*r_2f0_h;
-      pOut[62] = Ry*r_20f_h;
-      pOut[63] = Ry*r_30e_h;
-      pOut[64] = Rx*r_03e_h;
-      pOut[65] = Rz*r_3e0_h;
-      pOut[66] = Rx*r_0e3_h;
-      pOut[67] = Rz*r_e30_h;
-      pOut[68] = Ry*r_e03_h;
-      pOut[69] = Ry*r_d04_h;
-      pOut[70] = Rx*r_0d4_h;
-      pOut[71] = Rz*r_d40_h;
-      pOut[72] = Rx*r_04d_h;
-      pOut[73] = Rz*r_4d0_h;
-      pOut[74] = Ry*r_40d_h;
-      pOut[75] = Ry*r_50c_h;
-      pOut[76] = Rx*r_05c_h;
-      pOut[77] = Rz*r_5c0_h;
-      pOut[78] = Rx*r_0c5_h;
-      pOut[79] = Rz*r_c50_h;
-      pOut[80] = Ry*r_c05_h;
-      pOut[81] = Ry*r_b06_h;
-      pOut[82] = Rx*r_0b6_h;
-      pOut[83] = Rz*r_b60_h;
-      pOut[84] = Rx*r_06b_h;
-      pOut[85] = Rz*r_6b0_h;
-      pOut[86] = Ry*r_60b_h;
-      pOut[87] = Ry*r_70a_h;
-      pOut[88] = Rx*r_07a_h;
-      pOut[89] = Rz*r_7a0_h;
-      pOut[90] = Rx*r_0a7_h;
-      pOut[91] = Rz*r_a70_h;
-      pOut[92] = Ry*r_a07_h;
-      pOut[93] = Ry*r_908_h;
-      pOut[94] = Rx*r_098_h;
-      pOut[95] = Rz*r_980_h;
-      pOut[96] = Rx*r_089_h;
-      pOut[97] = Rz*r_890_h;
-      pOut[98] = Ry*r_809_h;
-      pOut[99] = Ry*r_e12_h - r_e02_h;
-      pOut[100] = Rx*r_1e2_h - r_0e2_h;
-      pOut[101] = Rx*r_12e_h - r_02e_h;
-      pOut[102] = Rz*r_d31_h - r_d30_h;
-      pOut[103] = Rz*r_3d1_h - r_3d0_h;
-      pOut[104] = Ry*r_d13_h - r_d03_h;
-      pOut[105] = Ry*r_31d_h - r_30d_h;
-      pOut[106] = Rx*r_1d3_h - r_0d3_h;
-      pOut[107] = Rx*r_13d_h - r_03d_h;
-      pOut[108] = Rz*r_c41_h - r_c40_h;
-      pOut[109] = Ry*r_c14_h - r_c04_h;
-      pOut[110] = Rz*r_4c1_h - r_4c0_h;
-      pOut[111] = Ry*r_41c_h - r_40c_h;
-      pOut[112] = Rx*r_1c4_h - r_0c4_h;
-      pOut[113] = Rx*r_14c_h - r_04c_h;
-      pOut[114] = Rz*r_b51_h - r_b50_h;
-      pOut[115] = Rz*r_5b1_h - r_5b0_h;
-      pOut[116] = Ry*r_b15_h - r_b05_h;
-      pOut[117] = Ry*r_51b_h - r_50b_h;
-      pOut[118] = Rx*r_1b5_h - r_0b5_h;
-      pOut[119] = Rx*r_15b_h - r_05b_h;
-      pOut[120] = Rz*r_a61_h - r_a60_h;
-      pOut[121] = Ry*r_a16_h - r_a06_h;
-      pOut[122] = Rz*r_6a1_h - r_6a0_h;
-      pOut[123] = Ry*r_61a_h - r_60a_h;
-      pOut[124] = Rx*r_1a6_h - r_0a6_h;
-      pOut[125] = Rx*r_16a_h - r_06a_h;
-      pOut[126] = Rz*r_971_h - r_970_h;
-      pOut[127] = Rz*r_791_h - r_790_h;
-      pOut[128] = Ry*r_917_h - r_907_h;
-      pOut[129] = Ry*r_719_h - r_709_h;
-      pOut[130] = Rx*r_197_h - r_097_h;
-      pOut[131] = Rx*r_179_h - r_079_h;
-      pOut[132] = Rz*r_881_h - r_880_h;
-      pOut[133] = Ry*r_818_h - r_808_h;
-      pOut[134] = Rx*r_188_h - r_088_h;
-      pOut[135] = Ry*r_32c_h - 2*r_31c_h;
-      pOut[136] = Rz*r_3c2_h - 2*r_3c1_h;
-      pOut[137] = Rz*r_c32_h - 2*r_c31_h;
-      pOut[138] = Ry*r_b24_h - 2*r_b14_h;
-      pOut[139] = Rx*r_2b4_h - 2*r_1b4_h;
-      pOut[140] = Rz*r_b42_h - 2*r_b41_h;
-      pOut[141] = Rx*r_24b_h - 2*r_14b_h;
-      pOut[142] = Rz*r_4b2_h - 2*r_4b1_h;
-      pOut[143] = Ry*r_42b_h - 2*r_41b_h;
-      pOut[144] = Ry*r_52a_h - 2*r_51a_h;
-      pOut[145] = Rx*r_25a_h - 2*r_15a_h;
-      pOut[146] = Rz*r_5a2_h - 2*r_5a1_h;
-      pOut[147] = Rx*r_2a5_h - 2*r_1a5_h;
-      pOut[148] = Rz*r_a52_h - 2*r_a51_h;
-      pOut[149] = Ry*r_a25_h - 2*r_a15_h;
-      pOut[150] = Ry*r_926_h - 2*r_916_h;
-      pOut[151] = Rx*r_296_h - 2*r_196_h;
-      pOut[152] = Rz*r_962_h - 2*r_961_h;
-      pOut[153] = Rx*r_269_h - 2*r_169_h;
-      pOut[154] = Rz*r_692_h - 2*r_691_h;
-      pOut[155] = Ry*r_629_h - 2*r_619_h;
-      pOut[156] = Ry*r_728_h - 2*r_718_h;
-      pOut[157] = Rx*r_278_h - 2*r_178_h;
-      pOut[158] = Rz*r_782_h - 2*r_781_h;
-      pOut[159] = Rx*r_287_h - 2*r_187_h;
-      pOut[160] = Rz*r_872_h - 2*r_871_h;
-      pOut[161] = Ry*r_827_h - 2*r_817_h;
-      pOut[162] = Ry*r_a34_h - 3*r_a24_h;
-      pOut[163] = Rx*r_3a4_h - 3*r_2a4_h;
-      pOut[164] = Rx*r_34a_h - 3*r_24a_h;
-      pOut[165] = Rz*r_953_h - 3*r_952_h;
-      pOut[166] = Rz*r_593_h - 3*r_592_h;
-      pOut[167] = Ry*r_935_h - 3*r_925_h;
-      pOut[168] = Ry*r_539_h - 3*r_529_h;
-      pOut[169] = Rx*r_395_h - 3*r_295_h;
-      pOut[170] = Rx*r_359_h - 3*r_259_h;
-      pOut[171] = Rz*r_863_h - 3*r_862_h;
-      pOut[172] = Ry*r_836_h - 3*r_826_h;
-      pOut[173] = Rz*r_683_h - 3*r_682_h;
-      pOut[174] = Ry*r_638_h - 3*r_628_h;
-      pOut[175] = Rx*r_386_h - 3*r_286_h;
-      pOut[176] = Rx*r_368_h - 3*r_268_h;
-      pOut[177] = Rz*r_773_h - 3*r_772_h;
-      pOut[178] = Ry*r_737_h - 3*r_727_h;
-      pOut[179] = Rx*r_377_h - 3*r_277_h;
-      pOut[180] = Ry*r_548_h - 4*r_538_h;
-      pOut[181] = Rz*r_584_h - 4*r_583_h;
-      pOut[182] = Rz*r_854_h - 4*r_853_h;
-      pOut[183] = Ry*r_746_h - 4*r_736_h;
-      pOut[184] = Rx*r_476_h - 4*r_376_h;
-      pOut[185] = Rz*r_764_h - 4*r_763_h;
-      pOut[186] = Rx*r_467_h - 4*r_367_h;
-      pOut[187] = Rz*r_674_h - 4*r_673_h;
-      pOut[188] = Ry*r_647_h - 4*r_637_h;
-      pOut[189] = Rx*r_566_h - 5*r_466_h;
-      return;
-   }
-   //assert(0);
+   assert(0);
 }
 
 // Form [R]_out := [R + 2ix]_in + [R + 2iy]_in + [R + 2iz]_in: Contract nCartY(lab+2) into nCartY(lab).
-void ShellLaplace(double * pOut, double const * pIn, unsigned LaplaceOrder, unsigned lab)
+void ShellLaplace(double *IR_RP pOut, double const *IR_RP pIn, unsigned LaplaceOrder, unsigned lab)
 {
-   //assert(LaplaceOrder == 1);
-  //IR_SUPPRESS_UNUSED_WARNING(LaplaceOrder);
+   assert(LaplaceOrder == 1);
+   IR_SUPPRESS_UNUSED_WARNING(LaplaceOrder);
    switch(lab) {
       case 0: {
          pOut[0] = pIn[0] + pIn[1] + pIn[2];
@@ -29484,20 +28143,23 @@ void ShellLaplace(double * pOut, double const * pIn, unsigned LaplaceOrder, unsi
          return;
       }
    }
-   //assert(0);
+   assert(0);
 }
 
 unsigned char iCartPow[84][3] = {
-   {0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}, {2,0,0}, {0,2,0}, {0,0,2}, {1,1,0},
-   {1,0,1}, {0,1,1},
+   {0,0,0}, 
+
+   {1,0,0}, {0,1,0}, {0,0,1}, 
+
+   {2,0,0}, {0,2,0}, {0,0,2}, {1,1,0},
+   {1,0,1}, {0,1,1}, 
 
    {3,0,0}, {0,3,0}, {0,0,3}, {1,2,0}, {1,0,2}, {2,1,0},
-   {0,1,2}, {2,0,1}, {0,2,1}, {1,1,1},
+   {0,1,2}, {2,0,1}, {0,2,1}, {1,1,1}, 
 
    {4,0,0}, {0,4,0}, {0,0,4}, {3,1,0},
-   {1,3,0}, {3,0,1}, {1,0,3}, {0,3,1},
-   {0,1,3}, {2,2,0}, {2,0,2}, {0,2,2},
-   {1,1,2}, {1,2,1}, {2,1,1},
+   {1,3,0}, {3,0,1}, {1,0,3}, {0,3,1}, {0,1,3}, {2,2,0}, {2,0,2}, {0,2,2},
+   {1,1,2}, {1,2,1}, {2,1,1}, 
 
    {5,0,0}, {0,5,0}, {0,0,5}, {1,4,0}, {1,0,4},
    {4,1,0}, {0,1,4}, {4,0,1}, {0,4,1}, {3,2,0}, {3,0,2}, {2,3,0}, {0,3,2},

@@ -18,7 +18,7 @@ struct LatticeSum {
   vector<double> Kdist;
 
   double Eta2Rho;
-  LatticeSum(double* Lattice, double _Eta2Rho=15.0);
+  LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho=15.0);
 };
 
 double calcCoulombIntegralPeriodic_Boys(int n1, double Ax, double Ay, double Az,

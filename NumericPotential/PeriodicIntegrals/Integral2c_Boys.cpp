@@ -3,6 +3,7 @@
 #include <string.h>
 #include <algorithm>
 #include <numeric> 
+#include <complex>
 
 #include "CxMemoryStack.h"
 #include "GeneratePolynomials.h"
@@ -49,23 +50,24 @@ void getRelativeCoords(BasisShell *pA, BasisShell *pC, LatticeSum& latsum,
   if (Txmin == 0 && Tymin == 0 && Tzmin == 0) {
     return;
   }
-  
+
   for (int nx=-1; nx<=1; nx++)
   for (int ny=-1; ny<=1; ny++)
   for (int nz=-1; nz<=1; nz++)
   {
-    if (dist(Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[1] + nz * latsum.RLattice[2],
-             Ty + nx * latsum.RLattice[3] + ny * latsum.RLattice[4] + nz * latsum.RLattice[5],
-             Tz + nx * latsum.RLattice[6] + ny * latsum.RLattice[7] + nz * latsum.RLattice[8])
+    if (dist(Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[3] + nz * latsum.RLattice[6],
+             Ty + nx * latsum.RLattice[1] + ny * latsum.RLattice[4] + nz * latsum.RLattice[7],
+             Tz + nx * latsum.RLattice[2] + ny * latsum.RLattice[5] + nz * latsum.RLattice[8])
         < dist(Txmin, Tymin, Tzmin))  {
-      Txmin = Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[1] + nz * latsum.RLattice[2];
-      Tymin = Tx + nx * latsum.RLattice[3] + ny * latsum.RLattice[4] + nz * latsum.RLattice[5];
-      Tzmin = Tz + nx * latsum.RLattice[6] + ny * latsum.RLattice[7] + nz * latsum.RLattice[8];
+      Txmin = Tx + nx * latsum.RLattice[0] + ny * latsum.RLattice[3] + nz * latsum.RLattice[6];
+      Tymin = Tx + nx * latsum.RLattice[1] + ny * latsum.RLattice[4] + nz * latsum.RLattice[7];
+      Tzmin = Tz + nx * latsum.RLattice[2] + ny * latsum.RLattice[5] + nz * latsum.RLattice[8];
     }
   }
 
   Tx = Txmin; Ty = Tymin; Tz = Tzmin;
 }
+
 
 void Add2(double * pOut, double const * pIn, double f, size_t n)
 {
@@ -84,35 +86,19 @@ void Add2(double * pOut, double const * pIn, double f, size_t n)
     case 1: pOut[0] += f*pIn[0];
     default: break;
   }
-}
 
-void Add2(double * pOut, double const  pIn, double f, size_t n)
-{
-  size_t i = 0;
-  for ( ; i < (n & ~3); i += 4 ) {
-    pOut[i]   += f * pIn;
-    pOut[i+1] += f * pIn;
-    pOut[i+2] += f * pIn;
-    pOut[i+3] += f * pIn;
-  }
-  pOut += i;
-  switch(n - i) {
-    case 3: pOut[2] += f*pIn;
-    case 2: pOut[1] += f*pIn;
-    case 1: pOut[0] += f*pIn;
-    default: break;
-  }
 }
 
 
-LatticeSum::LatticeSum(double* Lattice, double _Eta2Rho) {
+LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho) {
   
-  int nr = 1, nk = 10;
-
+  //int nr = 1, nk = 10;
   int ir = 0; int Nr = 2*nr+1;
   vector<double> Rcoordcopy(3*Nr*Nr*Nr), Rdistcopy(Nr*Nr*Nr);
-  Rcoord.resize(3 * Nr*Nr*Nr);
-  Rdist.resize(Nr*Nr*Nr);
+
+  int Nrkeep =  Nr*Nr*Nr;
+  Rcoord.resize(3*Nrkeep);
+  Rdist.resize(Nrkeep);
 
   //rvals
   for (int i = -nr; i<=nr ; i++)
@@ -133,13 +119,14 @@ LatticeSum::LatticeSum(double* Lattice, double _Eta2Rho) {
   std::iota(idx.begin(), idx.end(), 0);
   std::stable_sort(idx.begin(), idx.end(),
                    [&Rdistcopy](size_t i1, size_t i2) {return Rdistcopy[i1] < Rdistcopy[i2];});
-  for (int i=0; i<idx.size(); i++) {
+  for (int i=0; i<Nrkeep; i++) {
     Rdist[i] = Rdistcopy[idx[i]];
     Rcoord[3*i+0] = Rcoordcopy[3*idx[i]+0];
     Rcoord[3*i+1] = Rcoordcopy[3*idx[i]+1];
     Rcoord[3*i+2] = Rcoordcopy[3*idx[i]+2];
   }
 
+  
   //make klattice
   KLattice.resize(9), RLattice.resize(9);
   for (int i=0; i<9; i++) RLattice[i] = Lattice[i];
@@ -179,9 +166,11 @@ LatticeSum::LatticeSum(double* Lattice, double _Eta2Rho) {
     Kcoord[3*i+2] = Kcoordcopy[3*idx[i]+2];
   }
 
-  _Eta2Rho = 8;
-  Eta2Rho = _Eta2Rho / Rdist[1] ;
-  //Eta2Rho = _Eta2Rho;// / Rdist[1] ;
+  //_Eta2Rho = 5.;
+  //Eta2Rho = _Eta2Rho;
+  //Eta2Rho = _Eta2Rho * Kdist[0]/4/M_PI/M_PI;
+  Eta2Rho  = _Eta2Rho / (nr==0 ? 1 : Rdist[1]) ;
+  cout << Eta2Rho<<" eta2 "<<_Eta2Rho<<"  "<<Kdist[0]<<"  "<<Rdist[1]<<endl;
 
 
   //cout << omega<<"  "<<_Eta2Rho<<endl;
@@ -236,13 +225,10 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
       eta = sqrt(latsum.Eta2Rho/Rho);
     }
 
-    //cout << Rho<<"  "<<eta<<"  "<<latsum.Eta2Rho<<endl;
-    //if (Rho > latsum.Eta2Rho &&  kernelIdx != 0) eta = 1.0;
-
+    if (Rho > latsum.Eta2Rho &&  kernelIdx != 0) eta = 1.0;
 
     // calculate derivatives (D/Dt)^m exp(-rho t) with t = (A-C)^2.
     kernel->getValueRSpace(pFmT, Rho*t, TotalL, Prefactor, Rho, eta, Mem);
-    //getAttenuatedBoys(pFmT, Rho*t, TotalL, Prefactor*(2*M_PI)/Rho, eta, Mem);
     
     // convert from Gm(rho,T) to Fm(rho,T) by absorbing powers of rho
     // (those would normally be present in the R of the MDRR)
@@ -250,7 +236,7 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
         RhoPow = 1.;
     for ( uint i = 0; i < TotalL + 1; ++ i ){
       pFmT[i] *= RhoPow;
-      RhoPow *= 2*Rho;
+      RhoPow *= -2*Rho;
     }
 
     // contract (lamely). However, normally either nCo
@@ -268,30 +254,37 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
 }
 
 
-void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Tx, double Ty, double Tz, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem) {
+void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC,
+                       double Tx, double Ty, double Tz, double Prefactor,   unsigned TotalLab,
+                       double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel,
+                       LatticeSum& latsum, ct::FMemoryStack& Mem) {
+  
   double* pOutR_loc, *pCoFmT, *pDataR_LapC;
 
   bool isKinetic = kernel->getname().compare("kinetic") == 0 ? true : false;
-  int L = TotalLab +  isKinetic? 2 : 0;
+  int L = TotalLab +  (isKinetic? 2 : 0);
 
-  Mem.Alloc(pOutR_loc, (TotalLab+1)*(TotalLab+2)/2 * TotalCo);
-  Mem.Alloc(pDataR_LapC, (L+1)*(L+2)/2);
+  Mem.ClearAlloc(pOutR_loc, (TotalLab+1)*(TotalLab+2)/2 * TotalCo);
+  Mem.ClearAlloc(pDataR_LapC, (L+1)*(L+2)/2);
 
 
   for (int r = 0; r<latsum.Rdist.size(); r++) {
-    double Tx_r = Tx + latsum.Rcoord[3*r],
-        Ty_r =  Ty + latsum.Rcoord[3*r+1],
-        Tz_r =  Tz + latsum.Rcoord[3*r+2];
+    double Tx_r = Tx + latsum.Rcoord[3*r+0],
+           Ty_r = Ty + latsum.Rcoord[3*r+1],
+           Tz_r = Tz + latsum.Rcoord[3*r+2];
 
+    
     Mem.ClearAlloc(pCoFmT, (L+1) * TotalCo);
-    Int2e2c_EvalCoKernels(pCoFmT, L, pA, pC, Tx_r, Ty_r, Tz_r, Prefactor, pInv2Alpha, pInv2Gamma, kernel, latsum, r, Mem);
+    Int2e2c_EvalCoKernels(pCoFmT, L, pA, pC, Tx_r, Ty_r, Tz_r, Prefactor,
+                          pInv2Alpha, pInv2Gamma, kernel, latsum, r, Mem);
+
 
     //go from [0]^m -> [r]^0 using mcmurchie-davidson
     for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
     for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
 
       double
-          *pFmT = &pCoFmT[(L+1)*(iCoA + pA->nCo*iCoC)],
+          *pFmT = &pCoFmT[(L+1) * (iCoA + pA->nCo*iCoC)],
           *pDataR_ = &pOutR_loc[nCartY(TotalLab) * (iCoA + pA->nCo*iCoC)];
     
       if (isKinetic) {
@@ -302,8 +295,15 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
         ShellMdrr(pDataR_, pFmT, Tx_r, Ty_r, Tz_r, L);
     }
 
-    for (int i=0; i<(TotalLab+1)*(TotalLab+2)/2 * TotalCo; i++)
+    //double maxPout = 0;
+    for (int i=0; i<(TotalLab+1)*(TotalLab+2)/2 * TotalCo; i++) {
       pOutR[i] += pOutR_loc[i];
+      //maxPout = max(maxPout, abs(pOutR_loc[i]));
+      pOutR_loc[i] = 0.0; 
+    }
+    
+    Mem.Free(pCoFmT);
+    //if (maxPout < 1.e-16) return;
   }
 }
 
@@ -322,7 +322,9 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
   int kernelIdx = 0;//coulomb
   if (kernel->getname().compare("overlap") == 0) kernelIdx = 1;//overlap
   else if (kernel->getname().compare("kinetic") == 0) kernelIdx = 2;//kinetic
-  
+
+
+    //if (Eta2rho * latsum.Kdist[0] > 12.) continue;
   //double Lx = 1.0, Ly = 1.0, Lz = 1.0;
   //now go back to calculating contribution from reciprocal space
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
@@ -343,6 +345,7 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
     if (Rho > latsum.Eta2Rho && kernelIdx != 0) continue; 
     else if (Rho <= latsum.Eta2Rho &&  kernelIdx != 0) Eta2rho = Rho;
 
+    
     double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];    
     if (kernelIdx == 0) scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
     else if (kernelIdx == 1 || kernelIdx == 2) scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
@@ -351,7 +354,7 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
     for (int i=0; i<(L+1)*(L+2)/2; i++)
       pReciprocalSum[i] = 0.0;
     
-    
+
     //this is ugly, in coulomb kernel the G=0 term is discarded but not in others
     if (kernelIdx == 1) {
       double expVal = kernel->getValueKSpace(0, 1.0, Eta2rho);
@@ -367,14 +370,17 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                                          latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
                                          Tx, Ty, Tz,
                                          expVal, scale);
-      if (abs(maxG * scale * expVal) < 1.e-12) break;
+
+      if (abs(maxG * scale * expVal) < 1.e-12) {
+        break;
+      }
     }      
-    
-    //cout << pReciprocalSum[0]<<endl;
+
+
     //the background term, only applies to coulomb kernel
     if (!(Rho <= latsum.Eta2Rho) && LA == 0 && LC == 0 && kernelIdx == 0) {
       pReciprocalSum[0] -= M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
-          * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;      
+          * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
     }
     
     //cout <<"bkgrnd "<< pReciprocalSum[0]<<endl;
@@ -407,7 +413,9 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   Mem.ClearAlloc(pOutR, (L+1)*(L+2)/2 * TotalCo);
   
   makeRealSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
+
   makeReciprocalSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
+
   
 }
 
@@ -419,9 +427,6 @@ void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
    uint
       lc = pC->l, la = pA->l,
       TotalCo;
-   double
-      *pDataR, *pR1, *pFinal;
-
 
    //we will need these in both the real and reciprocal space summations
    double
@@ -433,17 +438,21 @@ void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
    for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
      pInv2Gamma[iExpC] = bool(pC->l)? std::pow(-1.0/(2*pC->exponents[iExpC]), (int)pC->l) : 1.;
   
+
+   double
+      *pDataR, *pR1, *pFinal;
    
    Int2e2c_EvalCoShY(pDataR, TotalCo, pA, pC, Prefactor, la + lc, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-   
+
    Mem.Alloc(pR1, nCartY(la)*(2*lc+1) * TotalCo);
    Mem.Alloc(pFinal, (2*la+1)*(2*lc+1) * TotalCo);
-   
+
    ShTrA_YY(pR1, pDataR, lc, (la + lc), TotalCo);
    ShTrA_YY(pFinal, pR1, la, la, (2*lc + 1)*TotalCo);
    // now: (2*la+1) x (2*lc+1) x nCoA x nCoC
+
    Scatter2e2c(pOut, StrideA, StrideC, pFinal, la, lc, 1, pA->nCo, pC->nCo, Add);
-   
+
    Mem.Free(pInv2Alpha);
 }
 
