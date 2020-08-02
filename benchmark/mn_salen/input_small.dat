@@ -1,0 +1,28 @@
+# General
+nocc 28
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 
+end
+
+orbitals ../../tests/integrals/mn_salen_FCIDUMP_nosym
+
+# Variational
+schedule
+0 5e-4
+3 2.5e-4
+6 1e-4
+9 7.5e-5
+end
+davidsontol 5.e-5
+dE 1.e-7
+maxiter 20
+
+# PT
+epsilon2 1.e-6
+epsilon2large 5.e-6
+sampleN 200
+seed 200
+targeterror 2.e-5
+
+# Misc
+noio
+

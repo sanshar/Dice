@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
 import numpy as np
-from rdm_utilities import read_Dice2RDM
+from rdm_utilities import read_Dice3RDM
 
 
-def test2RDM(file1: str, file2: str, tol: float):
+def test3RDM(file1: str, file2: str, tol: float):
     """Compare the L2 norm for two RDM files. If they are .txt files, we
     assume they are from Dice and in the Dice RDM format. If they are in .npy
     we assume they're from PySCF and we process them accordingly, i.e. transpose
@@ -24,21 +24,21 @@ def test2RDM(file1: str, file2: str, tol: float):
 
     if file1.endswith("npy"):
         rdm_1 = np.load(file1)
-        rdm_1 = rdm_1.transpose(0, 2, 1, 3)
+        rdm_1 = rdm_1.transpose(0, 2, 4, 1, 3, 5)
     else:
-        rdm_1 = read_Dice2RDM(file1)
+        rdm_1 = read_Dice3RDM(file1)
 
     if file2.endswith("npy"):
         rdm_2 = np.load(file2)
-        rdm_2 = rdm_2.transpose(0, 2, 1, 3)
+        rdm_2 = rdm_2.transpose(0, 2, 4, 1, 3, 5)
     else:
-        rdm_2 = read_Dice2RDM(file2)
+        rdm_2 = read_Dice3RDM(file2)
 
     l2_norm = np.linalg.norm(rdm_1 - rdm_2)
     error_per_element = l2_norm / rdm_1.size
 
     if error_per_element > float(tol):
-        msg = "\tFailed 2RDM Test: Error per Element: {:.3e}\n".format(
+        msg = "\tFailed 3RDM Test: Error per Element: {:.3e}\n".format(
             error_per_element
         )
         msg += "\t                   L2-Norm of Error: {:.3e}\n".format(l2_norm)
@@ -47,11 +47,11 @@ def test2RDM(file1: str, file2: str, tol: float):
         )
         print(msg)
     else:
-        msg = "\tPASSED 2RDM Test: Error per Element: {:.3e}".format(error_per_element)
+        msg = "\tPASSED 3RDM Test: Error per Element: {:.3e}".format(error_per_element)
         print(msg)
 
 
 if __name__ == "__main__":
     import sys
 
-    test2RDM(sys.argv[1], sys.argv[2], float(sys.argv[3]))
+    test3RDM(sys.argv[1], sys.argv[2], float(sys.argv[3]))

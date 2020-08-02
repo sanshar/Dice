@@ -301,9 +301,9 @@ int main(int argc, char* argv[]) {
         exit(0);
       }
     }
+    pout << Dets[d] << " Given Ref. Energy:    "
+         << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
-  pout << Dets[0] << " Given HF Energy:      "
-       << format("%18.10f") % (Dets.at(0).Energy(I1, I2, coreE)) << endl;
 
   // Check and make sure that
 
