@@ -93,10 +93,13 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   d.getOpenClosed(open, closed);
   //d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
+  initiateRestrictions(schd.restrictionsPT, closed);
 
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
+    if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
+
     //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
@@ -147,6 +150,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -231,11 +235,13 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
   size_t orbDiff;
   std::vector<int> var_indices_vec;
   std::vector<size_t> orbDiff_vec;
+  initiateRestrictions(schd.restrictionsPT, closed);
 
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
+
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
@@ -281,6 +287,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(det.getocc(a) || det.getocc(b))) {
         dets.push_back(det);
         Determinant& di = *dets.rbegin();
@@ -372,9 +379,11 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
   std::vector<int> var_indices_vec;
   std::vector<size_t> orbDiff_vec;
 
+  initiateRestrictions(schd.restrictionsPT, closed);
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
+    if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
@@ -425,6 +434,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(det.getocc(a) || det.getocc(b))) {
         dets.push_back(det);
         Determinant& di = *dets.rbegin();
@@ -503,14 +513,14 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   vector<int> open(norbs-nelec,0);
   d.getOpenClosed(open, closed);
 
-  initiateRestrictions(schd, closed);
+  initiateRestrictions(schd.restrictionsV, closed);
   
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
-    if (! satisfiesRestrictions(schd, closed[i], open[a])) continue;
+    if (! satisfiesRestrictions(schd.restrictionsV, closed[i], open[a])) continue;
 
     
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
@@ -557,7 +567,7 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
+      if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
       
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
@@ -631,13 +641,13 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
-  initiateRestrictions(schd, closed);
+  initiateRestrictions(schd.restrictionsV, closed);
 
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
-    if (! satisfiesRestrictions(schd, closed[i], open[a])) continue;
+    if (! satisfiesRestrictions(schd.restrictionsV, closed[i], open[a])) continue;
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
@@ -699,7 +709,7 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
       //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
+      if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
@@ -791,10 +801,13 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
   double Energyd = d.Energy(int1, int2, coreE);
   double Nmcd = 1. * Nmc;
 
+  initiateRestrictions(schd.restrictionsPT, closed);
+
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
+    if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
@@ -845,6 +858,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -935,10 +949,12 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   //d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
   double Nmcd = 1.*Nmc;
+  initiateRestrictions(schd.restrictionsPT, closed);
 
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
+    if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // sgn
@@ -998,6 +1014,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();

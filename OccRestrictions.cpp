@@ -35,9 +35,9 @@ bool OccRestrictions::twoElecAllowed(int i, int j, int a, int b) {
   return true;
 }
   
-void initiateRestrictions(schedule& schd, vector<int>& closed) {
-  for (int i=0; i<schd.restrictions.size(); i++) {
-    OccRestrictions& res = schd.restrictions[i];
+void initiateRestrictions(vector<OccRestrictions>& restrictions, vector<int>& closed) {
+  for (int i=0; i< restrictions.size(); i++) {
+    OccRestrictions& res = restrictions[i];
     res.setElec(closed);
     
     if (res.currentElec < res.minElec ||
@@ -48,7 +48,7 @@ void initiateRestrictions(schedule& schd, vector<int>& closed) {
 
       cout << "Determinant: "<<det<<endl;
       cout << "num elecs in orbs: "<<res.currentElec<<endl;
-      cout << "does not satisfy the restriction "<<schd.restrictions[i]<<endl;
+      cout << "does not satisfy the restriction "<<restrictions[i]<<endl;
       cout << "most likely the occupation of the initial determinant does not satisfy the restriction"<<endl;
       exit(0);
     }
@@ -56,17 +56,18 @@ void initiateRestrictions(schedule& schd, vector<int>& closed) {
 }
 
 
-bool satisfiesRestrictions(schedule& schd, int i, int a) {
-  for (int x=0; x<schd.restrictions.size(); x++) {
-    OccRestrictions& res = schd.restrictions[x];
+bool satisfiesRestrictions(vector<OccRestrictions>& restrictions, int i, int a) {
+  for (int x=0; x<restrictions.size(); x++) {
+    OccRestrictions& res = restrictions[x];
     if (!res.oneElecAllowed(i, a)) return false;
   }
   return true;
 }
 
-bool satisfiesRestrictions(schedule& schd, int i, int j, int a, int b) {
-  for (int x=0; x<schd.restrictions.size(); x++) {
-    OccRestrictions& res = schd.restrictions[x];
+bool satisfiesRestrictions(vector<OccRestrictions>& restrictions,
+                           int i, int j, int a, int b) {
+  for (int x=0; x<restrictions.size(); x++) {
+    OccRestrictions& res = restrictions[x];
     if (!res.twoElecAllowed(i, j, a, b)) return false;
   }
   return true;

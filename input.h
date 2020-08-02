@@ -93,7 +93,8 @@ private:
     & DoOneRDM                                \
     & DoThreeRDM                              \
     & DoFourRDM                               \
-    & restrictions;
+    & restrictionsV                           \
+    & restrictionsPT;
   }
 
 public:
@@ -156,7 +157,8 @@ public:
   bool DoThreeRDM;
   bool DoFourRDM;
 
-  vector<OccRestrictions> restrictions;
+  vector<OccRestrictions> restrictionsV;
+  vector<OccRestrictions> restrictionsPT;
 };
 
 #endif
