@@ -255,26 +255,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scpt") {
-    schd.usingFOIS = true;
-    SCPT<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    if (schd.deterministic) {
-      wave.doNEVPT2_Deterministic(walk);
-    }
-    else if (schd.exactPerturber) {
-      wave.compareStochPerturberEnergy(walk, schd.perturberOrb1, schd.perturberOrb2,
-                                       schd.CASEnergy, schd.numSCSamples);
-    }
-    else {
-      bool new_NEVPT = schd.efficientNEVPT || schd.efficientNEVPT_2 || schd.exactE_NEVPT ||
-                       schd.NEVPT_readE || schd.NEVPT_writeE;
-      if (new_NEVPT) {
-        wave.doNEVPT2_CT_Efficient(walk);
-      } else {
-        wave.doNEVPT2_CT(walk);
-        wave.doNEVPT2_CT(walk);
-      }
-    }
+    initNEVPT_Wrapper();
   }
 
   else if (schd.wavefunctionType == "slaterrdm") {
