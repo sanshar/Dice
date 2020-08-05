@@ -2,6 +2,7 @@
   Developed by Sandeep Sharma
   Copyright (c) 2017, Sandeep Sharma
 
+w
   This file is part of DICE.
 
   This program is free software: you can redistribute it and/or modify it under the terms
@@ -290,19 +291,10 @@ int SCPT<Wfn>::coeffsIndex(Walker& walk) {
     // 1 hole, 2 particles
     int i = *walk.excitedHoles.begin();
 
-    //int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
-    //int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
-    //int A = max(a,b) - 1, B = min(a,b);
     int a = *walk.excitedOrbs.begin();
     int b = *(std::next(walk.excitedOrbs.begin()));
     int A = max(a,b), B = min(a,b);
 
-    // the number of *spatial* virtual orbitals
-    //int numVirt = norbs - schd.nciCore - schd.nciAct;
-    // Number of unique pairs of virtual orbitals
-    //int numVirtPairs = 2*numVirt * (2*numVirt - 1) / 2;
-
-    //return cumNumCoeffs[5] + numVirtPairs*i + A*(A+1)/2 + B;
     std::array<int,3> inds = {A, B, i};
 
     auto it1 = class_1h2p_ind.find(inds);
@@ -323,16 +315,10 @@ int SCPT<Wfn>::coeffsIndex(Walker& walk) {
     // 2 holes, 1 particles
     int i = *walk.excitedHoles.begin();
     int j = *(std::next(walk.excitedHoles.begin()));
-    //int I = max(i,j) - 1, J = min(i,j);
     int I = max(i,j), J = min(i,j);
 
-    //int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
     int a = *walk.excitedOrbs.begin();
 
-    // the number of *spatial* virtual orbitals
-    //int numVirt = norbs - schd.nciCore - schd.nciAct;
-
-    //return cumNumCoeffs[7] + (2*numVirt)*(I*(I+1)/2 + J) + a;
     std::array<int,3> inds = {a, I, J};
 
     auto it1 = class_2h1p_ind.find(inds);
@@ -571,12 +557,11 @@ void SCPT<Wfn>::HamAndOvlp(Walker &walk, double &ovlp, double &locEne, double &h
       locEne += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
       work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
     }
-    //cout << endl;
   }
-  //cout << endl << "n ham  " << ham << "  norm  " << norm << endl << endl;
+
 }
 
-//ham is a sample of the diagonal element of the Dyall ham
+// ham is a sample of the diagonal element of the Dyall Hamiltonian
 template<typename Wfn>
 template<typename Walker>
 void SCPT<Wfn>::FastHamAndOvlp(Walker &walk, double &ovlp, double &ham, workingArray& work, bool fillExcitations)

@@ -220,11 +220,13 @@ class SCPT
   template<typename Walker>
   void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var, int& samplingIters);
 
+
   // Estimate the variance of the weighted mean used to estimate E_l^k
   double SCEnergyVar(vector<double>& x, vector<double>& w);
 
   template<typename Walker>
   double doSCEnergyCTMCPrint(Walker& walk, workingArray& work, int sampleIter, int nWalk);
+
 
   // Wrapper function for calling doSCEnergyCTMC, which estimates E_l^k,
   // given the appropriate input information, and then to print this info
@@ -235,6 +237,7 @@ class SCPT
                          double& energyCAS_Tot, double norm, int orbi, int orbj,
                          bool exactCalc, bool exactRead, double& SCHam, workingArray& work);
 
+
   // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
   // CAAV and CCAA) for which the calculated norm is above the threshold,
   // and sample E_l^k for each. The final PT2 energy is then output as a
@@ -242,6 +245,7 @@ class SCPT
   template<typename Walker>
   double sampleAllSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
                              double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, workingArray& work);
+
 
   // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
   // CAAV and CCAA), and either exactly calculate of read in E_l^k for each.
@@ -274,9 +278,7 @@ class SCPT
   void readSpinRDM(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
 
   void calc_AAVV_NormsFromRDMs(Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
-
   void calc_CAAV_NormsFromRDMs(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
-
   void calc_CCAA_NormsFromRDMs(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
 
   string getfileName() const;
