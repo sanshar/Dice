@@ -78,10 +78,10 @@ int main(int argc, char *argv[])
   initSHM();
   //license();
   if (commrank == 0) {
-    system("echo User:; echo $USER");
-    system("echo Hostname:; echo $HOSTNAME");
-    system("echo CPU info:; lscpu | head -15");
-    system("echo Computation started at:; date");
+    std::system("echo User:; echo $USER");
+    std::system("echo Hostname:; echo $HOSTNAME");
+    std::system("echo CPU info:; lscpu | head -15");
+    std::system("echo Computation started at:; date");
     cout << "git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << endl << endl;
     cout << "nproc used: " << commsize << " (NB: stochasticIter below is per proc)" << endl << endl; 
   }
@@ -283,6 +283,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scci") {
+    schd.usingFOIS = true;
     SCCI<SelectedCI> wave; SimpleWalker walk;
     wave.initWalker(walk);
     if (schd.method == linearmethod) {
@@ -297,6 +298,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "MRCI") {
+    schd.usingFOIS = true;
     MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
     //wave.initWalker(walk);
     runVMC(wave, walk);
@@ -332,10 +334,7 @@ int main(int argc, char *argv[])
   }
   
   else if (schd.wavefunctionType == "scpt") {
-    SCPT<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    wave.optimizeWaveCT(walk);
-    wave.optimizeWaveCT(walk);
+    initNEVPT_Wrapper();
   }
 
   else if (schd.wavefunctionType == "slaterrdm") {

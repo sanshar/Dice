@@ -1,0 +1,16 @@
+{
+  "wavefunction":
+  {
+    "name": "scpt",
+    "numAct": "4",
+    "determinants": "dets",
+    "detsInCAS": "false"
+  },
+  "sampling":
+  {
+    "deterministic": "true",
+    "stochasticIter": "100",
+    "seed": "1399246",
+    "epsilon": "1.0e-8"
+  }
+}

@@ -68,6 +68,7 @@ private:
       & epsilon
       & screen
       & determinantFile
+      & detsInCAS
       & doHessian
       & hf
       & optimizeOrbs
@@ -87,7 +88,9 @@ private:
       & nGeneration
       & excitationLevel
       & numActive
+      & nciCore
       & nciAct
+      & usingFOIS
       & sDiagShift
       & cgIter
       & stepsize
@@ -109,7 +112,37 @@ private:
       & minPop
       & initialPop
       & targetPop
-      & numHidden;
+      & numHidden
+
+      // Options related to SC-NEVPT(s):
+      & numSCSamples
+      & printSCNorms
+      & printSCNormFreq
+      & readSCNorms
+      & continueSCNorms
+      & sampleNEVPT2Energy
+      & determCCVV
+      & efficientNEVPT
+      & efficientNEVPT_2
+      & exactE_NEVPT
+      & NEVPT_writeE
+      & NEVPT_readE
+      & continueMarkovSCPT
+      & stochasticIterNorms
+      & stochasticIterEachSC
+      & nIterFindInitDets
+      & printSCEnergies
+      & nWalkSCEnergies
+      & SCEnergiesBurnIn
+      & SCNormsBurnIn
+      & exactPerturber
+      & CASEnergy
+      & perturberOrb1
+      & perturberOrb2
+      & fixedResTimeNEVPT_Ene
+      & fixedResTimeNEVPT_Norm
+      & resTimeNEVPT_Ene
+      & resTimeNEVPT_Norm;
   }
 public:
 //General options
@@ -117,11 +150,11 @@ public:
   bool fullRestart;                          //option to restart calculation
   bool deterministic;                    //Performs a deterministic calculation   
   int printLevel;                        // How much stuff to print
-  bool expCorrelator;                    //exponential correlator parameters, to enforce positivity
+  bool expCorrelator;                    // exponential correlator parameters, to enforce positivity
   bool debug;
-  bool ifComplex;                        //breaks and restores complex conjugation symmetry 
-  bool uagp;                             //brakes S^2 symmetry in uagp
-  bool ciCeption;                        //true, when using ci on top of selectedCI
+  bool ifComplex;                        // breaks and restores complex conjugation symmetry
+  bool uagp;                             // brakes S^2 symmetry in uagp
+  bool ciCeption;                        // true, when using ci on top of selectedCI
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
@@ -138,6 +171,7 @@ public:
   int burnIter;                          //Number of burn in steps
   int integralSampleSize;                //This specifies the number of determinants to sample out of the o^2v^2 possible determinants after the action of V
   size_t seed;                              // seed for the random number generator
+  bool detsInCAS;
   double PTlambda;                       // In PT we have to apply H0- E0, here E0 = lambda x <psi0|H0|psi0> + (1 - lambda) x <psi0|H|psi0>
   double epsilon;                        // This is the usual epsilon for the heat bath truncation of integrals
   double screen;                         //This is the screening parameter, any integral below this is ignored
@@ -153,6 +187,50 @@ public:
   HAM Hamiltonian;
   bool useLastDet;                       //stores last det instead of bestdet
   bool useLogTime;                       //uses log sampled time in CTMC
+
+// SC-NEVPT2(s) options:
+  bool determCCVV;                       // In NEVPT2 calculations, calculate the CCVV energy by the exact formula
+  bool efficientNEVPT;                   // More efficient sampling in the SC-NEVPT2(s) method
+  bool efficientNEVPT_2;                 // More efficient sampling in the SC-NEVPT2(s) method -
+                                         // a second approach to this sampling
+  bool exactE_NEVPT;                     // Follows the efficient approach to SC-NEVPT2(s), but the energies
+                                         // E_l^k are all calculated exactly, without statistical error
+  bool NEVPT_writeE;                     // These options are used to exactly calculate the energies of all NEVPT2
+  bool NEVPT_readE;                      //   perturbers, and print them. The second option can then be
+                                         //   used to read them back in again (for example if using different
+                                         //   norms with a different seed) without recalculating them
+  bool exactPerturber;                   // Exactly calcualte the energy of a perturber in SC-NEVPT2
+  double CASEnergy;                      // User can input a CAS energy, for use in the exactPerturber option
+  int perturberOrb1;                     // The excited core and virtual (spin) orbitals which define the perturber,
+  int perturberOrb2;                     // in an 'exactPerturber' NEVPT2 calculation
+  int numSCSamples;                      // When performing SC-NEVPT2 with the efficientNEVPT_2 algorithm, how
+                                         // many samples of 1/(E_0-E_l^k) to take?
+  bool printSCNorms;                     // Should we print out the norms of strongly contracted states (in SC-NEVPT2)
+  int printSCNormFreq;                   // How often should we print out norms of strongly contracted states (for
+                                         // printSCNorms option)
+  bool readSCNorms;                      // Do not sample SC norms, but instead read them from previously-printed file
+  bool continueSCNorms;                  // Read SC norms from files, and then continue sampling them
+  bool sampleNEVPT2Energy;               // If true, then perform sampling of the NEVPT2 energy
+  bool continueMarkovSCPT;               // In SC-NEVPT2(s), option to store the final det in each sampling of a SC space
+  int stochasticIterNorms;               // Number of stochastic steps when calculating norms of SC states,
+                                         // for the efficientNEVPT option
+  int stochasticIterEachSC;              // Number of stochastic steps for each strongly contracted (SC) state,
+                                         // for the efficientNEVPT option
+  int nIterFindInitDets;                 // The number of iterations used to find initial determinants for
+                                         // SC-NEVPT2(s) calculations
+  bool printSCEnergies;                  // In SC-NEVPT2(s), print individual samples for the sampling of E_l^k.
+  int nWalkSCEnergies;                   // If printSCEnergies = true, then this specifies how many walkers to
+                                         // use when sampling E_l^k
+  int SCEnergiesBurnIn;                  // For SC-NEVPT2(s), this is the number of iterations used for burn in
+                                         //(thrown away), when sampling E_l^k
+  int SCNormsBurnIn;                     // For SC-NEVPT2(s), this is the number of iterations used for burn in
+                                         //(thrown away), when sampling N_l^k
+  bool fixedResTimeNEVPT_Ene;            // If true, estimate E_l^k in SC-NEVPT2 with a fixed residence time.
+                                         // Otherwise, use a fixed iteration count
+  bool fixedResTimeNEVPT_Norm;           // If true, estimate E_l^k in SC-NEVPT2 with a fixed residence time.
+                                         // Otherwise, use a fixed iteration count
+  double resTimeNEVPT_Ene;               // For NEVPT2, this is the total residence time for each E_l^k sampling
+  double resTimeNEVPT_Norm;              // For NEVPT2, this is the total residence time for each N_l^k sampling
 
 //Deprecated options for optimizers
 //because now we just use the python implementation
@@ -191,7 +269,9 @@ public:
   //options for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
+  int nciCore; //number of core spatial orbitals
   int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
+  bool usingFOIS; // Is this is a MRCI/MRPT calculation, sampling the FOIS only
   double actWidth; //used in lanczos
   double lanczosEpsilon; //used in lanczos
   double overlapCutoff; //used in SCCI

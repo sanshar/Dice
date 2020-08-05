@@ -43,7 +43,7 @@ inline int CountNonZeroBits (long x)
 }
 
 // Just the determinant bit string, stored in a contiguous array
-typedef std::array<long, 2*DetLen> simpleDet;
+typedef std::array<long, 2*innerDetLen> simpleDet;
 
 /**
 * This is the occupation number representation of a Determinants
@@ -75,13 +75,14 @@ class Determinant {
   Determinant(const Determinant& d);
 
   Determinant(const simpleDet combined) {
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<innerDetLen; i++) {
       reprA[i] = combined[i];
     }
-    for (int i=0; i<DetLen; i++) {
-      reprB[i] = combined[i+DetLen];
+    for (int i=0; i<innerDetLen; i++) {
+      reprB[i] = combined[i+innerDetLen];
     }
   }
+  
 
   void operator=(const Determinant& d);
 
@@ -148,6 +149,8 @@ class Determinant {
   friend ostream& operator<<(ostream& os, const Determinant& d);
   friend size_t hash_value(Determinant const& d);
 
+  // print the occupations of orbitals within the active space
+  void printActive(ostream& os);
 
   // Get unique processor label for this determinant
   int getProc() const {
@@ -160,13 +163,13 @@ class Determinant {
   }
 
   // Return simplified version of determinant
-  simpleDet getSimpleDet() const {
+  inline simpleDet getSimpleDet() const {
     simpleDet combined;
-    for (int i=0; i<DetLen; i++) {
+    for (int i=0; i<innerDetLen; i++) {
       combined[i] = reprA[i];
     }
-    for (int i=0; i<DetLen; i++) {
-      combined[i+DetLen] = reprB[i];
+    for (int i=0; i<innerDetLen; i++) {
+      combined[i+innerDetLen] = reprB[i];
     }
     return combined;
   }
@@ -205,11 +208,21 @@ void getDifferenceInOccupation(const Determinant &bra, const Determinant &ket,
 
 double getParityForDiceToAlphaBeta(const Determinant& det);
 
+//---Generate all screened excitations---------------------------
+
+void generateAllScreenedSingleExcitation(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
 void generateAllScreenedDoubleExcitation(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity = false);
+
+//---Generate all screened excitations in the FOIS---------------
 
 void generateAllScreenedDoubleExcitationsFOIS(const Determinant& det,
                                          const double& screen,
@@ -217,27 +230,14 @@ void generateAllScreenedDoubleExcitationsFOIS(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
-void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
+void generateAllScreenedSingleExcitationsDyallOld(const Determinant& det,
+                                         const Determinant& detAct,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
                                          bool doparity = false);
 
-void generateAllScreenedExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work,
-                                         const int& iExc, const int& jExc);
-
-void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work,
-                                         const int& i);
-
-void generateAllScreenedDoubleExcitationsCAS(const Determinant& det,
-                                         const double& screen,
-                                         workingArray& work);
-
-void generateAllScreenedSingleExcitation(const Determinant& det,
+void generateAllScreenedDoubleExcitationsDyallOld(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
@@ -250,22 +250,107 @@ void generateAllScreenedSingleExcitationsDyall(const Determinant& det,
                                          workingArray& work,
                                          bool doparity = false);
 
-void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
+void generateAllScreenedDoubleExcitationsDyall(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+
+//---Generate all screened excitations into the CAS-------------------
+
+//---From excitation class 0 (the CAS itself) into the CAS------------
+void generateAllScreenedSingleExcitationsCAS_0h0p(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         bool doparity = false);
+
+//---From excitation class 0 (the CAS itself) into the CAS------------
+void generateAllScreenedDoubleExcitationsCAS_0h0p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work);
+
+//---From excitation class 1 (0 holes in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedSingleExcitationsCAS_0h1p(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
                                          const int& i,
                                          bool doparity = false);
 
-void generateAllScreenedSingleExcitationsCAS(const Determinant& det,
+//---From excitation class 1 (0 holes in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedDoubleExcitationsCAS_0h1p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& i);
+
+//---From excitation class 2 (0 holes in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_0h2p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc);
+
+//---From excitation class 3 (1 hole in core, 0 particles in virtuals) into the CAS
+void generateAllScreenedSingleExcitationsCAS_1h0p(const Determinant& det,
                                          const double& screen,
                                          const double& TINY,
                                          workingArray& work,
+                                         const int& a,
                                          bool doparity = false);
+
+//---From excitation class 3 (1 hole in core, 0 particles in virtuals) into the CAS
+void generateAllScreenedDoubleExcitationsCAS_1h0p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& a);
+
+//---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedSingleExcitationsCAS_1h1p(const Determinant& det,
+                                         const double& screen,
+                                         const double& TINY,
+                                         workingArray& work,
+                                         const int& i, const int& a,
+                                         bool doparity = false);
+
+//---From excitation class 4 (1 hole in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedDoubleExcitationsCAS_1h1p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& i, const int& a);
+
+//---From excitation class 5 (1 hole in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_1h2p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc,
+                                         const int& a);
+
+//---From excitation class 6 (2 holes in core, 0 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_2h0p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& aExc, const int& bExc);
+
+//---From excitation class 7 (2 holes in core, 1 particle in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_2h1p(const Determinant& det,
+                                         const double& screen,
+                                         workingArray& work,
+                                         const int& iExc,
+                                         const int& aExc, const int& bExc);
+
+//---From excitation class 8 (2 holes in core, 2 particles in virtuals) into the CAS
+void generateAllScreenedExcitationsCAS_2h2p(const double& screen,
+                                         workingArray& work,
+                                         const int& iExc, const int& jExc,
+                                         const int& aExc, const int& bExc);
 
 void comb(int N, int K, vector<vector<int>> &combinations);
 
 void generateAllDeterminants(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
+void generateAllDeterminantsActive(vector<Determinant>& allDets, const Determinant dExternal, const int ncore,
+                                   const int nact, const int nalpha, const int nbeta);
+void generateAllDeterminantsFOIS(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
 
 template<> struct hash<Determinant>
 {

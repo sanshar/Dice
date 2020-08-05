@@ -21,6 +21,7 @@
 #define SCCI_HEADER_H
 #include <vector>
 #include <set>
+#include <unordered_map>
 #include "Determinants.h"
 #include "workingArray.h"
 #include "excitationOperators.h"
@@ -59,6 +60,8 @@ class SCCI
   VectorXd moEne;
   Wfn wave; //reference wavefunction
   workingArray morework;
+
+  double ovlp_current;
   
   //intermediates used in direct methods
   vector<Eigen::VectorXd> largeHamSamples;
@@ -69,34 +72,102 @@ class SCCI
   VectorXd largeHamDiag;
   double cumulativeTime; 
 
+  // a list of the excitation classes being considered
+  vector<int> classesUsed;
+  // the total number of excitation classes (including the CAS itself, labelled as 0)
+  static const int NUM_EXCIT_CLASSES = 9;
+  // the number of coefficients in each excitation class
+  int numCoeffsPerClass[NUM_EXCIT_CLASSES];
+  // the cumulative sum of numCoeffsPerClass
+  int cumNumCoeffs[NUM_EXCIT_CLASSES];
+
+  unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_1h2p_ind;
+  unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_2h1p_ind;
+  unordered_map<std::array<int,4>, int, boost::hash<std::array<int,4>> > class_2h2p_ind;
 
   SCCI()
   {
     wave.readWave();
 
+    // Find which excitation classes are being considered. The classes are
+    // labelled by integers from 0 to 8, and defined in SimpleWalker.h
+    if (schd.nciCore == 0) {
+      classesUsed.push_back(0);
+      classesUsed.push_back(1);
+      classesUsed.push_back(2);
+    } else {
+      classesUsed.push_back(0);
+      classesUsed.push_back(1);
+      classesUsed.push_back(2);
+      classesUsed.push_back(3);
+      classesUsed.push_back(4);
+      classesUsed.push_back(5);
+      classesUsed.push_back(6);
+      classesUsed.push_back(7);
+      classesUsed.push_back(8);
+    }
+
+    int numCore = schd.nciCore;
+    int numVirt = Determinant::norbs - schd.nciCore - schd.nciAct;
+
+    // The number of coefficients in each excitation class:
+    // 0 holes, 0 particles:
+    numCoeffsPerClass[0] = 1;
+    // 0 holes, 1 particle:
+    numCoeffsPerClass[1] = 2*numVirt;
+    // 0 holes, 2 particles:
+    numCoeffsPerClass[2] = 2*numVirt * (2*numVirt - 1) / 2;
+    // 1 hole, 0 particles:
+    numCoeffsPerClass[3] = 2*numCore;
+    // 1 hole, 1 particle:
+    numCoeffsPerClass[4] = (2*numCore) * (2*numVirt);
+    // 1 hole, 2 particle:
+    //numCoeffsPerClass[5] = (2*numCore) * (2*numVirt * (2*numVirt - 1) / 2);
+    // 2 hole, 0 particles:
+    numCoeffsPerClass[6] = 2*numCore * (2*numCore - 1) / 2;
+    // 2 hole, 1 particle:
+    //numCoeffsPerClass[7] = (2*numCore * (2*numCore - 1) / 2) * (2*numVirt);
+
+    // Class 5 (2 holes, 1 particle), class 7 (1 holes, 2 particles) and
+    // class 8 (2 holes, 2 particles) are more complicated. They are set up here:
+    createClassIndMap(numCoeffsPerClass[5], numCoeffsPerClass[7],  numCoeffsPerClass[8]);
+
+    cumNumCoeffs[0] = 0;
+    for (int i = 1; i < 9; i++)
+    {
+      // If the previous class (labelled i-1) is being used, add it to the
+      // cumulative counter.
+      if (std::find(classesUsed.begin(), classesUsed.end(), i-1) != classesUsed.end()) {
+        cumNumCoeffs[i] = cumNumCoeffs[i-1] + numCoeffsPerClass[i-1];
+      }
+      else {
+        cumNumCoeffs[i] = cumNumCoeffs[i-1];
+      }
+    }
+
+    int numCoeffs = 0;
+    for (int i = 0; i < 9; i++)
+    {
+      // The total number of coefficients. Only include a class if that
+      // class is being used.
+      if (std::find(classesUsed.begin(), classesUsed.end(), i) != classesUsed.end()) numCoeffs += numCoeffsPerClass[i];
+    }
+
     // Resize coeffs
-    int numVirt = Determinant::norbs - schd.nciAct;
-    int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
     coeffs = VectorXd::Zero(numCoeffs);
     moEne = VectorXd::Zero(numCoeffs);
 
     //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
-    if (commrank == 0) {
-      // Use a constant amplitude for each contracted state except
-      // the CASCI wave function.
-      double amp = -std::min(0.5, 20.0/std::sqrt(numCoeffs));
+    // Use a constant amplitude for each contracted state except
+    // the CASCI wave function.
+    double amp = -std::min(0.5, 5.0/std::sqrt(numCoeffs));
 
-      coeffs(0) = 1.0;
-      for (int i=1; i < numCoeffs; i++) {
-        coeffs(i) = amp;
-      }
+    coeffs(0) = 1.0;
+    for (int i=1; i < numCoeffs; i++) {
+      coeffs(i) = amp;
     }
 
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-    
     char file[5000];
     sprintf(file, "ciCoeffs.txt");
     ifstream ofile(file);
@@ -105,7 +176,7 @@ class SCCI
         ofile >> coeffs(i);
       }
     }
-    
+
     //char filem[5000];
     //sprintf(filem, "moEne.txt");
     //ifstream ofilem(filem);
@@ -118,6 +189,70 @@ class SCCI
     //  if (commrank == 0) cout << "moEne.txt not found!\n";
     //  exit(0);
     //}
+  }
+
+  void createClassIndMap(int& numStates_1h2p, int& numStates_2h1p, int& numStates_2h2p) {
+    // Loop over all combinations of vore and virtual pairs.
+    // For each, see if the corresponding Hamiltonian element is non-zero.
+    // If so, give it an index and put that index in a hash table for
+    // later access. If not, then we do not want to consider the corresponding
+    // internally contracted state.
+
+    int norbs = Determinant::norbs;
+    int first_virtual = 2*(schd.nciCore + schd.nciAct);
+
+    // Class 5 (1 holes, 2 particles)
+    numStates_1h2p = 0;
+    for (int i = first_virtual+1; i < 2*norbs; i++) {
+      for (int j = first_virtual; j < i; j++) {
+        for (int a = 0; a < 2*schd.nciCore; a++) {
+          // If this condition is not met, then it is not possible for this
+          // internally contracted state to be accessed by a single
+          // application of the Hamiltonian (due to spin conservation).
+          if (i%2 == a%2 || j%2 == a%2) {
+            std::array<int,3> inds = {i, j, a};
+            class_1h2p_ind[inds] = numStates_1h2p;
+            numStates_1h2p += 1;
+          }
+        }
+      }
+    }
+
+    // Class 7 (2 holes, 1 particles)
+    numStates_2h1p = 0;
+    for (int i = first_virtual; i < 2*norbs; i++) {
+      for (int a = 1; a < 2*schd.nciCore; a++) {
+        for (int b = 0; b < a; b++) {
+          // If this condition is not met, then it is not possible for this
+          // internally contracted state to be accessed by a single
+          // application of the Hamiltonian (due to spin conservation).
+          if (i%2 == a%2 || i%2 == b%2) {
+            std::array<int,3> inds = {i, a, b};
+            class_2h1p_ind[inds] = numStates_2h1p;
+            numStates_2h1p += 1;
+          }
+        }
+      }
+    }
+
+    // Class 8 (2 holes, 2 particles)
+    numStates_2h2p = 0;
+    for (int i = first_virtual+1; i < 2*norbs; i++) {
+      for (int j = first_virtual; j < i; j++) {
+        for (int a = 1; a < 2*schd.nciCore; a++) {
+          for (int b = 0; b < a; b++) {
+            morework.setCounterToZero();
+            generateAllScreenedExcitationsCAS_2h2p(schd.epsilon, morework, i, j, a, b);
+            if (morework.nExcitations > 0) {
+              std::array<int,4> inds = {i, j, a, b};
+              class_2h2p_ind[inds] = numStates_2h2p;
+              numStates_2h2p += 1;
+            }
+          }
+        }
+      }
+    }
+
   }
 
   typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
@@ -156,43 +291,175 @@ class SCCI
   template<typename Walker>
   int coeffsIndex(Walker& walk) {
     int norbs = Determinant::norbs;
-    if (walk.excitedOrbs.size() == 2) {
-      int i = *walk.excitedOrbs.begin() - 2*schd.nciAct;
-      int j = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciAct;
-      int I = max(i, j) - 1, J = min(i,j);
-      int numVirt = norbs - schd.nciAct;
-      return 1 + 2*numVirt + I*(I+1)/2 + J;
+
+    if (walk.excitation_class == 0) {
+      // CAS det (0 holes, 0 particles)
+      return 0;
     }
-    else if (walk.excitedOrbs.size() == 1) {
-      return *walk.excitedOrbs.begin() - 2*schd.nciAct + 1;
+    else if (walk.excitation_class == 1) {
+      // 0 holes, 1 particle
+      return cumNumCoeffs[1] + *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
     }
-    else if (walk.excitedOrbs.size() == 0) return 0;
+    else if (walk.excitation_class == 2) {
+      // 0 holes, 2 particles
+      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+      int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
+      int A = max(a,b) - 1, B = min(a,b);
+
+      return cumNumCoeffs[2] + A*(A+1)/2 + B;
+    }
+    else if (walk.excitation_class == 3) {
+      // 1 hole, 0 particles
+      return cumNumCoeffs[3] + *walk.excitedHoles.begin();
+    }
+    else if (walk.excitation_class == 4) {
+      // 1 hole, 1 particles
+      int i = *walk.excitedHoles.begin();
+      int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+
+      int numVirt = norbs - schd.nciCore - schd.nciAct;
+
+      return cumNumCoeffs[4] + 2*numVirt*i + a;
+    }
+    else if (walk.excitation_class == 5) {
+      // 1 hole, 2 particles
+      int i = *walk.excitedHoles.begin();
+
+      //int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+      //int b = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciCore - 2*schd.nciAct;
+      //int A = max(a,b) - 1, B = min(a,b);
+      int a = *walk.excitedOrbs.begin();
+      int b = *(std::next(walk.excitedOrbs.begin()));
+      int A = max(a,b), B = min(a,b);
+
+      // the number of *spatial* virtual orbitals
+      //int numVirt = norbs - schd.nciCore - schd.nciAct;
+      // Number of unique pairs of virtual orbitals
+      //int numVirtPairs = 2*numVirt * (2*numVirt - 1) / 2;
+
+      //return cumNumCoeffs[5] + numVirtPairs*i + A*(A+1)/2 + B;
+      std::array<int,3> inds = {A, B, i};
+
+      auto it1 = class_1h2p_ind.find(inds);
+      if (it1 != class_1h2p_ind.end())
+        return cumNumCoeffs[5] + it1->second;
+      else
+        return -1;
+    }
+    else if (walk.excitation_class == 6) {
+      // 2 hole, 0 particles
+      int i = *walk.excitedHoles.begin();
+      int j = *(std::next(walk.excitedHoles.begin()));
+      int I = max(i,j) - 1, J = min(i,j);
+
+      return cumNumCoeffs[6] + I*(I+1)/2 + J;
+    }
+    else if (walk.excitation_class == 7) {
+      // 2 holes, 1 particles
+      int i = *walk.excitedHoles.begin();
+      int j = *(std::next(walk.excitedHoles.begin()));
+      //int I = max(i,j) - 1, J = min(i,j);
+      int I = max(i,j), J = min(i,j);
+
+      //int a = *walk.excitedOrbs.begin() - 2*schd.nciCore - 2*schd.nciAct;
+      int a = *walk.excitedOrbs.begin();
+
+      // the number of *spatial* virtual orbitals
+      //int numVirt = norbs - schd.nciCore - schd.nciAct;
+
+      //return cumNumCoeffs[7] + (2*numVirt)*(I*(I+1)/2 + J) + a;
+      std::array<int,3> inds = {a, I, J};
+
+      auto it1 = class_2h1p_ind.find(inds);
+      if (it1 != class_2h1p_ind.end())
+        return cumNumCoeffs[7] + it1->second;
+      else
+        return -1;
+    }
+    else if (walk.excitation_class == 8) {
+      // 2 holes, 2 particles
+      int i = *walk.excitedHoles.begin();
+      int j = *(std::next(walk.excitedHoles.begin()));
+      int I = max(i,j), J = min(i,j);
+
+      int a = *walk.excitedOrbs.begin();
+      int b = *(std::next(walk.excitedOrbs.begin()));
+      int A = max(a,b), B = min(a,b);
+
+      std::array<int,4> inds = {A, B, I, J};
+
+      auto it1 = class_2h2p_ind.find(inds);
+      if (it1 != class_2h2p_ind.end())
+        return cumNumCoeffs[8] + it1->second;
+      else
+        return -1;
+    }
     else return -1;
   }
-  
+
   template<typename Walker>
   double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const  
   {
     return 1.;
   }//not used
-  
+
   template<typename Walker>
-  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const 
+  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity)
   {
-    return 1.;
-  }//not used
-  
+    int norbs = Determinant::norbs;
+
+    auto walkCopy = walk;
+    walkCopy.updateWalker(wave.getRef(), wave.getCorr(), I*2*norbs + A, J*2*norbs + B, false);
+
+    // Is this excitation class being used? If not, then move to the next excitation.
+    if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) {
+      return 0.0;
+    }
+    int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+    if (coeffsCopyIndex == -1) {
+      return 0.0;
+    }
+
+    double ovlp0, ham0, ovlp_new;
+    double ciCoeff = coeffs(coeffsCopyIndex);
+
+    morework.setCounterToZero();
+
+    if (coeffsCopyIndex == 0) {
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, true);
+      ovlp_new = ciCoeff * ovlp0;
+    }
+    else {
+      wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
+      ovlp_new = ciCoeff * ovlp0;
+    }
+    return ovlp_new/ovlp_current;
+  }
+
   template<typename Walker>
   void OverlapWithGradient(Walker &walk,
 			     double &factor,
 			     Eigen::VectorXd &grad)
   {
-    if (walk.excitedOrbs.size() > 2) return;
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return;
+
     int norbs = Determinant::norbs;
     int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1) return;
     double ciCoeff = coeffs(coeffsIndex);
     //if (abs(ciCoeff) <= 1.e-8) return;
     grad[coeffsIndex] += 1 / ciCoeff;
+  }
+
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk)
+  {
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return false;
+    int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1)
+      return false;
+    else
+      return true;
   }
 
   template<typename Walker>
@@ -200,12 +467,17 @@ class SCCI
                   double &ovlp, double &ham, 
                   workingArray& work, bool fillExcitations=true) 
   {
-    if (walk.excitedOrbs.size() > 2) return;
-    int norbs = Determinant::norbs;
+    if (std::find(classesUsed.begin(), classesUsed.end(), walk.excitation_class) == classesUsed.end()) return;
     int coeffsIndex = this->coeffsIndex(walk);
+    if (coeffsIndex == -1) return;
+
+    int norbs = Determinant::norbs;
+    double parity, tia;
+
     double ciCoeff = coeffs(coeffsIndex);
     morework.setCounterToZero();
     double ovlp0, ham0;
+
     if (coeffsIndex == 0) {
       wave.HamAndOvlp(walk, ovlp0, ham0, morework, true);
       ovlp = ciCoeff * ovlp0;
@@ -214,55 +486,44 @@ class SCCI
       wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
       ovlp = ciCoeff * ovlp0;
     }
-    if (ovlp == 0.) return; //maybe not necessary
+
+    ovlp_current = ovlp;
+
+    if (ovlp == 0.) return;
     ham = walk.d.Energy(I1, I2, coreE);
     double dEne = ham;
+
+    // Generate all excitations (after screening)
     work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
-    if (walk.excitedOrbs.size() == 0) {
-      generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
-    }
-    else {
-      generateAllScreenedDoubleExcitationsFOIS(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
-    }
-   
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen, work, false);
+
     //loop over all the screened excitations
     for (int i=0; i<work.nExcitations; i++) {
-      double tia = work.HijElement[i];
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
       int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
       auto walkCopy = walk;
-      double parity = 1.;
       Determinant dcopy = walkCopy.d;
       walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
                             work.excitation1[i], work.excitation2[i], false);
-      if (walkCopy.excitedOrbs.size() > 2) continue;
+
+      // Is this excitation class being used? If not, then move to the next excitation.
+      if (std::find(classesUsed.begin(), classesUsed.end(), walkCopy.excitation_class) == classesUsed.end()) continue;
+      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      if (coeffsCopyIndex == -1) continue;
+
+      parity = 1.;
       parity *= dcopy.parity(A/2, I/2, I%2);
-      //if (ex2 == 0) {
-      //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
-      //              - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
-      //}
-      //else {
       if (ex2 != 0) {
         dcopy.setocc(I, false);
         dcopy.setocc(A, true);
         parity *= dcopy.parity(B/2, J/2, J%2);
-        //bool sameSpin = (I%2 == J%2);
-        //ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
-        //            + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
-        //            + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
-        //            + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
-        //            - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
-        //            - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
-        //            - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
-        //            - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
-      } 
-      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
+      }
+
+      tia = work.HijElement[i];
       morework.setCounterToZero();
+
       if (coeffsCopyIndex == 0) {
         wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, true);
         ham += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
@@ -317,9 +578,9 @@ class SCCI
     }
 
     work.setCounterToZero();
-    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen,
+    generateAllScreenedSingleExcitationsDyallOld(walk.d, dAct, schd.epsilon, schd.screen,
                                         work, false);
-    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen,
+    generateAllScreenedDoubleExcitationsDyallOld(walk.d, schd.epsilon, schd.screen,
                                         work, false);
 
     //loop over all the screened excitations

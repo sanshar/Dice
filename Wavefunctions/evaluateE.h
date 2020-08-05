@@ -793,7 +793,12 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &Energy, doubl
   {
     M.LocalEnergy();
     M.LocalGradient();
+
+    //if (schd.usingFOIS)
+    //  M.MakeMoveFOIS();
+    //else
     M.MakeMove();
+
     M.UpdateEnergy(Energy);
     M.UpdateGradient(grad, grad_ratio_bar);
   }

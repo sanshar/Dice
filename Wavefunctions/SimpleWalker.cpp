@@ -73,8 +73,13 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
 {
   int norbs = Determinant::norbs;
   int I = ex1 / (2 * norbs), A = ex1 % (2 * norbs);
-  if (A >= 2*schd.nciAct) excitedOrbs.insert(A);
-  if (I >= 2*schd.nciAct) excitedOrbs.erase(I);
+
+  if (I < 2*schd.nciCore) excitedHoles.insert(I);
+  if (A < 2*schd.nciCore) excitedHoles.erase(A);
+
+  if (I >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.erase(I);
+  if (A >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.insert(A);
+
   if (I % 2 == 0) {
     updateA(I / 2, A / 2);
   }
@@ -89,8 +94,12 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
   if (ex2 != 0)
   {
     int J = ex2 / (2 * norbs), B = ex2 % (2 * norbs);
-    if (B >= 2*schd.nciAct) excitedOrbs.insert(B);
-    if (J >= 2*schd.nciAct) excitedOrbs.erase(J);
+
+    if (J < 2*schd.nciCore) excitedHoles.insert(J);
+    if (B < 2*schd.nciCore) excitedHoles.erase(B);
+
+    if (J >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.erase(J);
+    if (B >= 2*(schd.nciCore+schd.nciAct)) excitedOrbs.insert(B);
     
     if (J % 2 == 0)
       updateA(J / 2, B / 2);
@@ -100,6 +109,8 @@ void SimpleWalker::updateWalker(const Determinant &ref, const Determinant &corr,
     //  updateEnergyIntermediate(I1, I2, I, A, J, B);
     //}
   }
+
+  getExcitationClass();
 }
 
 //not implemented for SimpleWalker
@@ -113,11 +124,11 @@ void SimpleWalker::exciteWalker(const Determinant &ref, const Determinant &corr,
   else {
     updateB(I1 / 2, A1 / 2);
   }
-  
+
   if (excite2 != 0)
   {
     int I2 = excite2 / (2 * norbs), A2 = excite2 % (2 * norbs);
-    
+
     if (I2 % 2 == 0)
       updateA(I2 / 2, A2 / 2);
     else
@@ -125,3 +136,47 @@ void SimpleWalker::exciteWalker(const Determinant &ref, const Determinant &corr,
   }
 }
 
+void SimpleWalker::getExcitationClass()
+{
+  // Find the excitation class
+  if (excitedHoles.size() == 0) {
+    // 0 core orbitals
+    if (excitedOrbs.size() == 0) {
+      excitation_class = 0;
+    } else if (excitedOrbs.size() == 1) {
+      excitation_class = 1;
+    } else if (excitedOrbs.size() == 2) {
+      excitation_class = 2;
+    } else {
+      excitation_class = -1;
+    }
+
+  } else if (excitedHoles.size() == 1) {
+    // 1 core orbitals
+    if (excitedOrbs.size() == 0) {
+      excitation_class = 3;
+    } else if (excitedOrbs.size() == 1) {
+      excitation_class = 4;
+    } else if (excitedOrbs.size() == 2) {
+      excitation_class = 5;
+    } else {
+      excitation_class = -1;
+    }
+
+  } else if (excitedHoles.size() == 2) {
+    // 2 core orbitals
+    if (excitedOrbs.size() == 0) {
+      excitation_class = 6;
+    } else if (excitedOrbs.size() == 1) {
+      excitation_class = 7;
+    } else if (excitedOrbs.size() == 2) {
+      excitation_class = 8;
+    } else {
+      excitation_class = -1;
+    }
+
+  // More than 2 core orbitals
+  } else {
+    excitation_class = -1;
+  }
+}

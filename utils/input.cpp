@@ -89,11 +89,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numPermutations = input.get("wavefunction.numPermutations", 1);
 
     //ci and lanczos
+    schd.nciCore = input.get("wavefunction.numCore", 0);
     schd.nciAct = input.get("wavefunction.numAct", -1);
+    schd.usingFOIS = false;
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;
     else schd.ciCeption = false;
     schd.determinantFile = input.get("wavefunction.determinants", ""); //used for both sci and starting det
+    schd.detsInCAS = input.get("wavefunction.detsInCAS", true);
     schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
     schd.lanczosEpsilon = input.get("wavefunction.lanczosEpsilon", 1.e-8); //lanczos
 
@@ -114,10 +117,33 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.stochasticIter = input.get("sampling.stochasticIter", 1e4);
     schd.burnIter = input.get("sampling.burnIter", 0);
     schd.integralSampleSize = input.get("sampling.integralSampleSize", 10);
-    schd.seed = input.get("sampling.seed", getTime());
     schd.useLastDet = input.get("sampling.useLastDet", false);
     schd.useLogTime = input.get("sampling.useLogTime", false);
-    
+    schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
+    schd.seed = input.get("sampling.seed", getTime());
+
+    // SC-NEVPT2(s) sampling options:
+    schd.determCCVV = input.get("sampling.determCCVV", false);
+    schd.efficientNEVPT = input.get("sampling.efficientNEVPT", false);
+    schd.efficientNEVPT_2 = input.get("sampling.efficientNEVPT_2", false);
+    schd.exactE_NEVPT = input.get("sampling.exactE_NEVPT", false);
+    schd.NEVPT_readE = input.get("sampling.NEVPT_readE", false);
+    schd.NEVPT_writeE = input.get("sampling.NEVPT_writeE", false);
+    schd.continueMarkovSCPT = input.get("sampling.continueMarkovSCPT", true);
+    schd.stochasticIterNorms = input.get("sampling.stochasticIterNorms", 1e4);
+    schd.stochasticIterEachSC = input.get("sampling.stochasticIterEachSC", 1e2);
+    schd.nIterFindInitDets = input.get("sampling.nIterFindInitDets", 1e2);
+    schd.SCEnergiesBurnIn = input.get("sampling.SCEnergiesBurnIn", 50);
+    schd.SCNormsBurnIn = input.get("sampling.SCNormsBurnIn", 50);
+    schd.exactPerturber = input.get("sampling.exactPerturber", false);
+    schd.perturberOrb1 = input.get("sampling.perturberOrb1", -1);
+    schd.perturberOrb2 = input.get("sampling.perturberOrb2", -1);
+    schd.fixedResTimeNEVPT_Ene = input.get("sampling.fixedResTimeNEVPT_Ene", true);
+    schd.fixedResTimeNEVPT_Norm = input.get("sampling.fixedResTimeNEVPT_Norm", false);
+    schd.resTimeNEVPT_Ene = input.get("sampling.resTimeNEVPT_Ene", 5.0);
+    schd.resTimeNEVPT_Norm = input.get("sampling.resTimeNEVPT_Norm", 5.0);
+    schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
+
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
@@ -171,6 +197,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printVars = input.get("print.vars", false);
     schd.printGrad = input.get("print.grad", false);
     schd.debug = input.get("print.debug", false);
+    // SC-NEVPT(2) print options:
+    schd.printSCNorms = input.get("print.SCNorms", true);
+    schd.printSCNormFreq = input.get("print.SCNormFreq", 1);
+    schd.readSCNorms = input.get("print.readSCNorms", false);
+    schd.continueSCNorms = input.get("print.continueSCNorms", false);
+    schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
+    schd.printSCEnergies = input.get("print.SCEnergies", false);
+    schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
     
     //deprecated, or I don't know what they do
     schd.actWidth = input.get("wavefunction.actWidth", 100);

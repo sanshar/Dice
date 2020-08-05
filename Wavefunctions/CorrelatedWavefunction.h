@@ -312,6 +312,12 @@ struct CorrelatedWavefunction {
     lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
     ovlpSample = ovlp[2];
   }
+
+  // not used
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk) {
+    return true;
+  }
   
 };
 
