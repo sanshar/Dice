@@ -19,11 +19,8 @@
 
 #include "SCPT.h"
 #include "SelectedCI.h"
-//#include <Eigen/Dense>
 #include "igl/slice.h"
 #include "igl/slice_into.h"
-
-using namespace std;
 
 class oneInt;
 class twoInt;

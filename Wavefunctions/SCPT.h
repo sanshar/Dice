@@ -19,20 +19,11 @@
 
 #ifndef SCPT_HEADER_H
 #define SCPT_HEADER_H
-#include <vector>
+
 #include <unordered_map>
+#include <iomanip>
 #include "Determinants.h"
 #include "workingArray.h"
-#include "excitationOperators.h"
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/array.hpp>
-#include <Eigen/Eigenvalues>
-#include <utility>
-#include <iomanip>
-
 #include <boost/filesystem.hpp>
 
 #ifndef SERIAL
