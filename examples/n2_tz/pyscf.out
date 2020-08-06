@@ -1,0 +1,335 @@
+#INFO: **** input file is /projects/anma2640/VMC/VMC_tests/n2/n2_tz/25/prepVMC.py ****
+import numpy as np
+import math
+from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
+#from pyscf.shciscf import shci, settings
+from pyscf.lo import pipek, boys
+import sys
+from scipy.linalg import fractional_matrix_power
+from scipy.stats import ortho_group
+import scipy.linalg as la
+
+def doRHF(mol):
+  mf = scf.RHF(mol)
+  print mf.kernel()
+  return mf
+
+def doUHF(mol):
+  umf = scf.UHF(mol)
+  dm = umf.get_init_guess()
+  norb = mol.nao
+  dm[0] = dm[0] + np.random.rand(norb, norb) / 2
+  dm[1] = dm[1] + np.random.rand(norb, norb) / 2
+  print umf.kernel()
+  return umf
+
+def localize(mol, mf, method):
+  if (method == "lowdin"):
+    return fractional_matrix_power(mf.get_ovlp(mol), -0.5).T
+  elif (method == "pm"):
+    return pipek.PM(mol).kernel(mf.mo_coeff)
+  elif (method == "pmLowdin"):
+    lowdin = fractional_matrix_power(mf.get_ovlp(mol), -0.5).T
+    return pipek.PM(mol).kernel(lowdin)
+  elif (method == "boys"):
+    return boys.Boys(mol).kernel(mf.mo_coeff)
+
+# only use after lowdin, and for non-minimal bases
+def lmoScramble(mol, lmo):
+  scrambledLmo = np.full(lmo.shape, 0.)
+  nBasisPerAtom = np.full(mol.natm, 0)
+  for i in range(len(gto.ao_labels(mol))):
+    nBasisPerAtom[int(gto.ao_labels(mol)[i].split()[0])] += 1
+  print nBasisPerAtom
+  for i in range(mol.natm):
+    n = nBasisPerAtom[i]
+    orth = ortho_group.rvs(dim=n)
+    scrambledLmo[::,n*i:n*(i+1)] = lmo[::,n*i:n*(i+1)].dot(orth)
+  return scrambledLmo
+
+def writeFCIDUMP(mol, mf, lmo):
+  h1 = lmo.T.dot(mf.get_hcore()).dot(lmo)
+  eri = ao2mo.kernel(mol, lmo)
+  tools.fcidump.from_integrals('FCIDUMP', h1, eri, mol.nao, mol.nelectron, mf.energy_nuc())
+
+def basisChange(matAO, lmo, ovlp):
+  matMO = (matAO.T.dot(ovlp).dot(lmo)).T
+  return matMO
+
+def writeMat(mat, fileName, isComplex):
+  fileh = open(fileName, 'w')
+  for i in range(mat.shape[0]):
+      for j in range(mat.shape[1]):
+        if (isComplex):
+          fileh.write('(%16.10e, %16.10e) '%(mat[i,j].real, mat[i,j].imag))
+        else:
+          fileh.write('%16.10e '%(mat[i,j]))
+      fileh.write('\n')
+  fileh.close()
+
+def readMat(fileName, shape, isComplex):
+  if(isComplex):
+    matr = np.zeros(shape)
+    mati = np.zeros(shape)
+  else:
+    mat = np.zeros(shape)
+  row = 0
+  fileh = open(fileName, 'r')
+  for line in fileh:
+    col = 0
+    for coeff in line.split():
+      if (isComplex):
+        m = coeff.strip()[1:-1]
+        matr[row, col], mati[row, col] = [float(x) for x in m.split(',')]
+      else:
+        mat[row, col]  = float(coeff)
+      col = col + 1
+    row = row + 1
+  fileh.close()
+  if (isComplex):
+    mat = matr + 1j * mati
+  return mat
+
+def doGHF(mol):
+  gmf = scf.GHF(mol)
+  gmf.max_cycle = 200
+  dm = gmf.get_init_guess()
+  norb = mol.nao
+  dm = dm + np.random.rand(2*norb, 2*norb) / 3
+  print gmf.kernel(dm0 = dm)
+  return gmf
+
+def makeAGPFromRHF(rhfCoeffs):
+  norb = rhfCoeffs.shape[0]
+  nelec = 2*rhfCoeffs.shape[1]
+  diag = np.eye(nelec/2)
+  #diag = np.zeros((norb,norb))
+  #for i in range(nelec/2):
+  #  diag[i,i] = 1.
+  pairMat = rhfCoeffs.dot(diag).dot(rhfCoeffs.T)
+  return pairMat
+
+def makePfaffFromGHF(ghfCoeffs):
+  nelec = ghfCoeffs.shape[1]
+  amat = np.full((nelec, nelec), 0.)
+  for i in range(nelec/2):
+    amat[2 * i + 1, 2 * i] = -1.
+    amat[2 * i, 2 * i + 1] = 1.
+  pairMat = theta.dot(amat).dot(theta.T)
+  return pairMat
+
+def addNoise(mat, isComplex):
+  if (isComplex):
+    randMat = 0.01 * (np.random.rand(mat.shape[0], mat.shape[1]) + 1j * np.random.rand(mat.shape[0], mat.shape[1]))
+    return mat + randMat
+  else:
+    randMat = 0.01 * np.random.rand(mat.shape[0], mat.shape[1])
+    return mat + randMat
+
+# make your molecule here
+r = 2.5 * 0.529177
+atomstring = "N 0 0 0; N 0 0 %g"%(r)
+mol = gto.M(
+    atom = atomstring,
+    basis = 'ccpvtz',
+    verbose=4,
+    symmetry=0,
+    spin = 0)
+mf = doRHF(mol)
+mc = mcscf.CASSCF(mf, 8, 10)
+mc.kernel()
+print "moEne"
+for i in range(60):
+  print mc.mo_energy[i]
+lmo = mc.mo_coeff
+h1cas, energy_core = mcscf.casci.h1e_for_cas(mc)
+mo_core = mc.mo_coeff[:,:2]
+mo_rest = mc.mo_coeff[:,2:]
+core_dm = 2 * mo_core.dot(mo_core.T)
+corevhf = mc.get_veff(mol, core_dm)
+h1eff = mo_rest.T.dot(mc.get_hcore() + corevhf).dot(mo_rest)
+eri = ao2mo.kernel(mol, lmo[:,2:])
+tools.fcidump.from_integrals('FCIDUMP', h1eff, eri, 58, 10, energy_core)
+#INFO: ******************** input file end ********************
+
+
+System: ('Linux', 'bnode0303.rc.int.colorado.edu', '3.10.0-693.37.4.el7.x86_64', '#1 SMP Fri Aug 10 12:34:55 EDT 2018', 'x86_64', 'x86_64')  Threads 8
+Python 2.7.15 |Anaconda, Inc.| (default, Dec 14 2018, 19:04:19) 
+[GCC 7.3.0]
+numpy 1.15.4  scipy 1.1.0
+Date: Thu Jul 11 13:33:51 2019
+PySCF version 1.6.2
+PySCF path  /home/anma2640/miniconda2/lib/python2.7/site-packages/pyscf
+
+[CONFIG] conf_file None
+[INPUT] verbose = 4
+[INPUT] num. atoms = 2
+[INPUT] num. electrons = 14
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 0
+[INPUT] symmetry 0 subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 N      0.000000000000   0.000000000000   0.000000000000 AA    0.000000000000   0.000000000000   0.000000000000 Bohr
+[INPUT]  2 N      0.000000000000   0.000000000000   1.322940000000 AA    0.000000000000   0.000000000000   2.499994279232 Bohr
+
+nuclear repulsion = 19.6000448509229
+number of shells = 18
+number of NR pGTOs = 84
+number of NR cGTOs = 60
+basis = ccpvtz
+ecp = {}
+CPU time:         1.29
+
+
+******** <class 'pyscf.scf.hf.RHF'> ********
+method = RHF
+initial guess = minao
+damping factor = 0
+level shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+DIIS start cycle = 1
+DIIS space = 8
+SCF tol = 1e-09
+SCF gradient tol = None
+max. SCF cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /projects/anma2640/VMC/VMC_tests/n2/n2_tz/25/tmpBdIsge
+max_memory 4000 MB (current use 54 MB)
+Set gradient conv threshold to 3.16228e-05
+init E= -108.368628573416
+  HOMO = -0.346548681488967  LUMO = -0.00890010061799689
+cycle= 1 E= -108.819931963057  delta_E= -0.451  |g|= 0.357  |ddm|= 1.24
+  HOMO = -0.589208123202576  LUMO = 0.00834204361140428
+cycle= 2 E= -108.847799608651  delta_E= -0.0279  |g|= 0.102  |ddm|= 0.259
+  HOMO = -0.5306349349223  LUMO = 0.0645300655131405
+cycle= 3 E= -108.849991287625  delta_E= -0.00219  |g|= 0.0193  |ddm|= 0.0546
+  HOMO = -0.531833367142263  LUMO = 0.0646550826888996
+cycle= 4 E= -108.85015495879  delta_E= -0.000164  |g|= 0.00173  |ddm|= 0.022
+  HOMO = -0.532095686706865  LUMO = 0.0644396105300624
+cycle= 5 E= -108.850155544285  delta_E= -5.85e-07  |g|= 0.000146  |ddm|= 0.00118
+  HOMO = -0.53214399395614  LUMO = 0.0643881206087435
+cycle= 6 E= -108.850155549391  delta_E= -5.11e-09  |g|= 2.64e-05  |ddm|= 0.000127
+  HOMO = -0.532134060388177  LUMO = 0.0643991256039613
+cycle= 7 E= -108.850155549579  delta_E= -1.88e-10  |g|= 2.53e-06  |ddm|= 2.58e-05
+  HOMO = -0.532133492339828  LUMO = 0.06439960582426
+Extra cycle  E= -108.850155549582  delta_E= -2.67e-12  |g|= 7.19e-07  |ddm|= 3.13e-06
+converged SCF energy = -108.850155549582
+-108.85015554958191
+
+******** <class 'pyscf.mcscf.mc1step.CASSCF'> ********
+CAS (5e+5e, 8o), ncore = 2, nvir = 50
+max_cycle_macro = 50
+max_cycle_micro = 4
+conv_tol = 1e-07
+conv_tol_grad = None
+orbital rotation max_stepsize = 0.02
+augmented hessian ah_max_cycle = 30
+augmented hessian ah_conv_tol = 1e-12
+augmented hessian ah_linear dependence = 1e-14
+augmented hessian ah_level shift = 0
+augmented hessian ah_start_tol = 2.5
+augmented hessian ah_start_cycle = 3
+augmented hessian ah_grad_trust_region = 3
+kf_trust_region = 3
+kf_interval = 4
+ci_response_space = 4
+ci_grad_trust_region = 3
+with_dep4 0
+natorb = False
+canonicalization = True
+sorting_mo_energy = False
+ao2mo_level = 2
+chkfile = /projects/anma2640/VMC/VMC_tests/n2/n2_tz/25/tmpBdIsge
+max_memory 4000 MB (current use 76 MB)
+internal_rotation = False
+******** <class 'pyscf.fci.direct_spin1.FCISolver'> ********
+max. cycles = 50
+conv_tol = 1e-08
+davidson only = False
+linear dependence = 1e-10
+level shift = 0.001
+max iter space = 12
+max_memory 4000 MB
+nroots = 1
+pspace_size = 400
+spin = None
+CASCI E = -108.973595738282  S^2 = 0.0000000
+Set conv_tol_grad to 0.000316228
+macro iter 1 (21 JK  4 micro), CASSCF E = -109.018757184704  dE = -0.045161446  S^2 = 0.0000000
+               |grad[o]|=0.107  |grad[c]|= 0.04460268090294184  |ddm|=0.0353
+macro iter 2 (21 JK  4 micro), CASSCF E = -109.047817149534  dE = -0.029059965  S^2 = 0.0000000
+               |grad[o]|=0.075  |grad[c]|= 0.028505740072728335  |ddm|=0.0166
+macro iter 3 (19 JK  4 micro), CASSCF E = -109.057886002461  dE = -0.010068853  S^2 = 0.0000000
+               |grad[o]|=0.0418  |grad[c]|= 0.011798986782099072  |ddm|=0.0135
+macro iter 4 (9 JK  3 micro), CASSCF E = -109.057896800525  dE = -1.0798064e-05  S^2 = 0.0000000
+               |grad[o]|=0.00189  |grad[c]|= 8.613133025085388e-05  |ddm|=0.00133
+macro iter 5 (1 JK  1 micro), CASSCF E = -109.057896800575  dE = -4.9652726e-11  S^2 = 0.0000000
+               |grad[o]|=1.36e-05  |grad[c]|= 9.56043768499802e-06  |ddm|=1.01e-06
+1-step CASSCF converged in 5 macro (71 JK 16 micro) steps
+CASSCF canonicalization
+Density matrix diagonal elements [1.98533526 1.98728167 1.9707773  1.88904754 1.88904754 0.11841508
+ 0.11841508 0.04168055]
+CASSCF energy = -109.057896800575
+CASCI E = -109.057896800575  E(CI) = -29.6257700461762  S^2 = 0.0000000
+moEne
+-15.675001971887188
+-15.66236125513384
+-1.3020642344006643
+-0.8231580509537156
+-0.5765728739652811
+-0.49448383882871183
+-0.49448383882869035
+0.1345205043291525
+0.1345205043291729
+0.66922568371591
+0.4851749909307576
+0.5984521710272532
+0.598452171027256
+0.6009814672427911
+0.649098602524521
+0.6490986025245215
+0.6775121194524291
+1.0454572904911155
+1.0809477251657225
+1.0809477251803636
+1.2214396325781118
+1.2214396325781292
+1.4423198884456954
+1.4423198884713821
+1.8828630693716335
+1.8828630693716406
+1.8900071094592448
+1.891902795490916
+3.160308778588362
+3.160308778588374
+3.276701974313558
+3.3690822275297014
+3.3690822275297263
+3.8353514907143382
+3.8353514907146886
+3.8893690462858337
+3.88936904628584
+4.021280848882911
+4.08242441189529
+4.08242441189537
+4.112162427585236
+4.320895822059488
+4.320895822059502
+4.681100833340558
+4.767218690831757
+4.767218690843828
+4.773338163825941
+4.773338163841392
+4.999754251166667
+4.99975425117223
+5.025465559232735
+5.025465559232756
+5.145365922816406
+5.14536592281642
+5.552871265313518
+5.832807095720868
+6.0218116954458
+6.027290386686971
+6.027290386687023
+10.692175706481974

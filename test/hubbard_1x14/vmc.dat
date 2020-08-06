@@ -1,5 +1,0 @@
-correlator 3 threesite.txt
-stochasticIter 100000
-
-#restart
-

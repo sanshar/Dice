@@ -1,21 +1,38 @@
 USE_MPI = yes
 USE_INTEL = yes
+BOOST=/projects/ilsa8974/apps/boost_1_66_0/
+LIBIGL=/projects/sash2458/apps/libigl/include/
 EIGEN=/projects/ilsa8974/apps/eigen/
-BOOST=/projects/ilsa8974/apps/boost_1_57_0/
 LIBIGL=/projects/ilsa8974/apps/libigl/include/
-#EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
-#BOOST=/projects/anma2640/boost_1_66_0
+MKL=/curc/sw/intel/17.4/mkl/
+#BOOST=/projects/sash2458/apps/boost_1_57_0/
+#BOOST=/home/nsb37/local/boost_1_70_0_mpi
+#LIBIGL=/home/nsb37/local/libigl/include/
+#EIGEN=/home/nsb37/local/eigen3
+#HDF5=/home/nsb37/local/hdf5-1.10.1
+#SPARSEHASH=/home/nsb37/local/sparsehash
 
-FLAGS = -std=c++11 -g  -O3  -I${EIGEN} -I${BOOST} -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
-#FLAGS = -std=c++11 -g   -I${EIGEN} -I${BOOST} #-DComplex
+FLAGS = -std=c++14 -O3 -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH}/include -I/opt/local/include/openmpi-mp/ #-DComplex
+#FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
+
+GIT_HASH=`git rev-parse HEAD`
+COMPILE_TIME=`date`
+GIT_BRANCH=`git branch | grep "^\*" | sed s/^..//`
+VERSION_FLAGS=-DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" -DGIT_BRANCH="\"$(GIT_BRANCH)\""
+
+INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
+LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
 
 ifeq ($(USE_INTEL), yes) 
 	FLAGS += -qopenmp
 	DFLAGS += -qopenmp
 	ifeq ($(USE_MPI), yes) 
-		CXX = mpiicpc
+		CXX = mpiicpc #-mkl
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi
+		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+		#CXX = mpicxx
+		#CC = mpicc
+		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi  -lboost_program_options -lboost_system -lboost_filesystem -lrt -L${HDF5}/lib -lhdf5
 	else
 		CXX = icpc
 		CC = icpc
@@ -29,7 +46,7 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L/opt/local/lib -lboost_serialization-mt -lboost_mpi-mt
+		LFLAGS = -L/opt/local/lib -lboost_serialization-mt -lboost_mpi-mt -lboost_program_options-mt
 	else
 		CXX = g++
 		CC = g++
@@ -45,39 +62,116 @@ ifneq ($(filter dft node%, $(HOSTNAME)),)
 include dft.mk
 endif
 
-SRC_VMC = VMC.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp optimizer.cpp Davidson.cpp evaluatePT.cpp evaluateVar.cpp
 
-SRC_sPT = StochasticPT.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp optimizer.cpp Davidson.cpp evaluatePT.cpp evaluateVar.cpp
+OBJ_VMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Slater.o \
+	obj/MultiSlater.o \
+	obj/AGP.o \
+	obj/Pfaffian.o \
+	obj/Jastrow.o \
+	obj/Gutzwiller.o \
+	obj/CPS.o \
+	obj/RBM.o \
+	obj/JRBM.o \
+	obj/Correlator.o \
+	obj/SelectedCI.o \
+	obj/SCPT.o \
+	obj/SimpleWalker.o \
+	obj/ShermanMorrisonWoodbury.o\
+	obj/excitationOperators.o\
+    obj/statistics.o \
+    obj/sr.o \
+    obj/evaluateE.o 
 
-SRC_PythonInteface = PythonInterface.cpp MoDeterminants.cpp staticVariables.cpp input.cpp integral.cpp SHCIshm.cpp CPS.cpp Wfn.cpp evaluateE.cpp Determinants.cpp diis.cpp Walker.cpp optimizer.cpp Davidson.cpp evaluatePT.cpp evaluateVar.cpp
+OBJ_ICPT= obj/PerturberDependentCode.o \
+	obj/BlockContract.o \
+	obj/CxAlgebra.o \
+	obj/CxIndentStream.o \
+	obj/CxNumpyArray.o \
+	obj/icpt.o \
+	obj/CxMemoryStack.o \
+	obj/CxStorageDevice.o \
+	obj/TensorTranspose.o
 
-OBJ_VMC+=obj/VMC.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/diis.o obj/Walker.o obj/optimizer.o obj/Davidson.o obj/evaluatePT.o obj/evaluateVar.o
+OBJ_GFMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Slater.o \
+	obj/AGP.o \
+	obj/Pfaffian.o \
+	obj/Jastrow.o \
+	obj/Gutzwiller.o \
+	obj/CPS.o \
+	obj/evaluateE.o \
+	obj/excitationOperators.o\
+	obj/ShermanMorrisonWoodbury.o\
+	obj/statistics.o \
+	obj/sr.o \
+	obj/Correlator.o
 
-OBJ_sPT+=obj/StochasticPT.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/diis.o obj/Walker.o obj/optimizer.o obj/Davidson.o obj/evaluatePT.o obj/evaluateVar.o
 
-OBJ_PythonInterface+=obj/PythonInterface.o obj/MoDeterminants.o obj/staticVariables.o obj/input.o obj/integral.o obj/SHCIshm.o obj/CPS.o obj/Wfn.o obj/evaluateE.o obj/Determinants.o obj/Walker.o obj/Davidson.o obj/evaluateVar.o
+OBJ_FCIQMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Correlator.o \
+	obj/spawnFCIQMC.o \
+	obj/walkersFCIQMC.o \
 
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
-obj_z/%.o: %.cpp  
-	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
+obj/%.o: Wavefunctions/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+obj/%.o: utils/%.cpp  
+	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+obj/%.o: VMC/%.cpp  
+	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+obj/%.o: FCIQMC/%.cpp  
+	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
+obj/%.o: ICPT/%.cpp  
+	$(CXX) $(FLAGS) $(INCLUDE_MKL) -I./ICPT/TensorExpressions/ $(OPT) -c $< -o $@
+obj/%.o: ICPT/StackArray/%.cpp  
+	$(CXX) $(FLAGS) $(INCLUDE_MKL) $(OPT) -c $< -o $@
 
 
-all: PythonInterface sPT VMC 
+#all: bin/VMC
+all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT #bin/sPT  bin/GFMC
+#bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
-VMC	: $(OBJ_VMC) 
-	$(CXX)   $(FLAGS) $(OPT) -o  VMC $(OBJ_VMC) $(LFLAGS)
+bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
+	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS) $(VERSION_FLAGS)
 
-sPT	: $(OBJ_sPT) 
-	$(CXX)   $(FLAGS) $(OPT) -o  sPT $(OBJ_sPT) $(LFLAGS)
+bin/ICPT	: $(OBJ_ICPT) executables/ICPT.cpp
+	$(CXX)   $(FLAGS) $(INCLUDE_MKL)  $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/ICPT $(OBJ_ICPT) obj/ICPT.o $(LFLAGS) $(LIB_MKL) $(VERSION_FLAGS)
 
-PythonInterface	: $(OBJ_PythonInterface) 
-	$(CXX)   $(FLAGS) $(OPT) -o  PythonInterface $(OBJ_PythonInterface) $(LFLAGS)
+bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
+	$(CXX)   $(FLAGS) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS) $(VERSION_FLAGS)
+
+bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
+	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
+
+bin/sPT	: $(OBJ_sPT) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
+
+bin/CI	: $(OBJ_CI) 
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/CI $(OBJ_CI) $(LFLAGS)
 
 VMC2	: $(OBJ_VMC) 
 	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
 
 clean :
-	find . -name "*.o"|xargs rm 2>/dev/null;rm -f VMC >/dev/null 2>&1
+	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1
+
 

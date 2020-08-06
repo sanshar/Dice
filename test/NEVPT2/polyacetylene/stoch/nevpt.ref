@@ -1,0 +1,87 @@
+[magneto:36260] mca: base: component_find: unable to open /usr/local/shared/ubuntu-16.04/x86_64/openmpi-1.8.8-intel15/lib/openmpi/mca_btl_openib: libibverbs.so.1: cannot open shared object file: No such file or directory (ignored)
+[magneto:36262] mca: base: component_find: unable to open /usr/local/shared/ubuntu-16.04/x86_64/openmpi-1.8.8-intel15/lib/openmpi/mca_btl_openib: libibverbs.so.1: cannot open shared object file: No such file or directory (ignored)
+[magneto:36261] mca: base: component_find: unable to open /usr/local/shared/ubuntu-16.04/x86_64/openmpi-1.8.8-intel15/lib/openmpi/mca_btl_openib: libibverbs.so.1: cannot open shared object file: No such file or directory (ignored)
+[magneto:36263] mca: base: component_find: unable to open /usr/local/shared/ubuntu-16.04/x86_64/openmpi-1.8.8-intel15/lib/openmpi/mca_btl_openib: libibverbs.so.1: cannot open shared object file: No such file or directory (ignored)
+{
+    "print": {
+        "readSCNorms": "false"
+    },
+    "wavefunction": {
+        "name": "scpt",
+        "numAct": "4",
+        "numCore": "9",
+        "overlapCutoff": "1.0e-8",
+        "determinants": "dets"
+    },
+    "sampling": {
+        "stochasticIterNorms": "2000",
+        "nIterFindInitDets": "200",
+        "numSCSamples": "2000",
+        "stochasticIterEachSC": "100",
+        "fixedResTimeNEVPT": "false",
+        "epsilon": "1.0e-8",
+        "seed": "55911",
+        "efficientNEVPT_2": "true",
+        "determCCVV": "true",
+        "SCEnergiesBurnIn": "50",
+        "SCNormsBurnIn": "50"
+    }
+}
+
+Reading integrals
+Finished reading integrals
+Starting heat bath integral construction
+Finished heat bath integral construction
+Reading active space determinants
+Finished reading determinants, hash table bucket count: 64
+Integrals and wave function preparation finished in 0.047657 s
+
+Deterministic CCVV energy:  -0.189690659421
+
+About to sample the norms of the strongly contracted states...
+
+About to allocate arrays for sampling...
+Total number of strongly contracted states to sample: 3241
+Allocation of sampling arrays now finished.
+
+About to call first instance of HamAndSCNorms...
+First instance of HamAndSCNorms complete.
+iter: 0  t: 0.066222
+iter: 1  t: 0.0674679
+iter: 200  t: 0.302921
+iter: 400  t: 0.539197
+iter: 600  t: 0.775743
+iter: 800  t: 1.01274
+iter: 1000  t: 1.25135
+iter: 1200  t: 1.48872
+iter: 1400  t: 1.72622
+iter: 1600  t: 1.96473
+iter: 1800  t: 2.20197
+iter: 2000  t: 3.78078
+Calculating AAVV norms...
+AAVV norms calculated. Time taken: 0.391786
+Calculating CAAV norms...
+CAAV norms calculated. Time taken: 0.0145831
+Calculating CCAA norms...
+CCAA norms calculated. Time taken: 0.00124693
+
+Calculation of strongly contracted norms complete.
+Total time for norms calculation:  4.13768
+
+About to print norm data...
+Printing complete.
+
+Now sampling the NEVPT2 energy...
+Total cumulative squared norm (process 0): 0.144756
+
+MPI Barrier time: 0.0681231 seconds
+Energy error estimate: 0.000481744625782
+Bias correction error estimate: 1.78847640479e-07
+Sampling complete.
+
+Total time for energy sampling 3.29684090614 seconds
+CAS energy: -154.9209043
+SC-NEVPT2(s) second-order energy: -0.07178837656
+Total SC-NEVPT(s) energy: -154.9926927
+SC-NEVPT2(s) second-order energy with CCVV:  -0.261479036
+Total SC-NEVPT2(s) energy with CCVV:  -155.1823833
