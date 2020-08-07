@@ -43,7 +43,12 @@ inline int CountNonZeroBits (long x)
 }
 
 // Just the determinant bit string, stored in a contiguous array
-typedef std::array<long, 2*innerDetLen> simpleDet;
+typedef std::array<long, 2*DetLen> simpleDet;
+
+// A shorter version of simpleDet that. This is useful if we only
+// need to store the active space occupations, for example in
+// SC-NEVPT2(s) calculations
+typedef std::array<long, 2*innerDetLen> shortSimpleDet;
 
 /**
 * This is the occupation number representation of a Determinants
@@ -75,6 +80,15 @@ class Determinant {
   Determinant(const Determinant& d);
 
   Determinant(const simpleDet combined) {
+    for (int i=0; i<DetLen; i++) {
+      reprA[i] = combined[i];
+    }
+    for (int i=0; i<DetLen; i++) {
+      reprB[i] = combined[i+DetLen];
+    }
+  }
+
+  Determinant(const shortSimpleDet combined) {
     for (int i=0; i<innerDetLen; i++) {
       reprA[i] = combined[i];
     }
@@ -165,6 +179,17 @@ class Determinant {
   // Return simplified version of determinant
   inline simpleDet getSimpleDet() const {
     simpleDet combined;
+    for (int i=0; i<DetLen; i++) {
+      combined[i] = reprA[i];
+    }
+    for (int i=0; i<DetLen; i++) {
+      combined[i+DetLen] = reprB[i];
+    }
+    return combined;
+  }
+
+  inline shortSimpleDet getShortSimpleDet() const {
+    shortSimpleDet combined;
     for (int i=0; i<innerDetLen; i++) {
       combined[i] = reprA[i];
     }
