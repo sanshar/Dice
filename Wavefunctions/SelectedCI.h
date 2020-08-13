@@ -46,7 +46,7 @@ class SelectedCI
   using CorrType = Determinant;
   using ReferenceType = Determinant;
   
-  google::dense_hash_map<simpleDet, double, boost::hash<simpleDet> > DetsMap;
+  google::dense_hash_map<shortSimpleDet, double, boost::hash<shortSimpleDet> > DetsMap;
   //unordered_map<Determinant, double, boost::hash<Determinant> > DetsMap;
   Determinant bestDeterminant;
 
@@ -63,7 +63,7 @@ class SelectedCI
 
   double Overlap(SimpleWalker& walk);
   double Overlap(Determinant& d);
-  inline double Overlap(simpleDet& d);
+  inline double Overlap(shortSimpleDet& d);
 
   
   double getOverlapFactor(int I, int J, int A, int B,

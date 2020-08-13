@@ -50,8 +50,13 @@ class spawnFCIQMC {
   // the next spawned walker to a given processor
   vector<int> currProcSlots;
 
+  // The number of 64-bit integers required to represent (the alpha or beta
+  // part of) a determinant
+  // Note, this is different to DetLen in global.h
+  int DetLenMin;
+
   // Constructor
-  spawnFCIQMC(int spawnSize);
+  spawnFCIQMC(int spawnSize, int DetLenLocal);
 
   // Send spawned walkers to their correct processor
   void communicate();
