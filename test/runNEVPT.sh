@@ -5,6 +5,8 @@ printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
 NEVPTPATH="../../../../bin/VMC nevpt.json"
+NEVPTPRINTPATH="../../../../bin/VMC nevpt_print.json"
+NEVPTREADPATH="../../../../bin/VMC nevpt_read.json"
 here=`pwd`
 tol=1.0e-7
 clean=1
@@ -23,29 +25,39 @@ fi
 
 cd $here/NEVPT2/n2_vdz/continue_norms
 ../../../clean_wo_bkp.sh
-printf "...running NEVPT2/n2_vdz/continue_norms\n"
-$MPICOMMAND $NEVPTPATH > nevpt.out
-python2 ../../../testEnergy.py 'nevpt' $tol
+printf "...running NEVPT2/n2_vdz/continue_norms PRINT\n"
+$MPICOMMAND $NEVPTPRINTPATH > nevpt_print.out
+python2 ../../../testEnergy.py 'nevpt_print' $tol
 if [ $clean == 1 ]
 then
     ../../../clean_wo_bkp.sh
 fi
 
-cd $here/NEVPT2/n2_vdz/write_exact_energies
-../../../clean.sh
-printf "...running NEVPT2/n2_vdz/write_exact_energies\n"
-$NEVPTPATH > nevpt.out
-python2 ../../../testEnergy.py 'nevpt' $tol
+cd $here/NEVPT2/n2_vdz/continue_norms
+../../../clean_wo_bkp.sh
+printf "...running NEVPT2/n2_vdz/continue_norms READ\n"
+$MPICOMMAND $NEVPTREADPATH > nevpt_read.out
+python2 ../../../testEnergy.py 'nevpt_read' $tol
 if [ $clean == 1 ]
 then
-    ../../../clean.sh
+    ../../../clean_wo_bkp.sh
 fi
 
-cd $here/NEVPT2/n2_vdz/read_exact_energies
+cd $here/NEVPT2/n2_vdz/exact_energies
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/exact_energies PRINT\n"
+$NEVPTPRINTPATH > nevpt_print.out
+python2 ../../../testEnergy.py 'nevpt_print' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean_wo_bkp.sh
+fi
+
+cd $here/NEVPT2/n2_vdz/exact_energies
 ../../../clean_wo_bkp.sh
-printf "...running NEVPT2/n2_vdz/read_exact_energies\n"
-$NEVPTPATH > nevpt.out
-python2 ../../../testEnergy.py 'nevpt' $tol
+printf "...running NEVPT2/n2_vdz/exact_energies READ\n"
+$NEVPTREADPATH > nevpt_read.out
+python2 ../../../testEnergy.py 'nevpt_read' $tol
 if [ $clean == 1 ]
 then
     ../../../clean_wo_bkp.sh

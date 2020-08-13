@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         check_results(eRef, eTest, tol)
     
-    elif mc == 'nevpt':
+    elif mc == 'nevpt' or mc == 'nevpt_print' or mc == 'nevpt_read':
         fh = open(mc+'.ref', 'r')
         for line in fh:
             pass
