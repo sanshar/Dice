@@ -37,6 +37,14 @@ int main(int argc, char *argv[])
 
   initSHM();
   //license();
+  if (commrank == 0) {
+    std::system("echo User:; echo $USER");
+    std::system("echo Hostname:; echo $HOSTNAME");
+    std::system("echo CPU info:; lscpu | head -15");
+    std::system("echo Computation started at:; date");
+    cout << "git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << endl << endl;
+    cout << "Number of MPI processes used: " << commsize << endl << endl; 
+  }
 
   string inputFile = "input.dat";
   if (argc > 1)

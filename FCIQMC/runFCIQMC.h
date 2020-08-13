@@ -116,7 +116,6 @@ void runFCIQMC() {
   // -----------------------
 
   if (commrank == 0) {
-    cout << "Number of processors: " << commsize << endl;
     cout << "Hartree--Fock energy: " << HFDet.Energy(I1, I2, coreE) << endl << endl;
   }
 
