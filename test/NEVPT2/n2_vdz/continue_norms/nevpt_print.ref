@@ -1,0 +1,110 @@
+User:
+nsb37
+Hostname:
+
+CPU info:
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                16
+On-line CPU(s) list:   0-15
+Thread(s) per core:    2
+Core(s) per socket:    8
+Socket(s):             1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 85
+Model name:            Intel(R) Core(TM) i7-7820X CPU @ 3.60GHz
+Stepping:              4
+CPU MHz:               2216.390
+Computation started at:
+Thu 13 Aug 20:16:33 BST 2020
+git commit: f9ad8d0ad7326d550ae3f3f78e4ad95fa4562967, branch: bug_fix/NEVPT2_test, compiled at: Thu 13 Aug 20:11:51 BST 2020
+
+nproc used: 4 (NB: stochasticIter below is per proc)
+
+{
+    "print": {
+        "SCNorms": "true",
+        "continueSCNorms": "false"
+    },
+    "wavefunction": {
+        "name": "scpt",
+        "numAct": "8",
+        "numCore": "2",
+        "overlapCutoff": "1.0e-8",
+        "determinants": "dets"
+    },
+    "sampling": {
+        "stochasticIterNorms": "500",
+        "nIterFindInitDets": "50",
+        "numSCSamples": "500",
+        "stochasticIterEachSC": "100",
+        "fixedResTimeNEVPT_Ene": "false",
+        "epsilon": "1.0e-8",
+        "seed": "1273943",
+        "efficientNEVPT_2": "true",
+        "determCCVV": "true",
+        "SCEnergiesBurnIn": "50",
+        "SCNormsBurnIn": "50"
+    }
+}
+
+Reading integrals
+Finished reading integrals
+Starting heat bath integral construction
+Finished heat bath integral construction
+Reading active space determinants
+Finished reading determinants, hash table bucket count: 2048
+Integrals and wave function preparation finished in 0.0520442 s
+
+Deterministic CCVV energy:  -0.00032345018087
+
+About to sample the norms of the strongly contracted states...
+
+About to allocate arrays for sampling...
+Total number of strongly contracted states to sample: 821
+Allocation of sampling arrays now finished.
+
+About to call first instance of HamAndSCNorms...
+First instance of HamAndSCNorms complete.
+iter: 0  t: 0.067384
+iter: 1  t: 0.0718572
+iter: 50  t: 0.276042
+iter: 100  t: 0.482614
+iter: 150  t: 0.69089
+iter: 200  t: 0.899798
+iter: 250  t: 1.10839
+iter: 300  t: 1.31852
+iter: 350  t: 1.52857
+iter: 400  t: 1.7366
+iter: 450  t: 1.94473
+iter: 500  t: 2.31975
+Calculating AAVV norms...
+AAVV norms calculated. Time taken: 0.019793
+Calculating CAAV norms...
+CAAV norms calculated. Time taken: 0.021718
+Calculating CCAA norms...
+CCAA norms calculated. Time taken: 0.000850916
+
+Calculation of strongly contracted norms complete.
+Total time for norms calculation:  2.31141
+
+About to print norm data...
+Printing complete.
+
+Now sampling the NEVPT2 energy...
+Total cumulative squared norm (process 0): 0.654198
+
+MPI Barrier time: 0.153471 seconds
+Energy error estimate: 0.000791251107451
+Bias correction error estimate: 1.0819169882e-06
+Sampling complete.
+
+Total time for energy sampling 8.67312598228 seconds
+CAS energy: -109.0347099
+SC-NEVPT2(s) second-order energy: -0.148160671
+Total SC-NEVPT(s) energy: -109.1828706
+SC-NEVPT2(s) second-order energy with CCVV:  -0.1484841212
+Total SC-NEVPT2(s) energy with CCVV:  -109.183194

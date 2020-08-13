@@ -1,1 +1,0 @@
-../spinRDM.0.0.txt

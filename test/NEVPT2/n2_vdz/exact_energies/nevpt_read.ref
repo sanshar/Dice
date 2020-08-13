@@ -1,3 +1,29 @@
+User:
+nsb37
+Hostname:
+
+CPU info:
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                16
+On-line CPU(s) list:   0-15
+Thread(s) per core:    2
+Core(s) per socket:    8
+Socket(s):             1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 85
+Model name:            Intel(R) Core(TM) i7-7820X CPU @ 3.60GHz
+Stepping:              4
+CPU MHz:               1599.890
+Computation started at:
+Thu 13 Aug 20:31:11 BST 2020
+git commit: f9ad8d0ad7326d550ae3f3f78e4ad95fa4562967, branch: bug_fix/NEVPT2_test, compiled at: Thu 13 Aug 20:11:51 BST 2020
+
+nproc used: 4 (NB: stochasticIter below is per proc)
+
 {
     "wavefunction": {
         "name": "scpt",
@@ -22,7 +48,7 @@ Starting heat bath integral construction
 Finished heat bath integral construction
 Reading active space determinants
 Finished reading determinants, hash table bucket count: 2048
-Integrals and wave function preparation finished in 0.0326481 s
+Integrals and wave function preparation finished in 0.0564048 s
 
 Deterministic CCVV energy:  -0.00032345018087
 
@@ -34,27 +60,27 @@ Allocation of sampling arrays now finished.
 
 About to call first instance of HamAndSCNorms...
 First instance of HamAndSCNorms complete.
-iter: 0  t: 0.0475402
-iter: 1  t: 0.0513031
-iter: 16  t: 0.109271
-iter: 32  t: 0.170853
-iter: 48  t: 0.23229
-iter: 64  t: 0.293726
-iter: 80  t: 0.355293
-iter: 96  t: 0.416659
-iter: 112  t: 0.478196
-iter: 128  t: 0.539799
-iter: 144  t: 0.601198
-iter: 160  t: 0.693809
+iter: 0  t: 0.0722029
+iter: 1  t: 0.076494
+iter: 16  t: 0.139859
+iter: 32  t: 0.207111
+iter: 48  t: 0.273739
+iter: 64  t: 0.340703
+iter: 80  t: 0.407499
+iter: 96  t: 0.47412
+iter: 112  t: 0.540957
+iter: 128  t: 0.608032
+iter: 144  t: 0.674947
+iter: 160  t: 0.775362
 Calculating AAVV norms...
-AAVV norms calculated. Time taken: 0.09144
+AAVV norms calculated. Time taken: 0.014467
 Calculating CAAV norms...
-CAAV norms calculated. Time taken: 0.0907061
+CAAV norms calculated. Time taken: 0.0215371
 Calculating CCAA norms...
-CCAA norms calculated. Time taken: 0.00113106
+CCAA norms calculated. Time taken: 0.000854969
 
 Calculation of strongly contracted norms complete.
-Total time for norms calculation:  0.84572
+Total time for norms calculation:  0.757186
 
 About to print norm data...
 Printing complete.
@@ -62,7 +88,7 @@ Printing complete.
 Now sampling the NEVPT2 energy...
 Sampling complete.
 
-Total time for energy sampling 0.00871992 seconds
+Total time for energy sampling 0.0310891 seconds
 CAS energy: -109.0347099
 SC-NEVPT2(s) second-order energy: -0.1492222162
 Total SC-NEVPT(s) energy: -109.1839321
