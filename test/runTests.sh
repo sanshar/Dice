@@ -216,7 +216,7 @@ $MPICOMMAND $NEVPTREADPATH > nevpt_read.out
 python2 ../../../testEnergy.py 'nevpt_read' $tol
 if [ $clean == 1 ]
 then
-    ../../../clean_wo_bkp.sh
+    ../../../clean.sh
 fi
 
 cd $here/NEVPT2/n2_vdz/exact_energies
@@ -236,7 +236,7 @@ $NEVPTREADPATH > nevpt_read.out
 python2 ../../../testEnergy.py 'nevpt_read' $tol
 if [ $clean == 1 ]
 then
-    ../../../clean_wo_bkp.sh
+    ../../../clean.sh
 fi
 
 cd $here/NEVPT2/h4_631g/determ
