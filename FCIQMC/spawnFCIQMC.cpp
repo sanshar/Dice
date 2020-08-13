@@ -42,7 +42,7 @@ void apply_permutation(int const nDets, const vector<T>& vec, vector<T>& sorted_
     [&](size_t i){ return vec[i]; });
 }
 
-spawnFCIQMC::spawnFCIQMC(int spawnSize) {
+spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
   nDets = 0;
   dets.resize(spawnSize);
   amps.resize(spawnSize, 0.0);
@@ -58,6 +58,8 @@ spawnFCIQMC::spawnFCIQMC(int spawnSize) {
   }
 
   currProcSlots = firstProcSlots;
+
+  DetLenMin = DetLenLocal;
 }
 
 // Send spawned walkers to their correct processor

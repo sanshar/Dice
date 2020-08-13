@@ -27,6 +27,7 @@
 #include "spawnFCIQMC.h"
 #include "Walker.h"
 #include "walkersFCIQMC.h"
+#include "utilsFCIQMC.h"
 
 using namespace Eigen;
 using namespace boost;
@@ -62,6 +63,12 @@ void runFCIQMC() {
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
 
+  // The number of 64-bit integers required to represent (the alpha or beta
+  // part of) a determinant
+  int DetLenAlpha = (nalpha-1)/64 + 1;
+  int DetLenBeta = (nalpha-1)/64 + 1;
+  int DetLenMin = max(DetLenAlpha, DetLenBeta);
+
   Determinant HFDet;
   for (int i = 0; i < nalpha; i++)
     HFDet.setoccA(i, true);
@@ -69,13 +76,13 @@ void runFCIQMC() {
     HFDet.setoccB(i, true);
 
   // Processor that the HF determinant lives on
-  int HFDetProc = HFDet.getProc();
+  int HFDetProc = getProc(HFDet, DetLenMin);
 
   int walkersSize = schd.targetPop * schd.mainMemoryFac / commsize;
   int spawnSize = schd.targetPop * schd.spawnMemoryFac / commsize;
 
-  walkersFCIQMC walkers(walkersSize);
-  spawnFCIQMC spawn(spawnSize);
+  walkersFCIQMC walkers(walkersSize, DetLenMin);
+  spawnFCIQMC spawn(spawnSize, DetLenMin);
 
   if (boost::iequals(schd.determinantFile, ""))
   {
@@ -201,7 +208,7 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
   }
 
   if (childSpawned) {
-    int proc = childDet.getProc();
+    int proc = getProc(childDet, spawn.DetLenMin);
     // Find the appropriate place in the spawned list for the processor
     // of the newly-spawned walker
     int ind = spawn.currProcSlots[proc];

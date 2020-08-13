@@ -50,7 +50,12 @@ class walkersFCIQMC {
   vector<int> emptyDets;
   int firstEmpty, lastEmpty;
 
-  walkersFCIQMC(int arrayLength);
+  // The number of 64-bit integers required to represent (the alpha or beta
+  // part of) a determinant
+  // Note, this is different to DetLen in global.h
+  int DetLenMin;
+
+  walkersFCIQMC(int arrayLength, int DetLenLocal);
 
   void stochasticRoundAll(const double& minPop);
 

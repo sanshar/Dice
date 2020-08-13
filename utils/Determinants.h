@@ -166,16 +166,6 @@ class Determinant {
   // print the occupations of orbitals within the active space
   void printActive(ostream& os);
 
-  // Get unique processor label for this determinant
-  int getProc() const {
-    std::size_t h_tot = 0;
-    for (int i=0; i<DetLen; i++) {
-      boost::hash_combine(h_tot, reprA[i]);
-      boost::hash_combine(h_tot, reprB[i]);
-    }
-    return h_tot % commsize;
-  }
-
   // Return simplified version of determinant
   inline simpleDet getSimpleDet() const {
     simpleDet combined;
