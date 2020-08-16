@@ -19,10 +19,6 @@
 
 #include "Determinants.h"
 
-using namespace Eigen;
-using namespace boost;
-using namespace std;
-
 void generateExcitation(const Determinant& parentDet, Determinant& childDet, double& pgen);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);

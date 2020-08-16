@@ -24,8 +24,6 @@
 #include <unordered_map>
 #include "Determinants.h"
 
-using namespace std;
-
 class Determinant;
 
 void stochastic_round(const double& minPop, double& amp, bool& roundedUp);

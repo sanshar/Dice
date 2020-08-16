@@ -29,10 +29,6 @@
 #include "walkersFCIQMC.h"
 #include "utilsFCIQMC.h"
 
-using namespace Eigen;
-using namespace boost;
-using namespace std;
-
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
                      oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
                      const double& tau, const double& minSpawn, const double& pgen);

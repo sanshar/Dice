@@ -23,8 +23,6 @@
 #include "Determinants.h"
 #include "walkersFCIQMC.h"
 
-using namespace std;
-
 class Determinant;
 
 // Class for spawning arrays needed in FCIQMC
