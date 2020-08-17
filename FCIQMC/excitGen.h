@@ -19,10 +19,216 @@
 
 #include "Determinants.h"
 
+class heatBathFCIQMC {
+  public:
+    vector<double> D_pq;
+
+    vector<double> S_p;
+
+    vector<double> P_same_r_pq;
+    vector<double> P_opp_r_pq;
+
+    vector<double> P_same_s_pqr;
+    vector<double> P_opp_s_pqr;
+
+    vector<double> H_tot_same_rpq;
+    vector<double> H_tot_opp_rpq;
+
+
+    heatBathFCIQMC(int norbs, int nalpha) {
+
+      // Size of the D_pq array
+      int size_1 = norbs*(norbs-1)/2;
+      // Size of the P_same_r_pq array
+      int size_2 = nalpha * nalpha*(nalpha-1)/2;
+      // Size of the P_opp_r_pq array
+      int size_3 = pow(nalpha,3);
+      // Size of the P_same_s_pqr array
+      int size_4 = pow(nalpha,2) * nalpha*(nalpha-1)/2;
+      // Size of the P_opp_s_pqr array
+      int size_5 = pow(nalpha,4);
+
+      D_pq.resize(size_1, 0.0);
+      S_p.resize(norbs, 0.0);
+      P_same_r_pq.resize(size_2, 0.0);
+      P_opp_r_pq.resize(size_3, 0.0);
+      P_same_s_pqr.resize(size_4, 0.0);
+      P_opp_s_pqr.resize(size_5, 0.0);
+      H_tot_same_rpq.resize(size_2);
+      H_tot_opp_rpq.resize(size_3);
+
+      // Set up D_pq
+      for (int p=1; p<norbs; p++) {
+        for (int q=0; q<p; q++) {
+          int ind = p*(p-1)/2 + q;
+          D_pq.at(ind) = 0.0;
+
+          for (int r=0; r<norbs; r++) {
+            for (int s=0; s<norbs; s++) {
+              D_pq.at(ind) += fabs( I2(r, s, p, q) );
+            }
+          }
+
+        }
+      }
+
+      // Set up S_p
+      for (int p=0; p<norbs; p++) {
+        S_p.at(p) = 0.0;
+
+        for (int q=0; q<norbs; q++) {
+          if (p == q) continue;
+
+          int Q = min(p,q);
+          int P = max(p,q);
+          int ind = P*(P-1)/2 + Q;
+
+          S_p.at(p) += D_pq.at(ind);
+        }
+      }
+
+      // Set up P_same_r_pq
+      for (int p=1; p<nalpha; p++) {
+        for (int q=0; q<p; q++) {
+
+          int ind_pq = p*(p-1)/2 + q;
+
+          for (int r=0; r<nalpha; r++) {
+
+            int ind = nalpha*ind_pq + r;
+            P_same_r_pq.at(ind) = 0.0;
+
+            for (int s=0; s<nalpha; s++) {
+              if (r == s) continue;
+
+              if (r != p && s != q) {
+                if (r != q && s != p) {
+                  P_same_r_pq.at(ind) += fabs( I2(2*r, 2*s, 2*p, 2*q) );
+                }
+              }
+
+            } // Loop over s
+
+            int ind_Dpq = (2*p)*(2*p-1)/2 + 2*q;
+            P_same_r_pq.at(ind) /= D_pq.at(ind_Dpq);
+
+          } // Loop over r
+
+        } // Loop over q
+      } // Loop over p
+
+
+      // Set up P_opp_r_pq
+      for (int p=0; p<nalpha; p++) {
+        for (int q=0; q<nalpha; q++) {
+
+          int ind_pq = p*nalpha + q;
+
+          for (int r=0; r<nalpha; r++) {
+
+            int ind = nalpha*ind_pq + r;
+            P_opp_r_pq.at(ind) = 0.0;
+
+            for (int s=0; s<nalpha; s++) {
+              if (r == s) continue;
+
+              if (r != p && s != q) {
+                P_opp_r_pq.at(ind) += fabs( I2(2*r, 2*s+1, 2*p, 2*q+1) );
+              }
+
+            } // Loop over s
+
+            int ind_Dpq = (2*p)*(2*p-1)/2 + 2*q+1;
+            P_opp_r_pq.at(ind) /= D_pq.at(ind_Dpq);
+
+          } // Loop over r
+
+        } // Loop over q
+      } // Loop over p
+
+
+      // Set up P_same_s_pqr
+      for (int p=1; p<nalpha; p++) {
+        for (int q=0; q<p; q++) {
+
+          int ind_pq = p*(p-1)/2 + q;
+
+          for (int r=0; r<nalpha; r++) {
+
+            double tot_sum = 0.0;
+
+            for (int s=0; s<nalpha; s++) {
+              if (r == s) continue;
+
+              int ind = pow(nalpha,2) * ind_pq + nalpha*r + s;
+
+              if (r != p && s != q) {
+                if (r != q && s != p) {
+                  P_same_s_pqr.at(ind) = fabs( I2(2*r, 2*s, 2*p, 2*q) );
+                  tot_sum += fabs( I2(2*r, 2*s, 2*p, 2*q) );
+                }
+              }
+
+            } // Loop over s
+
+            // Normalize probability
+            for (int s=0; s<nalpha; s++) {
+              int ind = pow(nalpha,2) * ind_pq + nalpha*r + s;
+              P_same_s_pqr.at(ind) /= tot_sum;
+            }
+
+            int ind_tot = nalpha*ind_pq + r;
+            H_tot_same_rpq.at(ind_tot) = tot_sum;
+
+          } // Loop over r
+
+        } // Loop over q
+      } // Loop over p
+
+
+      // Set up P_opp_s_pqr
+      for (int p=0; p<nalpha; p++) {
+        for (int q=0; q<nalpha; q++) {
+
+          int ind_pq = p*nalpha + q;
+
+          for (int r=0; r<nalpha; r++) {
+
+            double tot_sum = 0.0;
+
+            for (int s=0; s<nalpha; s++) {
+              if (r == s) continue;
+
+              int ind = pow(nalpha,2) * ind_pq + nalpha*r + s;
+
+              if (r != p && s != q) {
+                P_opp_s_pqr.at(ind) = fabs( I2(2*r, 2*s+1, 2*p, 2*q+1) );
+                tot_sum += fabs( I2(2*r, 2*s+1, 2*p, 2*q+1) );
+              }
+
+            } // Loop over s
+
+            // Normalize probability
+            for (int s=0; s<nalpha; s++) {
+              int ind = pow(nalpha,2) * ind_pq + nalpha*r + s;
+              P_opp_s_pqr.at(ind) /= tot_sum;
+            }
+
+            int ind_tot = nalpha*ind_pq + r;
+            H_tot_opp_rpq.at(ind_tot) = tot_sum;
+
+          } // Loop over r
+
+        } // Loop over q
+      } // Loop over p
+
+    } // End of contrusctor
+
+};
+
 void generateExcitation(const Determinant& parentDet, Determinant& childDet, double& pgen);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
-
 
 // Generate a random single or double excitation, and also return the
 // probability that it was generated
