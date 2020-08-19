@@ -291,4 +291,14 @@ then
     ../clean.sh
 fi
 
+cd $here/FCIQMC/Ne_initiator
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../clean.sh
+fi
+
 cd $here

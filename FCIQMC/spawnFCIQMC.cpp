@@ -22,6 +22,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <Eigen/Dense>
 #include "global.h"
+#include "input.h"
 #include "spawnFCIQMC.h"
 #include "walkersFCIQMC.h"
 
@@ -45,9 +46,14 @@ void apply_permutation(int const nDets, const vector<T>& vec, vector<T>& sorted_
 spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
   nDets = 0;
   dets.resize(spawnSize);
-  amps.resize(spawnSize, 0.0);
   detsTemp.resize(spawnSize);
+  amps.resize(spawnSize, 0.0);
   ampsTemp.resize(spawnSize, 0.0);
+
+  if (schd.initiator) {
+    flags.resize(spawnSize, 0);
+    flagsTemp.resize(spawnSize, 0);
+  }
 
   firstProcSlots.resize(commsize);
   currProcSlots.resize(commsize);
@@ -69,6 +75,7 @@ void spawnFCIQMC::communicate() {
   for (int i=0; i<nDets; i++) {
     detsTemp[i] = dets[i];
     ampsTemp[i] = amps[i];
+    if (schd.initiator) flagsTemp[i] = flags[i];
   }
 #else
   int sendCounts[commsize], recvCounts[commsize];
@@ -82,7 +89,6 @@ void spawnFCIQMC::communicate() {
     sendCounts[proc] = currProcSlots[proc] - firstProcSlots[proc];
     sendDispls[proc] = firstProcSlots[proc];
   }
-
   // Communicate the number of dets to be sent and received
   MPI_Alltoall(sendCounts, 1, MPI_INTEGER, recvCounts, 1, MPI_INTEGER, MPI_COMM_WORLD);
 
@@ -107,6 +113,11 @@ void spawnFCIQMC::communicate() {
   MPI_Alltoallv(&amps.front(), sendCounts, sendDispls, MPI_DOUBLE,
                 &ampsTemp.front(), recvCounts, recvDispls, MPI_DOUBLE, MPI_COMM_WORLD);
 
+  if (schd.initiator) {
+    MPI_Alltoallv(&flags.front(), sendCounts, sendDispls, MPI_INTEGER,
+                  &flagsTemp.front(), recvCounts, recvDispls, MPI_INTEGER, MPI_COMM_WORLD);
+  }
+
   // The total number of determinants received
   nDets = recvDispls[commsize-1] + recvCounts[commsize-1];
 #endif
@@ -119,8 +130,13 @@ void spawnFCIQMC::compress() {
   if (nDets > 0) {
     // Perform sort
     auto p = sort_permutation(nDets, detsTemp, [](simpleDet const& a, simpleDet const& b){ return (a < b); });
+
     apply_permutation( nDets, detsTemp, dets, p );
     apply_permutation( nDets, ampsTemp, amps, p );
+
+    if (schd.initiator) {
+      apply_permutation( nDets, flagsTemp, flags, p );
+    }
 
     bool exitOuter = false;
     int j = 0, k = 0;
@@ -129,6 +145,7 @@ void spawnFCIQMC::compress() {
     while (true) {
       dets[j] = dets[k];
       amps[j] = amps[k];
+      if (schd.initiator) flags[j] = flags[k];
       while (true) {
         k += 1;
         if (k == nDets) {
@@ -137,6 +154,15 @@ void spawnFCIQMC::compress() {
         }
         if ( dets[j] == dets[k] ) {
           amps[j] += amps[k];
+
+          // If the parent of any of the child walkers on this
+          // determinant was an initiator, then we want to allow the
+          // spawn. So set the child's flag to specify this, if so.
+          // (Bitwise OR operation).
+          if (schd.initiator) {
+            flags[j] |= flags[k];
+          }
+
         } else {
           break;
         }
@@ -173,6 +199,13 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
     else
     {
       // New determinant:
+
+      // If the initiator flag is unset, then none of the parents which
+      // spawned here were initiators. So cancel the spawn.
+      if (schd.initiator) {
+        if (flags[i] == 0) continue;
+      }
+
       if (abs(amps[i]) < minPop) {
         stochastic_round(minPop, amps[i], keepDet);
       }

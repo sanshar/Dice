@@ -112,6 +112,8 @@ private:
       & minPop
       & initialPop
       & targetPop
+      & initiator
+      & initiatorThresh
       & numHidden
 
       // Options related to SC-NEVPT(s):
@@ -288,6 +290,8 @@ public:
   double minPop;
   double initialPop;
   double targetPop;
+  bool initiator;
+  double initiatorThresh;
 
   //options for rbm
   int numHidden;
