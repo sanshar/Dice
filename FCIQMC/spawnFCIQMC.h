@@ -38,6 +38,9 @@ class spawnFCIQMC {
   // The amplitudes of spawned walkers
   vector<double> amps;
   vector<double> ampsTemp;
+  // Flags for the spawned walkers
+  vector<int> flags;
+  vector<int> flagsTemp;
 
   // The number of elements allocated for spawns to each processor
   int nSlotsPerProc;
