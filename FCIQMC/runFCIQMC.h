@@ -56,6 +56,7 @@ void printFinalStats(const double& walkerPop, const int& nDets,
 
 void runFCIQMC() {
 
+  int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
 
@@ -114,6 +115,10 @@ void runFCIQMC() {
   if (commrank == 0) {
     cout << "Hartree--Fock energy: " << HFDet.Energy(I1, I2, coreE) << endl << endl;
   }
+
+  if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl << flush;
+  heatBathFCIQMC hb(norbs);
+  if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl << flush;
 
   // Get and print the initial stats
   walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
@@ -192,6 +197,9 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
                      oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
                      const double& tau, const double& minSpawn, const double& pgen)
 {
+  // pgen = 0.0 can be set when a null excitation is returned.
+  if (pgen < 1.e-15) return;
+
   bool childSpawned = true;
 
   double pgen_tot = pgen * nAttemptsEach;
