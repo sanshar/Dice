@@ -72,24 +72,29 @@ void SplineFit::Init(const RawDataOnGrid& potentialYlm){
 }
 
 void SplineFit::getPotential(int ngrid, double* grid, double* potential) {
-  double sphCoord[3];
-  CalculateSphHarmonics sph(lmax); 
-  for (int i=0; i<ngrid; i++) {
-    double X = grid[3*i] - coord[0],
-        Y = grid[3*i+1] - coord[1],
-        Z = grid[3*i+2] - coord[2];
-    getSphericalCoords(X, Y, Z, 
-                       sphCoord[0], sphCoord[1], sphCoord[2]);
 
-    sph.populate(sphCoord[1], sphCoord[2]); //sphcoords
-    double r = sphCoord[0];
-    double z = (1./M_PI) * acos( (r - rm)/(r+rm));
-
-    for (int lm=0; lm<CoeffsYlmFit.size(); lm++)
-      CoeffsYlm[lm] = CoeffsYlmFit[lm](z);
-
-    potential[i] += CoeffsYlm.dot( sph.values )/r;
-
+  #pragma omp parallel
+  {    
+    double sphCoord[3];
+    CalculateSphHarmonics sph(lmax); 
+    #pragma omp for
+    for (int i=0; i<ngrid; i++) {
+      double X = grid[3*i] - coord[0],
+          Y = grid[3*i+1] - coord[1],
+          Z = grid[3*i+2] - coord[2];
+      getSphericalCoords(X, Y, Z, 
+                         sphCoord[0], sphCoord[1], sphCoord[2]);
+      
+      sph.populate(sphCoord[1], sphCoord[2]); //sphcoords
+      double r = sphCoord[0];
+      double z = (1./M_PI) * acos( (r - rm)/(r+rm));
+      
+      for (int lm=0; lm<CoeffsYlmFit.size(); lm++)
+        CoeffsYlm[lm] = CoeffsYlmFit[lm](z);
+      
+      potential[i] += CoeffsYlm.dot( sph.values )/r;
+      
+    }
   }
 }
 

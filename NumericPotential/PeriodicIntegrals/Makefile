@@ -11,7 +11,7 @@ BOOST=/projects/sash2458/newApps/boost_1_67_0/
 
 FLAGS  = -DNDEBUG -O3  -std=c++17 -g  -qopenmp -I${EIGEN} -I${BOOST} #-I/curc/sw/intel/16.0.3/mkl/include/
 
-OBJ = main.o BasisShell.o interface.o GeneratePolynomials.o CxMemoryStack.o IrAmrr.o Integral2c_Boys.o IrBoysFn.o
+OBJ = main.o BasisShell.o interface.o GeneratePolynomials.o CxMemoryStack.o IrAmrr.o Integral2c_Boys.o IrBoysFn.o Kernel.o LatticeSum.o
 
 LIBOBJ = BasisShell.o interface.o GeneratePolynomials.o
 

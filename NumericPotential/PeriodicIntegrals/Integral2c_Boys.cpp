@@ -90,7 +90,7 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
       RhoPow *= -2*Rho;
     }
 
-    if (pFmT[TotalL+1] < 1.e-12) continue;
+    if (pFmT[TotalL+1] < latsum.screen) continue;
     
     // contract (lamely). However, normally either nCo
     // or nFn, or TotalL (or even all of them at the same time)
@@ -163,7 +163,7 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
     }
     
     Mem.Free(pCoFmT);
-    if (maxPout < 1.e-12) {
+    if (maxPout < latsum.screen) {
       break;
     }
   }
@@ -228,7 +228,7 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                                          Tx, Ty, Tz,
                                          expVal, scale);
       
-      if (abs(maxG * scale * expVal) < 1.e-12) {
+      if (abs(maxG * scale * expVal) < latsum.screen) {
         break;
       }
     }      

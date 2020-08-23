@@ -3,7 +3,9 @@
 #include <boost/math/special_functions/spherical_harmonic.hpp>
 #include "pythonInterface.h"
 #include <boost/math/interpolators/cubic_b_spline.hpp>
+#include <ctime>
 #include <stdio.h>
+#include "mpi.h"
 #include "fittedFunctions.h"
 
 //#### BECKE GRID VARIABLES ######
@@ -145,6 +147,82 @@ void solvePoissonsEquation(int ia) {
   }
 }
 
+void solveScreenedPoissonsEquation(int ia, double lambda) {
+  double totalQ = densityYlm[ia].wts.dot(densityYlm[ia].GridValues * densityYlm[ia].lebdevgrid.col(3));
+  totalQ = 0.0;
+  
+  potentialYlm[ia] = densityYlm[ia];
+
+  int nr = densityYlm[ia].radialGrid.size();
+  double h = 1./(1.*nr+1.), rm = densityYlm[ia].rm;
+  VectorXd drdz(nr), d2rdz2(nr), b(nr);
+  VectorXd& z = densityYlm[ia].zgrid, &r = densityYlm[ia].radialGrid;
+
+  for (int i=0; i<nr; i++) {
+    drdz(i)   = (-2.*M_PI * rm * sin(M_PI * z(i))) / pow(1. - cos(M_PI * z(i)), 2);
+    d2rdz2(i) = ( 2.* M_PI * M_PI * rm) *
+        (2 * pow(sin(M_PI * z(i)), 2.) + pow(cos(M_PI * z(i)), 2) - cos(M_PI * z(i)))
+        / pow(1. - cos(M_PI * z(i)), 3);
+  }
+
+  MatrixXd A1Der(nr, nr), A2Der(nr, nr), A(nr, nr);
+  A1Der.setZero(); A2Der.setZero(); A.setZero();
+  A2Der.block(0,0,1,6) <<  -147., -255.,  470., -285.,  93., -13.;
+  A1Der.block(0,0,1,6) <<   -77.,  150., -100.,   50., -15.,   2.;
+
+  A2Der.block(1,0,1,6) <<  228., -420.,  200.,   15., -12.,   2.; 
+  A1Der.block(1,0,1,6) <<  -24.,  -35.,   80.,  -30.,   8.,  -1.;
+
+  A2Der.block(2,0,1,6) <<  -27.,  270., -490.,  270., -27.,   2.;
+  A1Der.block(2,0,1,6) <<    9.,  -45.,    0.,   45.,  -9.,   1.;
+
+  for (int i=3; i<nr-3; i++) {
+    A2Der.block(i,i-3,1,7) <<  2., -27.,  270., -490.,  270., -27.,   2.;
+    A1Der.block(i,i-3,1,7) << -1.,   9.,  -45.,    0.,   45.,  -9.,   1.;
+  }
+
+  A2Der.block(nr-1, nr-6, 1, 6) <<  -13.,   93., -285.,  470.,-255.,-147.;
+  A1Der.block(nr-1, nr-6, 1, 6) <<   -2.,   15.,  -50.,  100.,-150.,  77.;
+
+  A2Der.block(nr-2, nr-6, 1, 6) <<   2.,  -12.,   15.,  200.,-420., 228.;
+  A1Der.block(nr-2, nr-6, 1, 6) <<   1.,   -8.,   30.,  -80.,  35.,  24.;
+  
+  A2Der.block(nr-3, nr-6, 1, 6) <<  2., -27.,  270., -490.,  270., -27.;
+  A1Der.block(nr-3, nr-6, 1, 6) << -1.,   9.,  -45.,    0.,   45.,  -9.;
+
+  for (int i=0; i<nr; i++)
+    A2Der(i,i) = -lambda*lambda;
+  
+  int lmax = densityYlm[ia].lmax;
+  for (int l = 0; l < lmax; l++) {
+    for (int m = -l; m < l+1; m++) {
+      int lm = l * l + (l + m);
+
+      b = -4 * M_PI * r.cwiseProduct(densityYlm[ia].CoeffsYlm.col(lm));
+
+      if (l == 0) {
+        b(0) += sqrt(4 * M_PI) * (-137. / (180. * h * h)/(drdz(0) * drdz(0))) * totalQ;
+        b(1) += sqrt(4 * M_PI) * (  13. / (180. * h * h)/(drdz(1) * drdz(1))) * totalQ;
+        b(2) += sqrt(4 * M_PI) * (  -2. / (180. * h * h)/(drdz(2) * drdz(2))) * totalQ;
+        
+        b(0) += sqrt(4 * M_PI) * (  10. / (60. * h)*(-d2rdz2(0) / pow(drdz(0),3))) * totalQ;
+        b(1) += sqrt(4 * M_PI) * (  -2. / (60. * h)*(-d2rdz2(1) / pow(drdz(1),3))) * totalQ;
+        b(2) += sqrt(4 * M_PI) * (   1. / (60. * h)*(-d2rdz2(2) / pow(drdz(2),3))) * totalQ;
+      }
+      
+      for (int i=0; i<nr; i++) {
+        A.row(i) = A2Der.row(i) / (180. * h * h)/(drdz(i) * drdz(i))
+            + A1Der.row(i) / (60 * h) * (-d2rdz2(i) / pow(drdz(i), 3));
+        
+        A(i, i) += (-l * (l + 1) / r(i) / r(i)); 
+      }
+
+      potentialYlm[ia].CoeffsYlm.col(lm) = A.colPivHouseholderQr().solve(b);
+    }
+  }
+}
+
+
 void fitSplinePotential(int ia) {
   splinePotential[ia].Init(potentialYlm[ia]);
 }
@@ -165,16 +243,36 @@ void getPotentialBecke(int ngrid, double* grid, double* potential, int lmax,
   initAngularData(lmax, lebedevOrder);
   initAtomGrids();
 
-  for (int ia=0; ia<natm; ia++) { 
+  //time_t Initcurrent_time, current_time;
+  //Initcurrent_time = time(NULL);
+  int rank, psize;
+  MPI_Comm comm = MPI_COMM_WORLD;
+  MPI_Comm_rank(comm, &rank);
+  MPI_Comm_size(comm, &psize);
+  
+  
+  for (int ia=rank; ia<natm; ia+=psize) {
+    //current_time = time(NULL); cout << "atom "<<ia<<"  "<<current_time-Initcurrent_time<<endl;
     initDensityRadialGrid(ia, nrad[ia], rm[ia]);
-
+    //cout << densityYlm[ia].radialGrid.rows()<<" num r rows "<<endl;
+    
     for (int rindex = 0; rindex < nrad[ia] ; rindex++)
       fitDensity(ia, rindex);
 
+    //current_time = time(NULL); cout << "fit density "<<ia<<"  "<<current_time-Initcurrent_time<<endl;
+
     solvePoissonsEquation(ia);
+   //current_time = time(NULL); cout << "solve poisson "<<ia<<"  "<<current_time-Initcurrent_time<<endl;
+
     fitSplinePotential(ia);
+    //current_time = time(NULL); cout << "fit spline "<<ia<<"  "<<current_time-Initcurrent_time<<endl;
 
     getPotentialBeckeOfAtom(ia, ngrid, grid, potential);
+   //current_time = time(NULL); cout << "get potential "<<ia<<"  "<<current_time-Initcurrent_time<<endl;
   }
+
+  cout.precision(15);
+  MPI_Allreduce(MPI_IN_PLACE, potential, ngrid, MPI_DOUBLE, MPI_SUM, comm);
+  
   delete [] centroid;
 }

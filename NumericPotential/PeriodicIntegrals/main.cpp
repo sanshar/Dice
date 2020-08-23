@@ -11,9 +11,12 @@
 #include "Integral2c_Boys.h"
 #include "IrBoysFn.h"
 #include "LatticeSum.h"
+#include "timer.h"
 
 using namespace std;
 using namespace std::chrono;
+
+cumulTimer realSumTime, kSumTime;
 
 double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemoryStack2& Mem) ;
 
@@ -60,13 +63,13 @@ int main(int argc, char** argv) {
                &bas[0], bas.size()/8/2, &env[0],
                &Lattice[0]);  
   //basis.PrintAligned(cout, 0);
-  
-  LatticeSum latsum(&Lattice[0], 2,10);
+  //exit(0);
+  LatticeSum latsum(&Lattice[0], 4,13,100.,1.e-14);
   latsum.printLattice();
   cout << "n Basis: "<<basis.getNbas()<<endl;
 
 
-  int sh1 = 0, sh2 = 1;
+  int sh1 = 0, sh2 = 0;
   //cout << basis.BasisShells[sh1].exponents[0]<<endl;
   //basis.BasisShells[sh1].exponents[0] = 20.; basis.BasisShells[sh2].exponents[0] = 20.;
   int nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
@@ -78,17 +81,38 @@ int main(int argc, char** argv) {
 
 
   EvalInt2e2c(&integrals[0], 1, nbas1, &basis.BasisShells[sh1],
-              &basis.BasisShells[sh2], 1.0, false, &okernel, latsum, Mem);
+              &basis.BasisShells[sh2], 1.0, false, &ckernel, latsum, Mem);
 
+  /*
   for (int i=0; i<nbas1; i++) {
     for (int j=0; j<nbas2; j++)
       printf("%13.8f  ", integrals[i + j * nbas1]);
     cout << endl;
   }
+  */
+  {
+    vector<double> integralsNew(n1*n2, 0.0);
+    LatticeSum latsum(&Lattice[0], 20,20,200.,1.e-12);
+    EvalInt2e2c(&integralsNew[0], 1, nbas1, &basis.BasisShells[sh1],
+                &basis.BasisShells[sh2], 1.0, false, &ckernel, latsum, Mem);
 
+    double error = 0.0, maxError = 0.0; int maxInd = 0;
+    for (int i=0; i<nbas1*nbas2; i++) {
+      error += pow(integralsNew[i] - integrals[i], 2);
+      if (maxError < pow(integrals[i] - integralsNew[i], 2)) {
+        maxError = pow(integrals[i] - integralsNew[i], 2);
+        maxInd = i;
+      }
+    }
+    cout << "Total error: "<<sqrt(error)<<endl<<"Max error:  "<<sqrt(maxError)<<endl;
+    cout <<maxInd<<"  "<< integrals[maxInd]<<"  "<<integralsNew[maxInd]<<endl;
+    cout << maxInd/nbas1<<"  "<<maxInd%nbas1<<endl;
+  }
+  cout << endl<<endl;
+  //exit(0);
 
-  testIntegral(okernel, basis.getNbas(), Lattice, Mem); cout << endl;
-  testIntegral(kkernel, basis.getNbas(), Lattice, Mem); cout << endl;
+  //testIntegral(okernel, basis.getNbas(), Lattice, Mem); cout << endl;
+  //testIntegral(kkernel, basis.getNbas(), Lattice, Mem); cout << endl;
   testIntegral(ckernel, basis.getNbas(), Lattice, Mem); cout << endl;
 
 }
@@ -98,7 +122,7 @@ double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemo
   vector<double> integrals(nbas*nbas, 0.0);
 
   {
-    LatticeSum latsum(&Lattice[0], 3, 20, 300.);
+    LatticeSum latsum(&Lattice[0], 2, 20, 100., 8.0, 1.e-12);
     auto start = high_resolution_clock::now();
     int inbas = 0, jnbas = 0, nbas1, nbas2;
     for (int sh1 = 0 ; sh1 <basis.BasisShells.size(); sh1++) {
@@ -116,6 +140,7 @@ double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemo
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
     cout <<"Executation time overlap--->: "<< duration.count()/1e6 << endl;
+    cout <<"spacetime: "<< realSumTime<<endl<<"kspacetime: "<<kSumTime<<endl;
     
     //do it again with larger thresholds
     string name = "coul_ref";
@@ -129,7 +154,7 @@ double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemo
 
   {
     auto start = high_resolution_clock::now();
-    LatticeSum latsum(&Lattice[0], 5, 15, 200.0);
+    LatticeSum latsum(&Lattice[0], 5, 15, 200.0, 1.e-16);
     int inbas = 0, jnbas = 0, nbas1, nbas2;
     for (int sh1 = 0 ; sh1 <basis.BasisShells.size(); sh1++) {
       nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
