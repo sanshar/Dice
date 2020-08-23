@@ -167,7 +167,8 @@ void runFCIQMC() {
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
-        generateExcitation(hb, walkers.dets[iDet], childDet, pgen);
+        //generateExcitation(hb, walkers.dets[iDet], childDet, pgen);
+        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], childDet, pgen);
 
         attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
                         parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
