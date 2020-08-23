@@ -2,7 +2,6 @@
   Developed by Sandeep Sharma
   Copyright (c) 2017, Sandeep Sharma
 
-w
   This file is part of DICE.
 
   This program is free software: you can redistribute it and/or modify it under the terms

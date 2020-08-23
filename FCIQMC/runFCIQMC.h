@@ -30,7 +30,8 @@
 #include "utilsFCIQMC.h"
 
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
-                     oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
+                     oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach,
+                     const double& parentAmp, const int& parentFlags,
                      const double& tau, const double& minSpawn, const double& pgen);
 
 void performDeath(Determinant& parentDet, double& detPopulation, oneInt &I1, twoInt &I2,
@@ -151,6 +152,15 @@ void runFCIQMC() {
         continue;
       }
 
+      // Update the initiator flag, if necessary
+      int parentFlags = 0;
+      if (schd.initiator) {
+        if (abs(walkers.amps[iDet]) > schd.initiatorThresh) {
+          // This walker is an initiator, so set the flag
+          parentFlags |= 1 << INITIATOR_FLAG;
+        }
+      }
+
       // Number of spawnings to attempt
       nAttempts = max(1.0, round(walkers.amps[iDet] * schd.nAttemptsEach));
       parentAmp = walkers.amps[iDet] * schd.nAttemptsEach / nAttempts;
@@ -159,8 +169,8 @@ void runFCIQMC() {
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
         generateExcitation(hb, walkers.dets[iDet], childDet, pgen);
 
-        attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE,
-                        schd.nAttemptsEach, parentAmp, schd.tau, schd.minSpawn, pgen);
+        attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                        parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
       }
       performDeath(walkers.dets[iDet], walkers.amps[iDet], I1, I2, coreE, Eshift, schd.tau);
     }
@@ -191,11 +201,11 @@ void runFCIQMC() {
 
 
 // Find the weight of the spawned walker
-// If it is above amin threshold, then always spawn
+// If it is above a minimum threshold, then always spawn
 // Otherwsie, stochastically round it up to the threshold or down to 0
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
                      oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
-                     const double& tau, const double& minSpawn, const double& pgen)
+                     const int& parentFlags, const double& tau, const double& minSpawn, const double& pgen)
 {
   // pgen = 0.0 can be set when a null excitation is returned.
   if (pgen < 1.e-15) return;
@@ -217,6 +227,7 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
     int ind = spawn.currProcSlots[proc];
     spawn.dets[ind] = childDet.getSimpleDet();
     spawn.amps[ind] = childAmp;
+    if (schd.initiator) spawn.flags[ind] = parentFlags;
     spawn.currProcSlots[proc] += 1;
   }
 }
