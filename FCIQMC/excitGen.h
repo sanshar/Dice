@@ -79,7 +79,7 @@ class heatBathFCIQMC {
 
           for (int r=0; r<nSpinOrbs; r++) {
             for (int s=0; s<nSpinOrbs; s++) {
-              D_pq.at(ind) += fabs( I2(r, p, s, q) );
+              D_pq.at(ind) += fabs( I2(r, p, s, q) - I2(r, q, s, p) );
             }
           }
 
@@ -118,7 +118,7 @@ class heatBathFCIQMC {
               if (r == s) continue;
 
               if (r != p && s != q && r != q && s != p) {
-                P_same_r_pq.at(ind) += fabs( I2(2*r, 2*p, 2*s, 2*q) );
+                P_same_r_pq.at(ind) += fabs( I2(2*r, 2*p, 2*s, 2*q) - I2(2*r, 2*q, 2*s, 2*p) );
               }
 
             } // Loop over s
@@ -169,7 +169,6 @@ class heatBathFCIQMC {
             P_opp_r_pq.at(ind) = 0.0;
 
             for (int s=0; s<norbs; s++) {
-              if (r == s) continue;
 
               if (r != p && s != q) {
                 P_opp_r_pq.at(ind) += fabs( I2(2*r, 2*p, 2*s+1, 2*q+1) );
@@ -227,8 +226,8 @@ class heatBathFCIQMC {
               int ind = pow(norbs,2) * ind_pq + norbs*r + s;
 
               if (r != p && s != q && r != q && s != p) {
-                P_same_s_pqr.at(ind) = fabs( I2(2*r, 2*p, 2*s, 2*q) );
-                tot_sum += fabs( I2(2*r, 2*p, 2*s, 2*q) );
+                P_same_s_pqr.at(ind) = fabs( I2(2*r, 2*p, 2*s, 2*q) - I2(2*r, 2*q, 2*s, 2*p) );
+                tot_sum += fabs( I2(2*r, 2*p, 2*s, 2*q) - I2(2*r, 2*q, 2*s, 2*p) );
               }
 
             } // Loop over s
@@ -280,7 +279,6 @@ class heatBathFCIQMC {
             double tot_sum = 0.0;
 
             for (int s=0; s<norbs; s++) {
-              if (r == s) continue;
 
               int ind = pow(norbs,2) * ind_pq + norbs*r + s;
 
