@@ -18,12 +18,12 @@ using namespace std::chrono;
 
 cumulTimer realSumTime, kSumTime;
 
-double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemoryStack2& Mem) ;
+void testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemoryStack2& Mem) ;
 
 template<typename T>
-void readFile(vector<T>& vec, char* fname) {
+void readFile(vector<T>& vec, string fname) {
   streampos begin,end;
-  ifstream myfile (fname, ios::binary);
+  ifstream myfile (fname.c_str(), ios::binary);
   begin = myfile.tellg();
   myfile.seekg (0, ios::end);
   end = myfile.tellg();
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
                &Lattice[0]);  
   //basis.PrintAligned(cout, 0);
   //exit(0);
-  LatticeSum latsum(&Lattice[0], 4,13,100.,1.e-14);
+  LatticeSum latsum(&Lattice[0], 4, 13, 100., 8.0, 1.e-14);
   latsum.printLattice();
   cout << "n Basis: "<<basis.getNbas()<<endl;
 
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
   */
   {
     vector<double> integralsNew(n1*n2, 0.0);
-    LatticeSum latsum(&Lattice[0], 20,20,200.,1.e-12);
+    LatticeSum latsum(&Lattice[0], 20, 20, 200., 8.0, 1.e-12);
     EvalInt2e2c(&integralsNew[0], 1, nbas1, &basis.BasisShells[sh1],
                 &basis.BasisShells[sh2], 1.0, false, &ckernel, latsum, Mem);
 
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 }
 
 
-double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemoryStack2& Mem) {
+void testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemoryStack2& Mem) {
   vector<double> integrals(nbas*nbas, 0.0);
 
   {
@@ -154,7 +154,7 @@ double testIntegral(Kernel& kernel, int nbas, vector<double>& Lattice, ct::FMemo
 
   {
     auto start = high_resolution_clock::now();
-    LatticeSum latsum(&Lattice[0], 5, 15, 200.0, 1.e-16);
+    LatticeSum latsum(&Lattice[0], 5, 15, 200.0, 8.0, 1.e-16);
     int inbas = 0, jnbas = 0, nbas1, nbas2;
     for (int sh1 = 0 ; sh1 <basis.BasisShells.size(); sh1++) {
       nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);

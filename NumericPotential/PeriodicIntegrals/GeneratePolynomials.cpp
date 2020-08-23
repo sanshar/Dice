@@ -584,4 +584,5 @@ double getHermiteReciprocal(int l, double* pOut,
     pOut[ 90 ] += Cosval * Gx4 * Gy4 * Gz4;    
     return std::max(Gx12, std::max(Gy12, Gz12));
   }
+  return -1.;
 }
