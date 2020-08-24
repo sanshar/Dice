@@ -19,6 +19,15 @@
 
 #include "Determinants.h"
 
+// Map two integers to a single integer by a one-to-one mapping,
+// using the triangular indexing approach
+inline int triInd(const int& p, const int& q)
+{
+  int Q = min(p,q);
+  int P = max(p,q);
+  return P*(P-1)/2 + Q;
+}
+
 class heatBathFCIQMC {
   public:
     vector<double> D_pq;
@@ -92,11 +101,7 @@ class heatBathFCIQMC {
 
         for (int q=0; q<nSpinOrbs; q++) {
           if (p == q) continue;
-
-          int Q = min(p,q);
-          int P = max(p,q);
-          int ind = P*(P-1)/2 + Q;
-
+          int ind = triInd(p,q);
           S_p.at(p) += D_pq.at(ind);
         }
       }
@@ -532,28 +537,18 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
 
-  int ind, ind_pq, rSpatial;
-
   bool sameSpin = (p%2 == q%2);
-  int pSpatial = p/2;
-  int qSpatial = q/2;
+  int ind, ind_pq, rSpatial;
+  int pSpatial = p/2, qSpatial = q/2;
 
   // Pick a spin-orbital r from P(r|pq), such that r and p have the same spin
   if (sameSpin) {
 
-    //cout << "same spin" << endl;
-
-    int Q = min(pSpatial, qSpatial);
-    int P = max(pSpatial, qSpatial);
-    ind_pq = P*(P-1)/2 + Q;
-
+    ind_pq = triInd(pSpatial, qSpatial);
     // The first index for pair (p,q)
     int ind_pq_low = ind_pq*norbs;
     // The last index for pair (p,q)
     int ind_pq_high = ind_pq_low + norbs - 1;
-
-    //cout << "ind low: " << ind_pq_low << endl;
-    //cout << "ind high: " << ind_pq_high << endl;
 
     double rRand = random();
     rSpatial = std::lower_bound((hb.P_same_r_pq_cum.begin() + ind_pq_low),
@@ -567,29 +562,16 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
     H_tot_rpq = hb.H_tot_same_rpq.at(ind);
   } else {
 
-    //cout << "opposite spin" << endl;
-
     ind_pq = pSpatial*norbs + qSpatial;
     // The first index for pair (p,q)
     int ind_pq_low = ind_pq*norbs;
     // The last index for pair (p,q)
     int ind_pq_high = ind_pq_low + norbs - 1;
 
-    //cout << "ind low: " << ind_pq_low << endl;
-    //cout << "ind high: " << ind_pq_high << endl;
-
-    //cout << "Cumulative array: " << endl;
-    //for (int k = ind_pq_low; k <= ind_pq_high; k++) {
-    //  cout << hb.P_opp_r_pq_cum.at(k) << endl;
-    //}
-    //cout << "Finished" << endl;
-
     double rRand = random();
     rSpatial = std::lower_bound((hb.P_opp_r_pq_cum.begin() + ind_pq_low),
                                 (hb.P_opp_r_pq_cum.begin() + ind_pq_high), rRand)
                                 - hb.P_opp_r_pq_cum.begin() - ind_pq_low;
-
-    //cout << "rSpatial: " << rSpatial << endl;
 
     // The probability that this electron was chosen
     ind = norbs*ind_pq + rSpatial;
@@ -611,27 +593,16 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
   int ind, ind_pq, sSpatial;
 
   bool sameSpin = (p%2 == q%2);
-  int pSpatial = p/2;
-  int qSpatial = q/2;
-  int rSpatial = r/2;
+  int pSpatial = p/2, qSpatial = q/2, rSpatial = r/2;
 
   // Pick a spin-orbital r from P(r|pq), such that r and p have the same spin
   if (sameSpin) {
 
-    int Q = min(pSpatial, qSpatial);
-    int P = max(pSpatial, qSpatial);
-    ind_pq = P*(P-1)/2 + Q;
-
+    ind_pq = triInd(pSpatial, qSpatial);
     // The first index for triplet (p,q,r)
     int ind_pqr_low = pow(norbs,2) * ind_pq + norbs*rSpatial;
     // The last index for triplet (p,q,r)
     int ind_pqr_high = ind_pqr_low + norbs - 1;
-
-    //cout << "Cumulative array: " << endl;
-    //for (int k = ind_pqr_low; k <= ind_pqr_high; k++) {
-    //  cout << hb.P_same_s_pqr_cum.at(k) << endl;
-    //}
-    //cout << "Finished" << endl;
 
     double sRand = random();
     sSpatial = std::lower_bound((hb.P_same_s_pqr_cum.begin() + ind_pqr_low),
@@ -665,10 +636,8 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
 
 void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pgen_pqrs)
 {
-  int P, Q, ind, ind_pq;
-  int norbs = Determinant::norbs;
+  int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
-  double rProb2, sProb2;
 
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
@@ -676,14 +645,13 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   vector<int> open;
   vector<int> closed;
   parentDet.getOpenClosed(open, closed);
-
   int nel = closed.size();
-
-  //cout << parentDet << endl;
 
   // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
   // For this, we need to calculate the cumulative array, summed over
   // occupied electrons only
+
+  // Set up the cumulative array
   double S_p_tot = 0.0;
   vector<double> S_p_cum(nel, 0.0);
   for (int p=0; p<nel; p++) {
@@ -699,15 +667,12 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   int pFinal = closed.at(pInd);
   // The probability that this electron was chosen
   double pProb = hb.S_p.at(pFinal) / S_p_tot;
-  //cout << "pInd: " << pInd << endl;
-  //cout << "S_p: " << hb.S_p.at(pFinal) << endl;
-  //cout << "S_p_tot: " << S_p_tot << endl;
-
-  //cout << "pFinal: " << pFinal << "   prob: " << pProb << endl;
 
   // Pick the second electron with probability D_pq / sum_q' D_pq'
   // We again need the relevant cumulative array, summed over
   // remaining occupied electrons, q'
+
+  // Set up the cumulative array
   double D_pq_tot = 0.0;
   vector<double> D_pq_cum(nel, 0.0);
   for (int q=0; q<nel; q++) {
@@ -715,10 +680,8 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
       D_pq_cum.at(q) = D_pq_tot;
     } else {
       int orb = closed.at(q);
-      Q = min(pFinal,orb);
-      P = max(pFinal,orb);
-      ind = P*(P-1)/2 + Q;
-      D_pq_tot += hb.D_pq.at(ind);
+      int ind_pq = triInd(pFinal, orb);
+      D_pq_tot += hb.D_pq.at(ind_pq);
       D_pq_cum.at(q) = D_pq_tot;
     }
   }
@@ -729,40 +692,30 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   // The actual orbital being excited from:
   int qFinal = closed.at(qInd);
   // The probability that this electron was chosen
-  Q = min(pFinal,qFinal);
-  P = max(pFinal,qFinal);
-  ind = P*(P-1)/2 + Q;
+  ind = triInd(pFinal, qFinal);
   double qProb = hb.D_pq.at(ind) / D_pq_tot;
-
-  //cout << "qFinal: " << qFinal << "   prob: " << qProb << endl;
 
   // We also need to know the probability that the same two electrons were
   // picked in the opposite order.
   // The probability that q was picked first:
-  //cout << "hb.S_p.at(qFinal): " << hb.S_p.at(qFinal) << endl;
   double qProb2 = hb.S_p.at(qFinal) / S_p_tot;
-  //cout << "qProb2: " << qProb2 << endl;
   // The probability that p was picked second, given that p was picked first:
+  // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
   double D_qp_tot = 0.0;
   for (int p=0; p<nel; p++) {
     int orb = closed.at(p);
     if (p != qInd) {
-      Q = min(orb,qFinal);
-      P = max(orb,qFinal);
-      ind = P*(P-1)/2 + Q;
-      D_qp_tot += hb.D_pq.at(ind);
+      int ind_pq = triInd(orb, qFinal);
+      D_qp_tot += hb.D_pq.at(ind_pq);
     }
   }
-  Q = min(pFinal,qFinal);
-  P = max(pFinal,qFinal);
-  ind = P*(P-1)/2 + Q;
+  // Now find the probability:
+  ind = triInd(pFinal,qFinal);
   double pProb2 = hb.D_pq.at(ind) / D_qp_tot;
-  //cout << "hb.D_pq.at(ind): " << hb.D_pq.at(ind) << endl;
-  //cout << "D_qp_tot: " << D_qp_tot << endl;
-  //cout << "pProb2: " << pProb2 << endl;
 
   if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
 
+  // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
   int rFinal;
   double rProb, H_tot_rpq;
   pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_rpq);
@@ -771,14 +724,11 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   if (parentDet.getocc(rFinal)) {
     pgen_pqrs = 0.0;
     childDet = parentDet;
-    //cout << "rFinal NOT ALLOWED" << endl;
     return;
   }
 
-  //cout << "rFinal: " << rFinal << "   prob: " << rProb << endl;
-  
-  // Now pick the final spin-orbital, s, from P(s|pqr), such that s and q
-  // have the same spin
+  // Pick the final spin-orbital, s, with probability P(s|pqr), such
+  // that s and q have the same spin
   int sFinal;
   double sProb;
   pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb);
@@ -787,31 +737,27 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   if (parentDet.getocc(sFinal)) {
     pgen_pqrs = 0.0;
     childDet = parentDet;
-    //cout << "sFinal NOT ALLOWED" << endl;
     return;
   }
 
-  //cout << "sFinal: " << sFinal << "   prob: " << sProb << endl;
-
   // Find probabilities of selecting r and s the other way around
+  double rProb2, sProb2;
   if (sFinal%2 == pFinal%2) {
-    int pSpatial = pFinal/2;
-    int qSpatial = qFinal/2;
-
+    // Same spin for p and q:
     if (pFinal%2 == qFinal%2) {
-      // Same spin for p and q
-      Q = min(pSpatial, qSpatial);
-      P = max(pSpatial, qSpatial);
-      ind_pq = P*(P-1)/2 + Q;
+      int pSpatial = pFinal/2, qSpatial = qFinal/2;
+      int rSpatial = rFinal/2, sSpatial = sFinal/2;
 
-      int ind_pqs = norbs * ind_pq + (sFinal/2);
+      int ind_pq = triInd(pSpatial, qSpatial);
+      int ind_pqs = norbs * ind_pq + sSpatial;
+      // Probability of picking s first
       sProb2 = hb.P_same_r_pq.at(ind_pqs);
-
-      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*(sFinal/2) + (rFinal/2);
+      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*sSpatial + rSpatial;
+      // Probability of picking r second, given s was picked first
       rProb2 = hb.P_same_s_pqr.at(ind_pqsr);
 
     } else {
-      cout << "ERROR: should not be here" << endl;
+      cout << "ERROR: this should not be possible" << endl;
     }
 
   } else {
@@ -823,22 +769,21 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
     rProb2 = 0.0;
   }
 
-  //cout << "sProb2: " << sProb2 << endl;
-  //cout << "rProb2: " << rProb2 << endl;
-
+  // Generate the final doubly excited determinant...
   childDet = parentDet;
   childDet.setocc(pFinal, false);
   childDet.setocc(qFinal, false);
   childDet.setocc(rFinal, true);
   childDet.setocc(sFinal, true);
 
-  pgen_pqrs = pProb  * qProb  * ( rProb * sProb + sProb2 * rProb2 ) +
-              qProb2 * pProb2 * ( rProb * sProb + sProb2 * rProb2 );
-
-  //cout << "Final prob: " << pgen_pqrs << endl;
+  // ...and the probability that it was generated.
+  pgen_pqrs = (pProb*qProb + qProb2*pProb2)  * ( rProb*sProb + sProb2*rProb2 );
 }
 
-
+// Calculate the probability of choosing the excitation p to r, where p and r
+// are both spin-orbital labels. pProb is the probability that p is chosen as
+// the first electron. hSingAbs is the absolute value of the the Hamiltonian
+// element between the original and singly excited determinants.
 double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
                        const Determinant& parentDet, const double pProb, const double D_pq_tot,
                        const double hSingAbs, const int p, const int r)
@@ -847,41 +792,44 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
   vector<int> open;
   vector<int> closed;
   parentDet.getOpenClosed(open, closed);
+
   int nel = closed.size();
+  int pSpatial = p/2, rSpatial = r/2;
 
   double pGen = 0.0;
 
   // Need to loop over all possible orbitals q that could have been chosen
+  // as the second electron
   for (int q=0; q<nel; q++) {
     int qOrb = closed.at(q);
+    int qSpatial = qOrb/2;
     if (qOrb != p) {
-      int Q = min(p,qOrb);
-      int P = max(p,qOrb);
-      int ind = P*(P-1)/2 + Q;
+      int ind = triInd(p, qOrb);
       double qProb = hb.D_pq.at(ind) / D_pq_tot;
 
       double rProb, H_tot_pqr;
       if (p%2 == qOrb%2) {
         // Same spin
-        int Q = min(p/2, qOrb/2);
-        int P = max(p/2, qOrb/2);
-        int ind_pq = P*(P-1)/2 + Q;
-
-        int ind_pqr = ind_pq*norbs + r/2;
+        int ind_pq = triInd(pSpatial, qSpatial);
+        int ind_pqr = ind_pq*norbs + rSpatial;
         rProb = hb.P_same_r_pq.at(ind_pqr);
         H_tot_pqr = hb.H_tot_same_rpq.at(ind_pqr);
       } else {
         // Opposite spin
-        int ind_pq = (p/2)*norbs + (qOrb/2);
-        int ind_pqr = ind_pq*norbs + r/2;
+        int ind_pq = pSpatial*norbs + qSpatial;
+        int ind_pqr = ind_pq*norbs + rSpatial;
         rProb = hb.P_opp_r_pq.at(ind_pqr);
         H_tot_pqr = hb.H_tot_opp_rpq.at(ind_pqr);
       }
 
+      // The probability of generating a single excitation, rather than a
+      // double excitation
       double pSing;
       if (hSingAbs < H_tot_pqr) {
         pSing = hSingAbs / ( H_tot_pqr + hSingAbs );
       } else {
+        // If hSingAbs >= Htot_pqr, always attempt to generate both a
+        // single and double excitation
         pSing = 1.0;
       }
       pGen += pProb * qProb * rProb * pSing;
@@ -897,10 +845,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
                                      const Determinant& parentDet, Determinant& childDet,
                                      Determinant& childDet2, double& pGen, double& pGen2)
 {
-  int P, Q, ind, ind_pq;
-  int norbs = Determinant::norbs;
+  int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
-  double rProb2, sProb2;
 
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
@@ -908,12 +854,13 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   vector<int> open;
   vector<int> closed;
   parentDet.getOpenClosed(open, closed);
-
   int nel = closed.size();
 
   // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
   // For this, we need to calculate the cumulative array, summed over
   // occupied electrons only
+
+  // Set up the cumulative array
   double S_p_tot = 0.0;
   vector<double> S_p_cum(nel, 0.0);
   for (int p=0; p<nel; p++) {
@@ -933,6 +880,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // Pick the second electron with probability D_pq / sum_q' D_pq'
   // We again need the relevant cumulative array, summed over
   // remaining occupied electrons, q'
+
+  // Set up the cumulative array
   double D_pq_tot = 0.0;
   vector<double> D_pq_cum(nel, 0.0);
   for (int q=0; q<nel; q++) {
@@ -940,10 +889,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
       D_pq_cum.at(q) = D_pq_tot;
     } else {
       int orb = closed.at(q);
-      Q = min(pFinal,orb);
-      P = max(pFinal,orb);
-      ind = P*(P-1)/2 + Q;
-      D_pq_tot += hb.D_pq.at(ind);
+      int ind_pq = triInd(pFinal, orb);
+      D_pq_tot += hb.D_pq.at(ind_pq);
       D_pq_cum.at(q) = D_pq_tot;
     }
   }
@@ -954,9 +901,7 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // The actual orbital being excited from:
   int qFinal = closed.at(qInd);
   // The probability that this electron was chosen
-  Q = min(pFinal,qFinal);
-  P = max(pFinal,qFinal);
-  ind = P*(P-1)/2 + Q;
+  ind = triInd(pFinal, qFinal);
   double qProb = hb.D_pq.at(ind) / D_pq_tot;
 
   // We also need to know the probability that the same two electrons were
@@ -964,28 +909,26 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // The probability that q was picked first:
   double qProb2 = hb.S_p.at(qFinal) / S_p_tot;
   // The probability that p was picked second, given that p was picked first:
+  // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
   double D_qp_tot = 0.0;
   for (int p=0; p<nel; p++) {
     int orb = closed.at(p);
     if (p != qInd) {
-      Q = min(orb,qFinal);
-      P = max(orb,qFinal);
-      ind = P*(P-1)/2 + Q;
-      D_qp_tot += hb.D_pq.at(ind);
+      int ind_pq = triInd(orb, qFinal);
+      D_qp_tot += hb.D_pq.at(ind_pq);
     }
   }
-  Q = min(pFinal,qFinal);
-  P = max(pFinal,qFinal);
-  ind = P*(P-1)/2 + Q;
+  ind = triInd(pFinal, qFinal);
   double pProb2 = hb.D_pq.at(ind) / D_qp_tot;
 
   if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
 
+  // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
   int rFinal;
   double rProb, H_tot_rpq;
   pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_rpq);
 
-  // If the orbital r is already occupied, return a null excitation
+  // If the orbital r is already occupied, return null excitations
   if (parentDet.getocc(rFinal)) {
     pGen = 0.0;
     pGen2 = 0.0;
@@ -1052,20 +995,18 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   }
 
   // Find probabilities of selecting r and s the other way around
+  double rProb2, sProb2;
   if (sFinal%2 == pFinal%2) {
-    int pSpatial = pFinal/2;
-    int qSpatial = qFinal/2;
-
     if (pFinal%2 == qFinal%2) {
       // Same spin for p and q
-      Q = min(pSpatial, qSpatial);
-      P = max(pSpatial, qSpatial);
-      ind_pq = P*(P-1)/2 + Q;
+      int pSpatial = pFinal/2, qSpatial = qFinal/2;
+      int rSpatial = rFinal/2, sSpatial = sFinal/2;
 
-      int ind_pqs = norbs * ind_pq + (sFinal/2);
+      int ind_pq = triInd(pSpatial, qSpatial);
+      int ind_pqs = norbs * ind_pq + sSpatial;
       sProb2 = hb.P_same_r_pq.at(ind_pqs);
 
-      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*(sFinal/2) + (rFinal/2);
+      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*sSpatial + rSpatial;
       rProb2 = hb.P_same_s_pqr.at(ind_pqsr);
 
     } else {
@@ -1081,12 +1022,13 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
     rProb2 = 0.0;
   }
 
+  // Generate the final doubly excited determinant...
   childDet2 = parentDet;
   childDet2.setocc(pFinal, false);
   childDet2.setocc(qFinal, false);
   childDet2.setocc(rFinal, true);
   childDet2.setocc(sFinal, true);
 
-  pGen2 = pProb  * qProb  * ( pDoub * rProb * sProb + sProb2 * rProb2 ) +
-          qProb2 * pProb2 * ( pDoub * rProb * sProb + sProb2 * rProb2 );
+  // ...and the probability that it was generated.
+  pGen2 = (pProb*qProb + qProb2*pProb2) * ( pDoub*rProb*sProb + sProb2*rProb2 );
 }
