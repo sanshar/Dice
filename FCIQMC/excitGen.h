@@ -878,7 +878,12 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
         H_tot_pqr = hb.H_tot_opp_rpq.at(ind_pqr);
       }
 
-      double pSing = hSingAbs / ( H_tot_pqr + hSingAbs );
+      double pSing;
+      if (hSingAbs < H_tot_pqr) {
+        pSing = hSingAbs / ( H_tot_pqr + hSingAbs );
+      } else {
+        pSing = 1.0;
+      }
       pGen += pProb * qProb * rProb * pSing;
     }
   }
@@ -889,7 +894,8 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
 // Use the heat bath algorithm to generate both the single and
 // double excitations
 void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                     const Determinant& parentDet, Determinant& childDet, double& pGen)
+                                     const Determinant& parentDet, Determinant& childDet,
+                                     Determinant& childDet2, double& pGen, double& pGen2)
 {
   int P, Q, ind, ind_pq;
   int norbs = Determinant::norbs;
@@ -982,7 +988,9 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // If the orbital r is already occupied, return a null excitation
   if (parentDet.getocc(rFinal)) {
     pGen = 0.0;
+    pGen2 = 0.0;
     childDet = parentDet;
+    childDet2 = parentDet;
     return;
   }
 
@@ -995,20 +1003,42 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   }
   double hSingAbs = abs(hSing);
 
-  double pSing = hSingAbs / ( H_tot_rpq + hSingAbs );
-  double rand = random();
-  if (rand < pSing) {
-    // Generate a single excitation from p to r:
-    childDet = parentDet;
+  double pSing, pDoub;
+  childDet = parentDet;
+
+  // If this condition is met then we generate either a single or a double
+  // If it is not then, then we generate both a single and double excitation
+  if (hSingAbs < H_tot_rpq) {
+    pSing = hSingAbs / ( H_tot_rpq + hSingAbs );
+    pDoub = 1.0 - pSing;
+
+    double rand = random();
+    if (rand < pSing) {
+      // Generate a single excitation from p to r:
+      childDet.setocc(pFinal, false);
+      childDet.setocc(rFinal, true);
+      pGen = calcSinglesProb(hb, I1, I2, norbs, parentDet, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
+
+      // Return a null double excitation
+      childDet2 = parentDet;
+      pGen2 = 0.0;
+      return;
+    }
+    // If here, then we generate a double excitation instead of a single
+
+  } else {
+    // In this case, generate both a single and double excitation
+    pSing = 1.0;
+    pDoub = 1.0;
+    // The single excitation:
     childDet.setocc(pFinal, false);
     childDet.setocc(rFinal, true);
     pGen = calcSinglesProb(hb, I1, I2, norbs, parentDet, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
-    return;
   }
-  double pDoub = 1.0 - pSing;
 
-  // Now pick the final spin-orbital, s, from P(s|pqr), such that s and q
-  // have the same spin
+
+  // Pick the final spin-orbital, s, with probability P(s|pqr), such
+  // that s and q have the same spin
   int sFinal;
   double sProb;
   pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb);
@@ -1016,7 +1046,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // If the orbital s is already occupied, return a null excitation
   if (parentDet.getocc(sFinal)) {
     pGen = 0.0;
-    childDet = parentDet;
+    pGen2 = 0.0;
+    childDet2 = parentDet;
     return;
   }
 
@@ -1050,13 +1081,12 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
     rProb2 = 0.0;
   }
 
-  childDet = parentDet;
-  childDet.setocc(pFinal, false);
-  childDet.setocc(qFinal, false);
-  childDet.setocc(rFinal, true);
-  childDet.setocc(sFinal, true);
+  childDet2 = parentDet;
+  childDet2.setocc(pFinal, false);
+  childDet2.setocc(qFinal, false);
+  childDet2.setocc(rFinal, true);
+  childDet2.setocc(sFinal, true);
 
-  pGen = pProb  * qProb  * ( pDoub * rProb * sProb + sProb2 * rProb2 ) +
-         qProb2 * pProb2 * ( pDoub * rProb * sProb + sProb2 * rProb2 );
-
+  pGen2 = pProb  * qProb  * ( pDoub * rProb * sProb + sProb2 * rProb2 ) +
+          qProb2 * pProb2 * ( pDoub * rProb * sProb + sProb2 * rProb2 );
 }

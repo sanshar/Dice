@@ -99,11 +99,11 @@ void runFCIQMC() {
   }
 
   // ----- FCIQMC data -----
-  double EProj = 0.0, HFAmp = 0.0, pgen = 0.0, parentAmp = 0.0, walkerPop = 0.0;
+  double EProj = 0.0, HFAmp = 0.0, pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0, walkerPop = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
 
   int nAttempts = 0;
-  Determinant childDet;
+  Determinant childDet, childDet2;
 
   // Total quantities, after summing over processors
   double walkerPopTot, walkerPopOldTot, EProjTot, HFAmpTot;
@@ -167,11 +167,21 @@ void runFCIQMC() {
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
+        pgen = 0.0;
+        pgen2 = 0.0;
         //generateExcitation(hb, walkers.dets[iDet], childDet, pgen);
-        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], childDet, pgen);
+        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], childDet, childDet2, pgen, pgen2);
 
-        attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                        parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
+        // pgen = 0.0 can be set when a null excitation is returned.
+        if (pgen > 1.e-15) {
+          attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
+        }
+        if (pgen2 > 1.e-15) {
+          attemptSpawning(walkers.dets[iDet], childDet2, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen2);
+        }
+
       }
       performDeath(walkers.dets[iDet], walkers.amps[iDet], I1, I2, coreE, Eshift, schd.tau);
     }
@@ -208,9 +218,6 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
                      oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
                      const int& parentFlags, const double& tau, const double& minSpawn, const double& pgen)
 {
-  // pgen = 0.0 can be set when a null excitation is returned.
-  if (pgen < 1.e-15) return;
-
   bool childSpawned = true;
 
   double pgen_tot = pgen * nAttemptsEach;
