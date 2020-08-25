@@ -45,8 +45,8 @@ class heatBathFCIQMC {
     vector<double> P_same_s_pqr_cum;
     vector<double> P_opp_s_pqr_cum;
 
-    vector<double> H_tot_same_rpq;
-    vector<double> H_tot_opp_rpq;
+    vector<double> H_tot_same;
+    vector<double> H_tot_opp;
 
 
     heatBathFCIQMC(int norbs) {
@@ -77,8 +77,8 @@ class heatBathFCIQMC {
       P_same_s_pqr_cum.resize(size_4, 0.0);
       P_opp_s_pqr_cum.resize(size_5, 0.0);
 
-      H_tot_same_rpq.resize(size_2, 0.0);
-      H_tot_opp_rpq.resize(size_3, 0.0);
+      H_tot_same.resize(size_2, 0.0);
+      H_tot_opp.resize(size_3, 0.0);
 
       // Set up D_pq
       for (int p=1; p<nSpinOrbs; p++) {
@@ -246,7 +246,7 @@ class heatBathFCIQMC {
             }
 
             int ind_tot = norbs*ind_pq + r;
-            H_tot_same_rpq.at(ind_tot) = tot_sum;
+            H_tot_same.at(ind_tot) = tot_sum;
 
           } // Loop over r
 
@@ -303,7 +303,7 @@ class heatBathFCIQMC {
             }
 
             int ind_tot = norbs*ind_pq + r;
-            H_tot_opp_rpq.at(ind_tot) = tot_sum;
+            H_tot_opp.at(ind_tot) = tot_sum;
 
           } // Loop over r
 
@@ -338,7 +338,7 @@ void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, do
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
 
 void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
-                    double& rProb, double& H_tot_rpq);
+                    double& rProb, double& H_tot_pqr);
 void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r, int& s, double& sProb);
 void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pgen_pqrs);
 
@@ -532,7 +532,7 @@ void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, do
 }
 
 void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
-                    double& rProb, double& H_tot_rpq)
+                    double& rProb, double& H_tot_pqr)
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
@@ -559,7 +559,7 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
     ind = norbs*ind_pq + rSpatial;
     rProb = hb.P_same_r_pq.at(ind);
     // For choosing single excitation
-    H_tot_rpq = hb.H_tot_same_rpq.at(ind);
+    H_tot_pqr = hb.H_tot_same.at(ind);
   } else {
 
     ind_pq = pSpatial*norbs + qSpatial;
@@ -577,7 +577,7 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
     ind = norbs*ind_pq + rSpatial;
     rProb = hb.P_opp_r_pq.at(ind);
     // For choosing single excitation
-    H_tot_rpq = hb.H_tot_opp_rpq.at(ind);
+    H_tot_pqr = hb.H_tot_opp.at(ind);
   }
 
   // Get the spin orbital index (r and p have the same spin)
@@ -717,8 +717,8 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
 
   // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
   int rFinal;
-  double rProb, H_tot_rpq;
-  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_rpq);
+  double rProb, H_tot_pqr;
+  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_pqr);
 
   // If the orbital r is already occupied, return a null excitation
   if (parentDet.getocc(rFinal)) {
@@ -813,26 +813,26 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
         int ind_pq = triInd(pSpatial, qSpatial);
         int ind_pqr = ind_pq*norbs + rSpatial;
         rProb = hb.P_same_r_pq.at(ind_pqr);
-        H_tot_pqr = hb.H_tot_same_rpq.at(ind_pqr);
+        H_tot_pqr = hb.H_tot_same.at(ind_pqr);
       } else {
         // Opposite spin
         int ind_pq = pSpatial*norbs + qSpatial;
         int ind_pqr = ind_pq*norbs + rSpatial;
         rProb = hb.P_opp_r_pq.at(ind_pqr);
-        H_tot_pqr = hb.H_tot_opp_rpq.at(ind_pqr);
+        H_tot_pqr = hb.H_tot_opp.at(ind_pqr);
       }
 
       // The probability of generating a single excitation, rather than a
       // double excitation
-      double pSing;
+      double singProb;
       if (hSingAbs < H_tot_pqr) {
-        pSing = hSingAbs / ( H_tot_pqr + hSingAbs );
+        singProb = hSingAbs / ( H_tot_pqr + hSingAbs );
       } else {
         // If hSingAbs >= Htot_pqr, always attempt to generate both a
         // single and double excitation
-        pSing = 1.0;
+        singProb = 1.0;
       }
-      pGen += pProb * qProb * rProb * pSing;
+      pGen += pProb * qProb * rProb * singProb;
     }
   }
 
@@ -843,10 +843,10 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
 // a single excitation, given that orbitals p and q have been chosen to
 // excite from, and orbital r has been chosen to excite to
 double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoInt& I2,
-                      const double& H_tot_rpq, const int& p, const int& r) {
+                      const double& H_tot_pqr, const int& p, const int& r) {
 
   int pSpatial = p/2, rSpatial = r/2;
-  double hSing, hSingAbs, pDoub_rpq;
+  double hSing, hSingAbs, doubProb;
 
   if (p%2 == 0) {
     hSing = parentDet.Hij_1ExciteA(pSpatial, rSpatial, I1, I2);
@@ -855,13 +855,54 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
   }
   hSingAbs = abs(hSing);
 
-  if (hSingAbs < H_tot_rpq) {
-    pDoub_rpq = 1.0 - hSingAbs / ( H_tot_rpq + hSingAbs );
+  if (hSingAbs < H_tot_pqr) {
+    doubProb = 1.0 - hSingAbs / ( H_tot_pqr + hSingAbs );
   } else {
-    pDoub_rpq = 1.0;
+    doubProb = 1.0;
   }
 
-  return pDoub_rpq;
+  return doubProb;
+}
+
+void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
+                               const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
+                               double& rProb, double& sProb, double& doubProb)
+{
+  if (r%2 == p%2) {
+    double H_tot;
+    int pSpatial = p/2, qSpatial = q/2;
+    int rSpatial = r/2, sSpatial = s/2;
+
+    // Same spin for p and q:
+    if (p%2 == q%2) {
+      int ind1 = triInd(pSpatial, qSpatial);
+      int ind2 = norbs * ind1 + rSpatial;
+      // Probability of picking r first
+      rProb = hb.P_same_r_pq.at(ind2);
+      H_tot = hb.H_tot_same.at(ind2);
+      int ind3 = pow(norbs,2)*ind1 + norbs*rSpatial + sSpatial;
+      // Probability of picking s second, after picking r first
+      sProb = hb.P_same_s_pqr.at(ind3);
+
+    // Opposite spin for p and q:
+    } else {
+      int ind1 = pSpatial*norbs + qSpatial;
+      int ind2 = norbs * ind1 + rSpatial;
+      rProb = hb.P_opp_r_pq.at(ind2);
+      H_tot = hb.H_tot_opp.at(ind2);
+      int ind3 = pow(norbs,2)*ind1 + norbs*rSpatial + sSpatial;
+      sProb = hb.P_opp_s_pqr.at(ind3);
+    }
+
+    // The probability of generating a double, rather than a single,
+    // if s had been chosen first instead of r
+    doubProb = calcProbDouble(parentDet, I1, I2, H_tot, p, r);
+
+  } else {
+    rProb = 0.0;
+    sProb = 0.0;
+    doubProb = 0.0;
+  }
 }
 
 // Use the heat bath algorithm to generate both the single and
@@ -927,12 +968,14 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   int qFinal = closed.at(qInd);
   // The probability that this electron was chosen
   ind = triInd(pFinal, qFinal);
-  double qProb = hb.D_pq.at(ind) / D_pq_tot;
+  double qProb_p = hb.D_pq.at(ind) / D_pq_tot;
+
+  if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
 
   // We also need to know the probability that the same two electrons were
   // picked in the opposite order.
   // The probability that q was picked first:
-  double qProb2 = hb.S_p.at(qFinal) / S_p_tot;
+  double qProb = hb.S_p.at(qFinal) / S_p_tot;
   // The probability that p was picked second, given that p was picked first:
   // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
   double D_qp_tot = 0.0;
@@ -944,14 +987,12 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
     }
   }
   ind = triInd(pFinal, qFinal);
-  double pProb2 = hb.D_pq.at(ind) / D_qp_tot;
-
-  if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
+  double pProb_q = hb.D_pq.at(ind) / D_qp_tot;
 
   // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
   int rFinal;
-  double rProb, H_tot_rpq;
-  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_rpq);
+  double rProb_pq, H_tot_pqr;
+  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb_pq, H_tot_pqr);
 
   // If the orbital r is already occupied, return null excitations
   if (parentDet.getocc(rFinal)) {
@@ -971,17 +1012,17 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   }
   double hSingAbs = abs(hSing);
 
-  double pSing_rpq, pDoub_rpq;
+  double singProb_pqr, doubProb_pqr;
   childDet = parentDet;
 
   // If this condition is met then we generate either a single or a double
   // If it is not then, then we generate both a single and double excitation
-  if (hSingAbs < H_tot_rpq) {
-    pSing_rpq = hSingAbs / ( H_tot_rpq + hSingAbs );
-    pDoub_rpq = 1.0 - pSing_rpq;
+  if (hSingAbs < H_tot_pqr) {
+    singProb_pqr = hSingAbs / ( H_tot_pqr + hSingAbs );
+    doubProb_pqr = 1.0 - singProb_pqr;
 
     double rand = random();
-    if (rand < pSing_rpq) {
+    if (rand < singProb_pqr) {
       // Generate a single excitation from p to r:
       childDet.setocc(pFinal, false);
       childDet.setocc(rFinal, true);
@@ -996,8 +1037,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
 
   } else {
     // In this case, generate both a single and double excitation
-    pSing_rpq = 1.0;
-    pDoub_rpq = 1.0;
+    singProb_pqr = 1.0;
+    doubProb_pqr = 1.0;
     // The single excitation:
     childDet.setocc(pFinal, false);
     childDet.setocc(rFinal, true);
@@ -1008,8 +1049,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   // Pick the final spin-orbital, s, with probability P(s|pqr), such
   // that s and q have the same spin
   int sFinal;
-  double sProb;
-  pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb);
+  double sProb_pqr;
+  pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb_pqr);
 
   // If the orbital s is already occupied, return a null excitation
   if (parentDet.getocc(sFinal)) {
@@ -1019,38 +1060,28 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
     return;
   }
 
-  // Find probabilities of selecting r and s the other way around
-  double rProb2, sProb2, pDoub_spq, H_tot_spq;
-  if (sFinal%2 == pFinal%2) {
-    if (pFinal%2 == qFinal%2) {
-      // Same spin for p and q
-      int pSpatial = pFinal/2, qSpatial = qFinal/2;
-      int rSpatial = rFinal/2, sSpatial = sFinal/2;
+  // Above we chose p first, then q, then r, then s. In calculating the
+  // probability that this excited determinant was chosen, we need to
+  // consider the probability that p and q were chosen the opposite way
+  // around, and the same for r and s.
 
-      int ind_pq = triInd(pSpatial, qSpatial);
-      int ind_pqs = norbs * ind_pq + sSpatial;
-      sProb2 = hb.P_same_r_pq.at(ind_pqs);
-      H_tot_spq = hb.H_tot_same_rpq.at(ind_pqs);
+  // Find the probabilities for choosing p first, then q, then s, then r
+  double rProb_pqs, sProb_pq, doubProb_pqs;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
+                            pFinal, qFinal, sFinal, rFinal,
+                            sProb_pq, rProb_pqs, doubProb_pqs);
 
-      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*sSpatial + rSpatial;
-      rProb2 = hb.P_same_s_pqr.at(ind_pqsr);
+  // Find the probabilities for choosing q first, then p, then r, then s
+  double rProb_qp, sProb_qpr, doubProb_qpr;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
+                            qFinal, pFinal, rFinal, sFinal,
+                            rProb_qp, sProb_qpr, doubProb_qpr);
 
-      // The probability of generating a double, rather than a single,
-      // if s had been chosen first instead of r
-      pDoub_spq = calcProbDouble(parentDet, I1, I2, H_tot_spq, pFinal, sFinal);
-
-    } else {
-      cout << "ERROR: should not be here" << endl;
-    }
-
-  } else {
-    // The first empty spin orbital is chosen such that its spin is the
-    // same as p. So the probability of selecting s is 0 in this case.
-    // Note, if s and p have different spins, then r and q have different
-    // spins also
-    sProb2 = 0.0;
-    rProb2 = 0.0;
-  }
+  // Now calculate the probabilities for choosing q first, then p, then s, then r
+  double sProb_qp, rProb_qps, doubProb_qps;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
+                            qFinal, pFinal, sFinal, rFinal,
+                            sProb_qp, rProb_qps, doubProb_qps);
 
   // Generate the final doubly excited determinant...
   childDet2 = parentDet;
@@ -1060,5 +1091,6 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   childDet2.setocc(sFinal, true);
 
   // ...and the probability that it was generated.
-  pGen2 = (pProb*qProb + qProb2*pProb2) * ( pDoub_rpq*rProb*sProb + pDoub_spq*sProb2*rProb2 );
+  pGen2 = pProb*qProb_p * ( doubProb_pqr*rProb_pq*sProb_pqr + doubProb_pqs*sProb_pq*rProb_pqs ) +
+          qProb*pProb_q * ( doubProb_qpr*rProb_qp*sProb_qpr + doubProb_qps*sProb_qp*rProb_qps );
 }
