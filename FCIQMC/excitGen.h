@@ -349,8 +349,7 @@ void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, Determ
   double pSingle = 0.05;
   double pgen_ia, pgen_ijab;
 
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   if (random() < pSingle) {
     generateSingleExcit(parentDet, childDet, pgen_ia);
@@ -366,8 +365,7 @@ void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, Determ
 // it was generated
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia)
 {
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   vector<int> AlphaOpen;
   vector<int> AlphaClosed;
@@ -416,8 +414,7 @@ void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, do
 // it was generated
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab)
 {
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   vector<int> AlphaOpen;
   vector<int> AlphaClosed;
@@ -534,8 +531,7 @@ void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, do
 void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
                     double& rProb, double& H_tot_pqr)
 {
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   bool sameSpin = (p%2 == q%2);
   int ind, ind_pq, rSpatial;
@@ -587,8 +583,7 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
 void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
                     int& s, double& sProb)
 {
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   int ind, ind_pq, sSpatial;
 
@@ -639,8 +634,7 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
 
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   vector<int> open;
   vector<int> closed;
@@ -845,22 +839,15 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
 double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoInt& I2,
                       const double& H_tot_pqr, const int& p, const int& r) {
 
-  int pSpatial = p/2, rSpatial = r/2;
-  double hSing, hSingAbs, doubProb;
+  double hSing = parentDet.Hij_1Excite(p, r, I1, I2);
+  double hSingAbs = abs(hSing);
 
-  if (p%2 == 0) {
-    hSing = parentDet.Hij_1ExciteA(pSpatial, rSpatial, I1, I2);
-  } else {
-    hSing = parentDet.Hij_1ExciteB(pSpatial, rSpatial, I1, I2);
-  }
-  hSingAbs = abs(hSing);
-
+  double doubProb;
   if (hSingAbs < H_tot_pqr) {
     doubProb = 1.0 - hSingAbs / ( H_tot_pqr + hSingAbs );
   } else {
     doubProb = 1.0;
   }
-
   return doubProb;
 }
 
@@ -914,8 +901,10 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
 
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                          std::ref(generator));
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+  childDet = parentDet;
+  childDet2 = parentDet;
 
   vector<int> open;
   vector<int> closed;
@@ -998,25 +987,16 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   if (parentDet.getocc(rFinal)) {
     pGen = 0.0;
     pGen2 = 0.0;
-    childDet = parentDet;
-    childDet2 = parentDet;
     return;
   }
 
   // Calculate the Hamiltonian element for a single excitation, p to r
-  double hSing;
-  if (pFinal%2 == 0) {
-    hSing = parentDet.Hij_1ExciteA(pFinal/2, rFinal/2, I1, I2);
-  } else {
-    hSing = parentDet.Hij_1ExciteB(pFinal/2, rFinal/2, I1, I2);
-  }
+  double hSing = parentDet.Hij_1Excite(pFinal, rFinal, I1, I2);
   double hSingAbs = abs(hSing);
-
-  double singProb_pqr, doubProb_pqr;
-  childDet = parentDet;
 
   // If this condition is met then we generate either a single or a double
   // If it is not then, then we generate both a single and double excitation
+  double singProb_pqr, doubProb_pqr;
   if (hSingAbs < H_tot_pqr) {
     singProb_pqr = hSingAbs / ( H_tot_pqr + hSingAbs );
     doubProb_pqr = 1.0 - singProb_pqr;
@@ -1029,7 +1009,6 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
       pGen = calcSinglesProb(hb, I1, I2, norbs, parentDet, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
 
       // Return a null double excitation
-      childDet2 = parentDet;
       pGen2 = 0.0;
       return;
     }
@@ -1037,7 +1016,6 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
 
   } else {
     // In this case, generate both a single and double excitation
-    singProb_pqr = 1.0;
     doubProb_pqr = 1.0;
     // The single excitation:
     childDet.setocc(pFinal, false);
@@ -1056,7 +1034,6 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   if (parentDet.getocc(sFinal)) {
     pGen = 0.0;
     pGen2 = 0.0;
-    childDet2 = parentDet;
     return;
   }
 
@@ -1084,7 +1061,6 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
                             sProb_qp, rProb_qps, doubProb_qps);
 
   // Generate the final doubly excited determinant...
-  childDet2 = parentDet;
   childDet2.setocc(pFinal, false);
   childDet2.setocc(qFinal, false);
   childDet2.setocc(rFinal, true);
