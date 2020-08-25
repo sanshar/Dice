@@ -839,6 +839,31 @@ double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, c
   return pGen;
 }
 
+// This function returns the probability of choosing a double rather than
+// a single excitation, given that orbitals p and q have been chosen to
+// excite from, and orbital r has been chosen to excite to
+double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoInt& I2,
+                      const double& H_tot_rpq, const int& p, const int& r) {
+
+  int pSpatial = p/2, rSpatial = r/2;
+  double hSing, hSingAbs, pDoub_rpq;
+
+  if (p%2 == 0) {
+    hSing = parentDet.Hij_1ExciteA(pSpatial, rSpatial, I1, I2);
+  } else {
+    hSing = parentDet.Hij_1ExciteB(pSpatial, rSpatial, I1, I2);
+  }
+  hSingAbs = abs(hSing);
+
+  if (hSingAbs < H_tot_rpq) {
+    pDoub_rpq = 1.0 - hSingAbs / ( H_tot_rpq + hSingAbs );
+  } else {
+    pDoub_rpq = 1.0;
+  }
+
+  return pDoub_rpq;
+}
+
 // Use the heat bath algorithm to generate both the single and
 // double excitations
 void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
@@ -946,17 +971,17 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   }
   double hSingAbs = abs(hSing);
 
-  double pSing, pDoub;
+  double pSing_rpq, pDoub_rpq;
   childDet = parentDet;
 
   // If this condition is met then we generate either a single or a double
   // If it is not then, then we generate both a single and double excitation
   if (hSingAbs < H_tot_rpq) {
-    pSing = hSingAbs / ( H_tot_rpq + hSingAbs );
-    pDoub = 1.0 - pSing;
+    pSing_rpq = hSingAbs / ( H_tot_rpq + hSingAbs );
+    pDoub_rpq = 1.0 - pSing_rpq;
 
     double rand = random();
-    if (rand < pSing) {
+    if (rand < pSing_rpq) {
       // Generate a single excitation from p to r:
       childDet.setocc(pFinal, false);
       childDet.setocc(rFinal, true);
@@ -971,8 +996,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
 
   } else {
     // In this case, generate both a single and double excitation
-    pSing = 1.0;
-    pDoub = 1.0;
+    pSing_rpq = 1.0;
+    pDoub_rpq = 1.0;
     // The single excitation:
     childDet.setocc(pFinal, false);
     childDet.setocc(rFinal, true);
@@ -995,7 +1020,7 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   }
 
   // Find probabilities of selecting r and s the other way around
-  double rProb2, sProb2;
+  double rProb2, sProb2, pDoub_spq, H_tot_spq;
   if (sFinal%2 == pFinal%2) {
     if (pFinal%2 == qFinal%2) {
       // Same spin for p and q
@@ -1005,9 +1030,14 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
       int ind_pq = triInd(pSpatial, qSpatial);
       int ind_pqs = norbs * ind_pq + sSpatial;
       sProb2 = hb.P_same_r_pq.at(ind_pqs);
+      H_tot_spq = hb.H_tot_same_rpq.at(ind_pqs);
 
       int ind_pqsr = pow(norbs,2)*ind_pq + norbs*sSpatial + rSpatial;
       rProb2 = hb.P_same_s_pqr.at(ind_pqsr);
+
+      // The probability of generating a double, rather than a single,
+      // if s had been chosen first instead of r
+      pDoub_spq = calcProbDouble(parentDet, I1, I2, H_tot_spq, pFinal, sFinal);
 
     } else {
       cout << "ERROR: should not be here" << endl;
@@ -1030,5 +1060,5 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   childDet2.setocc(sFinal, true);
 
   // ...and the probability that it was generated.
-  pGen2 = (pProb*qProb + qProb2*pProb2) * ( pDoub*rProb*sProb + sProb2*rProb2 );
+  pGen2 = (pProb*qProb + qProb2*pProb2) * ( pDoub_rpq*rProb*sProb + pDoub_spq*sProb2*rProb2 );
 }
