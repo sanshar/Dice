@@ -629,151 +629,6 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
   s = 2*sSpatial + q%2;
 }
 
-void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pgen_pqrs)
-{
-  int norbs = Determinant::norbs, ind;
-  int nSpinOrbs = 2*norbs;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-  vector<int> open;
-  vector<int> closed;
-  parentDet.getOpenClosed(open, closed);
-  int nel = closed.size();
-
-  // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
-  // For this, we need to calculate the cumulative array, summed over
-  // occupied electrons only
-
-  // Set up the cumulative array
-  double S_p_tot = 0.0;
-  vector<double> S_p_cum(nel, 0.0);
-  for (int p=0; p<nel; p++) {
-    int orb = closed.at(p);
-    S_p_tot += hb.S_p.at(orb);
-    S_p_cum.at(p) = S_p_tot;
-  }
-
-  // Pick the first electron
-  double pRand = random() * S_p_tot;
-  int pInd = std::lower_bound(S_p_cum.begin(), (S_p_cum.begin() + nel), pRand) - S_p_cum.begin();
-  // The actual orbital being excited from:
-  int pFinal = closed.at(pInd);
-  // The probability that this electron was chosen
-  double pProb = hb.S_p.at(pFinal) / S_p_tot;
-
-  // Pick the second electron with probability D_pq / sum_q' D_pq'
-  // We again need the relevant cumulative array, summed over
-  // remaining occupied electrons, q'
-
-  // Set up the cumulative array
-  double D_pq_tot = 0.0;
-  vector<double> D_pq_cum(nel, 0.0);
-  for (int q=0; q<nel; q++) {
-    if (q == pInd) {
-      D_pq_cum.at(q) = D_pq_tot;
-    } else {
-      int orb = closed.at(q);
-      int ind_pq = triInd(pFinal, orb);
-      D_pq_tot += hb.D_pq.at(ind_pq);
-      D_pq_cum.at(q) = D_pq_tot;
-    }
-  }
-
-  // Pick the second electron
-  double qRand = random() * D_pq_tot;
-  int qInd = std::lower_bound(D_pq_cum.begin(), (D_pq_cum.begin() + nel), qRand) - D_pq_cum.begin();
-  // The actual orbital being excited from:
-  int qFinal = closed.at(qInd);
-  // The probability that this electron was chosen
-  ind = triInd(pFinal, qFinal);
-  double qProb = hb.D_pq.at(ind) / D_pq_tot;
-
-  // We also need to know the probability that the same two electrons were
-  // picked in the opposite order.
-  // The probability that q was picked first:
-  double qProb2 = hb.S_p.at(qFinal) / S_p_tot;
-  // The probability that p was picked second, given that p was picked first:
-  // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
-  double D_qp_tot = 0.0;
-  for (int p=0; p<nel; p++) {
-    int orb = closed.at(p);
-    if (p != qInd) {
-      int ind_pq = triInd(orb, qFinal);
-      D_qp_tot += hb.D_pq.at(ind_pq);
-    }
-  }
-  // Now find the probability:
-  ind = triInd(pFinal,qFinal);
-  double pProb2 = hb.D_pq.at(ind) / D_qp_tot;
-
-  if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
-
-  // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
-  int rFinal;
-  double rProb, H_tot_pqr;
-  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb, H_tot_pqr);
-
-  // If the orbital r is already occupied, return a null excitation
-  if (parentDet.getocc(rFinal)) {
-    pgen_pqrs = 0.0;
-    childDet = parentDet;
-    return;
-  }
-
-  // Pick the final spin-orbital, s, with probability P(s|pqr), such
-  // that s and q have the same spin
-  int sFinal;
-  double sProb;
-  pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb);
-
-  // If the orbital s is already occupied, return a null excitation
-  if (parentDet.getocc(sFinal)) {
-    pgen_pqrs = 0.0;
-    childDet = parentDet;
-    return;
-  }
-
-  // Find probabilities of selecting r and s the other way around
-  double rProb2, sProb2;
-  if (sFinal%2 == pFinal%2) {
-    // Same spin for p and q:
-    if (pFinal%2 == qFinal%2) {
-      int pSpatial = pFinal/2, qSpatial = qFinal/2;
-      int rSpatial = rFinal/2, sSpatial = sFinal/2;
-
-      int ind_pq = triInd(pSpatial, qSpatial);
-      int ind_pqs = norbs * ind_pq + sSpatial;
-      // Probability of picking s first
-      sProb2 = hb.P_same_r_pq.at(ind_pqs);
-      int ind_pqsr = pow(norbs,2)*ind_pq + norbs*sSpatial + rSpatial;
-      // Probability of picking r second, given s was picked first
-      rProb2 = hb.P_same_s_pqr.at(ind_pqsr);
-
-    } else {
-      cout << "ERROR: this should not be possible" << endl;
-    }
-
-  } else {
-    // The first empty spin orbital is chosen such that its spin is the
-    // same as p. So the probability of selecting s is 0 in this case.
-    // Note, if s and p have different spins, then r and q have different
-    // spins also
-    sProb2 = 0.0;
-    rProb2 = 0.0;
-  }
-
-  // Generate the final doubly excited determinant...
-  childDet = parentDet;
-  childDet.setocc(pFinal, false);
-  childDet.setocc(qFinal, false);
-  childDet.setocc(rFinal, true);
-  childDet.setocc(sFinal, true);
-
-  // ...and the probability that it was generated.
-  pgen_pqrs = (pProb*qProb + qProb2*pProb2)  * ( rProb*sProb + sProb2*rProb2 );
-}
-
 // Calculate the probability of choosing the excitation p to r, where p and r
 // are both spin-orbital labels. pProb is the probability that p is chosen as
 // the first electron. hSingAbs is the absolute value of the the Hamiltonian
@@ -853,7 +708,7 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
 
 void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
                                const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
-                               double& rProb, double& sProb, double& doubProb)
+                               double& rProb, double& sProb, double& doubProb, const bool& calcDoubProb)
 {
   if (r%2 == p%2) {
     double H_tot;
@@ -883,13 +738,146 @@ void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoIn
 
     // The probability of generating a double, rather than a single,
     // if s had been chosen first instead of r
-    doubProb = calcProbDouble(parentDet, I1, I2, H_tot, p, r);
+    if (calcDoubProb) {
+      doubProb = calcProbDouble(parentDet, I1, I2, H_tot, p, r);
+    }
 
   } else {
     rProb = 0.0;
     sProb = 0.0;
     doubProb = 0.0;
   }
+}
+
+void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pGen)
+{
+  int norbs = Determinant::norbs, ind;
+  int nSpinOrbs = 2*norbs;
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
+
+  childDet = parentDet;
+
+  vector<int> open;
+  vector<int> closed;
+  parentDet.getOpenClosed(open, closed);
+  int nel = closed.size();
+
+  // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
+  // For this, we need to calculate the cumulative array, summed over
+  // occupied electrons only
+
+  // Set up the cumulative array
+  double S_p_tot = 0.0;
+  vector<double> S_p_cum(nel, 0.0);
+  for (int p=0; p<nel; p++) {
+    int orb = closed.at(p);
+    S_p_tot += hb.S_p.at(orb);
+    S_p_cum.at(p) = S_p_tot;
+  }
+
+  // Pick the first electron
+  double pRand = random() * S_p_tot;
+  int pInd = std::lower_bound(S_p_cum.begin(), (S_p_cum.begin() + nel), pRand) - S_p_cum.begin();
+  // The actual orbital being excited from:
+  int pFinal = closed.at(pInd);
+  // The probability that this electron was chosen
+  double pProb = hb.S_p.at(pFinal) / S_p_tot;
+
+  // Pick the second electron with probability D_pq / sum_q' D_pq'
+  // We again need the relevant cumulative array, summed over
+  // remaining occupied electrons, q'
+
+  // Set up the cumulative array
+  double D_pq_tot = 0.0;
+  vector<double> D_pq_cum(nel, 0.0);
+  for (int q=0; q<nel; q++) {
+    if (q == pInd) {
+      D_pq_cum.at(q) = D_pq_tot;
+    } else {
+      int orb = closed.at(q);
+      int ind_pq = triInd(pFinal, orb);
+      D_pq_tot += hb.D_pq.at(ind_pq);
+      D_pq_cum.at(q) = D_pq_tot;
+    }
+  }
+
+  // Pick the second electron
+  double qRand = random() * D_pq_tot;
+  int qInd = std::lower_bound(D_pq_cum.begin(), (D_pq_cum.begin() + nel), qRand) - D_pq_cum.begin();
+  // The actual orbital being excited from:
+  int qFinal = closed.at(qInd);
+  // The probability that this electron was chosen
+  ind = triInd(pFinal, qFinal);
+  double qProb_p = hb.D_pq.at(ind) / D_pq_tot;
+
+  if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
+
+  // We also need to know the probability that the same two electrons were
+  // picked in the opposite order.
+  // The probability that q was picked first:
+  double qProb = hb.S_p.at(qFinal) / S_p_tot;
+  // The probability that p was picked second, given that p was picked first:
+  // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
+  double D_qp_tot = 0.0;
+  for (int p=0; p<nel; p++) {
+    int orb = closed.at(p);
+    if (p != qInd) {
+      int ind_pq = triInd(orb, qFinal);
+      D_qp_tot += hb.D_pq.at(ind_pq);
+    }
+  }
+  // Now find the probability:
+  ind = triInd(pFinal,qFinal);
+  double pProb_q = hb.D_pq.at(ind) / D_qp_tot;
+
+  // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
+  int rFinal;
+  double rProb_pq, H_tot_pqr;
+  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb_pq, H_tot_pqr);
+
+  // If the orbital r is already occupied, return a null excitation
+  if (parentDet.getocc(rFinal)) {
+    pGen = 0.0;
+    return;
+  }
+
+  // Pick the final spin-orbital, s, with probability P(s|pqr), such
+  // that s and q have the same spin
+  int sFinal;
+  double sProb_pqr;
+  pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb_pqr);
+
+  // If the orbital s is already occupied, return a null excitation
+  if (parentDet.getocc(sFinal)) {
+    pGen = 0.0;
+    return;
+  }
+
+  // Find the probabilities for choosing p first, then q, then s, then r
+  double sProb_pq, rProb_pqs, doubProb_pqs;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
+                            sProb_pq, rProb_pqs, doubProb_pqs, false);
+
+  // Find the probabilities for choosing q first, then p, then r, then s
+  double rProb_qp, sProb_qpr, doubProb_qpr;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
+                            rProb_qp, sProb_qpr, doubProb_qpr, false);
+
+  // Now calculate the probabilities for choosing q first, then p, then s, then r
+  double sProb_qp, rProb_qps, doubProb_qps;
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
+                            sProb_qp, rProb_qps, doubProb_qps, false);
+
+  // Generate the final doubly excited determinant...
+  childDet.setocc(pFinal, false);
+  childDet.setocc(qFinal, false);
+  childDet.setocc(rFinal, true);
+  childDet.setocc(sFinal, true);
+
+  // ...and the probability that it was generated.
+  pGen = pProb*qProb_p * ( rProb_pq*sProb_pqr + sProb_pq*rProb_pqs ) +
+         qProb*pProb_q * ( rProb_qp*sProb_qpr + sProb_qp*rProb_qps );
 }
 
 // Use the heat bath algorithm to generate both the single and
@@ -1044,21 +1032,18 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
 
   // Find the probabilities for choosing p first, then q, then s, then r
   double rProb_pqs, sProb_pq, doubProb_pqs;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
-                            pFinal, qFinal, sFinal, rFinal,
-                            sProb_pq, rProb_pqs, doubProb_pqs);
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
+                            sProb_pq, rProb_pqs, doubProb_pqs, true);
 
   // Find the probabilities for choosing q first, then p, then r, then s
   double rProb_qp, sProb_qpr, doubProb_qpr;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
-                            qFinal, pFinal, rFinal, sFinal,
-                            rProb_qp, sProb_qpr, doubProb_qpr);
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
+                            rProb_qp, sProb_qpr, doubProb_qpr, true);
 
   // Now calculate the probabilities for choosing q first, then p, then s, then r
   double sProb_qp, rProb_qps, doubProb_qps;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet,
-                            qFinal, pFinal, sFinal, rFinal,
-                            sProb_qp, rProb_qps, doubProb_qps);
+  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
+                            sProb_qp, rProb_qps, doubProb_qps, true);
 
   // Generate the final doubly excited determinant...
   childDet2.setocc(pFinal, false);
