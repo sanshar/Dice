@@ -526,6 +526,20 @@ CItype Determinant::Hij_1ExciteScreened(const int& a, const int& i,
 
 
 //=============================================================================
+CItype Determinant::Hij_1Excite(const int& a, const int& i, const oneInt&I1,
+                                const twoInt& I2, bool doparity) const {
+  int aSpatial = a/2;
+  int iSpatial = i/2;
+
+  if (i%2 == 0 && a%2 == 0) {
+    return Hij_1ExciteA(aSpatial, iSpatial, I1, I2, doparity);
+  } else if (i%2 == 1 && a%2 == 1) {
+    return Hij_1ExciteB(aSpatial, iSpatial, I1, I2, doparity);
+  } else {
+    cout << "ERROR: orbitals have different spin in Hij_1Excite" << endl;
+  }
+}
+
 CItype Determinant::Hij_1ExciteA(const int& a, const int& i, const oneInt&I1,
                                  const twoInt& I2, bool doparity) const {
   double sgn = 1.0;
