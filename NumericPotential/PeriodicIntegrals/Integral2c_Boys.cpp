@@ -12,6 +12,7 @@
 #include "BasisShell.h"
 #include "Integral2c_Boys.h"
 #include "LatticeSum.h"
+#include "interface.h"
 
 using namespace std;
 using namespace ir;
@@ -85,12 +86,14 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
     // (those would normally be present in the R of the MDRR)
     double
         RhoPow = 1.;
+    double maxVal = 0;
     for ( uint i = 0; i < TotalL + 1; ++ i ){
       pFmT[i] *= RhoPow;
       RhoPow *= -2*Rho;
+      if (maxVal < abs(pFmT[i])) maxVal = abs(pFmT[i]);
     }
 
-    if (pFmT[TotalL+1] < latsum.screen) continue;
+    if (maxVal*max(1., pow(t,TotalL/2)) < latsum.screen) continue;
     
     // contract (lamely). However, normally either nCo
     // or nFn, or TotalL (or even all of them at the same time)
@@ -127,11 +130,6 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
     double Tx_r = Tx + latsum.Rcoord[3*Tidx[r]+0],
            Ty_r = Ty + latsum.Rcoord[3*Tidx[r]+1],
            Tz_r = Tz + latsum.Rcoord[3*Tidx[r]+2];
-    /*
-    double Tx_r = Tx + latsum.Rcoord[3*r+0],
-           Ty_r = Ty + latsum.Rcoord[3*r+1],
-           Tz_r = Tz + latsum.Rcoord[3*r+2];
-    */
 
     
     Mem.ClearAlloc(pCoFmT, (L+1) * TotalCo);
@@ -181,7 +179,70 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
   Mem.Alloc(pReciprocalSum, (L+1)*(L+2)/2);
 
   double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
+  double screen = latsum.screen;
 
+  //this will work for all rho that are above the Et2Rho in coulomb kernel
+
+  ksumTime1.start();
+
+  if (kernel->getname() == coulombKernel) {
+    //for (int i=0; i<(L+1)*(L+2)/2; i++)
+    //pReciprocalSum[i] = 0.0 ;
+    ksumKsum.start();
+    int T1 = latsum.indexCenter(*pA);
+    int T2 = latsum.indexCenter(*pC);
+    int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+    int startIdx = latsum.KSumIdx[T][L];
+    for (int i=0; i<(L+1)*(L+2)/2; i++)
+      pReciprocalSum[i] = latsum.KSumVal[startIdx+i] ;
+
+    ksumKsum.stop();
+    
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+      double CoAC = 0;
+      double bkgrnd = 0.0;
+      for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+      for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+      {
+        double
+            Alpha = pA->exponents[iExpA],
+            Gamma = pC->exponents[iExpC],
+            InvEta = 1./(Alpha + Gamma),
+            Rho = (Alpha * Gamma)*InvEta; 
+        
+        if (Rho <= Eta2Rho) continue;
+        
+        double Eta = sqrt(Eta2Rho/Rho);
+        double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
+        double Eta2rho = Eta2Rho;
+        
+        double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];
+        scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume;
+        
+        CoAC += pC->contractions(iExpC, iCoC) *
+            pA->contractions(iExpA, iCoA) * scale;
+        
+        if (LA == 0 && LC == 0)
+          bkgrnd +=   pC->contractions(iExpC, iCoC) *
+            pA->contractions(iExpA, iCoA) *
+              M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
+              * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
+        
+      }
+
+      Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+           pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
+      if (LA == 0 && LC == 0)
+        Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+             &bkgrnd, -1., (TotalLab+1)*(TotalLab+2)/2);
+
+    }
+  }
+
+  ksumTime1.stop();
+  
+  ksumTime2.start();
   //now go back to calculating contribution from reciprocal space
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
@@ -198,13 +259,17 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
     double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
     double Eta2rho = Eta * Eta * Rho;
 
+    
     //coulomb kernel always includes reciprocal space summations
-    if (Rho > Eta2Rho && kernel->getname() != coulombKernel) continue; 
+    //if (Rho > Eta2Rho && kernel->getname() != coulombKernel) continue; 
+    if (Rho > Eta2Rho ) continue; 
     else if (Rho <= Eta2Rho &&  kernel->getname() != coulombKernel) Eta2rho = Rho;
 
     double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];    
-    if (kernel->getname() == coulombKernel) scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
-    else if (kernel->getname() != coulombKernel) scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
+    if (kernel->getname() == coulombKernel)
+      scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
+    else if (kernel->getname() != coulombKernel)
+      scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
     
 
 
@@ -228,7 +293,7 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                                          Tx, Ty, Tz,
                                          expVal, scale);
       
-      if (abs(maxG * scale * expVal) < latsum.screen) {
+      if (abs(maxG * scale * expVal) < screen ) {
         break;
       }
     }      
@@ -252,9 +317,12 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
            pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
     }
   }
+  ksumTime2.stop();
+
   
   Mem.Free(pReciprocalSum);
 }
+
 
 
 void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
@@ -270,9 +338,16 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
 
   Mem.ClearAlloc(pOutR, (L+1)*(L+2)/2 * TotalCo);
   
+  realSumTime.start();
   makeRealSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-  //return;
+  realSumTime.stop();
+
+  kSumTime.start();
+  Tx = pA->Xcoord - pC->Xcoord;
+  Ty = pA->Ycoord - pC->Ycoord;
+  Tz = pA->Zcoord - pC->Zcoord;
   makeReciprocalSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
+  kSumTime.stop();
 
   
 }

@@ -3,6 +3,8 @@
 
 #include "LatticeSum.h"
 #include "BasisShell.h"
+#include "Kernel.h"
+#include "GeneratePolynomials.h"
 
 double dotProduct(double* vA, double* vB) {
   return vA[0] * vB[0] + vA[1] * vB[1] + vA[2] * vB[2];
@@ -28,7 +30,6 @@ double dist(double a, double b, double c) {
   return a*a + b*b + c*c;
 }
 
-
 void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
                                    double& Tx, double& Ty, double& Tz) {
   double Txmin = pA->Xcoord - pC->Xcoord,
@@ -49,7 +50,7 @@ void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
              Tz + nx * RLattice[2] + ny * RLattice[5] + nz * RLattice[8])
         < dist(Txmin, Tymin, Tzmin))  {
       Txmin = Tx + nx * RLattice[0] + ny * RLattice[3] + nz * RLattice[6];
-      Tymin = Tx + nx * RLattice[1] + ny * RLattice[4] + nz * RLattice[7];
+      Tymin = Ty + nx * RLattice[1] + ny * RLattice[4] + nz * RLattice[7];
       Tzmin = Tz + nx * RLattice[2] + ny * RLattice[5] + nz * RLattice[8];
     }
   }
@@ -175,3 +176,114 @@ void LatticeSum::getIncreasingIndex(size_t *&idx, double Tx, double Ty, double T
   
   Mem.Free(Tdist);
 }
+
+bool isRhoLarge(BasisSet& basis, int sh1, int sh2, double eta2rho) {
+  BasisShell& pA = basis.BasisShells[sh1], &pC = basis.BasisShells[sh2];
+  for (uint iExpC = 0; iExpC < pC.nFn; ++ iExpC)
+    for (uint iExpA = 0; iExpA < pA.nFn; ++ iExpA) {
+      double
+        Alpha = pA.exponents[iExpA],
+        Gamma = pC.exponents[iExpC],
+        InvEta = 1./(Alpha + Gamma),
+        Rho = (Alpha * Gamma)*InvEta; // = (Alpha * Gamma)*/(Alpha + Gamma)
+
+      if (Rho > eta2rho) return true;
+    }
+  return false;
+}
+
+int LatticeSum::indexCenter(BasisShell& bas) {
+  double X=bas.Xcoord, Y=bas.Ycoord, Z=bas.Zcoord;
+  
+  int idx = -1;
+  for (int i=0; i<atomCenters.size()/3; i++) {
+    if (abs(X-atomCenters[3*i+0]) < 1.e-12 &&
+	abs(Y-atomCenters[3*i+1]) < 1.e-12 &&
+	abs(Z-atomCenters[3*i+2]) < 1.e-12 )
+      return i;
+  }
+  atomCenters.push_back(X);
+  atomCenters.push_back(Y);
+  atomCenters.push_back(Z);
+  return -1;
+}
+
+//if rho > eta2rho, part of the summation is done in reciprocal space
+//but it does not depend on rho, only on the T (distance between basis)
+//and the L (anuglar moment)
+void LatticeSum::makeKsum(BasisSet& basis) {
+  //idensify unique atom positions
+  atomCenters.reserve(basis.BasisShells.size());
+  for (int i = 0; i<basis.BasisShells.size(); i++) 
+    int idx = indexCenter(basis.BasisShells[i]);
+
+  int pnatm = atomCenters.size()/3;
+
+  int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
+  int nL = 13; //for each pair there are maximum 12 Ls
+
+  KSumIdx.resize(nT, vector<long>(nL,-1)); //make all elements -1
+  vector<double> DistanceT(3*nT);
+  
+  //for each atom pair and L identify the position of the
+  //precacualted reciprocal lattice sum
+  size_t startIndex = 0;
+  for (int sh1 = 0 ; sh1 < basis.BasisShells.size(); sh1++) {
+    for (int sh2 = 0 ; sh2 <= sh1; sh2++) {
+      int T1 = indexCenter(basis.BasisShells[sh1]);
+      int T2 = indexCenter(basis.BasisShells[sh2]);
+      int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+
+      DistanceT[3*T+0] = atomCenters[3*T1+0] - atomCenters[3*T2+0];
+      DistanceT[3*T+1] = atomCenters[3*T1+1] - atomCenters[3*T2+1];
+      DistanceT[3*T+2] = atomCenters[3*T1+2] - atomCenters[3*T2+2];
+
+      int l1 = basis.BasisShells[sh1].l, l2 = basis.BasisShells[sh2].l;
+      int L = l1+l2;
+
+      if (isRhoLarge(basis, sh1, sh2, Eta2RhoCoul)) {
+	if (KSumIdx[T][L] == -1) {
+	  KSumIdx[T][L] = startIndex;
+	  startIndex += (L+1)*(L+2)/2;
+	}
+      }
+    }
+  }
+
+  KSumVal.resize(startIndex, 0.0);
+  
+  CoulombKernel kernel;
+  //cout << screen <<"  "<<Eta2RhoCoul<<endl;
+  for (int i=0; i<nT; i++) {
+    for (int j=0; j<nL; j++) {
+      if (KSumIdx[i][j] != -1) {
+	int idx = KSumIdx[i][j];
+	//now calculate the Ksum
+	double Tx = DistanceT[3*i], Ty = DistanceT[3*i+1], Tz = DistanceT[3*i+2];
+	int L = j;
+	double scale = 1.0;
+
+	for (int k=0; k<Kdist.size(); k++) {
+	  double expVal = kernel.getValueKSpace(Kdist[k], 1.0, Eta2RhoCoul);
+	  
+	  double maxG = getHermiteReciprocal(L, &KSumVal[idx],
+					     Kcoord[3*k+0],
+					     Kcoord[3*k+1],
+					     Kcoord[3*k+2],
+					     Tx, Ty, Tz,
+					     expVal, scale);
+	  
+	  if (abs(maxG * scale * expVal) < screen) {
+	    break;
+	  }
+	}      
+      }    
+    }
+  }
+  
+  //now populate the various 
+  cout <<"start index "<< startIndex <<endl;
+  //now precalculate the 
+  //exit(0);
+}
+
