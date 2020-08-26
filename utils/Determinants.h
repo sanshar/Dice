@@ -119,6 +119,8 @@ class Determinant {
   void getClosedAlphaBeta( std::vector<int>& closedAlpha,
                            std::vector<int>& closedBeta ) const;
   void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) const;
+  void getClosed(std::vector<int>& closed) const;
+  void getClosedAllocated(std::vector<int>& closed) const;
   void getClosed(bool sz, std::vector<int>& closed) const;
   int getNbetaBefore(int i) const;
   int getNalphaBefore(int i) const;

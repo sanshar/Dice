@@ -333,18 +333,22 @@ class heatBathFCIQMC {
 
 };
 
-void generateExcitation(const Determinant& parentDet, Determinant& childDet, double& pgen);
+void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                        Determinant& childDet, double& pgen);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
 
 void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
                     double& rProb, double& H_tot_pqr);
-void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r, int& s, double& sProb);
-void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pgen_pqrs);
+void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
+                    int& s, double& sProb);
+void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                           Determinant& childDet, double& pgen_pqrs);
 
 // Generate a random single or double excitation, and also return the
 // probability that it was generated
-void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pgen)
+void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                        Determinant& childDet, double& pgen)
 {
   double pSingle = 0.05;
   double pgen_ia, pgen_ijab;
@@ -356,7 +360,7 @@ void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, Determ
     pgen = pSingle * pgen_ia;
   } else {
     //generateDoubleExcit(parentDet, childDet, pgen_ijab);
-    generateDoubleExcitHB(hb, parentDet, childDet, pgen_ijab);
+    generateDoubleExcitHB(hb, parentDet, nel, childDet, pgen_ijab);
     pgen = (1 - pSingle) * pgen_ijab;
   }
 }
@@ -634,14 +638,9 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
 // the first electron. hSingAbs is the absolute value of the the Hamiltonian
 // element between the original and singly excited determinants.
 double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
-                       const Determinant& parentDet, const double pProb, const double D_pq_tot,
+                       const vector<int>& closed, const double pProb, const double D_pq_tot,
                        const double hSingAbs, const int p, const int r)
 {
-  // Calculate the probability that the single excitation p -> r was chosen
-  vector<int> open;
-  vector<int> closed;
-  parentDet.getOpenClosed(open, closed);
-
   int nel = closed.size();
   int pSpatial = p/2, rSpatial = r/2;
 
@@ -749,7 +748,8 @@ void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoIn
   }
 }
 
-void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Determinant& childDet, double& pGen)
+void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                           Determinant& childDet, double& pGen)
 {
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
@@ -758,10 +758,8 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
 
   childDet = parentDet;
 
-  vector<int> open;
-  vector<int> closed;
-  parentDet.getOpenClosed(open, closed);
-  int nel = closed.size();
+  vector<int> closed(nel, 0);
+  parentDet.getClosedAllocated(closed);
 
   // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
   // For this, we need to calculate the cumulative array, summed over
@@ -883,7 +881,7 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, Det
 // Use the heat bath algorithm to generate both the single and
 // double excitations
 void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                     const Determinant& parentDet, Determinant& childDet,
+                                     const Determinant& parentDet, const int& nel, Determinant& childDet,
                                      Determinant& childDet2, double& pGen, double& pGen2)
 {
   int norbs = Determinant::norbs, ind;
@@ -894,10 +892,8 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
   childDet = parentDet;
   childDet2 = parentDet;
 
-  vector<int> open;
-  vector<int> closed;
-  parentDet.getOpenClosed(open, closed);
-  int nel = closed.size();
+  vector<int> closed(nel, 0);
+  parentDet.getClosedAllocated(closed);
 
   // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
   // For this, we need to calculate the cumulative array, summed over
@@ -994,7 +990,7 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
       // Generate a single excitation from p to r:
       childDet.setocc(pFinal, false);
       childDet.setocc(rFinal, true);
-      pGen = calcSinglesProb(hb, I1, I2, norbs, parentDet, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
+      pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
 
       // Return a null double excitation
       pGen2 = 0.0;
@@ -1008,7 +1004,7 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
     // The single excitation:
     childDet.setocc(pFinal, false);
     childDet.setocc(rFinal, true);
-    pGen = calcSinglesProb(hb, I1, I2, norbs, parentDet, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
+    pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
   }
 
 

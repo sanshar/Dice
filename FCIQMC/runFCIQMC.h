@@ -60,6 +60,7 @@ void runFCIQMC() {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
+  int nel = nalpha + nbeta;
 
   // The number of 64-bit integers required to represent (the alpha or beta
   // part of) a determinant
@@ -169,8 +170,8 @@ void runFCIQMC() {
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
         pgen = 0.0;
         pgen2 = 0.0;
-        //generateExcitation(hb, walkers.dets[iDet], childDet, pgen);
-        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], childDet, childDet2, pgen, pgen2);
+        //generateExcitation(hb, walkers.dets[iDet], nel, childDet, pgen);
+        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
 
         // pgen = 0.0 can be set when a null excitation is returned.
         if (pgen > 1.e-15) {

@@ -122,6 +122,34 @@ void Determinant::getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) 
   }
 }
 
+void Determinant::getClosed(std::vector<int>& closed) const {
+  for (int i=0; i<norbs; i++) {
+    if ( getoccA(i)) {
+      closed.push_back(2*i);
+    }
+    if ( getoccB(i)) {
+      closed.push_back(2*i+1);
+    }
+  }
+}
+
+// Version of getClosed for the case where closed has been allocated
+// with the correct size already. This is quicker, for cases where
+// this is important.
+void Determinant::getClosedAllocated(std::vector<int>& closed) const {
+  int n = 0;
+  for (int i=0; i<norbs; i++) {
+    if ( getoccA(i)) {
+      closed.at(n) = 2*i;
+      n++;
+    }
+    if ( getoccB(i)) {
+      closed.at(n) = 2*i+1;
+      n++;
+    }
+  }
+}
+
 void Determinant::getClosed( bool sz, std::vector<int>& closed) const {
   
   for (int i=0; i<norbs; i++) 
