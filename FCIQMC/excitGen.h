@@ -30,23 +30,41 @@ inline int triInd(const int& p, const int& q)
   return P*(P-1)/2 + Q;
 }
 
+// This class holds the arrays needed to use heat bath excitation generators.
+// This was described in J. Chem. Theory Comput., 2016, 12 (4), 1561.
+// Arrays are labelled by the same names as in the above paper.
 class heatBathFCIQMC {
   public:
-    vector<double> D_pq;
+    // Used to construct probabilities for selecting the first electron, p.
     vector<double> S_p;
 
+    // Used to construct probabilities for selecting the second electron, q,
+    // given that p has already been chosen.
+    vector<double> D_pq;
+
+    // The probabilities for selecting the first unoccupied orbital, r,
+    // given that p and q have been chosen already.
+    // Depending on whether p and q have the same or opposite spin, use the
+    // 'same' or 'opp' objects.
+    // Note that r is chosen such that it has the same spin as p.
     vector<double> P_same_r_pq;
     vector<double> P_opp_r_pq;
     // Cumulative arrays
     vector<double> P_same_r_pq_cum;
     vector<double> P_opp_r_pq_cum;
 
+    // The probabilities for selecting the second unoccupied orbital, s,
+    // given that p, q and r have been chosen already.
+    // Depending on whether p and q have the same or opposite spin, use the
+    // 'same' or 'opp' objects.
     vector<double> P_same_s_pqr;
     vector<double> P_opp_s_pqr;
     // Cumulative arrays
     vector<double> P_same_s_pqr_cum;
     vector<double> P_opp_s_pqr_cum;
 
+    // These objects are used to decide whether to generate a single or double
+    // excitation, after first choosing p, q and r.
     vector<double> H_tot_same;
     vector<double> H_tot_opp;
 
@@ -167,7 +185,6 @@ class heatBathFCIQMC {
             P_same_r_pq_cum.at(ind) = tot;
 
           } // Loop over r
-          //cout << "Check: p: " << p << "  q: " << q << "  tot: " << tot << endl;
         } // Loop over q
       } // Loop over p
 
@@ -220,7 +237,6 @@ class heatBathFCIQMC {
             P_opp_r_pq_cum.at(ind) = tot;
 
           } // Loop over r
-          //cout << "Check: p: " << p << "  q: " << q << "  tot: " << tot << endl;
         } // Loop over q
       } // Loop over p
 
@@ -277,7 +293,6 @@ class heatBathFCIQMC {
               tot += P_same_s_pqr.at(ind);
               P_same_s_pqr_cum.at(ind) = tot;
             }
-            //cout << "Check: p: " << p << "  q: " << q << "  r: " << r << "  tot: " << tot << endl;
           } // Loop over r
         } // Loop over q
       } // Loop over p
@@ -334,7 +349,6 @@ class heatBathFCIQMC {
               tot += P_opp_s_pqr.at(ind);
               P_opp_s_pqr_cum.at(ind) = tot;
             }
-            //cout << "Check: p: " << p << "  q: " << q << "  r: " << r << "  tot: " << tot << endl;
           } // Loop over r
         } // Loop over q
       } // Loop over p
@@ -734,9 +748,14 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
   return doubProb;
 }
 
-void calcProbsForEmptyOrbitals(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
-                               const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
-                               double& rProb, double& sProb, double& doubProb, const bool& calcDoubProb)
+// Calculate and return the probabilities of selecting the final two orbitals
+// (labelled r and s in our convention). These are the two unoccupied orbitals.
+// Also, return the probability of choosing a double, in the case that p, q, r
+// are the first three orbitals chosen. This is only calculated if calcDoubProb
+// is true.
+void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
+                       const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
+                       double& rProb, double& sProb, double& doubProb, const bool& calcDoubProb)
 {
   if (r%2 == p%2) {
     double H_tot;
@@ -881,20 +900,22 @@ void generateDoubleExcitHB(const heatBathFCIQMC& hb, const Determinant& parentDe
     return;
   }
 
+  if (rFinal == sFinal) cout << "ERROR: r = s in excitation generator";
+
   // Find the probabilities for choosing p first, then q, then s, then r
   double sProb_pq, rProb_pqs, doubProb_pqs;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
-                            sProb_pq, rProb_pqs, doubProb_pqs, false);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
+                    sProb_pq, rProb_pqs, doubProb_pqs, false);
 
   // Find the probabilities for choosing q first, then p, then r, then s
   double rProb_qp, sProb_qpr, doubProb_qpr;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
-                            rProb_qp, sProb_qpr, doubProb_qpr, false);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
+                    rProb_qp, sProb_qpr, doubProb_qpr, false);
 
   // Now calculate the probabilities for choosing q first, then p, then s, then r
   double sProb_qp, rProb_qps, doubProb_qps;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
-                            sProb_qp, rProb_qps, doubProb_qps, false);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
+                    sProb_qp, rProb_qps, doubProb_qps, false);
 
   // Generate the final doubly excited determinant...
   childDet.setocc(pFinal, false);
@@ -1044,6 +1065,8 @@ void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1,
   double sProb_pqr;
   pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb_pqr);
 
+  if (rFinal == sFinal) cout << "ERROR: r = s in excitation generator";
+
   // If the orbital s is already occupied, return a null excitation
   if (parentDet.getocc(sFinal)) {
     pGen = 0.0;
@@ -1058,18 +1081,18 @@ void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1,
 
   // Find the probabilities for choosing p first, then q, then s, then r
   double rProb_pqs, sProb_pq, doubProb_pqs;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
-                            sProb_pq, rProb_pqs, doubProb_pqs, true);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
+                    sProb_pq, rProb_pqs, doubProb_pqs, true);
 
   // Find the probabilities for choosing q first, then p, then r, then s
   double rProb_qp, sProb_qpr, doubProb_qpr;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
-                            rProb_qp, sProb_qpr, doubProb_qpr, true);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
+                    rProb_qp, sProb_qpr, doubProb_qpr, true);
 
   // Now calculate the probabilities for choosing q first, then p, then s, then r
   double sProb_qp, rProb_qps, doubProb_qps;
-  calcProbsForEmptyOrbitals(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
-                            sProb_qp, rProb_qps, doubProb_qps, true);
+  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
+                    sProb_qp, rProb_qps, doubProb_qps, true);
 
   // Generate the final doubly excited determinant...
   childDet2.setocc(pFinal, false);
