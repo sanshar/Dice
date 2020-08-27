@@ -163,7 +163,7 @@ void runFCIQMC() {
       }
 
       // Number of spawnings to attempt
-      nAttempts = max(1.0, round(walkers.amps[iDet] * schd.nAttemptsEach));
+      nAttempts = max(1.0, round(abs(walkers.amps[iDet]) * schd.nAttemptsEach));
       parentAmp = walkers.amps[iDet] * schd.nAttemptsEach / nAttempts;
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
