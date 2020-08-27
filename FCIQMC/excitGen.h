@@ -18,7 +18,6 @@
 */
 
 #include "Determinants.h"
-#include "global.h"
 #include "input.h"
 
 // Map two integers to a single integer by a one-to-one mapping,
@@ -357,8 +356,11 @@ class heatBathFCIQMC {
 
 };
 
-void generateExcitationSingDoub(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                                Determinant& childDet, double& pgen);
+
+// Function declarations
+void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
+                                const Determinant& parentDet, const int& nel, Determinant& childDet,
+                                Determinant& childDet2, double& pgen, double& pgen2);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
 
@@ -366,29 +368,29 @@ void pickROrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, cons
                     double& rProb, double& H_tot_pqr);
 void pickSOrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
                     int& s, double& sProb);
-void generateDoubleExcitHB(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                           Determinant& childDet, double& pgen_pqrs);
-void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                     const Determinant& parentDet, const int& nel, Determinant& childDet,
-                                     Determinant& childDet2, double& pGen, double& pGen2);
+void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
+                     const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
+                     const bool& attemptSingleExcit);
+
+
 
 // Wrapper function to call the appropriate excitation generator
 void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
                         const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
 {
   if (schd.uniformExGen || schd.heatBathUniformSingExGen) {
-    generateExcitationSingDoub(hb, parentDet, nel, childDet, pGen);
-    pGen2 = 0.0;
-
+    generateExcitationSingDoub(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2);
   } else if (schd.heatBathExGen) {
-    generateExcitationWithHBSingles(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2);
+    generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2, true);
   }
 }
 
 // Generate a random single or double excitation, and also return the
-// probability that it was generated
-void generateExcitationSingDoub(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                                Determinant& childDet, double& pgen)
+// probability that it was generated. A single excitation is returned using
+// childDet and pgen. A double excitation is returned using chilDet2 and pGen2.
+void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
+                                const Determinant& parentDet, const int& nel, Determinant& childDet,
+                                Determinant& childDet2, double& pgen, double& pgen2)
 {
   double pSingle = 0.05;
   double pgen_ia, pgen_ijab;
@@ -398,13 +400,21 @@ void generateExcitationSingDoub(const heatBathFCIQMC& hb, const Determinant& par
   if (random() < pSingle) {
     generateSingleExcit(parentDet, childDet, pgen_ia);
     pgen = pSingle * pgen_ia;
+
+    // No double excitation is generated here:
+    pgen2 = 0.0;
   } else {
     if (schd.uniformExGen) {
-      generateDoubleExcit(parentDet, childDet, pgen_ijab);
+      generateDoubleExcit(parentDet, childDet2, pgen_ijab);
     } else if (schd.heatBathUniformSingExGen) {
-      generateDoubleExcitHB(hb, parentDet, nel, childDet, pgen_ijab);
+      // Pass in attemptSingleExcit = false to indicate that a double
+      // excitation must be generated. pgen will return as 0.
+      generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pgen, pgen_ijab, false);
     }
-    pgen = (1 - pSingle) * pgen_ijab;
+    pgen2 = (1.0 - pSingle) * pgen_ijab;
+
+    // No single excitation is generated here:
+    pgen = 0.0;
   }
 }
 
@@ -739,23 +749,23 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
   double hSing = parentDet.Hij_1Excite(p, r, I1, I2);
   double hSingAbs = abs(hSing);
 
-  double doubProb;
+  double doubleProb;
   if (hSingAbs < H_tot_pqr) {
-    doubProb = 1.0 - hSingAbs / ( H_tot_pqr + hSingAbs );
+    doubleProb = 1.0 - hSingAbs / ( H_tot_pqr + hSingAbs );
   } else {
-    doubProb = 1.0;
+    doubleProb = 1.0;
   }
-  return doubProb;
+  return doubleProb;
 }
 
 // Calculate and return the probabilities of selecting the final two orbitals
 // (labelled r and s in our convention). These are the two unoccupied orbitals.
 // Also, return the probability of choosing a double, in the case that p, q, r
-// are the first three orbitals chosen. This is only calculated if calcDoubProb
+// are the first three orbitals chosen. This is only calculated if calcDoubleProb
 // is true.
 void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
                        const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
-                       double& rProb, double& sProb, double& doubProb, const bool& calcDoubProb)
+                       double& rProb, double& sProb, double& doubleProb, const bool& calcDoubleProb)
 {
   if (r%2 == p%2) {
     double H_tot;
@@ -785,154 +795,22 @@ void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 
     // The probability of generating a double, rather than a single,
     // if s had been chosen first instead of r
-    if (calcDoubProb) {
-      doubProb = calcProbDouble(parentDet, I1, I2, H_tot, p, r);
+    if (calcDoubleProb) {
+      doubleProb = calcProbDouble(parentDet, I1, I2, H_tot, p, r);
     }
 
   } else {
     rProb = 0.0;
     sProb = 0.0;
-    doubProb = 0.0;
+    doubleProb = 0.0;
   }
-}
-
-void generateDoubleExcitHB(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                           Determinant& childDet, double& pGen)
-{
-  int norbs = Determinant::norbs, ind;
-  int nSpinOrbs = 2*norbs;
-
-  auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
-
-  childDet = parentDet;
-
-  vector<int> closed(nel, 0);
-  parentDet.getClosedAllocated(closed);
-
-  // Pick the first electron with probability P(p) = S_p / sum_p' S_p'
-  // For this, we need to calculate the cumulative array, summed over
-  // occupied electrons only
-
-  // Set up the cumulative array
-  double S_p_tot = 0.0;
-  vector<double> S_p_cum(nel, 0.0);
-  for (int p=0; p<nel; p++) {
-    int orb = closed.at(p);
-    S_p_tot += hb.S_p.at(orb);
-    S_p_cum.at(p) = S_p_tot;
-  }
-
-  // Pick the first electron
-  double pRand = random() * S_p_tot;
-  int pInd = std::lower_bound(S_p_cum.begin(), (S_p_cum.begin() + nel), pRand) - S_p_cum.begin();
-  // The actual orbital being excited from:
-  int pFinal = closed.at(pInd);
-  // The probability that this electron was chosen
-  double pProb = hb.S_p.at(pFinal) / S_p_tot;
-
-  // Pick the second electron with probability D_pq / sum_q' D_pq'
-  // We again need the relevant cumulative array, summed over
-  // remaining occupied electrons, q'
-
-  // Set up the cumulative array
-  double D_pq_tot = 0.0;
-  vector<double> D_pq_cum(nel, 0.0);
-  for (int q=0; q<nel; q++) {
-    if (q == pInd) {
-      D_pq_cum.at(q) = D_pq_tot;
-    } else {
-      int orb = closed.at(q);
-      int ind_pq = triInd(pFinal, orb);
-      D_pq_tot += hb.D_pq.at(ind_pq);
-      D_pq_cum.at(q) = D_pq_tot;
-    }
-  }
-
-  // Pick the second electron
-  double qRand = random() * D_pq_tot;
-  int qInd = std::lower_bound(D_pq_cum.begin(), (D_pq_cum.begin() + nel), qRand) - D_pq_cum.begin();
-  // The actual orbital being excited from:
-  int qFinal = closed.at(qInd);
-  // The probability that this electron was chosen
-  ind = triInd(pFinal, qFinal);
-  double qProb_p = hb.D_pq.at(ind) / D_pq_tot;
-
-  if (pFinal == qFinal) cout << "ERROR: p = q in excitation generator";
-
-  // We also need to know the probability that the same two electrons were
-  // picked in the opposite order.
-  // The probability that q was picked first:
-  double qProb = hb.S_p.at(qFinal) / S_p_tot;
-  // The probability that p was picked second, given that p was picked first:
-  // Need to calculate the new normalizing factor in D_qp / sum_p' D_qp':
-  double D_qp_tot = 0.0;
-  for (int p=0; p<nel; p++) {
-    int orb = closed.at(p);
-    if (p != qInd) {
-      int ind_pq = triInd(orb, qFinal);
-      D_qp_tot += hb.D_pq.at(ind_pq);
-    }
-  }
-  // Now find the probability:
-  ind = triInd(pFinal,qFinal);
-  double pProb_q = hb.D_pq.at(ind) / D_qp_tot;
-
-  // Pick spin-orbital r from P(r|pq), such that r and p have the same spin
-  int rFinal;
-  double rProb_pq, H_tot_pqr;
-  pickROrbitalHB(hb, norbs, pFinal, qFinal, rFinal, rProb_pq, H_tot_pqr);
-
-  // If the orbital r is already occupied, return a null excitation
-  if (parentDet.getocc(rFinal)) {
-    pGen = 0.0;
-    return;
-  }
-
-  // Pick the final spin-orbital, s, with probability P(s|pqr), such
-  // that s and q have the same spin
-  int sFinal;
-  double sProb_pqr;
-  pickSOrbitalHB(hb, norbs, pFinal, qFinal, rFinal, sFinal, sProb_pqr);
-
-  // If the orbital s is already occupied, return a null excitation
-  if (parentDet.getocc(sFinal)) {
-    pGen = 0.0;
-    return;
-  }
-
-  if (rFinal == sFinal) cout << "ERROR: r = s in excitation generator";
-
-  // Find the probabilities for choosing p first, then q, then s, then r
-  double sProb_pq, rProb_pqs, doubProb_pqs;
-  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
-                    sProb_pq, rProb_pqs, doubProb_pqs, false);
-
-  // Find the probabilities for choosing q first, then p, then r, then s
-  double rProb_qp, sProb_qpr, doubProb_qpr;
-  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
-                    rProb_qp, sProb_qpr, doubProb_qpr, false);
-
-  // Now calculate the probabilities for choosing q first, then p, then s, then r
-  double sProb_qp, rProb_qps, doubProb_qps;
-  calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
-                    sProb_qp, rProb_qps, doubProb_qps, false);
-
-  // Generate the final doubly excited determinant...
-  childDet.setocc(pFinal, false);
-  childDet.setocc(qFinal, false);
-  childDet.setocc(rFinal, true);
-  childDet.setocc(sFinal, true);
-
-  // ...and the probability that it was generated.
-  pGen = pProb*qProb_p * ( rProb_pq*sProb_pqr + sProb_pq*rProb_pqs ) +
-         qProb*pProb_q * ( rProb_qp*sProb_qpr + sProb_qp*rProb_qps );
 }
 
 // Use the heat bath algorithm to generate both the single and
 // double excitations
-void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                     const Determinant& parentDet, const int& nel, Determinant& childDet,
-                                     Determinant& childDet2, double& pGen, double& pGen2)
+void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
+                     const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
+                     const bool& attemptSingleExcit)
 {
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
@@ -1024,38 +902,49 @@ void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1,
     return;
   }
 
-  // Calculate the Hamiltonian element for a single excitation, p to r
-  double hSing = parentDet.Hij_1Excite(pFinal, rFinal, I1, I2);
-  double hSingAbs = abs(hSing);
-
-  // If this condition is met then we generate either a single or a double
-  // If it is not then, then we generate both a single and double excitation
+  // If attemptSingleExcit, then decide whether to generate a single
+  // or double excitation. If a single excitation is chosen, then generate
+  // it here and then return.
   double singProb_pqr, doubProb_pqr;
-  if (hSingAbs < H_tot_pqr) {
-    singProb_pqr = hSingAbs / ( H_tot_pqr + hSingAbs );
-    doubProb_pqr = 1.0 - singProb_pqr;
+  if (attemptSingleExcit) {
+    // Calculate the Hamiltonian element for a single excitation, p to r
+    double hSing = parentDet.Hij_1Excite(pFinal, rFinal, I1, I2);
+    double hSingAbs = abs(hSing);
 
-    double rand = random();
-    if (rand < singProb_pqr) {
-      // Generate a single excitation from p to r:
+    // If this condition is met then we generate either a single or a double
+    // If it is not then, then we generate both a single and double excitation
+    if (hSingAbs < H_tot_pqr) {
+      singProb_pqr = hSingAbs / ( H_tot_pqr + hSingAbs );
+      doubProb_pqr = 1.0 - singProb_pqr;
+
+      double rand = random();
+      if (rand < singProb_pqr) {
+        // Generate a single excitation from p to r:
+        childDet.setocc(pFinal, false);
+        childDet.setocc(rFinal, true);
+        pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
+
+        // Return a null double excitation
+        pGen2 = 0.0;
+        return;
+      }
+      // If here, then we generate a double excitation instead of a single
+      // Set pGen=0 to indicate that a single excitation is not generate
+      pGen = 0.0;
+
+    } else {
+      // In this case, generate both a single and double excitation
+      doubProb_pqr = 1.0;
+      // The single excitation:
       childDet.setocc(pFinal, false);
       childDet.setocc(rFinal, true);
       pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
-
-      // Return a null double excitation
-      pGen2 = 0.0;
-      return;
     }
-    // If here, then we generate a double excitation instead of a single
-    pGen = 0.0;
 
+  // If not attempting to generate a single:
   } else {
-    // In this case, generate both a single and double excitation
+    pGen = 0.0;
     doubProb_pqr = 1.0;
-    // The single excitation:
-    childDet.setocc(pFinal, false);
-    childDet.setocc(rFinal, true);
-    pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
   }
 
 
@@ -1080,19 +969,19 @@ void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1,
   // around, and the same for r and s.
 
   // Find the probabilities for choosing p first, then q, then s, then r
-  double rProb_pqs, sProb_pq, doubProb_pqs;
+  double rProb_pqs, sProb_pq, doubProb_pqs = 1.0;
   calcProbsForRAndS(hb, I1, I2, norbs, parentDet, pFinal, qFinal, sFinal, rFinal,
-                    sProb_pq, rProb_pqs, doubProb_pqs, true);
+                    sProb_pq, rProb_pqs, doubProb_pqs, attemptSingleExcit);
 
   // Find the probabilities for choosing q first, then p, then r, then s
-  double rProb_qp, sProb_qpr, doubProb_qpr;
+  double rProb_qp, sProb_qpr, doubProb_qpr = 1.0;
   calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, rFinal, sFinal,
-                    rProb_qp, sProb_qpr, doubProb_qpr, true);
+                    rProb_qp, sProb_qpr, doubProb_qpr, attemptSingleExcit);
 
   // Now calculate the probabilities for choosing q first, then p, then s, then r
-  double sProb_qp, rProb_qps, doubProb_qps;
+  double sProb_qp, rProb_qps, doubProb_qps = 1.0;
   calcProbsForRAndS(hb, I1, I2, norbs, parentDet, qFinal, pFinal, sFinal, rFinal,
-                    sProb_qp, rProb_qps, doubProb_qps, true);
+                    sProb_qp, rProb_qps, doubProb_qps, attemptSingleExcit);
 
   // Generate the final doubly excited determinant...
   childDet2.setocc(pFinal, false);
