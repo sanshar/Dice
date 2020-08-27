@@ -343,23 +343,23 @@ class heatBathFCIQMC {
 
 };
 
-void generateExcitationSingDoub(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+void generateExcitationSingDoub(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
                                 Determinant& childDet, double& pgen);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
 
-void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
+void pickROrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
                     double& rProb, double& H_tot_pqr);
-void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
+void pickSOrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
                     int& s, double& sProb);
-void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+void generateDoubleExcitHB(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
                            Determinant& childDet, double& pgen_pqrs);
-void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
+void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
                                      const Determinant& parentDet, const int& nel, Determinant& childDet,
                                      Determinant& childDet2, double& pGen, double& pGen2);
 
 // Wrapper function to call the appropriate excitation generator
-void generateExcitation(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
+void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
                         const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
 {
   if (schd.uniformExGen || schd.heatBathUniformSingExGen) {
@@ -373,7 +373,7 @@ void generateExcitation(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, 
 
 // Generate a random single or double excitation, and also return the
 // probability that it was generated
-void generateExcitationSingDoub(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+void generateExcitationSingDoub(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
                                 Determinant& childDet, double& pgen)
 {
   double pSingle = 0.05;
@@ -561,7 +561,7 @@ void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, do
   //cout << "child:   " << childDet << endl;
 }
 
-void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
+void pickROrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
                     double& rProb, double& H_tot_pqr)
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
@@ -613,7 +613,7 @@ void pickROrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
   r = 2*rSpatial + p%2;
 }
 
-void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
+void pickSOrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, const int r,
                     int& s, double& sProb)
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
@@ -666,7 +666,7 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
 // are both spin-orbital labels. pProb is the probability that p is chosen as
 // the first electron. hSingAbs is the absolute value of the the Hamiltonian
 // element between the original and singly excited determinants.
-double calcSinglesProb(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
+double calcSinglesProb(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
                        const vector<int>& closed, const double pProb, const double D_pq_tot,
                        const double hSingAbs, const int p, const int r)
 {
@@ -734,7 +734,7 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
   return doubProb;
 }
 
-void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
+void calcProbsForEmptyOrbitals(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
                                const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
                                double& rProb, double& sProb, double& doubProb, const bool& calcDoubProb)
 {
@@ -777,7 +777,7 @@ void calcProbsForEmptyOrbitals(heatBathFCIQMC& hb, const oneInt& I1, const twoIn
   }
 }
 
-void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+void generateDoubleExcitHB(const heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
                            Determinant& childDet, double& pGen)
 {
   int norbs = Determinant::norbs, ind;
@@ -909,7 +909,7 @@ void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, con
 
 // Use the heat bath algorithm to generate both the single and
 // double excitations
-void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
+void generateExcitationWithHBSingles(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
                                      const Determinant& parentDet, const int& nel, Determinant& childDet,
                                      Determinant& childDet2, double& pGen, double& pGen2)
 {
