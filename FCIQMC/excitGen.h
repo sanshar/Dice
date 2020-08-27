@@ -87,8 +87,12 @@ class heatBathFCIQMC {
           D_pq.at(ind) = 0.0;
 
           for (int r=0; r<nSpinOrbs; r++) {
-            for (int s=0; s<nSpinOrbs; s++) {
-              D_pq.at(ind) += fabs( I2(r, p, s, q) - I2(r, q, s, p) );
+            if (r != p && r != q) {
+              for (int s=0; s<nSpinOrbs; s++) {
+                if (r != s && s != p && s != q) {
+                  D_pq.at(ind) += fabs( I2(r, p, s, q) - I2(r, q, s, p) );
+                }
+              }
             }
           }
 
@@ -105,7 +109,6 @@ class heatBathFCIQMC {
           S_p.at(p) += D_pq.at(ind);
         }
       }
-
 
       // Set up P_same_r_pq
       for (int p=1; p<norbs; p++) {
