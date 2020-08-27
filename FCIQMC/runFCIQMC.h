@@ -118,9 +118,18 @@ void runFCIQMC() {
     cout << "Hartree--Fock energy: " << HFDet.Energy(I1, I2, coreE) << endl << endl;
   }
 
-  if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl << flush;
-  heatBathFCIQMC hb(norbs);
-  if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl << flush;
+  heatBathFCIQMC hb;
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
+    hb.createArrays(norbs);
+    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
+  }
+
+  // The default excitation generator is the uniform one. If
+  // the user has specified another, then turn this off.
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    schd.uniformExGen = false;
+  }
 
   // Get and print the initial stats
   walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
@@ -168,12 +177,9 @@ void runFCIQMC() {
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
-        pgen = 0.0;
-        pgen2 = 0.0;
-        //generateExcitation(hb, walkers.dets[iDet], nel, childDet, pgen);
-        generateExcitationWithHBSingles(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
+        generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
 
-        // pgen = 0.0 can be set when a null excitation is returned.
+        // pgen=0.0 is set when a null excitation is returned.
         if (pgen > 1.e-15) {
           attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
                           parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);

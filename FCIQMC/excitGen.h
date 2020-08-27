@@ -18,6 +18,8 @@
 */
 
 #include "Determinants.h"
+#include "global.h"
+#include "input.h"
 
 // Map two integers to a single integer by a one-to-one mapping,
 // using the triangular indexing approach
@@ -48,8 +50,13 @@ class heatBathFCIQMC {
     vector<double> H_tot_same;
     vector<double> H_tot_opp;
 
-
+    // Constructors
+    heatBathFCIQMC() {}
     heatBathFCIQMC(int norbs) {
+      createArrays(norbs);
+    }
+
+    void createArrays(int norbs) {
 
       int nSpinOrbs = 2*norbs;
 
@@ -332,12 +339,12 @@ class heatBathFCIQMC {
         } // Loop over q
       } // Loop over p
 
-    } // End of contrusctor
+    } // End of createArrays
 
 };
 
-void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                        Determinant& childDet, double& pgen);
+void generateExcitationSingDoub(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                                Determinant& childDet, double& pgen);
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
 void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
 
@@ -347,11 +354,27 @@ void pickSOrbitalHB(heatBathFCIQMC& hb, const int norbs, const int p, const int 
                     int& s, double& sProb);
 void generateDoubleExcitHB(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
                            Determinant& childDet, double& pgen_pqrs);
+void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
+                                     const Determinant& parentDet, const int& nel, Determinant& childDet,
+                                     Determinant& childDet2, double& pGen, double& pGen2);
+
+// Wrapper function to call the appropriate excitation generator
+void generateExcitation(heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
+                        const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
+{
+  if (schd.uniformExGen || schd.heatBathUniformSingExGen) {
+    generateExcitationSingDoub(hb, parentDet, nel, childDet, pGen);
+    pGen2 = 0.0;
+
+  } else if (schd.heatBathExGen) {
+    generateExcitationWithHBSingles(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2);
+  }
+}
 
 // Generate a random single or double excitation, and also return the
 // probability that it was generated
-void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
-                        Determinant& childDet, double& pgen)
+void generateExcitationSingDoub(heatBathFCIQMC& hb, const Determinant& parentDet, const int& nel,
+                                Determinant& childDet, double& pgen)
 {
   double pSingle = 0.05;
   double pgen_ia, pgen_ijab;
@@ -362,8 +385,11 @@ void generateExcitation(heatBathFCIQMC& hb, const Determinant& parentDet, const 
     generateSingleExcit(parentDet, childDet, pgen_ia);
     pgen = pSingle * pgen_ia;
   } else {
-    //generateDoubleExcit(parentDet, childDet, pgen_ijab);
-    generateDoubleExcitHB(hb, parentDet, nel, childDet, pgen_ijab);
+    if (schd.uniformExGen) {
+      generateDoubleExcit(parentDet, childDet, pgen_ijab);
+    } else if (schd.heatBathUniformSingExGen) {
+      generateDoubleExcitHB(hb, parentDet, nel, childDet, pgen_ijab);
+    }
     pgen = (1 - pSingle) * pgen_ijab;
   }
 }
@@ -1000,6 +1026,7 @@ void generateExcitationWithHBSingles(heatBathFCIQMC& hb, const oneInt& I1, const
       return;
     }
     // If here, then we generate a double excitation instead of a single
+    pGen = 0.0;
 
   } else {
     // In this case, generate both a single and double excitation
