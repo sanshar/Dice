@@ -21,12 +21,14 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <fstream>
 #include <list>
 #include <set>
 #include <tuple>
+
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -45,15 +47,16 @@
 #include <boost/mpi/environment.hpp>
 #endif
 #include <unistd.h>
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
+
 #include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"
 #include "communicate.h"
-
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
 #include <algorithm>
@@ -305,24 +308,28 @@ int main(int argc, char* argv[]) {
          << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
 
-  // Check and make sure that
+  // Set up the symmetry class
+  symmetry molSym(schd.pointGroup, irrep, schd.irrep);
 
-  symmetry molSym(schd.pointGroup, irrep);
+  // Check the users specified determinants. If they use multiple spins and/or
+  // irreps, ignore the give targetIrrep and just use the give determinants.
+  molSym.checkTargetStates(Dets, schd.spin);
 
   if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
       molSym.init_success) {
     vector<Determinant> tempDets(Dets);
+
     bool spin_specified = true;
     if (schd.spin == -1) {  // Set spin if none specified by user
       spin_specified = false;
       schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-      // pout << "Setting spin to " << schd.spin << endl;
+      cout << "No spin specified, setting target spin to " << schd.spin << endl;
     }
     for (int d = 0; d < HFoccupied.size(); d++) {
       // Guess the lowest energy det with given symmetry from one body
       // integrals.
-      molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
-                                     HFoccupied.at(d), tempDets.at(d));
+      molSym.estimateLowestEnergyDet(schd.spin, I1, irrep, HFoccupied.at(d),
+                                     tempDets.at(d));
 
       // Generate list of connected determinants to guess determinant.
       SHCIgetdeterminants::getDeterminantsVariational(
@@ -335,17 +342,28 @@ int main(int argc, char* argv[]) {
       // Check all connected and find lowest energy.
       int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
       if (spin_specified && spin_HF != schd.spin) {
-        Dets.at(d) = tempDets.at(0);
+        Dets.at(d) = tempDets.at(d);
       }
+
+      // Same for irrep
+      cout << "DETS[d] " << Dets[d] << endl;
+      cout << molSym.getDetSymmetry(Dets[d]) << endl;
+      cout << molSym.targetIrrep << endl;
+      if (molSym.targetIrrep != molSym.getDetSymmetry(Dets[d])) {
+        Dets.at(d) = tempDets.at(d);
+        cout << "Given have diff irrep " << Dets.at(d) << endl;
+      }
+
       for (int cd = 0; cd < tempDets.size(); cd++) {
         if (tempDets.at(d).connected(tempDets.at(cd))) {
-          if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
-              schd.spin) {
-            char repArray[tempDets.at(cd).norbs];
-            tempDets.at(cd).getRepArray(repArray);
-            if (Dets.at(d).Energy(I1, I2, coreE) >
-                    tempDets.at(cd).Energy(I1, I2, coreE) &&
-                molSym.getSymmetry(repArray, irrep) == schd.irrep) {
+          bool correct_spin = abs(tempDets.at(cd).Nalpha() -
+                                  tempDets.at(cd).Nbeta()) == schd.spin;
+          if (correct_spin) {
+            bool lower_energy = Dets.at(d).Energy(I1, I2, coreE) >
+                                tempDets.at(cd).Energy(I1, I2, coreE);
+            bool correct_irrep =
+                molSym.getDetSymmetry(tempDets.at(cd)) == molSym.targetIrrep;
+            if (lower_energy && correct_irrep) {
               Dets.at(d) = tempDets.at(cd);
             }
           }
@@ -356,8 +374,9 @@ int main(int argc, char* argv[]) {
     }  // end d
 
   } else {
-    pout << "Skipping Ref. Determinant Search for pointgroup "
-         << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
+    pout << "\nWARNING: Skipping Ref. Determinant Search for pointgroup "
+         << schd.pointGroup << "\nUsing given determinants as reference"
+         << endl;
   }  // End if (Search for Ref. Det)
 
   schd.HF = Dets[0];
