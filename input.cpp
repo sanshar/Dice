@@ -19,12 +19,14 @@
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "input.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "global.h"
 
 using namespace std;
@@ -100,7 +102,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
 
   schd.pointGroup = "c1";
   schd.spin = -1;  // Default value overridden by HF spin if not specified
-  schd.irrep = 1;
+  schd.irrep = "None";
+  schd.searchForLowestEnergyDet = false;
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
@@ -241,13 +244,12 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       int minElec = atoi(tok[1].c_str());
       int maxElec = atoi(tok[2].c_str());
       std::vector<int> orbs;
-      for (int i=3; i<tok.size(); i++) {
-        orbs.push_back(2*atoi(tok[i].c_str()));
-        orbs.push_back(2*atoi(tok[i].c_str())+1);
+      for (int i = 3; i < tok.size(); i++) {
+        orbs.push_back(2 * atoi(tok[i].c_str()));
+        orbs.push_back(2 * atoi(tok[i].c_str()) + 1);
       }
       schd.restrictions.push_back(OccRestrictions(minElec, maxElec, orbs));
-    }
-    else if (boost::iequals(ArgName, "davidsonTol"))
+    } else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))
       schd.davidsonTolLoose = atof(tok[1].c_str());
@@ -274,7 +276,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
     else if (boost::iequals(ArgName, "spin"))
       schd.spin = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "irrep"))
-      schd.irrep = atoi(tok[1].c_str());
+      schd.irrep = tok[1];
+    else if (boost::iequals(ArgName, "searchForLowestEnergyDet"))
+      schd.searchForLowestEnergyDet = true;
     else if (boost::iequals(ArgName, "DoOneRDM"))
       schd.DoOneRDM = true;
     else if (boost::iequals(ArgName, "DoThreeRDM"))

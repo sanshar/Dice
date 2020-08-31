@@ -101,33 +101,6 @@ class symmetry {
            << endl;
       init_success = false;
     }
-
-    //
-    if (targetIrrep != 1 &&
-        (spin == 0 || Dets[0].Nalpha() - Dets[0].Nbeta() == 0)) {
-      cout << "WARNING: Cannot target state " << targetIrrep
-           << " with spin=0.\nTry the following:\n1) Change the "
-              "irrep.\n2) Set the spin using the spin keyword.\n3) Change the "
-              "determinant guess"
-           << endl;
-      init_success = false;
-    }
-  };
-
-  void fillDoubleOccOrbs(Determinant det, int nDOElec, int nSpinOrbs) {
-    int i = 0;
-    while (i < nSpinOrbs) {
-      // If even, check than both are unoccupied, skip if not
-      if (i % 2 == 2 && det.getocc(i) && det.getocc(i + 1)) {
-        det.setocc(i, true);
-        det.setocc(i + 1, true);
-        i += 2;
-        continue;
-      } else {
-        i += 2;
-        continue;
-      }
-    }
   };
 };
 

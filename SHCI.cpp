@@ -316,21 +316,22 @@ int main(int argc, char* argv[]) {
   molSym.checkTargetStates(Dets, schd.spin);
 
   if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
-      molSym.init_success) {
+      molSym.init_success && schd.searchForLowestEnergyDet) {
     vector<Determinant> tempDets(Dets);
 
     bool spin_specified = true;
     if (schd.spin == -1) {  // Set spin if none specified by user
       spin_specified = false;
       schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-      cout << "No spin specified, setting target spin to " << schd.spin << endl;
+      pout << "No spin specified, using spin from first reference determinant. "
+              "Setting target spin to "
+           << schd.spin << endl;
     }
     for (int d = 0; d < HFoccupied.size(); d++) {
       // Guess the lowest energy det with given symmetry from one body
       // integrals.
       molSym.estimateLowestEnergyDet(schd.spin, I1, irrep, HFoccupied.at(d),
                                      tempDets.at(d));
-
       // Generate list of connected determinants to guess determinant.
       SHCIgetdeterminants::getDeterminantsVariational(
           tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
@@ -346,12 +347,11 @@ int main(int argc, char* argv[]) {
       }
 
       // Same for irrep
-      cout << "DETS[d] " << Dets[d] << endl;
-      cout << molSym.getDetSymmetry(Dets[d]) << endl;
-      cout << molSym.targetIrrep << endl;
       if (molSym.targetIrrep != molSym.getDetSymmetry(Dets[d])) {
         Dets.at(d) = tempDets.at(d);
-        cout << "Given have diff irrep " << Dets.at(d) << endl;
+        pout << "WARNING: Given determinants have different irrep than the "
+                "target irrep\n\tspecified. Using the specified irrep."
+             << endl;
       }
 
       for (int cd = 0; cd < tempDets.size(); cd++) {

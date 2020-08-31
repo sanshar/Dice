@@ -65,7 +65,7 @@ int symmetry::convertStringIrrepToInt(string pg, string irrep) {
   if (pg_irreps.find(pg) != pg_irreps.end()) {
     irreps = pg_irreps[pg];
   } else {
-    cout << "WARNING: Irrep " << irrep << " not supported for point group "
+    pout << "WARNING: Irrep " << irrep << " not supported for point group "
          << pg << endl;
     init_success = false;
     return -1;  // Failure
@@ -75,13 +75,13 @@ int symmetry::convertStringIrrepToInt(string pg, string irrep) {
 
   // Make sure it's found
   if (it == irreps.end()) {
-    cout << "WARNING: Irrep " << irrep << " not supported for point group "
+    pout << "WARNING: Irrep " << irrep << " not supported for point group "
          << pg << endl;
-    cout << "Try one of the following irreducible representations: ";
+    pout << "Try one of the following irreducible representations: ";
     for (auto ir : irreps) {
-      cout << ir << " ";
+      pout << ir << " ";
     }
-    cout << endl;
+    pout << endl;
     init_success = false;
     return -1;  // Failure
   }
@@ -234,11 +234,6 @@ int symmetry::getProduct(vector<int>& irreps) {  // TODO test this
 }
 
 int symmetry::getDetSymmetry(Determinant det) {
-  // char repArray[det.norbs];
-  // det.getRepArray(repArray);
-
-  // Returns the irrep of the determinant
-  // int norbs = sizeof(moIrreps) / sizeof(moIrreps.at(0) - 1);
   int n_spin_orbs = moIrreps.size();
   int det_irrep = 1;
 
@@ -247,13 +242,6 @@ int symmetry::getDetSymmetry(Determinant det) {
       det_irrep = getProduct(det_irrep, moIrreps.at(i / 2));
     }
   }
-
-  // for (int i = 0; i < norbs; i++) {
-  //   if ((int)repArray[i] - (int)'0' == 1) {  // TODO Watch out for this.
-  //     old_irrep = getProduct(old_irrep, moIrreps.at(i));
-  //   }
-  // }
-
   return det_irrep;
 }
 
@@ -279,31 +267,19 @@ void symmetry::estimateLowestEnergyDet(int spin, oneInt I1, vector<int>& irrep,
   int nDOrbs = occupied.size() - spin;
   int nSpinOrbs = I1.norbs;
   int nDOElec = occupied.size() - spin;
+
   for (int i = 0; i < I1.norbs; i++) {
-    // if (i < nDOrbs) {
-    //   Det.setocc(sort1Body.at(i).second, true);
-    // } else {
-    // }
     Det.setocc(i, false);
   }
 
-  string error_message = "Given spin (" + to_string(spin) + ") targetting " +
-                         targetIrrepString +
-                         " irrep not possible for current active space ...";
+  string error_message =
+      "Given spin (" + to_string(spin) + ") targetting " + targetIrrepString +
+      " irrep not possible for current active space ..." +
+      "\nFilling determinants may lead to the targetting of undesired states.";
 
-  // Spin dependent population of remaining singly occupied orbitals.
+  // Spin dependent population of singly occupied orbitals.
+  // Do this first and then fill doubly occupied orbs
   if (spin == 0) {
-    return;
-  } else if (spin == 1) {
-    for (int i = 0; i < I1.norbs; i++) {
-      int A = sort1Body.at(i).second / 2;
-      int a = sort1Body.at(i).second;
-      if (irrep.at(A) == targetIrrep && (Det.getocc(a) == false)) {
-        Det.setocc(a, true);
-        break;
-      }
-    }
-    cout << Det << endl;
     int I = 0;
     while (I < I1.norbs / 2 && nDOElec > 0) {
       int a = sort1Body.at(2 * I).second;
@@ -316,126 +292,213 @@ void symmetry::estimateLowestEnergyDet(int spin, oneInt I1, vector<int>& irrep,
 
       I++;
     }
-    // fillDoubleOccOrbs(Det, nDOElec, nSpinOrbs);
-    cout << Det << endl;
     return;
-  }
+  } else if (spin == 1) {
+    bool found_irrep = false;
 
-  // else if (spin == 1) {
-  //   // Find lowest energy orbital with targetIrrep
-  //   for (int i = nDOrbs; i < I1.norbs; i++) {
-  //     if (irrep.at(sort1Body.at(i).second / 2) == targetIrrep &&
-  //         (Det.getocc(i) == false)) {
-  //       Det.setocc(i, true);
-  //       return;
-  //     }
-  //   }
+    // Find lowest energy orbitals with the appropriate symmetry
+    for (int i = 0; i < I1.norbs; i++) {
+      int A = sort1Body.at(i).second / 2;
+      int a = sort1Body.at(i).second;
+      if (irrep.at(A) == targetIrrep && (Det.getocc(a) == false)) {
+        Det.setocc(a, true);
+        found_irrep = true;
+        break;
+      }
+    }
 
-  //   cout << error_message << endl;
-  //   init_success = false;
-  //   return;
-  //   // exit(EXIT_FAILURE);
-  // }
+    if (!found_irrep) {
+      for (int i = 0; i < nDOElec; i++) {
+        Det.setocc(i, true);
+      }
+      for (int i = 0; i < spin; i++) {
+        Det.setocc(nDOElec + 2 * i, true);
+      }
+      pout << error_message << endl;
+    }
 
-  // else if (spin == 2) {
-  //   // Find lowest energy orbitals with the appropriate symmetry
-  //   for (int i = nDOrbs; i < I1.norbs - 1; i++) {
-  //     for (int j = i + 1; j < I1.norbs; j++) {
-  //       int I = sort1Body.at(i).second;
-  //       int J = sort1Body.at(j).second;
-  //       if (I % 2 != J % 2) continue;
-  //       int irrep1 = irrep.at(I / 2);
-  //       int irrep2 = irrep.at(J / 2);
-  //       bool unocc = ((Det.getocc(I) == false) && (Det.getocc(J) == false));
+    int I = 0;
+    while (I < I1.norbs / 2 && nDOElec > 0) {
+      int a = sort1Body.at(2 * I).second;
+      int b = sort1Body.at(2 * I + 1).second;
+      if (!Det.getocc(a) && !Det.getocc(b)) {
+        Det.setocc(a, true);
+        Det.setocc(b, true);
+        nDOElec -= 2;
+      }
 
-  //       if (symmetry::getProduct(irrep1, irrep2) == targetIrrep && unocc) {
-  //         Det.setocc(I, true);
-  //         Det.setocc(J, true);
-  //         return;
-  //       }
-  //     }
-  //   }
+      I++;
+    }
+    return;
+  } else if (spin == 2) {
+    bool found_irrep = false;
+    // Find lowest energy orbitals with the appropriate symmetry
+    for (int i = 0; i < I1.norbs && !found_irrep; i++) {
+      int A = sort1Body.at(i).second / 2;
+      int a = sort1Body.at(i).second;
+      for (int j = i + 1; j < I1.norbs; j++) {
+        int B = sort1Body.at(j).second / 2;
+        int b = sort1Body.at(j).second;
 
-  //   cout << error_message << endl;
-  //   init_success = false;
-  //   return;
-  //   // exit(EXIT_FAILURE);
-  // }
+        int det_irrep = getProduct(irrep.at(A), irrep.at(B));
 
-  // else if (spin == 3) {
-  //   // Find lowest energy orbitals with the appropriate symmetry
-  //   for (int i = nDOrbs; i < I1.norbs - 2; i++) {
-  //     for (int j = i + 1; j < I1.norbs - 1; j++) {
-  //       for (int k = j + 1; k < I1.norbs; k++) {
-  //         int I = sort1Body.at(i).second, J = sort1Body.at(j).second;
-  //         int K = sort1Body.at(k).second;
-  //         if (!(I % 2 == J % 2 && J % 2 == K % 2)) continue;
-  //         vector<int> irreps(3);
-  //         irreps.at(0) = irrep.at(I / 2);
-  //         irreps.at(1) = irrep.at(J / 2);
-  //         irreps.at(2) = irrep.at(K / 2);
-  //         bool unocc = ((Det.getocc(I) == false) && (Det.getocc(J) == false)
-  //         &&
-  //                       (Det.getocc(K) == false));
+        // Not the most efficient, but it keeps the code clean
+        bool same_spin = a % 2 == b % 2;
 
-  //         if (symmetry::getProduct(irreps) == targetIrrep && unocc) {
-  //           Det.setocc(I, true);
-  //           Det.setocc(J, true);
-  //           Det.setocc(K, true);
-  //           return;
-  //         }
-  //       }
-  //     }
-  //   }
+        if (det_irrep == targetIrrep && same_spin) {
+          Det.setocc(a, true);
+          Det.setocc(b, true);
+          found_irrep = true;
+          break;
+        }
+      }
+    }
 
-  //   cout << error_message << endl;
-  //   init_success = false;
-  //   return;
-  //   // exit(EXIT_FAILURE);
-  // }
+    if (!found_irrep) {
+      for (int i = 0; i < nDOElec; i++) {
+        Det.setocc(i, true);
+      }
+      for (int i = 0; i < spin; i++) {
+        Det.setocc(nDOElec + 2 * i, true);
+      }
+      pout << error_message << endl;
+    }
 
-  // else if (spin == 4) {
-  //   // Find lowest energy orbitals with the appropriate symmetry
-  //   for (int i = nDOrbs; i < I1.norbs - 3; i++) {
-  //     for (int j = i + 1; j < I1.norbs - 2; j++) {
-  //       for (int k = j + 1; k < I1.norbs - 1; k++) {
-  //         for (int l = k + 1; l < I1.norbs; l++) {
-  //           int I = sort1Body.at(i).second, J = sort1Body.at(j).second;
-  //           int K = sort1Body.at(k).second, L = sort1Body.at(l).second;
+    int I = 0;
+    while (I < I1.norbs / 2 && nDOElec > 0) {
+      int a = sort1Body.at(2 * I).second;
+      int b = sort1Body.at(2 * I + 1).second;
+      if (!Det.getocc(a) && !Det.getocc(b)) {
+        Det.setocc(a, true);
+        Det.setocc(b, true);
+        nDOElec -= 2;
+      }
 
-  //           bool diffOrbs =
-  //               (I % 2 == J % 2 && J % 2 == K % 2 && K % 2 == L % 2);
-  //           if (!diffOrbs) continue;
-  //           vector<int> irreps(4);
-  //           irreps.at(0) = irrep.at(I / 2);
-  //           irreps.at(1) = irrep.at(J / 2);
-  //           irreps.at(2) = irrep.at(K / 2);
-  //           irreps.at(3) = irrep.at(L / 2);
-  //           bool unocc =
-  //               ((Det.getocc(I) == false) && (Det.getocc(J) == false) &&
-  //                (Det.getocc(K) == false) && (Det.getocc(L) == false));
+      I++;
+    }
+    return;
+  } else if (spin == 3) {
+    bool found_irrep = false;
+    // Find lowest energy orbitals with the appropriate symmetry
+    for (int i = 0; i < I1.norbs && !found_irrep; i++) {
+      int A = sort1Body.at(i).second / 2;
+      int a = sort1Body.at(i).second;
+      for (int j = i + 1; j < I1.norbs && !found_irrep; j++) {
+        int B = sort1Body.at(j).second / 2;
+        int b = sort1Body.at(j).second;
+        for (int k = j + 1; k < I1.norbs; k++) {
+          int C = sort1Body.at(k).second / 2;
+          int c = sort1Body.at(k).second;
 
-  //           if (symmetry::getProduct(irreps) == targetIrrep && unocc) {
-  //             Det.setocc(I, true);
-  //             Det.setocc(J, true);
-  //             Det.setocc(K, true);
-  //             Det.setocc(L, true);
-  //             return;
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
+          int det_irrep = getProduct(irrep.at(A), irrep.at(B));
+          det_irrep = getProduct(det_irrep, irrep.at(C));
 
-  //   cout << error_message << endl;
-  //   init_success = false;
-  //   return;
-  //   // exit(EXIT_FAILURE);
-  // }
+          // Not the most efficient, but it keeps the code clean
+          bool same_spin = (a % 2 == b % 2 && b % 2 == c % 2 && a % 2 == 0);
 
-  else {
-    cout << "Spin=" << spin
-         << " currently not supported by Dice. Please contact authors" << endl;
-    exit(EXIT_FAILURE);
+          if (det_irrep == targetIrrep && same_spin) {
+            Det.setocc(a, true);
+            Det.setocc(b, true);
+            Det.setocc(c, true);
+            found_irrep = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!found_irrep) {
+      for (int i = 0; i < nDOElec; i++) {
+        Det.setocc(i, true);
+      }
+      for (int i = 0; i < spin; i++) {
+        Det.setocc(nDOElec + 2 * i, true);
+      }
+      pout << error_message << endl;
+    }
+
+    int I = 0;
+    while (I < I1.norbs / 2 && nDOElec > 0) {
+      int a = sort1Body.at(2 * I).second;
+      int b = sort1Body.at(2 * I + 1).second;
+      if (!Det.getocc(a) && !Det.getocc(b)) {
+        Det.setocc(a, true);
+        Det.setocc(b, true);
+        nDOElec -= 2;
+      }
+
+      I++;
+    }
+    return;
+  } else if (spin == 4) {
+    bool found_irrep = false;
+
+    // Find lowest energy orbitals with the appropriate symmetry
+    for (int i = 0; i < I1.norbs && !found_irrep; i++) {
+      int A = sort1Body.at(i).second / 2;
+      int a = sort1Body.at(i).second;
+      for (int j = i + 1; j < I1.norbs && !found_irrep; j++) {
+        int B = sort1Body.at(j).second / 2;
+        int b = sort1Body.at(j).second;
+        for (int k = j + 1; k < I1.norbs && !found_irrep; k++) {
+          int C = sort1Body.at(k).second / 2;
+          int c = sort1Body.at(k).second;
+          for (int l = k + 1; l < I1.norbs; l++) {
+            int D = sort1Body.at(l).second / 2;
+            int d = sort1Body.at(l).second;
+
+            int det_irrep = getProduct(irrep.at(A), irrep.at(B));
+            det_irrep = getProduct(det_irrep, irrep.at(C));
+            det_irrep = getProduct(det_irrep, irrep.at(D));
+
+            // Not the most efficient, but it keeps the code clean
+            bool same_spin = (a % 2 == b % 2 && b % 2 == c % 2 &&
+                              c % 2 == d % 2 && a % 2 == 0);
+
+            if (det_irrep == targetIrrep && same_spin) {
+              Det.setocc(a, true);
+              Det.setocc(b, true);
+              Det.setocc(c, true);
+              Det.setocc(d, true);
+              found_irrep = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!found_irrep) {
+      for (int i = 0; i < nDOElec; i++) {
+        Det.setocc(i, true);
+      }
+      for (int i = 0; i < spin; i++) {
+        Det.setocc(nDOElec + 2 * i, true);
+      }
+      pout << error_message << endl;
+    }
+
+    int I = 0;
+    while (I < I1.norbs / 2 && nDOElec > 0) {
+      int a = sort1Body.at(2 * I).second;
+      int b = sort1Body.at(2 * I + 1).second;
+      if (!Det.getocc(a) && !Det.getocc(b)) {
+        Det.setocc(a, true);
+        Det.setocc(b, true);
+        nDOElec -= 2;
+      }
+
+      I++;
+    }
+    return;
+  } else {
+    pout << "WARNING: Finding the lowest energy determinant not supported for "
+            "spin="
+         << spin << " using the specified determinant." << endl;
+
+    for (auto i : occupied) {
+      Det.setocc(i, true);
+    }
+    return;
   }
 };
