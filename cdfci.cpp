@@ -1,4 +1,5 @@
 #include "cdfci.h"
+#include "input.h"
 #include "math.h"
 #include "SHCIbasics.h"
 #include <iostream>
@@ -77,13 +78,8 @@ void cdfci::getDeterminantsVariational(
   int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
   initiateRestrictions(schd, closed);
-  //std::cout << "grow variational space" << std::endl;
-  // mono-excited determinants
-  //std::cout << "nopen, " << nopen << "nclosed, " << nclosed << std::endl;
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    //if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
-    //if (! satisfiesRestrictions(schd, closed[i], open[a])) continue;
 
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     //std::cout << "integral : " << integral << " epsilon : " << epsilon << std::endl;
@@ -144,7 +140,7 @@ void cdfci::getDeterminantsVariational(
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
         if(wavefunction.find(di) == wavefunction.end()) {
           std::array<double, 2>  val {0.0,0.0};
-          wavefunction.insert({di, val});
+          //wavefunction.insert({di, val});
           new_dets.insert(di)
 ;        }
         //if (Determinant::Trev != 0) di.makeStandard();
@@ -154,7 +150,7 @@ void cdfci::getDeterminantsVariational(
   return;
 } // end SHCIgetdeterminants::getDeterminantsVariational
 
-vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec) {
+vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec, bool sample) {
   auto det = d.first;
   int norbs = det.norbs;
   int nclosed = nelec;
@@ -168,13 +164,23 @@ vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec) {
   //get all existing single excitationsgetDeterminantsVariational
   for (int ia=0; ia<nopen*nclosed; ia++) {
     int i=ia/nopen, a=ia%nopen;
-    Determinant di = det;
-    di.setocc(open[a], true);
-    di.setocc(closed[i], false);
-    if (wfn.find(di) != wfn.end()) {
-      value_type val = std::make_pair(di, wfn[di]);
-      result.push_back(val);
+    if (closed[i]%2 == open[a]%2) {
+      Determinant di = det;
+      di.setocc(open[a], true);
+      di.setocc(closed[i], false);
+      if (wfn.find(di) != wfn.end()) {
+        value_type val = std::make_pair(di, wfn[di]);
+        result.push_back(val);
+      }
+      else {
+        if (sample == true) {
+          value_type val = std::make_pair(di, std::array<double, 2> {0.0, 0.0});
+          result.push_back(val); 
+        }
+      }
     }
+    else 
+      continue;
   }
   //get all existing double excitations
   for(int ij=0; ij<nclosed*nclosed; ij++) {
@@ -187,6 +193,9 @@ vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec) {
       if(k<=l) continue;
       int K=open[k], L=open[l];
       int a = max(K,L), b = min(K,L);
+      if (a%2+b%2-I%2-J%2 != 0) {
+        continue;
+      }
       Determinant di = det;
       di.setocc(a, true);
       di.setocc(b, true);
@@ -195,6 +204,12 @@ vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec) {
       if (wfn.find(di)!=wfn.end()){
         value_type val = std::make_pair(di, wfn[di]);
         result.push_back(val);
+      }
+      else {
+        if (sample == true) {
+          value_type val = std::make_pair(di, std::array<double, 2> {0.0, 0.0});
+          result.push_back(val); 
+        }
       }
     }
   }
@@ -270,13 +285,13 @@ double cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<doub
   return dx;
 }
 
-void cdfci::civectorUpdate(vector<value_type>& column, hash_det& wfn, double dx, pair<double, double>& ene, oneInt& I1, twoInt& I2, double& coreE) {
+void cdfci::civectorUpdate(vector<value_type>& column, hash_det& wfn, double dx, pair<double, double>& ene, oneInt& I1, twoInt& I2, double& coreE, double thresh, bool sample) {
   auto deti = column[0].first;
   //std::cout << "selected det: " << deti << std::endl;
   size_t orbDiff;
   //std::cout << ene.first << " " << ene.second << std::endl;
-  for (auto entry : column) {
-    auto detj = entry.first;
+  for (auto entry = column.begin(); entry!=column.end(); entry++) {
+    auto detj = entry->first;
     double hij;
     auto iter = wfn.find(detj);
     if (detj == deti) {
@@ -290,66 +305,133 @@ void cdfci::civectorUpdate(vector<value_type>& column, hash_det& wfn, double dx,
     else {
       hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
       double dz = dx*hij;
-      ene.first += 2*iter->second[0]*dz;
-      wfn[detj][1] += dz;
+      if (sample == false) {
+        ene.first += 2*iter->second[0]*dz;
+        wfn[detj][1] += dz;
+      }
+      else {
+        if (iter != wfn.end()) {
+          ene.first += 2*iter->second[0]*dz;
+          wfn[detj][1] += dz;
+        }
+        else {
+          if (std::fabs(dz) > thresh) {
+            wfn[detj]={0.0, dz};
+            entry->second[1]=dz;
+          }
+        }
+      }
     }
     
     //std::cout << "det:" << detj << " civec:" << wfn[detj][0] << " hx:" << wfn[detj][1] << std::endl;
   }
+    
   return; 
 }
 
-void cdfci::cdfciSolver(hash_det& wfn,set<Determinant>& new_dets, Determinant& hf, pair<double, double>& ene, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, int nelec) {
+set<Determinant> cdfci::sampleExtraEntry(hash_det& wfn, int nelec) {
+  set<Determinant> result;
+  for(auto det : wfn) {
+    value_type std_det = std::make_pair(det.first, det.second);
+    vector<value_type> column = cdfci::getSubDets(std_det, wfn, nelec, true);
+    for (auto entry : column) {
+      if (std::fabs(entry.second[0]) < 1e-100 && std::fabs(entry.second[1]) < 1e-100) {
+        result.insert(entry.first);
+      }
+    }
+    if (result.size() > 10000) {
+      break;
+    }
+  }
+  return result;
+}
+ 
+void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<double, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, int nelec, double thresh, bool sample) {
     // first to initialize hx for new determinants
+    auto coreEbkp = coreE;
+    coreE = 0.0;
     auto startofCalc = getTime();
-    for(auto i=new_dets.begin(); i!=new_dets.end(); i++) {
-      Determinant di = *i;
-      value_type thisDet = std::make_pair(di, wfn[di]);
-      auto column = cdfci::getSubDets(thisDet, wfn, nelec);
-      double z = 0.0;
-      double x = 0.0;
-      size_t orbDiff;
-      for (auto entry : column) {
-        auto detj = entry.first;
-        double hij;
-        if (detj == di) {
-          z+=0.0;
+    value_type thisDet =  std::make_pair(hf, wfn[hf]);
+    //auto dx = -wfn[hf][0];
+    //auto column=cdfci::getSubDets(thisDet, wfn, nelec, sample);
+    //cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
+    // assume non zero energy means start from a converged reference result
+    /*if (ene.first < 0.0) {
+      //auto new_dets = sampleExtraEntry(wfn, nelec);
+      // add extra entries according to current wfn
+      // keep old wfn, and have a new wfn that stores the updated wfn.
+      hash_det new_dets = wfn; 
+      //double epsilon = schd.z_threshold;
+      for (auto det : wfn) {
+        value_type det_val = std::make_pair(det.first, det.second);
+        auto column = cdfci::getSubDets(det_val, new_dets, nelec, true);
+        std::cout << "column size " << column.size() << std::endl;
+        size_t orbDiff;
+        auto xj = det.second[0];
+        for(auto entry : column) {
+          auto detj = entry.first;
+          double z = 0.0;
+          if (new_dets.find(detj) == new_dets.end()) {
+            double hij = Hij(det.first, detj, I1, I2, coreE, orbDiff);
+            z=xj*hij;
+            if (fabs(z) > thresh) {
+            // if z is above threshold, update z exactly.
+              value_type detj_val = std::make_pair(detj, std::array<double, 2> {0.0, z});
+              auto columnj = cdfci::getSubDets(detj_val, wfn, nelec, false);
+              for(auto entry_j : columnj) {
+                //std::cout << "columnj size " << columnj.size() << std::endl;
+                if (entry_j.first == detj) continue;
+                else {
+                  double hij = Hij(entry_j.first, detj, I1, I2, coreE, orbDiff);
+                  z+= hij*entry_j.second[0];
+                }
+              }
+              new_dets[detj] = {0.0, z};
+            }
+          }
+          else continue;
         }
-        else {
-          hij = Hij(di, detj, I1, I2, coreE, orbDiff);
-          auto xj = entry.second[0];
-          z+= xj*hij;
+        if (new_dets.size()-wfn.size() > 10000) {
+          break;
         }
       }
-      wfn[di]={0.0, z};
-    }
-    std::cout << "update determinants not included in previous variational iteration " << getTime()-startofCalc << std::endl;
-    value_type thisDet =  std::make_pair(hf, wfn[hf]);
-    auto sub = cdfci::getSubDets(thisDet, wfn, nelec);
-    auto prev_ene=0.0;
-    if (ene.second < 1e-100) prev_ene=0.0;
-    else prev_ene = ene.first/ene.second;
-    std::cout << std::endl;
-    
-    auto num_iter = wfn.size();
+      std::cout << "new dets size " << new_dets.size() << std::endl;
+      wfn = new_dets;
+      new_dets.clear();
+      std::cout << "z space size " << wfn.size() << std::endl;
+    }*/
+    double prev_ene;
+    if (fabs(ene.first) > 1e-10)
+      prev_ene = ene.first/ene.second;
+    else
+      prev_ene=0.0;
+    //prev_ene=0.0;
+    //else prev_ene = ene.first/ene.second;
+    /*if (ene.second > 1e-10) {
+      //if start from a converged eigensystem perturb the system by a bit.
+        auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
+        cdfci::civectorUpdate(column, wfn, 1e-2*wfn[hf][0], ene, I1, I2, coreE, thresh, sample);
+        thisDet = cdfci::CoordinatePickGcdGrad(column, ene.second);
+    }*/
+    auto num_iter = schd.cdfciIter;
+    std::cout << "start optimization" << std::endl;
     for(int k=0; k<num_iter; k++) {
       for(int i=0; i<1000; i++) {
         auto dx = cdfci::CoordinateUpdate(thisDet, wfn, ene, E0, I1, I2, coreE);
-        auto column = cdfci::getSubDets(thisDet, wfn, nelec);
-        cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE);
-        
+        auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
+        cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
         //sub = cdfci::getSubDets(thisDet, wfn, nelec);
         thisDet = cdfci::CoordinatePickGcdGrad(column, ene.second);
       }
       auto curr_ene = ene.first/ene.second;
-      std::cout<<"Current Variational Energy: " <<  std::setw(18) <<std::setprecision(10) << curr_ene << ". norm: " << ene.second << " prev variational energy: " << std::setw(18) << std::setprecision(10) << prev_ene << " time now " << std::setprecision(4) << getTime()-startofCalc << std::endl;
-      //std::cout <<"ene:" << ene.first << " " << ene.second << std::endl; 
-      if (std::abs(curr_ene-prev_ene) < 1e-10*1000.) {
-        //hf = thisDet.first;
+      std::cout << "var size : " << wfn.size() << " ";
+      std::cout << k*1000 << " Current Energy: " <<  std::setw(16) <<std::setprecision(12) << curr_ene+coreEbkp << ". norm: " << std::setw(8) << std::setprecision(5) << ene.second << " prev ene " << std::setw(16) << std::setprecision(12) << prev_ene+coreEbkp << " time now " << std::setprecision(4) << getTime()-startofCalc << std::endl;
+      if (std::abs(curr_ene-prev_ene) < schd.dE) {
         break;
       }
       prev_ene = curr_ene;
     }
+  coreE=coreEbkp;
   return;
 }
 
@@ -410,25 +492,25 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
     set<Determinant> new_dets;
     std::cout << "time before grow variational space " << std::setw(10) << getTime()-startofCalc << std::endl;
     for (int i = 0; i < SortedDetsSize; i++) {
-      auto norm = ene.second > 1e-10 ? ene.second : 1.0;
-      auto civec = wavefunction[SortedDetsvec[i]][0];
+      double norm = ene.second > 1e-10 ? ene.second : 1.0;
+      double civec = wavefunction[SortedDetsvec[i]][0];
       civec = civec / sqrt(norm);
+      if(iter==0) {
+        civec = 1.0;
+        //std::cout << civec << " " << norm << std::endl;
+      }
+      array<double, 2> zero_out = {0.0,0.0};
+      wavefunction[SortedDetsvec[i]] = zero_out;
       cdfci::getDeterminantsVariational(SortedDetsvec[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], wavefunction, new_dets, schd, 0, nelec);
     }
     std::cout << "time after grow variational space " 
     <<std:: setw(10) << getTime()-startofCalc << std::endl;
     auto&wfn = wavefunction;
     std::cout << "wfn size:  " << wfn.size() << std::endl;
-    cdfci::cdfciSolver(wavefunction, new_dets, HF, ene, I1, I2, coreE, E0, nelec);
-    //exit(0);
-    
-    //for(auto iter=wfn.begin(); iter!=wfn.end(); iter++) {
-      //if (std::abs(iter->second[0]/ene.second) > 1e-3) 
-      //std::cout << "det: " << iter->first << " civec: " << iter->second[0]/sqrt(ene.second)<< std::endl;
-      //iter->second = {0.0,0.0};
-    //}
-    //ene={0.0,0.0};
-    //exit(0);
+    std::cout << "new dets: " << new_dets.size() << std::endl;
+    ene = {0.0,0.0};
+//    cdfci::cdfciSolver(wavefunction, HF, schd, ene, I1, I2, coreE, E0, nelec, epsilon1, true);
+    exit(0);
     SortedDetsvec.clear(); 
     for (auto iter:wavefunction) {
       SortedDetsvec.push_back(iter.first);

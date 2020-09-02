@@ -28,7 +28,7 @@
 #include <tuple>
 #include <vector>
 #include "global.h"
-
+#include "cdfci.h"
 using namespace std;
 using namespace Eigen;
 namespace SHCImakeHamiltonian {
@@ -90,7 +90,7 @@ vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets,
                              schedule& schd, twoInt& I2,
                              twoIntHeatBathSHM& I2HB, vector<int>& irrep,
                              oneInt& I1, double& coreE, int nelec,
-                             bool DoRDM = false);
+                             cdfci::hash_det& wfn, bool DoRDM = false);
 
 vector<double> DoVariationalDirect(vector<MatrixXx>& ci,
                                    vector<Determinant>& Dets, schedule& schd,
