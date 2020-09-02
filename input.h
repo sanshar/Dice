@@ -93,6 +93,8 @@ private:
     & DoOneRDM                                \
     & DoThreeRDM                              \
     & DoFourRDM                               \
+    & cdfciIter                               \
+    & z_threshold                             \
     & restrictions;
   }
 
@@ -155,6 +157,10 @@ public:
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
+  double z_threshold;
+  int cdfciIter;
+  bool sampleNewDets;
+  double factor;
 
   vector<OccRestrictions> restrictions;
 };

@@ -104,6 +104,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
+  
+  schd.cdfciIter = 0;
+  schd.z_threshold = 0.0;
+  schd.sampleNewDets = false;
+  schd.factor = 1.0;
 
   while (dump.good()) {
     std::string Line;
@@ -247,6 +252,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       }
       schd.restrictions.push_back(OccRestrictions(minElec, maxElec, orbs));
     }
+    else if (boost::iequals(ArgName, "cdfciFactor"))
+      schd.factor = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))
@@ -295,8 +302,15 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
         cout << Line << endl;
         boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
-    } else if (boost::iequals(ArgName, "maxiter"))
+    } 
+    else if (boost::iequals(ArgName, "maxiter"))
       maxiter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciIter"))
+      schd.cdfciIter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "z_threshold"))
+      schd.z_threshold = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciSample"))
+      schd.sampleNewDets = true;
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
