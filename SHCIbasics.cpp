@@ -44,7 +44,7 @@
 #include "input.h"
 #include "integral.h"
 #include "math.h"
-
+#include "cdfci.h"
 #include "communicate.h"
 
 using namespace std;
@@ -785,7 +785,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
                                          schedule &schd, twoInt &I2,
                                          twoIntHeatBathSHM &I2HB,
                                          vector<int> &irrep, oneInt &I1,
-                                         double &coreE, int nelec, bool DoRDM) {
+                                         double &coreE, int nelec, cdfci::hash_det& wfn, bool DoRDM) {
   int proc = 0, nprocs = 1;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
@@ -1209,7 +1209,26 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       else
         E0 = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter,
                       false);
-
+     if (schd.cdfciIter > 0) {
+     //use Hmult to construct the civector and sigma vector
+     wfn.clear();
+     CItype *bcol, *sigmacol;
+     auto brows=ci[0].rows();
+     AllocateSHM(ci, bcol, sigmacol);
+     for (int k=0; k<brows; k++) {
+       bcol[k] = ci[0](k, 0);
+       sigmacol[k] = 0.0;
+     }
+     H(bcol, sigmacol);
+     double norm = E0[0]-coreE;
+     double factor = schd.factor*sqrt(std::fabs(norm));
+     for(int k=0; k<brows;k++) {
+       auto det = Dets[k];
+       auto val = std::array<double, 2> {bcol[k]*factor, sigmacol[k]*factor};
+       //val = std::array<double, 2> {0.0, 0.0};
+       wfn[det] = val;
+     }  
+     } 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif

@@ -58,7 +58,6 @@ MatrixXd symmetry::product_table;
 #include <algorithm>
 #include <boost/bind.hpp>
 #include "cdfci.h"
-
 // Initialize
 using namespace Eigen;
 using namespace boost;
@@ -122,10 +121,10 @@ void license(char* argv[]) {
   printf("PID:              %d\n", getpid());
   pout << endl;
   printf("Path:             %s\n", argv[0]);
-  //printf("Commit:           %s\n", git_commit);
-  //printf("Branch:           %s\n", git_branch);
+  printf("Commit:           %s\n", git_commit);
+  printf("Branch:           %s\n", git_branch);
   printf("Compilation Date: %s %s\n", __DATE__, __TIME__);
-  // printf("Cores:            %s\n","TODO");
+  //printf("Cores:            %s\n","TODO");
 }
 
 // Read Input
@@ -296,7 +295,6 @@ int main(int argc, char* argv[]) {
   // Check and make sure that
 
   symmetry molSym(schd.pointGroup, irrep);
-/*
   if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
       molSym.init_success) {
     vector<Determinant> tempDets(Dets);
@@ -347,7 +345,7 @@ int main(int argc, char* argv[]) {
     pout << "Skipping Ref. Determinant Search for pointgroup "
          << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
   }  // End if (Search for Ref. Det)
-*/
+
   schd.HF = Dets[0];
 
   if (commrank == 0) {
@@ -369,10 +367,18 @@ int main(int argc, char* argv[]) {
   pout << "VARIATIONAL STEP  " << endl;
   pout << "**************************************************************"
        << endl;
-
-  vector<double> E0 = cdfci::DoVariational(
-      ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
-  exit(0);
+  cdfci::hash_det wfn;
+  vector<double> E0 = SHCIbasics::DoVariational(
+      ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, wfn, schd.DoRDM);
+  if (schd.cdfciIter > 0) {
+    std::cout << schd.sampleNewDets  << " " << schd.z_threshold << " " << schd.cdfciIter << std::endl;
+    double norm = (coreE-E0[0])*schd.factor*schd.factor;
+    double energy = E0[0]-coreE;
+    //std::pair<double, double> ene {energy*norm, norm};
+    std::pair<double, double> ene {0.0, 0.0};
+    cdfci::cdfciSolver(wfn, Dets[0], schd, ene, I1, I2, I2HBSHM, irrep, coreE, E0, nelec, schd.z_threshold, true);
+    exit(0);
+  }
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
@@ -732,10 +738,9 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
         schd.restart = false;
         schd.fullrestart = false;
         schd.DoRDM = false;
-        E0 = cdfci::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
-                                       coreE, nelec, false);
+        E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
+                                       coreE, nelec, wfn, schd.DoRDM);
         var[iter + 1] = E0[0];
-        exit(0);
         DetsSize = Dets.size();
 #ifndef SERIAL
         mpi::broadcast(world, DetsSize, 0);
