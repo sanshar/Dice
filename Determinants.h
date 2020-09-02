@@ -92,7 +92,6 @@ class HalfDet {
     return true;
   }
 
-
   int ExcitationDistance(const HalfDet& d) const {
     int ndiff = 0;
     for (int i = 0; i < DetLen / 2; i++) {
@@ -191,12 +190,6 @@ class Determinant {
 
   void operator=(const Determinant& d) {
     for (int i = 0; i < DetLen; i++) repr[i] = d.repr[i];
-  }
-
-  bool operator==(const Determinant& d) const {
-    for (int i=EffDetLen-1; i>=0 ; i--)
-      if (repr[i] != d.repr[i]) return false;
-    return true;
   }
 
   double Energy(oneInt& I1, twoInt& I2, double& coreE);
@@ -423,6 +416,12 @@ class Determinant {
     return false;
   }
 
+  // check if the determinants are equal
+  bool operator==(const Determinant& d) const {
+    for (int i = EffDetLen - 1; i >= 0; i--)
+      if (repr[i] != d.repr[i]) return false;
+    return true;
+  }
 
   // set the occupation of the ith orbital
   void setocc(int i, bool occ) {
@@ -540,13 +539,4 @@ void updateHijForTReversal(CItype& hij, Determinant& dk, Determinant& dj,
 void getOrbDiff(Determinant& bra, Determinant& ket, size_t& orbdiff);
 
 double getParityForDiceToAlphaBeta(Determinant& det);
-
-template<>
-struct std::hash<Determinant> {
-  const std::size_t operator()(const Determinant& det) const {
-    return det.repr[0];
-    //return det.repr[0] + det.repr[1]*179426549;
-    //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
-  }
-};
 #endif
