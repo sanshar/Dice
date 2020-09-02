@@ -4,6 +4,7 @@ nocc 9
 end
 orbitals ../integrals/cn_FCIDUMP_nosym
 nroots 1
+searchForLowestEnergyDet
 
 #variational
 schedule 

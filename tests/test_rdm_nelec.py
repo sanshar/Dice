@@ -57,32 +57,32 @@ def test_RDM_nelec(
     # Check 1RDM nelec
     if abs(nelec - nelec_from_1RDM) > tol:
         print(
-            "\tFAILED RDM NELEC from spatial1RDM {:14.10f} != {:d} from FCIDUMP".format(
+            "\t\033[91mFailed\033[00m  RDM NELEC from spatial1RDM {:14.10f} != {:d} from FCIDUMP".format(
                 nelec_from_1RDM, nelec
             )
         )
     else:
-        print("\tPASSED RDM NELEC from spatial1RDM")
+        print("\t\033[92mPassed\033[00m RDM NELEC from spatial1RDM")
 
     # Check 2RDM nelec
     if abs(nelec - nelec_from_2RDM) > tol:
         print(
-            "\tFAILED RDM NELEC from spatial2RDM {:14.10f} != {:d} from FCIDUMP".format(
+            "\t\033[91mFailed\033[00m  RDM NELEC from spatial2RDM {:14.10f} != {:d} from FCIDUMP".format(
                 nelec_from_2RDM, nelec
             )
         )
     else:
-        print("\tPASSED RDM NELEC from spatial2RDM")
+        print("\t\033[92mPassed\033[00m RDM NELEC from spatial2RDM")
 
     # Check 3RDM nelec
     if abs(nelec - nelec_from_3RDM) > tol:
         print(
-            "\tFAILED RDM NELEC from spatial3RDM {:14.10f} != {:d} from FCIDUMP".format(
+            "\t\033[91mFailed\033[00m  RDM NELEC from spatial3RDM {:14.10f} != {:d} from FCIDUMP".format(
                 nelec_from_3RDM, nelec
             )
         )
     else:
-        print("\tPASSED RDM NELEC from spatial3RDM")
+        print("\t\033[92mPassed\033[00m RDM NELEC from spatial3RDM")
 
 
 if __name__ == "__main__":

@@ -280,6 +280,43 @@ void symmetry::estimateLowestEnergyDet(int spin, oneInt I1, vector<int>& irrep,
   // Spin dependent population of singly occupied orbitals.
   // Do this first and then fill doubly occupied orbs
   if (spin == 0) {
+    // If we aren't targetting the totally symmetric irrep
+    if (targetIrrep != 1) {
+      nDOElec -= 2;  // Take two electrons and upair them so we can find the
+                     // right irrep
+      bool found_irrep = false;
+      // Find lowest energy orbitals with the appropriate symmetry
+      for (int i = 0; i < I1.norbs && !found_irrep; i++) {
+        int A = sort1Body.at(i).second / 2;
+        int a = sort1Body.at(i).second;
+        for (int j = i + 1; j < I1.norbs; j++) {
+          int B = sort1Body.at(j).second / 2;
+          int b = sort1Body.at(j).second;
+
+          int det_irrep = getProduct(irrep.at(A), irrep.at(B));
+
+          // Not the most efficient, but it keeps the code clean
+          bool same_spin = a % 2 != b % 2;
+
+          if (det_irrep == targetIrrep && same_spin) {
+            Det.setocc(a, true);
+            Det.setocc(b, true);
+            found_irrep = true;
+            break;
+          }
+        }
+      }
+
+      if (!found_irrep) {
+        nDOElec += 2;  // Return DO elec
+        for (int i = 0; i < nDOElec; i++) {
+          Det.setocc(i, true);
+        }
+        pout << error_message << endl;
+        return;
+      }
+    }
+
     int I = 0;
     while (I < I1.norbs / 2 && nDOElec > 0) {
       int a = sort1Body.at(2 * I).second;
