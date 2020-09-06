@@ -18,6 +18,7 @@
 */
 #include "Davidson.h"
 #include "Hmult.h"
+#include "HmultDirect.h"
 #include <Eigen/Dense>
 #include <iostream>
 #include <iostream>
@@ -302,8 +303,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         //return eroots;
       }
 
-      if (error < tol || numIter >800*x0.size()) {
-        if (numIter >2000*x0.size()) {
+      if (error < tol || numIter >400*x0.size()) {
+        if (numIter >400*x0.size()) {
           cout << "Davidson calculation Didnt converge"<<endl;
           exit(0);
           continueOrReturn = 2;
@@ -350,7 +351,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 //=============================================================================
-//vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
     /*!
     Davidson, implemented very similarly to as implementeded in Block
@@ -378,7 +379,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
             BM_description
     */
 //-----------------------------------------------------------------------------
-/*  std::vector<double> eroots;
+  std::vector<double> eroots;
 
   CItype* bcol, *sigmacol;
   AllocateSHM(x0, bcol, sigmacol);
@@ -396,7 +397,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
   int niter;
   //if some vector has zero norm then randomise it
   if (commrank == 0) {
-    for (int i=0; i<nroots; i++)  {
+    for (int i=0; i<nroots; i++) {
       b.col(i) = 1.*x0[i];
       if (x0[i].norm() < 1.e-10) {
         b.col(i).setRandom();
@@ -457,7 +458,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-      Hdirect(bcol, sigmacol);
+      H(bcol, sigmacol);
       sigmaSize++;
 
 #ifndef SERIAL
@@ -587,7 +588,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         }
       } // commrank=0
   } // while
-} // end davidsonDirect */
+} // end davidsonDirect
 
 
 

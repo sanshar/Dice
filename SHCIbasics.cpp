@@ -33,6 +33,7 @@
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
+#include "HmultDirect.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIgetdeterminants.h"
 //#include "SHCImakeHamiltonian.h"
@@ -1189,12 +1190,18 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     prevSize = DetsSize;
 
     Hmult2 H(sparseHam);
+    HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs, I1, I2, coreE, diag);
     int numIter = 0;
     vector<double> prevE0 = E0;
     //if (iter == 0)
     //  prevE0(-10.0);
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
-    E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+    if (schd.DavidsonType == DIRECT) {
+      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+    }
+    else {
+      E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+    }
 
     // update the civector
     if (proc == 0) {
@@ -1229,7 +1236,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
            << endl;
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     //E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, false);
-      E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
+    if (schd.DavidsonType == DIRECT) {
+      E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+2, schd.davidsonTol, numIter, schd.outputlevel>0);
+    }
+    else {
+      E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0);
+    }
+      //E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
     for (int i = 0; i < E0.size(); i++) {
       pout << format("%4i %4i  %12.8e  %10.2e   %18.10f  %9i  %10.2f\n") %
                   (iter) % (i) % schd.epsilon1[iter] % DetsSize %
