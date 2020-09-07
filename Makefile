@@ -124,6 +124,7 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/Correlator.o \
 	obj/spawnFCIQMC.o \
 	obj/walkersFCIQMC.o \
+	obj/excitGen.o \
 
 
 obj/%.o: %.cpp  
@@ -144,6 +145,7 @@ obj/%.o: ICPT/StackArray/%.cpp
 
 #all: bin/VMC
 all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT #bin/sPT  bin/GFMC
+FCIQMC: bin/FCIQMC
 #bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp

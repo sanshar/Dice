@@ -121,7 +121,7 @@ void runFCIQMC() {
   heatBathFCIQMC hb;
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
     if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
-    hb.createArrays(norbs);
+    hb.createArrays(norbs, I2);
     if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
   }
 
