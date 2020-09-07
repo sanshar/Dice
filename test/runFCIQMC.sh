@@ -16,7 +16,17 @@ $MPICOMMAND $FCIQMCPATH > fciqmc.out
 python2 ../../testEnergy.py 'fciqmc' $tol
 if [ $clean == 1 ]
 then
-    ../clean.sh
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/He2_hb_uniform
+../../clean.sh
+printf "...running FCIQMC/He2_hb_uniform\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
 fi
 
 cd $here/FCIQMC/Ne_plateau
@@ -26,7 +36,7 @@ $MPICOMMAND $FCIQMCPATH > fciqmc.out
 python2 ../../testEnergy.py 'fciqmc' $tol
 if [ $clean == 1 ]
 then
-    ../clean.sh
+    ../../clean.sh
 fi
 
 cd $here/FCIQMC/Ne_initiator
@@ -36,7 +46,17 @@ $MPICOMMAND $FCIQMCPATH > fciqmc.out
 python2 ../../testEnergy.py 'fciqmc' $tol
 if [ $clean == 1 ]
 then
-    ../clean.sh
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/water_vdz_hb
+../../clean.sh
+printf "...running FCIQMC/water_vdz_hb\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
 fi
 
 cd $here
