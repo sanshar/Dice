@@ -57,8 +57,10 @@ void printFinalStats(const double& walkerPop, const int& nDets,
 
 void runFCIQMC() {
 
+  int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
   int nbeta = Determinant::nbeta;
+  int nel = nalpha + nbeta;
 
   // The number of 64-bit integers required to represent (the alpha or beta
   // part of) a determinant
@@ -98,11 +100,11 @@ void runFCIQMC() {
   }
 
   // ----- FCIQMC data -----
-  double EProj = 0.0, HFAmp = 0.0, pgen = 0.0, parentAmp = 0.0, walkerPop = 0.0;
+  double EProj = 0.0, HFAmp = 0.0, pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0, walkerPop = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
 
   int nAttempts = 0;
-  Determinant childDet;
+  Determinant childDet, childDet2;
 
   // Total quantities, after summing over processors
   double walkerPopTot, walkerPopOldTot, EProjTot, HFAmpTot;
@@ -114,6 +116,19 @@ void runFCIQMC() {
 
   if (commrank == 0) {
     cout << "Hartree--Fock energy: " << HFDet.Energy(I1, I2, coreE) << endl << endl;
+  }
+
+  heatBathFCIQMC hb;
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
+    hb.createArrays(norbs, I2);
+    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
+  }
+
+  // The default excitation generator is the uniform one. If
+  // the user has specified another, then turn this off.
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    schd.uniformExGen = false;
   }
 
   // Get and print the initial stats
@@ -157,15 +172,23 @@ void runFCIQMC() {
       }
 
       // Number of spawnings to attempt
-      nAttempts = max(1.0, round(walkers.amps[iDet] * schd.nAttemptsEach));
+      nAttempts = max(1.0, round(abs(walkers.amps[iDet]) * schd.nAttemptsEach));
       parentAmp = walkers.amps[iDet] * schd.nAttemptsEach / nAttempts;
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
-        generateExcitation(walkers.dets[iDet], childDet, pgen);
+        generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
 
-        attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                        parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
+        // pgen=0.0 is set when a null excitation is returned.
+        if (pgen > 1.e-15) {
+          attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
+        }
+        if (pgen2 > 1.e-15) {
+          attemptSpawning(walkers.dets[iDet], childDet2, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen2);
+        }
+
       }
       performDeath(walkers.dets[iDet], walkers.amps[iDet], I1, I2, coreE, Eshift, schd.tau);
     }

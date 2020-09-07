@@ -122,6 +122,34 @@ void Determinant::getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) 
   }
 }
 
+void Determinant::getClosed(std::vector<int>& closed) const {
+  for (int i=0; i<norbs; i++) {
+    if ( getoccA(i)) {
+      closed.push_back(2*i);
+    }
+    if ( getoccB(i)) {
+      closed.push_back(2*i+1);
+    }
+  }
+}
+
+// Version of getClosed for the case where closed has been allocated
+// with the correct size already. This is quicker, for cases where
+// this is important.
+void Determinant::getClosedAllocated(std::vector<int>& closed) const {
+  int n = 0;
+  for (int i=0; i<norbs; i++) {
+    if ( getoccA(i)) {
+      closed.at(n) = 2*i;
+      n++;
+    }
+    if ( getoccB(i)) {
+      closed.at(n) = 2*i+1;
+      n++;
+    }
+  }
+}
+
 void Determinant::getClosed( bool sz, std::vector<int>& closed) const {
   
   for (int i=0; i<norbs; i++) 
@@ -526,6 +554,20 @@ CItype Determinant::Hij_1ExciteScreened(const int& a, const int& i,
 
 
 //=============================================================================
+CItype Determinant::Hij_1Excite(const int& a, const int& i, const oneInt&I1,
+                                const twoInt& I2, bool doparity) const {
+  int aSpatial = a/2;
+  int iSpatial = i/2;
+
+  if (i%2 == 0 && a%2 == 0) {
+    return Hij_1ExciteA(aSpatial, iSpatial, I1, I2, doparity);
+  } else if (i%2 == 1 && a%2 == 1) {
+    return Hij_1ExciteB(aSpatial, iSpatial, I1, I2, doparity);
+  } else {
+    cout << "ERROR: orbitals have different spin in Hij_1Excite" << endl;
+  }
+}
+
 CItype Determinant::Hij_1ExciteA(const int& a, const int& i, const oneInt&I1,
                                  const twoInt& I2, bool doparity) const {
   double sgn = 1.0;

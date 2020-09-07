@@ -103,6 +103,7 @@ private:
       & diagMethod
       & powerShift
       & expCorrelator
+      & numHidden
       & nAttemptsEach
       & mainMemoryFac
       & spawnMemoryFac
@@ -114,7 +115,9 @@ private:
       & targetPop
       & initiator
       & initiatorThresh
-      & numHidden
+      & uniformExGen
+      & heatBathExGen
+      & heatBathUniformSingExGen
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -292,6 +295,9 @@ public:
   double targetPop;
   bool initiator;
   double initiatorThresh;
+  bool uniformExGen;
+  bool heatBathExGen;
+  bool heatBathUniformSingExGen;
 
   //options for rbm
   int numHidden;

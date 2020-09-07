@@ -119,6 +119,8 @@ class Determinant {
   void getClosedAlphaBeta( std::vector<int>& closedAlpha,
                            std::vector<int>& closedBeta ) const;
   void getAlphaBeta(std::vector<int>& alpha, std::vector<int>& beta) const;
+  void getClosed(std::vector<int>& closed) const;
+  void getClosedAllocated(std::vector<int>& closed) const;
   void getClosed(bool sz, std::vector<int>& closed) const;
   int getNbetaBefore(int i) const;
   int getNalphaBefore(int i) const;
@@ -141,6 +143,8 @@ class Determinant {
   double Energy(const oneInt& I1, const twoInt& I2, const double& coreE) const ;
   CItype Hij_1ExciteScreened(const int& a, const int& i, const twoIntHeatBathSHM& Ishm,
                              const double& TINY, bool doparity = true) const;
+  CItype Hij_1Excite(const int& a, const int& i, const oneInt&I1,  const twoInt& I2,
+                     bool doparity=true) const ;
   CItype Hij_1ExciteA(const int& a, const int& i, const oneInt&I1,  const twoInt& I2,
                       bool doparity=true) const ;
   CItype Hij_1ExciteB(const int& a, const int& i, const oneInt&I1, const twoInt& I2,

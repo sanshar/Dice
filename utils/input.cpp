@@ -163,6 +163,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.targetPop = input.get("sampling.targetPop", 1000.0);
     schd.initiator = input.get("sampling.initiator", false);
     schd.initiatorThresh = input.get("sampling.initiatorThresh", 2.0);
+    schd.uniformExGen = input.get("sampling.uniform", true);
+    schd.heatBathExGen = input.get("sampling.heatBath", false);
+    schd.heatBathUniformSingExGen = input.get("sampling.heatBathUniformSingles", false);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 
