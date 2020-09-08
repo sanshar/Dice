@@ -45,6 +45,9 @@ extern int commsize, shmsize, localsize;
 const int DetLen = 10;
 const int innerDetLen = 2;
 
+// Number of replicas in FCIQMC
+const int nreplicas = 1;
+
 extern boost::interprocess::shared_memory_object int2Segment;
 extern boost::interprocess::mapped_region regionInt2;
 extern std::string shciint2;

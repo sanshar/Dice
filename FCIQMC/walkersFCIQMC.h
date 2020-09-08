@@ -31,6 +31,34 @@ enum flagInds { INITIATOR_FLAG };
 
 void stochastic_round(const double& minPop, double& amp, bool& roundedUp);
 
+template <typename T>
+T** allocateAmpsArray(const int nrows, const int ncols, const T& init = T())
+{
+  // array to hold pointers to the first elements for each row
+  T** amps = nullptr;
+  // a single block of contiguous memory
+  T* pool = nullptr;
+
+  // allocate pointers
+  amps = new T*[nrows];
+  // allocate the block of memory
+  pool = new T[nrows*ncols]{init};
+
+  // point to the first position in each row
+  for (int i = 0; i < nrows; ++i, pool += ncols) {
+    amps[i] = pool;
+  }
+
+  return amps;
+}
+
+template <typename T>
+void deleteAmpsArray(T** amps)
+{
+  delete [] amps[0];
+  delete [] amps;
+}
+
 // Class for main walker list in FCIQMC
 class walkersFCIQMC {
 
@@ -42,7 +70,8 @@ class walkersFCIQMC {
   // beyond nDets are not filled, and so should not be used
   vector<Determinant> dets;
   // List of walkers amplitudes
-  vector<double> amps;
+  //vector<double> amps;
+  double** amps;
   // Hash table to access the walker array
   unordered_map<Determinant, int> ht;
 
@@ -57,6 +86,7 @@ class walkersFCIQMC {
   int DetLenMin;
 
   walkersFCIQMC(int arrayLength, int DetLenLocal);
+  ~walkersFCIQMC();
 
   void stochasticRoundAll(const double& minPop);
 
@@ -67,7 +97,7 @@ class walkersFCIQMC {
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {
     os << "Walker list:" << endl;
     for (int i=0; i<walkers.nDets; i++) {
-      os << i << "   " << walkers.dets[i] << "   " << walkers.amps[i] << "   " << endl;
+      os << i << "   " << walkers.dets[i] << "   " << walkers.amps[i][0] << "   " << endl;
     }
     os << "Hash table:" << endl;
     for (auto kv : walkers.ht) {

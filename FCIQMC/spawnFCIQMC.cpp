@@ -43,12 +43,20 @@ void apply_permutation(int const nDets, const vector<T>& vec, vector<T>& sorted_
     [&](size_t i){ return vec[i]; });
 }
 
+void apply_permutation(int const nDets, double** amps, double** sorted_amps, const vector<size_t>& p)
+{
+  for (int i = 0; i<nDets; i++) {
+    int sorted_ind = p.at(i);
+    sorted_amps[i][0] = amps[sorted_ind][0];
+  }
+}
+
 spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
   nDets = 0;
   dets.resize(spawnSize);
   detsTemp.resize(spawnSize);
-  amps.resize(spawnSize, 0.0);
-  ampsTemp.resize(spawnSize, 0.0);
+  amps = allocateAmpsArray(spawnSize, nreplicas, 0.0);
+  ampsTemp = allocateAmpsArray(spawnSize, nreplicas, 0.0);
 
   if (schd.initiator) {
     flags.resize(spawnSize, 0);
@@ -68,13 +76,24 @@ spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
   DetLenMin = DetLenLocal;
 }
 
+spawnFCIQMC::~spawnFCIQMC() {
+  dets.clear();
+  detsTemp.clear();
+  deleteAmpsArray(amps);
+  deleteAmpsArray(ampsTemp);
+  flags.clear();
+  flagsTemp.clear();
+  firstProcSlots.clear();
+  currProcSlots.clear();
+}
+
 // Send spawned walkers to their correct processor
 void spawnFCIQMC::communicate() {
 #ifdef SERIAL
   nDets = currProcSlots[0] - firstProcSlots[0];
   for (int i=0; i<nDets; i++) {
     detsTemp[i] = dets[i];
-    ampsTemp[i] = amps[i];
+    ampsTemp[i][0] = amps[i][0];
     if (schd.initiator) flagsTemp[i] = flags[i];
   }
 #else
@@ -110,8 +129,8 @@ void spawnFCIQMC::communicate() {
   MPI_Alltoallv(&dets.front(), sendCountsDets, sendDisplsDets, MPI_LONG,
                 &detsTemp.front(), recvCountsDets, recvDisplsDets, MPI_LONG, MPI_COMM_WORLD);
 
-  MPI_Alltoallv(&amps.front(), sendCounts, sendDispls, MPI_DOUBLE,
-                &ampsTemp.front(), recvCounts, recvDispls, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Alltoallv(&(amps[0][0]), sendCounts, sendDispls, MPI_DOUBLE,
+                &(ampsTemp[0][0]), recvCounts, recvDispls, MPI_DOUBLE, MPI_COMM_WORLD);
 
   if (schd.initiator) {
     MPI_Alltoallv(&flags.front(), sendCounts, sendDispls, MPI_INTEGER,
@@ -120,6 +139,7 @@ void spawnFCIQMC::communicate() {
 
   // The total number of determinants received
   nDets = recvDispls[commsize-1] + recvCounts[commsize-1];
+
 #endif
 }
 
@@ -144,7 +164,7 @@ void spawnFCIQMC::compress() {
     // Now the array is sorted, loop through and merge repeats
     while (true) {
       dets[j] = dets[k];
-      amps[j] = amps[k];
+      amps[j][0] = amps[k][0];
       if (schd.initiator) flags[j] = flags[k];
       while (true) {
         k += 1;
@@ -153,7 +173,7 @@ void spawnFCIQMC::compress() {
           break;
         }
         if ( dets[j] == dets[k] ) {
-          amps[j] += amps[k];
+          amps[j][0] += amps[k][0];
 
           // If the parent of any of the child walkers on this
           // determinant was an initiator, then we want to allow the
@@ -192,9 +212,9 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
     // Is this spawned determinant already in the main list?
     if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
       int iDet = walkers.ht[dets[i]];
-      double oldAmp = walkers.amps[iDet];
-      double newAmp = amps[i] + oldAmp;
-      walkers.amps[iDet] = newAmp;
+      double oldAmp = walkers.amps[iDet][0];
+      double newAmp = amps[i][0] + oldAmp;
+      walkers.amps[iDet][0] = newAmp;
     }
     else
     {
@@ -206,8 +226,8 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
         if (flags[i] == 0) continue;
       }
 
-      if (abs(amps[i]) < minPop) {
-        stochastic_round(minPop, amps[i], keepDet);
+      if (abs(amps[i][0]) < minPop) {
+        stochastic_round(minPop, amps[i][0], keepDet);
       }
 
       if (keepDet) {
@@ -224,7 +244,7 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
           walkers.nDets += 1;
         }
         walkers.dets[pos] = Determinant(dets[i]);
-        walkers.amps[pos] = amps[i];
+        walkers.amps[pos][0] = amps[i][0];
         walkers.ht[dets[i]] = pos;
       }
 

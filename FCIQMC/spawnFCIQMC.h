@@ -36,8 +36,9 @@ class spawnFCIQMC {
   // Temporary space for communication and sorting
   vector<simpleDet> detsTemp;
   // The amplitudes of spawned walkers
-  vector<double> amps;
-  vector<double> ampsTemp;
+  double** amps;
+  double** ampsTemp;
+
   // Flags for the spawned walkers
   vector<int> flags;
   vector<int> flagsTemp;
@@ -56,8 +57,8 @@ class spawnFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
-  // Constructor
   spawnFCIQMC(int spawnSize, int DetLenLocal);
+  ~spawnFCIQMC();
 
   // Send spawned walkers to their correct processor
   void communicate();

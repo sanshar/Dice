@@ -55,6 +55,7 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned,
 void printFinalStats(const double& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
 
+
 void runFCIQMC() {
 
   int norbs = Determinant::norbs;
@@ -89,14 +90,14 @@ void runFCIQMC() {
       walkers.dets[0] = HFDet;
       walkers.ht[HFDet] = 0;
       // Set the population on the reference
-      walkers.amps[0] = schd.initialPop;
+      walkers.amps[0][0] = schd.initialPop;
       // The number of determinants in the walker list
       walkers.nDets = 1;
     }
   }
   else
   {
-    readDeterminants(schd.determinantFile, walkers.dets, walkers.amps);
+    //readDeterminants(schd.determinantFile, walkers.dets, walkers.amps);
   }
 
   // ----- FCIQMC data -----
@@ -156,7 +157,7 @@ void runFCIQMC() {
     // Loop over all walkers/determinants
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
       // Is this unoccupied? If so, add to the list of empty slots
-      if (abs(walkers.amps[iDet]) < 1.0e-12) {
+      if (abs(walkers.amps[iDet][0]) < 1.0e-12) {
         walkers.lastEmpty += 1;
         walkers.emptyDets[walkers.lastEmpty] = iDet;
         continue;
@@ -165,15 +166,15 @@ void runFCIQMC() {
       // Update the initiator flag, if necessary
       int parentFlags = 0;
       if (schd.initiator) {
-        if (abs(walkers.amps[iDet]) > schd.initiatorThresh) {
+        if (abs(walkers.amps[iDet][0]) > schd.initiatorThresh) {
           // This walker is an initiator, so set the flag
           parentFlags |= 1 << INITIATOR_FLAG;
         }
       }
 
       // Number of spawnings to attempt
-      nAttempts = max(1.0, round(abs(walkers.amps[iDet]) * schd.nAttemptsEach));
-      parentAmp = walkers.amps[iDet] * schd.nAttemptsEach / nAttempts;
+      nAttempts = max(1.0, round(abs(walkers.amps[iDet][0]) * schd.nAttemptsEach));
+      parentAmp = walkers.amps[iDet][0] * schd.nAttemptsEach / nAttempts;
 
       // Perform one spawning attempt for each 'walker' of weight parentAmp
       for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
@@ -190,7 +191,7 @@ void runFCIQMC() {
         }
 
       }
-      performDeath(walkers.dets[iDet], walkers.amps[iDet], I1, I2, coreE, Eshift, schd.tau);
+      performDeath(walkers.dets[iDet], walkers.amps[iDet][0], I1, I2, coreE, Eshift, schd.tau);
     }
 
     // Perform annihilation
@@ -214,7 +215,7 @@ void runFCIQMC() {
 
   total_time = getTime() - startofCalc;
   printFinalStats(walkerPop, walkers.nDets, spawn.nDets, total_time);
-  
+
 }
 
 
@@ -241,7 +242,7 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
     // of the newly-spawned walker
     int ind = spawn.currProcSlots[proc];
     spawn.dets[ind] = childDet.getSimpleDet();
-    spawn.amps[ind] = childAmp;
+    spawn.amps[ind][0] = childAmp;
     if (schd.initiator) spawn.flags[ind] = parentFlags;
     spawn.currProcSlots[proc] += 1;
   }

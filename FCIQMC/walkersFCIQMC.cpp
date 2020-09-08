@@ -37,11 +37,18 @@ void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
 walkersFCIQMC::walkersFCIQMC(int arrayLength, int DetLenLocal) {
   nDets = 0;
   dets.resize(arrayLength);
-  amps.resize(arrayLength, 0.0);
+  amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
   emptyDets.resize(arrayLength);
   firstEmpty = 0;
   lastEmpty = -1;
   DetLenMin = DetLenLocal;
+}
+
+walkersFCIQMC::~walkersFCIQMC() {
+  dets.clear();
+  deleteAmpsArray(amps);
+  ht.clear();
+  emptyDets.clear();
 }
 
 void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
@@ -50,9 +57,9 @@ void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
 
     // To be a valid walker in the main list, there must be a corresponding
     // hash table entry *and* the amplitude must be non-zero
-    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
-      if (abs(amps[iDet]) < minPop) {
-        stochastic_round(minPop, amps[iDet], keepDet);
+    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet][0]) > 1.0e-12 ) {
+      if (abs(amps[iDet][0]) < minPop) {
+        stochastic_round(minPop, amps[iDet][0], keepDet);
 
         if (!keepDet) {
           ht.erase(dets[iDet]);
@@ -62,11 +69,11 @@ void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
       }
 
     } else {
-      if (abs(amps[iDet]) > 1.0e-12) {
+      if (abs(amps[iDet][0]) > 1.0e-12) {
         // This should never happen - the hash table entry should not be
         // removed unless the walker population becomes zero
         cout << "#Error: Non-empty det no hash table entry found." << endl;
-        cout << dets[iDet] << "    " << amps[iDet] << endl;
+        cout << dets[iDet] << "    " << amps[iDet][0] << endl;
       }
     }
 
@@ -85,16 +92,16 @@ void walkersFCIQMC::calcStats(Determinant& HFDet, double& walkerPop, double& EPr
 
     // To be a valid walker in the main list, there must be a corresponding
     // hash table entry *and* the amplitude must be non-zero
-    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
+    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet][0]) > 1.0e-12 ) {
 
-      walkerPop += abs(amps[iDet]);
+      walkerPop += abs(amps[iDet][0]);
       excitLevel = HFDet.ExcitationDistance(dets[iDet]);
 
       if (excitLevel == 0) {
-        HFAmp = amps[iDet];
-        EProj += amps[iDet] * HFDet.Energy(I1, I2, coreE);
+        HFAmp = amps[iDet][0];
+        EProj += amps[iDet][0] * HFDet.Energy(I1, I2, coreE);
       } else if (excitLevel <= 2) {
-        EProj += amps[iDet] * Hij(HFDet, dets[iDet], I1, I2, coreE);
+        EProj += amps[iDet][0] * Hij(HFDet, dets[iDet], I1, I2, coreE);
       }
 
     } // If a valid walker
