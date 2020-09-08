@@ -91,7 +91,9 @@ private:
     & DoSpinOneRDM                            \
     & DoOneRDM                                \
     & DoThreeRDM                              \
-    & DoFourRDM;
+    & DoFourRDM                               \
+    & cdfciIter                               \
+    & z_threshold;
   }
 
 public:
@@ -155,6 +157,11 @@ public:
   bool DoThreeRDM;
   bool DoFourRDM;
   bool ReadTxt;
+  double z_threshold;
+  int cdfciIter;
+  int report_interval;
+  bool sampleNewDets;
+  double factor;
 };
 
 #endif

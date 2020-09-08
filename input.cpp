@@ -103,6 +103,13 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoFourRDM = false;
 
   schd.ReadTxt = false;
+
+  schd.cdfciIter = 0;
+  schd.report_interval = 1000;
+  schd.z_threshold = 0.0;
+  schd.sampleNewDets = false;
+  schd.factor = 1.0;
+  
   while (dump.good()) {
 
     std::string Line;
@@ -302,6 +309,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
     else if (boost::iequals(ArgName, "maxiter"))
       maxiter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciIter"))
+      schd.cdfciIter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "report_interval"))
+      schd.report_interval = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "z_threshold"))
+      schd.z_threshold = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciSample"))
+      schd.sampleNewDets = true;
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);

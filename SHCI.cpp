@@ -40,6 +40,7 @@
 #include "boost/format.hpp"
 #include "input.h"
 #include "integral.h"
+#include "cdfci.h"
 #ifndef SERIAL
 #include <boost/mpi.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -334,9 +335,14 @@ int main(int argc, char* argv[]) {
 #ifndef SERIAL
     mpi::broadcast(world, ci, 0);
 #endif
-
+    cdfci::hash_det wfn;
     vector<double> E0 = SHCIbasics::DoVariational(
-        ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+        ci, Dets, wfn, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+    if (schd.cdfciIter > 0) {
+      auto zero = complex<double>(0.0, 0.0);
+      std::pair<complex<double>, double> ene {zero, 0.0};
+      cdfci::cdfciSolver(wfn, Dets[0], schd, ene, I1, I2, I2HBSHM, irrep, coreE, E0, nelec, schd.z_threshold, schd.sampleNewDets);
+    }
     Determinant* SHMDets;
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     int DetsSize = Dets.size();

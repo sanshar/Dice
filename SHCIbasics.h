@@ -28,6 +28,7 @@
 #include <tuple>
 #include <vector>
 #include "global.h"
+#include "cdfci.h"
 
 using namespace std;
 using namespace Eigen;
@@ -80,7 +81,7 @@ namespace SHCIbasics {
           vector<double>& E0, bool& converged, schedule& schd,
           std::map<HalfDet, std::vector<int> >& BetaN,
           std::map<HalfDet, std::vector<int> >& AlphaNm1);
-  vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, schedule& schd,
+  vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets, cdfci::hash_det& wfn, schedule& schd,
           twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec,
           bool DoRDM=false);
 
