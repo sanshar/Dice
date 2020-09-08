@@ -18,13 +18,13 @@
   You should have received a copy of the GNU General Public License along with
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#include "SHCIrdm.h"
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCIbasics.h"
 #include "SHCIgetdeterminants.h"
-#include "SHCIrdm.h"
 #include "SHCIsampledeterminants.h"
 #include "boost/format.hpp"
 #include "input.h"
@@ -33,13 +33,13 @@
 #include <algorithm>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-#include <iomanip>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/set.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/vector.hpp>
 #include <fstream>
+#include <iomanip>
 #include <map>
 #include <tuple>
 #include <vector>
@@ -363,41 +363,41 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
 #endif
 }
 //=============================================================================
-void SHCIrdm::save1RDM_bin(schedule& schd, MatrixXx& oneRDM, int root) {
+void SHCIrdm::save1RDM_bin(schedule &schd, MatrixXx &oneRDM, int root) {
   int norbs = oneRDM.rows();
-  if (commrank==0) {
-    for (int i=0; i<oneRDM.rows(); i++)
-      for (int j=0; j<oneRDM.rows(); j++){
-        if (std::abs(oneRDM(i,j)) < 1.0e-6)
-          oneRDM(i,j)=(0.0,0.0);
+  if (commrank == 0) {
+    for (int i = 0; i < oneRDM.rows(); i++)
+      for (int j = 0; j < oneRDM.rows(); j++) {
+        if (std::abs(oneRDM(i, j)) < 1.0e-6)
+          oneRDM(i, j) = (0.0, 0.0);
       }
-    char file [5000];
+    char file[5000];
     sprintf(file, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, root);
     std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);
-    out.write((char*) (&norbs), sizeof(int));
-    out.write((char*) oneRDM.data(), norbs*norbs*sizeof(complex<double>));
+    out.write((char *)(&norbs), sizeof(int));
+    out.write((char *)oneRDM.data(), norbs * norbs * sizeof(complex<double>));
     out.close();
   }
   return;
 }
 
 //=============================================================================
-void SHCIrdm::saveRDM_bin(schedule& schd, MatrixXx& twoRDM, int root) {
+void SHCIrdm::saveRDM_bin(schedule &schd, MatrixXx &twoRDM, int root) {
   int norbs = pow(twoRDM.rows(), 0.5);
-  if (commrank==0) {
-    for (int i=0; i<twoRDM.rows(); i++)
-      for (int j=0; j<twoRDM.rows(); j++){
-        if (std::abs(twoRDM(i,j)) < 1.0e-6)
-          twoRDM(i,j)=(0.0,0.0);
+  if (commrank == 0) {
+    for (int i = 0; i < twoRDM.rows(); i++)
+      for (int j = 0; j < twoRDM.rows(); j++) {
+        if (std::abs(twoRDM(i, j)) < 1.0e-6)
+          twoRDM(i, j) = (0.0, 0.0);
       }
     char file[5000];
     sprintf(file, "%s/Dice_%d_%d.rdm2", schd.prefix[0].c_str(), root, root);
     std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);
-    out.write((char*) (&norbs), sizeof(int));
-    out.write((char*) twoRDM.data(), pow(norbs, 4) * sizeof(complex<double>));
+    out.write((char *)(&norbs), sizeof(int));
+    out.write((char *)twoRDM.data(), pow(norbs, 4) * sizeof(complex<double>));
     out.close();
   }
-  return; 
+  return;
 }
 
 //=============================================================================
@@ -428,26 +428,28 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
             root);
     std::ofstream ofs(file, std::ios::out);
     ofs << nSpatOrbs << endl;
-    
-    for (int n1=0; n1<nSpatOrbs; n1++) {
-      for (int n2=0; n2<nSpatOrbs; n2++) {
-	      if (fabs(s1RDM(n1,n2)) > 1.e-6) {
-	        ofs << str(boost::format("%3d   %3d   %10.8g %10.8g\n") % n1 % n2 % s1RDM(n1,n2).real()% s1RDM(n1,n2).imag());    
-	      }
+
+    for (int n1 = 0; n1 < nSpatOrbs; n1++) {
+      for (int n2 = 0; n2 < nSpatOrbs; n2++) {
+        if (fabs(s1RDM(n1, n2)) > 1.e-6) {
+          ofs << str(boost::format("%3d   %3d   %10.8g %10.8g\n") % n1 % n2 %
+                     s1RDM(n1, n2).real() % s1RDM(n1, n2).imag());
+        }
       }
     }
-    ofs.close();  
-    
-    char file2 [5000];
-    sprintf(file2, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, 
-	    root);
+    ofs.close();
+
+    char file2[5000];
+    sprintf(file2, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, root);
     std::ofstream ofs2(file2, std::ios::out);
-    
-    for (int n1=0; n1<norbs; n1++) {
-      for (int n2=0; n2<norbs; n2++) {
-	      if (abs(oneRDM(n1,n2)) > 1.e-10) {
-	        ofs2 << str(boost::format("%3d   %3d   %18.10d %18.10d\n") % (n1+1) % (n2+1) % oneRDM(n1,n2).real() % oneRDM(n1, n2).imag());    
-	      }
+
+    for (int n1 = 0; n1 < norbs; n1++) {
+      for (int n2 = 0; n2 < norbs; n2++) {
+        if (abs(oneRDM(n1, n2)) > 1.e-10) {
+          ofs2 << str(boost::format("%3d   %3d   %18.10d %18.10d\n") %
+                      (n1 + 1) % (n2 + 1) % oneRDM(n1, n2).real() %
+                      oneRDM(n1, n2).imag());
+        }
       }
     }
     ofs2.close();
@@ -484,9 +486,8 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       boost::archive::binary_iarchive load(ifs);
       load >> twoRDM;
       // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-    }
-    else
-      twoRDM.setZero(norbs*norbs, norbs*norbs);
+    } else
+      twoRDM.setZero(norbs * norbs, norbs * norbs);
   }
 
   if (commrank == 0) {
@@ -567,28 +568,31 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
     }
 
     if (schd.DoSpinRDM) {
-      int nSpinOrbs = pow(s2RDM.rows(),0.5) * 2;
-      char file [5000];
-      sprintf (file, "%s/Dice_%d_%d.rdm2" , schd.prefix[0].c_str(), root, root );
+      int nSpinOrbs = pow(s2RDM.rows(), 0.5) * 2;
+      char file[5000];
+      sprintf(file, "%s/Dice_%d_%d.rdm2", schd.prefix[0].c_str(), root, root);
       std::ofstream ofs(file, std::ios::out);
-  
-      for (int n1=0; n1<nSpinOrbs; n1++)
-        for (int n2=0; n2<nSpinOrbs; n2++)
-	        for (int n3=0; n3<nSpinOrbs; n3++)
-	          for (int n4=0; n4<nSpinOrbs; n4++)
-	            {
-                complex<double> rdmValue = twoRDM(n1*nSpinOrbs+n2, n3*nSpinOrbs+n4);
-	              if (abs(rdmValue) > 1.e-10)
-		              ofs << str(boost::format("%3d   %3d   %3d   %3d   %18.10d %18.10d\n") % (n1+1) % (n2+1) % (n3+1) % (n4+1) % rdmValue.real() % rdmValue.imag());
-	            }
+
+      for (int n1 = 0; n1 < nSpinOrbs; n1++)
+        for (int n2 = 0; n2 < nSpinOrbs; n2++)
+          for (int n3 = 0; n3 < nSpinOrbs; n3++)
+            for (int n4 = 0; n4 < nSpinOrbs; n4++) {
+              complex<double> rdmValue =
+                  twoRDM(n1 * nSpinOrbs + n2, n3 * nSpinOrbs + n4);
+              if (abs(rdmValue) > 1.e-10)
+                ofs << str(
+                    boost::format("%3d   %3d   %3d   %3d   %18.10d %18.10d\n") %
+                    (n1 + 1) % (n2 + 1) % (n3 + 1) % (n4 + 1) %
+                    rdmValue.real() % rdmValue.imag());
+            }
       ofs.close();
       {
-        char file [5000];
-        sprintf (file, "%s/%d-spinRDM.bkp" , schd.prefix[0].c_str(), root );
+        char file[5000];
+        sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
         std::ofstream ofs(file, std::ios::binary);
         boost::archive::binary_oarchive save(ofs);
         save << twoRDM;
-        //ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+        // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
       }
     }
   } // end commrank
@@ -778,21 +782,21 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
 
     CItype coeff = uniqueNumerator[i] / (E0 - uniqueEnergy[i]);
     //<Di| Gamma |Di>
-    for (int n1=0; n1<nelec; n1++) {
-      for (int n2=0; n2<n1; n2++) {
-	int orb1 = closed[n1], orb2 = closed[n2];
-	if (schd.DoSpinRDM) 
+    for (int n1 = 0; n1 < nelec; n1++) {
+      for (int n2 = 0; n2 < n1; n2++) {
+        int orb1 = closed[n1], orb2 = closed[n2];
+        if (schd.DoSpinRDM)
 #ifdef Complex
-	  //twoRDM(orb1*norbs + orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
-    //twoRDM(orb1*norbs+orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
+        // twoRDM(orb1*norbs + orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
+        // twoRDM(orb1*norbs+orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
 #else
           twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
               coeff * coeff;
 #endif
 
 #ifdef Complex
-        populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff) * coeff,
-                           nSpatOrbs);
+          populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff) * coeff,
+                             nSpatOrbs);
 #else
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, coeff * coeff,
                            nSpatOrbs);
@@ -949,55 +953,84 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
     vector<int> open(norbs - nelec, 0);
     Dets[i].getOpenClosed(open, closed);
     //<Di| Gamma |Di>
-    for (int n1=0; n1<nelec; n1++) {
-      for (int n2=0; n2<n1; n2++) {
+    for (int n1 = 0; n1 < nelec; n1++) {
+      for (int n2 = 0; n2 < n1; n2++) {
         int orb1 = closed[n1], orb2 = closed[n2];
-	      if (schd.DoSpinRDM) {
-	        twoRDM(orb1*norbs + orb2, orb1*norbs+orb2) += localConj::conj(cibra[i])*ciket[i];
-          twoRDM(orb2*norbs + orb1, orb2*norbs+orb1) += localConj::conj(cibra[i])*ciket[i];
+        if (schd.DoSpinRDM) {
+          twoRDM(orb1 * norbs + orb2, orb1 * norbs + orb2) +=
+              localConj::conj(cibra[i]) * ciket[i];
+          twoRDM(orb2 * norbs + orb1, orb2 * norbs + orb1) +=
+              localConj::conj(cibra[i]) * ciket[i];
         }
-	      populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra[i])*ciket[i], nSpatOrbs);
+        populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM,
+                           localConj::conj(cibra[i]) * ciket[i], nSpatOrbs);
       }
     }
-    for (int j=1; j<connections[i/commsize].size(); j++) {
-      if (i == connections[i/commsize][j]) continue;
-      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
-      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
-        for (int n1=0;n1<nelec; n1++) {
-	        double sgn = 1.0;
-	        int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
-	        if (closed[n1] == d0) continue;
-          if (closed[n1] == c0) continue;
-	        Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
-	        if (!((closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
-	        if (schd.DoSpinRDM) {
-            CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-            twoRDM(a*norbs+b, I*norbs+J) += (tmp);
-	          twoRDM(I*norbs+J, a*norbs+b) += localConj::conj(tmp);
-	        }
-	        populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-	        populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-	      }
+    for (int j = 1; j < connections[i / commsize].size(); j++) {
+      if (i == connections[i / commsize][j])
+        continue;
+      int d0 = orbDifference[i / commsize][j] % norbs,
+          c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
+      if (orbDifference[i / commsize][j] / norbs / norbs ==
+          0) { // only single excitation
+        for (int n1 = 0; n1 < nelec; n1++) {
+          double sgn = 1.0;
+          int a = max(closed[n1], c0), b = min(closed[n1], c0),
+              I = max(closed[n1], d0), J = min(closed[n1], d0);
+          if (closed[n1] == d0)
+            continue;
+          if (closed[n1] == c0)
+            continue;
+          Dets[i].parity(min(d0, c0), max(d0, c0), sgn);
+          if (!((closed[n1] > c0 && closed[n1] > d0) ||
+                (closed[n1] < c0 && closed[n1] < d0)))
+            sgn *= -1.;
+          if (schd.DoSpinRDM) {
+            CItype tmp = sgn *
+                         localConj::conj(cibra[connections[i / commsize][j]]) *
+                         ciket[i];
+            twoRDM(a * norbs + b, I * norbs + J) += (tmp);
+            twoRDM(I * norbs + J, a * norbs + b) += localConj::conj(tmp);
+          }
+          populateSpatialRDM(
+              a, b, I, J, s2RDM,
+              sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
+                  ciket[i],
+              nSpatOrbs);
+          populateSpatialRDM(
+              I, J, a, b, s2RDM,
+              sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
+                  cibra[i],
+              nSpatOrbs);
+        }
+      } else {
+        int d1 = (orbDifference[i / commsize][j] / norbs / norbs) % norbs,
+            c1 = (orbDifference[i / commsize][j] / norbs / norbs / norbs) %
+                 norbs;
+        double sgn = 1.0;
+        Dets[i].parity(d1, d0, c1, c0, sgn);
+        if (schd.DoSpinRDM) {
+          CItype tmp = sgn *
+                       localConj::conj(cibra[connections[i / commsize][j]]) *
+                       ciket[i];
+          twoRDM(c1 * norbs + c0, d1 * norbs + d0) += tmp;
+          twoRDM(d1 * norbs + d0, c1 * norbs + c0) += localConj::conj(tmp);
+        }
+        // populateSpatialRDM(c1, c0, d1, d0, s2RDM,
+        // sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i],
+        // nSpatOrbs); populateSpatialRDM(d1, d0, c1, c0, s2RDM,
+        // sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i],
+        // nSpatOrbs);
       }
-      else {
-        int d1=(orbDifference[i/commsize][j]/norbs/norbs)%norbs, c1=(orbDifference[i/commsize][j]/norbs/norbs/norbs)%norbs ;
-	      double sgn = 1.0;
-	      Dets[i].parity(d1,d0,c1,c0,sgn);
-	      if (schd.DoSpinRDM) {
-          CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-          twoRDM(c1*norbs+c0, d1*norbs+d0) += tmp;
-          twoRDM(d1*norbs+d0, c1*norbs+c0) += localConj::conj(tmp);
-	      }
-	      //populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-	      //populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-      }
-    } 
+    }
   }
 
 #ifndef SERIAL
   if (schd.DoSpinRDM)
-    MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0,0), twoRDM.rows()*twoRDM.cols(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0,0), s2RDM.rows()*s2RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0, 0), twoRDM.rows() * twoRDM.cols(),
+                  MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0, 0), s2RDM.rows() * s2RDM.cols(),
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 }
 
@@ -1059,24 +1092,33 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
       oneRDM(orb1, orb1) += localConj::conj(cibra[i]) * ciket[i];
       s1RDM(orb1 / 2, orb1 / 2) += localConj::conj(cibra[i]) * ciket[i];
     }
-    for (int j=1; j<connections[i/commsize].size(); j++) {
-      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
-      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
-	      double sgn = 1.0;
-	      Dets[i].parity(min(c0,d0), max(c0,d0),sgn);
-              CItype val = sgn*(cibra[connections[i/commsize][j]])*localConj::conj(ciket[i]);
-	      oneRDM(c0,d0) += (val);
-	      oneRDM(d0,c0) += localConj::conj(val);
+    for (int j = 1; j < connections[i / commsize].size(); j++) {
+      int d0 = orbDifference[i / commsize][j] % norbs,
+          c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
+      if (orbDifference[i / commsize][j] / norbs / norbs ==
+          0) { // only single excitation
+        double sgn = 1.0;
+        Dets[i].parity(min(c0, d0), max(c0, d0), sgn);
+        CItype val = sgn * (cibra[connections[i / commsize][j]]) *
+                     localConj::conj(ciket[i]);
+        oneRDM(c0, d0) += (val);
+        oneRDM(d0, c0) += localConj::conj(val);
 
-	      s1RDM(c0/2, d0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];	
-	      s1RDM(d0/2, c0/2) += sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
+        s1RDM(c0 / 2, d0 / 2) +=
+            sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
+            ciket[i];
+        s1RDM(d0 / 2, c0 / 2) +=
+            sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
+            ciket[i];
       }
     }
   }
 
 #ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &oneRDM(0,0), oneRDM.rows()*oneRDM.cols(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0,0), s1RDM.rows()*s1RDM.cols(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &oneRDM(0, 0), oneRDM.rows() * oneRDM.cols(),
+                MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0, 0), s1RDM.rows() * s1RDM.cols(),
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
   /*
   // Testing TODO
@@ -1128,22 +1170,25 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
   double onebody = 0.0;
   double twobody = 0.0;
   double onsite = 0.0;
-  //if (commrank == 0)  cout << "Core energy= " << energy << endl;
+  // if (commrank == 0)  cout << "Core energy= " << energy << endl;
 
   MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
 #pragma omp parallel for schedule(dynamic)
-  for (int p=0; p<norbs; p++)
-    for (int q=0; q<norbs; q++)
-      for (int r=0; r<norbs; r++) {
-	      int P = max(p,r), R1 = min(p,r);
-	      int Q = max(q,r), R2 = min(q,r);
-	      double sgn = 1.;
-	      if (P != p)  sgn *= -1;
-	      if (Q != q)  sgn *= -1;
+  for (int p = 0; p < norbs; p++)
+    for (int q = 0; q < norbs; q++)
+      for (int r = 0; r < norbs; r++) {
+        int P = max(p, r), R1 = min(p, r);
+        int Q = max(q, r), R2 = min(q, r);
+        double sgn = 1.;
+        if (P != p)
+          sgn *= -1;
+        if (Q != q)
+          sgn *= -1;
 
-	      oneRDM(p,q) += sgn*twoRDM(P*norbs+R1,Q*norbs+R2)/(nelec-1.);
+        oneRDM(p, q) +=
+            sgn * twoRDM(P * norbs + R1, Q * norbs + R2) / (nelec - 1.);
       }
-pout << " printing 1rdm information" << endl;
+  pout << " printing 1rdm information" << endl;
 #pragma omp parallel for reduction(+ : onebody)
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
@@ -1154,25 +1199,35 @@ pout << " printing 1rdm information" << endl;
 #endif
 
 #pragma omp parallel for reduction(+ : twobody)
-  for (int p=0; p<norbs; p++){
-    for (int q=0; q<norbs; q++){
-      for (int r=0; r<norbs; r++){
-	      for (int s=0; s<norbs; s++){
-	        //if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not necessary
-	        int P = max(p,q), Q = min(p,q);
-	        int R = max(r,s), S = min(r,s);
-	        double sgn = 1;
-	        if (P != p)  sgn *= -1;
-	        if (R != r)  sgn *= -1;
+  for (int p = 0; p < norbs; p++) {
+    for (int q = 0; q < norbs; q++) {
+      for (int r = 0; r < norbs; r++) {
+        for (int s = 0; s < norbs; s++) {
+          // if (p%2 != r%2 || q%2 != s%2)  continue; // This line is not
+          // necessary
+          int P = max(p, q), Q = min(p, q);
+          int R = max(r, s), S = min(r, s);
+          double sgn = 1;
+          if (P != p)
+            sgn *= -1;
+          if (R != r)
+            sgn *= -1;
 
-          //if (P!=R&&Q!=S&&abs(twoRDM(P*norbs+Q, R*norbs+S))>1e-6) cout << (sgn*twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real()*2.<<" "<<p+r+q+s<<endl;
+            // if (P!=R&&Q!=S&&abs(twoRDM(P*norbs+Q, R*norbs+S))>1e-6) cout <<
+            // (sgn*twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real()*2.<<"
+            // "<<p+r+q+s<<endl;
 
-	        //if((P*norbs+Q)==(R*norbs+S)) onsite += (sgn* 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
-          //else 
+            // if((P*norbs+Q)==(R*norbs+S)) onsite += (sgn* 0.5 *
+            // twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
+            // else
 #ifdef Complex
-          twobody += (sgn * 0.5 * twoRDM(P*norbs+Q, R*norbs+S) * I2(p,r,q,s)).real();
-          //if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6)
-          //pout <<p<<" "<<q<<" "<<r<<" "<<s<<" "<<scientific<<setprecision(7)<<sgn<< " " << twoRDM(P*norbs+Q,R*norbs+S) << " " <<P<<Q<<R<<S<< endl;
+          twobody += (sgn * 0.5 * twoRDM(P * norbs + Q, R * norbs + S) *
+                      I2(p, r, q, s))
+                         .real();
+          // if (abs(twoRDM(P*norbs+Q,R*norbs+S))>1e-6)
+          // pout <<p<<" "<<q<<" "<<r<<" "<<s<<"
+          // "<<scientific<<setprecision(7)<<sgn<< " " <<
+          // twoRDM(P*norbs+Q,R*norbs+S) << " " <<P<<Q<<R<<S<< endl;
           // 2-body term
 #else
           twobody += sgn * 0.5 *
