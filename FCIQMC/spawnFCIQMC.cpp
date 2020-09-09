@@ -45,9 +45,11 @@ void apply_permutation(int const nDets, const vector<T>& vec, vector<T>& sorted_
 
 void apply_permutation(int const nDets, double** amps, double** sorted_amps, const vector<size_t>& p)
 {
-  for (int i = 0; i<nDets; i++) {
-    int sorted_ind = p.at(i);
-    sorted_amps[i][0] = amps[sorted_ind][0];
+  for (int iDet = 0; iDet<nDets; iDet++) {
+    int sorted_ind = p.at(iDet);
+    for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+      sorted_amps[iDet][iReplica] = amps[sorted_ind][iReplica];
+    }
   }
 }
 
@@ -91,16 +93,21 @@ spawnFCIQMC::~spawnFCIQMC() {
 void spawnFCIQMC::communicate() {
 #ifdef SERIAL
   nDets = currProcSlots[0] - firstProcSlots[0];
-  for (int i=0; i<nDets; i++) {
-    detsTemp[i] = dets[i];
-    ampsTemp[i][0] = amps[i][0];
-    if (schd.initiator) flagsTemp[i] = flags[i];
+  // Copy spawning data to temp arrays
+  for (int iDet=0; iDet<nDets; iDet++) {
+    detsTemp[iDet] = dets[iDet];
+    for (iReplica = 0; iReplica<nreplicas; iReplica++) {
+      ampsTemp[iDet][iReplica] = amps[iDet][iReplica];
+    }
+    if (schd.initiator) flagsTemp[iDet] = flags[iDet];
   }
 #else
   int sendCounts[commsize], recvCounts[commsize];
   int sendDispls[commsize], recvDispls[commsize];
   int sendCountsDets[commsize], recvCountsDets[commsize];
   int sendDisplsDets[commsize], recvDisplsDets[commsize];
+  int sendCountsAmps[commsize], recvCountsAmps[commsize];
+  int sendDisplsAmps[commsize], recvDisplsAmps[commsize];
 
   // The number of determinants to send to each processor, and their
   // displacements in the spawning list
@@ -124,13 +131,18 @@ void spawnFCIQMC::communicate() {
     recvCountsDets[proc] = recvCounts[proc] * 2*DetLen;
     sendDisplsDets[proc] = sendDispls[proc] * 2*DetLen;
     recvDisplsDets[proc] = recvDispls[proc] * 2*DetLen;
+
+    sendCountsAmps[proc] = sendCounts[proc] * nreplicas;
+    recvCountsAmps[proc] = recvCounts[proc] * nreplicas;
+    sendDisplsAmps[proc] = sendDispls[proc] * nreplicas;
+    recvDisplsAmps[proc] = recvDispls[proc] * nreplicas;
   }
 
   MPI_Alltoallv(&dets.front(), sendCountsDets, sendDisplsDets, MPI_LONG,
                 &detsTemp.front(), recvCountsDets, recvDisplsDets, MPI_LONG, MPI_COMM_WORLD);
 
-  MPI_Alltoallv(&(amps[0][0]), sendCounts, sendDispls, MPI_DOUBLE,
-                &(ampsTemp[0][0]), recvCounts, recvDispls, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Alltoallv(&(amps[0][0]), sendCountsAmps, sendDisplsAmps, MPI_DOUBLE,
+                &(ampsTemp[0][0]), recvCountsAmps, recvDisplsAmps, MPI_DOUBLE, MPI_COMM_WORLD);
 
   if (schd.initiator) {
     MPI_Alltoallv(&flags.front(), sendCounts, sendDispls, MPI_INTEGER,
@@ -164,8 +176,11 @@ void spawnFCIQMC::compress() {
     // Now the array is sorted, loop through and merge repeats
     while (true) {
       dets[j] = dets[k];
-      amps[j][0] = amps[k][0];
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        amps[j][iReplica] = amps[k][iReplica];
+      }
       if (schd.initiator) flags[j] = flags[k];
+
       while (true) {
         k += 1;
         if (k == nDets) {
@@ -173,7 +188,9 @@ void spawnFCIQMC::compress() {
           break;
         }
         if ( dets[j] == dets[k] ) {
-          amps[j][0] += amps[k][0];
+          for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+            amps[j][iReplica] += amps[k][iReplica];
+          }
 
           // If the parent of any of the child walkers on this
           // determinant was an initiator, then we want to allow the
@@ -205,16 +222,16 @@ void spawnFCIQMC::compress() {
 void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
 
   int pos;
-  bool keepDet;
 
   for (int i = 0; i<nDets; i++) {
-    keepDet = true;
     // Is this spawned determinant already in the main list?
     if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
       int iDet = walkers.ht[dets[i]];
-      double oldAmp = walkers.amps[iDet][0];
-      double newAmp = amps[i][0] + oldAmp;
-      walkers.amps[iDet][0] = newAmp;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        double oldAmp = walkers.amps[iDet][iReplica];
+        double newAmp = amps[i][iReplica] + oldAmp;
+        walkers.amps[iDet][iReplica] = newAmp;
+      }
     }
     else
     {
@@ -226,11 +243,20 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
         if (flags[i] == 0) continue;
       }
 
-      if (abs(amps[i][0]) < minPop) {
-        stochastic_round(minPop, amps[i][0], keepDet);
+      bool keepDetAny = false;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // If smaller than the smallest allowed population, then stochastically
+        // round up to the threshold or down to 0:
+        if (abs(amps[i][iReplica]) < minPop) {
+          bool keepDet;
+          stochastic_round(minPop, amps[i][iReplica], keepDet);
+          keepDetAny = keepDetAny || keepDet;
+        } else {
+          keepDetAny = true;
+        }
       }
 
-      if (keepDet) {
+      if (keepDetAny) {
         // Check if a determinant has become unoccupied in the existing list
         // If so, insert into that position
         // If not, then increase the walkers.ndets by 1 and add it on the end
@@ -244,7 +270,9 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
           walkers.nDets += 1;
         }
         walkers.dets[pos] = Determinant(dets[i]);
-        walkers.amps[pos][0] = amps[i][0];
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          walkers.amps[pos][iReplica] = amps[i][iReplica];
+        }
         walkers.ht[dets[i]] = pos;
       }
 

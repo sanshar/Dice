@@ -31,28 +31,27 @@
 
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
                      oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach,
-                     const double& parentAmp, const int& parentFlags,
+                     const double& parentAmp, const int& parentFlags, const int& iReplica,
                      const double& tau, const double& minSpawn, const double& pgen);
 
-void performDeath(Determinant& parentDet, double& detPopulation, oneInt &I1, twoInt &I2,
-                  double& coreE, const double& Eshift, const double& tau);
+void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+                  double& coreE, const vector<double>& Eshift, const double& tau);
 
-void communicateEstimates(const double& walkerPop, const double& EProj, const double& HFAmp,
-                          const int& nDets, const int& nSpawnedDets,
-                          double& walkerPopTot, double& EProjTot, double& HFAmpTot,
-                          int& nDetsTot, int& nSpawnedDetsTot);
+void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
+                          const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
+                          vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot);
 
-void updateShift(double& Eshift, bool& varyShift, const double& walkerPop,
-                 const double& walkerPopOld, const double& targetPop,
+void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
+                 const vector<double>& walkerPopOld, const double& targetPop,
                  const double& shiftDamping, const double& tau);
 
 void printDataTableHeader();
 
 void printDataTable(const int iter, const int& nDets, const int& nSpawned,
-                    const double& shift, const double& walkerPop, const double& EProj,
-                    const double& HFAmp, const double& iter_time);
+                    const vector<double>& shift, const vector<double>& walkerPop, const vector<double>& EProj,
+                    const vector<double>& HFAmp, const double& iter_time);
 
-void printFinalStats(const double& walkerPop, const int& nDets,
+void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
 
 
@@ -90,7 +89,9 @@ void runFCIQMC() {
       walkers.dets[0] = HFDet;
       walkers.ht[HFDet] = 0;
       // Set the population on the reference
-      walkers.amps[0][0] = schd.initialPop;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        walkers.amps[0][iReplica] = schd.initialPop;
+      }
       // The number of determinants in the walker list
       walkers.nDets = 1;
     }
@@ -101,18 +102,28 @@ void runFCIQMC() {
   }
 
   // ----- FCIQMC data -----
-  double EProj = 0.0, HFAmp = 0.0, pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0, walkerPop = 0.0;
+  double pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
+  vector<double> walkerPop(nreplicas, 0.0);
+  vector<double> EProj(nreplicas, 0.0);
+  vector<double> HFAmp(nreplicas, 0.0);
+
+  // Total quantities, after summing over processors
+  vector<double> walkerPopTot(nreplicas, 0.0);
+  vector<double> walkerPopOldTot(nreplicas, 0.0);
+  vector<double> EProjTot(nreplicas, 0.0);
+  vector<double> HFAmpTot(nreplicas, 0.0);
+  int nDetsTot, nSpawnedDetsTot;
 
   int nAttempts = 0;
   Determinant childDet, childDet2;
 
-  // Total quantities, after summing over processors
-  double walkerPopTot, walkerPopOldTot, EProjTot, HFAmpTot;
-  int nDetsTot, nSpawnedDetsTot;
+  vector<bool> varyShift(nreplicas);
+  std::fill(varyShift.begin(), varyShift.end(), false);
 
-  bool varyShift = false;
-  double Eshift = HFDet.Energy(I1, I2, coreE) + schd.initialShift;
+  vector<double> Eshift(nreplicas);
+  double initEshift = HFDet.Energy(I1, I2, coreE) + schd.initialShift;
+  std::fill(Eshift.begin(), Eshift.end(), initEshift);
   // -----------------------
 
   if (commrank == 0) {
@@ -148,50 +159,54 @@ void runFCIQMC() {
     walkers.lastEmpty = -1;
     spawn.nDets = 0;
     spawn.currProcSlots = spawn.firstProcSlots;
-    walkerPop = 0.0;
-    EProj = 0.0;
-    HFAmp = 0.0;
+
+    fill(walkerPop.begin(), walkerPop.end(), 0.0);
+    fill(EProj.begin(), EProj.end(), 0.0);
+    fill(HFAmp.begin(), HFAmp.end(), 0.0);
 
     //cout << walkers << endl;
 
     // Loop over all walkers/determinants
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
-      // Is this unoccupied? If so, add to the list of empty slots
-      if (abs(walkers.amps[iDet][0]) < 1.0e-12) {
+      // Is this unoccupied for all replicas? If so, add to the list of empty slots
+      if (walkers.allUnoccupied(iDet)) {
         walkers.lastEmpty += 1;
         walkers.emptyDets[walkers.lastEmpty] = iDet;
         continue;
       }
 
-      // Update the initiator flag, if necessary
-      int parentFlags = 0;
-      if (schd.initiator) {
-        if (abs(walkers.amps[iDet][0]) > schd.initiatorThresh) {
-          // This walker is an initiator, so set the flag
-          parentFlags |= 1 << INITIATOR_FLAG;
-        }
-      }
-
-      // Number of spawnings to attempt
-      nAttempts = max(1.0, round(abs(walkers.amps[iDet][0]) * schd.nAttemptsEach));
-      parentAmp = walkers.amps[iDet][0] * schd.nAttemptsEach / nAttempts;
-
-      // Perform one spawning attempt for each 'walker' of weight parentAmp
-      for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
-        generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
-
-        // pgen=0.0 is set when a null excitation is returned.
-        if (pgen > 1.e-15) {
-          attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen);
-        }
-        if (pgen2 > 1.e-15) {
-          attemptSpawning(walkers.dets[iDet], childDet2, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                          parentAmp, parentFlags, schd.tau, schd.minSpawn, pgen2);
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // Update the initiator flag, if necessary
+        int parentFlags = 0;
+        if (schd.initiator) {
+          if (abs(walkers.amps[iDet][iReplica]) > schd.initiatorThresh) {
+            // This walker is an initiator, so set the flag
+            parentFlags |= 1 << INITIATOR_FLAG;
+          }
         }
 
-      }
-      performDeath(walkers.dets[iDet], walkers.amps[iDet][0], I1, I2, coreE, Eshift, schd.tau);
+        // Number of spawnings to attempt
+        nAttempts = max(1.0, round(abs(walkers.amps[iDet][iReplica]) * schd.nAttemptsEach));
+        parentAmp = walkers.amps[iDet][iReplica] * schd.nAttemptsEach / nAttempts;
+
+        // Perform one spawning attempt for each 'walker' of weight parentAmp
+        for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
+          generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
+
+          // pgen=0.0 is set when a null excitation is returned.
+          if (pgen > 1.e-15) {
+            attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                            parentAmp, parentFlags, iReplica, schd.tau, schd.minSpawn, pgen);
+          }
+          if (pgen2 > 1.e-15) {
+            attemptSpawning(walkers.dets[iDet], childDet2, spawn, I1, I2, coreE, schd.nAttemptsEach,
+                            parentAmp, parentFlags, iReplica, schd.tau, schd.minSpawn, pgen2);
+          }
+
+        } // Loop over spawning attempts
+      } // Loop over replicas
+
+      performDeath(iDet, walkers, I1, I2, coreE, Eshift, schd.tau);
     }
 
     // Perform annihilation
@@ -223,8 +238,9 @@ void runFCIQMC() {
 // If it is above a minimum threshold, then always spawn
 // Otherwsie, stochastically round it up to the threshold or down to 0
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
-                     oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach, const double& parentAmp,
-                     const int& parentFlags, const double& tau, const double& minSpawn, const double& pgen)
+                     oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach,
+                     const double& parentAmp, const int& parentFlags, const int& iReplica,
+                     const double& tau, const double& minSpawn, const double& pgen)
 {
   bool childSpawned = true;
 
@@ -242,24 +258,34 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
     // of the newly-spawned walker
     int ind = spawn.currProcSlots[proc];
     spawn.dets[ind] = childDet.getSimpleDet();
-    spawn.amps[ind][0] = childAmp;
+
+    // Set the child amplitude for the correct replica - all others are 0
+    for (int i=0; i<nreplicas; i++) {
+      if (i == iReplica) {
+        spawn.amps[ind][iReplica] = childAmp;
+      } else {
+        spawn.amps[ind][iReplica] = 0.0;
+      }
+    }
+
     if (schd.initiator) spawn.flags[ind] = parentFlags;
     spawn.currProcSlots[proc] += 1;
   }
 }
 
-void performDeath(Determinant& parentDet, double& detPopulation, oneInt &I1, twoInt &I2,
-                  double& coreE, const double& Eshift, const double& tau)
+void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+                  double& coreE, const vector<double>& Eshift, const double& tau)
 {
-  double parentE = parentDet.Energy(I1, I2, coreE);
-  double fac = tau * ( parentE - Eshift );
-  detPopulation -= fac * detPopulation;
+  double parentE = walkers.dets[iDet].Energy(I1, I2, coreE);
+  for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+    double fac = tau * ( parentE - Eshift[iReplica] );
+    walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+  }
 }
 
-void communicateEstimates(const double& walkerPop, const double& EProj, const double& HFAmp,
-                          const int& nDets, const int& nSpawnedDets,
-                          double& walkerPopTot, double& EProjTot, double& HFAmpTot,
-                          int& nDetsTot, int& nSpawnedDetsTot)
+void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
+                          const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
+                          vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot)
 {
 #ifdef SERIAL
   walkerPopTot    = walkerPop;
@@ -268,23 +294,25 @@ void communicateEstimates(const double& walkerPop, const double& EProj, const do
   nDetsTot        = nDets;
   nSpawnedDetsTot = nSpawnedDets;
 #else
-  MPI_Allreduce(&walkerPop,    &walkerPopTot,     1,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&EProj,        &EProjTot,         1,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&HFAmp,        &HFAmpTot,         1,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nDets,        &nDetsTot,         1,  MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nSpawnedDets, &nSpawnedDetsTot,  1,  MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&walkerPop.front(),  &walkerPopTot.front(),  nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&EProj.front(),      &EProjTot.front(),      nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&HFAmp.front(),      &HFAmpTot.front(),      nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&nDets,              &nDetsTot,              1,          MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&nSpawnedDets,       &nSpawnedDetsTot,       1,          MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
 #endif
 }
 
-void updateShift(double& Eshift, bool& varyShift, const double& walkerPop,
-                 const double& walkerPopOld, const double& targetPop,
+void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
+                 const vector<double>& walkerPopOld, const double& targetPop,
                  const double& shiftDamping, const double& tau)
 {
-  if ((!varyShift) && walkerPop > targetPop) {
-    varyShift = true;
-  }
-  if (varyShift) {
-    Eshift = Eshift - (shiftDamping/tau) * log(walkerPop/walkerPopOld);
+  for (int iReplica = 0; iReplica<nreplicas; iReplica++) {
+    if ((!varyShift.at(iReplica)) && walkerPop[iReplica] > targetPop) {
+      varyShift.at(iReplica) = true;
+    }
+    if (varyShift.at(iReplica)) {
+      Eshift.at(iReplica) = Eshift.at(iReplica) - (shiftDamping/tau) * log(walkerPop.at(iReplica)/walkerPopOld.at(iReplica));
+    }
   }
 }
 
@@ -303,22 +331,22 @@ void printDataTableHeader()
 }
 
 void printDataTable(const int iter, const int& nDets, const int& nSpawned,
-                    const double& shift, const double& walkerPop, const double& EProj,
-                    const double& HFAmp, const double& iter_time)
+                    const vector<double>& shift, const vector<double>& walkerPop, const vector<double>& EProj,
+                    const vector<double>& HFAmp, const double& iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
     printf ("%10d   ", nDets);
     printf ("%10d   ", nSpawned);
-    printf ("%18.10f   ", shift);
-    printf ("%18.10f   ", walkerPop);
-    printf ("%18.10f   ", EProj);
-    printf ("%18.10f   ", HFAmp);
+    printf ("%18.10f   ", shift[0]);
+    printf ("%18.10f   ", walkerPop[0]);
+    printf ("%18.10f   ", EProj[0]);
+    printf ("%18.10f   ", HFAmp[0]);
     printf ("%8.4f\n", iter_time);
   }
 }
 
-void printFinalStats(const double& walkerPop, const int& nDets,
+void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time)
 {
   int parallelReport[commsize];
@@ -329,7 +357,7 @@ void printFinalStats(const double& walkerPop, const int& nDets,
   }
 
 #ifndef SERIAL
-  MPI_Gather(&walkerPop, 1, MPI_DOUBLE, &parallelReportD, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Gather(&walkerPop[0], 1, MPI_DOUBLE, &parallelReportD, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   if (commrank == 0) {
     cout << "# Min # walkers on proc:   " << *min_element(parallelReportD, parallelReportD + commsize) << endl;
     cout << "# Max # walkers on proc:   " << *max_element(parallelReportD, parallelReportD + commsize) << endl;

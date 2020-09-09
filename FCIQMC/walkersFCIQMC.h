@@ -70,7 +70,6 @@ class walkersFCIQMC {
   // beyond nDets are not filled, and so should not be used
   vector<Determinant> dets;
   // List of walkers amplitudes
-  //vector<double> amps;
   double** amps;
   // Hash table to access the walker array
   unordered_map<Determinant, int> ht;
@@ -90,8 +89,10 @@ class walkersFCIQMC {
 
   void stochasticRoundAll(const double& minPop);
 
-  void calcStats(Determinant& HFDet, double& walkerPop, double& EProj, double& HFAmp,
-                 oneInt& I1, twoInt& I2, double& coreE);
+  bool allUnoccupied(const int i) const;
+
+  void calcStats(Determinant& HFDet, vector<double>& walkerPop, vector<double>& EProj,
+                 vector<double>& HFAmp, oneInt& I1, twoInt& I2, double& coreE);
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {
