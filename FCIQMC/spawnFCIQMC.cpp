@@ -96,7 +96,7 @@ void spawnFCIQMC::communicate() {
   // Copy spawning data to temp arrays
   for (int iDet=0; iDet<nDets; iDet++) {
     detsTemp[iDet] = dets[iDet];
-    for (iReplica = 0; iReplica<nreplicas; iReplica++) {
+    for (int iReplica = 0; iReplica<nreplicas; iReplica++) {
       ampsTemp[iDet][iReplica] = amps[iDet][iReplica];
     }
     if (schd.initiator) flagsTemp[iDet] = flags[iDet];
