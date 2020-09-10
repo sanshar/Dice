@@ -97,9 +97,14 @@ class walkersFCIQMC {
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {
     os << "Walker list:" << endl;
-    for (int i=0; i<walkers.nDets; i++) {
-      os << i << "   " << walkers.dets[i] << "   " << walkers.amps[i][0] << "   " << endl;
+    for (int iDet=0; iDet<walkers.nDets; iDet++) {
+      os << iDet << "   " << walkers.dets[iDet];
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        os << "   " << walkers.amps[iDet][iReplica];
+      }
+      os << endl;
     }
+
     os << "Hash table:" << endl;
     for (auto kv : walkers.ht) {
       os << kv.first << "   " << kv.second << "   " << endl;

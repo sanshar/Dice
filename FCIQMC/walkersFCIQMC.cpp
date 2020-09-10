@@ -53,7 +53,7 @@ walkersFCIQMC::~walkersFCIQMC() {
 
 // return true if all replicas for determinant i are unoccupied
 bool walkersFCIQMC::allUnoccupied(const int i) const {
-  return all_of(&amps[i][0], &amps[i][0]+nreplicas, [](double x) { return abs(x)<1.0e-12; });
+  return all_of(&amps[i][0], &amps[i][nreplicas], [](double x) { return abs(x)<1.0e-12; });
 }
 
 void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
