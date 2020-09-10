@@ -262,9 +262,9 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
     // Set the child amplitude for the correct replica - all others are 0
     for (int i=0; i<nreplicas; i++) {
       if (i == iReplica) {
-        spawn.amps[ind][iReplica] = childAmp;
+        spawn.amps[ind][i] = childAmp;
       } else {
-        spawn.amps[ind][iReplica] = 0.0;
+        spawn.amps[ind][i] = 0.0;
       }
     }
 
