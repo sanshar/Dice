@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <iomanip>
 #include "Determinants.h"
 #include "evaluateE.h"
 #include "excitGen.h"
@@ -322,10 +323,32 @@ void printDataTableHeader()
     printf ("#  1. Iter");
     printf ("     2. nDets");
     printf ("  3. nSpawned");
-    printf ("             4. Shift");
-    printf ("          5. nWalkers");
-    printf ("       6. Energy num.");
-    printf ("     7. Energy denom.");
+    for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+
+      for (int j=0; j<4; j++) {
+        string header;
+        int label = 4*iReplica + j + 4;
+        header.append(to_string(label));
+
+        if (j==0) {
+          header.append(". Shift_");
+        } else if (j==1) {
+          header.append(". nWalkers_");
+        } else if (j==2) {
+          header.append(". Energy_Num_");
+        } else if (j==3) {
+          header.append(". Energy_Denom_");
+        }
+
+        header.append(to_string(iReplica+1));
+        stringstream fixed_width;
+        // fix the width of each column to 21 characters
+        fixed_width << setw(21) << header;
+        string fixed_width_str = fixed_width.str();
+        printf(fixed_width_str.c_str());
+      }
+
+    }
     printf ("    8. Time\n");
   }
 }
@@ -338,10 +361,12 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned,
     printf ("%10d   ", iter);
     printf ("%10d   ", nDets);
     printf ("%10d   ", nSpawned);
-    printf ("%18.10f   ", shift[0]);
-    printf ("%18.10f   ", walkerPop[0]);
-    printf ("%18.10f   ", EProj[0]);
-    printf ("%18.10f   ", HFAmp[0]);
+    for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+      printf ("%18.10f   ", shift[iReplica]);
+      printf ("%18.10f   ", walkerPop[iReplica]);
+      printf ("%18.10f   ", EProj[iReplica]);
+      printf ("%18.10f   ", HFAmp[iReplica]);
+    }
     printf ("%8.4f\n", iter_time);
   }
 }
