@@ -340,6 +340,7 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dco
         //sub = cdfci::getSubDets(thisDet, wfn, nelec);
         thisDet = cdfci::CoordinatePickGcdGrad(column, ene.second);
       if(k%schd.report_interval == 0) {
+        if (wfn.size() > schd.max_determinants) sample = false;
         auto curr_ene = ene.first.real()/ene.second;
         auto imag_ene = ene.first.imag()/ene.second;
         // iter, energy, time, variation space, dx

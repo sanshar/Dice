@@ -317,6 +317,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.z_threshold = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "cdfciSample"))
       schd.sampleNewDets = true;
+    else if (boost::iequals(ArgName, "max_determinants"))
+      schd.max_determinants = 1e12;
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);

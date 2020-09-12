@@ -93,7 +93,8 @@ private:
     & DoThreeRDM                              \
     & DoFourRDM                               \
     & cdfciIter                               \
-    & z_threshold;
+    & z_threshold                             \
+    & max_determinants;
   }
 
 public:
@@ -160,6 +161,7 @@ public:
   double z_threshold;
   int cdfciIter;
   int report_interval;
+  int max_determinants;
   bool sampleNewDets;
   double factor;
 };
