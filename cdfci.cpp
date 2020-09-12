@@ -107,55 +107,11 @@ inline int sgn(double x) {
     else return -1;
 }
 
-//a = 3*x_i, b = xx + 2*x_i^2 - H_ii, c = xx*x_i-z_i
-complex<double> cubic_solve(complex<double> a, complex<double> b, complex<double> c) {
-  const double sin60 = sqrt(0.75);
-  const complex<double> unit_i = complex<double>(0.0, 1.0);
-  auto Q = (pow(a, 2.0) - 3.0*b) / 9.0;
-  auto R = (2.0 * pow(a, 3.0) - 9.0 * a * b + 27.0*c) /54.0;
-  auto A = -pow(R+pow(pow(R, 2.0) - pow(Q, 3.0), 1./2.), 1./3.);
-  auto B = Q / A;
-  auto root_1 = A + B - a/3.0;
-  auto root_2 = -0.5 * (A+B) - a/3.0 + sin60 * unit_i * (A-B);
-  auto root_3 = -0.5 * (A+B) - a/3.0 - sin60 * unit_i * (A-B);
-  auto zero_1 = pow(root_1, 3)+ a * pow(root_1, 2) + b * root_1 + c;
-  auto zero_2 = pow(root_2, 3)+ a * pow(root_2, 2) + b * root_2 + c;
-  auto zero_3 = pow(root_3, 3)+ a * pow(root_3, 2) + b * root_3 + c;
-  if ((abs(zero_1) + abs(zero_2) + abs(zero_3)) > 1e-10) {
-    std::cout << "R " << R << " Q " << Q << std::endl;
-    std::cout << "A " << A << " B " << B << std::endl;
-    std::cout << "zeros : " << zero_1 << zero_2 << zero_3 << std::endl;
-  }
-  std::cout << "coeffs: " << a << b << c << std::endl;
-  std::cout << "roots : " << root_1 << root_2 << root_3 << std::endl;
-  if (abs(root_1.real()) < abs(root_2.real())) {
-    if(abs(root_2.real()) < abs(root_3.real())) return root_3;
-    else return root_2;
-  }
-  else return root_1;
-}
-dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex,double>& ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE) {
-  // coreE doesn't matter.
+double line_search(double p1, double q, double x) {
   double dx = 0.0;
-  auto det = det_picked.first;
-  double x = det_picked.second[0].real();
-  auto z = det_picked.second[1];
-  auto xx = ene.second;
-  //std::cout << x << " z:" << z << " xx:" << xx << std::endl; 
-  size_t orbDiff;
-  
-  auto dA = det.Energy(I1, I2, coreE);
-  dA=-dA;
-  //auto a = 3.*x;
-  //auto b = xx + 2.*x*conj(x) - dA;
-  //auto c = xx*x-z;
-  //return cubic_solve(a, b, c)-x;
-  // Line Search, cced from original cdfci code.
-  double p1 = xx - x * x - dA;
-  double q = (z + dA * x).real();  //
-  auto p3 = p1/3;
-  auto q2 = q/2;
-  auto d = p3 * p3 * p3 + q2 * q2;
+  double p3 = p1/3;
+  double q2 = q/2;
+  double d = p3 * p3 * p3 + q2 * q2;
   double rt = 0;
   //std::cout << "p1: " << p1 << " q: " << q << std::endl;
   const double pi = atan(1.0) * 4;
@@ -189,7 +145,30 @@ dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dc
       ++iter;
   }
   return dx;
+}
+dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex,double>& ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE) {
+  // coreE doesn't matter.
+  double dx = 0.0;
+  auto det = det_picked.first;
+  auto x = det_picked.second[0];
+  auto z = det_picked.second[1];
+  auto xx = ene.second;
+  //std::cout << x << " z:" << z << " xx:" << xx << std::endl; 
+  size_t orbDiff;
   
+  double dA = det.Energy(I1, I2, coreE);
+  dA=-dA;
+  double x_re = x.real();
+  double x_im = x.imag();
+  double z_re = z.real();
+  double z_im = z.imag();
+  double p1_re = xx - x_re * x_re - dA;
+  double p1_im = xx - x_im * x_im;
+  double q_re = z_re + dA * x_re;  //
+  double q_im = z_im;
+  double dx_re = line_search(p1_re, q_re, x_re);
+  double dx_im = line_search(p1_im, q_im, x_im);
+  return dcomplex(dx_re, dx_im);
   //if (abs(x)+abs(xx)+abs(z)<1e-100) return sqrt(abs(dA));
   //else return -0.05*(x*xx+z);
   //std::cout << "p1: " << p1 << " q: " << q << std::endl;
@@ -375,9 +354,7 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dco
   coreE=coreEbkp;
   auto factor = sqrt(abs(ene.second));
   for(auto iter=wfn.begin(); iter!=wfn.end(); ++iter) {
-    if(abs(iter->second[0])/factor>0.01) {
-      std::cout << "Det: " << iter->first << " coeff : " << iter->second[0].real()/factor << iter->second[0].imag()/factor << std::endl;
-    }
+      std::cout << "Det: " << iter->first << " coeff : " << iter->second[0]/factor << std::endl;
   }
   return;
 }
