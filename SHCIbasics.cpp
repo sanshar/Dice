@@ -845,6 +845,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
   int nroots = ci.size();
   // This helper object is kept here just in case
   SHCImake4cHamiltonian::HamHelper4c helper2;
+  std::cout << "helpers" << std::endl;
   SHCImake4cHamiltonian::SparseHam sparseHam;
   if (schd.DavidsonType == DISK)
   {
@@ -1144,17 +1145,40 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
                                schd.DoRDM || schd.DoOneRDM);
     }
     //************
-    if (commrank == 0 & schd.outputlevel > 0) {
-      size_t element_count = 0;
-      for (int i=0; i < sparseHam.connections.size(); i++) {
-        element_count += sparseHam.connections[i].size();
+    if (commrank == 0 & schd.outputlevel == -1) {
+      if (schd.DavidsonType == MEMORY) {
+        size_t element_count = 0;
+        for (int i=0; i < sparseHam.connections.size(); i++) {
+          element_count += sparseHam.connections[i].size();
+        }
+        size_t memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
+        pout << " number of sparseHam elements " << element_count << endl;
+        pout << " number of determinants " << sparseHam.connections.size() << endl;
+        pout << " estimated memory " << setw(12) << setprecision(1) << std::fixed << double(memory_count)/1024./1024. <<" MB" << endl;
+        //pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
+        //pout << " time before davidson : " << getTime() - startofCalc << endl;
       }
-      size_t memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
-      pout << " number of sparseHam elements " << element_count << endl;
-      pout << " number of determinants " << sparseHam.connections.size() << endl;
-      pout << " estimated memory " << memory_count << endl;
-      pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
-      pout << " time before davidson : " << getTime() - startofCalc << endl;
+      else if (schd.DavidsonType == DIRECT) {
+        int nminus1_size = helper2.Nminus1ToDet.size();
+        int nminus2_size = helper2.Nminus2ToDet.size();
+        size_t single_operation_count = 0;
+        size_t double_operation_count = 0;
+        size_t single_memory_count = 0;
+        size_t double_memory_count = 0;
+        for (int i=0; i < nminus1_size; i++) {
+          single_operation_count += pow(helper2.Nminus1ToDet[i].size(), 2);
+          single_memory_count += helper2.Nminus1ToDet[i].size();
+        }
+        for (int i=0; i < nminus2_size; i++) {
+          double_operation_count += pow(helper2.Nminus2ToDet[i].size(), 2);
+          double_memory_count += helper2.Nminus2ToDet[i].size();
+        }
+        std::cout << "number of determinants" << DetsSize << std::endl;
+        std::cout << "single excitation lists: " << "# of elements " << single_memory_count << " # of operations " << single_operation_count << std::endl;
+        std::cout << "double excitation lists: " << "# of elements " << double_memory_count << " # of operations " << double_operation_count << std::endl;
+        std::cout << "nminus2 map size : " << helper2.Nminus2.size() << std::endl;
+        std::cout << "nminus1 map size : " << helper2.Nminus1.size() << std::endl; 
+      }
     }
     //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous iterations
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets,
@@ -1197,7 +1221,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //  prevE0(-10.0);
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     if (schd.DavidsonType == DIRECT) {
-      E0 = davidsonDirect(Hdirect, X0, diag, schd.nroots+2, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+      E0 = davidsonDirect(Hdirect, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
     }
     else {
       E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);

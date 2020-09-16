@@ -41,11 +41,11 @@ void SHCImake4cHamiltonian::HamHelper4c::MakeSHMHelpers() {
     Nminus2, Nminus2ToDet, Nminus2ToDetLen, Nminus2ToDetSM);
 }
 void SHCImake4cHamiltonian::MakeSMHelpers(
-  map<Determinant, int>& Nminus1,
+  map& Nminus1,
   vector<vector<int>>& Nminus1ToDet,
   int* &Nminus1ToDetLen,
   vector<int*>& Nminus1ToDetSM,
-  map<Determinant, int>& Nminus2,
+  map& Nminus2,
   vector<vector<int>>& Nminus2ToDet,
   int* &Nminus2ToDetLen,
   vector<int*>& Nminus2ToDetSM)
@@ -159,14 +159,13 @@ void SHCImake4cHamiltonian::HamHelper4c::PopulateHelpers(
     Nminus2, Nminus2ToDet,
     SHMDets, DetsSize, startIndex);
 }
-void updateNminus(Determinant & Nminus2, std::map<Determinant, int>&Nminus2s, 
+void updateNminus(Determinant & Nminus2, SHCImake4cHamiltonian::map& Nminus2s, 
 vector<vector<int>>& Nminus2ToDets, Determinant* Dets, int DetsSize, int StartIndex, int DetIndex) {
   auto iter = Nminus2s.find(Nminus2);
   if (iter == Nminus2s.end()) {
-    auto newElement = Nminus2s.insert(std::pair<Determinant, int>(Nminus2, Nminus2ToDets.size()));
-    iter = newElement.first;
-    Nminus2ToDets.resize(iter->second+1);
-    Nminus2ToDets[iter->second]=vector<int>(1, DetIndex);
+    //auto newElement = Nminus2s.insert(std::pair<Determinant, int>(Nminus2, Nminus2ToDets.size()));
+    Nminus2s[Nminus2] = Nminus2ToDets.size();
+    Nminus2ToDets.push_back(vector<int>(1, DetIndex));
     int norbs = 64*DetLen;
   }
   else {
@@ -175,7 +174,7 @@ vector<vector<int>>& Nminus2ToDets, Determinant* Dets, int DetsSize, int StartIn
 }
 
 void SHCImake4cHamiltonian::PopulateHelperLists(
-  map<Determinant, int>& Nminus1s, vector<vector<int>> & Nminus1ToDet, map<Determinant, int>& Nminus2s, vector<vector<int>> & Nminus2ToDet, 
+  map& Nminus1s, vector<vector<int>> & Nminus1ToDet, map& Nminus2s, vector<vector<int>> & Nminus2ToDet, 
   Determinant *Dets, int DetsSize, int StartIndex) {
 #ifndef SERIAL
   boost::mpi::communicator world;

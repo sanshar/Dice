@@ -318,7 +318,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "cdfciSample"))
       schd.sampleNewDets = true;
     else if (boost::iequals(ArgName, "max_determinants"))
-      schd.max_determinants = 1e12;
+      schd.max_determinants = 10000000;
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
@@ -333,12 +333,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     cout << "nocc keyword has to be included." << endl;
     exit(0);
   }
-#ifndef Complex
-  if (schd.DavidsonType == DIRECT)
-    schd.davidsonTolLoose = 3.e-2;
-#else
-  schd.davidsonTolLoose = 1.e-5;
-#endif
+  //if (schd.DavidsonType == DIRECT)
+  //  schd.davidsonTolLoose = 3.e-2;
 
   for (int i=1; i<sweep_iter.size(); i++)
     for (int j=sweep_iter[i-1]; j<sweep_iter[i]; j++)

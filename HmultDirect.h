@@ -14,7 +14,6 @@
 #include <chrono>
 #include "SHCISortMpiUtils.h"
 #include "SHCImake4cHamiltonian.h"
-
 using namespace Eigen;
 using namespace std;
 using namespace SHCISortMpiUtils;
@@ -122,7 +121,7 @@ struct HmultDirect {
         for (int k = j+1; k<Nminus1ToDetLen[i]; k++) {
           int DetJ = Nminus1ToDetSM[i][k];
           if (DetI < StartIndex && DetJ < StartIndex) continue;
-          CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+          CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
           y[DetI] += hij*x[DetJ];
         }
       }
@@ -137,14 +136,14 @@ struct HmultDirect {
           int DetJ = Nminus2ToDetSM[i][k];
           //if (DetI < StartIndex && DetJ < StartIndex) continue;
           if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;
-          CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+          CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
           y[DetI] += hij*x[DetJ];
         }
         for (int k=j+1; k<Nminus2ToDetLen[i]; k++) {
           int DetJ = Nminus2ToDetSM[i][k];
           //if (DetI < StartIndex && DetJ < StartIndex) continue;
           if (Dets[Nminus2ToDetSM[i][j]].ExcitationDistance(Dets[Nminus2ToDetSM[i][k]]) != 2) continue;
-          CItype hij = Hij(Dets[DetJ], Dets[DetI], I1, I2, coreE, orbDiff);
+          CItype hij = Hij(Dets[DetI], Dets[DetJ], I1, I2, coreE, orbDiff);
           y[DetI] += hij*x[DetJ];
         }
       }

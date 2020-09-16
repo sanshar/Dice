@@ -7,6 +7,8 @@
 #include <tuple>
 #include <map>
 #include <boost/serialization/serialization.hpp>
+#include "robin_hood.h"
+#include "cdfci.h"
 
 using namespace std;
 using namespace Eigen;
@@ -18,10 +20,10 @@ class twoIntHeatBathSHM;
 class schedule;
 
 namespace SHCImake4cHamiltonian {
-  
+  using map = robin_hood::unordered_flat_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
   struct HamHelper4c {
-    map<Determinant, int> Nminus1; // The string with n-1 electrons
-    map<Determinant, int> Nminus2; // The string with n-2 electrons
+    map Nminus1; // The string with n-1 electrons
+    map Nminus2; // The string with n-2 electrons
     vector<vector<int>> Nminus2ToDet; // The connection between n-2 string and n strings
     vector<int*> Nminus2ToDetSM;
     int* Nminus2ToDetLen;
@@ -89,8 +91,8 @@ struct SparseHam {
 // fixForTreversal and regenerateH is not implemented
 
 void PopulateHelperLists(
-map<Determinant, int>& Nminus1s, vector<vector<int>>& Nminus1ToDet,
-map<Determinant, int>& Nminus2s, vector<vector<int>>& Nminus2ToDet, 
+map& Nminus1s, vector<vector<int>>& Nminus1ToDet,
+map& Nminus2s, vector<vector<int>>& Nminus2ToDet, 
 Determinant *Dets, int DetsSize, int StartIndex);
 
 void MakeHfromSMHelpers(
@@ -106,11 +108,11 @@ void MakeHfromSMHelpers(
 void MakeSHMHelpers();
 
 void MakeSMHelpers(
-  map<Determinant, int>& Nminus1,
+  map& Nminus1,
   vector<vector<int>>& Nminus1ToDet,
   int* &Nminus1ToDetLen,
   vector<int*>& Nminus1ToDetSM,
-  map<Determinant, int>& Nminus2,
+  map& Nminus2,
   vector<vector<int>>& Nminus2ToDet,
   int* &Nminus2ToDetLen,
   vector<int*>& Nminus2ToDetSM);
