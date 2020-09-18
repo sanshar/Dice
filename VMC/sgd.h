@@ -112,7 +112,12 @@ class SGD
             getGradient(vars, grad, E0, stddev, rt);
             //if (E0 - EOld > 10 * stddev) {skip = 1; continue;}
             //else skip = 0;
-            if (commrank == 0 && schd.printGrad) {cout << "totalGrad" << endl; cout << grad << endl;}
+            if (commrank == 0 && schd.printGrad) {
+              VectorXd::Index maxInd;
+              double maxVal = grad.array().abs().matrix().maxCoeff(&maxInd);
+              cout << "gradMax val: " << maxVal << ", maxInd: " << maxInd << endl; 
+              if (schd.printLevel > 15) cout << "totalGrad\n" << grad << endl;
+            }
             write(vars);
 
             if (commrank == 0)
