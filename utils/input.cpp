@@ -101,6 +101,9 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numHidden = input.get("wavefunction.numHidden", 1);
 
 
+    // multi-Slater
+    schd.excitationLevel = input.get("wavefunction.excitationLevel", 10);
+
     //hamiltonian
     string hamString = algorithm::to_lower_copy(input.get("hamiltonian", "abinitio"));
     if (hamString == "abinitio") schd.Hamiltonian = ABINITIO;
@@ -180,7 +183,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.PTlambda = input.get("PTlambda", 0.);
     schd.tol = input.get("tol", 0.); 
     schd.beta = input.get("beta", 1.);
-    schd.excitationLevel = input.get("excitationLevel", 1);
     
   }
 
@@ -350,6 +352,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
   bool isFirst = true;
   Determinant refDet;
   VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
   
   while (dump.good()) {
     std::string Line;
@@ -429,7 +432,8 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
         std::array<VectorXi, 2> excitations;
         excitations[0] = des;
         excitations[1] = cre;
-        //if (cre.size() > schd.ciTruncationLevel) continue;
+        if (cre.size() > schd.excitationLevel) continue;
+        numDets++;
         ciCoeffs.push_back(atof(tok[0].c_str()));
         ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
         ciExcitations.push_back(excitations);
@@ -437,7 +441,10 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
       }
     }
   }
-  if (commrank == 0) cout << "Rankwise number of excitations " << sizes.transpose() << endl << endl;
+  if (commrank == 0) {
+    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
+    cout << "Number of determinants " << numDets << endl << endl;
+  }
 }
 
 void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<VectorXi, 2>>& ciExcitations,
