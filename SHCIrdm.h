@@ -85,6 +85,9 @@ void UpdateRDMPerturbativeDeterministic(
     std::vector<SHCISortMpiUtils::StitchDEH>& uniqueDEH, int root,
     MatrixXx& s2RDM, MatrixXx& twoRDM);
 
+void populateSpinRDM(int &i, int &j, int &k, int &l,
+                     MatrixXx &RDM, CItype value,
+                     int norbs);
 void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM,
                         CItype value, int& nSpatOrbs);
 

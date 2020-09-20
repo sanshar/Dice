@@ -223,11 +223,12 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
       else if (c==d&&d==0) {
         //cout << I1(a-1, b-1) << " " << integral << setw(4) << a << setw(4) << b << endl;
         I1(a-1,b-1) = integral;
-        I1(b-1,a-1) = integral;
+        I1(b-1,a-1) = std::conj(integral);
       }
       else {
         //cout << I2(a-1, b-1, c-1, d-1) << " " << integral << setw(4) << a << setw(4) << b << setw(4) << c << setw(4) << d << endl; 
-        I2(a-1,b-1,c-1,d-1) = I2(c-1,d-1,a-1,b-1)= integral;       
+        I2(a-1,b-1,c-1,d-1) = integral;
+        I2(c-1,d-1,a-1,b-1) = integral;       
       }
     } // while
     }
