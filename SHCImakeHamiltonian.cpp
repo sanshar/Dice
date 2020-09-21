@@ -567,7 +567,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
+          if (abs(hij) > -1.e-10) {
             connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 std::abs(DetJ) - 1);
             Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -608,7 +608,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
             CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                              I1, I2, coreE, orbDiff);
             fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-            if (abs(hij) > 1.e-10) {
+            if (abs(hij) > -1.e-10) {
               connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                   std::abs(DetJ) - 1);
               Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -640,7 +640,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) < 1.e-10) continue;
+          if (abs(hij) < -1.e-10) continue;
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -665,7 +665,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
+          if (abs(hij) > -1.e-10) {
             connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 std::abs(DetJ) - 1);
             Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -691,7 +691,7 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-          if (abs(hij) > 1.e-10) {
+          if (abs(hij) > -1.e-10) {
             connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 std::abs(DetJ) - 1);
             Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -957,7 +957,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
       int i = ia / nopen, a = ia % nopen;
 
       CItype integral = int1(open[a], closed[i]);
-      if (abs(integral) < 1.e-8) continue;
+      if (abs(integral) < -1.e-8) continue;
 
       Determinant di = d;
       if (open[a] % 2 == closed[i] % 2 && !includeSz) continue;
