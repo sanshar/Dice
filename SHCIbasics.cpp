@@ -1346,8 +1346,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           if (schd.outputlevel > 0) {
             SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2, coreEbkp, s2RDM);
           }
-          //SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
-          SHCIrdm::saveRDM_bin(schd, twoRDM, i);
+          if (schd.ReadTxt) {
+            SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+          }
+          else {
+            SHCIrdm::saveRDM_bin(schd, twoRDM, i);
+          }
 
           boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
         } // for i
