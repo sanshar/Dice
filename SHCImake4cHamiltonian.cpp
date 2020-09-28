@@ -41,11 +41,11 @@ void SHCImake4cHamiltonian::HamHelper4c::MakeSHMHelpers() {
     Nminus2, Nminus2ToDet, Nminus2ToDetLen, Nminus2ToDetSM);
 }
 void SHCImake4cHamiltonian::MakeSMHelpers(
-  std::map& Nminus1,
+  map& Nminus1,
   vector<vector<int>>& Nminus1ToDet,
   int* &Nminus1ToDetLen,
   vector<int*>& Nminus1ToDetSM,
-  std::map& Nminus2,
+  map& Nminus2,
   vector<vector<int>>& Nminus2ToDet,
   int* &Nminus2ToDetLen,
   vector<int*>& Nminus2ToDetSM)
@@ -174,7 +174,7 @@ vector<vector<int>>& Nminus2ToDets, Determinant* Dets, int DetsSize, int StartIn
 }
 
 void SHCImake4cHamiltonian::PopulateHelperLists(
-  std::map& Nminus1s, vector<vector<int>> & Nminus1ToDet, std::map& Nminus2s, vector<vector<int>> & Nminus2ToDet, 
+  map& Nminus1s, vector<vector<int>> & Nminus1ToDet, map& Nminus2s, vector<vector<int>> & Nminus2ToDet, 
   Determinant *Dets, int DetsSize, int StartIndex) {
 #ifndef SERIAL
   boost::mpi::communicator world;
