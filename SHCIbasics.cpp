@@ -1349,9 +1349,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           if (schd.ReadTxt) {
             SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
           }
-          else {
-            SHCIrdm::saveRDM_bin(schd, twoRDM, i);
-          }
+          SHCIrdm::saveRDM_bin(schd, twoRDM, i);
 
           boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
         } // for i
