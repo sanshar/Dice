@@ -936,7 +936,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
   size_t Norbs = norbs;
 
   int nprocs = commsize, proc = commrank;
-  map<Determinant, int> SortedDetsMap;
+  std::map<Determinant, int> SortedDetsMap;
   for (int i = 0; i < DetsSize; i++) {
     SortedDetsMap[Dets[i]] = i;
   }
@@ -967,7 +967,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
       double sgn = 1.0;
       d.parity(min(open[a], closed[i]), max(open[a], closed[i]), sgn);
 
-      map<Determinant, int>::iterator it = SortedDetsMap.find(di);
+      std::map<Determinant, int>::iterator it = SortedDetsMap.find(di);
       if (it != SortedDetsMap.end()) {
         int y = it->second;
         if (y < x) {

@@ -49,7 +49,7 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
 {
   size_t Norbs = norbs;
 
-  map<Determinant, int> SortedDets;
+  std::map<Determinant, int> SortedDets;
   for (int i=0; i<Detssize; i++)
     SortedDets[Dets1[i]] = i;
 
@@ -84,7 +84,7 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
 
 
-      map<Determinant, int>::iterator it = SortedDets.find(di);
+      std::map<Determinant, int>::iterator it = SortedDets.find(di);
       if (it != SortedDets.end() ) {
 	int y = it->second;
 	if (y != x) {
