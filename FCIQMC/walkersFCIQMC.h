@@ -26,9 +26,6 @@
 
 class Determinant;
 
-// Define flag locations
-enum flagInds { INITIATOR_FLAG };
-
 void stochastic_round(const double& minPop, double& amp, bool& roundedUp);
 
 template <typename T>

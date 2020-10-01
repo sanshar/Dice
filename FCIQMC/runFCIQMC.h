@@ -191,8 +191,9 @@ void runFCIQMC() {
         int parentFlags = 0;
         if (schd.initiator) {
           if (abs(walkers.amps[iDet][iReplica]) > schd.initiatorThresh) {
-            // This walker is an initiator, so set the flag
-            parentFlags |= 1 << INITIATOR_FLAG;
+            // This walker is an initiator, so set the flag for the
+            // appropriate replica
+            parentFlags |= 1 << iReplica;
           }
         }
 
@@ -224,7 +225,7 @@ void runFCIQMC() {
     spawn.compress();
     calcVarEnergy(walkers, spawn, I1, I2, coreE,schd.tau, EVarNumAll, EVarDenomAll);
     performDeathAllWalkers(walkers, I1, I2, coreE, Eshift, schd.tau);
-    spawn.mergeIntoMain(walkers, schd.minPop);
+    spawn.mergeIntoMain(walkers, schd.minPop, schd.initiator);
 
     // Stochastic rounding of small walkers
     walkers.stochasticRoundAll(schd.minPop);
