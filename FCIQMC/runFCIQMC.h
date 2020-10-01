@@ -38,6 +38,13 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
 void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau);
 
+void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+                  double& coreE, const vector<double>& Eshift, const double& tau);
+
+void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+                   const twoInt& I2, double& coreE, const double& tau,
+                   double& varEnergyNum, double& varEnergyDenom);
+
 void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
                           const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
                           vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot);
@@ -48,9 +55,9 @@ void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<d
 
 void printDataTableHeader();
 
-void printDataTable(const int iter, const int& nDets, const int& nSpawned,
-                    const vector<double>& shift, const vector<double>& walkerPop, const vector<double>& EProj,
-                    const vector<double>& HFAmp, const double& iter_time);
+void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
+                    const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
+                    const double& EVarNumAll, const double& EVarDenomAll, const double& iter_time);
 
 void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
@@ -105,6 +112,7 @@ void runFCIQMC() {
   // ----- FCIQMC data -----
   double pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
+  double EVarNumAll = 0.0, EVarDenomAll = 0.0;
   vector<double> walkerPop(nreplicas, 0.0);
   vector<double> EProj(nreplicas, 0.0);
   vector<double> HFAmp(nreplicas, 0.0);
@@ -148,9 +156,11 @@ void runFCIQMC() {
   walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
   communicateEstimates(walkerPop, EProj, HFAmp, walkers.nDets, spawn.nDets,
                        walkerPopTot, EProjTot, HFAmpTot, nDetsTot, nSpawnedDetsTot);
+  calcVarEnergy(walkers, spawn, I1, I2, coreE,schd.tau, EVarNumAll, EVarDenomAll);
   walkerPopOldTot = walkerPopTot; 
   printDataTableHeader();
-  printDataTable(0, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot, HFAmpTot, iter_time);
+  printDataTable(0, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
+                 HFAmpTot, EVarNumAll, EVarDenomAll, iter_time);
 
   // Main FCIQMC loop
   for (int iter = 1; iter <= schd.maxIter; iter++) {
@@ -207,21 +217,25 @@ void runFCIQMC() {
         } // Loop over spawning attempts
       } // Loop over replicas
 
-      performDeath(iDet, walkers, I1, I2, coreE, Eshift, schd.tau);
     }
 
     // Perform annihilation
     spawn.communicate();
     spawn.compress();
+    calcVarEnergy(walkers, spawn, I1, I2, coreE,schd.tau, EVarNumAll, EVarDenomAll);
+    performDeathAllWalkers(walkers, I1, I2, coreE, Eshift, schd.tau);
     spawn.mergeIntoMain(walkers, schd.minPop);
+
     // Stochastic rounding of small walkers
     walkers.stochasticRoundAll(schd.minPop);
 
     walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
     communicateEstimates(walkerPop, EProj, HFAmp, walkers.nDets, spawn.nDets,
                          walkerPopTot, EProjTot, HFAmpTot, nDetsTot, nSpawnedDetsTot);
-    updateShift(Eshift, varyShift, walkerPopTot, walkerPopOldTot, schd.targetPop, schd.shiftDamping, schd.tau);
-    printDataTable(iter, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot, HFAmpTot, iter_time);
+    updateShift(Eshift, varyShift, walkerPopTot, walkerPopOldTot, schd.targetPop,
+                schd.shiftDamping, schd.tau);
+    printDataTable(iter, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
+                   HFAmpTot, EVarNumAll, EVarDenomAll, iter_time);
 
     walkerPopOldTot = walkerPopTot;
 
@@ -274,6 +288,36 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
   }
 }
 
+void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+                   const twoInt& I2, double& coreE, const double& tau,
+                   double& varEnergyNumAll, double& varEnergyDenomAll)
+{
+  double varEnergyNum = 0.0;
+  double varEnergyDenom = 0.0;
+
+  // Contributions from the diagonal of the Hamiltonian
+  for (int iDet=0; iDet<walkers.nDets; iDet++) {
+    double HDiag = walkers.dets[iDet].Energy(I1, I2, coreE);
+    varEnergyNum += HDiag * walkers.amps[iDet][0] * walkers.amps[iDet][1];
+    varEnergyDenom += walkers.amps[iDet][0] * walkers.amps[iDet][1];
+  }
+
+  // Contributions from the off-diagonal of the Hamiltonian
+  for (int j=0; j<spawn.nDets; j++) {
+    if (walkers.ht.find(spawn.dets[j]) != walkers.ht.end()) {
+      int iDet = walkers.ht[spawn.dets[j]];
+      double spawnAmp1 = spawn.amps[j][0];
+      double spawnAmp2 = spawn.amps[j][1];
+      double currAmp1 = walkers.amps[iDet][0];
+      double currAmp2 = walkers.amps[iDet][1];
+      varEnergyNum -= ( currAmp1 * spawnAmp2 + spawnAmp1 * currAmp2 ) / ( 2.0 * tau);
+    }
+  }
+
+  MPI_Allreduce(&varEnergyNum,   &varEnergyNumAll,   1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&varEnergyDenom, &varEnergyDenomAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+}
+
 void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau)
 {
@@ -281,6 +325,18 @@ void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I
   for (int iReplica=0; iReplica<nreplicas; iReplica++) {
     double fac = tau * ( parentE - Eshift[iReplica] );
     walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+  }
+}
+
+void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+                  double& coreE, const vector<double>& Eshift, const double& tau)
+{
+  for (int iDet=0; iDet<walkers.nDets; iDet++) {
+    double parentE = walkers.dets[iDet].Energy(I1, I2, coreE);
+    for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+      double fac = tau * ( parentE - Eshift[iReplica] );
+      walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+    }
   }
 }
 
@@ -320,14 +376,19 @@ void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<d
 void printDataTableHeader()
 {
   if (commrank == 0) {
-    printf ("#  1. Iter");
-    printf ("     2. nDets");
-    printf ("  3. nSpawned");
+    cout << "#  1. Iter";
+    cout << "     2. nDets";
+    cout << "  3. nSpawned";
+
+    // This is the column label
+    int label;
+
+    // This loop is for properties printed on each replica
     for (int iReplica=0; iReplica<nreplicas; iReplica++) {
 
       for (int j=0; j<4; j++) {
         string header;
-        int label = 4*iReplica + j + 4;
+        label = 4*iReplica + j + 4;
         header.append(to_string(label));
 
         if (j==0) {
@@ -341,21 +402,26 @@ void printDataTableHeader()
         }
 
         header.append(to_string(iReplica+1));
-        stringstream fixed_width;
-        // fix the width of each column to 21 characters
-        fixed_width << setw(21) << header;
-        string fixed_width_str = fixed_width.str();
-        printf(fixed_width_str.c_str());
+        cout << right << setw(21) << header;
       }
 
     }
-    printf ("    8. Time\n");
+
+    if (nreplicas == 2) {
+      label += 1;
+      cout << right << setw(6) << label << ". Var_Energy_Num";
+      label += 1;
+      cout << right << setw(4) << label << ". Var_Energy_Denom";
+    }
+
+    label += 1;
+    cout << right << setw(5) << label << ". Time\n";
   }
 }
 
-void printDataTable(const int iter, const int& nDets, const int& nSpawned,
-                    const vector<double>& shift, const vector<double>& walkerPop, const vector<double>& EProj,
-                    const vector<double>& HFAmp, const double& iter_time)
+void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
+                    const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
+                    const double& EVarNumAll, const double& EVarDenomAll, const double& iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
@@ -366,6 +432,10 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned,
       printf ("%18.10f   ", walkerPop[iReplica]);
       printf ("%18.10f   ", EProj[iReplica]);
       printf ("%18.10f   ", HFAmp[iReplica]);
+    }
+    if (nreplicas == 2) {
+      printf ("%.12e    ", EVarNumAll);
+      printf ("%.12e   ", EVarDenomAll);
     }
     printf ("%8.4f\n", iter_time);
   }
