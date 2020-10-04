@@ -45,6 +45,10 @@ void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneIn
                    const twoInt& I2, double& coreE, const double& tau,
                    double& varEnergyNum, double& varEnergyDenom);
 
+void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+                       const twoInt& I2, double& coreE, const double& tau, const double& varEnergyNum,
+                       const double& varEnergyDenom, double& EN2All);
+
 void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
                           const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
                           vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot);
@@ -57,7 +61,8 @@ void printDataTableHeader();
 
 void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
                     const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                    const double& EVarNumAll, const double& EVarDenomAll, const double& iter_time);
+                    const double& EVarNumAll, const double& EVarDenomAll, const double& EN2All,
+                    const double& iter_time);
 
 void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
@@ -112,7 +117,7 @@ void runFCIQMC() {
   // ----- FCIQMC data -----
   double pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
-  double EVarNumAll = 0.0, EVarDenomAll = 0.0;
+  double EVarNumAll = 0.0, EVarDenomAll = 0.0, EN2All = 0.0;
   vector<double> walkerPop(nreplicas, 0.0);
   vector<double> EProj(nreplicas, 0.0);
   vector<double> HFAmp(nreplicas, 0.0);
@@ -160,7 +165,7 @@ void runFCIQMC() {
   walkerPopOldTot = walkerPopTot; 
   printDataTableHeader();
   printDataTable(0, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
-                 HFAmpTot, EVarNumAll, EVarDenomAll, iter_time);
+                 HFAmpTot, EVarNumAll, EVarDenomAll, 0.0, iter_time);
 
   // Main FCIQMC loop
   for (int iter = 1; iter <= schd.maxIter; iter++) {
@@ -220,10 +225,16 @@ void runFCIQMC() {
 
     }
 
-    // Perform annihilation
+    // Perform annihilation of spawned walkers
     spawn.communicate();
     spawn.compress();
-    calcVarEnergy(walkers, spawn, I1, I2, coreE,schd.tau, EVarNumAll, EVarDenomAll);
+
+    // Calculate energies involving multiple replicas
+    if (nreplicas == 2) {
+      calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll);
+      calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll, EN2All);
+    }
+
     performDeathAllWalkers(walkers, I1, I2, coreE, Eshift, schd.tau);
     spawn.mergeIntoMain(walkers, schd.minPop, schd.initiator);
 
@@ -236,7 +247,7 @@ void runFCIQMC() {
     updateShift(Eshift, varyShift, walkerPopTot, walkerPopOldTot, schd.targetPop,
                 schd.shiftDamping, schd.tau);
     printDataTable(iter, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
-                   HFAmpTot, EVarNumAll, EVarDenomAll, iter_time);
+                   HFAmpTot, EVarNumAll, EVarDenomAll, EN2All, iter_time);
 
     walkerPopOldTot = walkerPopTot;
 
@@ -317,6 +328,36 @@ void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneIn
 
   MPI_Allreduce(&varEnergyNum,   &varEnergyNumAll,   1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&varEnergyDenom, &varEnergyDenomAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+}
+
+void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+                       const twoInt& I2, double& coreE, const double& tau, const double& varEnergyNum,
+                       const double& varEnergyDenom, double& EN2All)
+{
+  double EN2 = 0.0;
+  double EVar = varEnergyNum / varEnergyDenom;
+
+  // Loop over all spawned walkers
+  for (int j=0; j<spawn.nDets; j++) {
+    // If this determinant is not already occupied, then we may need
+    // to cancel the spawning due to initiator rules:
+    if (walkers.ht.find(spawn.dets[j]) == walkers.ht.end()) {
+      // If the initiator flag is not set on both replicas, then both
+      // spawnings are about to be cancelled
+      bitset<nreplicas> initFlags(spawn.flags[j]);
+      if ( (!initFlags.test(0)) && (!initFlags.test(1)) ) {
+        double spawnAmp1 = spawn.amps[j][0];
+        double spawnAmp2 = spawn.amps[j][1];
+        Determinant fullDet(spawn.dets[j]);
+        double HDiag = fullDet.Energy(I1, I2, coreE);
+        EN2 += ( spawnAmp1 * spawnAmp2 ) / ( EVar - HDiag );
+      }
+    }
+  }
+
+  EN2 /= tau*tau;
+
+  MPI_Allreduce(&EN2, &EN2All, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 }
 
 void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
@@ -413,6 +454,8 @@ void printDataTableHeader()
       cout << right << setw(6) << label << ". Var_Energy_Num";
       label += 1;
       cout << right << setw(4) << label << ". Var_Energy_Denom";
+      label += 1;
+      cout << right << setw(5) << label << ". EN2_Numerator";
     }
 
     label += 1;
@@ -422,7 +465,7 @@ void printDataTableHeader()
 
 void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
                     const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                    const double& EVarNumAll, const double& EVarDenomAll, const double& iter_time)
+                    const double& EVarNumAll, const double& EVarDenomAll, const double& EN2All, const double& iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
@@ -437,6 +480,7 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned, const
     if (nreplicas == 2) {
       printf ("%.12e    ", EVarNumAll);
       printf ("%.12e   ", EVarDenomAll);
+      printf ("%.12e    ", EN2All);
     }
     printf ("%8.4f\n", iter_time);
   }
