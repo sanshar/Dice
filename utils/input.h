@@ -104,6 +104,7 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & nreplicas
       & nAttemptsEach
       & mainMemoryFac
       & spawnMemoryFac
@@ -284,6 +285,7 @@ public:
   double powerShift;
 
   //options for FCIQMC
+  int nreplicas;
   int nAttemptsEach;
   double shiftDamping;
   double mainMemoryFac;

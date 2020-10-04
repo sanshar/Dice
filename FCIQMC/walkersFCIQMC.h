@@ -63,6 +63,9 @@ class walkersFCIQMC {
   // The index of the final occupied determinant
   // Note that some determinants with lower indicies may be unoccupied
   int nDets;
+  // The number of replicas simulations being performed
+  // (i.e. the number of amplitudes to store per determinant)
+  int nreplicas;
   // The list of determinants. The total size is constant, and elements
   // beyond nDets are not filled, and so should not be used
   vector<Determinant> dets;
@@ -81,7 +84,7 @@ class walkersFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
-  walkersFCIQMC(int arrayLength, int DetLenLocal);
+  walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal);
   ~walkersFCIQMC();
 
   void stochasticRoundAll(const double& minPop);
@@ -96,7 +99,7 @@ class walkersFCIQMC {
     os << "Walker list:" << endl;
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
       os << iDet << "   " << walkers.dets[iDet];
-      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+      for (int iReplica=0; iReplica<walkers.nreplicas; iReplica++) {
         os << "   " << walkers.amps[iDet][iReplica];
       }
       os << endl;
@@ -108,6 +111,6 @@ class walkersFCIQMC {
     } 
     return os;
   }
-  
+
 };
 #endif

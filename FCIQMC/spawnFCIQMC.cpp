@@ -47,14 +47,15 @@ void apply_permutation(int const nDets, double** amps, double** sorted_amps, con
 {
   for (int iDet = 0; iDet<nDets; iDet++) {
     int sorted_ind = p.at(iDet);
-    for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       sorted_amps[iDet][iReplica] = amps[sorted_ind][iReplica];
     }
   }
 }
 
-spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
+spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
+  nreplicas = nreplicasLocal;
   dets.resize(spawnSize);
   detsTemp.resize(spawnSize);
   amps = allocateAmpsArray(spawnSize, nreplicas, 0.0);
@@ -306,7 +307,7 @@ void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& 
   for (int i = 0; i<nDets; i++) {
 
     // Used for testing if an initiator flag is set:
-    bitset<nreplicas> initFlags(flags[i]);
+    bitset<max_nreplicas> initFlags(flags[i]);
 
     // Is this spawned determinant already in the main list?
     if (walkers.ht.find(dets[i]) != walkers.ht.end()) {

@@ -31,6 +31,9 @@ class spawnFCIQMC {
  public:
   // The number of determinants spawned to
   int nDets;
+  // The number of replicas simulations being performed
+  // (i.e. the number of amplitudes to store per determinant)
+  int nreplicas;
   // The list of determinants spawned to
   vector<simpleDet> dets;
   // Temporary space for communication and sorting
@@ -57,7 +60,7 @@ class spawnFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
-  spawnFCIQMC(int spawnSize, int DetLenLocal);
+  spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal);
   ~spawnFCIQMC();
 
   // Send spawned walkers to their correct processor

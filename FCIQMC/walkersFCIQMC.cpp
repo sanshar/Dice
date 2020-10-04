@@ -34,8 +34,9 @@ void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
   }
 }
 
-walkersFCIQMC::walkersFCIQMC(int arrayLength, int DetLenLocal) {
+walkersFCIQMC::walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
+  nreplicas = nreplicasLocal;
   dets.resize(arrayLength);
   amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
   emptyDets.resize(arrayLength);
