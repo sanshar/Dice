@@ -458,7 +458,7 @@ void printDataTableHeader()
       cout << right << setw(4) << label << ". Var_Energy_Denom";
       if (schd.calcEN2) {
         label += 1;
-        cout << right << setw(5) << label << ". EN2_Numerator";
+        cout << right << setw(6) << label << ". EN2_Numerator";
       }
     }
 
@@ -485,7 +485,7 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned, const
       printf ("%.12e    ", EVarNumAll);
       printf ("%.12e   ", EVarDenomAll);
       if (schd.calcEN2) {
-        printf ("%.12e    ", EN2All);
+        printf ("%.12e   ", EN2All);
       }
     }
     printf ("%8.4f\n", iter_time);
