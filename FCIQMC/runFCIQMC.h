@@ -232,7 +232,9 @@ void runFCIQMC() {
     // Calculate energies involving multiple replicas
     if (schd.nreplicas == 2) {
       calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll);
-      calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll, EN2All);
+      if (schd.calcEN2) {
+        calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll, EN2All);
+      }
     }
 
     performDeathAllWalkers(walkers, I1, I2, coreE, Eshift, schd.tau);
@@ -454,8 +456,10 @@ void printDataTableHeader()
       cout << right << setw(6) << label << ". Var_Energy_Num";
       label += 1;
       cout << right << setw(4) << label << ". Var_Energy_Denom";
-      label += 1;
-      cout << right << setw(5) << label << ". EN2_Numerator";
+      if (schd.calcEN2) {
+        label += 1;
+        cout << right << setw(5) << label << ". EN2_Numerator";
+      }
     }
 
     label += 1;
@@ -480,7 +484,9 @@ void printDataTable(const int iter, const int& nDets, const int& nSpawned, const
     if (schd.nreplicas == 2) {
       printf ("%.12e    ", EVarNumAll);
       printf ("%.12e   ", EVarDenomAll);
-      printf ("%.12e    ", EN2All);
+      if (schd.calcEN2) {
+        printf ("%.12e    ", EN2All);
+      }
     }
     printf ("%8.4f\n", iter_time);
   }

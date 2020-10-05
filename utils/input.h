@@ -119,6 +119,7 @@ private:
       & uniformExGen
       & heatBathExGen
       & heatBathUniformSingExGen
+      & calcEN2
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -300,6 +301,7 @@ public:
   bool uniformExGen;
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
+  bool calcEN2;
 
   //options for rbm
   int numHidden;
