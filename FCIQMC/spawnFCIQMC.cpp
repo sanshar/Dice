@@ -43,12 +43,23 @@ void apply_permutation(int const nDets, const vector<T>& vec, vector<T>& sorted_
     [&](size_t i){ return vec[i]; });
 }
 
-spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
+void apply_permutation(int const nDets, double** amps, double** sorted_amps, const vector<size_t>& p)
+{
+  for (int iDet = 0; iDet<nDets; iDet++) {
+    int sorted_ind = p.at(iDet);
+    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      sorted_amps[iDet][iReplica] = amps[sorted_ind][iReplica];
+    }
+  }
+}
+
+spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
+  nreplicas = nreplicasLocal;
   dets.resize(spawnSize);
   detsTemp.resize(spawnSize);
-  amps.resize(spawnSize, 0.0);
-  ampsTemp.resize(spawnSize, 0.0);
+  amps = allocateAmpsArray(spawnSize, nreplicas, 0.0);
+  ampsTemp = allocateAmpsArray(spawnSize, nreplicas, 0.0);
 
   if (schd.initiator) {
     flags.resize(spawnSize, 0);
@@ -68,20 +79,36 @@ spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal) {
   DetLenMin = DetLenLocal;
 }
 
+spawnFCIQMC::~spawnFCIQMC() {
+  dets.clear();
+  detsTemp.clear();
+  deleteAmpsArray(amps);
+  deleteAmpsArray(ampsTemp);
+  flags.clear();
+  flagsTemp.clear();
+  firstProcSlots.clear();
+  currProcSlots.clear();
+}
+
 // Send spawned walkers to their correct processor
 void spawnFCIQMC::communicate() {
 #ifdef SERIAL
   nDets = currProcSlots[0] - firstProcSlots[0];
-  for (int i=0; i<nDets; i++) {
-    detsTemp[i] = dets[i];
-    ampsTemp[i] = amps[i];
-    if (schd.initiator) flagsTemp[i] = flags[i];
+  // Copy spawning data to temp arrays
+  for (int iDet=0; iDet<nDets; iDet++) {
+    detsTemp[iDet] = dets[iDet];
+    for (int iReplica = 0; iReplica<nreplicas; iReplica++) {
+      ampsTemp[iDet][iReplica] = amps[iDet][iReplica];
+    }
+    if (schd.initiator) flagsTemp[iDet] = flags[iDet];
   }
 #else
   int sendCounts[commsize], recvCounts[commsize];
   int sendDispls[commsize], recvDispls[commsize];
   int sendCountsDets[commsize], recvCountsDets[commsize];
   int sendDisplsDets[commsize], recvDisplsDets[commsize];
+  int sendCountsAmps[commsize], recvCountsAmps[commsize];
+  int sendDisplsAmps[commsize], recvDisplsAmps[commsize];
 
   // The number of determinants to send to each processor, and their
   // displacements in the spawning list
@@ -105,13 +132,18 @@ void spawnFCIQMC::communicate() {
     recvCountsDets[proc] = recvCounts[proc] * 2*DetLen;
     sendDisplsDets[proc] = sendDispls[proc] * 2*DetLen;
     recvDisplsDets[proc] = recvDispls[proc] * 2*DetLen;
+
+    sendCountsAmps[proc] = sendCounts[proc] * nreplicas;
+    recvCountsAmps[proc] = recvCounts[proc] * nreplicas;
+    sendDisplsAmps[proc] = sendDispls[proc] * nreplicas;
+    recvDisplsAmps[proc] = recvDispls[proc] * nreplicas;
   }
 
   MPI_Alltoallv(&dets.front(), sendCountsDets, sendDisplsDets, MPI_LONG,
                 &detsTemp.front(), recvCountsDets, recvDisplsDets, MPI_LONG, MPI_COMM_WORLD);
 
-  MPI_Alltoallv(&amps.front(), sendCounts, sendDispls, MPI_DOUBLE,
-                &ampsTemp.front(), recvCounts, recvDispls, MPI_DOUBLE, MPI_COMM_WORLD);
+  MPI_Alltoallv(&(amps[0][0]), sendCountsAmps, sendDisplsAmps, MPI_DOUBLE,
+                &(ampsTemp[0][0]), recvCountsAmps, recvDisplsAmps, MPI_DOUBLE, MPI_COMM_WORLD);
 
   if (schd.initiator) {
     MPI_Alltoallv(&flags.front(), sendCounts, sendDispls, MPI_INTEGER,
@@ -120,6 +152,7 @@ void spawnFCIQMC::communicate() {
 
   // The total number of determinants received
   nDets = recvDispls[commsize-1] + recvCounts[commsize-1];
+
 #endif
 }
 
@@ -144,8 +177,11 @@ void spawnFCIQMC::compress() {
     // Now the array is sorted, loop through and merge repeats
     while (true) {
       dets[j] = dets[k];
-      amps[j] = amps[k];
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        amps[j][iReplica] = amps[k][iReplica];
+      }
       if (schd.initiator) flags[j] = flags[k];
+
       while (true) {
         k += 1;
         if (k == nDets) {
@@ -153,7 +189,9 @@ void spawnFCIQMC::compress() {
           break;
         }
         if ( dets[j] == dets[k] ) {
-          amps[j] += amps[k];
+          for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+            amps[j][iReplica] += amps[k][iReplica];
+          }
 
           // If the parent of any of the child walkers on this
           // determinant was an initiator, then we want to allow the
@@ -181,36 +219,60 @@ void spawnFCIQMC::compress() {
 
 }
 
+// Wrapper function for merging the spawned list into the main list
+// Two versions are used for optimization
+void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop, bool initiator) {
+
+  if (initiator) {
+    mergeIntoMain_Initiator(walkers, minPop);
+  } else {
+    mergeIntoMain_NoInitiator(walkers, minPop);
+  }
+
+}
+
 // Move spawned walkers to the provided main walker list
-void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
+void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double& minPop) {
 
   int pos;
-  bool keepDet;
 
   for (int i = 0; i<nDets; i++) {
-    keepDet = true;
+
     // Is this spawned determinant already in the main list?
     if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
       int iDet = walkers.ht[dets[i]];
-      double oldAmp = walkers.amps[iDet];
-      double newAmp = amps[i] + oldAmp;
-      walkers.amps[iDet] = newAmp;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        double oldAmp = walkers.amps[iDet][iReplica];
+        // To ensure the various replicas are statistically independent,
+        // we should stochastically round the spawning on a determinant
+        // if it is currently unoccupied, and the new walker is below
+        // the minimum threshold (since this is what happens if all
+        // replicas are unoccupied):
+        if (abs(oldAmp) < 1.0e-12 && abs(amps[i][iReplica]) < minPop) {
+          bool keepDet;
+          stochastic_round(minPop, amps[i][iReplica], keepDet);
+        }
+        double newAmp = amps[i][iReplica] + oldAmp;
+        walkers.amps[iDet][iReplica] = newAmp;
+      }
     }
     else
     {
       // New determinant:
-
-      // If the initiator flag is unset, then none of the parents which
-      // spawned here were initiators. So cancel the spawn.
-      if (schd.initiator) {
-        if (flags[i] == 0) continue;
+      bool keepDetAny = false;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // If smaller than the smallest allowed population, then stochastically
+        // round up to the threshold or down to 0:
+        if (abs(amps[i][iReplica]) < minPop) {
+          bool keepDet;
+          stochastic_round(minPop, amps[i][iReplica], keepDet);
+          keepDetAny = keepDetAny || keepDet;
+        } else {
+          keepDetAny = true;
+        }
       }
 
-      if (abs(amps[i]) < minPop) {
-        stochastic_round(minPop, amps[i], keepDet);
-      }
-
-      if (keepDet) {
+      if (keepDetAny) {
         // Check if a determinant has become unoccupied in the existing list
         // If so, insert into that position
         // If not, then increase the walkers.ndets by 1 and add it on the end
@@ -224,7 +286,93 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop) {
           walkers.nDets += 1;
         }
         walkers.dets[pos] = Determinant(dets[i]);
-        walkers.amps[pos] = amps[i];
+
+        // Add in the new walker population
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          walkers.amps[pos][iReplica] = amps[i][iReplica];
+        }
+        walkers.ht[dets[i]] = pos;
+      }
+
+    }
+  }
+}
+
+// Move spawned walkers to the provided main walker list, while
+// applying the initiator criteria
+void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& minPop) {
+
+  int pos;
+
+  for (int i = 0; i<nDets; i++) {
+
+    // Used for testing if an initiator flag is set:
+    bitset<max_nreplicas> initFlags(flags[i]);
+
+    // Is this spawned determinant already in the main list?
+    if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
+      int iDet = walkers.ht[dets[i]];
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        double oldAmp = walkers.amps[iDet][iReplica];
+        // For the initiator criteria: only add in the spawned walker
+        // for this determinant if it is already on occupied on
+        // *this* particular replica, or the initiator flag is set
+        if ( initFlags.test(iReplica) || abs(oldAmp) > 1.0e-12 ) {
+          // To ensure the various replicas are statistically independent,
+          // we should stochastically round the spawning on a determinant
+          // if it is currently unoccupied, and the new walker is below
+          // the minimum threshold (since this is what happens if all
+          // replicas are unoccupied):
+          if (abs(oldAmp) < 1.0e-12 && abs(amps[i][iReplica]) < minPop) {
+            bool keepDet;
+            stochastic_round(minPop, amps[i][iReplica], keepDet);
+          }
+          double newAmp = amps[i][iReplica] + oldAmp;
+          walkers.amps[iDet][iReplica] = newAmp;
+        }
+      }
+    }
+    else
+    {
+      // New determinant:
+      bool keepDetAny = false;
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // Check if initiator flag is set for this replica:
+        if ( initFlags.test(iReplica) ) {
+          // If smaller than the smallest allowed population, then stochastically
+          // round up to the threshold or down to 0:
+          if (abs(amps[i][iReplica]) < minPop) {
+            bool keepDet;
+            stochastic_round(minPop, amps[i][iReplica], keepDet);
+            keepDetAny = keepDetAny || keepDet;
+          } else {
+            keepDetAny = true;
+          }
+        }
+      }
+
+      if (keepDetAny) {
+        // Check if a determinant has become unoccupied in the existing list
+        // If so, insert into that position
+        // If not, then increase the walkers.ndets by 1 and add it on the end
+        if (walkers.firstEmpty <= walkers.lastEmpty) {
+          pos = walkers.emptyDets[walkers.firstEmpty];
+          walkers.firstEmpty += 1;
+        }
+        else
+        {
+          pos = walkers.nDets;
+          walkers.nDets += 1;
+        }
+        walkers.dets[pos] = Determinant(dets[i]);
+
+        // Add in the new walker population, but only if allowed by the
+        // initiator criteria (i.e. if the flag is set):
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          if ( initFlags.test(iReplica) ) {
+            walkers.amps[pos][iReplica] = amps[i][iReplica];
+          }
+        }
         walkers.ht[dets[i]] = pos;
       }
 

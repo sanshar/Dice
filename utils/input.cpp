@@ -152,6 +152,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.nGeneration = input.get("sampling.nGeneration", 30.0);
     
     //FCIQMC options
+    schd.nreplicas = input.get("sampling.nReplicas", 1);
     schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
     schd.mainMemoryFac = input.get("sampling.mainMemoryFac", 5.0);
     schd.spawnMemoryFac = input.get("sampling.spawnMemoryFac", 5.0);
@@ -166,6 +167,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.uniformExGen = input.get("sampling.uniform", true);
     schd.heatBathExGen = input.get("sampling.heatBath", false);
     schd.heatBathUniformSingExGen = input.get("sampling.heatBathUniformSingles", false);
+    schd.calcEN2 = input.get("sampling.EN2", false);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 

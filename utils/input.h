@@ -104,6 +104,7 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & nreplicas
       & nAttemptsEach
       & mainMemoryFac
       & spawnMemoryFac
@@ -118,6 +119,7 @@ private:
       & uniformExGen
       & heatBathExGen
       & heatBathUniformSingExGen
+      & calcEN2
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -284,6 +286,7 @@ public:
   double powerShift;
 
   //options for FCIQMC
+  int nreplicas;
   int nAttemptsEach;
   double shiftDamping;
   double mainMemoryFac;
@@ -298,6 +301,7 @@ public:
   bool uniformExGen;
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
+  bool calcEN2;
 
   //options for rbm
   int numHidden;
