@@ -25,6 +25,8 @@
 #include "excitGen.h"
 #include "global.h"
 #include "input.h"
+
+#include "dataFCIQMC.h"
 #include "spawnFCIQMC.h"
 #include "Walker.h"
 #include "walkersFCIQMC.h"
@@ -49,9 +51,8 @@ void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const o
                        const twoInt& I2, double& coreE, const double& tau, const double& varEnergyNum,
                        const double& varEnergyDenom, double& EN2All);
 
-void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                          const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
-                          vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot);
+void communicateEstimates(dataFCIQMC& dat, const int& nDets, const int& nSpawnedDets, int& nDetsTot,
+                          int& nSpawnedDetsTot);
 
 void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
                  const vector<double>& walkerPopOld, const double& targetPop,
@@ -59,10 +60,8 @@ void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<d
 
 void printDataTableHeader();
 
-void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
-                    const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                    const double& EVarNumAll, const double& EVarDenomAll, const double& EN2All,
-                    const double& iter_time);
+void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, const int& nSpawned,
+                    const vector<double>& shift, const double& iter_time);
 
 void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
@@ -117,16 +116,6 @@ void runFCIQMC() {
   // ----- FCIQMC data -----
   double pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0;
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
-  double EVarNumAll = 0.0, EVarDenomAll = 0.0, EN2All = 0.0;
-  vector<double> walkerPop(schd.nreplicas, 0.0);
-  vector<double> EProj(schd.nreplicas, 0.0);
-  vector<double> HFAmp(schd.nreplicas, 0.0);
-
-  // Total quantities, after summing over processors
-  vector<double> walkerPopTot(schd.nreplicas, 0.0);
-  vector<double> walkerPopOldTot(schd.nreplicas, 0.0);
-  vector<double> EProjTot(schd.nreplicas, 0.0);
-  vector<double> HFAmpTot(schd.nreplicas, 0.0);
   int nDetsTot, nSpawnedDetsTot;
 
   int nAttempts = 0;
@@ -138,6 +127,8 @@ void runFCIQMC() {
   vector<double> Eshift(schd.nreplicas);
   double initEshift = HFDet.Energy(I1, I2, coreE) + schd.initialShift;
   std::fill(Eshift.begin(), Eshift.end(), initEshift);
+
+  dataFCIQMC dat(schd.nreplicas);
   // -----------------------
 
   if (commrank == 0) {
@@ -158,14 +149,12 @@ void runFCIQMC() {
   }
 
   // Get and print the initial stats
-  walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
-  communicateEstimates(walkerPop, EProj, HFAmp, walkers.nDets, spawn.nDets,
-                       walkerPopTot, EProjTot, HFAmpTot, nDetsTot, nSpawnedDetsTot);
-  calcVarEnergy(walkers, spawn, I1, I2, coreE,schd.tau, EVarNumAll, EVarDenomAll);
-  walkerPopOldTot = walkerPopTot; 
+  walkers.calcStats(dat, HFDet, I1, I2, coreE);
+  communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
+  calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+  dat.walkerPopOldTot = dat.walkerPopTot;
   printDataTableHeader();
-  printDataTable(0, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
-                 HFAmpTot, EVarNumAll, EVarDenomAll, 0.0, iter_time);
+  printDataTable(dat, 0, nDetsTot, nSpawnedDetsTot, Eshift, iter_time);
 
   // Main FCIQMC loop
   for (int iter = 1; iter <= schd.maxIter; iter++) {
@@ -176,9 +165,9 @@ void runFCIQMC() {
     spawn.nDets = 0;
     spawn.currProcSlots = spawn.firstProcSlots;
 
-    fill(walkerPop.begin(), walkerPop.end(), 0.0);
-    fill(EProj.begin(), EProj.end(), 0.0);
-    fill(HFAmp.begin(), HFAmp.end(), 0.0);
+    fill(dat.walkerPop.begin(), dat.walkerPop.end(), 0.0);
+    fill(dat.EProj.begin(), dat.EProj.end(), 0.0);
+    fill(dat.HFAmp.begin(), dat.HFAmp.end(), 0.0);
 
     //cout << walkers << endl;
 
@@ -231,9 +220,10 @@ void runFCIQMC() {
 
     // Calculate energies involving multiple replicas
     if (schd.nreplicas == 2) {
-      calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll);
+      calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
       if (schd.calcEN2) {
-        calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau, EVarNumAll, EVarDenomAll, EN2All);
+        calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau,
+                          dat.EVarNumAll, dat.EVarDenomAll, dat.EN2All);
       }
     }
 
@@ -243,22 +233,20 @@ void runFCIQMC() {
     // Stochastic rounding of small walkers
     walkers.stochasticRoundAll(schd.minPop);
 
-    walkers.calcStats(HFDet, walkerPop, EProj, HFAmp, I1, I2, coreE);
-    communicateEstimates(walkerPop, EProj, HFAmp, walkers.nDets, spawn.nDets,
-                         walkerPopTot, EProjTot, HFAmpTot, nDetsTot, nSpawnedDetsTot);
-    updateShift(Eshift, varyShift, walkerPopTot, walkerPopOldTot, schd.targetPop,
+    walkers.calcStats(dat, HFDet, I1, I2, coreE);
+    communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
+    updateShift(Eshift, varyShift, dat.walkerPopTot, dat.walkerPopOldTot, schd.targetPop,
                 schd.shiftDamping, schd.tau);
-    printDataTable(iter, nDetsTot, nSpawnedDetsTot, Eshift, walkerPopTot, EProjTot,
-                   HFAmpTot, EVarNumAll, EVarDenomAll, EN2All, iter_time);
+    printDataTable(dat, iter, nDetsTot, nSpawnedDetsTot, Eshift, iter_time);
 
-    walkerPopOldTot = walkerPopTot;
+    dat.walkerPopOldTot = dat.walkerPopTot;
 
     time_end = getTime();
     iter_time = time_end - time_start;
   }
 
   total_time = getTime() - startofCalc;
-  printFinalStats(walkerPop, walkers.nDets, spawn.nDets, total_time);
+  printFinalStats(dat.walkerPop, walkers.nDets, spawn.nDets, total_time);
 
 }
 
@@ -384,22 +372,21 @@ void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
   }
 }
 
-void communicateEstimates(const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                          const int& nDets, const int& nSpawnedDets, vector<double>& walkerPopTot,
-                          vector<double>& EProjTot, vector<double>& HFAmpTot, int& nDetsTot, int& nSpawnedDetsTot)
+void communicateEstimates(dataFCIQMC& dat, const int& nDets, const int& nSpawnedDets,
+                          int& nDetsTot, int& nSpawnedDetsTot)
 {
 #ifdef SERIAL
-  walkerPopTot    = walkerPop;
-  EProjTot        = EProj;
-  HFAmpTot        = HFAmp;
-  nDetsTot        = nDets;
-  nSpawnedDetsTot = nSpawnedDets;
+  dat.walkerPopTot = dat.walkerPop;
+  dat.EProjTot     = dat.EProj;
+  dat.HFAmpTot     = dat.HFAmp;
+  nDetsTot         = nDets;
+  nSpawnedDetsTot  = nSpawnedDets;
 #else
-  MPI_Allreduce(&walkerPop.front(),  &walkerPopTot.front(),  schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&EProj.front(),      &EProjTot.front(),      schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&HFAmp.front(),      &HFAmpTot.front(),      schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nDets,              &nDetsTot,              1,          MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nSpawnedDets,       &nSpawnedDetsTot,       1,          MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.walkerPop.front(), &dat.walkerPopTot.front(), schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.EProj.front(),     &dat.EProjTot.front(),     schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.HFAmp.front(),     &dat.HFAmpTot.front(),     schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&nDets,                 &nDetsTot,                 1,               MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&nSpawnedDets,          &nSpawnedDetsTot,          1,               MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
 #endif
 }
 
@@ -467,27 +454,29 @@ void printDataTableHeader()
   }
 }
 
-void printDataTable(const int iter, const int& nDets, const int& nSpawned, const vector<double>& shift,
-                    const vector<double>& walkerPop, const vector<double>& EProj, const vector<double>& HFAmp,
-                    const double& EVarNumAll, const double& EVarDenomAll, const double& EN2All, const double& iter_time)
+void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, const int& nSpawned,
+                    const vector<double>& shift, const double& iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
     printf ("%10d   ", nDets);
     printf ("%10d   ", nSpawned);
+
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       printf ("%18.10f   ", shift[iReplica]);
-      printf ("%18.10f   ", walkerPop[iReplica]);
-      printf ("%18.10f   ", EProj[iReplica]);
-      printf ("%18.10f   ", HFAmp[iReplica]);
+      printf ("%18.10f   ", dat.walkerPopTot[iReplica]);
+      printf ("%18.10f   ", dat.EProjTot[iReplica]);
+      printf ("%18.10f   ", dat.HFAmpTot[iReplica]);
     }
+
     if (schd.nreplicas == 2) {
-      printf ("%.12e    ", EVarNumAll);
-      printf ("%.12e   ", EVarDenomAll);
+      printf ("%.12e    ", dat.EVarNumAll);
+      printf ("%.12e   ", dat.EVarDenomAll);
       if (schd.calcEN2) {
-        printf ("%.12e   ", EN2All);
+        printf ("%.12e   ", dat.EN2All);
       }
     }
+
     printf ("%8.4f\n", iter_time);
   }
 }

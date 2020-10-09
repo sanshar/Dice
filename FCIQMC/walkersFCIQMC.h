@@ -23,6 +23,7 @@
 #include <vector>
 #include <unordered_map>
 #include "Determinants.h"
+#include "dataFCIQMC.h"
 
 class Determinant;
 
@@ -91,8 +92,7 @@ class walkersFCIQMC {
 
   bool allUnoccupied(const int i) const;
 
-  void calcStats(Determinant& HFDet, vector<double>& walkerPop, vector<double>& EProj,
-                 vector<double>& HFAmp, oneInt& I1, twoInt& I2, double& coreE);
+  void calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE);
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {

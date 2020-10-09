@@ -102,13 +102,12 @@ void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
   }
 }
 
-void walkersFCIQMC::calcStats(Determinant& HFDet, vector<double>& walkerPop, vector<double>& EProj,
-                              vector<double>& HFAmp, oneInt& I1, twoInt& I2, double& coreE) {
+void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE) {
 
   int excitLevel = 0;
-  std::fill(walkerPop.begin(), walkerPop.end(), 0.0);
-  std::fill(EProj.begin(), EProj.end(), 0.0);
-  std::fill(HFAmp.begin(), HFAmp.end(), 0.0);
+  std::fill(dat.walkerPop.begin(), dat.walkerPop.end(), 0.0);
+  std::fill(dat.EProj.begin(),     dat.EProj.end(), 0.0);
+  std::fill(dat.HFAmp.begin(),     dat.HFAmp.end(), 0.0);
 
   for (int iDet=0; iDet<nDets; iDet++) {
 
@@ -121,13 +120,13 @@ void walkersFCIQMC::calcStats(Determinant& HFDet, vector<double>& walkerPop, vec
         // hash table entry *and* the amplitude must be non-zero
         if ( abs(amps[iDet][iReplica]) > 1.0e-12 ) {
 
-          walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
+          dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
 
           if (excitLevel == 0) {
-            HFAmp.at(iReplica) = amps[iDet][iReplica];
-            EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE);
+            dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE);
           } else if (excitLevel <= 2) {
-            EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE);
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE);
           }
         }
 
