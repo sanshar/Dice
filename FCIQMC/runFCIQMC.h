@@ -61,7 +61,7 @@ void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<d
 void printDataTableHeader();
 
 void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, const int& nSpawned,
-                    const vector<double>& shift, const double& iter_time);
+                    const double& iter_time);
 
 void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
@@ -114,21 +114,17 @@ void runFCIQMC() {
   }
 
   // ----- FCIQMC data -----
-  dataFCIQMC dat(schd.nreplicas);
+  double HFEnergy = HFDet.Energy(I1, I2, coreE);
+  double initEshift = HFEnergy + schd.initialShift;
+
+  dataFCIQMC dat(schd.nreplicas, initEshift);
 
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
   int nDetsTot, nSpawnedDetsTot;
-
-  vector<bool> varyShift(schd.nreplicas);
-  std::fill(varyShift.begin(), varyShift.end(), false);
-
-  vector<double> Eshift(schd.nreplicas);
-  double initEshift = HFDet.Energy(I1, I2, coreE) + schd.initialShift;
-  std::fill(Eshift.begin(), Eshift.end(), initEshift);
   // -----------------------
 
   if (commrank == 0) {
-    cout << "Hartree--Fock energy: " << HFDet.Energy(I1, I2, coreE) << endl << endl;
+    cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
   }
 
   heatBathFCIQMC hb;
@@ -150,7 +146,7 @@ void runFCIQMC() {
   calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
   dat.walkerPopOldTot = dat.walkerPopTot;
   printDataTableHeader();
-  printDataTable(dat, 0, nDetsTot, nSpawnedDetsTot, Eshift, iter_time);
+  printDataTable(dat, 0, nDetsTot, nSpawnedDetsTot, iter_time);
 
   // Main FCIQMC loop
   for (int iter = 1; iter <= schd.maxIter; iter++) {
@@ -226,7 +222,7 @@ void runFCIQMC() {
       }
     }
 
-    performDeathAllWalkers(walkers, I1, I2, coreE, Eshift, schd.tau);
+    performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
     spawn.mergeIntoMain(walkers, schd.minPop, schd.initiator);
 
     // Stochastic rounding of small walkers
@@ -234,9 +230,9 @@ void runFCIQMC() {
 
     walkers.calcStats(dat, HFDet, I1, I2, coreE);
     communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
-    updateShift(Eshift, varyShift, dat.walkerPopTot, dat.walkerPopOldTot, schd.targetPop,
-                schd.shiftDamping, schd.tau);
-    printDataTable(dat, iter, nDetsTot, nSpawnedDetsTot, Eshift, iter_time);
+    updateShift(dat.Eshift, dat.varyShift, dat.walkerPopTot, dat.walkerPopOldTot,
+                schd.targetPop, schd.shiftDamping, schd.tau);
+    printDataTable(dat, iter, nDetsTot, nSpawnedDetsTot, iter_time);
 
     dat.walkerPopOldTot = dat.walkerPopTot;
 
@@ -454,7 +450,7 @@ void printDataTableHeader()
 }
 
 void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, const int& nSpawned,
-                    const vector<double>& shift, const double& iter_time)
+                    const double& iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
@@ -462,7 +458,7 @@ void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, con
     printf ("%10d   ", nSpawned);
 
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-      printf ("%18.10f   ", shift[iReplica]);
+      printf ("%18.10f   ", dat.Eshift[iReplica]);
       printf ("%18.10f   ", dat.walkerPopTot[iReplica]);
       printf ("%18.10f   ", dat.EProjTot[iReplica]);
       printf ("%18.10f   ", dat.HFAmpTot[iReplica]);

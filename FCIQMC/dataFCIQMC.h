@@ -11,6 +11,11 @@ class dataFCIQMC {
     // The walker population on the HF determinant
     vector<double> HFAmp;
 
+    // The shift to the diagonal of the Hamiltonian
+    vector<double> Eshift;
+    // True is the shift has started to vary (left the constant phase)
+    vector<bool> varyShift;
+
     // All of the following quantities are summed over all processes:
 
     // The total walker population
@@ -31,11 +36,14 @@ class dataFCIQMC {
     double EN2All;
 
 
-    dataFCIQMC(int nreplicas) {
+    dataFCIQMC(int nreplicas, double initEshift) {
 
       walkerPop.resize(nreplicas, 0.0);
       EProj.resize(nreplicas, 0.0);
       HFAmp.resize(nreplicas, 0.0);
+
+      Eshift.resize(nreplicas, initEshift);
+      varyShift.resize(nreplicas, false);
 
       walkerPopTot.resize(nreplicas, 0.0);
       walkerPopOldTot.resize(nreplicas, 0.0);
