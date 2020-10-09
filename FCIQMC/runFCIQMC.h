@@ -114,12 +114,10 @@ void runFCIQMC() {
   }
 
   // ----- FCIQMC data -----
-  double pgen = 0.0, pgen2 = 0.0, parentAmp = 0.0;
+  dataFCIQMC dat(schd.nreplicas);
+
   double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
   int nDetsTot, nSpawnedDetsTot;
-
-  int nAttempts = 0;
-  Determinant childDet, childDet2;
 
   vector<bool> varyShift(schd.nreplicas);
   std::fill(varyShift.begin(), varyShift.end(), false);
@@ -127,8 +125,6 @@ void runFCIQMC() {
   vector<double> Eshift(schd.nreplicas);
   double initEshift = HFDet.Energy(I1, I2, coreE) + schd.initialShift;
   std::fill(Eshift.begin(), Eshift.end(), initEshift);
-
-  dataFCIQMC dat(schd.nreplicas);
   // -----------------------
 
   if (commrank == 0) {
@@ -192,11 +188,14 @@ void runFCIQMC() {
         }
 
         // Number of spawnings to attempt
-        nAttempts = max(1.0, round(abs(walkers.amps[iDet][iReplica]) * schd.nAttemptsEach));
-        parentAmp = walkers.amps[iDet][iReplica] * schd.nAttemptsEach / nAttempts;
+        int nAttempts = max(1.0, round(abs(walkers.amps[iDet][iReplica]) * schd.nAttemptsEach));
+        double parentAmp = walkers.amps[iDet][iReplica] * schd.nAttemptsEach / nAttempts;
 
         // Perform one spawning attempt for each 'walker' of weight parentAmp
         for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
+          double pgen = 0.0, pgen2 = 0.0;
+          Determinant childDet, childDet2;
+
           generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
 
           // pgen=0.0 is set when a null excitation is returned.
