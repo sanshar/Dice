@@ -35,6 +35,12 @@ void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
 }
 
 walkersFCIQMC::walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal) {
+  init(arrayLength, DetLenLocal, nreplicasLocal);
+}
+
+// Define a init function, so that a walkersFCIQMC object can be
+// initialized after it is constructed, useful in some cases
+void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
   nreplicas = nreplicasLocal;
   dets.resize(arrayLength);

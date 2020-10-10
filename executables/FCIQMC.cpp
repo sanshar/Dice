@@ -55,7 +55,12 @@ int main(int argc, char *argv[])
 
   readIntegralsAndInitializeDeterminantStaticVariables("FCIDUMP");
 
-  runFCIQMC();
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+  int nel = nalpha + nbeta;
+
+  runFCIQMC(norbs, nel, nalpha, nbeta);
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

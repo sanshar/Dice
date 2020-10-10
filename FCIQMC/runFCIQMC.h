@@ -67,20 +67,16 @@ void printFinalStats(const vector<double>& walkerPop, const int& nDets,
                      const int& nSpawnDets, const double& total_time);
 
 
-void runFCIQMC() {
+void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta, Determinant& HFDet,
+                double& HFEnergy, heatBathFCIQMC& hb, walkersFCIQMC& walkers, spawnFCIQMC& spawn) {
 
-  int norbs = Determinant::norbs;
-  int nalpha = Determinant::nalpha;
-  int nbeta = Determinant::nbeta;
-  int nel = nalpha + nbeta;
 
-  // The number of 64-bit integers required to represent (the alpha or beta
-  // part of) a determinant
+  // The number of 64-bit integers required to represent (the alpha
+  // or beta part of) a determinant
   int DetLenAlpha = (nalpha-1)/64 + 1;
   int DetLenBeta = (nalpha-1)/64 + 1;
   int DetLenMin = max(DetLenAlpha, DetLenBeta);
 
-  Determinant HFDet;
   for (int i = 0; i < nalpha; i++)
     HFDet.setoccA(i, true);
   for (int i = 0; i < nbeta; i++)
@@ -92,8 +88,9 @@ void runFCIQMC() {
   int walkersSize = schd.targetPop * schd.mainMemoryFac / commsize;
   int spawnSize = schd.targetPop * schd.spawnMemoryFac / commsize;
 
-  walkersFCIQMC walkers(walkersSize, DetLenMin, schd.nreplicas);
-  spawnFCIQMC spawn(spawnSize, DetLenMin, schd.nreplicas);
+  // Resize and initialize the walker and spawned walker arrays
+  walkers.init(walkersSize, DetLenMin, schd.nreplicas);
+  spawn.init(spawnSize, DetLenMin, schd.nreplicas);
 
   if (boost::iequals(schd.determinantFile, ""))
   {
@@ -113,21 +110,11 @@ void runFCIQMC() {
     //readDeterminants(schd.determinantFile, walkers.dets, walkers.amps);
   }
 
-  // ----- FCIQMC data -----
-  double HFEnergy = HFDet.Energy(I1, I2, coreE);
-  double initEshift = HFEnergy + schd.initialShift;
-
-  dataFCIQMC dat(schd.nreplicas, initEshift);
-
-  double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
-  int nDetsTot, nSpawnedDetsTot;
-  // -----------------------
-
+  HFEnergy = HFDet.Energy(I1, I2, coreE);
   if (commrank == 0) {
     cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
   }
 
-  heatBathFCIQMC hb;
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
     if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
     hb.createArrays(norbs, I2);
@@ -140,11 +127,35 @@ void runFCIQMC() {
     schd.uniformExGen = false;
   }
 
-  // Get and print the initial stats
+}
+
+void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta) {
+
+  // Objects needed for the FCIQMC simulation, which will be
+  // initialized in initFCIQMC
+  double HFEnergy;
+  Determinant HFDet;
+  heatBathFCIQMC hb;
+  walkersFCIQMC walkers;
+  spawnFCIQMC spawn;
+
+  initFCIQMC(norbs, nel, nalpha, nbeta, HFDet, HFEnergy, hb, walkers, spawn);
+
+  // ----- FCIQMC data -----
+  double initEshift = HFEnergy + schd.initialShift;
+  dataFCIQMC dat(schd.nreplicas, initEshift);
+
+  double time_start = 0.0, time_end = 0.0, iter_time = 0.0, total_time = 0.0;
+  int nDetsTot, nSpawnedDetsTot;
+  // -----------------------
+
+  // Get the initial stats
   walkers.calcStats(dat, HFDet, I1, I2, coreE);
   communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
   calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
   dat.walkerPopOldTot = dat.walkerPopTot;
+
+  // Print the initial stats
   printDataTableHeader();
   printDataTable(dat, 0, nDetsTot, nSpawnedDetsTot, iter_time);
 

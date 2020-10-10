@@ -85,8 +85,13 @@ class walkersFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
+  walkersFCIQMC() {};
   walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal);
   ~walkersFCIQMC();
+
+  // Function to initialize walkersFCIQMC. Useful if the object is created
+  // with the default constructor and needs to be initialized later
+  void init(int arrayLength, int DetLenLocal, int nreplicasLocal);
 
   void stochasticRoundAll(const double& minPop);
 

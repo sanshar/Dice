@@ -54,6 +54,10 @@ void apply_permutation(int const nDets, double** amps, double** sorted_amps, con
 }
 
 spawnFCIQMC::spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal) {
+  init(spawnSize, DetLenLocal, nreplicasLocal);
+}
+
+void spawnFCIQMC::init(int spawnSize, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
   nreplicas = nreplicasLocal;
   dets.resize(spawnSize);

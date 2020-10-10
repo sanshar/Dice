@@ -60,8 +60,13 @@ class spawnFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
+  spawnFCIQMC() {};
   spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal);
   ~spawnFCIQMC();
+
+  // Function to initialize spawnFCIQMC. Useful if the object is created
+  // with the default constructor and needs to be initialized later
+  void init(int spawnSize, int DetLenLocal, int nreplicasLocal);
 
   // Send spawned walkers to their correct processor
   void communicate();
