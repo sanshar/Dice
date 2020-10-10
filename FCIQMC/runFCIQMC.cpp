@@ -7,9 +7,12 @@
 
 #include "runFCIQMC.h"
 
-void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta, Determinant& HFDet,
-                double& HFEnergy, heatBathFCIQMC& hb, walkersFCIQMC& walkers, spawnFCIQMC& spawn) {
-
+// Perform initialization of variables needed for the runFCIQMC routine.
+// In particular the Hartree--Fock determinant and energy, the heat bath
+// integrals (hb), and the walker and spawned walker objects.
+void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta,
+                Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
+                walkersFCIQMC& walkers, spawnFCIQMC& spawn) {
 
   // The number of 64-bit integers required to represent (the alpha
   // or beta part of) a determinant
@@ -64,6 +67,7 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
 
 }
 
+// Perform the main FCIQMC loop
 void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta) {
 
   // Objects needed for the FCIQMC simulation, which will be
@@ -231,6 +235,8 @@ void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC&
   }
 }
 
+// Calculate and return the numerator and denominator of the variational
+// energy estimator. This can be used in replicas FCIQMC simulations.
 void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
                    const twoInt& I2, double& coreE, const double& tau,
                    double& varEnergyNumAll, double& varEnergyDenomAll)
@@ -261,6 +267,8 @@ void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneIn
   MPI_Allreduce(&varEnergyDenom, &varEnergyDenomAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 }
 
+// Calculate the numerator of the second-order Epstein-Nesbet correction
+// to the energy. This is for use in replica initiator simulations.
 void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
                        const twoInt& I2, double& coreE, const double& tau, const double& varEnergyNum,
                        const double& varEnergyDenom, double& EN2All)
@@ -291,6 +299,8 @@ void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const o
   MPI_Allreduce(&EN2, &EN2All, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 }
 
+// Perform the death step for the determinant at position iDet in
+// the walkers.det array
 void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau)
 {
@@ -301,6 +311,8 @@ void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I
   }
 }
 
+// Perform death for *all* walkers in the walker array, held in
+// walkers.dets
 void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau)
 {
@@ -313,6 +325,8 @@ void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
   }
 }
 
+// For values which are calculated on each MPI process, sum these
+// quantities over all processes to obtain the final total values.
 void communicateEstimates(dataFCIQMC& dat, const int& nDets, const int& nSpawnedDets,
                           int& nDetsTot, int& nSpawnedDetsTot)
 {
@@ -331,6 +345,9 @@ void communicateEstimates(dataFCIQMC& dat, const int& nDets, const int& nSpawned
 #endif
 }
 
+// If the shift has started to vary (if varyShift is true) then update
+// the shift estimator here. If not, then check if we should now start to
+// vary the shift (if the walker population is above the target).
 void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
                  const vector<double>& walkerPopOld, const double& targetPop,
                  const double& shiftDamping, const double& tau)
@@ -346,6 +363,7 @@ void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<d
   }
 }
 
+// Print the column labels for the main data table
 void printDataTableHeader()
 {
   if (commrank == 0) {
