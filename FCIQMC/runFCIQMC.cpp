@@ -32,22 +32,17 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
   walkers.init(walkersSize, DetLenMin, schd.nreplicas);
   spawn.init(spawnSize, DetLenMin, schd.nreplicas);
 
-  if (boost::iequals(schd.determinantFile, ""))
-  {
-    if (HFDetProc == commrank) {
-      walkers.dets[0] = HFDet;
-      walkers.ht[HFDet] = 0;
-      // Set the population on the reference
-      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-        walkers.amps[0][iReplica] = schd.initialPop;
-      }
-      // The number of determinants in the walker list
-      walkers.nDets = 1;
+  // Set up the walker list to contain a single walker on the HF
+  // determinant
+  if (HFDetProc == commrank) {
+    walkers.dets[0] = HFDet;
+    walkers.ht[HFDet] = 0;
+    // Set the population on the reference
+    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      walkers.amps[0][iReplica] = schd.initialPop;
     }
-  }
-  else
-  {
-    //readDeterminants(schd.determinantFile, walkers.dets, walkers.amps);
+    // The number of determinants in the walker list
+    walkers.nDets = 1;
   }
 
   HFEnergy = HFDet.Energy(I1, I2, coreE);
