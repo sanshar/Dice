@@ -23,6 +23,9 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+
+#include "Determinants.h"
+#include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
 #include "runFCIQMC.h"
