@@ -17,6 +17,9 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef excitFCIQMC_HEADER_H
+#define excitFCIQMC_HEADER_H
+
 // Map two integers to a single integer by a one-to-one mapping,
 // using the triangular indexing approach
 inline int triInd(const int& p, const int& q)
@@ -104,3 +107,5 @@ void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
                      const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
                      const bool& attemptSingleExcit);
+
+#endif

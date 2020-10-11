@@ -23,6 +23,7 @@
 #include <vector>
 #include <unordered_map>
 #include "Determinants.h"
+#include "dataFCIQMC.h"
 
 class Determinant;
 
@@ -84,15 +85,19 @@ class walkersFCIQMC {
   // Note, this is different to DetLen in global.h
   int DetLenMin;
 
+  walkersFCIQMC() {};
   walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal);
   ~walkersFCIQMC();
+
+  // Function to initialize walkersFCIQMC. Useful if the object is created
+  // with the default constructor and needs to be initialized later
+  void init(int arrayLength, int DetLenLocal, int nreplicasLocal);
 
   void stochasticRoundAll(const double& minPop);
 
   bool allUnoccupied(const int i) const;
 
-  void calcStats(Determinant& HFDet, vector<double>& walkerPop, vector<double>& EProj,
-                 vector<double>& HFAmp, oneInt& I1, twoInt& I2, double& coreE);
+  void calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE);
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {
