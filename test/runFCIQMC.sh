@@ -59,6 +59,16 @@ then
     ../../clean.sh
 fi
 
+cd $here/FCIQMC/Ne_initiator_en2
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator_en2\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc_replica' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
 cd $here/FCIQMC/water_vdz_hb
 ../../clean.sh
 printf "...running FCIQMC/water_vdz_hb\n"
