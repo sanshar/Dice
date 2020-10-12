@@ -341,6 +341,7 @@ int main(int argc, char* argv[]) {
     if (schd.cdfciIter > 0) {
       auto zero = complex<double>(0.0, 0.0);
       std::pair<complex<double>, double> ene {zero, 0.0};
+      wfn = cdfci::precondition(ene, Dets, ci, E0, I1, I2, coreE, schd.z_threshold, schd.sampleNewDets);
       cdfci::cdfciSolver(wfn, Dets[0], schd, ene, I1, I2, I2HBSHM, irrep, coreE, E0, nelec, schd.z_threshold, schd.sampleNewDets);
     }
     Determinant* SHMDets;

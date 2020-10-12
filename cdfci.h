@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <array>
 #include <set>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include "global.h"
 #include "Determinants.h"
 #include <iomanip>
@@ -11,6 +13,7 @@
 #include "input.h"
 
 using namespace std;
+using namespace Eigen;
 //using namespace Eigen;
 
 class Determinant;
@@ -42,9 +45,10 @@ namespace cdfci {
   set<Determinant> sampleExtraEntry(hash_det& wfn, int nelec);
   void cdfciSolver(hash_det& wfn,  Determinant& hf, schedule& schd, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double> & E0, int nelec, double thresh=1e10, bool sample=false);
   void cyclicSolver(hash_det& wfn,  vector<Determinant>& Dets, schedule& schd, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double> & E0, int nelec, double thresh=1e10, bool sample=false);
-  value_type CoordinatePickGcdGrad(vector<value_type> sub_dets, double norm);
-  dcomplex CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex, double> & ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE);
+  value_type CoordinatePickGcdGrad(vector<value_type> sub_dets, double norm, bool real_part);
+  dcomplex CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex, double> & ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE, bool real_part);
   vector<value_type> getSubDets(value_type& det, hash_det& wfn, int nelec, bool sample=false);
   void civectorUpdate(vector<value_type> &column, hash_det& wfn, dcomplex dx, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
+  hash_det precondition(pair<dcomplex, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
 }
 #endif

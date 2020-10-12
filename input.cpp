@@ -107,6 +107,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.cdfciIter = 0;
   schd.report_interval = 1000;
   schd.z_threshold = 0.0;
+  schd.max_determinants = 10000000;
   schd.sampleNewDets = false;
   schd.factor = 1.0;
   
@@ -318,7 +319,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     else if (boost::iequals(ArgName, "cdfciSample"))
       schd.sampleNewDets = true;
     else if (boost::iequals(ArgName, "max_determinants"))
-      schd.max_determinants = 10000000;
+      schd.max_determinants = atoi(tok[1].c_str());
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
