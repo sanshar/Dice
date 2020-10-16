@@ -109,6 +109,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.z_threshold = 0.0;
   schd.max_determinants = 10000000;
   schd.sampleNewDets = false;
+  schd.precondition = false;
   schd.factor = 1.0;
   
   while (dump.good()) {
@@ -316,8 +317,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.report_interval = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "z_threshold"))
       schd.z_threshold = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "cdfciSample"))
+    else if (boost::iequals(ArgName, "cdfci_sample"))
       schd.sampleNewDets = true;
+    else if (boost::iequals(ArgName, "cdfci_precondition"))
+      schd.precondition = true;
     else if (boost::iequals(ArgName, "max_determinants"))
       schd.max_determinants = atoi(tok[1].c_str());
     else {

@@ -29,9 +29,9 @@ struct std::hash<Determinant> {
   const std::size_t operator()(const Determinant& det) const {
     //Determinant this_det = det;
     //return det.repr[0];
-    return det.repr[0] + det.repr[1]*179426549;
+    //return det.repr[0] + det.repr[1]*179426549;
     //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577;
-    //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
+    return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
   }
 };
 

@@ -1130,7 +1130,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     mpi::broadcast(world, DetsSize, 0);
 #endif
     //************
-    if (commrank == 0 && schd.DavidsonType == DIRECT)
+    if (commrank == 0 && (schd.DavidsonType == DIRECT || schd.outputlevel == -1))
       printf("New size of determinant space %8i\n", DetsSize);
 
     //*************

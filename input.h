@@ -163,6 +163,7 @@ public:
   int report_interval;
   int max_determinants;
   bool sampleNewDets;
+  bool precondition;
   double factor;
 };
 

@@ -312,7 +312,12 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dco
 
     auto num_iter = schd.cdfciIter;
     std::cout << "start optimization" << std::endl;
-    std::cout << "energy " << prev_ene << " norm: " << ene.second << std::endl;;
+    std::cout << "energy " << prev_ene << " norm: " << ene.second << std::endl;
+    if (std::abs(prev_ene) < 1e-10) {
+      auto dx = -1.0*std::sqrt(std::abs(hf.Energy(I1, I2, coreE)));
+      auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
+      cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
+    }
     for(int k=0; k<num_iter; k++) {
       auto dx = cdfci::CoordinateUpdate(thisDet, wfn, ene, E0, I1, I2, coreE, real_part);
       auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
@@ -347,7 +352,7 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dco
         // iter, energy, time, variation space, dx
         std::cout << std::setw(10) << k <<  std::setw(20) <<std::setprecision(16) << defaultfloat << curr_ene+coreEbkp << std::setw(12) << setprecision(4) << imag_ene ;
         std::cout << std::setw(12) << std::setprecision(6) << dx << std::setw(10) << wfn.size() << std::setw(10) << std::setprecision(2) << getTime()-startofCalc << std::endl;
-        if (std::abs(curr_ene-prev_ene) < schd.dE && k > 0) {
+        if (std::abs(curr_ene-prev_ene)/schd.report_interval < schd.dE && k > 0) {
           break;
         }
         prev_ene = curr_ene;
