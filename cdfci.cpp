@@ -47,13 +47,6 @@ vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec, bo
     //if (wfn.find(di) != wfn.end()) {
     value_type val = std::make_pair(di, std::array<dcomplex, 2> {0.0, 0.0});
     result.push_back(val);
-    //}
-    /*else {
-       if (sample == true) {
-        value_type val = std::make_pair(di, std::array<double, 2> {0.0, 0.0});
-        result.push_back(val); 
-      }
-    }*/
   }
 
   //get all existing double excitations
@@ -72,16 +65,8 @@ vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec, bo
       di.setocc(b, true);
       di.setocc(I, false);
       di.setocc(J, false);
-      //if (wfn.find(di)!=wfn.end()){
       value_type val = std::make_pair(di, std::array<dcomplex, 2> {0.0, 0.0});
       result.push_back(val);
-      //}
-      //else {
-      //  if (sample == true) {
-      //    value_type val = std::make_pair(di, std::array<double, 2> {0.0, 0.0});
-      //    result.push_back(val); 
-      //  }
-      //}
     }
   }
   return result;
@@ -136,83 +121,6 @@ double line_search(double p1, double q, double x) {
   }
   dx = rt - x;
 // Newton iteration to improve accuracy
-  /*auto dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
-             / (dx*(3*dx + 6*x) + 3*x*x + p1);
-
-  const double depsilon = 1e-12;
-  const int max_iter = 10;
-  int iter = 0;
-  while (fabs((dxn - dx)/dx) > depsilon && iter < max_iter)
-  {
-      dx = dxn;
-      dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
-          / (dx*(3*dx + 6*x) + 3*x*x + p1);
-      ++iter;
-  }*/
-  return dx;
-}
-dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex,double>& ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE, bool real_part) {
-  dcomplex result;
-  // coreE doesn't matter.
-  double dx = 0.0;
-  auto det = det_picked.first;
-  auto x = det_picked.second[0];
-  auto z = det_picked.second[1];
-  auto xx = ene.second;
-  //std::cout << x << " z:" << z << " xx:" << xx << std::endl; 
-  size_t orbDiff;
-  
-  double dA = det.Energy(I1, I2, coreE);
-  dA=-dA;
-  xx = xx - norm(x);
-  double x_re = x.real();
-  double x_im = x.imag();
-  double z_re = (z + dA * x).real();
-  double z_im = (z + dA * x).imag();
-  //if (real_part) 
-    double p1_re = xx + x_im * x_im - dA;
-    double q_re = z_re;  //
-    double dx_re = line_search(p1_re, q_re, x_re);
-    //result = dcomplex(dx_re, 0.0);
-  //else 
-    double p1_im = xx + x_re * x_re - dA;//-x_im * x_im;//xx - x_im * x_im;
-    double q_im = z_im;// + dA * (x_re + dx_re + x_im);
-    double dx_im = line_search(p1_im, q_im, x_im);
-    //result = dcomplex(0.0, dx_im);
-  result = dcomplex(dx_re, dx_im);
-  return result;
-  //if (abs(x)+abs(xx)+abs(z)<1e-100) return sqrt(abs(dA));
-  //else return -0.05*(x*xx+z);
-  //std::cout << "p1: " << p1 << " q: " << q << std::endl;
-  //const double pi = atan(1.0) * 4;
-  //TODO: need to think about complex value line search
-  /*if (d >= 0) {
-    auto qrtd = sqrt(d);
-    rt = cbrt(-q2 + qrtd) + cbrt(-q2 - qrtd);
-  }
-  else {
-    auto qrtd = sqrt(-d);
-    if (q2 >= 0) {
-      rt = 2 * sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
-    }
-    else {
-      rt = 2 * sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
-    }
-  }
-  for(int i=0; i<1; i++) {
-    xx = ene.second + pow((dx_re + x_re), 2)- pow(x_re, 2) + pow((dx_im+x_im), 2) - pow(x_im, 2);
-    x_re = x_re + dx_re;
-    x_im = x_im + dx_im;
-    z_re = z_re - dA * dx_re;
-    p1_re = xx - pow(x_re, 2) -dA;
-    q_re = z_re + dA * x_re;
-    dx_re = line_search(p1_re, q_re, x_re);
-    p1_im = xx - pow(x_im, 2);
-    q_im = z_im;
-    dx_im = line_search(p1_im, q_im, x_im);
-  }
-  dx = rt - x;
-// Newton iteration to improve accuracy
   auto dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
              / (dx*(3*dx + 6*x) + 3*x*x + p1);
 
@@ -225,8 +133,34 @@ dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dc
       dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
           / (dx*(3*dx + 6*x) + 3*x*x + p1);
       ++iter;
-  }*/
-  //return dx;
+  }
+  return dx;
+}
+dcomplex cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<dcomplex,double>& ene, vector<double> E0, oneInt& I1, twoInt& I2, double& coreE, bool real_part) {
+  dcomplex result;
+  // coreE doesn't matter.
+  double dx = 0.0;
+  auto det = det_picked.first;
+  auto x = det_picked.second[0];
+  auto z = det_picked.second[1];
+  auto xx = ene.second;
+  size_t orbDiff;
+  
+  double dA = det.Energy(I1, I2, coreE);
+  dA=-dA;
+  xx = xx - norm(x);
+  double x_re = x.real();
+  double x_im = x.imag();
+  double z_re = (z + dA * x).real();
+  double z_im = (z + dA * x).imag();
+  double p1_re = xx + x_im * x_im - dA;
+  double q_re = z_re;  //
+  double dx_re = line_search(p1_re, q_re, x_re);
+  double p1_im = xx + x_re * x_re - dA;
+  double q_im = z_im;
+  double dx_im = line_search(p1_im, q_im, x_im);
+  result = dcomplex(dx_re, dx_im);
+  return result;
 }
 
 void cdfci::civectorUpdate(vector<value_type>& column, hash_det& wfn, dcomplex dx, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, double& coreE, double thresh, bool sample) {
@@ -284,11 +218,9 @@ cdfci::hash_det cdfci::precondition(pair<dcomplex, double>& ene, vector<Determin
   }
   for (int i = 0; i < dets_size; i++) {
     auto dx = ci[0](i,0)*norm;
-    //if (std::abs(dx) > 0.1) {    
-      auto thisDet = std::make_pair(dets[i], wfn[dets[i]]);
-      auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
-      cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
-    //}
+    auto thisDet = std::make_pair(dets[i], wfn[dets[i]]);
+    auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
+    cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
   }
   coreE = coreEbkp;
   return wfn;
@@ -296,7 +228,6 @@ cdfci::hash_det cdfci::precondition(pair<dcomplex, double>& ene, vector<Determin
 void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, int nelec, double thresh, bool sample) {
     // first to initialize hx for new determinants
     auto coreEbkp = coreE;
-    //auto coreEbkp=0.0;
     coreE = 0.0;
     auto startofCalc = getTime();
     value_type thisDet =  std::make_pair(hf, wfn[hf]);
@@ -319,34 +250,11 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dco
       cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
     }
     for(int k=0; k<num_iter; k++) {
+      if (wfn.size() > schd.max_determinants) sample = false;
       auto dx = cdfci::CoordinateUpdate(thisDet, wfn, ene, E0, I1, I2, coreE, real_part);
       auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
       cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
-        //sub = cdfci::getSubDets(thisDet, wfn, nelec);
-      /*{
-        // this block used to generate a step for Determinant with reverse spin.
-        Determinant reverse = thisDet.first;
-        reverse.flipAlphaBeta();
-        if (!(reverse == thisDet.first)) {
-          value_type reverseDet;
-          if (wfn.find(reverse) != wfn.end())
-            reverseDet = std::make_pair(reverse, wfn[reverse]);
-          else
-            reverseDet = std::make_pair(reverse,  std::array<dcomplex, 2> {0.0, 0.0});
-          auto x = reverseDet.second[0];
-          auto z = reverseDet.second[1];
-          auto norm = ene.second;
-          auto grad_real = z.real()+x.real()*norm;
-          auto grad_imag = z.imag()+x.imag()*norm;
-          if (std::abs(grad_real) < std::abs(grad_imag)) real_part = false;
-          else real_part = true;
-          dx = cdfci::CoordinateUpdate(reverseDet, wfn , ene, E0, I1, I2, coreE, real_part);
-          column = cdfci::getSubDets(reverseDet, wfn, nelec, sample);
-          cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
-        }
-      }*/
       if(k%schd.report_interval == 0) {
-        if (wfn.size() > schd.max_determinants) sample = false;
         auto curr_ene = ene.first.real()/ene.second;
         auto imag_ene = ene.first.imag()/ene.second;
         // iter, energy, time, variation space, dx
@@ -394,8 +302,6 @@ void cdfci::cyclicSolver(hash_det& wfn, vector<Determinant>& Dets, schedule& sch
         cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
         dx = cdfci::CoordinateUpdate(thisDet, wfn, ene, E0, I1, I2, coreE, false);
         cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
-        //sub = cdfci::getSubDets(thisDet, wfn, nelec);
-        //thisDet = cdfci::CoordinatePickGcdGrad(column, ene.second);
       if(k%schd.report_interval == 0) {
         if (wfn.size() > schd.max_determinants) sample = false;
         auto curr_ene = ene.first.real()/ene.second;
