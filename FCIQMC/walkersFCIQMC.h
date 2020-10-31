@@ -70,6 +70,8 @@ class walkersFCIQMC {
   // The list of determinants. The total size is constant, and elements
   // beyond nDets are not filled, and so should not be used
   vector<Determinant> dets;
+  // List of diagonal Hamiltonian elements for the occupied determinants
+  vector<double> diagH;
   // List of walkers amplitudes
   double** amps;
   // Hash table to access the walker array

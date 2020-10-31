@@ -35,10 +35,13 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
   walkers.init(walkersSize, DetLenMin, schd.nreplicas);
   spawn.init(spawnSize, DetLenMin, schd.nreplicas);
 
+  HFEnergy = HFDet.Energy(I1, I2, coreE);
+
   // Set up the walker list to contain a single walker on the HF
   // determinant
   if (HFDetProc == commrank) {
     walkers.dets[0] = HFDet;
+    walkers.diagH[0] = HFEnergy;
     walkers.ht[HFDet] = 0;
     // Set the population on the reference
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
@@ -48,7 +51,6 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
     walkers.nDets = 1;
   }
 
-  HFEnergy = HFDet.Energy(I1, I2, coreE);
   if (commrank == 0) {
     cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
   }
@@ -304,7 +306,7 @@ void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const o
 void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau)
 {
-  double parentE = walkers.dets[iDet].Energy(I1, I2, coreE);
+  double parentE = walkers.diagH[iDet];
   for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
     double fac = tau * ( parentE - Eshift[iReplica] );
     walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
@@ -317,7 +319,7 @@ void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double& tau)
 {
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
-    double parentE = walkers.dets[iDet].Energy(I1, I2, coreE);
+    double parentE = walkers.diagH[iDet];
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       double fac = tau * ( parentE - Eshift[iReplica] );
       walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];

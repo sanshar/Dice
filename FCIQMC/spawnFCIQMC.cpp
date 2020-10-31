@@ -290,6 +290,7 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double
           walkers.nDets += 1;
         }
         walkers.dets[pos] = Determinant(dets[i]);
+        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
 
         // Add in the new walker population
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
@@ -369,6 +370,7 @@ void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& 
           walkers.nDets += 1;
         }
         walkers.dets[pos] = Determinant(dets[i]);
+        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
 
         // Add in the new walker population, but only if allowed by the
         // initiator criteria (i.e. if the flag is set):
