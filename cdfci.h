@@ -40,8 +40,10 @@ namespace cdfci {
   using dcomplex = std::complex<double>;
   using value_type = std::pair<Determinant, array<complex<double>, 2>>;
   using hash_det = robin_hood::unordered_flat_map<Determinant, array<complex<double>, 2>, std::hash<Determinant>, std::equal_to<Determinant>>;
+  using DetToIndex = robin_hood::unordered_flat_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
   // retain the same function call as DoVariational in SHCIbasics.
   // use hash map for determinants internally
+  void init_hash_det(DetToIndex& det_to_index, Determinant* SHMDets, int start_index, int end_index);
   set<Determinant> sampleExtraEntry(hash_det& wfn, int nelec);
   void cdfciSolver(hash_det& wfn,  Determinant& hf, schedule& schd, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double> & E0, int nelec, double thresh=1e10, bool sample=false);
   void cyclicSolver(hash_det& wfn,  vector<Determinant>& Dets, schedule& schd, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double> & E0, int nelec, double thresh=1e10, bool sample=false);
@@ -50,5 +52,6 @@ namespace cdfci {
   vector<value_type> getSubDets(value_type& det, hash_det& wfn, int nelec, bool sample=false);
   void civectorUpdate(vector<value_type> &column, hash_det& wfn, dcomplex dx, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
   hash_det precondition(pair<dcomplex, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
+  void solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* SHMDets, int dets_size);
 }
 #endif

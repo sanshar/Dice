@@ -797,7 +797,41 @@ void unpackTrevState(vector<Determinant>& Dets, int& DetsSize,
   MPI_Bcast(&oldLen, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
 }
-
+void print_memory_utility(schedule& schd, SparseHam& sparseHam, HamHelper4c & helper2, int DetsSize) {
+  if (schd.DavidsonType == MEMORY) {
+    size_t element_count = 0;
+    for (int i=0; i < sparseHam.connections.size(); i++) {
+      element_count += sparseHam.connections[i].size();
+    }
+    size_t memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
+    pout << " number of sparseHam elements " << element_count << endl;
+    pout << " number of determinants " << sparseHam.connections.size() << endl;
+    pout << " estimated memory " << setw(12) << setprecision(1) << std::fixed << double(memory_count)/1024./1024. <<" MB" << endl;
+    //pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
+    //pout << " time before davidson : " << getTime() - startofCalc << endl;
+  }
+  else if (schd.DavidsonType == DIRECT) {
+    int nminus1_size = helper2.Nminus1ToDet.size();
+    int nminus2_size = helper2.Nminus2ToDet.size();
+    size_t single_operation_count = 0;
+    size_t double_operation_count = 0;
+    size_t single_memory_count = 0;
+    size_t double_memory_count = 0;
+    for (int i=0; i < nminus1_size; i++) {
+      single_operation_count += pow(helper2.Nminus1ToDet[i].size(), 2);
+      single_memory_count += helper2.Nminus1ToDet[i].size();
+    }
+    for (int i=0; i < nminus2_size; i++) {
+      double_operation_count += pow(helper2.Nminus2ToDet[i].size(), 2);
+      double_memory_count += helper2.Nminus2ToDet[i].size();
+    }
+    std::cout << "number of determinants" << DetsSize << std::endl;
+    std::cout << "single excitation lists: " << "# of elements " << single_memory_count << " # of operations " << single_operation_count << std::endl;
+    std::cout << "double excitation lists: " << "# of elements " << double_memory_count << " # of operations " << double_operation_count << std::endl;
+    std::cout << "nminus2 map size : " << helper2.Nminus2.size() << std::endl;
+    std::cout << "nminus1 map size : " << helper2.Nminus1.size() << std::endl; 
+  }
+}
 //this takes in a ci vector for determinants placed in Dets
 //it then does a SHCI varitional calculation and the resulting
 //ci and dets are returned here
@@ -903,13 +937,11 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
   if (schd.fullrestart)
   {
     bool converged;
-    pout << "read determinant" << endl;
     readVariationalResult(iterstart, ci, Dets, sparseHam, E0, converged, schd,
                           helper2);
     E0.resize(schd.nroots);
     ci.resize(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
     // after reading restart put dets on shared memory
-    pout << "for shared memory" << endl;
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     DetsSize = Dets.size();
     SortedDetsSize = DetsSize;
@@ -1091,6 +1123,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
       DetsSize = Dets.size();
 
+      // get a decent initial guess to improve davidson stability.
       if (iter==0&&!(schd.fullrestart||schd.restart)) {
         const int matSize = schd.nroots;
         MatrixXx trial = MatrixXx::Zero(matSize, matSize);
@@ -1146,39 +1179,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     }
     //************
     if (commrank == 0 & schd.outputlevel == -1) {
-      if (schd.DavidsonType == MEMORY) {
-        size_t element_count = 0;
-        for (int i=0; i < sparseHam.connections.size(); i++) {
-          element_count += sparseHam.connections[i].size();
-        }
-        size_t memory_count = (sizeof(int) + sizeof(CItype) + sizeof(size_t)) * element_count;
-        pout << " number of sparseHam elements " << element_count << endl;
-        pout << " number of determinants " << sparseHam.connections.size() << endl;
-        pout << " estimated memory " << setw(12) << setprecision(1) << std::fixed << double(memory_count)/1024./1024. <<" MB" << endl;
-        //pout << " memory by determinants : " << sparseHam.connections.size() * sizeof(Determinant) << endl;
-        //pout << " time before davidson : " << getTime() - startofCalc << endl;
-      }
-      else if (schd.DavidsonType == DIRECT) {
-        int nminus1_size = helper2.Nminus1ToDet.size();
-        int nminus2_size = helper2.Nminus2ToDet.size();
-        size_t single_operation_count = 0;
-        size_t double_operation_count = 0;
-        size_t single_memory_count = 0;
-        size_t double_memory_count = 0;
-        for (int i=0; i < nminus1_size; i++) {
-          single_operation_count += pow(helper2.Nminus1ToDet[i].size(), 2);
-          single_memory_count += helper2.Nminus1ToDet[i].size();
-        }
-        for (int i=0; i < nminus2_size; i++) {
-          double_operation_count += pow(helper2.Nminus2ToDet[i].size(), 2);
-          double_memory_count += helper2.Nminus2ToDet[i].size();
-        }
-        std::cout << "number of determinants" << DetsSize << std::endl;
-        std::cout << "single excitation lists: " << "# of elements " << single_memory_count << " # of operations " << single_operation_count << std::endl;
-        std::cout << "double excitation lists: " << "# of elements " << double_memory_count << " # of operations " << double_operation_count << std::endl;
-        std::cout << "nminus2 map size : " << helper2.Nminus2.size() << std::endl;
-        std::cout << "nminus1 map size : " << helper2.Nminus1.size() << std::endl; 
-      }
+      print_memory_utility(schd, sparseHam, helper2, DetsSize);
     }
     //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous iterations
     SHMVecFromVecs(SHMDets, DetsSize, SortedDets, shciSortedDets,
@@ -1187,13 +1188,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #ifndef SERIAL
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
-
-#ifdef Complex
-    //SHCImakeHamiltonian::updateSOCconnections(SHMDets, SortedDetsSize, DetsSize, SortedDets,
-    //			sparseHam.connections, sparseHam.orbDifference,
-    //			sparseHam.Helements, norbs, I1, nelec, false);
-#endif
-
     SortedDetsSize = DetsSize;
 #ifndef SERIAL
     mpi::broadcast(world, SortedDetsSize, 0);
@@ -1282,13 +1276,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #endif
       pout << endl
            << "Exiting variational iterations" << endl;
-      /*if (proc == 0) {
-      for (int i=0; i<DetsSize; ++i) {
-        cout << SHMDets[i] << " : " << endl;
-        for (int j=0; j<sparseHam.connections[i].size(); j++)
-          cout << SHMDets[sparseHam.connections[i][j]] << sparseHam.Helements[i][j] << sparseHam.orbDifference[i][j] << endl;
-      }
-      }*/
+
       if (commrank == 0) {
         Dets.resize(DetsSize);
         for (int i = 0; i < DetsSize; i++) {
