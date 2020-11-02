@@ -879,7 +879,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
   int nroots = ci.size();
   // This helper object is kept here just in case
   SHCImake4cHamiltonian::HamHelper4c helper2;
-  std::cout << "helpers" << std::endl;
   SHCImake4cHamiltonian::SparseHam sparseHam;
   if (schd.DavidsonType == DISK)
   {
@@ -1162,6 +1161,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
+
+    if (iter == schd.maxExcitation) {
+      helper2.clear();
+      sparseHam.clear();
+      cdfci::solve(schd, I1, I2, coreEbkp, E0, ci, SHMDets, DetsSize);
+    }
     //************
     if (commrank == 0 && (schd.DavidsonType == DIRECT || schd.outputlevel == -1))
       printf("New size of determinant space %8i\n", DetsSize);
@@ -1262,7 +1267,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     }
       //E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
     for (int i = 0; i < E0.size(); i++) {
-      pout << format("%4i %4i  %12.8e  %10.2e   %18.10f  %9i  %10.2f\n") %
+      pout << format("%4i %4i  %10.2e  %10.2e   %18.10f  %9i  %10.2f\n") %
                   (iter) % (i) % schd.epsilon1[iter] % DetsSize %
                   (E0[i] + coreEbkp) % (numIter) % (getTime() - startofCalc);
     }
