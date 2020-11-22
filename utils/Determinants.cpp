@@ -1078,8 +1078,17 @@ void generateAllScreenedDoubleExcitation(const Determinant& d,
         if ((!(d.getocc(a) || d.getocc(b))) && (a < 2*schd.numActive) && (b < 2*schd.numActive)) {//uncomment for VMC active space calculations
         //if (!(d.getocc(a) || d.getocc(b))) {
           //cout << "a   " << a << "  b  " << b << endl;
+          double parity = 1.;
+          if (doparity) {
+            if (a%2 != b%2)
+              parity *= (d.parity(a/2, closed[i]/2, a%2) * d.parity(b/2, closed[j]/2, b%2));
+            else if (a%2 == 0)
+              parity *= d.parityAA(closed[i]/2, closed[j]/2, a/2, b/2);
+            else
+              parity *= d.parityBB(closed[i]/2, closed[j]/2, a/2, b/2);
+          }
           work.appendValue(0.0, closed[i] * 2 * norbs + a,
-                           closed[j] * 2 * norbs + b, integrals[index]);
+                           closed[j] * 2 * norbs + b, parity * integrals[index]);
         }
       }
     }

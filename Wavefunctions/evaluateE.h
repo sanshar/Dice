@@ -819,6 +819,7 @@ class getGradientWrapper
   {
     w.updateVariables(vars);
     w.initWalker(walk);
+    if (schd.debug) cout << "vars\n" << vars << endl << endl;
     if (!deterministic)
     {
       if (ctmc)
