@@ -41,15 +41,31 @@ class SimpleWalker
 {
 
 public:
-  Determinant d;                      //The current determinant
-  unordered_set<int> excitedOrbs;     //spin orbital indices of excited electrons (in virtual orbitals) in d 
+  Determinant d;                       //The current determinant
+  unordered_set<int> excitedHoles;     //spin orbital indices of excited holes in core orbitals in d
+  unordered_set<int> excitedOrbs;      //spin orbital indices of excited electrons in virtual orbitals in d
   std::array<VectorXd, 2> energyIntermediates; 
 
+  // The excitation classes are used in MRCI/MRPT calculations, depending on
+  // the type of excitation out of the CAS. They are:
+  // 0: determinant in the CAS (0h,0p)
+  // 1: 0 holes in the core, 1 partiCle in the virtuals (0h,1p)
+  // 2: 0 holes in the core, 2 particles in the virtuals (0h,2p)
+  // 3: 1 hole in the core (1h,0p)
+  // 4: 1 hole in the core, 1 particle in the virtuals (1h,1p)
+  // 5: 1 hole in the core, 2 particles in the virtuals (1h,2p)
+  // 6: 2 holes in the core (2h,0p)
+  // 7: 2 holes in the core, 1 particle in the virtuals (2h,1p)
+  // 8: 2 holes in the core, 2 holes in the virtuals (2h,2p)
+  // (-1): None of the above (therefore beyond the FOIS) (> 2h and/or > 2p)
+  int excitation_class;
+
   // The constructor
-  SimpleWalker(Determinant &pd) : d(pd) {};
-  SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd) {};
-  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs) {};
-  SimpleWalker(){};
+  SimpleWalker(Determinant &pd) : d(pd), excitation_class(0) {};
+  SimpleWalker(const Determinant &corr, const Determinant &ref, Determinant &pd) : d(pd), excitation_class(0) {};
+  SimpleWalker(const SimpleWalker &w): d(w.d), excitedOrbs(w.excitedOrbs),
+                                       excitedHoles(w.excitedHoles), excitation_class(w.excitation_class) {};
+  SimpleWalker() : excitation_class(0) {};
 
   Determinant getDet() { return d; }
 
@@ -70,6 +86,8 @@ public:
   void updateWalker(const Determinant &ref, const Determinant &corr, int ex1, int ex2, bool updateIntermediate = true);
   
   void exciteWalker(const Determinant &ref, const Determinant &corr, int excite1, int excite2, int norbs);
+
+  void getExcitationClass();
   
   bool operator<(const SimpleWalker &w) const
   {
@@ -83,9 +101,10 @@ public:
 
   friend ostream& operator<<(ostream& os, const SimpleWalker& w) {
     os << w.d << endl;
-    //os << "excited Orbs   " << w.excitedOrbs << endl;
     os << "excitedOrbs   ";
     copy(w.excitedOrbs.begin(), w.excitedOrbs.end(), ostream_iterator<int>(os, " "));
+    os << "excitedHoles   ";
+    copy(w.excitedHoles.begin(), w.excitedHoles.end(), ostream_iterator<int>(os, " "));
     os << "energyIntermediates\n";
     os << "up\n";
     os << w.energyIntermediates[0] << endl;

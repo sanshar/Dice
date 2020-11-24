@@ -34,69 +34,113 @@ void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
   }
 }
 
-walkersFCIQMC::walkersFCIQMC(int arrayLength) {
+walkersFCIQMC::walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal) {
+  init(arrayLength, DetLenLocal, nreplicasLocal);
+}
+
+// Define a init function, so that a walkersFCIQMC object can be
+// initialized after it is constructed, useful in some cases
+void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
   nDets = 0;
+  nreplicas = nreplicasLocal;
   dets.resize(arrayLength);
-  amps.resize(arrayLength, 0.0);
+  diagH.resize(arrayLength);
+  amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
   emptyDets.resize(arrayLength);
   firstEmpty = 0;
   lastEmpty = -1;
+  DetLenMin = DetLenLocal;
+}
+
+walkersFCIQMC::~walkersFCIQMC() {
+  dets.clear();
+  diagH.clear();
+  deleteAmpsArray(amps);
+  ht.clear();
+  emptyDets.clear();
+}
+
+// return true if all replicas for determinant i are unoccupied
+bool walkersFCIQMC::allUnoccupied(const int i) const {
+  return all_of(&amps[i][0], &amps[i][nreplicas], [](double x) { return abs(x)<1.0e-12; });
 }
 
 void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
-  bool keepDet;
+
   for (int iDet=0; iDet<nDets; iDet++) {
-
     // To be a valid walker in the main list, there must be a corresponding
-    // hash table entry *and* the amplitude must be non-zero
-    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
-      if (abs(amps[iDet]) < minPop) {
-        stochastic_round(minPop, amps[iDet], keepDet);
+    // hash table entry *and* the amplitude must be non-zero for a replica
+    if ( ht.find(dets[iDet]) != ht.end() && !allUnoccupied(iDet) ) {
 
-        if (!keepDet) {
-          ht.erase(dets[iDet]);
-          lastEmpty += 1;
-          emptyDets[lastEmpty] = iDet;
+      bool keepDetAny = false;
+
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        if (abs(amps[iDet][iReplica]) < minPop) {
+          bool keepDet;
+          stochastic_round(minPop, amps[iDet][iReplica], keepDet);
+          keepDetAny = keepDetAny || keepDet;
+        } else {
+          keepDetAny = true;
         }
       }
 
+      // If the population is now 0 on all replicas then remove the ht entry
+      if (!keepDetAny) {
+        ht.erase(dets[iDet]);
+        lastEmpty += 1;
+        emptyDets[lastEmpty] = iDet;
+      }
+
     } else {
-      if (abs(amps[iDet]) > 1.0e-12) {
+
+      if ( !allUnoccupied(iDet) ) {
         // This should never happen - the hash table entry should not be
-        // removed unless the walker population becomes zero
+        // removed unless the walker population becomes zero for all replicas
         cout << "#Error: Non-empty det no hash table entry found." << endl;
-        cout << dets[iDet] << "    " << amps[iDet] << endl;
+        // Print determinant and all amplitudes
+        cout << dets[iDet];
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          cout << "    " << amps[iDet][iReplica];
+        }
+        cout << endl;
+
       }
     }
 
   }
 }
 
-void walkersFCIQMC::calcStats(Determinant& HFDet, double& walkerPop, double& EProj, double& HFAmp,
-               oneInt& I1, twoInt& I2, double& coreE) {
+void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE) {
 
   int excitLevel = 0;
-  walkerPop = 0.0;
-  EProj = 0.0;
-  HFAmp = 0.0;
+  std::fill(dat.walkerPop.begin(), dat.walkerPop.end(), 0.0);
+  std::fill(dat.EProj.begin(),     dat.EProj.end(), 0.0);
+  std::fill(dat.HFAmp.begin(),     dat.HFAmp.end(), 0.0);
 
   for (int iDet=0; iDet<nDets; iDet++) {
 
-    // To be a valid walker in the main list, there must be a corresponding
-    // hash table entry *and* the amplitude must be non-zero
-    if ( ht.find(dets[iDet]) != ht.end() && abs(amps[iDet]) > 1.0e-12 ) {
-
-      walkerPop += abs(amps[iDet]);
+    if ( ht.find(dets[iDet]) != ht.end() ) {
       excitLevel = HFDet.ExcitationDistance(dets[iDet]);
 
-      if (excitLevel == 0) {
-        HFAmp = amps[iDet];
-        EProj += amps[iDet] * HFDet.Energy(I1, I2, coreE);
-      } else if (excitLevel <= 2) {
-        EProj += amps[iDet] * Hij(HFDet, dets[iDet], I1, I2, coreE);
-      }
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
 
-    } // If a valid walker
+        // To be a valid walker in the main list, there must be a corresponding
+        // hash table entry *and* the amplitude must be non-zero
+        if ( abs(amps[iDet][iReplica]) > 1.0e-12 ) {
+
+          dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
+
+          if (excitLevel == 0) {
+            dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE);
+          } else if (excitLevel <= 2) {
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE);
+          }
+        }
+
+      } // Loop over replicas
+
+    } // If hash table entry exists
 
   } // Loop over all entries in list
 }

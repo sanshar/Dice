@@ -41,6 +41,7 @@ class MultiSlater {
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     ar & ref
+        & open
         & ciParity
         & ciCoeffs
         & numDets
@@ -50,7 +51,8 @@ class MultiSlater {
   
  public:
  
-  std::vector<int> ref;                                      // reference determinant occupations
+  std::vector<int> ref;                                      // reference determinant electron occupations
+  std::vector<int> open;                                      // reference determinant hole occupations
   std::vector<std::array<Eigen::VectorXi, 2>> ciExcitations; // ci expansion excitations
   std::vector<int> ciParity;                                 // parity factors for the ci exctiations
   std::vector<double> ciCoeffs;                              // ci coeffs

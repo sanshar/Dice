@@ -43,7 +43,12 @@ class Deterministic
     norbs = Determinant::norbs;
     nalpha = Determinant::nalpha;
     nbeta = Determinant::nbeta;
-    generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+    if (schd.nciCore > 0 || schd.nciAct > 0) {
+      generateAllDeterminantsFOIS(allDets, norbs, nalpha, nbeta);
+    }
+    else {
+      generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+    }
     Overlap = 0.0, avgNorm = 0.0;
   }
    

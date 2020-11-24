@@ -73,6 +73,7 @@ class twoInt {
            & Exchange \
            & zero     \
            & norbs   \
+           & npair   \
            & ksym;
       }
 
@@ -82,6 +83,16 @@ class twoInt {
     MatrixXd Direct, Exchange;
     double zero ;
     size_t norbs;
+    size_t npair;
+    size_t inner;
+    size_t virt;
+    size_t nii;
+    size_t niv;
+    size_t nvv;
+    size_t niiii;
+    size_t niiiv;
+    size_t niviv;
+    size_t niivv;
     bool ksym;
     twoInt() :zero(0.0),maxEntry(100.) {}
     inline double& operator()(int i, int j, int k, int l) {
@@ -90,13 +101,28 @@ class twoInt {
       int I=i/2;int J=j/2;int K=k/2;int L=l/2;
 
       if(!ksym) {
-        int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
-        int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
-        int A = max(IJ,KL), B = min(IJ,KL);
-        return store[A*(A+1)/2+B];
+        //unsigned int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+        //unsigned int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+        //unsigned int A = max(IJ,KL), B = min(IJ,KL);
+        //return store[A*(A+1)/2+B];
+        //unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
+        //unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
+        size_t IJ, KL;
+        bool iv1 = false, iv2 = false;
+        if (I < inner && J < inner) IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+        else if (I >= inner && J >= inner) IJ = inner*(inner+1)/2 + inner*virt + max(I-inner,J-inner)*(max(I-inner,J-inner)+1)/2 + min(I-inner,J-inner);
+        else {IJ = inner*(inner+1)/2 + inner*(max(I,J)-inner) + min(I,J); iv1 = true;}
+        if (K < inner && L < inner) KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+        else if (K >= inner && L >= inner) KL = inner*(inner+1)/2 + inner*virt + max(K-inner,L-inner)*(max(K-inner,L-inner)+1)/2 + min(K-inner,L-inner);
+        else {KL = inner*(inner+1)/2 + inner*(max(K,L)-inner) + min(K,L); iv2 = true;}
+        size_t ind;
+        if (iv1 && iv2) ind = niiii + niiiv + niivv + max(IJ-nii,KL-nii)*(max(IJ-nii,KL-nii)+1)/2 + min(IJ-nii,KL-nii);
+        else ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
+        //cout << I << "  " << J << "  " << K << "  " << L << "    " << IJ << "  " << KL << "    " << ind << endl;
+        return store[ind];
       } else {
-        int IJ = I*norbs+J, KL = K*norbs+L;
-        int A = max(IJ,KL), B = min(IJ,KL);
+        unsigned int IJ = I*norbs+J, KL = K*norbs+L;
+        unsigned int A = max(IJ,KL), B = min(IJ,KL);
         return store[A*(A+1)/2+B];
       }
     }
@@ -107,13 +133,27 @@ class twoInt {
     int I=i/2;int J=j/2;int K=k/2;int L=l/2;
     
     if(!ksym) {
-      int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
-      int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
-      int A = max(IJ,KL), B = min(IJ,KL);
-      return store[A*(A+1)/2+B];
+      //unsigned int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+      //unsigned int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+      //unsigned int A = max(IJ,KL), B = min(IJ,KL);
+      //return store[A*(A+1)/2+B];
+      //unsigned int IJ = min(I,J) * norbs -(min(I,J) * (min(I,J) - 1)) / 2 + max(I,J) - min(I,J);
+      //unsigned int KL = min(K,L) * norbs -(min(K,L)* (min(K,L) - 1)) / 2 + max(K,L) - min(K,L);
+      size_t IJ, KL;
+      bool iv1 = false, iv2 = false;
+      if (I < inner && J < inner) IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+      else if (I >= inner && J >= inner) IJ = inner*(inner+1)/2 + inner*virt + max(I-inner,J-inner)*(max(I-inner,J-inner)+1)/2 + min(I-inner,J-inner);
+      else {IJ = inner*(inner+1)/2 + inner*(max(I,J)-inner) + min(I,J); iv1 = true;}
+      if (K < inner && L < inner) KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+      else if (K >= inner && L >= inner) KL = inner*(inner+1)/2 + inner*virt + max(K-inner,L-inner)*(max(K-inner,L-inner)+1)/2 + min(K-inner,L-inner);
+      else {KL = inner*(inner+1)/2 + inner*(max(K,L)-inner) + min(K,L); iv2 = true;}
+      size_t ind;
+      if (iv1 && iv2) ind = niiii + niiiv + niivv + max(IJ-nii,KL-nii)*(max(IJ-nii,KL-nii)+1)/2 + min(IJ-nii,KL-nii);
+      else ind = min(IJ,KL) * npair - (min(IJ,KL) * (min(IJ,KL) - 1)) / 2 + max(IJ,KL) - min(IJ,KL);
+      return store[ind];
     } else {
-      int IJ = I*norbs+J, KL = K*norbs+L;
-      int A = max(IJ,KL), B = min(IJ,KL);
+      unsigned int IJ = I*norbs+J, KL = K*norbs+L;
+      unsigned int A = max(IJ,KL), B = min(IJ,KL);
       return store[A*(A+1)/2+B];
     }
   }
@@ -142,24 +182,36 @@ class twoIntHeatBath {
     //the orbs contain all orbitals used to make the ij pair above
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
-    void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int norbs) {
-      for (int i=0; i<orbs.size(); i++)
-        for (int j=0;j<=i;j++) {
+    void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int ncore, int nact, bool cas=false) {
+      int first_virtual = ncore + nact;
 
+      int s = nact;
+      if (cas) s = orbs.size();
+      for (int i=0; i<s; i++) {
+        for (int j=0;j<=i;j++) {
           std::pair<short,short> IJ=make_pair(i,j);
 
-	  for (int a=0; a<norbs; a++) {
-	    if (fabs(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j)) > epsilon) 
-	      singleIntegrals[IJ].insert(pair<float, short>(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j), 2*a));
-	    
-	    if (fabs(I2(2*i, 2*j, 2*a+1, 2*a+1) ) > epsilon)
-	      singleIntegrals[IJ].insert(pair<float, short>(I2(2*i, 2*j, 2*a+1, 2*a+1), 2*a+1));
-	  }
-	  
+          int start = 0;
+          int end = orbs.size();
+          if (cas) {start = ncore; end = first_virtual;}
+	      for (int a=start; a<end; a++) {
+	        if (fabs(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j)) > epsilon) 
+	          singleIntegrals[IJ].insert(pair<float, short>(I2(2*i, 2*j, 2*a, 2*a) - I2(2*i, 2*a, 2*a, 2*j), 2*a));
+	        
+	        if (fabs(I2(2*i, 2*j, 2*a+1, 2*a+1) ) > epsilon)
+	          singleIntegrals[IJ].insert(pair<float, short>(I2(2*i, 2*j, 2*a+1, 2*a+1), 2*a+1));
+	      }
+        }
+      }
+
+      s = orbs.size();
+      for (int i=0; i<s; i++) {
+        for (int j=0;j<=i;j++) {
+          std::pair<short,short> IJ=make_pair(i,j);
           //sameSpin[IJ]=std::map<double, std::pair<int,int> >();
           //oppositeSpin[IJ]=std::map<double, std::pair<int,int> >();
-          for (int a=0; a<norbs; a++)
-            for (int b=0; b<norbs; b++) {
+          for (int a=ncore; a<first_virtual; a++) {
+            for (int b=ncore; b<first_virtual; b++) {
               //opposite spin
               if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
                 oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
@@ -168,17 +220,22 @@ class twoIntHeatBath {
                 sameSpin[IJ].insert(pair<float, std::pair<short,short> >( I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a), make_pair(a,b)));
                 //sameSpin[IJ][fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a))] = make_pair<int,int>(a,b);
               }
-	    }
-	} // ij
-      
-      Singles = MatrixXd::Zero(2*norbs, 2*norbs);
-      for (int i=0; i<2*norbs; i++)
-        for (int a=0; a<2*norbs; a++) {
-          Singles(i,a) = std::abs(I1(i,a));
-          for (int j=0; j<2*norbs; j++) {
-            //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
-	    Singles(i,a) += std::abs(I2(i,a,j,j) - I2(i, j, j, a));
+            }
           }
+        } 
+      } // ij  
+      
+      Singles = MatrixXd::Zero(2*nact, 2*nact);
+      if (!cas) {
+        for (int i=0; i<2*nact; i++) {
+          for (int a=0; a<2*nact; a++) {
+            Singles(i,a) = std::abs(I1(i,a));
+            for (int j=0; j<2*orbs.size(); j++) {
+              //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
+	          Singles(i,a) += std::abs(I2(i,a,j,j) - I2(i, j, j, a));
+            }
+          }
+        }
       }
     } // end constructClass
 };
@@ -229,5 +286,7 @@ int readNorbs(string fcidump);
 
 
 void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump);
+
+void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump);
 
 #endif

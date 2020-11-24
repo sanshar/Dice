@@ -62,7 +62,7 @@ struct TRWavefunction {
   }
  
   // used in HamAndOvlp below
-  double Overlap(const TRWalker &walk, array<double, 2> &overlaps) const 
+  double Overlap(const TRWalker &walk, std::array<double, 2> &overlaps) const 
   {
     overlaps[0] = wave.Overlap(walk.walkerPair[0]);
     overlaps[1] = wave.Overlap(walk.walkerPair[1]);
@@ -104,7 +104,7 @@ struct TRWavefunction {
     return numerator / walk.totalOverlap;
   }
   
-  double getOverlapFactor(int i, int a, const TRWalker& walk, array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
+  double getOverlapFactor(int i, int a, const TRWalker& walk, std::array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
   {
     double numerator = wave.getOverlapFactor(i, a, walk.walkerPair[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
@@ -117,7 +117,7 @@ struct TRWavefunction {
   }
 
   // used in HamAndOvlp below
-  double getOverlapFactor(int I, int J, int A, int B, const TRWalker& walk, array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
+  double getOverlapFactor(int I, int J, int A, int B, const TRWalker& walk, std::array<double, 2>& overlaps, double& totalOverlap, bool doparity) const  
   {
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, overlaps, totalOverlap, doparity);
     double numerator = wave.getOverlapFactor(I, J, A, B, walk.walkerPair[0], doparity) * overlaps[0];

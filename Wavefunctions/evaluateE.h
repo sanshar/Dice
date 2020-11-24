@@ -310,6 +310,13 @@ void getStochasticGradientContinuousTime(Wfn &w, Walker &walk, double &Energy, d
   VectorXd grad_ratio_bar = VectorXd::Zero(grad.rows());
   CTMC.LocalEnergy();
   CTMC.LocalGradient();
+  for (int iter = 0; iter < schd.burnIter; iter++)
+  {
+    CTMC.MakeMove();
+    CTMC.LocalEnergy();
+    CTMC.LocalGradient();
+    CTMC.UpdateBestDet();
+  }
   for (int iter = 0; iter < niter; iter++)
   {
     CTMC.MakeMove();
@@ -547,24 +554,24 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
   double cumdeltaT = 0.;
   double cumdeltaT2 = 0.;
   
-  int transIter = 0, nTransIter = 1000;
+  int transIter = 0, nTransIter = schd.burnIter;
 
-  //while (transIter < nTransIter) {
-  //  double cumovlpRatio = 0;
-  //  //when using uniform probability 1./numConnection * max(1, pi/pj)
-  //  for (int i = 0; i < work.nExcitations; i++) {
-  //    cumovlpRatio += abs(work.ovlpRatio[i]);
-  //    work.ovlpRatio[i] = cumovlpRatio;
-  //  }
+  while (transIter < nTransIter) {
+    double cumovlpRatio = 0;
+    //when using uniform probability 1./numConnection * max(1, pi/pj)
+    for (int i = 0; i < work.nExcitations; i++) {
+      cumovlpRatio += abs(work.ovlpRatio[i]);
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
 
-  //  double nextDetRandom = random() * cumovlpRatio;
-  //  int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-  //                                 nextDetRandom) - work.ovlpRatio.begin();
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
+                                   nextDetRandom) - work.ovlpRatio.begin();
 
-  //  transIter++;
-  //  walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-  //  w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
-  //}
+    transIter++;
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
+  }
 
   while (iter < niter) {
     double cumovlpRatio = 0;
@@ -598,8 +605,9 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
     walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
     w.HamAndOvlpLanczos(walk, coeffsSample, ovlpSample, work, moreWork, alpha);
   }
-  
-
+ 
+  coeffs *= cumdeltaT;
+ 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[0][0]), gradError[0].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &(gradError[1][0]), gradError[1].size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -622,7 +630,11 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
     stddev[i] = sqrt(S1[i] * rk[i] / n_eff);
   }
 
-  lanczosCoeffs = coeffs / commsize;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  lanczosCoeffs = coeffs / cumdeltaT;
 
 }
 
@@ -781,7 +793,12 @@ void getStochasticGradientMetropolis(Wfn &w, Walker &walk, double &Energy, doubl
   {
     M.LocalEnergy();
     M.LocalGradient();
+
+    //if (schd.usingFOIS)
+    //  M.MakeMoveFOIS();
+    //else
     M.MakeMove();
+
     M.UpdateEnergy(Energy);
     M.UpdateGradient(grad, grad_ratio_bar);
   }

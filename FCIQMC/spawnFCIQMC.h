@@ -23,8 +23,6 @@
 #include "Determinants.h"
 #include "walkersFCIQMC.h"
 
-using namespace std;
-
 class Determinant;
 
 // Class for spawning arrays needed in FCIQMC
@@ -33,13 +31,20 @@ class spawnFCIQMC {
  public:
   // The number of determinants spawned to
   int nDets;
+  // The number of replicas simulations being performed
+  // (i.e. the number of amplitudes to store per determinant)
+  int nreplicas;
   // The list of determinants spawned to
   vector<simpleDet> dets;
   // Temporary space for communication and sorting
   vector<simpleDet> detsTemp;
   // The amplitudes of spawned walkers
-  vector<double> amps;
-  vector<double> ampsTemp;
+  double** amps;
+  double** ampsTemp;
+
+  // Flags for the spawned walkers
+  vector<int> flags;
+  vector<int> flagsTemp;
 
   // The number of elements allocated for spawns to each processor
   int nSlotsPerProc;
@@ -50,8 +55,18 @@ class spawnFCIQMC {
   // the next spawned walker to a given processor
   vector<int> currProcSlots;
 
-  // Constructor
-  spawnFCIQMC(int spawnSize);
+  // The number of 64-bit integers required to represent (the alpha or beta
+  // part of) a determinant
+  // Note, this is different to DetLen in global.h
+  int DetLenMin;
+
+  spawnFCIQMC() {};
+  spawnFCIQMC(int spawnSize, int DetLenLocal, int nreplicasLocal);
+  ~spawnFCIQMC();
+
+  // Function to initialize spawnFCIQMC. Useful if the object is created
+  // with the default constructor and needs to be initialized later
+  void init(int spawnSize, int DetLenLocal, int nreplicasLocal);
 
   // Send spawned walkers to their correct processor
   void communicate();
@@ -61,7 +76,9 @@ class spawnFCIQMC {
   void compress();
   
   // Move spawned walkers to the provided main walker list
-  void mergeIntoMain(walkersFCIQMC& walkers, const double& minPop);
+  void mergeIntoMain(walkersFCIQMC& walkers, const double& minPop, bool initiator);
+  void mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double& minPop);
+  void mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& minPop);
 
 };
 

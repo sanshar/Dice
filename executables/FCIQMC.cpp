@@ -23,6 +23,9 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
+
+#include "Determinants.h"
+#include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
 #include "runFCIQMC.h"
@@ -37,6 +40,14 @@ int main(int argc, char *argv[])
 
   initSHM();
   //license();
+  if (commrank == 0) {
+    std::system("echo User:; echo $USER");
+    std::system("echo Hostname:; echo $HOSTNAME");
+    std::system("echo CPU info:; lscpu | head -15");
+    std::system("echo Computation started at:; date");
+    cout << "git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << endl << endl;
+    cout << "Number of MPI processes used: " << commsize << endl << endl; 
+  }
 
   string inputFile = "input.dat";
   if (argc > 1)
@@ -47,7 +58,12 @@ int main(int argc, char *argv[])
 
   readIntegralsAndInitializeDeterminantStaticVariables("FCIDUMP");
 
-  runFCIQMC();
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+  int nel = nalpha + nbeta;
+
+  runFCIQMC(norbs, nel, nalpha, nbeta);
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

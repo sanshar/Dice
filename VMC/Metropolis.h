@@ -97,6 +97,11 @@ class Metropolis
   double bestOvlp;
   bool calcEloc;
   double fracAmoves, n, nAMoves;
+
+  // Data for Metropolis in FOIS calculations (SCCI and SCPT)
+  workingArray morework, morework_new;
+  int nFOISExcit;
+  std::vector<int> validInds;
   
   double random()
   {
@@ -206,6 +211,106 @@ class Metropolis
     }
     n += 1.0;
   }
+
+  //void MakeMoveFOIS()
+  //{
+  //  // If the previous move was accepted (if not then the following is stored already)
+  //  if (calcEloc)
+  //  {
+  //    if (abs(ovlp) > bestOvlp)
+  //    {
+  //      bestOvlp = abs(ovlp);
+  //      bestDet = walk->getDet();
+  //    }
+
+  //    nFOISExcit = 0;
+  //    validInds.clear();
+
+  //    // -- Count the number of valid excitations within the FOIS from the current determinant ----
+
+  //    morework.setCounterToZero();
+  //    generateAllScreenedSingleExcitation(walk->d, schd.epsilon, schd.screen, morework, false);
+  //    generateAllScreenedDoubleExcitation(walk->d, schd.epsilon, schd.screen, morework, false);
+
+  //    // loop over all the screened excitations
+  //    for (int i=0; i<morework.nExcitations; i++) {
+  //      int ex1 = morework.excitation1[i], ex2 = morework.excitation2[i];
+  //      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  //      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+  //      auto walkCopy = *walk;
+  //      walkCopy.updateWalker(w->getRef(), w->getCorr(),
+  //                            morework.excitation1[i], morework.excitation2[i], false);
+
+  //      // Is this excitation class being used? If not, then move to the next excitation.
+  //      if (w->checkWalkerExcitationClass(walkCopy)) {
+  //        validInds.push_back(i);
+  //        nFOISExcit += 1;
+  //      }
+  //    }
+  //  }
+
+  //  // Choose the next determinant uniformly
+  //  int nextDet = random() * nFOISExcit;
+  //  int nextDetInd = validInds[nextDet];
+
+  //  int ex1 = morework.excitation1[nextDetInd], ex2 = morework.excitation2[nextDetInd];
+  //  int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  //  int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+  //  double pdetOvercdet = w->getOverlapFactor(I, J, A, B, *walk, false);
+
+  //  if (pdetOvercdet == 0.0)
+  //  {
+  //    calcEloc = false;
+  //    n += 1.0;
+  //    return;
+  //  }
+
+  //  // -- Count the number of valid excitations within the FOIS from the new determinant ----
+  //  int nFOISExcit_new = 0;
+
+  //  auto walkCopy = *walk;
+  //  walkCopy.updateWalker(w->getRef(), w->getCorr(),
+  //                        morework.excitation1[nextDetInd], morework.excitation2[nextDetInd], false);
+
+  //  morework_new.setCounterToZero();
+  //  generateAllScreenedSingleExcitation(walkCopy.d, schd.epsilon, schd.screen, morework_new, false);
+  //  generateAllScreenedDoubleExcitation(walkCopy.d, schd.epsilon, schd.screen, morework_new, false);
+
+  //  //loop over all the screened excitations
+  //  for (int i=0; i<morework_new.nExcitations; i++) {
+  //    int ex1 = morework_new.excitation1[i], ex2 = morework_new.excitation2[i];
+  //    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  //    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+  //    auto walkCopy_new = walkCopy;
+  //    walkCopy_new.updateWalker(w->getRef(), w->getCorr(),
+  //                          morework_new.excitation1[i], morework_new.excitation2[i], false);
+
+  //    // Is this excitation class being used? If not, then move to the next excitation.
+  //    if (w->checkWalkerExcitationClass(walkCopy_new)) {
+  //      nFOISExcit_new += 1;
+  //    }
+  //  }
+
+  //  double T_C = 1.0 / nFOISExcit;
+  //  double T_P = 1.0 / nFOISExcit_new;
+  //  double P_pdetOvercdet = pdetOvercdet * pdetOvercdet;
+  //  double accept = min(1.0, (T_P * P_pdetOvercdet) / T_C);
+
+  //  if (random() < accept)
+  //  {
+  //    nAMoves += 1.0;
+  //    calcEloc = true;
+  //    walk->updateWalker(w->getRef(), w->getCorr(),
+  //             morework.excitation1[nextDetInd], morework.excitation2[nextDetInd], false);
+  //  }
+  //  else
+  //  {
+  //    calcEloc = false;
+  //  }
+  //  n += 1.0;
+  //}
 
   void UpdateEnergy(double &Energy)
   {
