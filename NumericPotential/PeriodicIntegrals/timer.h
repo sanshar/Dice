@@ -44,7 +44,7 @@ class cumulTimer
     struct timeval start;
     gettimeofday(&start, NULL);
     cumulativeSum = cumulativeSum + (start.tv_sec + 1.e-6*start.tv_usec) - localStart;
-    if ((start.tv_sec + 1.e-6*start.tv_usec) - localStart < 0 ) 
+    if ((start.tv_sec + 1.e-6*start.tv_usec) - localStart < -1.e-10*localStart  ) 
     {
 	  
       cout << "local stop called without starting first"<<endl;
