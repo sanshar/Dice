@@ -125,9 +125,11 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/SHCIshm.o \
 	obj/Determinants.o \
 	obj/Correlator.o \
+	obj/runFCIQMC.o \
 	obj/spawnFCIQMC.o \
 	obj/walkersFCIQMC.o \
 	obj/excitGen.o \
+	obj/utilsFCIQMC.o \
 
 
 obj/%.o: %.cpp  
@@ -145,12 +147,13 @@ obj/%.o: ICPT/%.cpp
 obj/%.o: ICPT/StackArray/%.cpp  
 	$(CXX) $(FLAGS) $(INCLUDE_MKL) $(OPT) -c $< -o $@
 
-ALL= bin/VMC bin/GFMC bin/ICPT #bin/FCIQMC
+ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC
 ifeq ($(COMPILE_NUMERIC), yes)
 	ALL+= bin/periodic
 endif 
 
 all: $(ALL) #bin/VMC bin/libPeriodic.so
+FCIQMC: bin/FCIQMC
 
 bin/periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
