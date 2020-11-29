@@ -230,7 +230,10 @@ public:
     os << "rt\n" << w.walker.refHelper.rt << endl << endl;
     os << "tc\n" << w.walker.refHelper.tc << endl << endl;
     os << "rtc_b\n" << w.walker.refHelper.rtc_b << endl << endl;
-    os << "totalOverlap\n" << w.walker.refHelper.totalOverlap << endl << endl;
+    os << "ciOverlaps\n";
+    for (int i = 0; i < w.walker.refHelper.ciOverlaps.size(); i++) 
+      os << w.walker.refHelper.ciOverlaps[i] << endl;
+    os << "\ntotalOverlap\n" << w.walker.refHelper.totalOverlap << endl << endl;
     return os;
   }
   

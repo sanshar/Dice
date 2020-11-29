@@ -52,6 +52,7 @@
 #include "TRWavefunction.h"
 #include "PermutedWavefunction.h"
 #include "PermutedTRWavefunction.h"
+#include "NNBS.h"
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
 #include "Lanczos.h"
@@ -154,6 +155,11 @@ int main(int argc, char *argv[])
   
   if (schd.wavefunctionType == "permutedtrwavefunction") {
     PermutedTRWavefunction wave; PermutedTRWalker walk;
+    runVMC(wave, walk);
+  }
+  
+  if (schd.wavefunctionType == "nnbs") {
+    NNBS wave; NNBSWalker walk;
     runVMC(wave, walk);
   }
   

@@ -26,9 +26,11 @@
 #include "sgd.h"
 #include "ftrl.h"
 #include "sr.h"
+#include <functional>
 
-using functor1 = boost::function<void (VectorXd&, VectorXd&, double&, double&, double&)>;
-using functor2 = boost::function<void (VectorXd&, VectorXd&, VectorXd&, DirectMetric&, double&, double&, double&)>;
+namespace ph = std::placeholders;
+using functor1 = std::function<void (VectorXd&, VectorXd&, double&, double&, double&)>;
+using functor2 = std::function<void (VectorXd&, VectorXd&, VectorXd&, DirectMetric&, double&, double&, double&)>;
 
 template<typename Wave, typename Walker>
 void runVMC(Wave& wave, Walker& walk) {
@@ -36,8 +38,8 @@ void runVMC(Wave& wave, Walker& walk) {
   if (schd.restart || schd.fullRestart) wave.readWave();
   VectorXd vars; wave.getVariables(vars);
   getGradientWrapper<Wave, Walker> wrapper(wave, walk, schd.stochasticIter, schd.ctmc);
-  functor1 getStochasticGradient = boost::bind(&getGradientWrapper<Wave, Walker>::getGradient, &wrapper, _1, _2, _3, _4, _5, schd.deterministic);
-  functor2 getStochasticGradientMetric = boost::bind(&getGradientWrapper<Wave, Walker>::getMetric, &wrapper, _1, _2, _3, _4, _5, _6, _7, schd.deterministic);
+  functor1 getStochasticGradient = std::bind(&getGradientWrapper<Wave, Walker>::getGradient, &wrapper, ph::_1, ph::_2, ph::_3, ph::_4, ph::_5, schd.deterministic);
+  functor2 getStochasticGradientMetric = std::bind(&getGradientWrapper<Wave, Walker>::getMetric, &wrapper, ph::_1, ph::_2, ph::_3, ph::_4, ph::_5, ph::_6, ph::_7, schd.deterministic);
 
   if (schd.method == amsgrad || schd.method == amsgrad_sgd) {
     AMSGrad optimizer(schd.stepsize, schd.decay1, schd.decay2, schd.maxIter, schd.avgIter);

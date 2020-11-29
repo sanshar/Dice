@@ -1,9 +1,11 @@
 #ifndef STATS_HEADER_H
 #define STATS_HEADER_H
+#include "Determinants.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <iomanip>
 
 using namespace std;
 
@@ -74,6 +76,8 @@ class Statistics
   public:
     //data
     vector<double> X, W;
+    vector<double> eneSamples, normSamples, ovlps;
+    vector<Determinant> dets; 
     //outputs
     double avg, n = -1.0, var;
     vector<double> C;
@@ -81,6 +85,15 @@ class Statistics
     double t_corr, t_block;
     
     //append data point    
+    int push_back(double ene, double norm, double ovlp, Determinant d, double T)
+    {
+      eneSamples.push_back(ene);
+      normSamples.push_back(norm);
+      ovlps.push_back(ovlp);
+      dets.push_back(d);
+      W.push_back(T);
+      return 2;
+    }
     int push_back(double x, double w)
     {
       X.push_back(x);
@@ -92,6 +105,21 @@ class Statistics
       X.push_back(x);
       return 1;
     }
+
+    void writeSamples(double avgEne, double stddev, double avgNorm) 
+    {
+      string fname = "samples_";
+      fname.append(to_string(commrank));
+      fname.append(".dat");
+      ofstream samplesFile(fname, ios::app);
+      samplesFile << "newIter\n" << "ene " << setprecision(8) << avgEne << " (" << stddev << "),  avgNorm " << avgNorm << endl;
+      samplesFile << "det      ovlp     eneSample    normSample   ratio    T\n";
+      for (int i = 0; i < eneSamples.size(); i++) 
+        samplesFile << dets[i] << "  "  << ovlps[i] << "  " << eneSamples[i] << "  " << normSamples[i] << "  " << eneSamples[i] / normSamples[i] << "  " << W[i] << endl;
+      samplesFile << endl << endl;
+      samplesFile.close();
+    }
+
 
     //write data to file
     void WriteData()
