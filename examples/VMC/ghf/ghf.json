@@ -1,0 +1,23 @@
+{
+  "wavefunction":
+  {
+    "name": "jastrowslater",
+    "determinants": "bestDet", 
+    "hfType": "ghf",
+    "complex": true
+  },
+  "sampling":
+  {
+    "stochasticIter": 5000,
+    "burnIter": 10, 
+    "epsilon": 1.0e-8
+  },
+  "optimizer":
+  {
+    "method": "amsgrad",
+    "maxIter": 300,
+    "stepsize": 0.01,
+    "decay1": 0.1,
+    "decay2": 0.01
+  }
+}
