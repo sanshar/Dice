@@ -95,6 +95,7 @@ private:
     & DoFourRDM                               \
     & cdfciIter                               \
     & z_threshold                             \
+    & max_determinants                        \
     & restrictions;
   }
 
@@ -159,9 +160,11 @@ public:
   bool DoFourRDM;
   double z_threshold;
   int cdfciIter;
+  int report_interval;
+  int max_determinants;
   bool sampleNewDets;
+  bool precondition;
   double factor;
-
   vector<OccRestrictions> restrictions;
 };
 

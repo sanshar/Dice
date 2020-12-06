@@ -106,8 +106,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.DoFourRDM = false;
   
   schd.cdfciIter = 0;
+  schd.report_interval = 1000;
   schd.z_threshold = 0.0;
+  schd.max_determinants = 10000000;
   schd.sampleNewDets = false;
+  schd.precondition = false;
   schd.factor = 1.0;
 
   while (dump.good()) {

@@ -7,6 +7,7 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include "omp.h"
 #include "Determinants.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCISortMpiUtils.h"
@@ -329,6 +330,28 @@ void cdfci::civectorUpdate(vector<value_type>& column, hash_det& wfn, double dx,
   return; 
 }
 
+cdfci::hash_det cdfci::precondition(pair<double, double>& ene, vector<Determinant>& dets, vector<MatrixXx>& ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh, bool sample) {
+  auto norm = std::sqrt(std::abs(energy[0]-coreE));
+  hash_det wfn;
+  ene = std::make_pair(0.0, 0.0);
+  const int nelec = dets[0].Noccupied();
+  double coreEbkp = coreE;
+  coreE = 0.0;
+  std::array<double, 2> zeros{0.0, 0.0};
+  auto dets_size = dets.size();
+  for (int i = 0; i < dets_size; i++) {
+    wfn[dets[i]] = 0.0;
+  }
+  for (int i = 0; i < dets_size; i++) {
+    auto dx = ci[0](i,0)*norm;
+    auto thisDet = std::make_pair(dets[i], wfn[dets[i]]);
+    auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
+    cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
+  }
+  coreE = coreEbkp;
+  return wfn;
+}
+
 set<Determinant> cdfci::sampleExtraEntry(hash_det& wfn, int nelec) {
   set<Determinant> result;
   for(auto det : wfn) {
@@ -352,67 +375,11 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dou
     coreE = 0.0;
     auto startofCalc = getTime();
     value_type thisDet =  std::make_pair(hf, wfn[hf]);
-    //auto dx = -wfn[hf][0];
-    //auto column=cdfci::getSubDets(thisDet, wfn, nelec, sample);
-    //cdfci::civectorUpdate(column, wfn, dx, ene, I1, I2, coreE, thresh, sample);
-    // assume non zero energy means start from a converged reference result
-    /*if (ene.first < 0.0) {
-      //auto new_dets = sampleExtraEntry(wfn, nelec);
-      // add extra entries according to current wfn
-      // keep old wfn, and have a new wfn that stores the updated wfn.
-      hash_det new_dets = wfn; 
-      //double epsilon = schd.z_threshold;
-      for (auto det : wfn) {
-        value_type det_val = std::make_pair(det.first, det.second);
-        auto column = cdfci::getSubDets(det_val, new_dets, nelec, true);
-        std::cout << "column size " << column.size() << std::endl;
-        size_t orbDiff;
-        auto xj = det.second[0];
-        for(auto entry : column) {
-          auto detj = entry.first;
-          double z = 0.0;
-          if (new_dets.find(detj) == new_dets.end()) {
-            double hij = Hij(det.first, detj, I1, I2, coreE, orbDiff);
-            z=xj*hij;
-            if (fabs(z) > thresh) {
-            // if z is above threshold, update z exactly.
-              value_type detj_val = std::make_pair(detj, std::array<double, 2> {0.0, z});
-              auto columnj = cdfci::getSubDets(detj_val, wfn, nelec, false);
-              for(auto entry_j : columnj) {
-                //std::cout << "columnj size " << columnj.size() << std::endl;
-                if (entry_j.first == detj) continue;
-                else {
-                  double hij = Hij(entry_j.first, detj, I1, I2, coreE, orbDiff);
-                  z+= hij*entry_j.second[0];
-                }
-              }
-              new_dets[detj] = {0.0, z};
-            }
-          }
-          else continue;
-        }
-        if (new_dets.size()-wfn.size() > 10000) {
-          break;
-        }
-      }
-      std::cout << "new dets size " << new_dets.size() << std::endl;
-      wfn = new_dets;
-      new_dets.clear();
-      std::cout << "z space size " << wfn.size() << std::endl;
-    }*/
     double prev_ene;
     if (fabs(ene.first) > 1e-10)
       prev_ene = ene.first/ene.second;
     else
       prev_ene=0.0;
-    //prev_ene=0.0;
-    //else prev_ene = ene.first/ene.second;
-    /*if (ene.second > 1e-10) {
-      //if start from a converged eigensystem perturb the system by a bit.
-        auto column = cdfci::getSubDets(thisDet, wfn, nelec, sample);
-        cdfci::civectorUpdate(column, wfn, 1e-2*wfn[hf][0], ene, I1, I2, coreE, thresh, sample);
-        thisDet = cdfci::CoordinatePickGcdGrad(column, ene.second);
-    }*/
     auto num_iter = schd.cdfciIter;
     std::cout << "start optimization" << std::endl;
     for(int k=0; k<num_iter; k++) {
@@ -517,4 +484,258 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
     }
   }
   return E0;
+}
+
+void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, double dx, Determinant* dets, vector<double>& x_vector, vector<double>& z_vector, cdfci::DetToIndex& det_to_index, oneInt& I1, twoInt& I2, double& coreE) {
+  auto deti = dets[column[0]];
+  size_t orbDiff;
+  double hij;
+  hij = deti.Energy(I1, I2, coreE);
+  auto dz = hij * dx;
+  z_vector[column[0]] += dz;
+  auto z = z_vector[column[0]];
+  auto x = x_vector[column[0]];
+  x_vector[column[0]] += dx;
+  ene.first += (dx * hij * dx  +  2 * dx * hij * x);
+  ene.second += dx * dx + 2 * dx * x;
+  double local_norm;
+  double global_norm;
+  int num_iter = column.size();
+  #pragma omp parallel private(local_norm, dz, x) shared(global_norm)
+  {
+    local_norm = 0.0;
+    global_norm = 0.0;
+  #pragma omp for
+  for (int i = 1; i < num_iter; i++) {
+    auto detj = dets[column[i]];
+    auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+    dz = dx * hij;
+    x = x_vector[column[i]];
+    z_vector[column[i]] += dz;
+    local_norm += (conj(x)*dz+conj(dz)*x).real();
+  }
+  #pragma omp critical
+  global_norm += local_norm;
+  #pragma omp barrier
+  }
+  ene.first += global_norm;
+  return;
+}
+
+double CoordinateUpdate(Determinant& det, double x, double z, double xx, oneInt& I1, twoInt& I2, double& coreE) {
+  double result;
+  double dx = 0.0;
+  size_t orbDiff;
+  
+  auto dA = det.Energy(I1, I2, coreE);
+  dA=-dA;
+  // Line Search, cced from original cdfci code.
+  auto p1 = xx - x * x - dA;
+  auto q = z + dA * x;  //
+  auto p3 = p1/3;
+  auto q2 = q/2;
+  auto d = p3 * p3 * p3 + q2 * q2;
+  double rt = 0;
+  //std::cout << "p1: " << p1 << " q: " << q << std::endl;
+  const double pi = atan(1.0) * 4;
+
+  if (d >= 0) {
+    auto qrtd = sqrt(d);
+    rt = cbrt(-q2 + qrtd) + cbrt(-q2 - qrtd);
+  }
+  else {
+    auto qrtd = sqrt(-d);
+    if (q2 >= 0) {
+      rt = 2 * sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
+    }
+    else {
+      rt = 2 * sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
+    }
+  }
+  dx = rt - x;
+// Newton iteration to improve accuracy
+  auto dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
+             / (dx*(3*dx + 6*x) + 3*x*x + p1);
+
+  const double depsilon = 1e-12;
+  const int max_iter = 10;
+  int iter = 0;
+  while (fabs((dxn - dx)/dx) > depsilon && iter < max_iter)
+  {
+      dx = dxn;
+      dxn = dx - (dx*(dx*(dx + 3*x) + (3*x*x + p1)) + p1*x + q + x*x*x)
+          / (dx*(3*dx + 6*x) + 3*x*x + p1);
+      ++iter;
+  }
+  return dx;
+}
+
+// need to resize the result vector
+void getSubDetsNoSample(Determinant* dets, vector<int>& column, cdfci::DetToIndex& det_to_index, int this_index, int nelec) {
+  auto det = dets[this_index];
+
+  int norbs = det.norbs;
+  int nclosed = nelec;
+  int nopen = norbs-nclosed;
+  vector<int> closed(nelec, 0);
+  vector<int> open(nopen, 0);
+  det.getOpenClosed(open, closed);
+  vector<int> result(1+nopen*nclosed+nopen*nopen*nclosed*nclosed, -1);
+
+  result[0] = this_index;
+  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
+  for (int ia=0; ia<nopen*nclosed; ia++) {
+    int i=ia/nopen, a=ia%nopen;
+    if (closed[i]%2 == open[a]%2) {
+      Determinant di = det;
+      di.setocc(open[a], true);
+      di.setocc(closed[i], false);
+      auto iter = det_to_index.find(di);
+      if (iter != det_to_index.end()) {
+        result[ia+1] = iter->second;
+      }
+    }
+  }
+
+  //get all existing double excitations
+  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
+  for(int ij=0; ij<nclosed*nclosed; ij++) {
+    int i=ij/nclosed, j=ij%nclosed;
+    if(i<=j) continue;
+    int I = closed[i], J = closed[j];
+    for (int kl=0;kl<nopen*nopen;kl++) {
+      int k=kl/nopen;
+      int l=kl%nopen;
+      if(k<=l) continue;
+      int K=open[k], L=open[l];
+      int a = max(K,L), b = min(K,L);
+      if (a%2+b%2-I%2-J%2 != 0) {
+        continue;
+      }
+      Determinant di = det;
+      di.setocc(a, true);
+      di.setocc(b, true);
+      di.setocc(I, false);
+      di.setocc(J, false);
+      auto iter = det_to_index.find(di);
+      if (iter != det_to_index.end()) {
+        result[1+nopen*nclosed+ij*nopen*nopen+kl] = iter->second;
+      }
+    }
+  }
+
+  column.clear();
+  column.push_back(result[0]);
+  //#pragma omp parallel for
+  for (int i = 1; i < 1+nopen*nclosed+nopen*nopen*nclosed*nclosed; i++) {
+    if (result[i]>=0) 
+    {
+      column.push_back(result[i]);
+    }
+  }
+  return;
+}
+
+int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vector<double>& z_vector, vector<pair<double, double>>& ene) {
+  int num_threads = omp_get_num_threads();
+  vector<double> max_abs_grad(num_threads, 0.0);
+  vector<int> local_results(num_threads, 0);
+  // only optimize ground state
+  double norm = ene[0].second;
+  #pragma omp parallel for default(none) shared(x_vector, z_vector, column, max_abs_grad, result, norm)
+  for(int i = 1; i < column.size(); i++) {
+    int thread_id = omp_get_thread_num();
+    auto x = x_vector[column[i]];
+    auto z = z_vector[column[i]];
+    auto abs_grad = std::abs(x*norm+z);
+    if (abs_grad > max_abs_grad[thread_id]) {
+      max_abs_grad[thread_id] = abs_grad;
+      local_results[thread_id] = column[i];
+    }
+  }
+  auto result = local_results[0];
+  auto result_idx = 0;
+  for (int i=1; i<num_threads; i++) {
+    if (max_abs_grad[result_idx] < max_abs_grad[i]) {
+      result = local_results[i];
+      result_idx = i;
+    }
+  }
+  return result;
+}
+
+vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, Determinant* dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
+  int nelec = dets[0].Noccupied();
+  vector<pair<double, double>> result;
+  vector<int> column;
+  int nroots = ci.size();
+  if (nroots != 1) {
+    pout << "cdfci currently only supports single root" << endl;
+    exit(0);
+  }
+
+  for (int iroot = 0; iroot < nroots; iroot++) {
+    int x_size = ci[iroot].rows();
+    int z_size = det_to_index.size();
+    double norm = sqrt(abs(E0[iroot]-coreE));
+    auto result_iroot = pair<double, double>(0.0, 0.0);
+    double xz = 0.0;
+    for (int i = 0; i < x_size; i++) {
+      auto dx = ci[iroot](i, 0) * norm;
+      getSubDetsNoSample(dets, column, det_to_index, i, nelec);
+      civectorUpdateNoSample(result_iroot, column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
+    }
+    result.push_back(result_iroot);
+  }
+  return result;
+}
+
+void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* dets, int dets_size) {
+  DetToIndex det_to_index;
+  int start_index = ci[0].rows();
+  double coreEbkp = coreE;
+  coreE = 0.0;
+
+  for (int i = 0; i < dets_size; i++) {
+    det_to_index[dets[i]] = i;
+  }
+
+  // ene stores the rayleigh quotient quantities.
+  int nroots = ci.size();
+  vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
+  const double zero = 0.0;
+  vector<double> x_vector(dets_size, zero), z_vector(dets_size, zero);
+  auto start_time = getTime();
+  ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
+
+  const int nelec = dets[0].Noccupied();
+  auto num_iter = schd.cdfciIter;
+  int this_det_idx = 0;
+  vector<int> column;
+  getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
+
+  for (int iroot = 0; iroot < nroots; iroot++) {
+    auto prev_ene = 0.0;
+    auto start_time = getTime();
+    for (int i = 0; i < num_iter; i++) {
+
+      auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
+      civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
+      this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
+      getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
+
+      // now some logical codes, print out information and decide when to exit etc.
+      if (i%schd.report_interval == 0) {
+        auto curr_ene = ene[iroot].first/ene[iroot].second;
+        cout << setw(10) << i << setw(20) <<std::setprecision(16) << curr_ene+coreEbkp << setw(20) <<std::setprecision(16) << prev_ene+coreEbkp;
+        cout << setw(20) << setprecision(6) << dx << std::setw(12) << std::setprecision(5) << scientific << getTime()-start_time << defaultfloat << endl;
+        if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.dE) {
+          break;
+        }
+        prev_ene = curr_ene;
+      }
+    }
+  }
+  coreE = coreEbkp;
+  return;
 }
