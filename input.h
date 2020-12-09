@@ -159,6 +159,7 @@ public:
   bool DoThreeRDM;
   bool DoFourRDM;
   double z_threshold;
+  int cdfci_on;
   int cdfciIter;
   int report_interval;
   int max_determinants;

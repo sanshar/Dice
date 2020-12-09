@@ -1079,6 +1079,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
+
+    if (iter == schd.cdfci_on) {
+      helper2.clear();
+      sparseHam.clear();
+      cdfci::solve(schd, I1, I2, coreEbkp, E0, ci, SHMDets, DetsSize);
+      exit(0);
+    }
+
     //************
     if (commrank == 0 && schd.DavidsonType == DIRECT)
       printf("New size of determinant space %8i\n", DetsSize);

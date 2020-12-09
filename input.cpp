@@ -106,6 +106,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.DoFourRDM = false;
   
   schd.cdfciIter = 0;
+  schd.cdfci_on = 1000;
   schd.report_interval = 1000;
   schd.z_threshold = 0.0;
   schd.max_determinants = 10000000;
@@ -310,6 +311,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       maxiter = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "cdfciIter"))
       schd.cdfciIter = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciOn"))
+      schd.cdfci_on = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "reportInterval"))
+      schd.report_interval = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "z_threshold"))
       schd.z_threshold = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "cdfciSample"))

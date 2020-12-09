@@ -340,7 +340,7 @@ cdfci::hash_det cdfci::precondition(pair<double, double>& ene, vector<Determinan
   std::array<double, 2> zeros{0.0, 0.0};
   auto dets_size = dets.size();
   for (int i = 0; i < dets_size; i++) {
-    wfn[dets[i]] = 0.0;
+    wfn[dets[i]] = zeros;
   }
   for (int i = 0; i < dets_size; i++) {
     auto dx = ci[0](i,0)*norm;
@@ -637,12 +637,18 @@ void getSubDetsNoSample(Determinant* dets, vector<int>& column, cdfci::DetToInde
 }
 
 int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vector<double>& z_vector, vector<pair<double, double>>& ene) {
-  int num_threads = omp_get_num_threads();
-  vector<double> max_abs_grad(num_threads, 0.0);
-  vector<int> local_results(num_threads, 0);
+  int num_threads;
+  vector<double> max_abs_grad;
+  vector<int> local_results;
   // only optimize ground state
   double norm = ene[0].second;
-  #pragma omp parallel for default(none) shared(x_vector, z_vector, column, max_abs_grad, result, norm)
+  #pragma omp parallel 
+  {
+    num_threads = omp_get_num_threads();
+  }
+    max_abs_grad.resize(num_threads);
+    local_results.resize(num_threads);
+  #pragma omp parallel for
   for(int i = 1; i < column.size(); i++) {
     int thread_id = omp_get_thread_num();
     auto x = x_vector[column[i]];
@@ -655,7 +661,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
   }
   auto result = local_results[0];
   auto result_idx = 0;
-  for (int i=1; i<num_threads; i++) {
+  for (int i = 1; i<num_threads; i++) {
     if (max_abs_grad[result_idx] < max_abs_grad[i]) {
       result = local_results[i];
       result_idx = i;
@@ -718,7 +724,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<
     auto prev_ene = 0.0;
     auto start_time = getTime();
     for (int i = 0; i < num_iter; i++) {
-
       auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
       civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
       this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
@@ -728,7 +733,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<
       if (i%schd.report_interval == 0) {
         auto curr_ene = ene[iroot].first/ene[iroot].second;
         cout << setw(10) << i << setw(20) <<std::setprecision(16) << curr_ene+coreEbkp << setw(20) <<std::setprecision(16) << prev_ene+coreEbkp;
-        cout << setw(20) << setprecision(6) << dx << std::setw(12) << std::setprecision(5) << scientific << getTime()-start_time << defaultfloat << endl;
+        cout << setw(10) << setprecision(6) << dx << std::setw(12) << std::setprecision(5) << scientific << getTime()-start_time << defaultfloat << endl;
         if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.dE) {
           break;
         }
