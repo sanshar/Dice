@@ -3,10 +3,9 @@ USE_INTEL = yes
 COMPILE_NUMERIC = yes
 
 EIGEN=/projects/sash2458/newApps/eigen/
-BOOST=/projects/sash2458/newApps/boost_1_67_0/
+#BOOST=/projects/sash2458/newApps/boost_1_67_0/
+BOOST=/projects/anma2640/boost_1_66_0/
 LIBIGL=/projects/sash2458/apps/libigl/include/
-PYSCF=/projects/sash2458/newApps/pyscf/pyscf/lib/
-LIBCINT=/projects/sash2458/newApps/pyscf/pyscf/lib/deps/lib
 HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 #TACO=/projects/sash2458/newApps/taco/install
 #EIGEN=/projects/ilsa8974/apps/eigen/
@@ -131,6 +130,12 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/excitGen.o \
 	obj/utilsFCIQMC.o \
 
+OBJ_DQMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Correlator.o \
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
@@ -174,6 +179,10 @@ bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
 bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
 	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
+
+bin/DQMC	: $(OBJ_DQMC) executables/DQMC.cpp
+	$(CXX)   $(FLAGS) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/sPT	: $(OBJ_sPT) 
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
