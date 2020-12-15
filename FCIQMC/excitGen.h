@@ -22,7 +22,7 @@
 
 // Map two integers to a single integer by a one-to-one mapping,
 // using the triangular indexing approach
-inline int triInd(const int& p, const int& q)
+inline int triInd(const int p, const int q)
 {
   int Q = min(p,q);
   int P = max(p,q);
@@ -76,11 +76,11 @@ class heatBathFCIQMC {
 
 
 void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                        const Determinant& parentDet, const int& nel, Determinant& childDet,
+                        const Determinant& parentDet, const int nel, Determinant& childDet,
                         Determinant& childDet2, double& pGen, double& pGen2);
 
 void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                const Determinant& parentDet, const int& nel, Determinant& childDet,
+                                const Determinant& parentDet, const int nel, Determinant& childDet,
                                 Determinant& childDet2, double& pgen, double& pgen2);
 
 void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
@@ -98,14 +98,14 @@ double calcSinglesProb(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
                        const double hSingAbs, const int p, const int r);
 
 double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoInt& I2,
-                      const double& H_tot_pqr, const int& p, const int& r);
+                      const double H_tot_pqr, const int p, const int r);
 
-void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
-                       const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
-                       double& rProb, double& sProb, double& doubleProb, const bool& calcDoubleProb);
+void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
+                       const Determinant& parentDet, const int p, const int q, const int r, const int s,
+                       double& rProb, double& sProb, double& doubleProb, const bool calcDoubleProb);
 
 void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
-                     const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
-                     const bool& attemptSingleExcit);
+                     const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
+                     const bool attemptSingleExcit);
 
 #endif

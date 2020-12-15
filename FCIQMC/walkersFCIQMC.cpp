@@ -22,7 +22,7 @@
 #include "global.h"
 #include "walkersFCIQMC.h"
 
-void stochastic_round(const double& minPop, double& amp, bool& roundedUp) {
+void stochastic_round(const double minPop, double& amp, bool& roundedUp) {
   auto random = bind(uniform_real_distribution<double>(0, 1), ref(generator));
   double pAccept = abs(amp)/minPop;
   if (random() < pAccept) {
@@ -65,7 +65,7 @@ bool walkersFCIQMC::allUnoccupied(const int i) const {
   return all_of(&amps[i][0], &amps[i][nreplicas], [](double x) { return abs(x)<1.0e-12; });
 }
 
-void walkersFCIQMC::stochasticRoundAll(const double& minPop) {
+void walkersFCIQMC::stochasticRoundAll(const double minPop) {
 
   for (int iDet=0; iDet<nDets; iDet++) {
     // To be a valid walker in the main list, there must be a corresponding
