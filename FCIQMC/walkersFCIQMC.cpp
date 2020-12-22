@@ -17,10 +17,12 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <Eigen/Dense>
-//#include <boost/serialization/serialization.hpp>
 #include "global.h"
 #include "walkersFCIQMC.h"
+
+#include "CorrelatedWavefunction.h"
+#include "Jastrow.h"
+#include "Slater.h"
 
 void stochastic_round(const double minPop, double& amp, bool& roundedUp) {
   auto random = bind(uniform_real_distribution<double>(0, 1), ref(generator));
@@ -45,6 +47,8 @@ void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
   nreplicas = nreplicasLocal;
   dets.resize(arrayLength);
   diagH.resize(arrayLength);
+  localE.resize(arrayLength);
+  ovlp.resize(arrayLength);
   amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
   emptyDets.resize(arrayLength);
   firstEmpty = 0;
@@ -55,6 +59,8 @@ void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
 walkersFCIQMC::~walkersFCIQMC() {
   dets.clear();
   diagH.clear();
+  localE.clear();
+  ovlp.clear();
   deleteAmpsArray(amps);
   ht.clear();
   emptyDets.clear();
@@ -110,12 +116,16 @@ void walkersFCIQMC::stochasticRoundAll(const double minPop) {
   }
 }
 
-void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE) {
+void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet,
+                              oneInt& I1, twoInt& I2, double& coreE) {
 
   int excitLevel = 0;
-  std::fill(dat.walkerPop.begin(), dat.walkerPop.end(), 0.0);
-  std::fill(dat.EProj.begin(),     dat.EProj.end(), 0.0);
-  std::fill(dat.HFAmp.begin(),     dat.HFAmp.end(), 0.0);
+  double overlapRatio = 0.0;
+  std::fill(dat.walkerPop.begin(),   dat.walkerPop.end(), 0.0);
+  std::fill(dat.EProj.begin(),       dat.EProj.end(), 0.0);
+  std::fill(dat.HFAmp.begin(),       dat.HFAmp.end(), 0.0);
+  std::fill(dat.trialEProj.begin(),  dat.trialEProj.end(), 0.0);
+  std::fill(dat.ampSum.begin(),      dat.ampSum.end(), 0.0);
 
   for (int iDet=0; iDet<nDets; iDet++) {
 
@@ -130,11 +140,16 @@ void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, t
 
           dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
 
+          // Trial-WF-based estimator data
+          dat.trialEProj.at(iReplica) += localE[iDet] * amps[iDet][iReplica];
+          dat.ampSum.at(iReplica) += amps[iDet][iReplica];
+          
+          // HF-based estimator data
           if (excitLevel == 0) {
-            dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
-            dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE);
+            dat.HFAmp.at(iReplica) = amps[iDet][iReplica] / ovlp[iDet];
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ovlp[iDet];
           } else if (excitLevel <= 2) {
-            dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE);
+            dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ovlp[iDet];
           }
         }
 

@@ -26,15 +26,22 @@
 #include "walkersFCIQMC.h"
 #include "utilsFCIQMC.h"
 
-void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta, Determinant& HFDet,
-                double& HFEnergy, heatBathFCIQMC& hb, walkersFCIQMC& walkers, spawnFCIQMC& spawn);
+template<typename Wave, typename Walker>
+void initFCIQMC(Wave& wave, Walker& walk,
+                const int norbs, const int nel, const int nalpha, const int nbeta,
+                Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
+                walkersFCIQMC& walkers, spawnFCIQMC& spawn, workingArray& work);
 
-void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta);
+template<typename Wave, typename Walker>
+void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
+               const int nalpha, const int nbeta);
 
-void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
+template<typename Wave, typename Walker>
+void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
                      oneInt &I1, twoInt &I2, double& coreE, const int nAttemptsEach,
                      const double parentAmp, const int parentFlags, const int iReplica,
-                     const double tau, const double minSpawn, const double pgen);
+                     const double tau, const double minSpawn, const double pgen,
+                     const int ex1, const int ex2);
 
 void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau);

@@ -72,6 +72,12 @@ class walkersFCIQMC {
   vector<Determinant> dets;
   // List of diagonal Hamiltonian elements for the occupied determinants
   vector<double> diagH;
+  // When using a trial wave function, this holds a list of the local
+  // energies for the occupied determinants
+  vector<double> localE;
+  // When using a trial wave function, this holds a list of the overlaps
+  // between the wave function and the occupied determinants
+  vector<double> ovlp;
   // List of walkers amplitudes
   double** amps;
   // Hash table to access the walker array
@@ -99,7 +105,8 @@ class walkersFCIQMC {
 
   bool allUnoccupied(const int i) const;
 
-  void calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE);
+  void calcStats(dataFCIQMC& dat, Determinant& HFDet,
+                 oneInt& I1, twoInt& I2, double& coreE);
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {

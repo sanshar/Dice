@@ -157,6 +157,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.nGeneration = input.get("sampling.nGeneration", 30.0);
     
     //FCIQMC options
+    schd.maxIterFCIQMC = input.get("sampling.maxIterFCIQMC", 50);
     schd.nreplicas = input.get("sampling.nReplicas", 1);
     schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
     schd.mainMemoryFac = input.get("sampling.mainMemoryFac", 5.0);

@@ -17,6 +17,8 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #ifndef SERIAL
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -29,6 +31,11 @@
 #include "integral.h"
 #include "SHCIshm.h"
 #include "runFCIQMC.h"
+
+#include "CorrelatedWavefunction.h"
+#include "Jastrow.h"
+#include "Slater.h"
+#include "runVMC.h"
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +70,13 @@ int main(int argc, char *argv[])
   int nbeta = Determinant::nbeta;
   int nel = nalpha + nbeta;
 
-  runFCIQMC(norbs, nel, nalpha, nbeta);
+  CorrelatedWavefunction<Jastrow, Slater> wave;
+  Walker<Jastrow, Slater> walk;
+  //runVMC(wave, walk);
+  wave.readWave();
+  wave.initWalker(walk);
+
+  runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

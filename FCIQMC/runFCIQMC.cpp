@@ -3,16 +3,22 @@
 #include "evaluateE.h"
 #include "global.h"
 #include "input.h"
-#include "Walker.h"
 
 #include "runFCIQMC.h"
+
+#include "CorrelatedWavefunction.h"
+#include "Jastrow.h"
+#include "Slater.h"
+#include "SelectedCI.h"
 
 // Perform initialization of variables needed for the runFCIQMC routine.
 // In particular the Hartree--Fock determinant and energy, the heat bath
 // integrals (hb), and the walker and spawned walker objects.
-void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta,
+template<typename Wave, typename Walker>
+void initFCIQMC(Wave& wave, Walker& walk,
+                const int norbs, const int nel, const int nalpha, const int nbeta,
                 Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
-                walkersFCIQMC& walkers, spawnFCIQMC& spawn) {
+                walkersFCIQMC& walkers, spawnFCIQMC& spawn, workingArray& work) {
 
   // The number of 64-bit integers required to represent (the alpha
   // or beta part of) a determinant
@@ -43,6 +49,13 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
     walkers.dets[0] = HFDet;
     walkers.diagH[0] = HFEnergy;
     walkers.ht[HFDet] = 0;
+
+    double HFOvlp, HFLocalE;
+    Walker HFWalk(wave.corr, wave.ref, HFDet);
+    wave.HamAndOvlp(HFWalk, HFOvlp, HFLocalE, work);
+    walkers.localE[0] = HFLocalE;
+    walkers.ovlp[0] = HFOvlp;
+
     // Set the population on the reference
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       walkers.amps[0][iReplica] = schd.initialPop;
@@ -70,7 +83,9 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
 }
 
 // Perform the main FCIQMC loop
-void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta) {
+template<typename Wave, typename Walker>
+void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
+               const int nalpha, const int nbeta) {
 
   // Objects needed for the FCIQMC simulation, which will be
   // initialized in initFCIQMC
@@ -80,7 +95,13 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
   walkersFCIQMC walkers;
   spawnFCIQMC spawn;
 
-  initFCIQMC(norbs, nel, nalpha, nbeta, HFDet, HFEnergy, hb, walkers, spawn);
+  // Needed for calculating local energies
+  workingArray work;
+
+  initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta,
+      HFDet, HFEnergy, hb, walkers, spawn, work);
+
+  Walker HFWalk(wave.corr, wave.ref, HFDet);
 
   // ----- FCIQMC data -----
   double initEshift = HFEnergy + schd.initialShift;
@@ -101,7 +122,7 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
   printDataTable(dat, 0, nDetsTot, nSpawnedDetsTot, iter_time);
 
   // Main FCIQMC loop
-  for (int iter = 1; iter <= schd.maxIter; iter++) {
+  for (int iter = 1; iter <= schd.maxIterFCIQMC; iter++) {
     time_start = getTime();
 
     walkers.firstEmpty = 0;
@@ -124,6 +145,8 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
         continue;
       }
 
+      Walker parentWalk(wave.corr, wave.ref, walkers.dets[iDet]);
+
       for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
         // Update the initiator flag, if necessary
         int parentFlags = 0;
@@ -142,18 +165,22 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
         // Perform one spawning attempt for each 'walker' of weight parentAmp
         for (int iAttempt=0; iAttempt<nAttempts; iAttempt++) {
           double pgen = 0.0, pgen2 = 0.0;
+          int ex1, ex2;
           Determinant childDet, childDet2;
 
-          generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2, pgen, pgen2);
+          generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2,
+                             pgen, pgen2, ex1, ex2);
 
           // pgen=0.0 is set when a null excitation is returned.
           if (pgen > 1.e-15) {
-            attemptSpawning(walkers.dets[iDet], childDet, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                            parentAmp, parentFlags, iReplica, schd.tau, schd.minSpawn, pgen);
+            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet, spawn, I1, I2,
+                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                            schd.tau, schd.minSpawn, pgen, ex1, ex2);
           }
           if (pgen2 > 1.e-15) {
-            attemptSpawning(walkers.dets[iDet], childDet2, spawn, I1, I2, coreE, schd.nAttemptsEach,
-                            parentAmp, parentFlags, iReplica, schd.tau, schd.minSpawn, pgen2);
+            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet2, spawn, I1, I2,
+                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                            schd.tau, schd.minSpawn, pgen2, ex1, ex2);
           }
 
         } // Loop over spawning attempts
@@ -175,7 +202,7 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
     }
 
     performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
-    spawn.mergeIntoMain(walkers, schd.minPop, schd.initiator);
+    spawn.mergeIntoMain(wave, walk, walkers, schd.minPop, schd.initiator, work);
 
     // Stochastic rounding of small walkers
     walkers.stochasticRoundAll(schd.minPop);
@@ -197,19 +224,37 @@ void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta
 
 }
 
-
 // Find the weight of the spawned walker
 // If it is above a minimum threshold, then always spawn
 // Otherwsie, stochastically round it up to the threshold or down to 0
-void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
-                     oneInt &I1, twoInt &I2, double& coreE, const int nAttemptsEach,
-                     const double parentAmp, const int parentFlags, const int iReplica,
-                     const double tau, const double minSpawn, const double pgen)
+template<typename Wave, typename Walker>
+void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determinant& childDet,
+                     spawnFCIQMC& spawn, oneInt &I1, twoInt &I2, double& coreE,
+                     const int nAttemptsEach, const double parentAmp, const int parentFlags,
+                     const int iReplica, const double tau, const double minSpawn,
+                     const double pgen, const int ex1, const int ex2)
 {
   bool childSpawned = true;
 
   double pgen_tot = pgen * nAttemptsEach;
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);
+
+  //double overlapRatio = wave.getOverlapFactor(walk, childDet, true);
+  //HElem *= overlapRatio;
+  Walker childWalk(wave.corr, wave.ref, childDet);
+  double childOvlp = wave.Overlap(childWalk);
+  //Walker tempWalk = childWalk;
+  //double tempChildOvlp = wave.Overlap(tempWalk);
+  //cout << "overlapRatio: " << overlapRatio << "  Correct: " << childOvlp / parentOvlp << endl;
+  //cout << "Parent overlap: " << parentOvlp << "  Child overlap: " << childOvlp << "  Temp overlap: " << tempChildOvlp << endl << endl;
+
+  double parentOvlp = wave.Overlap(walk);
+  //Walker childWalk = walk;
+  //childWalk.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2);
+  //double childOvlp = wave.Overlap(childWalk);
+  
+  HElem *= childOvlp / parentOvlp;
+
   double childAmp = - tau * parentAmp * HElem / pgen_tot;
 
   if (abs(childAmp) < minSpawn) {
@@ -333,17 +378,21 @@ void communicateEstimates(dataFCIQMC& dat, const int nDets, const int nSpawnedDe
                           int& nDetsTot, int& nSpawnedDetsTot)
 {
 #ifdef SERIAL
-  dat.walkerPopTot = dat.walkerPop;
-  dat.EProjTot     = dat.EProj;
-  dat.HFAmpTot     = dat.HFAmp;
-  nDetsTot         = nDets;
-  nSpawnedDetsTot  = nSpawnedDets;
+  dat.walkerPopTot  = dat.walkerPop;
+  dat.EProjTot      = dat.EProj;
+  dat.HFAmpTot      = dat.HFAmp;
+  dat.trialEProjTot = dat.trialEProj;
+  dat.ampSumTot     = dat.ampSum;
+  nDetsTot          = nDets;
+  nSpawnedDetsTot   = nSpawnedDets;
 #else
-  MPI_Allreduce(&dat.walkerPop.front(), &dat.walkerPopTot.front(), schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&dat.EProj.front(),     &dat.EProjTot.front(),     schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&dat.HFAmp.front(),     &dat.HFAmpTot.front(),     schd.nreplicas,  MPI_DOUBLE,  MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nDets,                 &nDetsTot,                 1,               MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
-  MPI_Allreduce(&nSpawnedDets,          &nSpawnedDetsTot,          1,               MPI_INT,     MPI_SUM,  MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.walkerPop.front(),  &dat.walkerPopTot.front(),  schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.EProj.front(),      &dat.EProjTot.front(),      schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.HFAmp.front(),      &dat.HFAmpTot.front(),      schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.trialEProj.front(), &dat.trialEProjTot.front(), schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.ampSum.front(),     &dat.ampSumTot.front(),     schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&nDets,                  &nDetsTot,                  1,              MPI_INT,    MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&nSpawnedDets,           &nSpawnedDetsTot,           1,              MPI_INT,    MPI_SUM, MPI_COMM_WORLD);
 #endif
 }
 
@@ -379,9 +428,9 @@ void printDataTableHeader()
     // This loop is for properties printed on each replica
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
 
-      for (int j=0; j<4; j++) {
+      for (int j=0; j<6; j++) {
         string header;
-        label = 4*iReplica + j + 4;
+        label = 6*iReplica + j + 4;
         header.append(to_string(label));
 
         if (j==0) {
@@ -392,6 +441,10 @@ void printDataTableHeader()
           header.append(". Energy_Num_");
         } else if (j==3) {
           header.append(". Energy_Denom_");
+        } else if (j==4) {
+          header.append(". Trial_E_Num_");
+        } else if (j==5) {
+          header.append(". Trial_E_Denom_");
         }
 
         header.append(to_string(iReplica+1));
@@ -429,6 +482,8 @@ void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets, cons
       printf ("%18.10f   ", dat.walkerPopTot[iReplica]);
       printf ("%18.10f   ", dat.EProjTot[iReplica]);
       printf ("%18.10f   ", dat.HFAmpTot[iReplica]);
+      printf ("%18.10f   ", dat.trialEProjTot[iReplica]);
+      printf ("%18.10f   ", dat.ampSumTot[iReplica]);
     }
 
     if (schd.nreplicas == 2) {
@@ -473,3 +528,9 @@ void printFinalStats(const vector<double>& walkerPop, const int nDets,
   }
 #endif
 }
+
+// Instantiate needed templates
+template void runFCIQMC(CorrelatedWavefunction<Jastrow, Slater>& wave,
+                        Walker<Jastrow, Slater>& walk,
+                        const int norbs, const int nel,
+                        const int nalpha, const int nbeta);

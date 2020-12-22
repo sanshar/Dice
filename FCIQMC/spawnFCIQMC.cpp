@@ -26,6 +26,11 @@
 #include "spawnFCIQMC.h"
 #include "walkersFCIQMC.h"
 
+#include "CorrelatedWavefunction.h"
+#include "Jastrow.h"
+#include "Slater.h"
+#include "SelectedCI.h"
+
 template <typename T, typename Compare>
 vector<size_t> sort_permutation(int const nDets, const vector<T>& vec, Compare compare)
 {
@@ -225,19 +230,22 @@ void spawnFCIQMC::compress() {
 
 // Wrapper function for merging the spawned list into the main list
 // Two versions are used for optimization
-void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double minPop, bool initiator) {
+template<typename Wave, typename Walker>
+void spawnFCIQMC::mergeIntoMain(Wave& wave, Walker& walk, walkersFCIQMC& walkers, const double minPop,
+                                bool initiator, workingArray& work) {
 
   if (initiator) {
-    mergeIntoMain_Initiator(walkers, minPop);
+    mergeIntoMain_Initiator(wave, walk, walkers, minPop, work);
   } else {
-    mergeIntoMain_NoInitiator(walkers, minPop);
+    mergeIntoMain_NoInitiator(wave, walk, walkers, minPop, work);
   }
 
 }
 
 // Move spawned walkers to the provided main walker list
-void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double minPop) {
-
+template<typename Wave, typename Walker>
+void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers, const double minPop,
+                                            workingArray& work) {
   int pos;
 
   for (int i = 0; i<nDets; i++) {
@@ -291,6 +299,11 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double
         }
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
+        Walker newWalk(wave.corr, wave.ref, walkers.dets[pos]);
+        double ovlp, localE;
+        wave.HamAndOvlp(newWalk, ovlp, localE, work);
+        walkers.localE[pos] = localE;
+        walkers.ovlp[pos] = ovlp;
 
         // Add in the new walker population
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
@@ -305,8 +318,9 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double
 
 // Move spawned walkers to the provided main walker list, while
 // applying the initiator criteria
-void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double minPop) {
-
+template<typename Wave, typename Walker>
+void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers, const double minPop,
+                                          workingArray& work) {
   int pos;
 
   for (int i = 0; i<nDets; i++) {
@@ -371,6 +385,11 @@ void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double m
         }
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
+        Walker newWalk(wave.corr, wave.ref, walkers.dets[pos]);
+        double ovlp, localE;
+        wave.HamAndOvlp(newWalk, ovlp, localE, work);
+        walkers.localE[pos] = localE;
+        walkers.ovlp[pos] = ovlp;
 
         // Add in the new walker population, but only if allowed by the
         // initiator criteria (i.e. if the flag is set):
@@ -385,3 +404,28 @@ void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double m
     }
   }
 }
+
+// Instantiate needed templates
+
+// Jastrow-Slater
+template void spawnFCIQMC::mergeIntoMain(
+    CorrelatedWavefunction<Jastrow, Slater>& wave,
+    Walker<Jastrow, Slater>& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    bool initiator,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_NoInitiator(
+    CorrelatedWavefunction<Jastrow, Slater>& wave,
+    Walker<Jastrow, Slater>& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_Initiator(
+    CorrelatedWavefunction<Jastrow, Slater>& wave,
+    Walker<Jastrow, Slater>& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    workingArray& work);

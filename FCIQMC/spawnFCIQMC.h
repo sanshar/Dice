@@ -22,6 +22,7 @@
 #include <vector>
 #include "Determinants.h"
 #include "walkersFCIQMC.h"
+#include "workingArray.h"
 
 class Determinant;
 
@@ -76,9 +77,15 @@ class spawnFCIQMC {
   void compress();
   
   // Move spawned walkers to the provided main walker list
-  void mergeIntoMain(walkersFCIQMC& walkers, const double minPop, bool initiator);
-  void mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double minPop);
-  void mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double minPop);
+  template<typename Wave, typename Walker>
+  void mergeIntoMain(Wave& wave, Walker& walk, walkersFCIQMC& walkers, const double minPop,
+                     bool initiator, workingArray& work);
+  template<typename Wave, typename Walker>
+  void mergeIntoMain_NoInitiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+                                 const double minPop, workingArray& work);
+  template<typename Wave, typename Walker>
+  void mergeIntoMain_Initiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+                               const double minPop, workingArray& work);
 
 };
 

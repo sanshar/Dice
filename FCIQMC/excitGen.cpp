@@ -311,12 +311,13 @@ void heatBathFCIQMC::createArrays(int norbs, const twoInt& I2) {
 
 // Wrapper function to call the appropriate excitation generator
 void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
-                        const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
+                        const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
+                        int& ex1, int& ex2)
 {
   if (schd.uniformExGen || schd.heatBathUniformSingExGen) {
-    generateExcitationSingDoub(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2);
+    generateExcitationSingDoub(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2, ex1, ex2);
   } else if (schd.heatBathExGen) {
-    generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2, true);
+    generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2, ex1, ex2, true);
   }
 }
 
@@ -325,7 +326,8 @@ void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt
 // childDet and pgen. A double excitation is returned using chilDet2 and pGen2.
 void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
                                 const Determinant& parentDet, const int nel, Determinant& childDet,
-                                Determinant& childDet2, double& pgen, double& pgen2)
+                                Determinant& childDet2, double& pgen, double& pgen2,
+                                int& ex1, int& ex2)
 {
   double pSingle = 0.05;
   double pgen_ia, pgen_ijab;
@@ -333,18 +335,19 @@ void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, cons
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
   if (random() < pSingle) {
-    generateSingleExcit(parentDet, childDet, pgen_ia);
+    generateSingleExcit(parentDet, childDet, pgen_ia, ex1);
     pgen = pSingle * pgen_ia;
 
     // No double excitation is generated here:
     pgen2 = 0.0;
+    ex2 = 0;
   } else {
     if (schd.uniformExGen) {
-      generateDoubleExcit(parentDet, childDet2, pgen_ijab);
+      generateDoubleExcit(parentDet, childDet2, pgen_ijab, ex1, ex2);
     } else if (schd.heatBathUniformSingExGen) {
       // Pass in attemptSingleExcit = false to indicate that a double
       // excitation must be generated. pgen will return as 0.
-      generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pgen, pgen_ijab, false);
+      generateExcitHB(hb, I1, I2, parentDet, nel, childDet, childDet2, pgen, pgen_ijab, ex1, ex2, false);
     }
     pgen2 = (1.0 - pSingle) * pgen_ijab;
 
@@ -355,7 +358,7 @@ void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, cons
 
 // Generate a random single excitation, and also return the probability that
 // it was generated
-void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia)
+void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia, int& ex1)
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -385,6 +388,8 @@ void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, do
     childDet.setoccA(I, false);
     childDet.setoccA(A, true);
     pgen_ia = pgen_i / (norbs - nalpha);
+    // for alpha, 2*I and 2*A are the spin orbital labels
+    ex1 = (2*I)*2*norbs + (2*A);
   }
   else // i is beta
   {
@@ -396,15 +401,16 @@ void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, do
     childDet.setoccB(I, false);
     childDet.setoccB(A, true);
     pgen_ia = pgen_i / (norbs - nbeta);
+    // for beta, 2*I+1 and 2*A+1 are the spin orbital labels
+    ex1 = (2*I+1)*2*norbs + (2*A+1);
   }
 
-  //cout << "parent:  " << parentDet << endl;
-  //cout << "child:   " << childDet << endl;
 }
 
 // Generate a random double excitation, and also return the probability that
 // it was generated
-void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab)
+void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab,
+                         int& ex1, int& ex2)
 {
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1), std::ref(generator));
 
@@ -503,21 +509,27 @@ void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, do
   if (iAlpha) {
     childDet.setoccA(I, false);
     childDet.setoccA(A, true);
+    // for alpha, 2*I and 2*A are the spin orbital labels
+    ex1 = (2*I)*2*norbs + (2*A);
   } else {
     childDet.setoccB(I, false);
     childDet.setoccB(A, true);
+    // for beta, 2*I+1 and 2*A+1 are the spin orbital labels
+    ex1 = (2*I+1)*2*norbs + (2*A+1);
   }
 
   if (jAlpha) {
     childDet.setoccA(J, false);
     childDet.setoccA(B, true);
+    // for alpha, 2*J and 2*B are the spin orbital labels
+    ex2 = (2*J)*2*norbs + (2*B);
   } else {
     childDet.setoccB(J, false);
     childDet.setoccB(B, true);
+    // for beta, 2*J+1 and 2*B+1 are the spin orbital labels
+    ex2 = (2*J+1)*2*norbs + (2*B+1);
   }
 
-  //cout << "parent:  " << parentDet << endl;
-  //cout << "child:   " << childDet << endl;
 }
 
 // Pick the 'r' orbital when using the heat bath excitation generator.
@@ -756,7 +768,7 @@ void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 // double excitations
 void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
                      const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
-                     const bool attemptSingleExcit)
+                     int& ex1, int& ex2, const bool attemptSingleExcit)
 {
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;
@@ -845,6 +857,8 @@ void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I
   if (parentDet.getocc(rFinal)) {
     pGen = 0.0;
     pGen2 = 0.0;
+    ex1 = 0;
+    ex2 = 0;
     return;
   }
 
@@ -869,9 +883,11 @@ void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I
         childDet.setocc(pFinal, false);
         childDet.setocc(rFinal, true);
         pGen = calcSinglesProb(hb, I1, I2, norbs, closed, pProb, D_pq_tot, hSingAbs, pFinal, rFinal);
+        ex1 = pFinal*2*norbs + rFinal;
 
         // Return a null double excitation
         pGen2 = 0.0;
+        ex2 = 0;
         return;
       }
       // If here, then we generate a double excitation instead of a single
@@ -906,6 +922,8 @@ void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I
   if (parentDet.getocc(sFinal)) {
     pGen = 0.0;
     pGen2 = 0.0;
+    ex1 = 0;
+    ex2 = 0;
     return;
   }
 
@@ -938,4 +956,7 @@ void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I
   // ...and the probability that it was generated.
   pGen2 = pProb*qProb_p * ( doubProb_pqr*rProb_pq*sProb_pqr + doubProb_pqs*sProb_pq*rProb_pqs ) +
           qProb*pProb_q * ( doubProb_qpr*rProb_qp*sProb_qpr + doubProb_qps*sProb_qp*rProb_qps );
+
+  ex1 = pFinal*2*norbs + rFinal;
+  ex2 = qFinal*2*norbs + sFinal;
 }

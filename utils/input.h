@@ -105,6 +105,7 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & maxIterFCIQMC
       & nreplicas
       & nAttemptsEach
       & mainMemoryFac
@@ -250,8 +251,8 @@ public:
   double alpha;
   double beta;
   double momentum;
-  int maxIter;                     
-  int avgIter;                     
+  int maxIter;
+  int avgIter;
   int _sgdIter;
   Method method;
   double sDiagShift;
@@ -288,6 +289,7 @@ public:
   double powerShift;
 
   //options for FCIQMC
+  int maxIterFCIQMC;
   int nreplicas;
   int nAttemptsEach;
   double shiftDamping;
