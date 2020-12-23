@@ -188,6 +188,19 @@ int Determinant::getNalphaBefore(int i) const {
   return occ;
 }
 
+double Determinant::parityFull(const int ex2, const int i, const int j,
+                             const int a, const int b) const {
+  double parity = 1.0;
+  Determinant dcopy = *this;
+  parity *= dcopy.parity(a/2, i/2, i%2);
+  dcopy.setocc(i, false);
+  dcopy.setocc(a, true);
+  if (ex2 != 0) {
+    parity *= dcopy.parity(b/2, j/2, j%2);
+  }
+  return parity;
+}
+
 double Determinant::parityA(const int& a, const int& i) const {
   double parity = 1.0;
   int occ = getNalphaBefore(i);

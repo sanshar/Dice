@@ -119,7 +119,7 @@ struct CorrelatedWavefunction {
 
   double getOverlapFactor(int I, int J, int A, int B, const Walker<Corr, Reference>& walk, bool doparity) const  
   {
-    //singleexcitation
+    // Single excitation
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
   
     Determinant dcopy = walk.d;
@@ -317,6 +317,16 @@ struct CorrelatedWavefunction {
   template<typename Walker>
   bool checkWalkerExcitationClass(Walker &walk) {
     return true;
+  }
+
+  // For some situation, such as FCIQMC, we want to know the ratio of
+  // overlaps with the correct parity. This function will calculate
+  // this parity, relative to what is returned by getOverlapFactor.
+  // (For some wave functions this is always 1).
+  template<typename Walker>
+  double parityFactor(Walker& walk, const int ex2, const int i,
+                      const int j, const int a, const int b) const {
+    return walk.d.parityFull(ex2, i, j, a, b);
   }
   
 };

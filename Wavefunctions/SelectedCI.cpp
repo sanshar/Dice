@@ -206,6 +206,10 @@ double SelectedCI::getOverlapFactor(int I, int A, SimpleWalker& walk, bool dopar
 
 double SelectedCI::getOverlapFactor(int I, int J, int A, int B,
                                     SimpleWalker& walk, bool doparity) {
+
+  // Single excitation
+  if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
+
   Determinant dcopy = walk.d;
   dcopy.setocc(I, false);
   dcopy.setocc(A, true);

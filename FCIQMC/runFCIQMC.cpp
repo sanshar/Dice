@@ -236,22 +236,18 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
 {
   bool childSpawned = true;
 
-  double pgen_tot = pgen * nAttemptsEach;
+  // Calculate the ratio of overlaps, and the parity factor
+  int norbs = Determinant::norbs;
+  int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+  int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+  double overlapRatio = wave.getOverlapFactor(I, J, A, B, walk, false);
+  double parityFac = wave.parityFactor(walk, ex2, I, J, A, B);
+  overlapRatio *= parityFac;
+
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);
+  HElem *= overlapRatio;
 
-  //double overlapRatio = wave.getOverlapFactor(walk, childDet, true);
-  //HElem *= overlapRatio;
-  Walker childWalk(wave, childDet);
-  double childOvlp = wave.Overlap(childWalk);
-  //cout << "overlapRatio: " << overlapRatio << "  Correct: " << childOvlp / parentOvlp << endl;
-
-  double parentOvlp = wave.Overlap(walk);
-  //Walker childWalk = walk;
-  //childWalk.updateWalker(wave.getRef(), wave.getCorr(), ex1, ex2);
-  //double childOvlp = wave.Overlap(childWalk);
-  
-  HElem *= childOvlp / parentOvlp;
-
+  double pgen_tot = pgen * nAttemptsEach;
   double childAmp = - tau * parentAmp * HElem / pgen_tot;
 
   if (abs(childAmp) < minSpawn) {

@@ -95,6 +95,16 @@ class SelectedCI
                          double &ovlpSample,
                          workingArray& work,
                          workingArray& moreWork, double &alpha) ;
+
+  // For some situation, such as FCIQMC, we want to know the ratio of
+  // overlaps with the correct parity. This function will calculate
+  // this parity, relative to what is returned by getOverlapFactor.
+  // For a SelectedCI wave function, this is always equal to 1.
+  double parityFactor(SimpleWalker& walk, const int ex2, const int i,
+                      const int j, const int a, const int b) const {
+    return 1.0;
+  }
+
   //void getVariables(Eigen::VectorXd &v);
 
   //long getNumVariables();
