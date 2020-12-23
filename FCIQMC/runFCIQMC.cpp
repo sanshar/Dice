@@ -51,8 +51,8 @@ void initFCIQMC(Wave& wave, Walker& walk,
     walkers.ht[HFDet] = 0;
 
     double HFOvlp, HFLocalE;
-    Walker HFWalk(wave.corr, wave.ref, HFDet);
-    wave.HamAndOvlp(HFWalk, HFOvlp, HFLocalE, work);
+    Walker HFWalk(wave, HFDet);
+    wave.HamAndOvlp(HFWalk, HFOvlp, HFLocalE, work, schd.epsilon);
     walkers.localE[0] = HFLocalE;
     walkers.ovlp[0] = HFOvlp;
 
@@ -101,7 +101,7 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
   initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta,
       HFDet, HFEnergy, hb, walkers, spawn, work);
 
-  Walker HFWalk(wave.corr, wave.ref, HFDet);
+  Walker HFWalk(wave, HFDet);
 
   // ----- FCIQMC data -----
   double initEshift = HFEnergy + schd.initialShift;
@@ -145,7 +145,7 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
         continue;
       }
 
-      Walker parentWalk(wave.corr, wave.ref, walkers.dets[iDet]);
+      Walker parentWalk(wave, walkers.dets[iDet]);
 
       for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
         // Update the initiator flag, if necessary
@@ -241,12 +241,9 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
 
   //double overlapRatio = wave.getOverlapFactor(walk, childDet, true);
   //HElem *= overlapRatio;
-  Walker childWalk(wave.corr, wave.ref, childDet);
+  Walker childWalk(wave, childDet);
   double childOvlp = wave.Overlap(childWalk);
-  //Walker tempWalk = childWalk;
-  //double tempChildOvlp = wave.Overlap(tempWalk);
   //cout << "overlapRatio: " << overlapRatio << "  Correct: " << childOvlp / parentOvlp << endl;
-  //cout << "Parent overlap: " << parentOvlp << "  Child overlap: " << childOvlp << "  Temp overlap: " << tempChildOvlp << endl << endl;
 
   double parentOvlp = wave.Overlap(walk);
   //Walker childWalk = walk;
@@ -532,5 +529,10 @@ void printFinalStats(const vector<double>& walkerPop, const int nDets,
 // Instantiate needed templates
 template void runFCIQMC(CorrelatedWavefunction<Jastrow, Slater>& wave,
                         Walker<Jastrow, Slater>& walk,
+                        const int norbs, const int nel,
+                        const int nalpha, const int nbeta);
+
+template void runFCIQMC(SelectedCI& wave,
+                        SimpleWalker& walk,
                         const int norbs, const int nel,
                         const int nalpha, const int nbeta);

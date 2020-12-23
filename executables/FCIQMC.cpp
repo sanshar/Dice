@@ -35,6 +35,7 @@
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
+#include "SelectedCI.h"
 #include "runVMC.h"
 
 int main(int argc, char *argv[])
@@ -72,6 +73,8 @@ int main(int argc, char *argv[])
 
   CorrelatedWavefunction<Jastrow, Slater> wave;
   Walker<Jastrow, Slater> walk;
+  //SelectedCI wave;
+  //SimpleWalker walk;
   //runVMC(wave, walk);
   wave.readWave();
   wave.initWalker(walk);

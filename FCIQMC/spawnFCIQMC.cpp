@@ -299,9 +299,9 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, Walker& walk, walkersFCI
         }
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
-        Walker newWalk(wave.corr, wave.ref, walkers.dets[pos]);
+        Walker newWalk(wave, walkers.dets[pos]);
         double ovlp, localE;
-        wave.HamAndOvlp(newWalk, ovlp, localE, work);
+        wave.HamAndOvlp(newWalk, ovlp, localE, work, schd.epsilon);
         walkers.localE[pos] = localE;
         walkers.ovlp[pos] = ovlp;
 
@@ -385,9 +385,9 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, Walker& walk, walkersFCIQM
         }
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
-        Walker newWalk(wave.corr, wave.ref, walkers.dets[pos]);
+        Walker newWalk(wave, walkers.dets[pos]);
         double ovlp, localE;
-        wave.HamAndOvlp(newWalk, ovlp, localE, work);
+        wave.HamAndOvlp(newWalk, ovlp, localE, work, schd.epsilon);
         walkers.localE[pos] = localE;
         walkers.ovlp[pos] = ovlp;
 
@@ -426,6 +426,29 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
 template void spawnFCIQMC::mergeIntoMain_Initiator(
     CorrelatedWavefunction<Jastrow, Slater>& wave,
     Walker<Jastrow, Slater>& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    workingArray& work);
+
+// SelectedCI
+template void spawnFCIQMC::mergeIntoMain(
+    SelectedCI& wave,
+    SimpleWalker& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    bool initiator,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_NoInitiator(
+    SelectedCI& wave,
+    SimpleWalker& walk,
+    walkersFCIQMC& walkers,
+    const double minPop,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_Initiator(
+    SelectedCI& wave,
+    SimpleWalker& walk,
     walkersFCIQMC& walkers,
     const double minPop,
     workingArray& work);
