@@ -100,7 +100,7 @@ class SelectedCI
   // overlaps with the correct parity. This function will calculate
   // this parity, relative to what is returned by getOverlapFactor.
   // For a SelectedCI wave function, this is always equal to 1.
-  double parityFactor(SimpleWalker& walk, const int ex2, const int i,
+  double parityFactor(Determinant& d, const int ex2, const int i,
                       const int j, const int a, const int b) const {
     return 1.0;
   }

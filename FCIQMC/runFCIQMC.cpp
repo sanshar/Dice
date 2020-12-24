@@ -250,7 +250,7 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
   int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
   int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
   double overlapRatio = wave.getOverlapFactor(I, J, A, B, walk, false);
-  double parityFac = wave.parityFactor(walk, ex2, I, J, A, B);
+  double parityFac = wave.parityFactor(parentDet, ex2, I, J, A, B);
   overlapRatio *= parityFac;
 
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);

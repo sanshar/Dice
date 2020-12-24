@@ -323,10 +323,9 @@ struct CorrelatedWavefunction {
   // overlaps with the correct parity. This function will calculate
   // this parity, relative to what is returned by getOverlapFactor.
   // (For some wave functions this is always 1).
-  template<typename Walker>
-  double parityFactor(Walker& walk, const int ex2, const int i,
+  double parityFactor(Determinant& d, const int ex2, const int i,
                       const int j, const int a, const int b) const {
-    return walk.d.parityFull(ex2, i, j, a, b);
+    return d.parityFull(ex2, i, j, a, b);
   }
   
 };
