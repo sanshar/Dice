@@ -71,15 +71,24 @@ int main(int argc, char *argv[])
   int nbeta = Determinant::nbeta;
   int nel = nalpha + nbeta;
 
-  CorrelatedWavefunction<Jastrow, Slater> wave;
-  Walker<Jastrow, Slater> walk;
-  //SelectedCI wave;
-  //SimpleWalker walk;
-  //runVMC(wave, walk);
-  wave.readWave();
-  wave.initWalker(walk);
-
-  runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  if (schd.wavefunctionType == "jastrowslater") {
+    CorrelatedWavefunction<Jastrow, Slater> wave;
+    Walker<Jastrow, Slater> walk;
+    if (schd.restart || schd.fullRestart) {
+      wave.readWave();
+      wave.initWalker(walk);
+    } else {
+      runVMC(wave, walk);
+    }
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  }
+  else if (schd.wavefunctionType == "selectedci") {
+    SelectedCI wave;
+    SimpleWalker walk;
+    wave.readWave();
+    wave.initWalker(walk);
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  }
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
