@@ -31,9 +31,6 @@ void initFCIQMC(Wave& wave, Walker& walk,
   for (int i = 0; i < nbeta; i++)
     HFDet.setoccB(i, true);
 
-  // Processor that the HF determinant lives on
-  int HFDetProc = getProc(HFDet, DetLenMin);
-
   int walkersSize = schd.targetPop * schd.mainMemoryFac / commsize;
   int spawnSize = schd.targetPop * schd.spawnMemoryFac / commsize;
 
@@ -45,6 +42,35 @@ void initFCIQMC(Wave& wave, Walker& walk,
 
   // Set up the walker list to contain a single walker on the HF
   // determinant
+  initWalkerListHF(wave, walk, HFDet, DetLenMin, HFEnergy, walkers, work);
+
+  if (commrank == 0) {
+    cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
+  }
+
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
+    hb.createArrays(norbs, I2);
+    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
+  }
+
+  // The default excitation generator is the uniform one. If
+  // the user has specified another, then turn this off.
+  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
+    schd.uniformExGen = false;
+  }
+
+}
+
+// This routine places all intial walkers on the Hartree--Fock determinant,
+// and sets all attributes in the walkersFCIQMC object as appropriate for
+// this state.
+template<typename Wave, typename Walker>
+void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int DetLenMin,
+                      double& HFEnergy, walkersFCIQMC& walkers, workingArray& work) {
+  // Processor that the HF determinant lives on
+  int HFDetProc = getProc(HFDet, DetLenMin);
+
   if (HFDetProc == commrank) {
     walkers.dets[0] = HFDet;
     walkers.diagH[0] = HFEnergy;
@@ -63,23 +89,6 @@ void initFCIQMC(Wave& wave, Walker& walk,
     // The number of determinants in the walker list
     walkers.nDets = 1;
   }
-
-  if (commrank == 0) {
-    cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
-  }
-
-  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
-    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
-    hb.createArrays(norbs, I2);
-    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
-  }
-
-  // The default excitation generator is the uniform one. If
-  // the user has specified another, then turn this off.
-  if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
-    schd.uniformExGen = false;
-  }
-
 }
 
 // Perform the main FCIQMC loop
