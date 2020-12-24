@@ -40,9 +40,12 @@ void initFCIQMC(Wave& wave, Walker& walk,
 
   HFEnergy = HFDet.Energy(I1, I2, coreE);
 
-  // Set up the walker list to contain a single walker on the HF
-  // determinant
-  initWalkerListHF(wave, walk, HFDet, DetLenMin, HFEnergy, walkers, work);
+  // Set up the initial walker list
+  if (schd.trialInitFCIQMC) {
+    initWalkerListTrialWF(wave, walk, walkers, spawn, work);
+  } else {
+    initWalkerListHF(wave, walk, HFDet, DetLenMin, HFEnergy, walkers, work);
+  }
 
   if (commrank == 0) {
     cout << "Hartree--Fock energy: " << HFEnergy << endl << endl;
@@ -88,6 +91,80 @@ void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int De
     }
     // The number of determinants in the walker list
     walkers.nDets = 1;
+  }
+}
+
+// This routine creates the initial walker distribution by sampling the
+// VMC wave function, using the CTMC algorithm. These are placed in the
+// spawned array, and then communicated to the correct process,
+// compressed (annihilating repeated determinants), and then moved to
+// the walker array (merged). The walker population is then corrected
+// with a constant multiplicative factor.
+template<typename Wave, typename Walker>
+void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+                           spawnFCIQMC& spawn, workingArray& work) {
+  double ham, ovlp;
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
+
+  // Select a new walker every 30 iterations
+  int nDetsThisProc = schd.initialNDets / commsize;
+  int niter = 30*nDetsThisProc;
+
+  for (int iter=0; iter<niter; iter++) {
+    wave.HamAndOvlp(walk, ovlp, ham, work);
+
+    double cumOvlpRatio = 0;
+    for (int i = 0; i < work.nExcitations; i++)
+    {
+      cumOvlpRatio += abs(work.ovlpRatio[i]);
+      work.ovlpRatio[i] = cumOvlpRatio;
+    }
+
+    if ((iter+1) % 30 == 0) {
+      // Put the current walker in the FCIQMC walker list. This
+      // needs top be put in the spawning list to correctly perform
+      // annihilation and send walkers to the correct processor.
+      int proc = getProc(walk.d, spawn.DetLenMin);
+      // The position in the spawned list for the walker
+      int ind = spawn.currProcSlots[proc];
+      spawn.dets[ind] = walk.d.getSimpleDet();
+      spawn.amps[ind][0] = 1.0/cumOvlpRatio;
+      spawn.currProcSlots[proc] += 1;
+    }
+
+    double nextDetRandom = random()*cumOvlpRatio;
+    int nextDet = std::lower_bound(
+        work.ovlpRatio.begin(),
+		    work.ovlpRatio.begin()+work.nExcitations,
+        nextDetRandom
+    ) - work.ovlpRatio.begin();
+
+    walk.updateWalker(
+        wave.getRef(),
+        wave.getCorr(),
+        work.excitation1[nextDet],
+        work.excitation2[nextDet]
+    );
+  }
+
+  // Communicate and compress spawned walkers, then move them
+  // to the main walker list
+  spawn.communicate();
+  spawn.compress();
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, 0.0, work);
+
+  vector<double> walkerPop, walkerPopTot;
+  walkerPop.resize(schd.nreplicas, 0.0);
+  walkerPopTot.resize(schd.nreplicas, 0.0);
+  walkers.calcPop(walkerPop, walkerPopTot);
+
+  // The population we want divided by the population we have
+  double popFactor = schd.initialPop / walkerPopTot[0];
+
+  // Renormalize the walkers to get the correct initial population
+  for (int iDet=0; iDet<walkers.nDets; iDet++) {
+    walkers.amps[iDet][0] *= popFactor;
   }
 }
 

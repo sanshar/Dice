@@ -112,9 +112,11 @@ private:
       & spawnMemoryFac
       & shiftDamping
       & initialShift
+      & trialInitFCIQMC
       & minSpawn
       & minPop
       & initialPop
+      & initialNDets
       & targetPop
       & initiator
       & initiatorThresh
@@ -288,7 +290,7 @@ public:
   std::string diagMethod;
   double powerShift;
 
-  //options for FCIQMC
+  // Options for FCIQMC
   int maxIterFCIQMC;
   int nreplicas;
   int nAttemptsEach;
@@ -299,6 +301,8 @@ public:
   double minSpawn;
   double minPop;
   double initialPop;
+  int initialNDets;
+  bool trialInitFCIQMC;
   double targetPop;
   bool initiator;
   double initiatorThresh;

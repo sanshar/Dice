@@ -37,6 +37,10 @@ void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int De
                       double& HFEnergy, walkersFCIQMC& walkers, workingArray& work);
 
 template<typename Wave, typename Walker>
+void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+                           spawnFCIQMC& spawn, workingArray& work);
+
+template<typename Wave, typename Walker>
 void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
                const int nalpha, const int nbeta);
 

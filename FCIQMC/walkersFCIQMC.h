@@ -108,6 +108,8 @@ class walkersFCIQMC {
   void calcStats(dataFCIQMC& dat, Determinant& HFDet,
                  oneInt& I1, twoInt& I2, double& coreE);
 
+  void calcPop(vector<double>& walkerPop, vector<double>& walkerPopTot);
+
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {
     os << "Walker list:" << endl;

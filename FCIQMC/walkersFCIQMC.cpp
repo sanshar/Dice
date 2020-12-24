@@ -159,3 +159,34 @@ void walkersFCIQMC::calcStats(dataFCIQMC& dat, Determinant& HFDet,
 
   } // Loop over all entries in list
 }
+
+void walkersFCIQMC::calcPop(vector<double>& walkerPop, vector<double>& walkerPopTot) {
+
+  std::fill(walkerPop.begin(), walkerPop.end(), 0.0);
+
+  for (int iDet=0; iDet<nDets; iDet++) {
+    if ( ht.find(dets[iDet]) != ht.end() ) {
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // To be a valid walker in the main list, there must be a corresponding
+        // hash table entry *and* the amplitude must be non-zero
+        if ( abs(amps[iDet][iReplica]) > 1.0e-12 ) {
+          walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
+        }
+      } // Loop over replicas
+    } // If hash table entry exists
+  } // Loop over all entries in list
+
+  // Sum walker population from each process
+#ifdef SERIAL
+  walkerPopTot = walkerPop;
+#else
+  MPI_Allreduce(
+      &walkerPop.front(),
+      &walkerPopTot.front(),
+      nreplicas,
+      MPI_DOUBLE,
+      MPI_SUM,
+      MPI_COMM_WORLD
+  );
+#endif
+}

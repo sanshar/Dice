@@ -167,6 +167,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.minSpawn = input.get("sampling.minSpawn", 0.01);
     schd.minPop = input.get("sampling.minPop", 1.0);
     schd.initialPop = input.get("sampling.initialPop", 100.0);
+    schd.initialNDets = input.get("sampling.initialNDets", 1);
+    schd.trialInitFCIQMC = input.get("sampling.trialInitFCIQMC", false);
     schd.targetPop = input.get("sampling.targetPop", 1000.0);
     schd.initiator = input.get("sampling.initiator", false);
     schd.initiatorThresh = input.get("sampling.initiatorThresh", 2.0);
