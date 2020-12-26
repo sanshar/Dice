@@ -108,9 +108,11 @@ void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
 
-  // Select a new walker every 30 iterations
+  // Split the generation of determinants across processes
   int nDetsThisProc = schd.initialNDets / commsize;
-  int niter = 30*nDetsThisProc;
+  // Select a new walker every 30 iterations
+  const int nitersPerWalker = 30;
+  int niter = nitersPerWalker * nDetsThisProc * schd.nreplicas;
 
   for (int iter=0; iter<niter; iter++) {
     wave.HamAndOvlp(walk, ovlp, ham, work);
@@ -129,8 +131,16 @@ void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
       int proc = getProc(walk.d, spawn.DetLenMin);
       // The position in the spawned list for the walker
       int ind = spawn.currProcSlots[proc];
+      int iReplica = iter / (nitersPerWalker * nDetsThisProc);
       spawn.dets[ind] = walk.d.getSimpleDet();
-      spawn.amps[ind][0] = 1.0/cumOvlpRatio;
+      // Set the amplitude on the correct replica
+      for (int iSgn=0; iSgn<schd.nreplicas; iSgn++) {
+        if (iSgn == iReplica) {
+          spawn.amps[ind][iSgn] = 1.0/cumOvlpRatio;
+        } else {
+          spawn.amps[ind][iSgn] = 0.0;
+        }
+      }
       spawn.currProcSlots[proc] += 1;
     }
 
@@ -140,6 +150,7 @@ void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
 		    work.ovlpRatio.begin()+work.nExcitations,
         nextDetRandom
     ) - work.ovlpRatio.begin();
+
 
     walk.updateWalker(
         wave.getRef(),
@@ -161,12 +172,19 @@ void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
   walkers.calcPop(walkerPop, walkerPopTot);
 
   // The population we want divided by the population we have
-  double popFactor = schd.initialPop / walkerPopTot[0];
+  vector<double> popFactor;
+  popFactor.resize(schd.nreplicas, 0.0);
+  for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+    popFactor[iReplica] = schd.initialPop / walkerPopTot[iReplica];
+  }
 
   // Renormalize the walkers to get the correct initial population
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
-    walkers.amps[iDet][0] *= popFactor;
+    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      walkers.amps[iDet][iReplica] *= popFactor[iReplica];
+    }
   }
+
 }
 
 // Perform the main FCIQMC loop

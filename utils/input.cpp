@@ -149,14 +149,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
 
     
-    //gfmc 
+    // GFMC
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
     schd.tau = input.get("sampling.tau", 0.001);
     schd.fn_factor = input.get("sampling.fn_factor", 1.0);
     schd.nGeneration = input.get("sampling.nGeneration", 30.0);
     
-    //FCIQMC options
+    // FCIQMC options
     schd.maxIterFCIQMC = input.get("sampling.maxIterFCIQMC", 50);
     schd.nreplicas = input.get("sampling.nReplicas", 1);
     schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
