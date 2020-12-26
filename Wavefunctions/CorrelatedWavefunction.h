@@ -22,8 +22,9 @@
 #include <set>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include "Walker.h"
 #include <unordered_set>
+#include "input.h"
+#include "Walker.h"
 
 class oneInt;
 class twoInt;
