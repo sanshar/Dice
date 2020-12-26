@@ -353,7 +353,9 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
   HElem *= overlapRatio;
 
   if (schd.applyNodeFCIQMC) {
-    if (HElem > 0.0) return;
+    if (HElem > 0.0) {
+      HElem *= (1.0 - schd.partialNodeFactor);
+    }
   }
 
   double pgen_tot = pgen * nAttemptsEach;
@@ -455,7 +457,7 @@ void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2
 {
   double parentE;
   if (schd.diagonalDumping) {
-    parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet];
+    parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
   } else {
     parentE = walkers.diagH[iDet];
   }
@@ -473,7 +475,7 @@ void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
     double parentE;
     if (schd.diagonalDumping) {
-      parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet];
+      parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
     } else {
       parentE = walkers.diagH[iDet];
     }

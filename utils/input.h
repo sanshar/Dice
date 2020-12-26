@@ -126,6 +126,7 @@ private:
       & calcEN2
       & applyNodeFCIQMC
       & diagonalDumping
+      & partialNodeFactor
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -314,6 +315,7 @@ public:
   bool calcEN2;
   bool applyNodeFCIQMC;
   bool diagonalDumping;
+  double partialNodeFactor;
 
   //options for rbm
   int numHidden;

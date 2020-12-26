@@ -178,6 +178,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.calcEN2 = input.get("sampling.EN2", false);
     schd.applyNodeFCIQMC = input.get("sampling.applyNodeFCIQMC", false);
     schd.diagonalDumping = input.get("sampling.diagonalDumping", false);
+    schd.partialNodeFactor = input.get("sampling.partialNodeFactor", 1.0);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 
