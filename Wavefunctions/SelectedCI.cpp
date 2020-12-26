@@ -305,6 +305,55 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk, double &ovlp, double &ham,
   if (schd.debug) cout << endl;
 }
 
+void SelectedCI::HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
+                                      double &ham, double& SVTotal,
+                                      workingArray& work, double epsilon)
+{
+  int norbs = Determinant::norbs;
+
+  ovlp = Overlap(walk);
+  ham = walk.d.Energy(I1, I2, coreE);
+  SVTotal = 0.0;
+
+  work.setCounterToZero();
+  generateAllScreenedSingleExcitation(walk.d, epsilon, schd.screen, work, false);
+  generateAllScreenedDoubleExcitation(walk.d, epsilon, schd.screen, work, false);
+
+  // Loop over all the screened excitations
+  for (int i=0; i<work.nExcitations; i++) {
+    int ex1 = work.excitation1[i];
+    int ex2 = work.excitation2[i];
+    double tia = work.HijElement[i];
+
+    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+    // Find the parity
+    double parity = 1.;
+    Determinant dcopy = walk.d;
+    parity *= dcopy.parity(A/2, I/2, I%2);
+    dcopy.setocc(I, false);
+    dcopy.setocc(A, true);
+    if (ex2 != 0) {
+      parity *= dcopy.parity(B/2, J/2, J%2);
+      dcopy.setocc(J, false);
+      dcopy.setocc(B, true);
+    }
+
+    shortSimpleDet dcopySimple = dcopy.getShortSimpleDet();
+    double ovlpcopy = Overlap(dcopySimple);
+    double ovlpRatio = ovlpcopy / ovlp;
+
+    double contrib = parity * tia * ovlpRatio;
+    ham += contrib;
+    if (contrib > 0.0) {
+      SVTotal += contrib;
+    }
+
+    work.ovlpRatio[i] = ovlpRatio;
+  }
+}
+
 // This version of HamAndOvlp is used for MRCI and NEVPT calculations,
 // where excitations occur into the first-order interacting space, but
 // the selected CI wave function only has non-zero coefficients

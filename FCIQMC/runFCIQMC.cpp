@@ -79,11 +79,12 @@ void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int De
     walkers.diagH[0] = HFEnergy;
     walkers.ht[HFDet] = 0;
 
-    double HFOvlp, HFLocalE;
+    double HFOvlp, HFLocalE, HFSVTotal;
     Walker HFWalk(wave, HFDet);
-    wave.HamAndOvlp(HFWalk, HFOvlp, HFLocalE, work, schd.epsilon);
-    walkers.localE[0] = HFLocalE;
+    wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work, schd.epsilon);
     walkers.ovlp[0] = HFOvlp;
+    walkers.localE[0] = HFLocalE;
+    walkers.SVTotal[0] = HFSVTotal;
 
     // Set the population on the reference
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
@@ -333,6 +334,10 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);
   HElem *= overlapRatio;
 
+  if (schd.applyNodeFCIQMC) {
+    if (HElem > 0.0) return;
+  }
+
   double pgen_tot = pgen * nAttemptsEach;
   double childAmp = - tau * parentAmp * HElem / pgen_tot;
 
@@ -430,7 +435,12 @@ void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const o
 void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau)
 {
-  double parentE = walkers.diagH[iDet];
+  double parentE;
+  if (schd.diagonalDumping) {
+    parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet];
+  } else {
+    parentE = walkers.diagH[iDet];
+  }
   for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
     double fac = tau * ( parentE - Eshift[iReplica] );
     walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
@@ -443,7 +453,12 @@ void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau)
 {
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
-    double parentE = walkers.diagH[iDet];
+    double parentE;
+    if (schd.diagonalDumping) {
+      parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet];
+    } else {
+      parentE = walkers.diagH[iDet];
+    }
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       double fac = tau * ( parentE - Eshift[iReplica] );
       walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];

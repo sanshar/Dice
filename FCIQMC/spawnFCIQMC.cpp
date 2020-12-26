@@ -300,10 +300,11 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, Walker& walk, walkersFCI
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
         Walker newWalk(wave, walkers.dets[pos]);
-        double ovlp, localE;
-        wave.HamAndOvlp(newWalk, ovlp, localE, work, schd.epsilon);
-        walkers.localE[pos] = localE;
+        double ovlp, localE, SVTotal;
+        wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work, schd.epsilon);
         walkers.ovlp[pos] = ovlp;
+        walkers.localE[pos] = localE;
+        walkers.SVTotal[pos] = SVTotal;
 
         // Add in the new walker population
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
@@ -386,10 +387,11 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, Walker& walk, walkersFCIQM
         walkers.dets[pos] = Determinant(dets[i]);
         walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
         Walker newWalk(wave, walkers.dets[pos]);
-        double ovlp, localE;
-        wave.HamAndOvlp(newWalk, ovlp, localE, work, schd.epsilon);
-        walkers.localE[pos] = localE;
+        double ovlp, localE, SVTotal;
+        wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work, schd.epsilon);
         walkers.ovlp[pos] = ovlp;
+        walkers.localE[pos] = localE;
+        walkers.SVTotal[pos] = SVTotal;
 
         // Add in the new walker population, but only if allowed by the
         // initiator criteria (i.e. if the flag is set):

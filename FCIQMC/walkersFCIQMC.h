@@ -72,12 +72,16 @@ class walkersFCIQMC {
   vector<Determinant> dets;
   // List of diagonal Hamiltonian elements for the occupied determinants
   vector<double> diagH;
-  // When using a trial wave function, this holds a list of the local
-  // energies for the occupied determinants
-  vector<double> localE;
   // When using a trial wave function, this holds a list of the overlaps
   // between the wave function and the occupied determinants
   vector<double> ovlp;
+  // When using a trial wave function, this holds a list of the local
+  // energies for the occupied determinants
+  vector<double> localE;
+  // When using a trial wave function, this holds a list of the sum of
+  // the sign violating terms (in the impoprtance-sampled Hamiltonian)
+  // for each occupied determinant
+  vector<double> SVTotal;
   // List of walkers amplitudes
   double** amps;
   // Hash table to access the walker array

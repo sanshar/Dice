@@ -176,6 +176,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.heatBathExGen = input.get("sampling.heatBath", false);
     schd.heatBathUniformSingExGen = input.get("sampling.heatBathUniformSingles", false);
     schd.calcEN2 = input.get("sampling.EN2", false);
+    schd.applyNodeFCIQMC = input.get("sampling.applyNodeFCIQMC", false);
+    schd.diagonalDumping = input.get("sampling.diagonalDumping", false);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 

@@ -124,6 +124,8 @@ private:
       & heatBathExGen
       & heatBathUniformSingExGen
       & calcEN2
+      & applyNodeFCIQMC
+      & diagonalDumping
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -310,6 +312,8 @@ public:
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
   bool calcEN2;
+  bool applyNodeFCIQMC;
+  bool diagonalDumping;
 
   //options for rbm
   int numHidden;

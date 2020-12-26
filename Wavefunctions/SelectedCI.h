@@ -81,6 +81,10 @@ class SelectedCI
   void HamAndOvlp(SimpleWalker &walk, double &ovlp, double &ham,
                   workingArray& work, double epsilon);
 
+  void HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
+                          double &ham, double& SVTotal,
+                          workingArray& work, double epsilon);
+
   // This version of HamAndOvlp is used for MRCI and NEVPT calculations,
   // where excitations occur into the first-order interacting space, but
   // the selected CI wave function only has non-zero coefficients

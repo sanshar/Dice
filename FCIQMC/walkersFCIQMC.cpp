@@ -47,8 +47,9 @@ void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
   nreplicas = nreplicasLocal;
   dets.resize(arrayLength);
   diagH.resize(arrayLength);
-  localE.resize(arrayLength);
   ovlp.resize(arrayLength);
+  localE.resize(arrayLength);
+  SVTotal.resize(arrayLength);
   amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
   emptyDets.resize(arrayLength);
   firstEmpty = 0;
@@ -59,8 +60,9 @@ void walkersFCIQMC::init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
 walkersFCIQMC::~walkersFCIQMC() {
   dets.clear();
   diagH.clear();
-  localE.clear();
   ovlp.clear();
+  localE.clear();
+  SVTotal.clear();
   deleteAmpsArray(amps);
   ht.clear();
   emptyDets.clear();

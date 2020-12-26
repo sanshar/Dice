@@ -271,6 +271,41 @@ struct CorrelatedWavefunction {
     if (schd.debug) cout << endl;
   }
 
+  void HamAndOvlpAndSVTotal(const Walker<Corr, Reference> &walk, double &ovlp,
+                            double &ham, double& SVTotal, workingArray& work,
+                            double epsilon=schd.epsilon) const
+  {
+    int norbs = Determinant::norbs;
+
+    ovlp = Overlap(walk);
+    ham = walk.d.Energy(I1, I2, coreE);
+    SVTotal = 0.0;
+
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, epsilon, schd.screen, work, false);
+
+    // Loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i];
+      int ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+
+      double contrib = tia * ovlpRatio;
+      ham += contrib;
+      if (contrib > 0.0) {
+        SVTotal += contrib;
+      }
+
+      work.ovlpRatio[i] = ovlpRatio;
+    }
+  }
+
   void HamAndOvlpLanczos(const Walker<Corr, Reference> &walk,
                          Eigen::VectorXd &lanczosCoeffsSample,
                          double &ovlpSample,
