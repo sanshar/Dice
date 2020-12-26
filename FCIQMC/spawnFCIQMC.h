@@ -77,14 +77,16 @@ class spawnFCIQMC {
   void compress();
   
   // Move spawned walkers to the provided main walker list
-  template<typename Wave, typename Walker>
-  void mergeIntoMain(Wave& wave, Walker& walk, walkersFCIQMC& walkers, const double minPop,
-                     bool initiator, workingArray& work);
-  template<typename Wave, typename Walker>
-  void mergeIntoMain_NoInitiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+  template<typename Wave, typename TrialWalk>
+  void mergeIntoMain(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                     const double minPop, bool initiator, workingArray& work);
+  template<typename Wave, typename TrialWalk>
+  void mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
+                                 walkersFCIQMC<TrialWalk>& walkers,
                                  const double minPop, workingArray& work);
-  template<typename Wave, typename Walker>
-  void mergeIntoMain_Initiator(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+  template<typename Wave, typename TrialWalk>
+  void mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
+                               walkersFCIQMC<TrialWalk>& walkers,
                                const double minPop, workingArray& work);
 
 };

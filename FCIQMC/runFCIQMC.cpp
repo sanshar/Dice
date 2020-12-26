@@ -5,6 +5,7 @@
 #include "input.h"
 
 #include "runFCIQMC.h"
+#include "walkersFCIQMC.h"
 
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
@@ -14,11 +15,12 @@
 // Perform initialization of variables needed for the runFCIQMC routine.
 // In particular the Hartree--Fock determinant and energy, the heat bath
 // integrals (hb), and the walker and spawned walker objects.
-template<typename Wave, typename Walker>
-void initFCIQMC(Wave& wave, Walker& walk,
+template<typename Wave, typename TrialWalk>
+void initFCIQMC(Wave& wave, TrialWalk& walk,
                 const int norbs, const int nel, const int nalpha, const int nbeta,
                 Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
-                walkersFCIQMC& walkers, spawnFCIQMC& spawn, workingArray& work) {
+                walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn,
+                workingArray& work) {
 
   // The number of 64-bit integers required to represent (the alpha
   // or beta part of) a determinant
@@ -68,9 +70,10 @@ void initFCIQMC(Wave& wave, Walker& walk,
 // This routine places all intial walkers on the Hartree--Fock determinant,
 // and sets all attributes in the walkersFCIQMC object as appropriate for
 // this state.
-template<typename Wave, typename Walker>
-void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int DetLenMin,
-                      double& HFEnergy, walkersFCIQMC& walkers, workingArray& work) {
+template<typename Wave, typename TrialWalk>
+void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
+                      const int DetLenMin, double& HFEnergy,
+                      walkersFCIQMC<TrialWalk>& walkers, workingArray& work) {
   // Processor that the HF determinant lives on
   int HFDetProc = getProc(HFDet, DetLenMin);
 
@@ -80,7 +83,7 @@ void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int De
     walkers.ht[HFDet] = 0;
 
     double HFOvlp, HFLocalE, HFSVTotal;
-    Walker HFWalk(wave, HFDet);
+    TrialWalk HFWalk(wave, HFDet);
     wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work, schd.epsilon);
     walkers.ovlp[0] = HFOvlp;
     walkers.localE[0] = HFLocalE;
@@ -101,8 +104,8 @@ void initWalkerListHF(Wave& wave, Walker& walk, Determinant& HFDet, const int De
 // compressed (annihilating repeated determinants), and then moved to
 // the walker array (merged). The walker population is then corrected
 // with a constant multiplicative factor.
-template<typename Wave, typename Walker>
-void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
+template<typename Wave, typename TrialWalk>
+void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
                            spawnFCIQMC& spawn, workingArray& work) {
   double ham, ovlp;
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
@@ -188,8 +191,8 @@ void initWalkerListTrialWF(Wave& wave, Walker& walk, walkersFCIQMC& walkers,
 }
 
 // Perform the main FCIQMC loop
-template<typename Wave, typename Walker>
-void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
+template<typename Wave, typename TrialWalk>
+void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
                const int nalpha, const int nbeta) {
 
   // Objects needed for the FCIQMC simulation, which will be
@@ -197,7 +200,7 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
   double HFEnergy;
   Determinant HFDet;
   heatBathFCIQMC hb;
-  walkersFCIQMC walkers;
+  walkersFCIQMC<TrialWalk> walkers;
   spawnFCIQMC spawn;
 
   // Needed for calculating local energies
@@ -205,8 +208,6 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
 
   initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta,
       HFDet, HFEnergy, hb, walkers, spawn, work);
-
-  Walker HFWalk(wave, HFDet);
 
   // ----- FCIQMC data -----
   double initEshift = HFEnergy + schd.initialShift;
@@ -250,7 +251,7 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
         continue;
       }
 
-      Walker parentWalk(wave, walkers.dets[iDet]);
+      TrialWalk& parentWalk = walkers.trialWalk[iDet];
 
       for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
         // Update the initiator flag, if necessary
@@ -332,8 +333,8 @@ void runFCIQMC(Wave& wave, Walker& walk, const int norbs, const int nel,
 // Find the weight of the spawned walker
 // If it is above a minimum threshold, then always spawn
 // Otherwsie, stochastically round it up to the threshold or down to 0
-template<typename Wave, typename Walker>
-void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determinant& childDet,
+template<typename Wave, typename TrialWalk>
+void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determinant& childDet,
                      spawnFCIQMC& spawn, oneInt &I1, twoInt &I2, double& coreE,
                      const int nAttemptsEach, const double parentAmp, const int parentFlags,
                      const int iReplica, const double tau, const double minSpawn,
@@ -388,8 +389,9 @@ void attemptSpawning(Wave& wave, Walker& walk, Determinant& parentDet, Determina
 
 // Calculate and return the numerator and denominator of the variational
 // energy estimator. This can be used in replicas FCIQMC simulations.
-void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
-                   const twoInt& I2, double& coreE, const double tau,
+template<typename TrialWalk>
+void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
+                   const oneInt& I1, const twoInt& I2, double& coreE, const double tau,
                    double& varEnergyNumAll, double& varEnergyDenomAll)
 {
   double varEnergyNum = 0.0;
@@ -420,7 +422,8 @@ void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneIn
 
 // Calculate the numerator of the second-order Epstein-Nesbet correction
 // to the energy. This is for use in replica initiator simulations.
-void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+template<typename TrialWalk>
+void calcEN2Correction(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
                        const twoInt& I2, double& coreE, const double tau, const double varEnergyNum,
                        const double varEnergyDenom, double& EN2All)
 {
@@ -452,7 +455,8 @@ void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const o
 
 // Perform the death step for the determinant at position iDet in
 // the walkers.det array
-void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+template<typename TrialWalk>
+void performDeath(const int iDet, walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau)
 {
   double parentE;
@@ -469,7 +473,8 @@ void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2
 
 // Perform death for *all* walkers in the walker array, held in
 // walkers.dets
-void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+template<typename TrialWalk>
+void performDeathAllWalkers(walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau)
 {
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
@@ -513,7 +518,8 @@ void communicateEstimates(dataFCIQMC& dat, const int nDets, const int nSpawnedDe
 // If the shift has started to vary (if varyShift is true) then update
 // the shift estimator here. If not, then check if we should now start to
 // vary the shift (if the walker population is above the target).
-void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
+void updateShift(vector<double>& Eshift, vector<bool>& varyShift,
+                 const vector<double>& walkerPop,
                  const vector<double>& walkerPopOld, const double targetPop,
                  const double shiftDamping, const double tau)
 {
@@ -583,8 +589,8 @@ void printDataTableHeader()
   }
 }
 
-void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets, const int nSpawned,
-                    const double iter_time)
+void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets,
+                    const int nSpawned, const double iter_time)
 {
   if (commrank == 0) {
     printf ("%10d   ", iter);
