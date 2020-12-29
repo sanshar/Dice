@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
   generator = std::mt19937(schd.seed + commrank);
 
-  readIntegralsAndInitializeDeterminantStaticVariables("FCIDUMP");
+  readIntegralsAndInitializeDeterminantStaticVariables(schd.integralsFile);
   if (schd.numActive == -1) schd.numActive = Determinant::norbs;
 
   //calculate the hessian/gradient

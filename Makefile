@@ -14,7 +14,7 @@ HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 #MKL=/curc/sw/intel/17.4/mkl/
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 
-FLAGS = -std=c++14 -O3 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./DQMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-DComplex
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 GIT_HASH=`git rev-parse HEAD`
@@ -136,6 +136,9 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/SHCIshm.o \
 	obj/Determinants.o \
 	obj/Correlator.o \
+	obj/DQMCUtils.o \
+	obj/DQMCMatrixElements.o \
+	obj/DQMCSampling.o \
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
@@ -145,6 +148,8 @@ obj/%.o: utils/%.cpp
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: VMC/%.cpp  
 	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+obj/%.o: DQMC/%.cpp  
+	$(CXX) $(FLAGS) -I./DQMC $(OPT) -c $< -o $@
 obj/%.o: FCIQMC/%.cpp  
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 obj/%.o: ICPT/%.cpp  

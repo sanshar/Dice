@@ -26,10 +26,10 @@
 //calculated
 struct workingArray {
 
-  vector<double> ovlpRatio;
-  vector<size_t> excitation1;
-  vector<size_t> excitation2;
-  vector<double> HijElement;
+  std::vector<double> ovlpRatio;
+  std::vector<size_t> excitation1;
+  std::vector<size_t> excitation2;
+  std::vector<double> HijElement;
   double locNorm;   // adding this for multiSlater sampling, this is bad jailbreaking, needs to be changed 
   int nExcitations;
 

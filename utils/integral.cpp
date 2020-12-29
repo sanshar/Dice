@@ -303,7 +303,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
     } H5E_END_TRY
  
     if (file < 0) {
-      cout << "FCIDUMP not found!" << endl;
+      if (commrank == 0) cout << "FCIDUMP not found!" << endl;
       exit(0);
     }
 
@@ -610,7 +610,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
   } H5E_END_TRY
  
   if (file < 0) {
-    cout << "FCIDUMP not found!" << endl;
+    if (commrank == 0) cout << "FCIDUMP not found!" << endl;
     exit(0);
   }
 

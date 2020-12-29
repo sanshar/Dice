@@ -44,6 +44,7 @@ private:
       & tol & correlatorFiles
       & fullRestart
       & wavefunctionType
+      & integralsFile
       & ghfDets
       & numResonants
       & singleJastrow
@@ -121,6 +122,14 @@ private:
       & heatBathExGen
       & heatBathUniformSingExGen
       & calcEN2
+      // dqmc
+      & dt
+      & nsteps
+      & fieldStepsize
+      & measureFreq
+      & orthoSteps
+      & ene0Guess
+      & numJastrowSamples
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -163,6 +172,11 @@ public:
   bool ifComplex;                        // breaks and restores complex conjugation symmetry
   bool uagp;                             // brakes S^2 symmetry in uagp
   bool ciCeption;                        // true, when using ci on top of selectedCI
+  
+  // system options
+  std::string integralsFile;            // file containing intergrals, could be text or hdf5 
+  int nciCore;                          // number of core spatial orbitals
+  int nciAct;                           // number of active spatial orbitals, assumed to be the first in the basis
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
@@ -278,8 +292,6 @@ public:
   //options for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
-  int nciCore; //number of core spatial orbitals
-  int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   bool usingFOIS; // Is this is a MRCI/MRPT calculation, sampling the FOIS only
   double actWidth; //used in lanczos
   double lanczosEpsilon; //used in lanczos
@@ -308,6 +320,14 @@ public:
   //options for rbm
   int numHidden;
 
+  // options for dqmc
+  size_t nsteps;
+  double dt;
+  double fieldStepsize;
+  size_t measureFreq;
+  size_t orthoSteps;
+  double ene0Guess;
+  size_t numJastrowSamples;
 };
 
 /**
@@ -381,4 +401,6 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
 
 void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
+
+void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
 #endif

@@ -45,21 +45,24 @@ using namespace std;
 
 void readInput(string inputFile, schedule& schd, bool print) {
   if (commrank == 0) {
-    if (print)	{
-      cout << "**************************************************************" << endl;
-      cout << "Input file  :" << endl;
-      cout << "**************************************************************" << endl;
-    }
-    
     property_tree::iptree input;
     property_tree::read_json(inputFile, input);
     
     //print input file
-    stringstream ss;
-    property_tree::json_parser::write_json(ss, input);
-    cout << ss.str() << endl;
+    if (print)	{
+      cout << "**************************************************************" << endl;
+      cout << "Input file  :" << endl;
+      cout << "**************************************************************" << endl;
+      stringstream ss;
+      property_tree::json_parser::write_json(ss, input);
+      cout << ss.str() << endl;
+    }
 
-
+    // system options
+    schd.integralsFile = input.get("system.integrals", "FCIDUMP");
+    schd.nciCore = input.get("system.numCore", 0);                  // TODO: rename these because active spaces are also used without ci
+    schd.nciAct = input.get("system.numAct", -1);
+    
     //minimal checking for correctness
     //wavefunction
     schd.wavefunctionType = algorithm::to_lower_copy(input.get("wavefunction.name", "jastrowslater"));
@@ -89,8 +92,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numPermutations = input.get("wavefunction.numPermutations", 1);
 
     //ci and lanczos
-    schd.nciCore = input.get("wavefunction.numCore", 0);
-    schd.nciAct = input.get("wavefunction.numAct", -1);
     schd.usingFOIS = false;
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;
@@ -148,6 +149,14 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.resTimeNEVPT_Norm = input.get("sampling.resTimeNEVPT_Norm", 5.0);
     schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
 
+    // dqmc
+    schd.nsteps = input.get("sampling.nsteps", 10);
+    schd.dt = input.get("sampling.dt", 0.1);
+    schd.fieldStepsize = input.get("sampling.stepsize", 0.1);
+    schd.measureFreq = input.get("sampling.measureFreq", 10);
+    schd.orthoSteps = input.get("sampling.orthoSteps", 50);
+    schd.ene0Guess = input.get("sampling.ene0Guess", 1e10); // assuming ground state energy will not be 1e10
+    schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -569,6 +578,57 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<i
         excitations[1] = creV;
         ciExcitations.push_back(excitations);
       }
+    }
+  }
+}
+
+
+void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM) {
+  // Read a 2-RDM from the spin-RDM text file output by Dice
+  // Also construct the 1-RDM at the same time
+
+  int nSpinOrbs = 2*Determinant::norbs;
+  int nPairs = nSpinOrbs * nSpinOrbs;
+
+  oneRDM = MatrixXd::Zero(nSpinOrbs, nSpinOrbs);
+  twoRDM = MatrixXd::Zero(nPairs, nPairs);
+
+  ifstream RDMFile(fname);
+  string lineStr;
+  while (getline(RDMFile, lineStr)) {
+    string buf;
+    stringstream ss(lineStr);
+    vector<string> words;
+    while (ss >> buf) words.push_back(buf);
+
+    int a = stoi(words[0]);
+    int b = stoi(words[1]);
+    int c = stoi(words[2]);
+    int d = stoi(words[3]);
+    double elem = stod(words[4]);
+
+    int ind1 = a * nSpinOrbs + b;
+    int ind2 = c * nSpinOrbs + d;
+    int ind3 = b * nSpinOrbs + a;
+    int ind4 = d * nSpinOrbs + c;
+
+    twoRDM(ind1, ind2) = elem;
+    twoRDM(ind3, ind2) = -elem;
+    twoRDM(ind1, ind4) = -elem;
+    twoRDM(ind3, ind4) = elem;
+
+    if (b == d) oneRDM(a,c) += elem;
+    if (b == c) oneRDM(a,d) += -elem;
+    if (a == d) oneRDM(b,c) += -elem;
+    if (a == c) oneRDM(b,d) += elem;
+  }
+
+  int nelec = Determinant::nalpha + Determinant::nbeta;
+
+  // Normalize the 1-RDM
+  for (int a = 0; a < nSpinOrbs; a++) {
+    for (int b = 0; b < nSpinOrbs; b++) {
+      oneRDM(a,b) /= nelec-1;
     }
   }
 }
