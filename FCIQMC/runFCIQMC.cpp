@@ -84,7 +84,8 @@ void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
 
     double HFOvlp, HFLocalE, HFSVTotal;
     TrialWalk HFWalk(wave, HFDet);
-    wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work, schd.epsilon);
+    wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work,
+                              schd.importanceSampling, schd.epsilon);
     walkers.ovlp[0] = HFOvlp;
     walkers.localE[0] = HFLocalE;
     walkers.SVTotal[0] = HFSVTotal;
@@ -120,6 +121,16 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
   for (int iter=0; iter<niter; iter++) {
     wave.HamAndOvlp(walk, ovlp, ham, work);
 
+    // If importance sampling is in use then the initial wave function
+    // to sample has coefficients psi_i^2. If not, then the wave
+    // function to sample has coefficients psi_i. In this latter case,
+    // we sample psi_i^2 then include a factor of 1/ovlp (=1/psi_i)
+    // to get the desired initial WF.
+    double ISFactor = 1.0;
+    if (! schd.importanceSampling) {
+      ISFactor = 1/ovlp;
+    }
+
     double cumOvlpRatio = 0;
     for (int i = 0; i < work.nExcitations; i++)
     {
@@ -139,7 +150,7 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
       // Set the amplitude on the correct replica
       for (int iSgn=0; iSgn<schd.nreplicas; iSgn++) {
         if (iSgn == iReplica) {
-          spawn.amps[ind][iSgn] = 1.0/cumOvlpRatio;
+          spawn.amps[ind][iSgn] = ISFactor/cumOvlpRatio;
         } else {
           spawn.amps[ind][iSgn] = 0.0;
         }
@@ -351,12 +362,16 @@ void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determ
   overlapRatio *= parityFac;
 
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);
-  HElem *= overlapRatio;
 
+  // Apply the fixed/partial node approximation
   if (schd.applyNodeFCIQMC) {
-    if (HElem > 0.0) {
+    if (HElem * overlapRatio > 0.0) {
       HElem *= (1.0 - schd.partialNodeFactor);
     }
+  }
+
+  if (schd.importanceSampling) {
+    HElem *= overlapRatio;
   }
 
   double pgen_tot = pgen * nAttemptsEach;

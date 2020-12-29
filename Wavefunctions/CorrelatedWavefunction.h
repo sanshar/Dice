@@ -274,7 +274,7 @@ struct CorrelatedWavefunction {
 
   void HamAndOvlpAndSVTotal(const Walker<Corr, Reference> &walk, double &ovlp,
                             double &ham, double& SVTotal, workingArray& work,
-                            double epsilon=schd.epsilon) const
+                            const bool is, double epsilon=schd.epsilon) const
   {
     int norbs = Determinant::norbs;
 
@@ -299,8 +299,15 @@ struct CorrelatedWavefunction {
 
       double contrib = tia * ovlpRatio;
       ham += contrib;
+
+      // Accumulate the sign violating terms for the appropriate
+      // Hamiltonian. If is=true, importance sampling is in use.
       if (contrib > 0.0) {
-        SVTotal += contrib;
+        if (is) {
+          SVTotal += contrib;
+        } else {
+          SVTotal += contrib / abs(ovlpRatio);
+        }
       }
 
       work.ovlpRatio[i] = ovlpRatio;

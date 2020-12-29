@@ -199,6 +199,15 @@ class walkersFCIQMC {
 
     for (int iDet=0; iDet<nDets; iDet++) {
 
+      // If using importance sampling then the wave function sampled
+      // is psi_i^T*C_i. If not, then it is just C_i. So we have the
+      // extra factors of psi_i^T to include in estimators when using
+      // importance sampling.
+      double ISFactor = 1.0;
+      if (schd.importanceSampling) {
+        ISFactor = ovlp[iDet];
+      }
+
       if ( ht.find(dets[iDet]) != ht.end() ) {
         excitLevel = HFDet.ExcitationDistance(dets[iDet]);
 
@@ -211,15 +220,15 @@ class walkersFCIQMC {
             dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
 
             // Trial-WF-based estimator data
-            dat.trialEProj.at(iReplica) += localE[iDet] * amps[iDet][iReplica];
-            dat.ampSum.at(iReplica) += amps[iDet][iReplica];
+            dat.trialEProj.at(iReplica) += localE[iDet] * amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+            dat.ampSum.at(iReplica) += amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
 
             // HF-based estimator data
             if (excitLevel == 0) {
-              dat.HFAmp.at(iReplica) = amps[iDet][iReplica] / ovlp[iDet];
-              dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ovlp[iDet];
+              dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
+              dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ISFactor;
             } else if (excitLevel <= 2) {
-              dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ovlp[iDet];
+              dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ISFactor;
             }
           }
 

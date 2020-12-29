@@ -124,6 +124,7 @@ private:
       & heatBathExGen
       & heatBathUniformSingExGen
       & calcEN2
+      & importanceSampling
       & applyNodeFCIQMC
       & diagonalDumping
       & partialNodeFactor
@@ -313,6 +314,7 @@ public:
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
   bool calcEN2;
+  bool importanceSampling;
   bool applyNodeFCIQMC;
   bool diagonalDumping;
   double partialNodeFactor;
