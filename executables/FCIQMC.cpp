@@ -73,11 +73,11 @@ int main(int argc, char *argv[])
   int nbeta = Determinant::nbeta;
   int nel = nalpha + nbeta;
 
-  if (schd.trialWFType == "none") {
+  if (!schd.useTrialFCIQMC) {
     TrivialWF wave;
     TrivialWalk walk;
     runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
-  } else if (schd.trialWFType == "jastrowslater") {
+  } else if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave;
     Walker<Jastrow, Slater> walk;
     if (schd.restart || schd.fullRestart) {
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     }
     runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
   }
-  else if (schd.trialWFType == "selectedci") {
+  else if (schd.wavefunctionType == "selectedci") {
     SelectedCI wave;
     SimpleWalker walk;
     wave.readWave();

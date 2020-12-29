@@ -176,7 +176,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.heatBathExGen = input.get("sampling.heatBath", false);
     schd.heatBathUniformSingExGen = input.get("sampling.heatBathUniformSingles", false);
     schd.calcEN2 = input.get("sampling.EN2", false);
-    schd.trialWFType = algorithm::to_lower_copy(input.get("wavefunction.fciqmcName", "none"));
+    schd.useTrialFCIQMC = input.get("sampling.useTrialFCIQMC", false);
     schd.trialWFEstimator = input.get("sampling.trialWFEstimator", false);
     schd.importanceSampling = input.get("sampling.importanceSampling", false);
     schd.applyNodeFCIQMC = input.get("sampling.applyNodeFCIQMC", false);

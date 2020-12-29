@@ -124,7 +124,7 @@ private:
       & heatBathExGen
       & heatBathUniformSingExGen
       & calcEN2
-      & trialWFType
+      & useTrialFCIQMC
       & trialWFEstimator
       & importanceSampling
       & applyNodeFCIQMC
@@ -316,7 +316,7 @@ public:
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
   bool calcEN2;
-  std::string trialWFType;
+  bool useTrialFCIQMC;
   bool trialWFEstimator;
   bool importanceSampling;
   bool applyNodeFCIQMC;
