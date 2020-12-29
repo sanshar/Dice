@@ -1,9 +1,12 @@
 {
+  "system":
+  {
+    "numAct": 8,
+    "numCore": 2
+  },
   "wavefunction":
   {
     "name": "scpt",
-    "numAct": 8,
-    "numCore": 2,
     "overlapCutoff": 1.0e-8,
     "determinants": "dets"
   },
