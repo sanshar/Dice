@@ -2,7 +2,7 @@
   "sampling":
   {
     "tau": 0.001,
-    "maxIter": 20000,
+    "maxIterFCIQMC": 20000,
     "seed": 20,
     "shiftDamping": 0.01,
     "initialShift": 0.0,
