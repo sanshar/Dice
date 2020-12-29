@@ -11,6 +11,8 @@
 #include "Jastrow.h"
 #include "Slater.h"
 #include "SelectedCI.h"
+#include "trivialWF.h"
+#include "trivialWalk.h"
 
 // Perform initialization of variables needed for the runFCIQMC routine.
 // In particular the Hartree--Fock determinant and energy, the heat bath
@@ -353,15 +355,18 @@ void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determ
 {
   bool childSpawned = true;
 
-  // Calculate the ratio of overlaps, and the parity factor
-  int norbs = Determinant::norbs;
-  int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-  int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-  double overlapRatio = wave.getOverlapFactor(I, J, A, B, walk, false);
-  double parityFac = wave.parityFactor(parentDet, ex2, I, J, A, B);
-  overlapRatio *= parityFac;
-
   double HElem = Hij(parentDet, childDet, I1, I2, coreE);
+
+  double overlapRatio;
+  if (schd.applyNodeFCIQMC || schd.importanceSampling) {
+    // Calculate the ratio of overlaps, and the parity factor
+    int norbs = Determinant::norbs;
+    int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+    int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+    overlapRatio = wave.getOverlapFactor(I, J, A, B, walk, false);
+    double parityFac = wave.parityFactor(parentDet, ex2, I, J, A, B);
+    overlapRatio *= parityFac;
+  }
 
   // Apply the fixed/partial node approximation
   if (schd.applyNodeFCIQMC) {
@@ -665,12 +670,15 @@ void printFinalStats(const vector<double>& walkerPop, const int nDets,
 }
 
 // Instantiate needed templates
+template void runFCIQMC(TrivialWF& wave, TrivialWalk& walk,
+                        const int norbs, const int nel,
+                        const int nalpha, const int nbeta);
+
 template void runFCIQMC(CorrelatedWavefunction<Jastrow, Slater>& wave,
                         Walker<Jastrow, Slater>& walk,
                         const int norbs, const int nel,
                         const int nalpha, const int nbeta);
 
-template void runFCIQMC(SelectedCI& wave,
-                        SimpleWalker& walk,
+template void runFCIQMC(SelectedCI& wave, SimpleWalker& walk,
                         const int norbs, const int nel,
                         const int nalpha, const int nbeta);

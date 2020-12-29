@@ -36,6 +36,8 @@
 #include "Jastrow.h"
 #include "Slater.h"
 #include "SelectedCI.h"
+#include "trivialWF.h"
+#include "trivialWalk.h"
 #include "runVMC.h"
 
 int main(int argc, char *argv[])
@@ -71,7 +73,11 @@ int main(int argc, char *argv[])
   int nbeta = Determinant::nbeta;
   int nel = nalpha + nbeta;
 
-  if (schd.wavefunctionType == "jastrowslater") {
+  if (schd.trialWFType == "none") {
+    TrivialWF wave;
+    TrivialWalk walk;
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  } else if (schd.trialWFType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave;
     Walker<Jastrow, Slater> walk;
     if (schd.restart || schd.fullRestart) {
@@ -82,7 +88,7 @@ int main(int argc, char *argv[])
     }
     runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
   }
-  else if (schd.wavefunctionType == "selectedci") {
+  else if (schd.trialWFType == "selectedci") {
     SelectedCI wave;
     SimpleWalker walk;
     wave.readWave();

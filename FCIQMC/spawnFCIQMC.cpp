@@ -30,6 +30,8 @@
 #include "Jastrow.h"
 #include "Slater.h"
 #include "SelectedCI.h"
+#include "trivialWF.h"
+#include "trivialWalk.h"
 
 template <typename T, typename Compare>
 vector<size_t> sort_permutation(int const nDets, const vector<T>& vec, Compare compare)
@@ -416,6 +418,26 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
 }
 
 // Instantiate needed templates
+
+// Trivial (no trial wave function)
+template void spawnFCIQMC::mergeIntoMain(
+    TrivialWF& wave, TrivialWalk& walk,
+    walkersFCIQMC<TrivialWalk>& walkers,
+    const double minPop,
+    bool initiator,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_NoInitiator(
+    TrivialWF& wave, TrivialWalk& walk,
+    walkersFCIQMC<TrivialWalk>& walkers,
+    const double minPop,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_Initiator(
+    TrivialWF& wave, TrivialWalk& walk,
+    walkersFCIQMC<TrivialWalk>& walkers,
+    const double minPop,
+    workingArray& work);
 
 // Jastrow-Slater
 using JSWalker = Walker<Jastrow, Slater>;
