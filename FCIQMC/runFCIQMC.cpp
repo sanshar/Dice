@@ -565,12 +565,19 @@ void printDataTableHeader()
     // This is the column label
     int label;
 
+    int nColPerReplica;
+    if (schd.trialWFEstimator) {
+      nColPerReplica = 6;
+    } else {
+      nColPerReplica = 4;
+    }
+
     // This loop is for properties printed on each replica
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
 
-      for (int j=0; j<6; j++) {
+      for (int j=0; j<nColPerReplica; j++) {
         string header;
-        label = 6*iReplica + j + 4;
+        label = nColPerReplica*iReplica + j + 4;
         header.append(to_string(label));
 
         if (j==0) {
@@ -622,8 +629,10 @@ void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets,
       printf ("%18.10f   ", dat.walkerPopTot[iReplica]);
       printf ("%18.10f   ", dat.EProjTot[iReplica]);
       printf ("%18.10f   ", dat.HFAmpTot[iReplica]);
-      printf ("%18.10f   ", dat.trialEProjTot[iReplica]);
-      printf ("%18.10f   ", dat.ampSumTot[iReplica]);
+      if (schd.trialWFEstimator) {
+        printf ("%18.10f   ", dat.trialEProjTot[iReplica]);
+        printf ("%18.10f   ", dat.ampSumTot[iReplica]);
+      }
     }
 
     if (schd.nreplicas == 2) {

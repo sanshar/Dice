@@ -220,15 +220,21 @@ class walkersFCIQMC {
             dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
 
             // Trial-WF-based estimator data
-            dat.trialEProj.at(iReplica) += localE[iDet] * amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
-            dat.ampSum.at(iReplica) += amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+            if (schd.trialWFEstimator) {
+              dat.trialEProj.at(iReplica) +=
+                  localE[iDet] * amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+              dat.ampSum.at(iReplica) +=
+                  amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+            }
 
             // HF-based estimator data
             if (excitLevel == 0) {
               dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
-              dat.EProj.at(iReplica) += amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ISFactor;
+              dat.EProj.at(iReplica) +=
+                  amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ISFactor;
             } else if (excitLevel <= 2) {
-              dat.EProj.at(iReplica) += amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ISFactor;
+              dat.EProj.at(iReplica) +=
+                  amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ISFactor;
             }
           }
 
