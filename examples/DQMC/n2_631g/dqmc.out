@@ -1,0 +1,67 @@
+User:
+anma2640
+Hostname:
+bhpc-c7-u7-1.rc.int.colorado.edu
+CPU info:
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                36
+On-line CPU(s) list:   0-35
+Thread(s) per core:    1
+Core(s) per socket:    18
+Socket(s):             2
+NUMA node(s):          2
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 85
+Model name:            Intel(R) Xeon(R) Gold 6150 CPU @ 2.70GHz
+Stepping:              4
+CPU MHz:               2700.000
+Computation started at:
+Tue Dec 29 17:48:03 MST 2020
+git commit: 38582e70d0897b5fd4761297cae60ee8259c69f5, branch: dqmc, compiled at: Tue Dec 29 16:00:32 MST 2020
+
+nproc used: 36 (NB: stochasticIter below is per proc)
+
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol"
+    },
+    "wavefunction": {
+        "name": "jastrow"
+    },
+    "sampling": {
+        "seed": "5",
+        "dt": "0.1",
+        "nsteps": "50",
+        "orthoSteps": "20",
+        "ene0Guess": "-109.057",
+        "numJastrowSamples": "100",
+        "stochasticIter": "500"
+    }
+}
+
+
+Using Jastrow RHF trial
+Using RHF RDM for background subtraction
+
+Initial state energy:  (-108.757,0)
+Ground state energy guess:  (-109.057,0)
+
+Starting sampling sweeps
+100  10.7696 s
+200  21.4231 s
+300  32.1117 s
+400  42.9729 s
+
+Propagation time:  6.35725 s
+Energy evaluation time:  47.2735 s
+
+          iTime                 Energy                     Energy error         Average phase
+           5.00   ( -109.05780971,     0.00033967)   (9.74e-04   (1.93e-04))   (0.796, -0.001) 
+
+Total calculation time:  58.2165 s

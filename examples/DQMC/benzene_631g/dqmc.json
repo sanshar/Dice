@@ -1,0 +1,15 @@
+{
+  "system":
+  {
+    "integrals": "FCIDUMP_chol"
+  },
+  "sampling":
+  {
+    "seed": 5,
+    "dt": 0.1,
+    "nsteps": 40,
+    "orthoSteps": 20,
+    "ene0Guess": -231.204,
+    "stochasticIter": 2000
+  }
+}

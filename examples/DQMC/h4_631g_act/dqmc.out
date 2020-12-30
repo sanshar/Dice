@@ -1,0 +1,25 @@
+
+Using rhf trial
+Using rhf rdm for background subtraction
+
+Initial state energy:  (-1.8063,0)
+Ground state energy guess:  (-2.02,0)
+
+Starting sampling sweeps
+200  0.591811 s
+400  1.18325 s
+600  1.77439 s
+800  2.37338 s
+
+Propagation time:  2.92181 s
+QR time:  0.0122066 s
+Energy evaluation time:  0.0380833 s
+
+          iTime                 Energy                     Energy error         Average phase
+           2.00   (   -1.91149440,    -0.00013406)   (6.00e-04   (1.57e-04))   (0.982, 0.000) 
+           4.00   (   -1.96224936,     0.00009503)   (1.22e-03   (2.75e-04))   (0.928, -0.001) 
+           6.00   (   -1.99150095,     0.00059314)   (1.76e-03   (3.83e-04))   (0.857, -0.002) 
+           8.00   (   -2.00650186,    -0.00025436)   (2.48e-03   (5.69e-04))   (0.783, -0.001) 
+          10.00   (   -2.01673414,     0.00229313)   (3.48e-03   (7.97e-04))   (0.711, 0.006) 
+
+Total calculation time:  3.32508 s

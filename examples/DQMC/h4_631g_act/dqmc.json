@@ -1,0 +1,21 @@
+{
+  "system":
+  {
+    "integrals": "FCIDUMP_chol",
+    "numAct": 4
+  },
+  "wavefunction":
+  {
+    "name": "jastro"
+  },
+  "sampling":
+  {
+    "seed": 5,
+    "dt": 0.1,
+    "nsteps": 100,
+    "orthoSteps": 20,
+    "ene0Guess": -2.020,
+    "numJastrowSamples": 10,
+    "stochasticIter": 1000
+  }
+}

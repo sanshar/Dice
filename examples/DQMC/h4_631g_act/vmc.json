@@ -1,0 +1,31 @@
+{
+  "system":
+  {
+    "integrals": "FCIDUMP_eri"
+  },
+  "wavefunction":
+  {
+    "name": "jastrowslater",
+    "hfType": "rhf"
+  },
+  "sampling":
+  {
+    "stochasticIter": 1000,
+    "burnIter": 10,
+    "epsilon": 1.0e-6
+  },
+  "optimizer":
+  {
+    "method": "amsgrad",
+    "maxIter": 150,
+    "stepsize": 0.01,
+    "decay1": 0.1,
+    "decay2": 0.01,
+    "optimizeCps": true,
+    "optimizeOrbs": false
+  },
+  "print":
+  {
+    "vars": true
+  }
+}

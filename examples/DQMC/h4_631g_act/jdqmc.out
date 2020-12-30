@@ -1,0 +1,21 @@
+
+Using jastrow rhf trial
+Using rhf rdm for background subtraction
+
+Initial state energy:  (-1.8063,0)
+Ground state energy guess:  (-2.02,0)
+
+Starting sampling sweeps
+200  0.636567 s
+400  1.27707 s
+600  1.91272 s
+800  2.57989 s
+
+Propagation time:  3.08675 s
+QR time:  0.0137632 s
+Energy evaluation time:  0.133499 s
+
+          iTime                 Energy                     Energy error         Average phase
+          10.00   (   -2.01949686,     0.00015326)   (1.29e-03   (3.28e-04))   (0.736, 0.002) 
+
+Total calculation time:  3.67673 s

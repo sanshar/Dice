@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import h5py
 from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
 #from pyscf.shciscf import shci, settings
 from pyscf import lo
@@ -8,6 +9,7 @@ import sys
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
+
 
 def doRHF(mol):
   mf = scf.RHF(mol)
@@ -219,6 +221,17 @@ def prepValence(mol, ncore, nact, occ=None, loc="iao", dm=None, writeFcidump=Tru
   print(gmf.kernel(dm0 = dm))
   if writeMOs:
     writeMat(gmf.mo_coeff, "hf.txt", False)
+
+# write cholesky integrals
+def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
+                        filename='FCIDUMP_chol'):
+    assert len(chol.shape) == 2
+    with h5py.File(filename, 'w') as fh5:
+        fh5['header'] = np.array([nelec, nmo, ms, chol.shape[0]])
+        fh5['hcore'] = hcore.flatten()
+        fh5['hcore_mod'] = hcore_mod.flatten()
+        fh5['chol'] = chol.flatten()
+        fh5['energy_core'] = enuc
 
 # for tilted hubbard model
 def findSiteInUnitCell(newsite, size, latticeVectors, sites):
