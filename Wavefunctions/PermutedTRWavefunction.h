@@ -35,6 +35,8 @@ struct PermutedTRWavefunction {
   }
 
  public:
+  using CorrType = Jastrow;
+  using ReferenceType = Slater;
   
   TRWavefunction wave; 
   MatrixXd permutations; // rows contain permutations except identity
@@ -135,11 +137,15 @@ struct PermutedTRWavefunction {
   
   double getOverlapFactor(int i, int a, const PermutedTRWalker& walk, vector<double>& overlaps, double& totalOverlap, bool doparity) const  
   {
+    //double parity_n = walk.walkerVec[0].d.parity(a/2, i/2, i%2); 
+    //double numerator = parity_n * wave.getOverlapFactor(i, a, walk.walkerVec[0], doparity) * overlaps[0];
     double numerator = wave.getOverlapFactor(i, a, walk.walkerVec[0], doparity) * overlaps[0];
     int norbs = Determinant::norbs;
     for (int n = 0; n < numP; n++) {
       int ip = 2 * permutations(n, i/2) + i%2;
       int ap = 2 * permutations(n, a/2) + a%2;
+      //double parity_np = walk.walkerVec[n+1].d.parity(ap/2, ip/2, ip%2);
+      //numerator += parity_np * wave.getOverlapFactor(ip, ap, walk.walkerVec[n+1], doparity) * overlaps[n+1];
       numerator += wave.getOverlapFactor(ip, ap, walk.walkerVec[n+1], doparity) * overlaps[n+1];
     }
     return numerator / totalOverlap;
@@ -242,7 +248,7 @@ struct PermutedTRWavefunction {
   // used directly during sampling
   void HamAndOvlp(const PermutedTRWalker &walk,
                   double &ovlp, double &ham, 
-                  workingArray& work, bool fillExcitations=true) const
+                  workingArray& work, bool fillExcitations=true, double epsilon = schd.epsilon) const
   {
     int norbs = Determinant::norbs;
 
@@ -256,9 +262,9 @@ struct PermutedTRWavefunction {
     ham = walk.walkerVec[0].d.Energy(I1, I2, coreE); 
 
     work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.walkerVec[0].d, schd.epsilon, schd.screen,
+    generateAllScreenedSingleExcitation(walk.walkerVec[0].d, epsilon, schd.screen,
                                         work, false);
-    generateAllScreenedDoubleExcitation(walk.walkerVec[0].d, schd.epsilon, schd.screen,
+    generateAllScreenedDoubleExcitation(walk.walkerVec[0].d, epsilon, schd.screen,
                                         work, false);
   
     //loop over all the screened excitations
@@ -282,6 +288,48 @@ struct PermutedTRWavefunction {
       work.ovlpRatio[i] = ovlpRatio;
     }
     if (schd.debug) cout << endl;
+  }
+  
+  void HamAndOvlpLanczos(const PermutedTRWalker &walk,
+                         Eigen::VectorXd &lanczosCoeffsSample,
+                         double &ovlpSample,
+                         workingArray& work,
+                         workingArray& moreWork, double &alpha)
+  {
+    work.setCounterToZero();
+    int norbs = Determinant::norbs;
+
+    double el0 = 0., el1 = 0., ovlp0 = 0., ovlp1 = 0.;
+    HamAndOvlp(walk, ovlp0, el0, work, true, schd.lanczosEpsilon);
+    std::vector<double> ovlp{0., 0., 0.};
+    ovlp[0] = ovlp0;
+    ovlp[1] = el0 * ovlp0;
+    ovlp[2] = ovlp[0] + alpha * ovlp[1];
+
+    lanczosCoeffsSample[0] = ovlp[0] * ovlp[0] * el0 / (ovlp[2] * ovlp[2]);
+    lanczosCoeffsSample[1] = ovlp[0] * ovlp[1] * el0 / (ovlp[2] * ovlp[2]);
+    el1 = walk.walkerVec[0].d.Energy(I1, I2, coreE);
+
+    //if (schd.debug) cout << "phi1  d.energy  " << el1 << endl;
+    //workingArray work1;
+    //cout << "E0  " << el1 << endl;
+    //loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      double tia = work.HijElement[i];
+      PermutedTRWalker walkCopy = walk;
+      walkCopy.updateWalker(getRef(), getCorr(), work.excitation1[i], work.excitation2[i], false);
+      moreWork.setCounterToZero();
+      HamAndOvlp(walkCopy, ovlp0, el0, moreWork, true, schd.lanczosEpsilon);
+      ovlp1 = el0 * ovlp0;
+      el1 += tia * ovlp1 / ovlp[1];
+      work.ovlpRatio[i] = (ovlp0 + alpha * ovlp1) / ovlp[2];
+      //if (schd.debug) cout << work.excitation1[i] << "  " << work.excitation2[i] << "  tia  " << tia << "  ovlpRatio  " << ovlp1 / ovlp[1] << endl;
+    }
+
+    //if (schd.debug) cout << endl;
+    lanczosCoeffsSample[2] = ovlp[1] * ovlp[1] * el1 / (ovlp[2] * ovlp[2]);
+    lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
+    ovlpSample = ovlp[2];
   }
 
 };

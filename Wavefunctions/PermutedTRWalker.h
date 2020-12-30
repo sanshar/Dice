@@ -82,8 +82,8 @@ public:
   Determinant getDet() { return walkerVec[0].getDet(); }
 
   // used during sampling
-  void updateWalker(const Slater &ref, Jastrow &corr, int ex1, int ex2) {
-    walkerVec[0].updateWalker(ref, corr, ex1, ex2);
+  void updateWalker(const Slater &ref, Jastrow &corr, int ex1, int ex2, bool doparity = true) {
+    walkerVec[0].updateWalker(ref, corr, ex1, ex2, doparity);
     int norbs = Determinant::norbs;
     // calculate corresponding excitaitons for the permuted determinants
     int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I; 
@@ -101,7 +101,7 @@ public:
         int bp = permutations(n, b);
         ex2p = (2 * jp + sz2) * 2 * norbs + (2 * bp + sz2);
       }
-      walkerVec[n+1].updateWalker(ref, corr, ex1p, ex2p);
+      walkerVec[n+1].updateWalker(ref, corr, ex1p, ex2p, doparity);
     }
   }
  

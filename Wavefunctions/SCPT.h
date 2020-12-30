@@ -19,23 +19,16 @@
 
 #ifndef SCPT_HEADER_H
 #define SCPT_HEADER_H
-#include <vector>
-#include <set>
+
+#include <unordered_map>
+#include <iomanip>
 #include "Determinants.h"
 #include "workingArray.h"
-#include "excitationOperators.h"
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/vector.hpp>
-#include <boost/serialization/array.hpp>
-#include <Eigen/Eigenvalues>
-#include <utility>
-#include <iomanip>
+#include <boost/filesystem.hpp>
 
 #ifndef SERIAL
 #include "mpi.h"
 #endif
-
-using namespace std;
 
 class oneInt;
 class twoInt;
@@ -50,458 +43,253 @@ class SCPT
   template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-      ar  & wave
-	& coeffs
-    & moEne;
+      ar & wave
+      ar & coeffs
+      ar & moEne;
     }
 
  public:
-  VectorXd coeffs;
-  VectorXd moEne;
-  Wfn wave; //reference wavefunction
+  Eigen::VectorXd coeffs;
+  Eigen::VectorXd moEne;
+  Wfn wave; // reference wavefunction
   workingArray morework;
+
+  double ovlp_current;
   
+  static const int NUM_EXCIT_CLASSES = 9;
+  // the number of coefficients in each excitation class
+  int numCoeffsPerClass[NUM_EXCIT_CLASSES];
+  // the cumulative sum of numCoeffsPerClass
+  int cumNumCoeffs[NUM_EXCIT_CLASSES];
+  // the total number of strongly contracted states (including the CASCI space itself)
+  int numCoeffs;
+  // a list of the excitation classes being considered stochastically
+  std::array<bool, NUM_EXCIT_CLASSES> classesUsed = { false };
+  // a list of the excitation classes being considered deterministically
+  std::array<bool, NUM_EXCIT_CLASSES> classesUsedDeterm = { false };
+  // a list of classes for which the perturber norms are calculated deterministically
+  std::array<bool, NUM_EXCIT_CLASSES> normsDeterm = { false };
 
-  SCPT()
-  {
-    wave.readWave();
+  std::unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_1h2p_ind;
+  std::unordered_map<std::array<int,3>, int, boost::hash<std::array<int,3>> > class_2h1p_ind;
+  std::unordered_map<std::array<int,4>, int, boost::hash<std::array<int,4>> > class_2h2p_ind;
 
-    // Resize coeffs
-    int numVirt = Determinant::norbs - schd.nciAct;
-    int numCoeffs = 1 + 2*numVirt + (2*numVirt * (2*numVirt - 1) / 2);
-    coeffs = VectorXd::Zero(numCoeffs);
-    moEne = VectorXd::Zero(Determinant::norbs);
+  // the names of each of the 9 classes
+  string classNames[NUM_EXCIT_CLASSES] = {"CASCI", "AAAV", "AAVV", "CAAA", "CAAV", "CAVV", "CCAA", "CCAV", "CCVV"};
+  string classNames2[NUM_EXCIT_CLASSES] = {"CASCI", "   V", "  VV", "   C", "  CV", " CVV", "  CC", " CCV", "CCVV"};
 
-    //coeffs order: phi0, singly excited (spin orb index), doubly excited (spin orb pair index)
 
-    if (commrank == 0) {
-      auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                              std::ref(generator));
+  SCPT();
 
-      coeffs(0) = -0.5;
-      for (int i=1; i < numCoeffs; i++) {
-        coeffs(i) = 0.2*random() - 0.1;
-      }
-    }
+  void createClassIndMap(int& numStates_1h2p, int& numStates_2h1p, int& numStates_2h2p);
 
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-    
-    char file[5000];
-    sprintf(file, "ciCoeffs.txt");
-    ifstream ofile(file);
-    if (ofile) {
-      for (int i = 0; i < coeffs.size(); i++) {
-        ofile >> coeffs(i);
-      }
-    }
-    
-    char filem[5000];
-    sprintf(filem, "moEne.txt");
-    ifstream ofilem(filem);
-    if (ofilem) {
-      for (int i = 0; i < Determinant::norbs; i++) {
-        ofilem >> moEne(i);
-      }
-    }
-    else {
-      if (commrank == 0) cout << "moEne.txt not found!\n";
-      exit(0);
-    }
-  }
-
-  typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
-  typename Wfn::CorrType& getCorr() { return wave.getCorr(); }
+  typename Wfn::ReferenceType& getRef();
+  typename Wfn::CorrType& getCorr();
 
   template<typename Walker>
-  void initWalker(Walker& walk) {
-    this->wave.initWalker(walk);
-  }
+  void initWalker(Walker& walk);
   
   template<typename Walker>
-  void initWalker(Walker& walk, Determinant& d) {
-    this->wave.initWalker(walk, d);
-  }
+  void initWalker(Walker& walk, Determinant& d);
   
-  //void initWalker(Walker& walk) {
-  //  this->wave.initWalker(walk);
-  //}
+  //void initWalker(Walker& walk);
 
-  void getVariables(VectorXd& vars) {
-    vars = coeffs;
-  }
+  void getVariables(Eigen::VectorXd& vars);
 
-  void printVariables() {
-    cout << "ci coeffs\n" << coeffs << endl;
-  }
+  void printVariables();
 
-  void updateVariables(VectorXd& vars) {
-    coeffs = vars;
-  }
+  void updateVariables(Eigen::VectorXd& vars);
 
-  long getNumVariables() {
-    return coeffs.size();
-  }
+  long getNumVariables();
 
   template<typename Walker>
-  int coeffsIndex(Walker& walk) {
-    int norbs = Determinant::norbs;
-    if (walk.excitedOrbs.size() == 2) {
-      int i = *walk.excitedOrbs.begin() - 2*schd.nciAct;
-      int j = *(std::next(walk.excitedOrbs.begin())) - 2*schd.nciAct;
-      int I = max(i, j) - 1, J = min(i,j);
-      int numVirt = norbs - schd.nciAct;
-      return 1 + 2*numVirt + I*(I+1)/2 + J;
-    }
-    else if (walk.excitedOrbs.size() == 1) {
-      return *walk.excitedOrbs.begin() - 2*schd.nciAct + 1;
-    }
-    else if (walk.excitedOrbs.size() == 0) return 0;
-    else return -1;
-  }
+  int coeffsIndex(Walker& walk);
+
+  // This perform the inverse of the coeffsIndex function: given the
+  // index of a perturber, return the external (non-active) orbtials
+  // involved. This only works for the main perturber types used -
+  // V, VV, C, CV, CC. These only have one or two external orbitals,
+  // which this function will return.
+  void getOrbsFromIndex(const int index, int& i, int& j);
+
+  // Take two orbital indices i and j, and convert them to a string.
+  // This is intended for use with two orbital obtained from the
+  // getOrbsFromIndex function, which are then to be output to
+  // pt2_energies files.
+  string formatOrbString(const int i, const int j);
   
   template<typename Walker>
-  double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const  
-  {
-    return 1.;
-  }//not used
+  double getOverlapFactor(int i, int a, const Walker& walk, bool doparity) const;
   
   template<typename Walker>
-  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const 
-  {
-    return 1.;
-  }//not used
+  double getOverlapFactor(int I, int J, int A, int B, const Walker& walk, bool doparity) const;
+
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk);
   
-  //ham is a sample of the diagonal element of the Dyall ham
+  // ham is a sample of the diagonal element of the Dyall ham
   template<typename Walker>
   void HamAndOvlp(Walker &walk,
                   double &ovlp, double &locEne, double &ham, double &norm, int coeffsIndex, 
-                  workingArray& work, bool fillExcitations=true) 
-  {
-    int norbs = Determinant::norbs;
-    double ciCoeff = coeffs(coeffsIndex);
-    morework.setCounterToZero();
-    double ovlp0, ham0;
-    if (coeffsIndex == 0) {
-      wave.HamAndOvlp(walk, ovlp0, ham0, morework, true);
-      ovlp = ciCoeff * ovlp0;
-    }
-    else {
-      wave.HamAndOvlp(walk, ovlp0, ham0, morework, false);
-      ovlp = ciCoeff * ovlp0;
-    }
-    if (ovlp == 0.) return; //maybe not necessary
-    if (abs(ciCoeff) < 1.e-5) norm = 0;
-    else norm = 1 / ciCoeff / ciCoeff;
-    locEne = walk.d.Energy(I1, I2, coreE);
-    double dEne = locEne;
-    Determinant dAct = walk.d;
-    //cout << "walker\n" << walk << endl;
-    //cout << "ovlp  " << ovlp << endl;
-    if (walk.excitedOrbs.size() == 0) {
-      ham = walk.d.Energy(I1, I2, coreE) / ciCoeff / ciCoeff;
-      //cout << "ene  " << ham << endl;
-    }
-    else {
-      dAct.setocc(*walk.excitedOrbs.begin(), false);
-      double ene1 = moEne((*walk.excitedOrbs.begin())/2);
-      if (walk.excitedOrbs.size() == 1) {
-        ham = (dAct.Energy(I1, I2, coreE) + ene1) / ciCoeff / ciCoeff;
-        //cout << "ene  " << ham << endl;
-      }
-      else {
-        dAct.setocc(*(std::next(walk.excitedOrbs.begin())), false);
-        double ene2 = moEne((*(std::next(walk.excitedOrbs.begin())))/2);
-        ham = (dAct.Energy(I1, I2, coreE) + ene1 + ene2) / ciCoeff / ciCoeff;
-        //cout << "ene  " << ham << endl;
-      }
-    }
+                  workingArray& work, bool fillExcitations=true);
+  
+  // ham is a sample of the diagonal element of the Dyall ham
+  template<typename Walker>
+  void FastHamAndOvlp(Walker &walk, double &ovlp, double &ham, workingArray& work, bool fillExcitations=true);
 
-    work.setCounterToZero();
-    generateAllScreenedSingleExcitationsDyall(walk.d, dAct, schd.epsilon, schd.screen,
-                                        work, false);
-    generateAllScreenedDoubleExcitationsDyall(walk.d, schd.epsilon, schd.screen,
-                                        work, false);
+  template<typename Walker>
+  void HamAndSCNorms(Walker &walk, double &ovlp, double &ham, Eigen::VectorXd &normSamples,
+                     vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                     workingArray& work, bool calcExtraNorms);
 
-    //loop over all the screened excitations
-    //cout << endl << "m dets\n" << endl << endl;
-    for (int i=0; i<work.nExcitations; i++) {
-      double tia = work.HijElement[i];
-      double tiaD = work.HijElement[i];
-      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
-      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
-      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
-      double isDyall = 0.;
-      if (work.ovlpRatio[i] != 0.) {
-        isDyall = 1.;
-        if (ex2 == 0) tiaD = work.ovlpRatio[i];
-        work.ovlpRatio[i] = 0.;
-      }
-      
-      auto walkCopy = walk;
-      double parity = 1.;
-      Determinant dcopy = walkCopy.d;
-      walkCopy.updateWalker(wave.getRef(), wave.getCorr(),
-                            work.excitation1[i], work.excitation2[i], false);
-      //cout << walkCopy << endl;
-      if (walkCopy.excitedOrbs.size() > 2) continue;
-      parity *= dcopy.parity(A/2, I/2, I%2);
-      //if (ex2 == 0) {
-      //  ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2] 
-      //              - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2));
-      //}
-      //else {
-      if (ex2 != 0) {
-        dcopy.setocc(I, false);
-        dcopy.setocc(A, true);
-        parity *= dcopy.parity(B/2, J/2, J%2);
-        //bool sameSpin = (I%2 == J%2);
-        //ham0 = dEne + walk.energyIntermediates[A%2][A/2] - walk.energyIntermediates[I%2][I/2]
-        //            + walk.energyIntermediates[B%2][B/2] - walk.energyIntermediates[J%2][J/2]
-        //            + I2.Direct(A/2, B/2) - sameSpin * I2.Exchange(A/2, B/2)
-        //            + I2.Direct(I/2, J/2) - sameSpin * I2.Exchange(I/2, J/2)
-        //            - (I2.Direct(I/2, A/2) - I2.Exchange(I/2, A/2))
-        //            - (I2.Direct(J/2, B/2) - I2.Exchange(J/2, B/2))
-        //            - (I2.Direct(I/2, B/2) - sameSpin * I2.Exchange(I/2, B/2))
-        //            - (I2.Direct(J/2, A/2) - sameSpin * I2.Exchange(J/2, A/2));
-      }
-      
-      int coeffsCopyIndex = this->coeffsIndex(walkCopy);
-      morework.setCounterToZero();
-      //cout << "ovlp  " << ovlp0 << "  ham  " << ham0 << "  tia  " << tia << "  parity  " << parity << endl;
-      if (coeffsCopyIndex == 0) {
-        wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, true);
-        ham += isDyall * parity * tiaD * ovlp0 / ciCoeff / ovlp;
-        locEne += parity * tia * ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
-        work.ovlpRatio[i] = ovlp0 * coeffs(coeffsCopyIndex) / ovlp;
-      }
-      else {
-        wave.HamAndOvlp(walkCopy, ovlp0, ham0, morework, false);
-        ham += isDyall * parity * tiaD * ham0 / ciCoeff / ovlp;
-        locEne += parity * tia * ham0 * coeffs(coeffsCopyIndex) / ovlp;
-        work.ovlpRatio[i] = ham0 * coeffs(coeffsCopyIndex) / ovlp;
-      }
-      //cout << endl;
-    }
-    //cout << endl << "n ham  " << ham << "  norm  " << norm << endl << endl;
-  }
+  template<typename Walker>
+  void AddSCNormsContrib(Walker &walk, double &ovlp, double &ham, Eigen::VectorXd &normSamples,
+                         vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                         workingArray& work, bool calcExtraNorms, int& ex1, int& ex2,
+                         double& tia, size_t& nExcitationsCASCI);
+
+  // this is a version of HamAndSCNorms, optimized for the case where only
+  // classes AAAV (class 1) and CAAA (class 3) are needed
+  template<typename Walker>
+  void HamAndSCNormsCAAA_AAAV(Walker &walk, double &ovlp, double &ham, Eigen::VectorXd &normSamples,
+                     vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                     workingArray& work, bool calcExtraNorms);
+
+
+  template<typename Walker>
+  double doNEVPT2_CT(Walker& walk);
+
+  // Output the header for the "norms" file, which will output the norms of
+  // the strongly contracted (SC) states, divided by the norm of the CASCI
+  // state (squared)
+  double outputNormFileHeader(FILE* out_norms);
+
+  // Create directories where the norm files will be stored
+  void createDirForSCNorms();
+
+  // Create directories where the init_dets files will be stored
+  void createDirForInitDets();
+
+  // Create directories where the norm files will be stored
+  void createDirForNormsBinary();
+
+  // Print norms to output files.
+  // If determClasses is true, only print the norms from classes where the
+  // norms are being found exactly.
+  // Otherwise, print the norms calculated stochastically, summed up until
+  // the current iteration. Also print the current estimate of the the
+  // CASCI energy, and the residence time.
+  void printSCNorms(int& iter, double& deltaT_Tot, double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, bool determClasses);
+
+  void readStochNorms(double& deltaT_Tot, double& energyCAS_Tot, Eigen::VectorXd& norms_Tot);
+
+  void readDetermNorms(Eigen::VectorXd& norms_Tot);
+
+  // Print initial determinants to output files
+  // We only need to print out the occupations in the active spaces
+  // The occupations of the core and virtual orbitals are determined
+  // from the label of the SC state, which is fixed by the deterministic
+  // ordering (the same as used in coeffsIndex).
+  void printInitDets(vector<Determinant>& initDets, vector<double>& largestCoeffs);
+
+  // read determinants in to the initDets array from previously output files
+  void readInitDets(vector<Determinant>& initDets, vector<double>& largestCoeffs);
+
+  // From a given line of an output file, containing only the occupations of
+  // orbitals within the active space, construct the corresponding determinant
+  // (with all core obritals occupied, all virtual orbitals unocuppied).
+  // This is specifically used by for readInitDets
+  void readDetActive(string& line, Determinant& det, double& coeff);
+
+  void printNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                           double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, double& deltaT_Tot);
+
+  void readNormDataBinary(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                          double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, double& deltaT_Tot, bool readDeltaT);
+
+  void readNormDataText(vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                        double& energyCAS_Tot, Eigen::VectorXd& norms_Tot);
   
   template<typename Walker>
-  double optimizeWaveCT(Walker& walk) {
-    
-    //add noise to avoid zero coeffs
-    if (commrank == 0) {
-      //cout << "starting sampling at " << setprecision(4) << getTime() - startofCalc << endl; 
-      auto random = std::bind(std::uniform_real_distribution<double>(0., 1.e-6), std::ref(generator));
-      for (int i=0; i < coeffs.size(); i++) {
-        if (coeffs(i) == 0) coeffs(i) = random();
-      }
-    }
+  double doNEVPT2_CT_Efficient(Walker& walk);
 
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-
-    //sampling
-    int norbs = Determinant::norbs;
-    auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
-                            std::ref(generator));
-
-    double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0., waveEne = 0., correctionFactor = 0.;
-    VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
-    int coeffsIndex = this->coeffsIndex(walk);
-    workingArray work;
-    HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
-
-    int iter = 0;
-    double cumdeltaT = 0.;
-    int printMod = schd.stochasticIter / 5;
-
-    while (iter < schd.stochasticIter) {
-      double cumovlpRatio = 0;
-      for (int i = 0; i < work.nExcitations; i++) {
-        cumovlpRatio += abs(work.ovlpRatio[i]);
-        work.ovlpRatio[i] = cumovlpRatio;
-      }
-      double deltaT = 1.0 / (cumovlpRatio);
-      double nextDetRandom = random() * cumovlpRatio;
-      int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations),
-                                     nextDetRandom) - work.ovlpRatio.begin();
-      cumdeltaT += deltaT;
-      double ratio = deltaT / cumdeltaT;
-      norm *= (1 - ratio);
-      norm(coeffsIndex) += ratio * normSample;
-      ham *= (1 - ratio);
-      ham(coeffsIndex) += ratio * hamSample;
-      waveEne *= (1 - ratio);
-      waveEne += ratio * locEne;
-      correctionFactor *= (1 - ratio);
-      if (coeffsIndex == 0) {
-        correctionFactor += ratio;
-      }
-      walk.updateWalker(wave.getRef(), wave.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
-      coeffsIndex = this->coeffsIndex(walk);
-      HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
-      iter++;
-      if (commrank == 0 && iter % printMod == 1) cout << "iter  " << iter << "  t  " << setprecision(4) << getTime() - startofCalc << endl; 
-    }
-  
-    norm *= cumdeltaT;
-    ham *= cumdeltaT;
-    waveEne *= cumdeltaT;
-    correctionFactor *= cumdeltaT;
-
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(cumdeltaT), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-    
-    norm /= cumdeltaT;
-    ham /= cumdeltaT;
-    waveEne /= cumdeltaT;
-    correctionFactor /= cumdeltaT;
-    
-    std::vector<int> largeNormIndices;
-    int counter = 0;
-    for (int i = 0; i < coeffs.size(); i++) {
-      if (norm(i) > schd.overlapCutoff) {
-        largeNormIndices.push_back(i);
-      }
-    }
-    Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-    VectorXd largeNorms;
-    igl::slice(norm, largeNormSlice, largeNorms);
-    VectorXd largeHam;
-    igl::slice(ham, largeNormSlice, largeHam);
-    VectorXd ene = (largeHam.array() / largeNorms.array()).matrix();
-    double ene2 = 0.;
-    coeffs.setZero();
-    coeffs(0) = 1.;
-    //if (commrank == 0) {
-    //  cout << "correctionFactor  " << correctionFactor << endl;
-    //  cout << "i   largeNorms(i)    ene(0) - ene(i)\n";
-    //}
-    for (int i = 1; i < largeNorms.size(); i++) {
-      //ene2 += largeNorms(i) / correctionFactor / (ene(0) - ene(i));
-      ene2 += largeNorms(i) / largeNorms(0) / (ene(0) - ene(i));
-      //if (commrank == 0) cout << i << "     " << largeNorms(i) << "    " << ene(0) - ene(i) << endl;
-      coeffs(largeNormIndices[i]) = 1 / (ene(0) - ene(i));
-    }
-    
-    if (commrank == 0) {
-      cout << "ref energy   " << setprecision(12) << ene(0) << endl;
-      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
-      cout << "waveEne  " << waveEne << endl;
-      if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
-    }
-  }
-  
   template<typename Walker>
-  double optimizeWaveDeterministic(Walker& walk) {
+  double sampleSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                          double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, workingArray& work);
 
-    int norbs = Determinant::norbs;
-    int nalpha = Determinant::nalpha;
-    int nbeta = Determinant::nbeta;
-    vector<Determinant> allDets;
-    generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+  template<typename Walker>
+  void doSCEnergyCTMC(Walker& walk, workingArray& work, double& final_ham, double& var, int& samplingIters);
 
-    workingArray work;
-    double overlapTot = 0., correctionFactor = 0.; 
-    VectorXd ham = VectorXd::Zero(coeffs.size()), norm = VectorXd::Zero(coeffs.size());
-    double waveEne = 0.;
-    //w.printVariables();
 
-    for (int i = commrank; i < allDets.size(); i += commsize) {
-      wave.initWalker(walk, allDets[i]);
-      if (schd.debug) {
-        cout << "walker\n" << walk << endl;
-      }
-      if (walk.excitedOrbs.size() > 2) continue;
-      int coeffsIndex = this->coeffsIndex(walk);
-      double ovlp = 0., normSample = 0., hamSample = 0., locEne = 0.;
-      HamAndOvlp(walk, ovlp, locEne, hamSample, normSample, coeffsIndex, work);
-      //cout << "ham  " << ham[0] << "  " << ham[1] << "  " << ham[2] << endl;
-      //cout << "ovlp  " << ovlp[0] << "  " << ovlp[1] << "  " << ovlp[2] << endl << endl;
-      
-      overlapTot += ovlp * ovlp;
-      ham(coeffsIndex) += (ovlp * ovlp) * hamSample;
-      norm(coeffsIndex) += (ovlp * ovlp) * normSample;
-      waveEne += (ovlp * ovlp) * locEne;
-      if (coeffsIndex == 0) correctionFactor += ovlp * ovlp;
-    }
+  // Estimate the variance of the weighted mean used to estimate E_l^k
+  double SCEnergyVar(vector<double>& x, vector<double>& w);
 
-#ifndef SERIAL
-  MPI_Allreduce(MPI_IN_PLACE, &(overlapTot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(correctionFactor), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(waveEne), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, ham.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, norm.data(), coeffs.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#endif
-    
-    VectorXd ene = VectorXd::Zero(coeffs.size());
-    if (commrank == 0) {
-      waveEne = waveEne / overlapTot;
-      cout << "waveEne  " << waveEne << endl;
-      //cout << "overlapTot  " << overlapTot << endl;
-      ham = ham / overlapTot;
-      //cout << "ham\n" << ham << endl;
-      norm = norm / overlapTot;
-      // cout << "norm\n" << norm << endl;
-      ene = (ham.array() / norm.array()).matrix();
-      correctionFactor = correctionFactor / overlapTot;
-      double ene2 = 0.;
-      for (int i = 1; i < coeffs.size(); i++) ene2 += norm(i) / correctionFactor / (ene(0) - ene(i));
-      cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
-      //cout << "ene\n" << ene << endl;
-      coeffs(0) = 1.;
-      for (int i = 1; i < coeffs.size(); i++) coeffs(i) = 1 / (ene(0) - ene(i));
-    }
-#ifndef SERIAL
-  MPI_Bcast(coeffs.data(), coeffs.size(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  //MPI_Bcast(&(ene0), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-#endif
-  }
+  template<typename Walker>
+  double doSCEnergyCTMCPrint(Walker& walk, workingArray& work, int sampleIter, int nWalk);
 
-  string getfileName() const {
-    return "scci"+wave.getfileName();
-  }
 
-  void writeWave()
-  {
-    if (commrank == 0)
-      {
-	char file[5000];
-        sprintf(file, (getfileName()+".bkp").c_str() );
-	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	//sprintf(file, "lanczoscpswave.bkp");
-	std::ofstream outfs(file, std::ios::binary);
-	boost::archive::binary_oarchive save(outfs);
-	save << *this;
-	outfs.close();
-      }
-  }
+  // Wrapper function for calling doSCEnergyCTMC, which estimates E_l^k,
+  // given the appropriate input information, and then to print this info
+  // to the provded pt2_out file.
+  // This is designed to be called by sampleAllSCEnergies.
+  template<typename Walker>
+  double SCEnergyWrapper(Walker& walk, int iter, FILE * pt2_out, Determinant& det,
+                         double& energyCAS_Tot, double norm, int orbi, int orbj,
+                         bool exactCalc, bool exactRead, double& SCHam, workingArray& work);
 
-  void readWave()
-  {
-    if (commrank == 0)
-      {
-	char file[5000];
-        sprintf(file, (getfileName()+".bkp").c_str() );
-	//sprintf (file, "wave.bkp" , schd.prefix[0].c_str() );
-	//sprintf(file, "lanczoscpswave.bkp");
-	std::ifstream infs(file, std::ios::binary);
-	boost::archive::binary_iarchive load(infs);
-	load >> *this;
-	infs.close();
-      }
-#ifndef SERIAL
-    boost::mpi::communicator world;
-    boost::mpi::broadcast(world, *this, 0);
-#endif
-  }
+
+  // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
+  // CAAV and CCAA) for which the calculated norm is above the threshold,
+  // and sample E_l^k for each. The final PT2 energy is then output as a
+  // sum over all of these spaces.
+  template<typename Walker>
+  double sampleAllSCEnergies(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                             double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, workingArray& work);
+
+
+  // Loop over *all* S_l^k subspaces (for the classes AAAV, AAVV, CAAA,
+  // CAAV and CCAA), and either exactly calculate of read in E_l^k for each.
+  // The final PT2 energy is then output as a sum over all of these spaces.
+  //
+  // The difference between this and sampleAllSCEnergies is that *all*
+  // S_l^k are considered, even if the norm was calculated as zero, if run
+  // in write mode, and all E_l^k are then written out. If run in read mode,
+  // then all E_l^k are read in from this file instead, for quick calculation.
+  template<typename Walker>
+  double calcAllSCEnergiesExact(Walker& walk, vector<Determinant>& initDets, vector<double>& largestCoeffs,
+                                double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, workingArray& work);
+
+  template<typename Walker>
+  double doSCEnergyCTMCSync(Walker& walk, int& ind, workingArray& work, string& outputFile);
+
+  template<typename Walker>
+  void doSCEnergyExact(Walker& walk, workingArray& work, double& SCHam, double& SCHamVar, int& samplingIters);
+
+  Determinant generateInitDet(int orb1, int orb2);
+
+  template<typename Walker>
+  double compareStochPerturberEnergy(Walker& walk, int orb1, int orb2, double CASEnergy, int nsamples);
+
+  template<typename Walker>
+  double doNEVPT2_Deterministic(Walker& walk);
+
+  double get_ccvv_energy();
+
+  void readSpinRDM(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
+
+  void calc_AAVV_NormsFromRDMs(Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
+  void calc_CAAV_NormsFromRDMs(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
+  void calc_CCAA_NormsFromRDMs(Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM, Eigen::VectorXd& norms);
+
+  string getfileName() const;
+
+  void writeWave();
+  void readWave();
+
 };
+
+// This is a wrapper function which is called during initialization.
+// This is where the main NEVPT2 functions are called from.
+void initNEVPT_Wrapper();
+
 #endif

@@ -2,6 +2,7 @@ import numpy as np
 import sys, os, climin.amsgrad, scipy
 from functools import reduce
 from subprocess import check_output, check_call, CalledProcessError
+import conjgrad as cj
 
 def getopts(argv):
     opts = {}  # Empty dictionary to store key-value pairs.
@@ -15,6 +16,7 @@ def getopts(argv):
 m_stepsize = 0.001
 m_decay_mom1 = 0.1
 m_decay_mom2 = 0.001
+T = 0.001
 
 mpiprefix = " mpirun "
 executable = "/Users/sandeepsharma/Academics/Programs/VMC/bin/PythonInterface"
@@ -34,6 +36,8 @@ if '-decay1' in myargs:
 
 if '-decay2' in myargs:
    m_decay_mom2 = float(myargs['-decay2'])
+if '-T' in myargs:
+   T = float(myargs['-T'])
 
 
 f = open(inFile, 'r')
@@ -41,9 +45,12 @@ correlatorSize, numCorrelators = 0, 0
 Restart = False
 ciExpansion = []
 doHessian = False
+sr = False
+gd = False
 maxIter = 1000
 numVars = 0
 UHF = False
+optvar = False
 
 print "#*********INPUT FILE"
 for line in f:
@@ -72,18 +79,23 @@ for line in f:
                 ciExpansion.append(float(tok[0]))
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "uhf"):
         UHF = True
-        
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "dohessian"):
         doHessian = True
     if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "maxiter"):
         maxIter = int(linesp[1])
-        
+    if (len(linesp) != 0 and linesp[0][0] != "#" and linesp[0].lower() == "optvar"):
+	optvar = True
+    if (len(linesp) != 0 and linesp[0][0] != '#' and linesp[0].lower() == "sr"):
+	sr = True    
+    if (len(linesp) != 0 and linesp[0][0] != '#' and linesp[0].lower() == "gd"):
+	gd = True
 print "#*********END OF INPUT FILE"
 print "#opt-params"
 print "#stepsize   : %f"%(m_stepsize)
 print "#decay_mom1 : %f"%(m_decay_mom1)
 print "#decay_mom2 : %f"%(m_decay_mom2)
 print "#**********"
+print "#T: %f"%(T)
 
 if (len(ciExpansion) == 0) :
     ciExpansion = [1.]
@@ -118,7 +130,10 @@ def d_loss_wrt_pars(wrt):
         out=check_output(cmd, shell=True).strip()
         print out
         sys.stdout.flush()
-        e=float(out.split()[0])
+	if (optvar):
+	    e = float(out.split()[1])
+	else:
+            e = float(out.split()[0])
     except CalledProcessError as err:
         raise err
 
@@ -145,27 +160,24 @@ if (Restart):
 
 
 if (doHessian):
-    for i in range(500):
+    for i in range(maxIter):
         grad = d_loss_wrt_pars(wrt)
         Hessian = np.fromfile("hessian.bin", dtype="float64")
         Smatrix = np.fromfile("smatrix.bin", dtype="float64")
         Hessian.shape = (numVars+1, numVars+1)
         Smatrix.shape = (numVars+1, numVars+1)
 
-        Hessian[1:, 1:] += 0.01*np.eye(numVars)
-
+        Hessian[1:, 1:] += 0.1*np.eye(numVars)
         #make the tangent space orthogonal to the wavefunction
         Uo = 0.* Smatrix
         Uo[0,0] = 1.0;
         for i in range(numVars):
             Uo[0, i+1] = -Smatrix[0, i+1]
             Uo[i+1, i+1] = 1.0
-
         Smatrix = reduce(np.dot, (Uo.T, Smatrix, Uo))
         Hessian = reduce(np.dot, (Uo.T, Hessian, Uo))
 
         [ds, vs] = np.linalg.eigh(Smatrix)
-
         cols = []
         for i in range(numVars+1):
             if (abs(ds[i]) > 1.e-8):
@@ -173,19 +185,60 @@ if (doHessian):
         
         U = np.zeros((numVars+1, len(cols)))
         for i in range(len(cols)):
-            U[:,i] = vs[:,cols[i]]/ds[cols[i]]**0.5
-
+            U[:,i] = vs[:,cols[i]]/(ds[cols[i]]**0.5)
         Hessian_prime = reduce(np.dot, (U.T, Hessian, U))
         [dc, dv] = np.linalg.eig(Hessian_prime)
-        index = [np.argmin(dc.real)]
-        print "Expected energy in next step       : ", dc[index].real
-        print "Number of total/nonredundant pramas: ", numVars+1, len(cols)
+        index = [np.argmin(dc).real]
+        #print "Expected energy in next step       : ", dc[index].real
+        #print "Number of total/nonredundant pramas: ", numVars+1, len(cols)
         sys.stdout.flush()
         update = np.dot(U, dv[:,index].real)
         dw = update[1:]/update[0]
         dw.shape = wrt.shape
         wrt += dw
+if (sr):
+    for i in range(maxIter):
+	grad = d_loss_wrt_pars(wrt)
+	Smatrix = np.fromfile("smatrix.bin", dtype="float64")
+	Smatrix.shape = (numVars+1, numVars+1)
+	Smatrix[1:,1:] += 1.e-1 * np.eye(numVars)
+	'''
+	ds, vs = np.linalg.eigh(Smatrix)
+	cols = []
+	for i in range(numVars+1):
+	    if (abs(ds[i]) > 1.e-8):
+	        cols.append(i)
+	U = np.zeros((numVars+1,len(cols)))
+	dsinv = np.zeros((len(cols),len(cols)))
+	for i in range(len(cols)):
+	    U[:,i] = vs[:,cols[i]]
+	    dsinv[i,i] = 1 / ds[cols[i]]
+	Sinv = reduce(np.dot, (U,dsinv,U.T))
+	'''
 
+	b = np.zeros((numVars+1,1))
+	for i in range(len(b)):
+	    if i == 0:
+                b[i] = Smatrix[i,0]
+            else:
+	        b[i] = Smatrix[i,0] - T * grad[i-1]
+        #x, res, rank, s = np.linalg.lstsq(Smatrix,b)
+	#x, info = scipy.sparse.linalg.cg(Smatrix,b)
+	#x = np.linalg.solve(Smatrix,b) 
+	xguess = np.zeros((numVars+1,1))
+	xguess[0,0] = 1
+	xguess[1:,0] = wrt
+	#xguess = np.random.rand(numVars+1,1)
+	x = cj.conjgrad(Smatrix,b,xguess)
+	#Sinv = np.linalg.pinv(Smatrix,1.e-15)
+	#x = np.dot(Sinv,b)
+	dw = x[1:] / x[0]	
+	dw.shape = wrt.shape
+	wrt += dw
+if (gd):
+    for i in range(maxIter):
+	grad = d_loss_wrt_pars(wrt)
+	wrt -= T * grad
 else :        
     #wrt = np.fromfile("params.bin", dtype="float64")
     #opt = climin.GradientDescent(wrt, d_loss_wrt_pars, step_rate=0.01, momentum=.95)

@@ -32,9 +32,9 @@ class TRWalker
 {
 
 public:
-  array<Walker<Jastrow, Slater>, 2> walkerPair;
+  std::array<Walker<Jastrow, Slater>, 2> walkerPair;
   Determinant d;
-  array<double, 2> overlaps;
+  std::array<double, 2> overlaps;
   double totalOverlap;
 
   // constructors
@@ -72,8 +72,8 @@ public:
   Determinant getDet() { return walkerPair[0].getDet(); }
 
   // used during sampling
-  void updateWalker(const Slater &ref, Jastrow &corr, int ex1, int ex2) {
-    walkerPair[0].updateWalker(ref, corr, ex1, ex2);
+  void updateWalker(const Slater &ref, Jastrow &corr, int ex1, int ex2, bool doparity = true) {
+    walkerPair[0].updateWalker(ref, corr, ex1, ex2, doparity);
     d = walkerPair[0].d;
     int norbs = Determinant::norbs;
     // for the flipped determinant, flip the excitations
@@ -83,7 +83,7 @@ public:
       if (ex2%2 == 0) ex2 += 2*norbs + 1;
       else ex2 -= (2*norbs + 1);
     }
-    walkerPair[1].updateWalker(ref, corr, ex1, ex2);
+    walkerPair[1].updateWalker(ref, corr, ex1, ex2, doparity);
     overlaps[0] = corr.Overlap(walkerPair[0].d) * walkerPair[0].getDetOverlap(ref); 
     overlaps[1] = corr.Overlap(walkerPair[1].d) * walkerPair[1].getDetOverlap(ref);
     totalOverlap = overlaps[0] + overlaps[1];

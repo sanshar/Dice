@@ -1,6 +1,6 @@
 #!/bin/bash
 
-printf "\n\nRunning Tests for VMC/GFMC/FCIQMC\n"
+printf "\n\nRunning Tests for VMC/GFMC/NEVPT2/FCIQMC\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
@@ -8,6 +8,9 @@ VMCPATH="../../bin/VMC vmc.json"
 CIPATH="../../bin/VMC ci.json"
 LANCZOSPATH="../../bin/VMC lanczos.dat"
 GFMCPATH="../../bin/GFMC gfmc.json"
+NEVPTPATH="../../../../bin/VMC nevpt.json"
+NEVPTPRINTPATH="../../../../bin/VMC nevpt_print.json"
+NEVPTREADPATH="../../../../bin/VMC nevpt_read.json"
 FCIQMCPATH="../../../bin/FCIQMC fciqmc.json"
 here=`pwd`
 tol=1.0e-7
@@ -184,24 +187,158 @@ then
     ../clean.sh
 fi
 
-#cd $here/FCIQMC/He2
-#../../clean.sh
-#printf "...running FCIQMC/He2\n"
-#$MPICOMMAND $FCIQMCPATH > fciqmc.out
-#python2 ../../testEnergy.py 'fciqmc' $tol
-#if [ $clean == 1 ]
-#then    
-#    ../clean.sh
-#fi
-#
-#cd $here/FCIQMC/Ne_plateau
-#../../clean.sh
-#printf "...running FCIQMC/Ne_plateau\n"
-#$MPICOMMAND $FCIQMCPATH > fciqmc.out
-#python2 ../../testEnergy.py 'fciqmc' $tol
-#if [ $clean == 1 ]
-#then    
-#    ../clean.sh
-#fi
+# SC-NEVPT2 tests
+
+cd $here/NEVPT2/n2_vdz/stoch
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/stoch\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/NEVPT2/n2_vdz/continue_norms
+../../../clean_wo_bkp.sh
+printf "...running NEVPT2/n2_vdz/continue_norms PRINT\n"
+$MPICOMMAND $NEVPTPRINTPATH > nevpt_print.out
+python2 ../../../testEnergy.py 'nevpt_print' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean_wo_bkp.sh
+fi
+
+cd $here/NEVPT2/n2_vdz/continue_norms
+../../../clean_wo_bkp.sh
+printf "...running NEVPT2/n2_vdz/continue_norms READ\n"
+$MPICOMMAND $NEVPTREADPATH > nevpt_read.out
+python2 ../../../testEnergy.py 'nevpt_read' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/NEVPT2/n2_vdz/exact_energies
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/exact_energies PRINT\n"
+$NEVPTPRINTPATH > nevpt_print.out
+python2 ../../../testEnergy.py 'nevpt_print' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean_wo_bkp.sh
+fi
+
+cd $here/NEVPT2/n2_vdz/exact_energies
+../../../clean_wo_bkp.sh
+printf "...running NEVPT2/n2_vdz/exact_energies READ\n"
+$NEVPTREADPATH > nevpt_read.out
+python2 ../../../testEnergy.py 'nevpt_read' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/NEVPT2/h4_631g/determ
+../../../clean.sh
+printf "...running NEVPT2/h4_631g/determ\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/NEVPT2/polyacetylene/stoch
+../../../clean.sh
+printf "...running NEVPT2/polyacetylene/stoch\n"
+$MPICOMMAND $NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'nevpt' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+# SC-NEVPT2 single perturber
+
+cd $here/NEVPT2/n2_vdz/single_perturber
+../../../clean.sh
+printf "...running NEVPT2/n2_vdz/single_perturber\n"
+$NEVPTPATH > nevpt.out
+python2 ../../../testEnergy.py 'single_perturber' $tol
+if [ $clean == 1 ]
+then
+    ../../../clean.sh
+fi
+
+cd $here/FCIQMC/He2
+../../clean.sh
+printf "...running FCIQMC/He2\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/He2_hb_uniform
+../../clean.sh
+printf "...running FCIQMC/He2_hb_uniform\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/Ne_plateau
+../../clean.sh
+printf "...running FCIQMC/Ne_plateau\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/Ne_initiator
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/Ne_initiator_replica
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator_replica\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc_replica' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/Ne_initiator_en2
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator_en2\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc_replica' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/water_vdz_hb
+../../clean.sh
+printf "...running FCIQMC/water_vdz_hb\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
 
 cd $here

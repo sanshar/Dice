@@ -237,7 +237,7 @@ struct CorrelatedWavefunction {
 
   void HamAndOvlp(const Walker<Corr, Reference> &walk,
                   double &ovlp, double &ham, 
-                  workingArray& work, bool fillExcitations=true) const
+                  workingArray& work, bool fillExcitations=true, double epsilon=schd.epsilon) const 
   {
     int norbs = Determinant::norbs;
 
@@ -245,13 +245,14 @@ struct CorrelatedWavefunction {
     ham = walk.d.Energy(I1, I2, coreE); 
 
     work.setCounterToZero();
-    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+    generateAllScreenedSingleExcitation(walk.d, epsilon, schd.screen,
                                         work, false);  
-    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+    generateAllScreenedDoubleExcitation(walk.d, epsilon, schd.screen,
                                         work, false);  
   
+
     //loop over all the screened excitations
-    //if (schd.debug) cout << "eloc excitations\nphi0  d.energy " << ham << endl;
+    if (schd.debug) cout << "eloc excitations\nphi0  d.energy " << ham << endl;
     for (int i=0; i<work.nExcitations; i++) {
       int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
       double tia = work.HijElement[i];
@@ -263,11 +264,11 @@ struct CorrelatedWavefunction {
       //double ovlpRatio = getOverlapFactor(I, J, A, B, walk, dbig, dbigcopy, false);
 
       ham += tia * ovlpRatio;
-      //if (schd.debug) cout << ex1 << "  " << ex2 << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
+      if (schd.debug) cout << I << "  " << A << "  " << J << "  " << B << "  tia  " << tia << "  ovlpRatio  " << ovlpRatio << endl;
 
       work.ovlpRatio[i] = ovlpRatio;
     }
-    //if (schd.debug) cout << endl;
+    if (schd.debug) cout << endl;
   }
 
   void HamAndOvlpLanczos(const Walker<Corr, Reference> &walk,
@@ -299,7 +300,7 @@ struct CorrelatedWavefunction {
       Walker<Corr, Reference> walkCopy = walk;
       walkCopy.updateWalker(ref, corr, work.excitation1[i], work.excitation2[i], false);
       moreWork.setCounterToZero();
-      HamAndOvlp(walkCopy, ovlp0, el0, moreWork);
+      HamAndOvlp(walkCopy, ovlp0, el0, moreWork, true, schd.lanczosEpsilon);
       ovlp1 = el0 * ovlp0;
       el1 += tia * ovlp1 / ovlp[1];
       work.ovlpRatio[i] = (ovlp0 + alpha * ovlp1) / ovlp[2];
@@ -310,6 +311,12 @@ struct CorrelatedWavefunction {
     lanczosCoeffsSample[2] = ovlp[1] * ovlp[1] * el1 / (ovlp[2] * ovlp[2]);
     lanczosCoeffsSample[3] = ovlp[0] * ovlp[0] / (ovlp[2] * ovlp[2]);
     ovlpSample = ovlp[2];
+  }
+
+  // not used
+  template<typename Walker>
+  bool checkWalkerExcitationClass(Walker &walk) {
+    return true;
   }
   
 };

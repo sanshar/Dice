@@ -1,0 +1,42 @@
+{
+    "wavefunction": {
+        "name": "scpt",
+        "numAct": "8",
+        "overlapCutoff": "1.0e-8",
+        "determinants": "dets"
+    },
+    "sampling": {
+        "stochasticIter": "40000",
+        "epsilon": "1.0e-8",
+        "seed": "13290"
+    },
+    "optimizer": {
+        "restart": "false",
+        "diagMethod": "davidson",
+        "method": "amsgrad",
+        "maxIter": "30",
+        "stepsize": "0.1",
+        "decay1": "0.5",
+        "decay2": "1"
+    },
+    "print": {
+        "vrs": "true"
+    }
+}
+
+iter  1  t  3.228
+iter  8001  t  175.8
+iter  16001  t  350.3
+iter  24001  t  522.6
+iter  32001  t  694.8
+ref energy   -109.057896804
+nevpt2 energy  -109.874998404
+waveEne  -108.954795012
+iter  1  t  872.4
+iter  8001  t  1033
+iter  16001  t  1194
+iter  24001  t  1354
+iter  32001  t  1516
+ref energy   -109.057896804
+nevpt2 energy  -109.261780974
+waveEne  -109.278672142

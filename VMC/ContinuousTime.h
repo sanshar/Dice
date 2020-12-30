@@ -154,26 +154,48 @@ class ContinuousTime
     S1 /= cumT;
     S2 /= cumT;
 #ifndef SERIAL
-    MPI_Allreduce(MPI_IN_PLACE, &Energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &avgNorm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &S1, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &S2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &rk, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &rk2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &cumT, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &cumT2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    Energy /= commsize;
-    avgNorm /= commsize;
-    Energy /= avgNorm;
-    S1 /= commsize;
-    S2 /= commsize;
-    rk /= commsize;
-    rk2 /= commsize;
-    cumT /= commsize;
-    cumT2 /= commsize;
-#endif
+    if (commsize < 21) {
+      MPI_Allreduce(MPI_IN_PLACE, &Energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &avgNorm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &S1, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &S2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &rk, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &rk2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &cumT, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &cumT2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      Energy /= commsize;
+      avgNorm /= commsize;
+      Energy /= avgNorm;
+      S1 /= commsize;
+      S2 /= commsize;
+      rk /= commsize;
+      rk2 /= commsize;
+      cumT /= commsize;
+      cumT2 /= commsize;
+      double neff = commsize * (cumT * cumT) / cumT2;
+      stddev = sqrt(rk * S1 / neff);
+    }
+    else {
+      double energyTotAll[commsize];
+      double energyProc = Energy / avgNorm;
+      MPI_Gather(&(energyProc), 1, MPI_DOUBLE, &(energyTotAll), 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      Energy *= cumT;
+      avgNorm *= cumT;
+      MPI_Allreduce(MPI_IN_PLACE, &Energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &avgNorm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(MPI_IN_PLACE, &cumT, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      Energy /= cumT;
+      avgNorm /= cumT;
+      Energy /= avgNorm;
+      stddev = 0.;
+      for (int i = 0; i < commsize; i++) stddev += pow(energyTotAll[i] - Energy, 2);
+      stddev /= (commsize - 1);
+      stddev = sqrt(stddev / commsize);
+    }
+#else
     double neff = commsize * (cumT * cumT) / cumT2;
     stddev = sqrt(rk * S1 / neff);
+#endif
   }
 
   void LocalGradient()
