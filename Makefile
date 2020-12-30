@@ -130,6 +130,15 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/walkersFCIQMC.o \
 	obj/excitGen.o \
 	obj/utilsFCIQMC.o \
+	obj/Slater.o \
+	obj/Jastrow.o \
+	obj/SelectedCI.o \
+	obj/SimpleWalker.o \
+	obj/ShermanMorrisonWoodbury.o \
+	obj/excitationOperators.o \
+    obj/statistics.o \
+    obj/sr.o \
+    obj/evaluateE.o
 
 
 obj/%.o: %.cpp  
