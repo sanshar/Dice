@@ -109,8 +109,8 @@ complex<double> prepJastrowHS(matPair& ref, vector<vecPair>& hsOperators, vecPai
     mfConstant -= eigenvalues(i) * pow(mfShiftUp + mfShiftDn, 2);
 
     // make shifted hs ops
-    up -= VectorXcd::Constant(norbs, mfShiftUp/Determinant::nalpha);
-    dn -= VectorXcd::Constant(norbs, mfShiftDn/Determinant::nbeta);
+    up -= VectorXcd::Constant(norbs, mfShiftUp/(1.*Determinant::nalpha));
+    dn -= VectorXcd::Constant(norbs, mfShiftDn/(1.*Determinant::nbeta));
     vecPair op;
     op.first = sqrt(complex<double>(2*eigenvalues(i), 0.)) * up;
     op.second = sqrt(complex<double>(2*eigenvalues(i), 0.)) * dn;
@@ -177,26 +177,26 @@ complex<double> prepJastrowHS1(matPair& ref, vector<vecPair>& hsOperators, vecPa
       complex<double> mfShiftj;
       if (j%2 == 0) {
         mfShiftj = 1. * green.first.diagonal()(j/2);
-        oneBodyOperator.first(j/2) -= 1 - 2 * (mfShifti + mfShiftj);
+        oneBodyOperator.first(j/2) -= 1. - 2. * (mfShifti + mfShiftj);
         op.first(j/2) += sqrtFac;
-        op.first -= VectorXcd::Constant(norbs, sqrtFac * mfShiftj/Determinant::nalpha);
+        op.first -= VectorXcd::Constant(norbs, sqrtFac * mfShiftj/(1.*Determinant::nalpha));
       }
       else {
         mfShiftj = 1. * green.second.diagonal()(j/2);
-        oneBodyOperator.second(j/2) -= 1 - 2 * (mfShifti + mfShiftj);
+        oneBodyOperator.second(j/2) -= 1. - 2. * (mfShifti + mfShiftj);
         op.second(j/2) += sqrtFac;
-        op.second -= VectorXcd::Constant(norbs, sqrtFac * mfShiftj/Determinant::nbeta);
+        op.second -= VectorXcd::Constant(norbs, sqrtFac * mfShiftj/(1.*Determinant::nbeta));
       }
 
       if (i%2 == 0) {
-        oneBodyOperator.first(i/2) -= 1 - 2 * (mfShifti + mfShiftj);
+        oneBodyOperator.first(i/2) -= 1. - 2. * (mfShifti + mfShiftj);
         op.first(i/2) += sqrtFac;
-        op.first -= VectorXcd::Constant(norbs, sqrtFac * mfShifti/Determinant::nalpha);
+        op.first -= VectorXcd::Constant(norbs, sqrtFac * mfShifti/(1.*Determinant::nalpha));
       }
       else {
-        oneBodyOperator.second(i/2) -= 1 - 2 * (mfShifti + mfShiftj);
+        oneBodyOperator.second(i/2) -= 1. - 2. * (mfShifti + mfShiftj);
         op.second(i/2) += sqrtFac;
-        op.second -= VectorXcd::Constant(norbs, sqrtFac * mfShifti/Determinant::nbeta);
+        op.second -= VectorXcd::Constant(norbs, sqrtFac * mfShifti/(1.*Determinant::nbeta));
       }
       hsOperators.push_back(op);
 
@@ -265,10 +265,10 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
     oneBodyOperator.second += (mfShiftUp + mfShiftDn) * op.second;
     
     // make shifted hs ops
-    op.first.diagonal() -= VectorXcd::Constant(norbs, mfShiftUp/Determinant::nalpha);
-    op.second.diagonal() -= VectorXcd::Constant(norbs, mfShiftDn/Determinant::nbeta);
+    op.first.diagonal() -= VectorXcd::Constant(norbs, mfShiftUp/(1.*Determinant::nalpha));
+    op.second.diagonal() -= VectorXcd::Constant(norbs, mfShiftDn/(1.*Determinant::nbeta));
     hsOperators.push_back(op);
   }
 
-  return mfConstant / 2;
+  return mfConstant / 2.;
 }

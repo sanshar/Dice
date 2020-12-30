@@ -35,7 +35,7 @@ complex<double> calcHamiltonianElement(matPair& green, double enuc, MatrixXd& h1
     complex<double> cdn = green.second.cwiseProduct(chol[i]).sum();
     eup.noalias() = chol[i] * green.first;
     edn.noalias() = chol[i] * green.second;
-    ene += (cup * cup + cdn * cdn + 2 * cup * cdn - eup.cwiseProduct(eup.transpose()).sum() - edn.cwiseProduct(edn.transpose()).sum()) / 2;
+    ene += (cup * cup + cdn * cdn + 2. * cup * cdn - eup.cwiseProduct(eup.transpose()).sum() - edn.cwiseProduct(edn.transpose()).sum()) / 2.;
   }
 
   return ene;
@@ -77,7 +77,7 @@ complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, double enu
     fdn.noalias() = rotCholDn * theta.second;
     complex<double> cup = fup.trace();
     complex<double> cdn = fdn.trace();
-    ene += (cup * cup + cdn * cdn + 2 * cup * cdn - fup.cwiseProduct(fup.transpose()).sum() - fdn.cwiseProduct(fdn.transpose()).sum()) / 2;
+    ene += (cup * cup + cdn * cdn + 2. * cup * cdn - fup.cwiseProduct(fup.transpose()).sum() - fdn.cwiseProduct(fdn.transpose()).sum()) / 2.;
   }
 
   return ene;
@@ -109,7 +109,7 @@ complex<double> calcHamiltonianElement(matPair& phi0T, matPair& psi, double enuc
     fdn.noalias() = rotChol.second[i] * theta.second;
     complex<double> cup = fup.trace();
     complex<double> cdn = fdn.trace();
-    ene += (cup * cup + cdn * cdn + 2 * cup * cdn - fup.cwiseProduct(fup.transpose()).sum() - fdn.cwiseProduct(fdn.transpose()).sum()) / 2;
+    ene += (cup * cup + cdn * cdn + 2. * cup * cdn - fup.cwiseProduct(fup.transpose()).sum() - fdn.cwiseProduct(fdn.transpose()).sum()) / 2.;
   }
 
   return ene;

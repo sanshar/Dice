@@ -53,8 +53,8 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
 
   // the first and second are the same for now
   matPair expOneBodyOperator;
-  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2).exp();
-  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2).exp();
+  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
+  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
   // normalizing for numerical stability
   JacobiSVD<MatrixXcd> svd1(expOneBodyOperator.first);
   JacobiSVD<MatrixXcd> svd2(expOneBodyOperator.second);
@@ -264,7 +264,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   }
   stddev /= (commsize - 1);
   stddev2 /= commsize;
-  stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2 / sqrt(stddev) / sqrt(sqrt(commsize));
+  stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
   stddev = sqrt(stddev / commsize);
 
   double acceptanceRatio = accepted / (2. * nsweeps) / nsteps;
@@ -319,8 +319,8 @@ void calcEnergyJastrowMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
 
   // the first and second are the same for now
   matPair expOneBodyOperator;
-  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2).exp();
-  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2).exp();
+  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
+  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
   // normalizing for numerical stability
   JacobiSVD<MatrixXcd> svd1(expOneBodyOperator.first);
   JacobiSVD<MatrixXcd> svd2(expOneBodyOperator.second);
@@ -609,7 +609,7 @@ void calcEnergyJastrowMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   }
   stddev /= (commsize - 1);
   stddev2 /= commsize;
-  stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2 / sqrt(stddev) / sqrt(sqrt(commsize));
+  stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
   stddev = sqrt(stddev / commsize);
 
   double acceptanceRatio = accepted / (2. * nsweeps) / nsteps;
@@ -665,8 +665,8 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   refT.second = ref.second.adjoint();
 
   matPair expOneBodyOperator;
-  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2).exp();
-  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2).exp();
+  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
+  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
 
   // rotate cholesky vectors
   pair<vector<MatrixXcd>, vector<MatrixXcd>> rotChol;
@@ -734,8 +734,8 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       prop.second = (sqrt(dt) * prop.second).exp();
       //prop.first = matExp(sqrt(dt) * prop.first, 4);
       //prop.second = matExp(sqrt(dt) * prop.second, 4);
-      rn.first = exp((ene0 - enuc - mfConst) * dt / 2 / Determinant::nalpha) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
-      rn.second = exp((ene0 - enuc - mfConst) * dt / 2 / Determinant::nbeta) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
+      rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
       
       propTime += getTime() - init;
       
@@ -753,10 +753,10 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       init = getTime();
       if (n == eneSteps[eneStepCounter]) {
         complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
-        denomMean[eneStepCounter] += (overlap - denomMean[eneStepCounter]) / (sweep + 1);
-        denomAbsMean[eneStepCounter] += (abs(overlap) - denomAbsMean[eneStepCounter]) / (sweep + 1);
+        denomMean[eneStepCounter] += (overlap - denomMean[eneStepCounter]) / (sweep + 1.);
+        denomAbsMean[eneStepCounter] += (abs(overlap) - denomAbsMean[eneStepCounter]) / (sweep + 1.);
         complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-        numMean[eneStepCounter] += (numSample - numMean[eneStepCounter]) / (sweep + 1);
+        numMean[eneStepCounter] += (numSample - numMean[eneStepCounter]) / (sweep + 1.);
         eneStepCounter++;
       }
       eneTime += getTime() - init;
@@ -794,7 +794,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     }
     stddev /= (commsize - 1);
     stddev2 /= commsize;
-    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2 / sqrt(stddev) / sqrt(sqrt(commsize));
+    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
     stddev = sqrt(stddev / commsize);
 
     if (commrank == 0) {
@@ -856,8 +856,8 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   }
 
   matPair expOneBodyOperator;
-  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2).exp();
-  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2).exp();
+  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
+  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
   
   vecPair jexpOneBodyOperator;
   jexpOneBodyOperator.first = joneBodyOperator.first.array().exp();
@@ -934,8 +934,8 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
       }
       prop.first = (sqrt(dt) * prop.first).exp();
       prop.second = (sqrt(dt) * prop.second).exp();
-      rn.first = exp((ene0 - enuc - mfConst) * dt / 2 / Determinant::nalpha) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
-      rn.second = exp((ene0 - enuc - mfConst) * dt / 2 / Determinant::nbeta) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
+      rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
       propTime += getTime() - init;
 
       // orthogonalize for stability
@@ -965,8 +965,8 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
             jpropLeft.second += jfields(i) * jhsOperators[i].second;
           }
           matPair ln;
-          ln.first = exp(jmfConst / 2 / Determinant::nalpha) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
-          ln.second = exp(jmfConst / 2 / Determinant::nbeta) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
+          ln.first = exp(jmfConst / (2. * Determinant::nalpha)) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
+          ln.second = exp(jmfConst / (2. * Determinant::nbeta)) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
           
           complex<double> overlapSample = (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
                                         * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
@@ -978,9 +978,9 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
         }
         jOverlap /= numJastrowSamples;
         jLocalEnergy /= numJastrowSamples;
-        denomMean[eneStepCounter] += (jOverlap - denomMean[eneStepCounter]) / (sweep + 1);
-        denomAbsMean[eneStepCounter] += (abs(jOverlap) - denomAbsMean[eneStepCounter]) / (sweep + 1);
-        numMean[eneStepCounter] += (jLocalEnergy - numMean[eneStepCounter]) / (sweep + 1);
+        denomMean[eneStepCounter] += (jOverlap - denomMean[eneStepCounter]) / (1.*(sweep + 1));
+        denomAbsMean[eneStepCounter] += (abs(jOverlap) - denomAbsMean[eneStepCounter]) / (1.*(sweep + 1));
+        numMean[eneStepCounter] += (jLocalEnergy - numMean[eneStepCounter]) / (1.*(sweep + 1));
         eneStepCounter++;
       }
       eneTime += getTime() - init;
@@ -1068,7 +1068,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
     }
     stddev /= (commsize - 1);
     stddev2 /= commsize;
-    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2 / sqrt(stddev) / sqrt(sqrt(commsize));
+    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
     stddev = sqrt(stddev / commsize);
 
     if (commrank == 0) {
