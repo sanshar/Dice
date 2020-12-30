@@ -99,16 +99,16 @@ def bestDetValence(mol, lmo, occ, eri, writeToFile=True):
 
   return bestDetStr
 
-def writeFCIDUMP(mol, mf, lmo):
+def writeFCIDUMP(mol, mf, lmo, fname='FCIDUMP'):
   h1 = lmo.T.dot(mf.get_hcore()).dot(lmo)
   eri = ao2mo.kernel(mol, lmo)
-  tools.fcidump.from_integrals('FCIDUMP', h1, eri, mol.nao, mol.nelectron, mf.energy_nuc())
+  tools.fcidump.from_integrals(fname, h1, eri, mol.nao, mol.nelectron, mf.energy_nuc())
 
 def basisChange(matAO, lmo, ovlp):
   matMO = (matAO.T.dot(ovlp).dot(lmo)).T
   return matMO
 
-def writeMat(mat, fileName, isComplex):
+def writeMat(mat, fileName, isComplex=False):
   fileh = open(fileName, 'w')
   for i in range(mat.shape[0]):
       for j in range(mat.shape[1]):
@@ -119,7 +119,7 @@ def writeMat(mat, fileName, isComplex):
       fileh.write('\n')
   fileh.close()
 
-def readMat(fileName, shape, isComplex):
+def readMat(fileName, shape, isComplex=False):
   if(isComplex):
     matr = np.zeros(shape)
     mati = np.zeros(shape)
@@ -161,7 +161,7 @@ def makePfaffFromGHF(ghfCoeffs):
   pairMat = ghfCoeffs.dot(amat).dot(ghfCoeffs.T)
   return pairMat
 
-def addNoise(mat, isComplex):
+def addNoise(mat, isComplex=False):
   if (isComplex):
     randMat = 0.01 * (np.random.rand(mat.shape[0], mat.shape[1]) + 1j * np.random.rand(mat.shape[0], mat.shape[1]))
     return mat + randMat
@@ -220,6 +220,57 @@ def prepValence(mol, ncore, nact, occ=None, loc="iao", dm=None, writeFcidump=Tru
   if writeMOs:
     writeMat(gmf.mo_coeff, "hf.txt", False)
 
+# for tilted hubbard model
+def findSiteInUnitCell(newsite, size, latticeVectors, sites):
+  for a in range(-1, 2):
+    for b in range(-1, 2):
+      newsitecopy = [newsite[0]+a*size*latticeVectors[0][0]+b*size*latticeVectors[1][0], newsite[1]+a*size*latticeVectors[0][1]+b*size*latticeVectors[1][\
+1]]
+      for i in range(len(sites)):
+        if ( abs(sites[i][0] - newsitecopy[0]) <1e-10 and abs(sites[i][1] - newsitecopy[1]) <1e-10):
+          return True, i
+
+  return False, -1
+
+# for 2d square hubbard w/ periodic boundary conditions
+def findSiteAtRowNCol(row, col, size):
+    if(row % 2 == 1):
+        return (row - 1) * size + col
+    else:
+        return row * size - (col - 1)
+
+def findRowNColAtSite(site, size):
+    row = (site - 1)//size + 1
+    if(row % 2 == 1):
+        col = (site - 1) % size + 1
+    else:
+        col = size - (site - 1) % size
+    return [row, col]
+
+def findNeighbors(site, size):
+    neighbors = []
+    [row, col] = findRowNColAtSite(site, size)
+    #up
+    if (row == 1): #top edge
+        neighbors.append(findSiteAtRowNCol(size, col, size))
+    else:
+        neighbors.append(findSiteAtRowNCol(row - 1, col, size))
+    #left
+    if (col == 1): #left edge
+        neighbors.append(findSiteAtRowNCol(row, size, size))
+    else:
+        neighbors.append(findSiteAtRowNCol(row, col - 1, size))
+    #down
+    if (row == size): #bottom edge
+        neighbors.append(findSiteAtRowNCol(1, col, size))
+    else:
+        neighbors.append(findSiteAtRowNCol(row + 1, col, size))
+    #right
+    if (col == size): #right edge
+        neighbors.append(findSiteAtRowNCol(row, 1, size))
+    else:
+        neighbors.append(findSiteAtRowNCol(row, col + 1, size))
+    return neighbors
 
 if __name__=="__main__":
   # make your molecule here

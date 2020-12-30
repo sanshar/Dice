@@ -259,7 +259,6 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   twoIntHeatBath I2HBCAS(1.e-10);
 
   if (commrank == 0) {
-    cout << "Starting heat bath construction\n";
     //if (schd.nciAct > 0) I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
     //else I2HB.constructClass(allorbs, I2, I1, 0, norbs);
     I2HB.constructClass(innerorbs, I2, I1, 0, norbs);
@@ -267,7 +266,6 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
   }
   I2hb.constructClass(norbs, I2HB, 0);
   if (schd.nciAct > 0 || schd.nciAct > 0) I2hbCAS.constructClass(norbs, I2HBCAS, 1);
-  if (commrank == 0) cout << "Heat bath construction done\n";
 
 } // end readIntegrals
 

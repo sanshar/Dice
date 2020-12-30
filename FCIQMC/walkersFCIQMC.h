@@ -27,7 +27,7 @@
 
 class Determinant;
 
-void stochastic_round(const double& minPop, double& amp, bool& roundedUp);
+void stochastic_round(const double minPop, double& amp, bool& roundedUp);
 
 template <typename T>
 T** allocateAmpsArray(const int nrows, const int ncols, const T& init = T())
@@ -95,7 +95,7 @@ class walkersFCIQMC {
   // with the default constructor and needs to be initialized later
   void init(int arrayLength, int DetLenLocal, int nreplicasLocal);
 
-  void stochasticRoundAll(const double& minPop);
+  void stochasticRoundAll(const double minPop);
 
   bool allUnoccupied(const int i) const;
 

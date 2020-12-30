@@ -1,0 +1,28 @@
+{
+  "wavefunction":
+  {
+    "name": "jastrowmultislater2",
+    "determinants": "bestDet", 
+    "complex": false,
+    "excitationLevel": 4
+  },
+  "sampling":
+  {
+    "stochasticIter": 500,
+    "burnIter": 10,
+    "normSampleThreshold": 10.0,
+    "seed": 5,
+    "epsilon": 1.0e-8
+  },
+  "optimizer":
+  {
+    "restart": false,
+    "method": "sgd",
+    "maxIter": 100,
+    "stepsize": 0.01,
+    "momentum": 0.9,
+    "optimizeCps": true,
+    "optimizeOrbs": false,
+    "optimizeCiCoeffs": true
+  }
+}

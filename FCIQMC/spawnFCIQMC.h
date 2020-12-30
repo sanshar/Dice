@@ -76,9 +76,9 @@ class spawnFCIQMC {
   void compress();
   
   // Move spawned walkers to the provided main walker list
-  void mergeIntoMain(walkersFCIQMC& walkers, const double& minPop, bool initiator);
-  void mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double& minPop);
-  void mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& minPop);
+  void mergeIntoMain(walkersFCIQMC& walkers, const double minPop, bool initiator);
+  void mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double minPop);
+  void mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double minPop);
 
 };
 

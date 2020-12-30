@@ -100,9 +100,12 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.alpha = input.get("wavefunction.alpha", 0.01); //lanczos
     schd.lanczosEpsilon = input.get("wavefunction.lanczosEpsilon", 1.e-8); //lanczos
 
-    //rbm
+    // nnb and rbm
     schd.numHidden = input.get("wavefunction.numHidden", 1);
 
+
+    // multi-Slater
+    schd.excitationLevel = input.get("wavefunction.excitationLevel", 10);
 
     //hamiltonian
     string hamString = algorithm::to_lower_copy(input.get("hamiltonian", "abinitio"));
@@ -120,6 +123,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.useLastDet = input.get("sampling.useLastDet", false);
     schd.useLogTime = input.get("sampling.useLogTime", false);
     schd.numSCSamples = input.get("sampling.numSCSamples", 1e3);
+    schd.normSampleThreshold = input.get("sampling.normSampleThreshold", 5.);
     schd.seed = input.get("sampling.seed", getTime());
 
     // SC-NEVPT2(s) sampling options:
@@ -144,6 +148,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.resTimeNEVPT_Norm = input.get("sampling.resTimeNEVPT_Norm", 5.0);
     schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
 
+    
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
@@ -219,7 +224,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.PTlambda = input.get("PTlambda", 0.);
     schd.tol = input.get("tol", 0.); 
     schd.beta = input.get("beta", 1.);
-    schd.excitationLevel = input.get("excitationLevel", 1);
     
   }
 
@@ -389,6 +393,7 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
   bool isFirst = true;
   Determinant refDet;
   VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
   
   while (dump.good()) {
     std::string Line;
@@ -468,7 +473,8 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
         std::array<VectorXi, 2> excitations;
         excitations[0] = des;
         excitations[1] = cre;
-        //if (cre.size()%2 != 0) continue;
+        if (cre.size() > schd.excitationLevel) continue;
+        numDets++;
         ciCoeffs.push_back(atof(tok[0].c_str()));
         ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
         ciExcitations.push_back(excitations);
@@ -476,18 +482,19 @@ void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>
       }
     }
   }
-  if (commrank == 0) cout << "Rankwise number of excitations " << sizes.transpose() << endl << endl;
+  if (commrank == 0) {
+    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
+    cout << "Number of determinants " << numDets << endl << endl;
+  }
 }
 
-void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<std::array<VectorXi, 2>>& ciExcitations,
+void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs)
 {
   int norbs = Determinant::norbs;
   ifstream dump(input.c_str());
   bool isFirst = true;
   Determinant refDet;
-
-  std::vector<int> open;
 
   while (dump.good()) {
     std::string Line;
@@ -554,8 +561,8 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<s
         VectorXi desV = VectorXi::Zero(des.size());
         for (int i = 0; i < cre.size(); i++) {
           desV[i] = std::search_n(ref.begin(), ref.end(), 1, des[i]) - ref.begin();
-          //creV[i] = std::search_n(open.begin(), open.end(), 1, cre[i]) - open.begin();
-          creV[i] = cre[i];
+          creV[i] = std::search_n(open.begin(), open.end(), 1, cre[i]) - open.begin();
+          //creV[i] = cre[i];
         }
         std::array<VectorXi, 2> excitations;
         excitations[0] = desV;

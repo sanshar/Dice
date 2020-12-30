@@ -52,6 +52,7 @@
 #include "TRWavefunction.h"
 #include "PermutedWavefunction.h"
 #include "PermutedTRWavefunction.h"
+#include "NNBS.h"
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
 #include "Lanczos.h"
@@ -125,7 +126,7 @@ int main(int argc, char *argv[])
   if (schd.wavefunctionType == "jastrowmultislater2") {
     JastrowMultiSlater wave; JastrowMultiSlaterWalker walk;
     runVMC(wave, walk);
-    if (commrank == 0) {
+    if (commrank == 0 && schd.printLevel >= 9) {
       cout << "intermediate build time: " << wave.intermediateBuildTime << endl;
       cout << "ci iteration time: " << wave.ciIterationTime << endl;
       cout << "walker update time: " << walk.updateTime << endl;
@@ -154,6 +155,11 @@ int main(int argc, char *argv[])
   
   if (schd.wavefunctionType == "permutedtrwavefunction") {
     PermutedTRWavefunction wave; PermutedTRWalker walk;
+    runVMC(wave, walk);
+  }
+  
+  if (schd.wavefunctionType == "nnbs") {
+    NNBS wave; NNBSWalker walk;
     runVMC(wave, walk);
   }
   

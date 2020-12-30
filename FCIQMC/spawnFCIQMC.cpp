@@ -225,7 +225,7 @@ void spawnFCIQMC::compress() {
 
 // Wrapper function for merging the spawned list into the main list
 // Two versions are used for optimization
-void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop, bool initiator) {
+void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double minPop, bool initiator) {
 
   if (initiator) {
     mergeIntoMain_Initiator(walkers, minPop);
@@ -236,7 +236,7 @@ void spawnFCIQMC::mergeIntoMain(walkersFCIQMC& walkers, const double& minPop, bo
 }
 
 // Move spawned walkers to the provided main walker list
-void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double& minPop) {
+void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double minPop) {
 
   int pos;
 
@@ -305,7 +305,7 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(walkersFCIQMC& walkers, const double
 
 // Move spawned walkers to the provided main walker list, while
 // applying the initiator criteria
-void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double& minPop) {
+void spawnFCIQMC::mergeIntoMain_Initiator(walkersFCIQMC& walkers, const double minPop) {
 
   int pos;
 
