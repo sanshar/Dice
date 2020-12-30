@@ -332,7 +332,7 @@ class WalkerHelper<MultiSlater>
         Matrix4cd sliceMat;
         igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
         tcSlice.push_back(sliceMat);
-        complex<double> ratio = sliceMat.determinant() * w.ciParity[i];
+        complex<double> ratio = sliceMat.determinant() * (1.*w.ciParity[i]);
         ciOverlapRatios.push_back(ratio);
         ciOverlaps.push_back((ratio * refOverlap).real());
         totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
@@ -341,7 +341,7 @@ class WalkerHelper<MultiSlater>
       else {
         MatrixXcd sliceMat;
         igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
-        complex<double> ratio = calcDet(sliceMat) * w.ciParity[i];
+        complex<double> ratio = calcDet(sliceMat) * (1.*w.ciParity[i]);
         ciOverlapRatios.push_back(ratio);
         ciOverlaps.push_back((ratio * refOverlap).real());
         totalOverlap += w.ciCoeffs[i] * ciOverlaps[i];
@@ -431,8 +431,8 @@ class WalkerHelper<MultiSlater>
         sliceDet = sliceMat.determinant();
       }
       
-      ciOverlaps.push_back((sliceDet * refOverlap).real() * w.ciParity[j]);
-      ciOverlapRatios.push_back(sliceDet * w.ciParity[j]);
+      ciOverlaps.push_back((sliceDet * refOverlap).real() * (1.*w.ciParity[j]));
+      ciOverlapRatios.push_back(sliceDet * (1.*w.ciParity[j]));
       totalOverlap += w.ciCoeffs[j] * ciOverlaps[j];
       totalComplexOverlap += w.ciCoeffs[j] * ciOverlapRatios[j] * refOverlap;
     }

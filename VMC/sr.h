@@ -21,6 +21,7 @@
 #include <Eigen/Dense>
 #include <boost/serialization/serialization.hpp>
 #include "iowrapper.h"
+#include "input.h"
 #include "global.h"
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>

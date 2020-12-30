@@ -28,6 +28,7 @@
 
 #ifndef SERIAL
 #include "mpi.h"
+#include <boost/mpi.hpp>
 #endif
 
 class oneInt;
@@ -43,8 +44,8 @@ class SCPT
   template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
-      ar & wave
-      ar & coeffs
+      ar & wave;
+      ar & coeffs;
       ar & moEne;
     }
 
