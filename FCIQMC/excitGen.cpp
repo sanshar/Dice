@@ -311,7 +311,7 @@ void heatBathFCIQMC::createArrays(int norbs, const twoInt& I2) {
 
 // Wrapper function to call the appropriate excitation generator
 void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
-                        const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
+                        const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2)
 {
   if (schd.uniformExGen || schd.heatBathUniformSingExGen) {
     generateExcitationSingDoub(hb, I1, I2, parentDet, nel, childDet, childDet2, pGen, pGen2);
@@ -324,7 +324,7 @@ void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt
 // probability that it was generated. A single excitation is returned using
 // childDet and pgen. A double excitation is returned using chilDet2 and pGen2.
 void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
-                                const Determinant& parentDet, const int& nel, Determinant& childDet,
+                                const Determinant& parentDet, const int nel, Determinant& childDet,
                                 Determinant& childDet2, double& pgen, double& pgen2)
 {
   double pSingle = 0.05;
@@ -690,7 +690,7 @@ double calcSinglesProb(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 // a single excitation, given that orbitals p and q have been chosen to
 // excite from, and orbital r has been chosen to excite to
 double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoInt& I2,
-                      const double& H_tot_pqr, const int& p, const int& r) {
+                      const double H_tot_pqr, const int p, const int r) {
 
   double hSing = parentDet.Hij_1Excite(p, r, I1, I2);
   double hSingAbs = abs(hSing);
@@ -709,9 +709,9 @@ double calcProbDouble(const Determinant& parentDet, const oneInt& I1, const twoI
 // Also, return the probability of choosing a double, in the case that p, q, r
 // are the first three orbitals chosen. This is only calculated if calcDoubleProb
 // is true.
-void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int& norbs,
-                       const Determinant& parentDet, const int& p, const int& q, const int& r, const int& s,
-                       double& rProb, double& sProb, double& doubleProb, const bool& calcDoubleProb)
+void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const int norbs,
+                       const Determinant& parentDet, const int p, const int q, const int r, const int s,
+                       double& rProb, double& sProb, double& doubleProb, const bool calcDoubleProb)
 {
   if (r%2 == p%2) {
     double H_tot;
@@ -755,8 +755,8 @@ void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 // Use the heat bath algorithm to generate both the single and
 // double excitations
 void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
-                     const int& nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
-                     const bool& attemptSingleExcit)
+                     const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
+                     const bool attemptSingleExcit)
 {
   int norbs = Determinant::norbs, ind;
   int nSpinOrbs = 2*norbs;

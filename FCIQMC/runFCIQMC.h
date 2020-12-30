@@ -32,37 +32,37 @@ void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbet
 void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta);
 
 void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
-                     oneInt &I1, twoInt &I2, double& coreE, const int& nAttemptsEach,
-                     const double& parentAmp, const int& parentFlags, const int& iReplica,
-                     const double& tau, const double& minSpawn, const double& pgen);
+                     oneInt &I1, twoInt &I2, double& coreE, const int nAttemptsEach,
+                     const double parentAmp, const int parentFlags, const int iReplica,
+                     const double tau, const double minSpawn, const double pgen);
 
-void performDeath(const int &iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
-                  double& coreE, const vector<double>& Eshift, const double& tau);
+void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+                  double& coreE, const vector<double>& Eshift, const double tau);
 
 void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
-                  double& coreE, const vector<double>& Eshift, const double& tau);
+                  double& coreE, const vector<double>& Eshift, const double tau);
 
 void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
-                   const twoInt& I2, double& coreE, const double& tau,
+                   const twoInt& I2, double& coreE, const double tau,
                    double& varEnergyNum, double& varEnergyDenom);
 
 void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
-                       const twoInt& I2, double& coreE, const double& tau, const double& varEnergyNum,
-                       const double& varEnergyDenom, double& EN2All);
+                       const twoInt& I2, double& coreE, const double tau, const double varEnergyNum,
+                       const double varEnergyDenom, double& EN2All);
 
-void communicateEstimates(dataFCIQMC& dat, const int& nDets, const int& nSpawnedDets, int& nDetsTot,
+void communicateEstimates(dataFCIQMC& dat, const int nDets, const int nSpawnedDets, int& nDetsTot,
                           int& nSpawnedDetsTot);
 
 void updateShift(vector<double>& Eshift, vector<bool>& varyShift, const vector<double>& walkerPop,
-                 const vector<double>& walkerPopOld, const double& targetPop,
-                 const double& shiftDamping, const double& tau);
+                 const vector<double>& walkerPopOld, const double targetPop,
+                 const double shiftDamping, const double tau);
 
 void printDataTableHeader();
 
-void printDataTable(const dataFCIQMC& dat, const int iter, const int& nDets, const int& nSpawned,
-                    const double& iter_time);
+void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets, const int nSpawned,
+                    const double iter_time);
 
-void printFinalStats(const vector<double>& walkerPop, const int& nDets,
-                     const int& nSpawnDets, const double& total_time);
+void printFinalStats(const vector<double>& walkerPop, const int nDets,
+                     const int nSpawnDets, const double total_time);
 
 #endif

@@ -354,7 +354,6 @@ template <typename Wfn, typename Walker, typename OpType>
   }
 
   // not used
-  template<typename Walker>
   bool checkWalkerExcitationClass(Walker &walk) {
     return true;
   }

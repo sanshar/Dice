@@ -7,6 +7,7 @@ EIGEN=/projects/sash2458/newApps/eigen/
 BOOST=/projects/anma2640/boost_1_66_0/
 LIBIGL=/projects/sash2458/apps/libigl/include/
 HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
+
 #TACO=/projects/sash2458/newApps/taco/install
 #EIGEN=/projects/ilsa8974/apps/eigen/
 #BOOST=/projects/ilsa8974/apps/boost_1_66_0/
@@ -14,7 +15,9 @@ HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 #MKL=/curc/sw/intel/17.4/mkl/
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 
-FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./DQMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-DComplex
+
+FLAGS = -std=c++14 -O3 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ -fpermissive #-DComplex
+
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 GIT_HASH=`git rev-parse HEAD`
@@ -165,9 +168,17 @@ endif
 all: $(ALL) #bin/VMC bin/libPeriodic.so
 FCIQMC: bin/FCIQMC
 
-bin/periodic: 
+
+#all: bin/VMC
+all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic bin/libPeriodic.so #bin/sPT  bin/GFMC
+FCIQMC: bin/FCIQMC
+#bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
+
+bin/periodic: bin/periodic
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
 
+bin/libPeriodic.so: bin/libPeriodic.so
+	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
 	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)

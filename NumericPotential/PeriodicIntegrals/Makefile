@@ -2,11 +2,13 @@
 # User Specific Settings #
 ##########################
 
-CXX = icpc
-CC = icc
+CXX = g++
+CC = gcc
 
-EIGEN=/projects/sash2458/newApps/eigen/
-BOOST=/projects/sash2458/newApps/boost_1_67_0/
+EIGEN=/usr/include/eigen3/
+BOOST=/usr/include/boost/
+#EIGEN=/projects/sash2458/newApps/eigen/
+#BOOST=/projects/sash2458/newApps/boost_1_67_0/
 #EIGEN=/usr/include/eigen3
 #BOOST=/usr/include/boost
 #MKLLIB = /curc/sw/intel/16.0.3/mkl/lib/intel64/

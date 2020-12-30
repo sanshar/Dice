@@ -211,10 +211,10 @@ void SCPT<Wfn>::createClassIndMap(int& numStates_1h2p, int& numStates_2h1p, int&
 }
 
 template<typename Wfn>
-typename Wfn::ReferenceType& getRef() { return wave.getRef(); }
+typename Wfn::ReferenceType& SCPT<Wfn>::getRef() { return wave.getRef(); }
 
 template<typename Wfn>
-typename Wfn::CorrType& getCorr() { return wave.getCorr(); }
+typename Wfn::CorrType& SCPT<Wfn>::getCorr() { return wave.getCorr(); }
 
 template<typename Wfn>
 template<typename Walker>
@@ -1711,6 +1711,7 @@ void SCPT<Wfn>::readNormDataBinary(vector<Determinant>& initDets, vector<double>
   if (commrank == 0) cout << "Reading complete." << endl << endl;
 }
 
+/*
 template<typename Wfn>
 void SCPT<Wfn>::readNormDataText(vector<Determinant>& initDets, vector<double>& largestCoeffs,
                       double& energyCAS_Tot, Eigen::VectorXd& norms_Tot)
@@ -1736,7 +1737,7 @@ void SCPT<Wfn>::readNormDataText(vector<Determinant>& initDets, vector<double>& 
 
   if (commrank == 0) cout << endl;
 }
-
+*/
 template<typename Wfn>
 template<typename Walker>
 double SCPT<Wfn>::doNEVPT2_CT_Efficient(Walker& walk) {
