@@ -157,7 +157,7 @@ obj/%.o: ICPT/%.cpp
 obj/%.o: ICPT/StackArray/%.cpp  
 	$(CXX) $(FLAGS) $(INCLUDE_MKL) $(OPT) -c $< -o $@
 
-ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC
+ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
 ifeq ($(COMPILE_NUMERIC), yes)
 	ALL+= bin/periodic
 endif 
