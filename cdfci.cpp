@@ -496,7 +496,7 @@ void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, doub
   auto z = z_vector[column[0]];
   auto x = x_vector[column[0]];
   x_vector[column[0]] += dx;
-  ene.first += (dx * hij * dx  +  2 * dx * hij * x);
+  ene.first += (dx * hij * dx + 2 * dx * hij * x);
   ene.second += dx * dx + 2 * dx * x;
   double local_norm;
   double global_norm;
@@ -512,7 +512,7 @@ void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, doub
     dz = dx * hij;
     x = x_vector[column[i]];
     z_vector[column[i]] += dz;
-    local_norm += (conj(x)*dz+conj(dz)*x).real();
+    local_norm += x*dz+dz*x;
   }
   #pragma omp critical
   global_norm += local_norm;
@@ -679,7 +679,7 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
     pout << "cdfci currently only supports single root" << endl;
     exit(0);
   }
-
+  auto start = getTime();
   for (int iroot = 0; iroot < nroots; iroot++) {
     int x_size = ci[iroot].rows();
     int z_size = det_to_index.size();
@@ -690,6 +690,9 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
       auto dx = ci[iroot](i, 0) * norm;
       getSubDetsNoSample(dets, column, det_to_index, i, nelec);
       civectorUpdateNoSample(result_iroot, column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
+      if (i % 10000 == 0) {
+        cout << i << " dets initialized in" << getTime()-start << endl;
+      }
     }
     result.push_back(result_iroot);
   }
@@ -724,16 +727,17 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<
     auto prev_ene = 0.0;
     auto start_time = getTime();
     for (int i = 0; i < num_iter; i++) {
+      cout << this_det_idx << " ";
       auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
       civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
       this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
       getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
-
+      cout << ene[iroot].first << " " << ene[iroot].second << " ";
       // now some logical codes, print out information and decide when to exit etc.
       if (i%schd.report_interval == 0) {
         auto curr_ene = ene[iroot].first/ene[iroot].second;
-        cout << setw(10) << i << setw(20) <<std::setprecision(16) << curr_ene+coreEbkp << setw(20) <<std::setprecision(16) << prev_ene+coreEbkp;
-        cout << setw(10) << setprecision(6) << dx << std::setw(12) << std::setprecision(5) << scientific << getTime()-start_time << defaultfloat << endl;
+        cout << setw(10) << i << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
+        cout << setw(10) << setprecision(4) << dx << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat << endl;
         if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.dE) {
           break;
         }

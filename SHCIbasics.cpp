@@ -1083,6 +1083,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     if (iter == schd.cdfci_on) {
       helper2.clear();
       sparseHam.clear();
+      pout << "Start cdfci with " << DetsSize << " determinants" << endl;
       cdfci::solve(schd, I1, I2, coreEbkp, E0, ci, SHMDets, DetsSize);
       exit(0);
     }
