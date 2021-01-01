@@ -49,7 +49,8 @@ int main(int argc, char *argv[])
   //calcEnergyJastrowMetropolis(coreE, h1, h1Mod, chol);
   if (schd.wavefunctionType == "jastrow") {
     if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
-    calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
+    calcEnergyJastrowDirectVariational(coreE, h1, h1Mod, chol);
+    //calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
   }
   else {
     if (commrank == 0) cout << "\nUsing RHF trial\n";

@@ -24,4 +24,8 @@ void calcEnergyDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, 
 // w jastrow
 void calcEnergyJastrowDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 
+// calculates variational energy estimator of the imaginary time propagated wave function
+// w jastrow
+void calcEnergyJastrowDirectVariational(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, vector<Eigen::MatrixXd>& chol);
+
 #endif
