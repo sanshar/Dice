@@ -928,7 +928,6 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
       prop.second = MatrixXcd::Zero(norbs, norbs);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        fields(i) = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
         prop.second += field_n_i * hsOperators[i].second;
       }
@@ -939,7 +938,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
       propTime += getTime() - init;
 
       // orthogonalize for stability
-      if (n % orthoSteps == 0) {
+      if (n % orthoSteps == 0 && n!= 0) {
         HouseholderQR<MatrixXcd> qr1(rn.first);
         HouseholderQR<MatrixXcd> qr2(rn.second);
         rn.first = qr1.householderQ() * MatrixXd::Identity(norbs, Determinant::nalpha);
@@ -955,6 +954,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
         size_t numJastrowSamples = schd.numJastrowSamples;
         complex<double> jOverlap(0., 0.), jLocalEnergy(0., 0.);
         for (int i = 0; i < numJastrowSamples; i++) {
+
           VectorXd jfields = VectorXd::Zero(jnfields);
           vecPair jpropLeft;
           jpropLeft.first = VectorXcd::Zero(numActOrbs);
@@ -968,12 +968,10 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
           ln.first = exp(jmfConst / (2. * Determinant::nalpha)) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
           ln.second = exp(jmfConst / (2. * Determinant::nbeta)) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
           
+
           complex<double> overlapSample = (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
                                         * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
           jOverlap += overlapSample;
-          //matPair green;
-          //calcGreensFunction(ln, rn, green);
-          //jLocalEnergy += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
           jLocalEnergy += overlapSample * calcHamiltonianElement(ln, rn, enuc, h1, chol); 
         }
         jOverlap /= numJastrowSamples;
@@ -1213,7 +1211,6 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
 
     int hindex = 0;
     double init = getTime();
-
     //sample ham for time slice n
     for (int n = 0; n < nsteps; n++) {
 
@@ -1221,7 +1218,6 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
       prop.first.setZero();  
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        fields(i) = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
       }
 
@@ -1273,38 +1269,73 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
         }
         rn.first = exp(jmfConst / (2. * Determinant::nalpha)) *  jpropRight.first.array().exp().matrix().asDiagonal() * jref.first;
         rn.second = exp(jmfConst / (2. * Determinant::nbeta)) *  jpropRight.second.array().exp().matrix().asDiagonal() * jref.second;
-      }    
+       }    
       //cout << "right prep"<<endl;
 
       //apply ham to the ln
-      complex<double> orthoFac = complex<double> (1., 0.);
+      matPair rnHam, lnHamAd, rnRefHam, lnRefHamAd;
+      rnHam = rn; lnHamAd.first = 1.*ln.first.adjoint(); lnHamAd.second = 1.*ln.second.adjoint();
+      rnRefHam = ref; lnRefHamAd = ref;
+      
+      complex<double> orthoFacR = complex<double> (1., 0.);
+      complex<double> orthoFacRRef = complex<double> (1., 0.);
       for (int i=0; i<hindex; i++) {
-        rn.first = expHam[i]*rn.first; 
-        rn.second = expHam[i]*rn.second;
-        orthogonalize(rn, orthoFac);
+        rnHam.first = expHam[i]*rnHam.first; 
+        rnHam.second = expHam[i]*rnHam.second;
+        orthogonalize(rnHam, orthoFacR);
+
+        rnRefHam.first = expHam[i]*rnRefHam.first; 
+        rnRefHam.second = expHam[i]*rnRefHam.second;
+        orthogonalize(rnRefHam, orthoFacRRef);
+
       } 
-      //cout << "h times left"<<endl;
+
+      complex<double> orthoFacL = complex<double> (1., 0.);
+      complex<double> orthoFacLRef = complex<double> (1., 0.);
+      //cout << "before for"<<endl;
+      for (int i=0; i<hindex; i++) {
+        lnHamAd.first = expHam[i]*lnHamAd.first; 
+        lnHamAd.second = expHam[i]*lnHamAd.second;
+        orthogonalize(lnHamAd, orthoFacL);
+
+        lnRefHamAd.first = expHam[i]*lnRefHamAd.first; 
+        lnRefHamAd.second = expHam[i]*lnRefHamAd.second;
+        orthogonalize(lnRefHamAd, orthoFacLRef);
+      } 
+      //cout<< "after for"<<endl;
+      matPair lnHam, lnRefHam;
+      lnHam.first = 1.*lnHamAd.first.adjoint(); lnHam.second = 1.*lnHamAd.second.adjoint();
+      lnRefHam.first = 1.*lnRefHamAd.first.adjoint(); lnRefHam.second = 1.*lnRefHamAd.second.adjoint();
+
       propTime += getTime() - init;
 
       init = getTime();
-      //variational energy
-      complex<double> overlapSample = orthoFac * (ln.first * rn.first).determinant() 
-                                    * (ln.second * rn.second).determinant();
-      jOverlapVar += overlapSample;
-      matPair green;
-      calcGreensFunction(ln, rn, green);
-      jLocalEnergyVar += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
 
       //Projected energy
-      overlapSample =  orthoFac * (refT.first * rn.first).determinant() 
-                                    * (refT.second * rn.second).determinant();
-      //cout << "ovlp"<<endl;
+      complex<double> overlapSample =  orthoFacRRef * (ln.first * rnRefHam.first).determinant() 
+                                    * (ln.second * rnRefHam.second).determinant();
       jOverlapProj += overlapSample;
-      green;
-      calcGreensFunction(refT, rn, green);
+      calcGreensFunction(ln, rnRefHam, green);
       jLocalEnergyProj += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
-      eneTime += getTime() - init;
 
+      overlapSample =  orthoFacLRef * (lnRefHam.first * rn.first).determinant() 
+                                    * (lnRefHam.second * rn.second).determinant();
+      jOverlapProj += overlapSample;
+      calcGreensFunction(lnRefHam, rn, green);
+      jLocalEnergyProj += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
+
+      //variational energy
+      complex<double> overlapSampleR = orthoFacR * (ln.first * rnHam.first).determinant() 
+                               * (ln.second * rnHam.second).determinant();
+      complex<double>overlapSampleL =  orthoFacL * (lnHam.first * rn.first).determinant() 
+                               * (lnHam.second * rn.second).determinant();
+      jOverlapVar += (overlapSampleR + overlapSampleL);
+      
+      calcGreensFunction(ln, rnHam, green);
+      jLocalEnergyVar += overlapSampleR * calcHamiltonianElement(green, enuc, h1, chol);
+      calcGreensFunction(lnHam, rn, green);
+      jLocalEnergyVar += overlapSampleL * calcHamiltonianElement(green, enuc, h1, chol);
+      eneTime += getTime() - init;
     }
 
     jOverlapVar /= numJastrowSamples;
