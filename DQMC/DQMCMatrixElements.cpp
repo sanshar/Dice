@@ -83,6 +83,33 @@ complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, double enu
   return ene;
 }
 
+// Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
+// rotates cholesky vectors
+// phi_1 can be an active space wave function
+// TODO: allow core orbitals
+// leading cost: O(X N A M)
+complex<double> calcHamiltonianElement_sRI(matPair& phi1T, matPair& phi2, matPair& phi0T, matPair& phi0, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, vector<MatrixXd>& richol) 
+{ 
+  // core energy
+  complex<double> ene = enuc;
+
+  uniform_real_distribution<double> normal(-1., 1.);
+  double Nri = 1.*richol.size();
+  for (int j=0; j<richol.size(); j++) {
+    richol[j].setZero();
+
+    for (int i=0; i<chol.size(); i++) {
+      double ran = normal(generator);
+      richol[j] += ran/abs(ran) * chol[i];     
+    }
+    richol[j] /= Nri;
+  }
+
+  complex<double> Ephi = calcHamiltonianElement(phi1T, phi2, enuc, h1, richol);
+  complex<double> Ephi0 = calcHamiltonianElement(phi0T, phi0, enuc, h1, richol);
+
+  return Ephi-Ephi0;
+}
 
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors

@@ -23,6 +23,8 @@ std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::M
 // leading cost: O(X N A M)
 std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi1T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi2, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol);
 
+std::complex<double> calcHamiltonianElement_sRI(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi1T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi2, 
+                                                std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol, std::vector<Eigen::MatrixXd>& richol); 
 
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors

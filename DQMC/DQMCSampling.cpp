@@ -880,6 +880,10 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   matPair green;
   calcGreensFunction(refT, ref, green);
   complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
+
+  complex<double> jrefEnergy = calcHamiltonianElement(jrefT, ref,enuc, h1, chol);
+  vector<MatrixXd> richol(1, chol[0]); //sri
+
   complex<double> ene0;
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
@@ -973,6 +977,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
                                         * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
           jOverlap += overlapSample;
           jLocalEnergy += overlapSample * calcHamiltonianElement(ln, rn, enuc, h1, chol); 
+          //jLocalEnergy += overlapSample * (calcHamiltonianElement_sRI(ln, rn, jrefT, ref, enuc, h1, chol, richol) + jrefEnergy); 
         }
         jOverlap /= numJastrowSamples;
         jLocalEnergy /= numJastrowSamples;
