@@ -1315,14 +1315,14 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
       complex<double> overlapSample =  orthoFacRRef * (ln.first * rnRefHam.first).determinant() 
                                     * (ln.second * rnRefHam.second).determinant();
       jOverlapProj += overlapSample;
-      calcGreensFunction(ln, rnRefHam, green);
-      jLocalEnergyProj += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
+      //calcGreensFunction(ln, rnRefHam, green);
+      jLocalEnergyProj += overlapSample * calcHamiltonianElement(ln, rnRefHam, enuc, h1, chol);
 
       overlapSample =  orthoFacLRef * (lnRefHam.first * rn.first).determinant() 
                                     * (lnRefHam.second * rn.second).determinant();
       jOverlapProj += overlapSample;
-      calcGreensFunction(lnRefHam, rn, green);
-      jLocalEnergyProj += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
+      //calcGreensFunction(lnRefHam, rn, green);
+      jLocalEnergyProj += overlapSample * calcHamiltonianElement(lnRefHam, rn, enuc, h1, chol);
 
       //variational energy
       complex<double> overlapSampleR = orthoFacR * (ln.first * rnHam.first).determinant() 
@@ -1331,10 +1331,10 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
                                * (lnHam.second * rn.second).determinant();
       jOverlapVar += (overlapSampleR + overlapSampleL);
       
-      calcGreensFunction(ln, rnHam, green);
-      jLocalEnergyVar += overlapSampleR * calcHamiltonianElement(green, enuc, h1, chol);
-      calcGreensFunction(lnHam, rn, green);
-      jLocalEnergyVar += overlapSampleL * calcHamiltonianElement(green, enuc, h1, chol);
+      //calcGreensFunction(ln, rnHam, green);
+      jLocalEnergyVar += overlapSampleR * calcHamiltonianElement(ln, rnHam, enuc, h1, chol);
+      //calcGreensFunction(lnHam, rn, green);
+      jLocalEnergyVar += overlapSampleL * calcHamiltonianElement(lnHam, rn, enuc, h1, chol);
       eneTime += getTime() - init;
     }
 
