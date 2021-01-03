@@ -648,27 +648,41 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   
   // this is the initial state
   matPair ref;
+  hf = MatrixXd::Zero(norbs, norbs);
+  readMat(hf, "rhf.txt");
+  ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
+  ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
+ 
+  // this is the left state
+  matPair refT;
   if (schd.hf == "rhf") {
-    hf = MatrixXd::Zero(norbs, norbs);
-    readMat(hf, "rhf.txt");
-    ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
-    ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
+    refT.first = ref.first.adjoint();
+    refT.second = ref.second.adjoint();
+  }
+  if (schd.hf == "rhfc") {
+    MatrixXcd hfc = MatrixXcd::Zero(norbs, norbs);
+    readMat(hfc, "rhfC.txt");
+    refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hfc.block(0, 0, norbs, Determinant::nbeta).adjoint();
   }
   else if (schd.hf == "uhf") {
     hf = MatrixXd::Zero(norbs, 2*norbs);
     readMat(hf, "uhf.txt");
-    ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
-    ref.second = hf.block(0, norbs, norbs, Determinant::nbeta);
+    refT.first = hf.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hf.block(0, norbs, norbs, Determinant::nbeta).adjoint();
   }
-  matPair refT;
-  refT.first = ref.first.adjoint();
-  refT.second = ref.second.adjoint();
-
+  else if (schd.hf == "uhfc") {
+    MatrixXcd hfc = MatrixXcd::Zero(norbs, 2*norbs);
+    readMat(hfc, "uhfC.txt");
+    refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hfc.block(0, norbs, norbs, Determinant::nbeta).adjoint();
+  }
+  
   matPair expOneBodyOperator;
   expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
   expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
 
-// rotate cholesky vectors
+  // rotate cholesky vectors
   pair<vector<MatrixXcd>, vector<MatrixXcd>> rotChol;
   for (int i = 0; i < chol.size(); i++) {
     MatrixXcd rotUp = refT.first * chol[i];
@@ -676,6 +690,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     rotChol.first.push_back(rotUp);
     rotChol.second.push_back(rotDn);
   }
+  
   // prep for heat bath
   //Determinant det;
   //for (int i = 0; i < Determinant::nalpha; i++) det.setoccA(i, true);
@@ -692,8 +707,8 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   vector<VectorXd> fields;
   normal_distribution<double> normal(0., 1.);
   
-  matPair green;
-  calcGreensFunction(refT, ref, green);
+  //matPair green;
+  //calcGreensFunction(refT, ref, green);
   //complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
   complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, rotChol);
   complex<double> ene0;
@@ -725,7 +740,6 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       prop.second = MatrixXcd::Zero(norbs, norbs);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        fields(i) = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
         prop.second += field_n_i * hsOperators[i].second;
       }
