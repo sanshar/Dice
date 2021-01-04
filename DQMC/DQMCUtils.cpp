@@ -49,6 +49,16 @@ MatrixXcd matExp(const MatrixXcd& mat, const int order)
 }
 
 
+void orthogonalize(matPair& rn, complex<double>& orthoFac){
+  HouseholderQR<MatrixXcd> qr1(rn.first);
+  HouseholderQR<MatrixXcd> qr2(rn.second);
+  rn.first = qr1.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nalpha);
+  rn.second = qr2.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nbeta);
+  for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
+  for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
+}
+
+
 // reads jastrow in VMC format (not exponential)
 // makes hs operators including mean field subtraction and the offshoot one body operator, returns mean field constant 
 complex<double> prepJastrowHS(matPair& ref, vector<vecPair>& hsOperators, vecPair& oneBodyOperator)

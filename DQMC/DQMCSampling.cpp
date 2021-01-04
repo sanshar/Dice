@@ -11,6 +11,7 @@
 #include "Determinants.h"
 #include "DQMCUtils.h"
 #include "DQMCMatrixElements.h"
+#include "DQMCStatistics.h"
 #include "DQMCSampling.h"
 
 using namespace Eigen;
@@ -691,17 +692,6 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     rotChol.second.push_back(rotDn);
   }
   
-  // prep for heat bath
-  //Determinant det;
-  //for (int i = 0; i < Determinant::nalpha; i++) det.setoccA(i, true);
-  //for (int i = 0; i < Determinant::nbeta; i++) det.setoccB(i, true);
-
-  //workingArray work;
-  //work.setCounterToZero();
-  //generateAllScreenedSingleExcitation(det, schd.epsilon, schd.screen, work, false);  
-  //generateAllScreenedDoubleExcitation(det, schd.epsilon, schd.screen, work, false);  
-  //double dene = det.Energy(I1, I2, coreE); 
-
   // Gaussian sampling
   // field values arranged right to left
   vector<VectorXd> fields;
@@ -720,10 +710,10 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   }
   
   vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  int numEneSteps = eneSteps.size();
-  vector<complex<double>> numMean(numEneSteps, complex<double>(0., 0.)), denomMean(numEneSteps, complex<double>(0., 0.)), denomAbsMean(numEneSteps, complex<double>(0., 0.));
+  int nEneSteps = eneSteps.size();
+  DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
-  double propTime = 0., eneTime = 0., qrTime = 0.;
+  double propTime = 0., eneTime = 0.;
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
@@ -732,6 +722,8 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     VectorXd fields = VectorXd::Zero(nfields);
     complex<double> orthoFac = complex<double>(1., 0.);
     int eneStepCounter = 0;
+    ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
+    numSampleA.setZero(); denomSampleA.setZero();
     for (int n = 0; n < nsteps; n++) {
       // sampling
       double init = getTime();
@@ -745,75 +737,37 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       }
       prop.first = (sqrt(dt) * prop.first).exp();
       prop.second = (sqrt(dt) * prop.second).exp();
-      //prop.first = matExp(sqrt(dt) * prop.first, 4);
-      //prop.second = matExp(sqrt(dt) * prop.second, 4);
       rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
       rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
       
       propTime += getTime() - init;
       
       // orthogonalize for stability
-      if (n % orthoSteps == 0) {
-        HouseholderQR<MatrixXcd> qr1(rn.first);
-        HouseholderQR<MatrixXcd> qr2(rn.second);
-        rn.first = qr1.householderQ() * MatrixXd::Identity(norbs, Determinant::nalpha);
-        rn.second = qr2.householderQ() * MatrixXd::Identity(norbs, Determinant::nbeta);
-        for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
-        for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
-      }
+      orthogonalize(rn, orthoFac);
 
       // measure
       init = getTime();
       if (n == eneSteps[eneStepCounter]) {
         complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
-        denomMean[eneStepCounter] += (overlap - denomMean[eneStepCounter]) / (sweep + 1.);
-        denomAbsMean[eneStepCounter] += (abs(overlap) - denomAbsMean[eneStepCounter]) / (sweep + 1.);
         complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-        numMean[eneStepCounter] += (numSample - numMean[eneStepCounter]) / (sweep + 1.);
+        numSampleA[eneStepCounter] = numSample;
+        denomSampleA[eneStepCounter] = overlap;
         eneStepCounter++;
       }
       eneTime += getTime() - init;
     }
+    stats.addSamples(numSampleA, denomSampleA);
   }
 
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
-    cout << "          iTime                 Energy                     Energy error         Average phase\n";
   }
 
-  for (int n = 0; n < numEneSteps; n++) {
-    complex<double> energyAll[commsize];
-    for (int i = 0; i < commsize; i++) energyAll[i] = complex<double>(0., 0.);
-    
-    complex<double> energyProc = numMean[n] / denomMean[n];
-    complex<double> numProc = numMean[n];
-    complex<double> denomProc = denomMean[n];
-    complex<double> denomAbsProc = denomAbsMean[n];
-    MPI_Gather(&(energyProc), 1, MPI_DOUBLE_COMPLEX, &(energyAll), 1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &energyProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &numProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomAbsProc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    
-    energyProc /= commsize;
-    numProc /= commsize;
-    denomProc /= commsize;
-    denomAbsProc /= commsize;
-    double stddev = 0., stddev2 = 0.;
-    for (int i = 0; i < commsize; i++) {
-      stddev += pow(abs(energyAll[i] - energyProc), 2);
-      stddev2 += pow(abs(energyAll[i] - energyProc), 4);
-    }
-    stddev /= (commsize - 1);
-    stddev2 /= commsize;
-    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
-    stddev = sqrt(stddev / commsize);
-
-    if (commrank == 0) {
-      cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % ((eneSteps[n] + 1) * dt) % energyProc.real() % energyProc.imag() % stddev % stddev2 % (denomProc / denomAbsProc).real() % (denomProc / denomAbsProc).imag(); 
-    }
-  }
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
+  stats.gatherAndPrintStatistics(iTime);
+  if (schd.printLevel > 10) stats.writeSamples();
 }
 
 
@@ -907,36 +861,20 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   }
   
   vector<int> eneSteps = { int(nsteps - 1) };
-  int numEneSteps = eneSteps.size();
-  vector<complex<double>> numMean(numEneSteps, complex<double>(0., 0.)), denomMean(numEneSteps, complex<double>(0., 0.)), denomAbsMean(numEneSteps, complex<double>(0., 0.));
+  int nEneSteps = eneSteps.size();
+  DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
-  double qrTime = 0., propTime = 0., eneTime = 0.;
+  double propTime = 0., eneTime = 0.;
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
-    matPair rn;
+    matPair rn = ref;
     complex<double> orthoFac = complex<double> (1., 0.);
     int eneStepCounter = 0;
 
-    // right jastrow
-    //rn = jref;
-    //pair<VectorXd, VectorXd> jfields;
-    //jfields.first = VectorXd::Zero(jnfields);
-    //vecPair jpropRight;
-    //jpropRight.first = VectorXcd::Zero(norbs);
-    //jpropRight.second = VectorXcd::Zero(norbs);
-    //for (int i = 0; i < jnfields; i++) {
-    //  jfields.first(i) = normal(generator);
-    //  jpropRight.first += jfields.first(i) * jhsOperators[i].first;
-    //  jpropRight.second += jfields.first(i) * jhsOperators[i].second;
-    //}
-    //rn.first = exp(jmfConst / 2 / Determinant::nalpha) * jpropRight.first.array().exp().matrix().asDiagonal() * rn.first;
-    //rn.second = exp(jmfConst / 2 / Determinant::nbeta) * jpropRight.second.array().exp().matrix().asDiagonal() * rn.second;
-   
-    // no right jastrow
-    rn = ref;
-
     // sampling
+    ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
+    numSampleA.setZero(); denomSampleA.setZero();
     VectorXd fields = VectorXd::Zero(nfields);
     for (int n = 0; n < nsteps; n++) {
       // prop
@@ -956,14 +894,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
       propTime += getTime() - init;
 
       // orthogonalize for stability
-      if (n % orthoSteps == 0 && n!= 0) {
-        HouseholderQR<MatrixXcd> qr1(rn.first);
-        HouseholderQR<MatrixXcd> qr2(rn.second);
-        rn.first = qr1.householderQ() * MatrixXd::Identity(norbs, Determinant::nalpha);
-        rn.second = qr2.householderQ() * MatrixXd::Identity(norbs, Determinant::nbeta);
-        for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
-        for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
-      }
+      orthogonalize(rn , orthoFac);
 
       // measure
       init = getTime();
@@ -972,7 +903,6 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
         size_t numJastrowSamples = schd.numJastrowSamples;
         complex<double> jOverlap(0., 0.), jLocalEnergy(0., 0.);
         for (int i = 0; i < numJastrowSamples; i++) {
-
           VectorXd jfields = VectorXd::Zero(jnfields);
           vecPair jpropLeft;
           jpropLeft.first = VectorXcd::Zero(numActOrbs);
@@ -985,9 +915,8 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
           matPair ln;
           ln.first = exp(jmfConst / (2. * Determinant::nalpha)) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
           ln.second = exp(jmfConst / (2. * Determinant::nbeta)) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
-          
 
-          complex<double> overlapSample = (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
+          complex<double> overlapSample = orthoFac * (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
                                         * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
           jOverlap += overlapSample;
           jLocalEnergy += overlapSample * calcHamiltonianElement(ln, rn, enuc, h1, chol); 
@@ -995,115 +924,26 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
         }
         jOverlap /= numJastrowSamples;
         jLocalEnergy /= numJastrowSamples;
-        denomMean[eneStepCounter] += (jOverlap - denomMean[eneStepCounter]) / (1.*(sweep + 1));
-        denomAbsMean[eneStepCounter] += (abs(jOverlap) - denomAbsMean[eneStepCounter]) / (1.*(sweep + 1));
-        numMean[eneStepCounter] += (jLocalEnergy - numMean[eneStepCounter]) / (1.*(sweep + 1));
+        numSampleA[eneStepCounter] = jLocalEnergy;
+        denomSampleA[eneStepCounter] = jOverlap;
         eneStepCounter++;
       }
       eneTime += getTime() - init;
     }
-    
-    // left jastrow
-    //jfields.second = VectorXd::Zero(jnfields);
-    //vecPair jpropLeft;
-    //jpropLeft.first = VectorXcd::Zero(norbs);
-    //jpropLeft.second = VectorXcd::Zero(norbs);
-    //for (int i = 0; i < jnfields; i++) {
-    //  jfields.second(i) = normal(generator);
-    //  jpropLeft.first += jfields.second(i) * jhsOperators[i].first;
-    //  jpropLeft.second += jfields.second(i) * jhsOperators[i].second;
-    //}
-    //matPair ln;
-    //ln.first = exp(jmfConst / 2 / Determinant::nalpha) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
-    //ln.second = exp(jmfConst / 2 / Determinant::nbeta) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
-
-    //// no left jastrow 
-    ////ln = refT;
-
-    //// measure
-    //complex<double> overlap = orthoFac * (ln.first * rn.first).determinant() * (ln.second * rn.second).determinant();
-    //denom(sweep) = overlap;
-    //matPair green;
-    //calcGreensFunction(ln, rn, green);
-    //num(sweep) = denom(sweep) * calcHamiltonianElement(green, enuc, h1, chol);
-    
-    // sample left jastrow
-    //size_t numJastrowSamples = 50;
-    //complex<double> jOverlap(0., 0.), jLocalEnergy(0., 0.);
-    //for (int i = 0; i < numJastrowSamples; i++) {
-    //  VectorXd jfields = VectorXd::Zero(jnfields);
-    //  vecPair jpropLeft;
-    //  jpropLeft.first = VectorXcd::Zero(norbs);
-    //  jpropLeft.second = VectorXcd::Zero(norbs);
-    //  for (int i = 0; i < jnfields; i++) {
-    //    jfields(i) = normal(generator);
-    //    jpropLeft.first += jfields(i) * jhsOperators[i].first;
-    //    jpropLeft.second += jfields(i) * jhsOperators[i].second;
-    //  }
-    //  matPair ln;
-    //  ln.first = exp(jmfConst / 2 / Determinant::nalpha) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
-    //  ln.second = exp(jmfConst / 2 / Determinant::nbeta) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
-    //  
-    //  complex<double> overlapSample = (ln.first * rn.first).determinant() * (ln.second * rn.second).determinant();
-    //  jOverlap += overlapSample;
-    //  matPair green;
-    //  calcGreensFunction(ln, rn, green);
-    //  jLocalEnergy += overlapSample * calcHamiltonianElement(green, enuc, h1, chol);
-    //}
-    //denom(sweep) = jOverlap / numJastrowSamples;
-    //num(sweep) = jLocalEnergy / numJastrowSamples;
+    stats.addSamples(numSampleA, denomSampleA);
   }
 
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
-    cout << "          iTime                 Energy                     Energy error         Average phase\n";
   }
 
-  for (int n = 0; n < numEneSteps; n++) {
-    complex<double> energyAll[commsize];
-    for (int i = 0; i < commsize; i++) energyAll[i] = complex<double>(0., 0.);
-    
-    complex<double> energyProc = numMean[n] / denomMean[n];
-    complex<double> numProc = numMean[n];
-    complex<double> denomProc = denomMean[n];
-    complex<double> denomAbsProc = denomAbsMean[n];
-    MPI_Gather(&(energyProc), 1, MPI_DOUBLE_COMPLEX, &(energyAll), 1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &energyProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &numProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomAbsProc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    
-    energyProc /= commsize;
-    numProc /= commsize;
-    denomProc /= commsize;
-    denomAbsProc /= commsize;
-    double stddev = 0., stddev2 = 0.;
-    for (int i = 0; i < commsize; i++) {
-      stddev += pow(abs(energyAll[i] - energyProc), 2);
-      stddev2 += pow(abs(energyAll[i] - energyProc), 4);
-    }
-    stddev /= (commsize - 1);
-    stddev2 /= commsize;
-    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
-    stddev = sqrt(stddev / commsize);
-
-    if (commrank == 0) {
-      cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % ((eneSteps[n] + 1) * dt) % energyProc.real() % energyProc.imag() % stddev % stddev2 % (denomProc / denomAbsProc).real() % (denomProc / denomAbsProc).imag(); 
-    }
-  }
-  
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
+  stats.gatherAndPrintStatistics(iTime);
+  if (schd.printLevel > 10) stats.writeSamples();
 }
 
-
-void orthogonalize(matPair& rn, complex<double>& orthoFac){
-  HouseholderQR<MatrixXcd> qr1(rn.first);
-  HouseholderQR<MatrixXcd> qr2(rn.second);
-  rn.first = qr1.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nalpha);
-  rn.second = qr2.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nbeta);
-  for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
-  for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
-}
 
 // calculates mixed energy estimator of the imaginary time propagated wave function
 // w jastrow
