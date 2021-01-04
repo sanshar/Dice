@@ -165,7 +165,7 @@ public:
   int max_determinants;
   bool sampleNewDets;
   bool precondition;
-  double factor;
+  double cdfciTol;
   vector<OccRestrictions> restrictions;
 };
 

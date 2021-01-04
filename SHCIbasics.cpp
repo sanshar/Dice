@@ -30,6 +30,8 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -785,7 +787,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
                                          schedule &schd, twoInt &I2,
                                          twoIntHeatBathSHM &I2HB,
                                          vector<int> &irrep, oneInt &I1,
-                                         double &coreE, int nelec, cdfci::hash_det& wfn, bool DoRDM) {
+                                         double &coreE, int nelec, bool DoRDM) {
   int proc = 0, nprocs = 1;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
@@ -942,7 +944,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     }
   }
 
-  for (int iter = iterstart; iter < schd.epsilon1.size(); iter++) {
+  int max_iter;
+  schd.epsilon1.size() > schd.cdfci_on ? max_iter = schd.cdfci_on : max_iter = schd.epsilon1.size();
+  for (int iter = iterstart; iter < max_iter; iter++) {
     double epsilon1 = schd.epsilon1[iter];
     StitchDEH uniqueDEH;
 
@@ -1080,13 +1084,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     mpi::broadcast(world, DetsSize, 0);
 #endif
 
-    if (iter == schd.cdfci_on) {
-      helper2.clear();
-      sparseHam.clear();
-      pout << "Start cdfci with " << DetsSize << " determinants" << endl;
-      cdfci::solve(schd, I1, I2, coreEbkp, E0, ci, SHMDets, DetsSize);
-      exit(0);
-    }
 
     //************
     if (commrank == 0 && schd.DavidsonType == DIRECT)
@@ -1208,7 +1205,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     }
 
     // the variational step has converged
-    if (abs(E0[0] - prevE0) < schd.dE || iter == schd.epsilon1.size() - 1) {
+    if (abs(E0[0] - prevE0) < schd.dE || iter == max_iter - 1) {
       pout << "Performing final tight davidson with tol: " << schd.davidsonTol
            << endl;
 
@@ -1218,26 +1215,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       else
         E0 = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter,
                       false);
-     if (schd.cdfciIter > 0) {
-     //use Hmult to construct the civector and sigma vector
-     wfn.clear();
-     CItype *bcol, *sigmacol;
-     auto brows=ci[0].rows();
-     AllocateSHM(ci, bcol, sigmacol);
-     for (int k=0; k<brows; k++) {
-       bcol[k] = ci[0](k, 0);
-       sigmacol[k] = 0.0;
-     }
-     H(bcol, sigmacol);
-     double norm = E0[0]-coreE;
-     double factor = schd.factor*sqrt(std::fabs(norm));
-     for(int k=0; k<brows;k++) {
-       auto det = Dets[k];
-       auto val = std::array<double, 2> {bcol[k]*factor, sigmacol[k]*factor};
-       //val = std::array<double, 2> {0.0, 0.0};
-       wfn[det] = val;
-     }  
-     } 
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif

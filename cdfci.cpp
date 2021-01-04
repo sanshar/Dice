@@ -3,6 +3,7 @@
 #include "math.h"
 #include "SHCIbasics.h"
 #include <iostream>
+#include <fstream>
 #include <unordered_map>
 #include <map>
 #include <tuple>
@@ -29,7 +30,7 @@ void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        hash_det& wavefunction, set<Determinant>& new_dets,
+        set<Determinant>& old_dets, set<Determinant>& new_dets,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
     /*!
@@ -98,10 +99,8 @@ void cdfci::getDeterminantsVariational(
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
       //std::cout << "single excitation: " << di << std::endl;
-      if(wavefunction.find(di) == wavefunction.end()) {
-        std::array<double, 2>  val {0.0,0.0};
-        wavefunction.insert({di, val});
-        new_dets.insert(di);
+      if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
+        new_dets.emplace(di);
       }
       //if (Determinant::Trev != 0) di.makeStandard();
     }
@@ -139,11 +138,9 @@ void cdfci::getDeterminantsVariational(
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
-        if(wavefunction.find(di) == wavefunction.end()) {
-          std::array<double, 2>  val {0.0,0.0};
-          //wavefunction.insert({di, val});
-          new_dets.insert(di)
-;        }
+        if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
+          new_dets.emplace(di);
+        }
         //if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
@@ -402,6 +399,7 @@ void cdfci::cdfciSolver(hash_det& wfn, Determinant& hf, schedule& schd, pair<dou
   return;
 }
 
+// no longer usable
 vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & Dets, schedule& schd, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec, bool DoRDM) {
 
   int proc = 0, nprocs = 1;
@@ -468,7 +466,7 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
       }
       array<double, 2> zero_out = {0.0,0.0};
       wavefunction[SortedDetsvec[i]] = zero_out;
-      cdfci::getDeterminantsVariational(SortedDetsvec[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], wavefunction, new_dets, schd, 0, nelec);
+      //cdfci::getDeterminantsVariational(SortedDetsvec[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], wavefunction, new_dets, schd, 0, nelec);
     }
     std::cout << "time after grow variational space " 
     <<std:: setw(10) << getTime()-startofCalc << std::endl;
@@ -486,7 +484,7 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
   return E0;
 }
 
-void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, double dx, Determinant* dets, vector<double>& x_vector, vector<double>& z_vector, cdfci::DetToIndex& det_to_index, oneInt& I1, twoInt& I2, double& coreE) {
+void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, double dx, vector<Determinant>& dets, vector<double>& x_vector, vector<double>& z_vector, cdfci::DetToIndex& det_to_index, oneInt& I1, twoInt& I2, double& coreE) {
   auto deti = dets[column[0]];
   size_t orbDiff;
   double hij;
@@ -571,7 +569,7 @@ double CoordinateUpdate(Determinant& det, double x, double z, double xx, oneInt&
 }
 
 // need to resize the result vector
-void getSubDetsNoSample(Determinant* dets, vector<int>& column, cdfci::DetToIndex& det_to_index, int this_index, int nelec) {
+void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::DetToIndex& det_to_index, int this_index, int nelec) {
   auto det = dets[this_index];
 
   int norbs = det.norbs;
@@ -670,7 +668,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
   return result;
 }
 
-vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, Determinant* dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
+vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
   int nelec = dets[0].Noccupied();
   vector<pair<double, double>> result;
   vector<int> column;
@@ -691,7 +689,7 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
       getSubDetsNoSample(dets, column, det_to_index, i, nelec);
       civectorUpdateNoSample(result_iroot, column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
       if (i % 10000 == 0) {
-        cout << i << " dets initialized in" << getTime()-start << endl;
+        cout << i << " dets initialized in " << setprecision(4) << getTime()-start << endl;
       }
     }
     result.push_back(result_iroot);
@@ -699,46 +697,83 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
   return result;
 }
 
-void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* dets, int dets_size) {
+void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
+  set<Determinant> old_dets;
+  set<Determinant> new_dets;
+  int iter;
+  bool converged;
+
+  if (schd.restart) {
+    char file[5000];
+    sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+
+    load >> iter >> dets;
+    ci.resize(1, MatrixXx(dets.size(), 1));
+
+    load >> ci;
+    load >> E0;
+    load >> converged;
+    pout << "Load converged: " << converged << endl;
+  }
+  
   int start_index = ci[0].rows();
+  int dets_size = dets.size();
   double coreEbkp = coreE;
   coreE = 0.0;
-
+  
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
+    old_dets.emplace(dets[i]);
   }
 
+  const double epsilon1 = schd.epsilon1[schd.cdfci_on];
+  const int nelec = dets[0].Noccupied();
+  const double zero = 0.0;
+
+  for (int i = 0; i < dets_size; i++) {
+    auto civec = ci[0](i, 0);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+  }
+
+  int new_dets_size = new_dets.size();
+  cout << dets_size << " " << new_dets_size;
+  for (auto new_det : new_dets) {
+    dets.push_back(new_det);
+    det_to_index[new_det] = dets_size;
+    dets_size++;
+  }
+  cout << " " << dets_size << endl;
+  set<Determinant>().swap(old_dets);
+  set<Determinant>().swap(new_dets);
   // ene stores the rayleigh quotient quantities.
   int nroots = ci.size();
   vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
-  const double zero = 0.0;
   vector<double> x_vector(dets_size, zero), z_vector(dets_size, zero);
   auto start_time = getTime();
   ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
-
-  const int nelec = dets[0].Noccupied();
+  
   auto num_iter = schd.cdfciIter;
-  int this_det_idx = 0;
+  int this_det_idx = dets_size - 1;
   vector<int> column;
   getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
 
   for (int iroot = 0; iroot < nroots; iroot++) {
-    auto prev_ene = 0.0;
+    auto prev_ene = ene[iroot].first/ene[iroot].second;
     auto start_time = getTime();
-    for (int i = 0; i < num_iter; i++) {
-      cout << this_det_idx << " ";
+    for (int i = 1; i <= num_iter; i++) {
       auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
       civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
       this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
       getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
-      cout << ene[iroot].first << " " << ene[iroot].second << " ";
       // now some logical codes, print out information and decide when to exit etc.
-      if (i%schd.report_interval == 0) {
+      if (i%schd.report_interval == 0 || i == num_iter) {
         auto curr_ene = ene[iroot].first/ene[iroot].second;
         cout << setw(10) << i << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
-        cout << setw(10) << setprecision(4) << dx << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat << endl;
-        if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.dE) {
+        cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat << endl;
+        if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.cdfciTol) {
           break;
         }
         prev_ene = curr_ene;

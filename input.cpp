@@ -112,7 +112,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.max_determinants = 10000000;
   schd.sampleNewDets = false;
   schd.precondition = false;
-  schd.factor = 1.0;
+  schd.cdfciTol = 1e-12;
 
   while (dump.good()) {
     std::string Line;
@@ -256,8 +256,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       }
       schd.restrictions.push_back(OccRestrictions(minElec, maxElec, orbs));
     }
-    else if (boost::iequals(ArgName, "cdfciFactor"))
-      schd.factor = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciTol"))
+      schd.cdfciTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))

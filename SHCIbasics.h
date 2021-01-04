@@ -90,7 +90,7 @@ vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant>& Dets,
                              schedule& schd, twoInt& I2,
                              twoIntHeatBathSHM& I2HB, vector<int>& irrep,
                              oneInt& I1, double& coreE, int nelec,
-                             cdfci::hash_det& wfn, bool DoRDM = false);
+                             bool DoRDM = false);
 
 vector<double> DoVariationalDirect(vector<MatrixXx>& ci,
                                    vector<Determinant>& Dets, schedule& schd,

@@ -27,6 +27,8 @@
 #include <list>
 #include <set>
 #include <tuple>
+#include <thread>
+#include <chrono>
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -367,21 +369,24 @@ int main(int argc, char* argv[]) {
   pout << "VARIATIONAL STEP  " << endl;
   pout << "**************************************************************"
        << endl;
-  cdfci::hash_det wfn;
-  vector<double> E0 = SHCIbasics::DoVariational(
-      ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, wfn, schd.DoRDM);
-  if (schd.cdfciIter > 0) {
-    std::cout << schd.sampleNewDets  << " " << schd.z_threshold << " " << schd.cdfciIter << std::endl;
-    double norm = (coreE-E0[0])*schd.factor*schd.factor;
-    double energy = E0[0]-coreE;
-    //std::pair<double, double> ene {energy*norm, norm};
-    std::pair<double, double> ene {0.0, 0.0};
-    cdfci::cdfciSolver(wfn, Dets[0], schd, ene, I1, I2, I2HBSHM, irrep, coreE, E0, nelec, schd.z_threshold, true);
+
+  vector<double> E0;
+  if (schd.cdfci_on == 0 && schd.restart) {
+    cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
     exit(0);
   }
+  E0 = SHCIbasics::DoVariational(
+      ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
+
+  cout << Dets.size() << endl;
+
+  if (schd.cdfci_on > 0 && schd.cdfci_on < schd.epsilon1.size()) {
+    cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
+  }
+
 #ifndef SERIAL
   mpi::broadcast(world, DetsSize, 0);
 #endif
@@ -739,7 +744,7 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
         schd.fullrestart = false;
         schd.DoRDM = false;
         E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
-                                       coreE, nelec, wfn, schd.DoRDM);
+                                       coreE, nelec, schd.DoRDM);
         var[iter + 1] = E0[0];
         DetsSize = Dets.size();
 #ifndef SERIAL

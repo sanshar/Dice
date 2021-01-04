@@ -45,7 +45,7 @@ namespace cdfci {
   void getDeterminantsVariational( Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        hash_det& wavefunction, set<Determinant>& new_dets,
+        set<Determinant>& old_dets, set<Determinant>& new_dets,
         schedule& schd, int Nmc, int nelec);
   
   set<Determinant> sampleExtraEntry(hash_det& wfn, int nelec);
@@ -62,6 +62,6 @@ namespace cdfci {
   
   hash_det precondition(pair<double, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
 
-  void solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* SHMDets, int dets_size);
+  void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
 }
 #endif
