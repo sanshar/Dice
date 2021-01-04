@@ -8,6 +8,8 @@ void binning(Eigen::VectorXcd& samples, Eigen::VectorXd& stdDev, Eigen::VectorXi
 
 Eigen::MatrixXcd matExp(const Eigen::MatrixXcd& mat, const int order = -1);
 
+void orthogonalize(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& rn, std::complex<double>& orthoFac);
+
 std::complex<double> prepJastrowHS(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& ref, 
     std::vector<std::pair<Eigen::VectorXcd, Eigen::VectorXcd>>& hsOperators, 
     std::pair<Eigen::VectorXcd, Eigen::VectorXcd>& oneBodyOperator);
