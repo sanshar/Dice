@@ -1,5 +1,7 @@
 #ifndef SERIAL
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -121,5 +123,16 @@ void DQMCStatistics::printStatistics()
 // write samples to disk
 void DQMCStatistics::writeSamples()
 {
+  string fname = "samples_";
+  fname.append(to_string(commrank));
+  fname.append(".dat");
+  ofstream samplesFile(fname, ios::app);
+  samplesFile << "num_i  denom_i\n";
+  for (int i = 0; i < nSamples; i++) {
+    for (int n = 0; n < sampleSize; n++)
+      samplesFile << setprecision(8) << numSamples[i](n) << "  "  << denomSamples[i](n) << "  |  ";
+    samplesFile << endl;
+  }
+  samplesFile.close();
   return;
 };

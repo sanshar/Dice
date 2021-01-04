@@ -767,6 +767,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   ArrayXd iTime(nEneSteps);
   for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   stats.gatherAndPrintStatistics(iTime);
+  if (schd.printLevel > 10) stats.writeSamples();
 }
 
 
@@ -915,7 +916,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
           ln.first = exp(jmfConst / (2. * Determinant::nalpha)) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
           ln.second = exp(jmfConst / (2. * Determinant::nbeta)) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
 
-          complex<double> overlapSample = (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
+          complex<double> overlapSample = orthoFac * (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
                                         * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
           jOverlap += overlapSample;
           jLocalEnergy += overlapSample * calcHamiltonianElement(ln, rn, enuc, h1, chol); 
@@ -940,6 +941,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   ArrayXd iTime(nEneSteps);
   for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   stats.gatherAndPrintStatistics(iTime);
+  if (schd.printLevel > 10) stats.writeSamples();
 }
 
 
