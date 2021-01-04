@@ -88,6 +88,57 @@ complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, double enu
 // phi_1 can be an active space wave function
 // TODO: allow core orbitals
 // leading cost: O(X N A M)
+complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) 
+{ 
+  // core energy
+  complex<double> ene = enuc;
+  
+  MatrixXcd B = ghf.adjoint();
+
+  // calculate theta and green
+  int numOrbs = A.first.rows();
+  int numElec = B.cols();
+  int nAlpha = A.first.cols();
+  int nBeta = A.second.cols();
+
+
+  MatrixXcd Afull = 0*B, theta, green;
+  Afull.block(0,0,numOrbs,A.first.cols()) = A.first;
+  Afull.block(numOrbs,A.first.cols(),numOrbs,A.second.cols()) = A.second;
+
+  theta = (B.adjoint() * Afull).inverse()*B.adjoint();
+  green = (Afull * theta).transpose();
+
+  // one body part
+  ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
+
+  //cout << ene<<endl;
+  // two body part
+  MatrixXcd W(nAlpha, nAlpha), U(nBeta, nBeta), S(nBeta, nAlpha), T(nAlpha, nBeta);
+
+  MatrixXcd Ltilde = MatrixXcd::Zero(numOrbs, nAlpha);
+  MatrixXcd Mtilde = MatrixXcd::Zero(numOrbs, nBeta);
+  MatrixXcd ThetaAA = theta.block(0,0,nAlpha,numOrbs), ThetaAB = theta.block(0,numOrbs, nAlpha, numOrbs),
+    ThetaBA = theta.block(nAlpha, 0, nBeta, numOrbs), ThetaBB = theta.block(nAlpha, numOrbs, nBeta, numOrbs);
+
+  for (int i = 0; i < chol.size(); i++) {
+    Ltilde.noalias() = chol[i]*A.first;
+    Mtilde.noalias() = chol[i]*A.second;
+    W.noalias() = ThetaAA * Ltilde ; U.noalias() = ThetaBB * Mtilde ; S.noalias() = ThetaBA * Ltilde ; T.noalias() = ThetaAB * Mtilde;
+    complex<double> cup = W.trace();
+    complex<double> cdn = U.trace();
+    ene += (cup * cup + cdn * cdn + 2. * cup * cdn - W.cwiseProduct(W.transpose()).sum() - U.cwiseProduct(U.transpose()).sum() 
+             - 2. * S.cwiseProduct(T.transpose()).sum() ) / 2.;
+  }
+
+  return ene;
+}
+
+// Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
+// rotates cholesky vectors
+// phi_1 can be an active space wave function
+// TODO: allow core orbitals
+// leading cost: O(X N A M)
 complex<double> calcHamiltonianElement_sRI(matPair& phi1T, matPair& phi2, matPair& phi0T, matPair& phi0, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, vector<MatrixXd>& richol) 
 { 
   // core energy
