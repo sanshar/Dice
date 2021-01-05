@@ -116,8 +116,8 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
 
   // Split the generation of determinants across processes
   int nDetsThisProc = schd.initialNDets / commsize;
-  // Select a new walker every 30 iterations
-  const int nitersPerWalker = 30;
+  // Select a new walker every 5 iterations
+  const int nitersPerWalker = 5;
   int niter = nitersPerWalker * nDetsThisProc * schd.nreplicas;
 
   for (int iter=0; iter<niter; iter++) {
