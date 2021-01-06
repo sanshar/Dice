@@ -40,6 +40,18 @@
 #include "trivialWalk.h"
 #include "runVMC.h"
 
+void printVMCHeader() {
+  if (commrank == 0) {
+    cout << endl << " Performing VMC..." << endl << endl;
+  }
+}
+
+void printFCIQMCHeader() {
+  if (commrank == 0) {
+    cout << endl << " Performing FCIQMC..." << endl << endl;
+  }
+}
+
 int main(int argc, char *argv[])
 {
 #ifndef SERIAL
@@ -84,8 +96,10 @@ int main(int argc, char *argv[])
       wave.readWave();
       wave.initWalker(walk);
     } else {
+      printVMCHeader();
       runVMC(wave, walk);
     }
+    printFCIQMCHeader();
     runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
   }
   else if (schd.wavefunctionType == "selectedci") {

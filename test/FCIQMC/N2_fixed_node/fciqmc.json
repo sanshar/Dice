@@ -8,32 +8,36 @@
   },
   "sampling":
   {
-    "stochasticIter": 1000,
-    "epsilon": 1.0e-8,
-    "maxIterFCIQMC": 50000,
     "tau": "0.001",
     "seed": "100",
+    "epsilon": 1.0e-8
+  },
+  "FCIQMC":
+  {
+    "maxIter": 2000,
     "shiftDamping": "0.1",
-    "initialShift": "-5.0",
-    "initialPop": "1000.0",
-    "initialNDets": 1000,
-    "targetPop": "2000.0",
-    "mainMemoryFac": "20.0",
-    "spawnMemoryFac": "20.0",
+    "initialShift": "0.0",
+    "initialPop": "10000.0",
+    "initialNDets": 10000,
+    "targetPop": "20000.0",
+    "mainMemoryFac": "10.0",
+    "spawnMemoryFac": "10.0",
     "initiator": "false",
     "heatBath": "false",
-    "trialInitFCIQMC": "true",
-    "applyNodeFCIQMC": "true",
+    "useTrial": "true",
+    "trialWFEstimator": "true",
+    "importanceSampling": "true",
+    "trialInit": "true",
+    "applyNode": "true",
     "diagonalDumping": "true",
     "partialNodeFactor": 1.0
   },
   "optimizer":
   {
     "method": "amsgrad",
-    "maxIter": 100,
+    "maxIter": 40,
     "stepsize": 0.01,
     "decay1": 0.1,
-    "decay2": 0.01,
-    "restart": "false"
+    "decay2": 0.01
   }
 }
