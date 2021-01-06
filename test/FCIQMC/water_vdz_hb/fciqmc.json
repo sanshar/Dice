@@ -4,15 +4,15 @@
     "tau": 0.001,
     "seed": 100
   },
-  "sampling": {
-      "maxIter": "8000",
-      "shiftDamping": "0.01",
-      "initialShift": "0.0",
-      "initialPop": "500.0",
-      "targetPop": "5000.0",
-      "mainMemoryFac": "10.0",
-      "spawnMemoryFac": "10.0",
-      "initiator": "true",
-      "heatBath": "true"
+  "FCIQMC": {
+    "maxIter": "8000",
+    "shiftDamping": "0.01",
+    "initialShift": "0.0",
+    "initialPop": "500.0",
+    "targetPop": "5000.0",
+    "mainMemoryFac": "10.0",
+    "spawnMemoryFac": "10.0",
+    "initiator": "true",
+    "heatBath": "true"
   }
 }

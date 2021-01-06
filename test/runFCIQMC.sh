@@ -73,7 +73,7 @@ cd $here/FCIQMC/water_vdz_hb
 ../../clean.sh
 printf "...running FCIQMC/water_vdz_hb\n"
 $MPICOMMAND $FCIQMCPATH > fciqmc.out
-python2 ../../testEnergy.py 'fciqmc_trial' $tol
+python2 ../../testEnergy.py 'fciqmc' $tol
 if [ $clean == 1 ]
 then
     ../../clean.sh
