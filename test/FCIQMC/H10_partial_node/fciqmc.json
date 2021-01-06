@@ -8,19 +8,19 @@
   },
   "sampling":
   {
-    "tau": "0.001",
-    "seed": "100",
+    "tau": "0.01",
+    "seed": "150",
     "epsilon": 1.0e-8,
-    "stochasticIter": "1000"
+    "stochasticIter": 1000
   },
   "FCIQMC":
   {
-    "maxIter": 2000,
+    "maxIter": 250,
     "shiftDamping": "0.1",
     "initialShift": "0.0",
-    "initialPop": "10000.0",
-    "initialNDets": 10000,
-    "targetPop": "20000.0",
+    "initialPop": "20000.0",
+    "initialNDets": 20000,
+    "targetPop": "40000.0",
     "mainMemoryFac": "10.0",
     "spawnMemoryFac": "10.0",
     "initiator": "false",
@@ -31,12 +31,12 @@
     "trialInit": "true",
     "applyNode": "true",
     "diagonalDumping": "true",
-    "partialNodeFactor": 1.0
+    "partialNodeFactor": 0.3
   },
   "optimizer":
   {
     "method": "amsgrad",
-    "maxIter": 50,
+    "maxIter": 40,
     "stepsize": 0.01,
     "decay1": 0.1,
     "decay2": 0.01

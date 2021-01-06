@@ -10,7 +10,8 @@
   {
     "tau": "0.01",
     "seed": "150",
-    "epsilon": 1.0e-8
+    "epsilon": 1.0e-8,
+    "stochasticIter": "1000"
   },
   "FCIQMC":
   {
