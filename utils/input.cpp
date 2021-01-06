@@ -180,6 +180,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.trialWFEstimator = input.get("FCIQMC.trialWFEstimator", false);
     schd.importanceSampling = input.get("FCIQMC.importanceSampling", false);
     schd.applyNodeFCIQMC = input.get("FCIQMC.applyNode", false);
+    schd.releaseNodeFCIQMC = input.get("FCIQMC.releaseNode", false);
+    schd.releaseNodeIter = input.get("FCIQMC.releaseNodeIter", 2000);
     schd.diagonalDumping = input.get("FCIQMC.diagonalDumping", false);
     schd.partialNodeFactor = input.get("FCIQMC.partialNodeFactor", 1.0);
 

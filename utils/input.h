@@ -128,6 +128,8 @@ private:
       & trialWFEstimator
       & importanceSampling
       & applyNodeFCIQMC
+      & releaseNodeFCIQMC
+      & releaseNodeIter
       & diagonalDumping
       & partialNodeFactor
 
@@ -320,6 +322,8 @@ public:
   bool trialWFEstimator;
   bool importanceSampling;
   bool applyNodeFCIQMC;
+  bool releaseNodeFCIQMC;
+  int releaseNodeIter;
   bool diagonalDumping;
   double partialNodeFactor;
 

@@ -253,6 +253,14 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     fill(dat.EProj.begin(), dat.EProj.end(), 0.0);
     fill(dat.HFAmp.begin(), dat.HFAmp.end(), 0.0);
 
+    // Check whether to release the fixed node
+    if (schd.releaseNodeFCIQMC) {
+      if (iter == schd.releaseNodeIter) {
+        schd.applyNodeFCIQMC = false;
+        schd.diagonalDumping = false;
+      }
+    }
+
     //cout << walkers << endl;
 
     // Loop over all walkers/determinants
