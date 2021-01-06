@@ -73,8 +73,26 @@ class SelectedCI
 			   double &factor,
 			   Eigen::VectorXd &grad);
 
-  void HamAndOvlp(SimpleWalker &walk,
-                  double &ovlp, double &ham, 
+  // This version of HamAndOvlp is the standard version, appropriate when
+  // performing VMC in the usual way, using a SelectedCI wave function.
+  // This function calculations both ovlp and ham. ovlp is the overlap of
+  // walk.d with the selected CI wave function. ham is the local energy
+  // on determinant walk.d, including the 1/ovlp factor.
+  void HamAndOvlp(SimpleWalker &walk, double &ovlp, double &ham,
+                  workingArray& work, double epsilon);
+
+  void HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
+                            double &ham, double& SVTotal,
+                            workingArray& work, const bool is,
+                            double epsilon);
+
+  // This version of HamAndOvlp is used for MRCI and NEVPT calculations,
+  // where excitations occur into the first-order interacting space, but
+  // the selected CI wave function only has non-zero coefficients
+  // within the complete active space.
+  // *IMPORTANT* - ham here is <n|H|phi0>, *not* the ratio, to avoid out
+  // of active space singularitites. Also, ovlp = ham when ham is calculated.
+  void HamAndOvlp(SimpleWalker &walk, double &ovlp, double &ham,
                   workingArray& work, bool dontCalcEnergy=true);
   
   void HamAndOvlpLanczos(SimpleWalker &walk,
@@ -82,6 +100,16 @@ class SelectedCI
                          double &ovlpSample,
                          workingArray& work,
                          workingArray& moreWork, double &alpha) ;
+
+  // For some situation, such as FCIQMC, we want to know the ratio of
+  // overlaps with the correct parity. This function will calculate
+  // this parity, relative to what is returned by getOverlapFactor.
+  // For a SelectedCI wave function, this is always equal to 1.
+  double parityFactor(Determinant& d, const int ex2, const int i,
+                      const int j, const int a, const int b) const {
+    return 1.0;
+  }
+
   //void getVariables(Eigen::VectorXd &v);
 
   //long getNumVariables();

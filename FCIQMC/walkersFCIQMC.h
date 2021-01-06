@@ -58,6 +58,7 @@ void deleteAmpsArray(T** amps)
 }
 
 // Class for main walker list in FCIQMC
+template<typename TrialWalk>
 class walkersFCIQMC {
 
  public:
@@ -72,6 +73,19 @@ class walkersFCIQMC {
   vector<Determinant> dets;
   // List of diagonal Hamiltonian elements for the occupied determinants
   vector<double> diagH;
+  // When using a trial wave function, this holds a list of the overlaps
+  // between the wave function and the occupied determinants
+  vector<double> ovlp;
+  // When using a trial wave function, this holds a list of the local
+  // energies for the occupied determinants
+  vector<double> localE;
+  // When using a trial wave function, this holds a list of the sum of
+  // the sign violating terms (in the impoprtance-sampled Hamiltonian)
+  // for each occupied determinant
+  vector<double> SVTotal;
+  // VMC walker used to calculate properties involving the trial wave
+  // function, such as the overlap and local energy
+  vector<TrialWalk> trialWalk;
   // List of walkers amplitudes
   double** amps;
   // Hash table to access the walker array
@@ -88,18 +102,179 @@ class walkersFCIQMC {
   int DetLenMin;
 
   walkersFCIQMC() {};
-  walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal);
-  ~walkersFCIQMC();
 
-  // Function to initialize walkersFCIQMC. Useful if the object is created
-  // with the default constructor and needs to be initialized later
-  void init(int arrayLength, int DetLenLocal, int nreplicasLocal);
+  walkersFCIQMC(int arrayLength, int DetLenLocal, int nreplicasLocal) {
+    init(arrayLength, DetLenLocal, nreplicasLocal);
+  }
 
-  void stochasticRoundAll(const double minPop);
+  // Define a init function, so that a walkersFCIQMC object can be
+  // initialized after it is constructed, useful in some cases
+  void init(int arrayLength, int DetLenLocal, int nreplicasLocal) {
+    nDets = 0;
+    nreplicas = nreplicasLocal;
+    dets.resize(arrayLength);
+    diagH.resize(arrayLength);
+    ovlp.resize(arrayLength);
+    localE.resize(arrayLength);
+    SVTotal.resize(arrayLength);
+    trialWalk.resize(arrayLength);
+    amps = allocateAmpsArray(arrayLength, nreplicas, 0.0);
+    emptyDets.resize(arrayLength);
+    firstEmpty = 0;
+    lastEmpty = -1;
+    DetLenMin = DetLenLocal;
+  }
 
-  bool allUnoccupied(const int i) const;
+  ~walkersFCIQMC() {
+    dets.clear();
+    diagH.clear();
+    ovlp.clear();
+    localE.clear();
+    SVTotal.clear();
+    trialWalk.clear();
+    deleteAmpsArray(amps);
+    ht.clear();
+    emptyDets.clear();
+  }
 
-  void calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE);
+  // return true if all replicas for determinant i are unoccupied
+  bool allUnoccupied(const int i) const {
+    return all_of(&amps[i][0], &amps[i][nreplicas], [](double x) { return abs(x)<1.0e-12; });
+  }
+
+  void stochasticRoundAll(const double minPop) {
+
+    for (int iDet=0; iDet<nDets; iDet++) {
+      // To be a valid walker in the main list, there must be a corresponding
+      // hash table entry *and* the amplitude must be non-zero for a replica
+      if ( ht.find(dets[iDet]) != ht.end() && !allUnoccupied(iDet) ) {
+
+        bool keepDetAny = false;
+
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          if (abs(amps[iDet][iReplica]) < minPop) {
+            bool keepDet;
+            stochastic_round(minPop, amps[iDet][iReplica], keepDet);
+            keepDetAny = keepDetAny || keepDet;
+          } else {
+            keepDetAny = true;
+          }
+        }
+
+        // If the population is now 0 on all replicas then remove the ht entry
+        if (!keepDetAny) {
+          ht.erase(dets[iDet]);
+          lastEmpty += 1;
+          emptyDets[lastEmpty] = iDet;
+        }
+
+      } else {
+
+        if ( !allUnoccupied(iDet) ) {
+          // This should never happen - the hash table entry should not be
+          // removed unless the walker population becomes zero for all replicas
+          cout << "#Error: Non-empty det no hash table entry found." << endl;
+          // Print determinant and all amplitudes
+          cout << dets[iDet];
+          for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+            cout << "    " << amps[iDet][iReplica];
+          }
+          cout << endl;
+
+        }
+      }
+
+    }
+  }
+
+  void calcStats(dataFCIQMC& dat, Determinant& HFDet, oneInt& I1, twoInt& I2, double& coreE) {
+
+    int excitLevel = 0;
+    double overlapRatio = 0.0;
+    std::fill(dat.walkerPop.begin(),   dat.walkerPop.end(), 0.0);
+    std::fill(dat.EProj.begin(),       dat.EProj.end(), 0.0);
+    std::fill(dat.HFAmp.begin(),       dat.HFAmp.end(), 0.0);
+    std::fill(dat.trialEProj.begin(),  dat.trialEProj.end(), 0.0);
+    std::fill(dat.ampSum.begin(),      dat.ampSum.end(), 0.0);
+
+    for (int iDet=0; iDet<nDets; iDet++) {
+
+      // If using importance sampling then the wave function sampled
+      // is psi_i^T*C_i. If not, then it is just C_i. So we have the
+      // extra factors of psi_i^T to include in estimators when using
+      // importance sampling.
+      double ISFactor = 1.0;
+      if (schd.importanceSampling) {
+        ISFactor = ovlp[iDet];
+      }
+
+      if ( ht.find(dets[iDet]) != ht.end() ) {
+        excitLevel = HFDet.ExcitationDistance(dets[iDet]);
+
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+
+          // To be a valid walker in the main list, there must be a corresponding
+          // hash table entry *and* the amplitude must be non-zero
+          if ( abs(amps[iDet][iReplica]) > 1.0e-12 ) {
+
+            dat.walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
+
+            // Trial-WF-based estimator data
+            if (schd.trialWFEstimator) {
+              dat.trialEProj.at(iReplica) +=
+                  localE[iDet] * amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+              dat.ampSum.at(iReplica) +=
+                  amps[iDet][iReplica] * ovlp[iDet] / ISFactor;
+            }
+
+            // HF-based estimator data
+            if (excitLevel == 0) {
+              dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
+              dat.EProj.at(iReplica) +=
+                  amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ISFactor;
+            } else if (excitLevel <= 2) {
+              dat.EProj.at(iReplica) +=
+                  amps[iDet][iReplica] * Hij(HFDet, dets[iDet], I1, I2, coreE) / ISFactor;
+            }
+          }
+
+        } // Loop over replicas
+
+      } // If hash table entry exists
+
+    } // Loop over all entries in list
+  }
+
+  void calcPop(vector<double>& walkerPop, vector<double>& walkerPopTot) {
+
+    std::fill(walkerPop.begin(), walkerPop.end(), 0.0);
+
+    for (int iDet=0; iDet<nDets; iDet++) {
+      if ( ht.find(dets[iDet]) != ht.end() ) {
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          // To be a valid walker in the main list, there must be a corresponding
+          // hash table entry *and* the amplitude must be non-zero
+          if ( abs(amps[iDet][iReplica]) > 1.0e-12 ) {
+            walkerPop.at(iReplica) += abs(amps[iDet][iReplica]);
+          }
+        } // Loop over replicas
+      } // If hash table entry exists
+    } // Loop over all entries in list
+
+    // Sum walker population from each process
+  #ifdef SERIAL
+    walkerPopTot = walkerPop;
+  #else
+    MPI_Allreduce(
+        &walkerPop.front(),
+        &walkerPopTot.front(),
+        nreplicas,
+        MPI_DOUBLE,
+        MPI_SUM,
+        MPI_COMM_WORLD
+    );
+  #endif
+  }
 
   // Print the determinants and hash table
   friend ostream& operator<<(ostream& os, const walkersFCIQMC& walkers) {

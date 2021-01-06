@@ -17,6 +17,8 @@
   If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #ifndef SERIAL
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -29,6 +31,26 @@
 #include "integral.h"
 #include "SHCIshm.h"
 #include "runFCIQMC.h"
+
+#include "CorrelatedWavefunction.h"
+#include "Jastrow.h"
+#include "Slater.h"
+#include "SelectedCI.h"
+#include "trivialWF.h"
+#include "trivialWalk.h"
+#include "runVMC.h"
+
+void printVMCHeader() {
+  if (commrank == 0) {
+    cout << endl << " Performing VMC..." << endl << endl;
+  }
+}
+
+void printFCIQMCHeader() {
+  if (commrank == 0) {
+    cout << endl << " Performing FCIQMC..." << endl << endl;
+  }
+}
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +85,30 @@ int main(int argc, char *argv[])
   int nbeta = Determinant::nbeta;
   int nel = nalpha + nbeta;
 
-  runFCIQMC(norbs, nel, nalpha, nbeta);
+  if (!schd.useTrialFCIQMC) {
+    TrivialWF wave;
+    TrivialWalk walk;
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  } else if (schd.wavefunctionType == "jastrowslater") {
+    CorrelatedWavefunction<Jastrow, Slater> wave;
+    Walker<Jastrow, Slater> walk;
+    if (schd.restart || schd.fullRestart) {
+      wave.readWave();
+      wave.initWalker(walk);
+    } else {
+      printVMCHeader();
+      runVMC(wave, walk);
+    }
+    printFCIQMCHeader();
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  }
+  else if (schd.wavefunctionType == "selectedci") {
+    SelectedCI wave;
+    SimpleWalker walk;
+    wave.readWave();
+    wave.initWalker(walk);
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  }
 
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

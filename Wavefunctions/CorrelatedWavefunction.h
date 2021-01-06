@@ -22,8 +22,9 @@
 #include <set>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include "Walker.h"
 #include <unordered_set>
+#include "input.h"
+#include "Walker.h"
 
 class oneInt;
 class twoInt;
@@ -119,7 +120,7 @@ struct CorrelatedWavefunction {
 
   double getOverlapFactor(int I, int J, int A, int B, const Walker<Corr, Reference>& walk, bool doparity) const  
   {
-    //singleexcitation
+    // Single excitation
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
   
     Determinant dcopy = walk.d;
@@ -271,6 +272,48 @@ struct CorrelatedWavefunction {
     if (schd.debug) cout << endl;
   }
 
+  void HamAndOvlpAndSVTotal(const Walker<Corr, Reference> &walk, double &ovlp,
+                            double &ham, double& SVTotal, workingArray& work,
+                            const bool is, double epsilon=schd.epsilon) const
+  {
+    int norbs = Determinant::norbs;
+
+    ovlp = Overlap(walk);
+    ham = walk.d.Energy(I1, I2, coreE);
+    SVTotal = 0.0;
+
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, epsilon, schd.screen, work, false);
+
+    // Loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i];
+      int ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+
+      double contrib = tia * ovlpRatio;
+      ham += contrib;
+
+      // Accumulate the sign violating terms for the appropriate
+      // Hamiltonian. If is=true, importance sampling is in use.
+      if (contrib > 0.0) {
+        if (is) {
+          SVTotal += contrib;
+        } else {
+          SVTotal += contrib / abs(ovlpRatio);
+        }
+      }
+
+      work.ovlpRatio[i] = ovlpRatio;
+    }
+  }
+
   void HamAndOvlpLanczos(const Walker<Corr, Reference> &walk,
                          Eigen::VectorXd &lanczosCoeffsSample,
                          double &ovlpSample,
@@ -317,6 +360,15 @@ struct CorrelatedWavefunction {
   template<typename Walker>
   bool checkWalkerExcitationClass(Walker &walk) {
     return true;
+  }
+
+  // For some situation, such as FCIQMC, we want to know the ratio of
+  // overlaps with the correct parity. This function will calculate
+  // this parity, relative to what is returned by getOverlapFactor.
+  // (For some wave functions this is always 1).
+  double parityFactor(Determinant& d, const int ex2, const int i,
+                      const int j, const int a, const int b) const {
+    return d.parityFull(ex2, i, j, a, b);
   }
   
 };

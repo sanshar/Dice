@@ -11,6 +11,12 @@ class dataFCIQMC {
     // The walker population on the HF determinant
     vector<double> HFAmp;
 
+    // The numerator of the trial-WF-based projected energy estimator
+    vector<double> trialEProj;
+    // The sum of all walker amplitudes (the denominator of the trial
+    // WF-based projected energy estimator)
+    vector<double> ampSum;
+
     // The shift to the diagonal of the Hamiltonian
     vector<double> Eshift;
     // True is the shift has started to vary (left the constant phase)
@@ -26,6 +32,10 @@ class dataFCIQMC {
     vector<double> EProjTot;
     // The walker population on the HF determinant
     vector<double> HFAmpTot;
+    // The numerator of the trial-WF-based projected energy
+    vector<double> trialEProjTot;
+    // The denominator of the trial-WF-based projected energy
+    vector<double> ampSumTot;
 
     // Estimates requiring two replicas simulations:
 
@@ -41,6 +51,8 @@ class dataFCIQMC {
       walkerPop.resize(nreplicas, 0.0);
       EProj.resize(nreplicas, 0.0);
       HFAmp.resize(nreplicas, 0.0);
+      trialEProj.resize(nreplicas, 0.0);
+      ampSum.resize(nreplicas, 0.0);
 
       Eshift.resize(nreplicas, initEshift);
       varyShift.resize(nreplicas, false);
@@ -49,6 +61,8 @@ class dataFCIQMC {
       walkerPopOldTot.resize(nreplicas, 0.0);
       EProjTot.resize(nreplicas, 0.0);
       HFAmpTot.resize(nreplicas, 0.0);
+      trialEProjTot.resize(nreplicas, 0.0);
+      ampSumTot.resize(nreplicas, 0.0);
 
       EVarNumAll = 0.0;
       EVarDenomAll = 0.0;

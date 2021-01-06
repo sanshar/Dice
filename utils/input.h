@@ -105,15 +105,18 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & maxIterFCIQMC
       & nreplicas
       & nAttemptsEach
       & mainMemoryFac
       & spawnMemoryFac
       & shiftDamping
       & initialShift
+      & trialInitFCIQMC
       & minSpawn
       & minPop
       & initialPop
+      & initialNDets
       & targetPop
       & initiator
       & initiatorThresh
@@ -121,6 +124,14 @@ private:
       & heatBathExGen
       & heatBathUniformSingExGen
       & calcEN2
+      & useTrialFCIQMC
+      & trialWFEstimator
+      & importanceSampling
+      & applyNodeFCIQMC
+      & releaseNodeFCIQMC
+      & releaseNodeIter
+      & diagonalDumping
+      & partialNodeFactor
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -250,8 +261,8 @@ public:
   double alpha;
   double beta;
   double momentum;
-  int maxIter;                     
-  int avgIter;                     
+  int maxIter;
+  int avgIter;
   int _sgdIter;
   Method method;
   double sDiagShift;
@@ -287,7 +298,8 @@ public:
   std::string diagMethod;
   double powerShift;
 
-  //options for FCIQMC
+  // Options for FCIQMC
+  int maxIterFCIQMC;
   int nreplicas;
   int nAttemptsEach;
   double shiftDamping;
@@ -297,6 +309,8 @@ public:
   double minSpawn;
   double minPop;
   double initialPop;
+  int initialNDets;
+  bool trialInitFCIQMC;
   double targetPop;
   bool initiator;
   double initiatorThresh;
@@ -304,6 +318,14 @@ public:
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
   bool calcEN2;
+  bool useTrialFCIQMC;
+  bool trialWFEstimator;
+  bool importanceSampling;
+  bool applyNodeFCIQMC;
+  bool releaseNodeFCIQMC;
+  int releaseNodeIter;
+  bool diagonalDumping;
+  double partialNodeFactor;
 
   //options for rbm
   int numHidden;

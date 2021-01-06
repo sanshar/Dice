@@ -26,27 +26,46 @@
 #include "walkersFCIQMC.h"
 #include "utilsFCIQMC.h"
 
-void initFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta, Determinant& HFDet,
-                double& HFEnergy, heatBathFCIQMC& hb, walkersFCIQMC& walkers, spawnFCIQMC& spawn);
+template<typename Wave, typename TrialWalk>
+void initFCIQMC(Wave& wave, TrialWalk& walk,
+                const int norbs, const int nel, const int nalpha, const int nbeta,
+                Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
+                walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn, workingArray& work);
 
-void runFCIQMC(const int norbs, const int nel, const int nalpha, const int nbeta);
+template<typename Wave, typename TrialWalk>
+void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet, const int DetLenMin,
+                      double& HFEnergy, walkersFCIQMC<TrialWalk>& walkers, workingArray& work);
 
-void attemptSpawning(Determinant& parentDet, Determinant& childDet, spawnFCIQMC& spawn,
-                     oneInt &I1, twoInt &I2, double& coreE, const int nAttemptsEach,
+template<typename Wave, typename TrialWalk>
+void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                           spawnFCIQMC& spawn, workingArray& work);
+
+template<typename Wave, typename TrialWalk>
+void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
+               const int nalpha, const int nbeta);
+
+template<typename Wave, typename TrialWalk>
+void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determinant& childDet,
+                     spawnFCIQMC& spawn, oneInt &I1, twoInt &I2, double& coreE, const int nAttemptsEach,
                      const double parentAmp, const int parentFlags, const int iReplica,
-                     const double tau, const double minSpawn, const double pgen);
+                     const double tau, const double minSpawn, const double pgen,
+                     const int ex1, const int ex2);
 
-void performDeath(const int iDet, walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+template<typename Wave, typename TrialWalk>
+void performDeath(const int iDet, walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau);
 
-void performDeathAllWalkers(walkersFCIQMC& walkers, oneInt &I1, twoInt &I2,
+template<typename Wave, typename TrialWalk>
+void performDeathAllWalkers(walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
                   double& coreE, const vector<double>& Eshift, const double tau);
 
-void calcVarEnergy(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+template<typename Wave, typename TrialWalk>
+void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
                    const twoInt& I2, double& coreE, const double tau,
                    double& varEnergyNum, double& varEnergyDenom);
 
-void calcEN2Correction(walkersFCIQMC& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
+template<typename Wave, typename TrialWalk>
+void calcEN2Correction(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn, const oneInt& I1,
                        const twoInt& I2, double& coreE, const double tau, const double varEnergyNum,
                        const double varEnergyDenom, double& EN2All);
 

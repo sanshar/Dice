@@ -138,7 +138,7 @@ class Determinant {
   double parity(const vector<int>& aArray, const vector<int>& iArray, bool sz) const ;
   double parityAA(const int& i, const int& j, const int& a, const int& b) const ;
   double parityBB(const int& i, const int& j, const int& a, const int& b) const ;
-
+  double parityFull(const int ex2, const int i, const int j, const int a, const int b) const;
   
   double Energy(const oneInt& I1, const twoInt& I2, const double& coreE) const ;
   CItype Hij_1ExciteScreened(const int& a, const int& i, const twoIntHeatBathSHM& Ishm,

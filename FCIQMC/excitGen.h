@@ -77,15 +77,17 @@ class heatBathFCIQMC {
 
 void generateExcitation(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
                         const Determinant& parentDet, const int nel, Determinant& childDet,
-                        Determinant& childDet2, double& pGen, double& pGen2);
+                        Determinant& childDet2, double& pGen, double& pGen2, int& ex1, int& ex2);
 
 void generateExcitationSingDoub(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2,
                                 const Determinant& parentDet, const int nel, Determinant& childDet,
-                                Determinant& childDet2, double& pgen, double& pgen2);
+                                Determinant& childDet2, double& pgen, double& pgen2,
+                                int& ex1, int& ex2);
 
-void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia);
+void generateSingleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ia, int& ex1);
 
-void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab);
+void generateDoubleExcit(const Determinant& parentDet, Determinant& childDet, double& pgen_ijab,
+                         int& ex1, int& ex2);
 
 void pickROrbitalHB(const heatBathFCIQMC& hb, const int norbs, const int p, const int q, int& r,
                     double& rProb, double& H_tot_pqr);
@@ -106,6 +108,6 @@ void calcProbsForRAndS(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt&
 
 void generateExcitHB(const heatBathFCIQMC& hb, const oneInt& I1, const twoInt& I2, const Determinant& parentDet,
                      const int nel, Determinant& childDet, Determinant& childDet2, double& pGen, double& pGen2,
-                     const bool attemptSingleExcit);
+                     int& ex1, int& ex2, const bool attemptSingleExcit);
 
 #endif

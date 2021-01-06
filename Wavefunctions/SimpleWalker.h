@@ -67,6 +67,9 @@ public:
                                        excitedHoles(w.excitedHoles), excitation_class(w.excitation_class) {};
   SimpleWalker() : excitation_class(0) {};
 
+  template<typename Wave>
+  SimpleWalker(Wave& wave, Determinant &pd) : d(pd), excitation_class(0) {};
+
   Determinant getDet() { return d; }
 
   void updateA(int i, int a);
