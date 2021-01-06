@@ -157,3 +157,21 @@ if __name__ == '__main__':
 
         check_results_fciqmc_replica(eRef1, eRef2, eRefVar, eRefEN2,
                                      eTest1, eTest2, eTestVar, eTestEN2, tol)
+
+    elif mc == 'fciqmc_trial':
+        last_line = ''
+        fh = open('fciqmc.benchmark', 'r')
+        for line in fh:
+            if '#' not in line:
+                last_line = line
+
+        eRef = float(last_line.split()[7]) / float(last_line.split()[8])
+
+        fh = open('fciqmc.out', 'r')
+        for line in fh:
+            if '#' not in line:
+                last_line = line
+
+        eTest = float(last_line.split()[7]) / float(last_line.split()[8])
+
+        check_results(eRef, eTest, tol)
