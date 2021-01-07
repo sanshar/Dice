@@ -91,6 +91,7 @@ void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
     walkers.ovlp[0] = HFOvlp;
     walkers.localE[0] = HFLocalE;
     walkers.SVTotal[0] = HFSVTotal;
+    walkers.trialWalk[0] = HFWalk;
 
     // Set the population on the reference
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
