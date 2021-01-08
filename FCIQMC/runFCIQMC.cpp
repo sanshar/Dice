@@ -10,6 +10,7 @@
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
+#include "semiStoch.h"
 #include "SelectedCI.h"
 #include "trivialWF.h"
 #include "trivialWalk.h"
@@ -67,6 +68,7 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
     schd.uniformExGen = false;
   }
 
+  semiStoch core(schd.determinantFile, DetLenMin);
 }
 
 // This routine places all intial walkers on the Hartree--Fock determinant,
