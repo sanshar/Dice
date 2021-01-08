@@ -1,15 +1,31 @@
 {
   "system":
   {
-    "integrals": "FCIDUMP_chol"
+      "integral": "FCIDUMP_can",
+      "integrals": "FCIDUMP_chol"
   },
-  "sampling":
+  "wavefunction":
+  {
+    "name": "jastrowslater",
+    "complex": true,
+    "hfType": "ghf"
+  },
+    "optimizer":
+  {
+    "method": "amsgrad",
+    "maxIter": 200,
+    "stepsize": 0.01,
+    "decay1": 0.1,
+    "decay2": 0.01
+  },
+    "sampling":
   {
     "seed": 5,
     "dt": 0.1,
     "nsteps": 40,
     "orthoSteps": 20,
     "ene0Guess": -231.204,
-    "stochasticIter": 2000
+      "stochasticIter": 500,
+      "ngrid": 4
   }
 }
