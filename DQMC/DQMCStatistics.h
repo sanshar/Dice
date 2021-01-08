@@ -13,8 +13,8 @@ class DQMCStatistics {
      void serialize(Archive & ar, const unsigned int version) {
        ar & sampleSize
           & nSamples
-          & num
-          & denom
+          & numSamples
+          & denomSamples
           & numMean
           & denomMean
           & denomAbsMean
