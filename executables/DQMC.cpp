@@ -10,6 +10,7 @@
 #include "integral.h"
 #include "SHCIshm.h"
 #include "DQMCSampling.h"
+#include "ProjectedMF.h"
 
 int main(int argc, char *argv[])
 {
@@ -43,14 +44,16 @@ int main(int argc, char *argv[])
   vector<MatrixXd> chol;
   readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, h1, h1Mod, chol);
   
-  //if (commrank == 0) cout << "\nprop\n";
-  //calcEnergyMetropolis(coreE, h1, h1Mod, chol);
-  //if (commrank == 0) cout << "\njastrow prop jastrow\n";
-  //calcEnergyJastrowMetropolis(coreE, h1, h1Mod, chol);
+  if (schd.optimizeOrbs)
+    optimizeProjectedSlater(coreE, h1, chol);
+  
   if (schd.wavefunctionType == "jastrow") {
     if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
-    //calcEnergyJastrowDirectVariational(coreE, h1, h1Mod, chol);
     calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
+  }
+  else if (schd.hf == "ghf") {
+    if (commrank == 0) cout << "\nUsing GHF trial\n";
+    calcEnergyDirectGHF(coreE, h1, h1Mod, chol);
   }
   else {
     if (commrank == 0) cout << "\nUsing RHF trial\n";

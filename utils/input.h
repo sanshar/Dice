@@ -159,7 +159,8 @@ private:
       & fixedResTimeNEVPT_Ene
       & fixedResTimeNEVPT_Norm
       & resTimeNEVPT_Ene
-      & resTimeNEVPT_Norm;
+      & resTimeNEVPT_Norm
+      & ngrid;
   }
 public:
 //General options
@@ -328,6 +329,7 @@ public:
   size_t orthoSteps;
   double ene0Guess;
   size_t numJastrowSamples;
+  int ngrid;
 };
 
 /**
@@ -359,6 +361,8 @@ void readPairMat(Eigen::MatrixXd& pairMat);
 void readMat(Eigen::MatrixXd& mat, std::string fileName);
 
 void readMat(Eigen::MatrixXcd& mat, std::string fileName);
+
+void writeMat(Eigen::MatrixXcd& mat, std::string fileName);
 
 void readInput(const std::string inputFile, schedule& schd, bool print=true);
 

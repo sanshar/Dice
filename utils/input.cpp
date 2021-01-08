@@ -157,7 +157,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.orthoSteps = input.get("sampling.orthoSteps", 50);
     schd.ene0Guess = input.get("sampling.ene0Guess", 1e10); // assuming ground state energy will not be 1e10
     schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
-    
+    schd.ngrid = input.get("sampling.ngrid", 1);
+
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
@@ -329,6 +330,15 @@ void readMat(MatrixXd& mat, std::string fileName)
   for (int i = 0; i < mat.rows(); i++) {
     for (int j = 0; j < mat.cols(); j++){
       dump >> mat(i, j);
+    }
+  }
+}
+
+void writeMat(MatrixXcd& mat, std::string fileName) {
+  ofstream dump(fileName);
+  for (int i = 0; i < mat.rows(); i++) {
+    for (int j = 0; j < mat.cols(); j++){
+      dump << mat(i, j);
     }
   }
 }

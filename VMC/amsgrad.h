@@ -19,6 +19,7 @@
 #ifndef OPTIMIZER_HEADER_H
 #define OPTIMIZER_HEADER_H
 #include <Eigen/Dense>
+#include <fstream>
 #include <boost/serialization/serialization.hpp>
 #include "iowrapper.h"
 #include "global.h"
