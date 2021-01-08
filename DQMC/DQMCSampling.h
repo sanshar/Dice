@@ -28,4 +28,6 @@ void calcEnergyJastrowDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& 
 // w jastrow
 void calcEnergyJastrowDirectVariational(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, vector<Eigen::MatrixXd>& chol);
 
+void calcEnergyDirectGHF(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
+
 #endif

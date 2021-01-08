@@ -143,6 +143,7 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/DQMCMatrixElements.o \
 	obj/DQMCSampling.o \
 	obj/DQMCStatistics.o \
+	obj/ProjectedMF.o
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@

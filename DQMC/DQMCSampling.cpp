@@ -770,6 +770,178 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   if (schd.printLevel > 10) stats.writeSamples();
 }
 
+// calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
+// w/o jastrow
+void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol)
+{
+  size_t norbs = Determinant::norbs;
+  size_t nfields = chol.size();
+  size_t nsweeps = schd.stochasticIter;
+  size_t nsteps = schd.nsteps;
+  size_t orthoSteps = schd.orthoSteps;
+  size_t nalpha = Determinant::nalpha;
+  size_t nbeta = Determinant::nbeta;
+  size_t nelec = nalpha+nbeta;
+  double dt = schd.dt;
+
+  // prep and init
+  // this is for mean field subtraction
+  MatrixXd hf = MatrixXd::Zero(norbs, norbs);
+  readMat(hf, "rhf.txt");
+  matPair rhf;
+  rhf.first = hf.block(0, 0, norbs, Determinant::nalpha);
+  rhf.second = hf.block(0, 0, norbs, Determinant::nbeta);
+  
+  vector<matPair> hsOperators;
+  matPair oneBodyOperator;
+  complex<double> mfConst = prepPropagatorHS(rhf, chol, hsOperators, oneBodyOperator);
+  
+  // this is the initial state
+  matPair ref;
+  hf = MatrixXd::Zero(norbs, norbs);
+  readMat(hf, "rhf.txt");
+  ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
+  ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
+ 
+  // this is the left state
+  MatrixXcd refAd, refT;
+  {
+    MatrixXcd hf = MatrixXcd::Zero(2*norbs, 2*norbs);
+    readMat(hf, "ghf.txt");
+    refAd = 1.*hf.block(0,0,2*norbs, nelec).adjoint();// + 0.01*MatrixXcd::Random(2*norbs, nelec);
+    refT = refAd.conjugate();
+  }
+
+  matPair expOneBodyOperator;
+  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
+  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
+
+   vector<VectorXd> fields;
+  normal_distribution<double> normal(0., 1.);
+  
+  //matPair green;
+  //calcGreensFunction(refAd, ref, green);
+  //complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
+  complex<double> ovlp1, ovlp2;
+  complex<double> refEnergy1 = calcHamiltonianElement(refAd, ref, enuc, h1, chol, ovlp1);
+  complex<double> refEnergy2 = calcHamiltonianElement(refT, ref, enuc, h1, chol, ovlp2);
+  complex<double> refEnergy = (refEnergy1*ovlp1 + refEnergy2*ovlp2)/(ovlp1+ovlp2);
+
+  complex<double> ene0;
+  if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
+  else ene0 = schd.ene0Guess;
+  if (commrank == 0) {
+    cout << "Initial state energy:  " << refEnergy << endl;
+    cout << "Ground state energy guess:  " << ene0 << endl << endl; 
+  }
+  
+  vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
+  int numEneSteps = eneSteps.size();
+  vector<complex<double>> numMean(numEneSteps, complex<double>(0., 0.)), denomMean(numEneSteps, complex<double>(0., 0.)), denomAbsMean(numEneSteps, complex<double>(0., 0.));
+  auto iterTime = getTime();
+  double propTime = 0., eneTime = 0., qrTime = 0.;
+  if (commrank == 0) cout << "Starting sampling sweeps\n";
+
+  for (int sweep = 0; sweep < nsweeps; sweep++) {
+    if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
+    matPair rn;
+    rn = ref;
+    VectorXd fields = VectorXd::Zero(nfields);
+    complex<double> orthoFac = complex<double>(1., 0.);
+    int eneStepCounter = 0;
+    for (int n = 0; n < nsteps; n++) {
+      // sampling
+      double init = getTime();
+      matPair prop;
+      prop.first = MatrixXcd::Zero(norbs, norbs);
+      prop.second = MatrixXcd::Zero(norbs, norbs);
+      for (int i = 0; i < nfields; i++) {
+        double field_n_i = normal(generator);
+        prop.first += field_n_i * hsOperators[i].first;
+        prop.second += field_n_i * hsOperators[i].second;
+      }
+      prop.first = (sqrt(dt) * prop.first).exp();
+      prop.second = (sqrt(dt) * prop.second).exp();
+      //prop.first = matExp(sqrt(dt) * prop.first, 4);
+      //prop.second = matExp(sqrt(dt) * prop.second, 4);
+      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn.first;
+      rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+      
+      propTime += getTime() - init;
+      
+      // orthogonalize for stability
+      if (n % orthoSteps == 0) {
+        HouseholderQR<MatrixXcd> qr1(rn.first);
+        HouseholderQR<MatrixXcd> qr2(rn.second);
+        rn.first = qr1.householderQ() * MatrixXd::Identity(norbs, Determinant::nalpha);
+        rn.second = qr2.householderQ() * MatrixXd::Identity(norbs, Determinant::nbeta);
+        for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
+        for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
+      }
+
+      // measure
+      init = getTime();
+      if (n == eneSteps[eneStepCounter]) {
+        complex<double> num, den;
+        complex<double> overlapAd, overlapT;
+        complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, chol, overlapAd);
+        overlapAd *= orthoFac;
+        numSample *= overlapAd;
+        num = numSample; den = overlapAd;
+
+        numSample = calcHamiltonianElement(refT, rn, enuc, h1, chol, overlapT);
+        overlapT *= orthoFac;
+        numSample *= overlapT;
+        num += numSample; den += overlapT;
+
+        denomMean[eneStepCounter] += (den - denomMean[eneStepCounter]) / (sweep + 1.);
+        denomAbsMean[eneStepCounter] += (abs(den) - denomAbsMean[eneStepCounter]) / (sweep + 1.);
+        numMean[eneStepCounter] += (num - numMean[eneStepCounter]) / (sweep + 1.);
+        eneStepCounter++;
+      }
+      eneTime += getTime() - init;
+    }
+  }
+
+  if (commrank == 0) {
+    cout << "\nPropagation time:  " << propTime << " s\n";
+    cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+    cout << "          iTime                 Energy                     Energy error         Average phase\n";
+  }
+
+  for (int n = 0; n < numEneSteps; n++) {
+    complex<double> energyAll[commsize];
+    for (int i = 0; i < commsize; i++) energyAll[i] = complex<double>(0., 0.);
+ 
+    complex<double> energyProc = numMean[n] / denomMean[n];
+    complex<double> numProc = numMean[n];
+    complex<double> denomProc = denomMean[n];
+    complex<double> denomAbsProc = denomAbsMean[n];
+    MPI_Gather(&(energyProc), 1, MPI_DOUBLE_COMPLEX, &(energyAll), 1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &energyProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &numProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &denomProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &denomAbsProc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    energyProc /= commsize;
+    numProc /= commsize;
+    denomProc /= commsize;
+    denomAbsProc /= commsize;
+    double stddev = 0., stddev2 = 0.;
+    for (int i = 0; i < commsize; i++) {
+      stddev += pow(abs(energyAll[i] - energyProc), 2);
+      stddev2 += pow(abs(energyAll[i] - energyProc), 4);
+    }
+    stddev /= (commsize - 1);
+    stddev2 /= commsize;
+    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
+    stddev = sqrt(stddev / commsize);
+
+    if (commrank == 0) {
+      cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % ((eneSteps[n] + 1) * dt) % energyProc.real() % energyProc.imag() % stddev % stddev2 % (denomProc / denomAbsProc).real() % (denomProc / denomAbsProc).imag(); 
+    }
+  }
+}
 
 // calculates mixed energy estimator of the imaginary time propagated wave function
 // w jastrow

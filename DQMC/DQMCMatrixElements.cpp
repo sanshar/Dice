@@ -83,12 +83,9 @@ complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, double enu
   return ene;
 }
 
-// Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
+// Hamiltonian matrix element < GHF | H | UHF > / < GHF | UHF >
 // rotates cholesky vectors
-// phi_1 can be an active space wave function
-// TODO: allow core orbitals
-// leading cost: O(X N A M)
-complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) 
+complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, complex<double>& ovlp) 
 { 
   // core energy
   complex<double> ene = enuc;
@@ -106,12 +103,14 @@ complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, 
   Afull.block(0,0,numOrbs,A.first.cols()) = A.first;
   Afull.block(numOrbs,A.first.cols(),numOrbs,A.second.cols()) = A.second;
 
-  theta = (B.adjoint() * Afull).inverse()*B.adjoint();
+  MatrixXcd Ovlp = B.adjoint()*Afull;
+  ovlp = Ovlp.determinant();
+  theta = Ovlp.inverse()*B.adjoint();
   green = (Afull * theta).transpose();
 
   // one body part
   ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
-
+  //cout << "ene "<<ene<<endl;
   //cout << ene<<endl;
   // two body part
   MatrixXcd W(nAlpha, nAlpha), U(nBeta, nBeta), S(nBeta, nAlpha), T(nAlpha, nBeta);
@@ -124,11 +123,148 @@ complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, 
   for (int i = 0; i < chol.size(); i++) {
     Ltilde.noalias() = chol[i]*A.first;
     Mtilde.noalias() = chol[i]*A.second;
+
     W.noalias() = ThetaAA * Ltilde ; U.noalias() = ThetaBB * Mtilde ; S.noalias() = ThetaBA * Ltilde ; T.noalias() = ThetaAB * Mtilde;
     complex<double> cup = W.trace();
     complex<double> cdn = U.trace();
     ene += (cup * cup + cdn * cdn + 2. * cup * cdn - W.cwiseProduct(W.transpose()).sum() - U.cwiseProduct(U.transpose()).sum() 
              - 2. * S.cwiseProduct(T.transpose()).sum() ) / 2.;
+    //ene += (cup * cup + cdn * cdn + 2. * cup * cdn ) / 2.;
+  }
+
+  return ene;
+}
+
+
+complex<double> calcHamiltonianElementNaive(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) {
+  // core energy
+  complex<double> ene = enuc;
+ 
+  // calculate theta and green
+  int numOrbs = B.rows()/2;
+  int numElec = B.cols();
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  vector<MatrixXd> cholBig(chol.size(), MatrixXd::Zero(2*numOrbs, 2*numOrbs));
+  for (int i=0; i<chol.size(); i++) {
+    cholBig[i].block(0,0,numOrbs,numOrbs) = 1.*chol[i];
+    cholBig[i].block(numOrbs,numOrbs,numOrbs,numOrbs) = 1.*chol[i];
+  }
+  MatrixXd hbig(2*numOrbs, 2*numOrbs); hbig.block(0,0,numOrbs, numOrbs) = 1.*h1; hbig.block(numOrbs,numOrbs,numOrbs,numOrbs) = 1.*h1;
+  MatrixXcd theta = B*(At * B).inverse();
+  MatrixXcd green = (theta*At).transpose();
+  ene += green.cwiseProduct(hbig).sum();
+
+  MatrixXcd W;
+  for (int i = 0; i < chol.size(); i++) {
+    W = green.transpose() * cholBig[i];
+    ene += 0.5*W.trace()*W.trace();
+    ene -= 0.5*W.cwiseProduct(W.transpose()).sum();
+  }
+  
+  return ene;  
+}
+
+// Hamiltonian matrix element < GHF | H | GHF > / < GHF | UHF >
+// rotates cholesky vectors
+complex<double> calcHamiltonianElement(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) 
+{ 
+  // core energy
+  complex<double> ene = enuc;
+ 
+  // calculate theta and green
+  int numOrbs = B.rows()/2;
+  int numElec = B.cols();
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  MatrixXcd theta = B*(At * B).inverse();
+  MatrixXcd green = (theta*At);
+
+  MatrixXcd thetaA = theta.block(0, 0, numOrbs, numElec),thetaB= theta.block(numOrbs, 0, numOrbs, numElec);
+
+  // one body part
+  ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
+
+  
+  vector<MatrixXcd> rotChol(2, MatrixXcd(numElec, numOrbs)), W(2, MatrixXcd(numElec, numOrbs));
+
+  for (int i = 0; i < chol.size(); i++) {
+    rotChol[0] = At.block(0,0,numElec,numOrbs) * chol[i];
+    rotChol[1] = At.block(0,numOrbs,numElec,numOrbs) * chol[i]; //chol[i] * B.block(numOrbs,0,numOrbs, numElec);
+    W[0] = rotChol[0] * thetaA;
+    W[1] = rotChol[1] * thetaB;
+
+    complex<double> W0trace = W[0].trace(), W1trace = W[1].trace();
+    complex<double> J = (W0trace + W1trace) * (W0trace + W1trace);
+    ene += J/2.;
+
+    complex<double> K = W[0].cwiseProduct(W[0].transpose()).sum() + 
+                        W[1].cwiseProduct(W[1].transpose()).sum() +
+                        W[0].cwiseProduct(W[1].transpose()).sum() +
+                        W[1].cwiseProduct(W[0].transpose()).sum() ;
+
+    ene -= K/2.; 
+  }
+  
+  return ene;
+}
+
+// Hamiltonian matrix element < d GHF/cxi | H | GHF > / < GHF | UHF >
+// rotates cholesky vectors
+complex<double> calcGradient(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, MatrixXcd& Grad) 
+{ 
+  Grad.setZero();
+
+  // core energy
+  complex<double> ene = enuc;
+
+  // calculate theta and green
+  int numOrbs = B.rows()/2;
+  int numElec = B.cols();
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  MatrixXcd theta = B*(At * B).inverse();
+  //MatrixXcd theta = B;//*(At * B).inverse();
+  MatrixXcd green = (theta*At);
+
+  //cout << (B.adjoint() * A) <<endl;exit(0);
+  MatrixXcd thetaA = theta.block(0, 0, numOrbs, numElec),thetaB= theta.block(numOrbs, 0, numOrbs, numElec);
+  MatrixXcd AtA = At.block(0, 0, numElec, numOrbs),AtB= At.block(0, numOrbs, numElec, numOrbs);
+
+  // one body part
+  ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
+  Grad.block(0,0,numOrbs,numElec) += h1 * thetaA - thetaA * AtA*(h1 * thetaA) - thetaA * AtB * (h1 * thetaB);
+  Grad.block(numOrbs,0,numOrbs,numElec) += h1 * thetaB - thetaB * AtA*(h1 * thetaA) - thetaB * AtB * (h1 * thetaB);;
+  
+  
+  vector<MatrixXcd> rotChol(2, MatrixXcd(numElec, numOrbs)), 
+                    W(2, MatrixXcd(numElec, numOrbs)),
+                    X(2, MatrixXcd(numElec, numOrbs));
+  for (int i = 0; i < chol.size(); i++) {
+    rotChol[0] = chol[i] * thetaA;
+    rotChol[1] = chol[i] * thetaB; 
+
+    W[0] = AtA * rotChol[0];
+    W[1] = AtB * rotChol[1];
+    X[0] = rotChol[0] - thetaA * (W[0] + W[1]); 
+    X[1] = rotChol[1] - thetaB * (W[0] + W[1]);
+
+    complex<double> W0trace = W[0].trace(), W1trace = W[1].trace();
+    Grad.block(0,0,numOrbs,numElec) += (rotChol[0] - thetaA * AtA * rotChol[0] - thetaA * AtB * rotChol[1])* (W0trace + W1trace);
+    Grad.block(numOrbs,0,numOrbs,numElec) += (rotChol[1] - thetaB * AtA * rotChol[0] - thetaB * AtB * rotChol[1]) * (W0trace + W1trace);
+    Grad.block(0,0,numOrbs,numElec) -= X[0] *(W[0] + W[1]);
+    Grad.block(numOrbs,0,numOrbs,numElec) -= X[1] *(W[0] + W[1]);
+
+    complex<double> J = (W0trace + W1trace) * (W0trace + W1trace);
+    ene += J/2.;
+
+    complex<double> K = W[0].cwiseProduct(W[0].transpose()+W[1].transpose()).sum() + 
+                        W[1].cwiseProduct(W[0].transpose()+W[1].transpose()).sum() ;
+
+    ene -= K/2.; 
   }
 
   return ene;
