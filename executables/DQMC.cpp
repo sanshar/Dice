@@ -46,7 +46,8 @@ int main(int argc, char *argv[])
   
   if (schd.optimizeOrbs)
     optimizeProjectedSlater(coreE, h1, chol);
-  
+  MPI_Barrier(MPI_COMM_WORLD);
+
   if (schd.wavefunctionType == "jastrow") {
     if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
     calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
