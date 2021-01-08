@@ -52,8 +52,7 @@ class semiStoch {
     orbsToLoopOver = Determinant::norbs;
 
     // Loop through all lines in the SHCI file
-    while (dump.good())
-    {
+    while (dump.good()) {
       std::string Line;
       std::getline(dump, Line);
 
@@ -62,30 +61,25 @@ class semiStoch {
       vector<string> tok;
       boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
 
-      if (tok.size() > 2 )
-      {
+      if (tok.size() > 2 ) {
         double ci = atof(tok[0].c_str());
         Determinant det ;
 
         for (int i=0; i<orbsToLoopOver; i++)
         {
-          if (boost::iequals(tok[1+i], "2")) 
-          {
+          if (boost::iequals(tok[1+i], "2")) {
             det.setoccA(i, true);
             det.setoccB(i, true);
           }
-          else if (boost::iequals(tok[1+i], "a")) 
-          {
+          else if (boost::iequals(tok[1+i], "a")) {
             det.setoccA(i, true);
             det.setoccB(i, false);
           }
-          if (boost::iequals(tok[1+i], "b")) 
-          {
+          if (boost::iequals(tok[1+i], "b")) {
             det.setoccA(i, false);
             det.setoccB(i, true);
           }
-          if (boost::iequals(tok[1+i], "0")) 
-          {
+          if (boost::iequals(tok[1+i], "0")) {
             det.setoccA(i, false);
             det.setoccB(i, false);
           }
@@ -103,7 +97,7 @@ class semiStoch {
         
       }
     }
-    // Finish looping over the SHCI file
+    // Finished looping over the SHCI file
 
     // Next we need to accumualte the core determinants from each
     // process, in the correct order (proc 0 dets, proc 1 dets, etc.)
@@ -135,6 +129,13 @@ class semiStoch {
     //    cout << Determinant(dets[i]) << endl << flush;
     //  }
     //}
+
+    // Create the hash table, mapping determinants to their position
+    // in the full list of core determinants
+    for (int i=0; i<nDets; i++) {
+      ht[ Determinant(dets[i]) ] = i;
+    }
+
   }
 
 };
