@@ -32,7 +32,7 @@ class semiStoch {
   vector<vector<int>> pos;
   // The values of the non-zero elements in the core Hamiltonian.
   // ham[i,j] is the j'th non-zero element in row i.
-  vector<vector<int>> ham;
+  vector<vector<double>> ham;
 
   semiStoch() {}
 
@@ -134,6 +134,45 @@ class semiStoch {
     // in the full list of core determinants
     for (int i=0; i<nDets; i++) {
       ht[ Determinant(dets[i]) ] = i;
+    }
+
+    createCoreHamiltonian();
+
+  }
+
+  void createCoreHamiltonian() {
+
+    // These will be used to hold the positions and elements
+    // for each row of the core Hamiltonian
+    vector<int> tempPos;
+    vector<double> tempHam;
+
+    for (int i=0; i<nDetsThisProc; i++) {
+      Determinant det_i(detsThisProc[i]);
+
+      for (int j=0; j<nDets; j++) {
+        Determinant det_j(dets[j]);
+
+        double HElem;
+        if (det_i == det_j) {
+          HElem = det_i.Energy(I1, I2, coreE);
+        } else {
+          HElem = Hij(det_i, det_j, I1, I2, coreE);
+        }
+
+        if (abs(HElem) > 1.e-12) {
+          tempPos.push_back(j);
+          tempHam.push_back(HElem);
+        }
+
+      }
+
+      // Add the elements for this row to the arrays
+      pos.push_back(tempPos);
+      ham.push_back(tempHam);
+
+      tempPos.clear();
+      tempHam.clear();
     }
 
   }
