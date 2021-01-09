@@ -9,6 +9,23 @@
 using namespace std;
 using namespace Eigen;
 
+double WignerRotationSmall(double theta, int S, int m1, int m2) {
+    if (S == 0 && m1 == 0 && m2 == 0)
+        return 1.;
+    else if (S == 1 && m1 == 1 && m2 == 1)
+        return cos(theta/2);
+    else if (S == 2 && m1 == 2 && m2 == 2)
+        return 0.5*(1. + cos(theta));
+    else if (S == 3 && m1 == 3 && m2 == 3)
+        return 0.5*(1. + cos(theta)) * cos(theta/2.);
+    else if (S == 4 && m1 == 1 && m2 == 1)
+        return 0.25*pow((1. + cos(theta)), 2.);
+    else {
+        cout << S<<"  "<<m1<<"  "<<m2<< " wigner rotation not implemented"<<endl;
+        exit(0);
+    }
+}
+
 void applyProjectorSz(MatrixXcd& bra, vector<MatrixXcd>& ketvec, vector<complex<double>>& coeffs, double Sz, int ngrid) {
   
     int norbs = Determinant::norbs;
@@ -56,7 +73,7 @@ void applyProjectorSsq(MatrixXcd& bra, vector<MatrixXcd>& ketvec, vector<complex
                        gamma = 2. * M_PI * k / ngrid;
 
                 complex<double> coeff = exp(-iImag * alpha * m)/(1. * ngrid * 2. * M_PI)  * exp(-iImag * gamma * m)/(1. * ngrid * 2 * M_PI);
-                complex<double> wignerMat = 1.0/(ngrid * M_PI); //assume s= 0 m and k = 0
+                complex<double> wignerMat = WignerRotationSmall(beta, Sz, Sz, Sz) /(ngrid * M_PI); //assume s= 0 m and k = 0
 
                 coeffs[index] = coeff * wignerMat /sqrt(2.);    
                 coeffs[ngrid*ngrid*ngrid+index] = coeff * wignerMat/sqrt(2.);   
@@ -115,10 +132,10 @@ complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, ve
     size_t nalpha = Determinant::nalpha;
     size_t nbeta = Determinant::nbeta;
     int ngrid = schd.ngrid;
-
+    int Sz = nalpha - nbeta; //cout << "SZ "<<Sz<<endl;
     vector<complex<double>> coeffs; vector<MatrixXcd> ket;
-    //applyProjectorSz(ref, ket, coeffs, 0, ngrid);
-    applyProjectorSsq(ref, ket, coeffs, 0, ngrid);
+    //applyProjectorSz(ref, ket, coeffs, Sz, ngrid);
+    applyProjectorSsq(ref, ket, coeffs, Sz, ngrid);
     MatrixXcd refAd = ref.adjoint(), refT = ref.transpose();
 
     MatrixXcd  S;
@@ -128,8 +145,9 @@ complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, ve
       complex<double> Ei = calcHamiltonianElement(refAd, ket[i], enuc, h1, chol);
       S = refAd * ket[i];
       complex<double> Oi = S.determinant();
-      E += coeffs[i] * (Ei * Oi).real();
-      O += coeffs[i] * Oi.real();
+      E += (coeffs[i] * Ei * Oi).real();
+      O += (coeffs[i] * Oi).real();
+
     }
 
     MPI_Allreduce(MPI_IN_PLACE, &E, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
@@ -144,9 +162,11 @@ complex<double> getGradientProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, 
     size_t nalpha = Determinant::nalpha;
     size_t nbeta = Determinant::nbeta;
     int ngrid = schd.ngrid;
+    int Sz = nalpha - nbeta; //cout << "SZ "<<Sz<<endl;
 
     vector<complex<double>> coeffs; vector<MatrixXcd> ket;
-    applyProjectorSsq(ref, ket, coeffs, 0, ngrid);
+    applyProjectorSsq(ref, ket, coeffs, Sz, ngrid);
+    //applyProjectorSz(ref, ket, coeffs, Sz, ngrid);
     MatrixXcd refAd = ref.adjoint(), refT = ref.transpose();
 
     MatrixXcd GradEi=0.*ref, GradOi=0.*ref, Gradnum=0.*ref, Gradden=0.*ref, S;
@@ -158,8 +178,8 @@ complex<double> getGradientProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, 
       complex<double> Oi = S.determinant();
       GradOi = Oi * (ket[i] * S.inverse());
 
-      E += coeffs[i] * (Ei * Oi).real();
-      O += coeffs[i] * Oi.real();
+      E += (coeffs[i] * Ei * Oi).real();
+      O += (coeffs[i] * Oi).real();
 
       Gradnum += coeffs[i] * (GradEi * Oi + Ei * GradOi);
       Gradden += coeffs[i] * GradOi;      
@@ -208,7 +228,7 @@ void optimizeProjectedSlater(double enuc, MatrixXd& h1, vector<MatrixXd>& chol) 
     
     complex<double> initE = getEnergyProjected(ref, enuc, h1, chol);
     if (commrank == 0) cout <<"Initial Projected E "<< initE<<endl;
-    
+
 
     //Lambda function for amsgrad
     auto LambdaGrad = [&chol, &h1, &enuc, norbs, nelec]
