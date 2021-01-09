@@ -12,16 +12,21 @@ class semiStoch {
   int nDets;
   // The number of determinants in the core space on this process
   int nDetsThisProc;
+  // The number of determinants and displacements for each process -
+  // these is used in MPI communications.
+  int* determSizes;
+  int* determDispls;
   // The list of determinants in the core space
   vector<simpleDet> dets;
   // The list of determinants in the core space on this process
   vector<simpleDet> detsThisProc;
   // Holds the CI coefficients read in from the selected CI calculation
   vector<double> sciAmps;
-  // Used to hold the walker amplitudes of the core determinants
+  // Used to hold the walker amplitudes of the core determinants, and
+  // also to store the ouput of the projection each iteration
   double** amps;
-  // Used to hold the output of the Hamiltonian multiplied by the
-  // core walker amplitudes (in the amps array)
+  // Used to hold all walker amplitudes from all core determinants,
+  // which is obtained by gathering the values in amps before projection
   double** ampsFull;
   // Deterministic flags of the walkers in the main list
   vector<int> flags;
@@ -102,27 +107,30 @@ class semiStoch {
     // Next we need to accumualte the core determinants from each
     // process, in the correct order (proc 0 dets, proc 1 dets, etc.)
 
-    int determSizes[commsize], determDispls[commsize];
-    int determSizesDets[commsize], determDisplsDets[commsize];
+    determSizes = new int[commsize];
+    determDispls = new int[commsize];
 
-    MPI_Allgather(&nDetsThisProc, 1, MPI_INTEGER, &determSizes, 1, MPI_INTEGER, MPI_COMM_WORLD);
+    MPI_Allgather(&nDetsThisProc, 1, MPI_INTEGER, determSizes, 1,
+                  MPI_INTEGER, MPI_COMM_WORLD);
 
     determDispls[0] = 0;
     for (int i = 1; i<commsize; i++) {
       determDispls[i] = determDispls[i-1] + determSizes[i-1];
     }
 
-    // Dets have width of 2*DetLen
-    // They are stored contiguously in the vector, as required for MPI
-    for (int proc=0; proc<commsize; proc++) {
-      determSizesDets[proc] = determSizes[proc] * 2*DetLen;
-      determDisplsDets[proc] = determDispls[proc] * 2*DetLen;
+    int determSizesDets[commsize];
+    int determDisplsDets[commsize];
+
+    for (int i=0; i<commsize; i++) {
+      determSizesDets[i] = determSizes[i] * 2*DetLen;
+      determDisplsDets[i] = determDispls[i] * 2*DetLen;
     }
 
     // Gather the determinants into the dets array
     dets.resize(nDets);
     MPI_Allgatherv(&detsThisProc.front(), nDetsThisProc*2*DetLen, MPI_LONG,
-                   &dets.front(), determSizesDets, determDisplsDets, MPI_LONG, MPI_COMM_WORLD);
+                   &dets.front(), determSizesDets, determDisplsDets,
+                   MPI_LONG, MPI_COMM_WORLD);
 
     //if (commrank == 0) {
     //  for (int i=0; i<nDets; i++) {
@@ -137,7 +145,6 @@ class semiStoch {
     }
 
     createCoreHamiltonian();
-
   }
 
   void createCoreHamiltonian() {
@@ -173,6 +180,59 @@ class semiStoch {
 
       tempPos.clear();
       tempHam.clear();
+    }
+
+  }
+
+  void determProjection(double tau, vector<double>& EShift) {
+
+    int width = schd.nreplicas;
+
+    int determSizesAmps[commsize];
+    int determDisplsAmps[commsize];
+
+    for (int i=0; i<commsize; i++) {
+      determSizesAmps[i] = determSizes[i] * width;
+      determDisplsAmps[i] = determDispls[i] * width;
+    }
+
+    MPI_Allgatherv(amps, nDetsThisProc*width, MPI_DOUBLE,
+                   ampsFull, determSizesAmps, determDisplsAmps,
+                   MPI_DOUBLE, MPI_COMM_WORLD);
+
+    // Zero the amps array, which will be used for accumulating the
+    // results of the projection
+    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+        amps[iDet][iReplica] = 0.0;
+      }
+    }
+
+    // Perform the multiplication by the core Hamiltonian
+    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+      for (int jDet=0; jDet < pos[iDet].size(); jDet++) {
+        int colInd = pos[iDet][jDet];
+        double HElem = ham[iDet][jDet];
+
+        for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+          amps[iDet][iReplica] -= HElem * ampsFull[colInd][iReplica];
+        }
+      }
+    }
+
+    // Apply the shift term
+    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+        int fullInd = iDet + determDispls[commrank];
+        amps[iDet][iReplica] += EShift[iReplica] * ampsFull[fullInd][iReplica];
+      }
+    }
+
+    // Now multiply by the time step to get the final projected vector
+    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+        amps[iDet][iReplica] *= tau;
+      }
     }
 
   }
