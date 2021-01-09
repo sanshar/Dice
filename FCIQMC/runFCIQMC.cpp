@@ -10,7 +10,6 @@
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
-#include "semiStoch.h"
 #include "SelectedCI.h"
 #include "trivialWF.h"
 #include "trivialWalk.h"
@@ -23,7 +22,7 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
                 const int norbs, const int nel, const int nalpha, const int nbeta,
                 Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
                 walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn,
-                workingArray& work) {
+                semiStoch& core, workingArray& work) {
 
   // The number of 64-bit integers required to represent (the alpha
   // or beta part of) a determinant
@@ -69,7 +68,9 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
   }
 
   if (schd.semiStoch) {
-    semiStoch core(schd.determinantFile, DetLenMin);
+    if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl;
+    core.init(schd.determinantFile, DetLenMin, schd.nreplicas);
+    if (commrank == 0) cout << "Semi-stochastic construction finished." << endl;
   }
 }
 
@@ -220,12 +221,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
   heatBathFCIQMC hb;
   walkersFCIQMC<TrialWalk> walkers;
   spawnFCIQMC spawn;
+  semiStoch core;
 
   // Needed for calculating local energies
   workingArray work;
 
-  initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta,
-      HFDet, HFEnergy, hb, walkers, spawn, work);
+  initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta, HFDet,
+             HFEnergy, hb, walkers, spawn, core, work);
 
   // ----- FCIQMC data -----
   double initEshift = HFEnergy + schd.initialShift;

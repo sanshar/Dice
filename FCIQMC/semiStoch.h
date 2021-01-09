@@ -1,9 +1,12 @@
 #ifndef semiStoch_HEADER_H
 #define semiStoch_HEADER_H
 
+#include <fstream>
+#include <string>
 #include <vector>
 #include "Determinants.h"
 #include "walkersFCIQMC.h"
+#include "utilsFCIQMC.h"
 
 class semiStoch {
 
@@ -22,6 +25,9 @@ class semiStoch {
   vector<simpleDet> detsThisProc;
   // Holds the CI coefficients read in from the selected CI calculation
   vector<double> sciAmps;
+  // The number of replica simulations, which determines the width of
+  // amps and ampsFull
+  int nreplicas;
   // Used to hold the walker amplitudes of the core determinants, and
   // also to store the ouput of the projection each iteration
   double** amps;
@@ -41,10 +47,11 @@ class semiStoch {
 
   semiStoch() {}
 
-  semiStoch(std::string SHCIFile, int DetLenMin)
+  void init(std::string SHCIFile, int DetLenMin, int nreplicasLocal)
   {
     nDets = 0;
     nDetsThisProc = 0;
+    nreplicas = nreplicasLocal;
 
     ifstream dump(SHCIFile.c_str());
 
@@ -148,8 +155,8 @@ class semiStoch {
 
     // Create arrays that will store the walker amplitudes in the
     // core space
-    amps = allocateAmpsArray(nDetsThisProc, schd.nreplicas, 0.0);
-    ampsFull = allocateAmpsArray(nDets, schd.nreplicas, 0.0);
+    amps = allocateAmpsArray(nDetsThisProc, nreplicas, 0.0);
+    ampsFull = allocateAmpsArray(nDets, nreplicas, 0.0);
   }
 
   ~semiStoch() {
@@ -213,24 +220,22 @@ class semiStoch {
 
   void determProjection(double tau, vector<double>& EShift) {
 
-    int width = schd.nreplicas;
-
     int determSizesAmps[commsize];
     int determDisplsAmps[commsize];
 
     for (int i=0; i<commsize; i++) {
-      determSizesAmps[i] = determSizes[i] * width;
-      determDisplsAmps[i] = determDispls[i] * width;
+      determSizesAmps[i] = determSizes[i] * nreplicas;
+      determDisplsAmps[i] = determDispls[i] * nreplicas;
     }
 
-    MPI_Allgatherv(amps, nDetsThisProc*width, MPI_DOUBLE,
+    MPI_Allgatherv(amps, nDetsThisProc*nreplicas, MPI_DOUBLE,
                    ampsFull, determSizesAmps, determDisplsAmps,
                    MPI_DOUBLE, MPI_COMM_WORLD);
 
     // Zero the amps array, which will be used for accumulating the
     // results of the projection
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         amps[iDet][iReplica] = 0.0;
       }
     }
@@ -241,7 +246,7 @@ class semiStoch {
         int colInd = pos[iDet][jDet];
         double HElem = ham[iDet][jDet];
 
-        for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
           amps[iDet][iReplica] -= HElem * ampsFull[colInd][iReplica];
         }
       }
@@ -249,7 +254,7 @@ class semiStoch {
 
     // Apply the shift term
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         int fullInd = iDet + determDispls[commrank];
         amps[iDet][iReplica] += EShift[iReplica] * ampsFull[fullInd][iReplica];
       }
@@ -257,7 +262,7 @@ class semiStoch {
 
     // Now multiply by the time step to get the final projected vector
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         amps[iDet][iReplica] *= tau;
       }
     }
