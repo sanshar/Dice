@@ -248,5 +248,5 @@ void optimizeProjectedSlater(double enuc, MatrixXd& h1, vector<MatrixXd>& chol) 
     optimizer.optimize(vars, LambdaGrad, schd.restart);
     copyToMat(vars, ref);
     hf.block(0,0,2*norbs,nelec) = 1*ref;
-    writeMat(hf,"ghf.txt");
+    if (commrank == 0) writeMat(hf,"ghf.txt");
 }
