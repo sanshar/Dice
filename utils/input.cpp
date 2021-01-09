@@ -172,6 +172,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.targetPop = input.get("FCIQMC.targetPop", 1000.0);
     schd.initiator = input.get("FCIQMC.initiator", false);
     schd.initiatorThresh = input.get("FCIQMC.initiatorThresh", 2.0);
+    schd.semiStoch = input.get("FCIQMC.semiStoch", false);
     schd.uniformExGen = input.get("FCIQMC.uniform", true);
     schd.heatBathExGen = input.get("FCIQMC.heatBath", false);
     schd.heatBathUniformSingExGen = input.get("FCIQMC.heatBathUniformSingles", false);

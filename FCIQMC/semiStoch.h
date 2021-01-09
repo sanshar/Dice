@@ -145,6 +145,33 @@ class semiStoch {
     }
 
     createCoreHamiltonian();
+
+    // Create arrays that will store the walker amplitudes in the
+    // core space
+    amps = allocateAmpsArray(nDetsThisProc, schd.nreplicas, 0.0);
+    ampsFull = allocateAmpsArray(nDets, schd.nreplicas, 0.0);
+  }
+
+  ~semiStoch() {
+    delete[] determSizes;
+    delete[] determDispls;
+    dets.clear();
+    detsThisProc.clear();
+    sciAmps.clear();
+    deleteAmpsArray(amps);
+    deleteAmpsArray(ampsFull);
+    flags.clear();
+    ht.clear();
+
+    for (auto pos_i: pos) {
+      pos_i.clear();
+    }
+    pos.clear();
+
+    for (auto ham_i: ham) {
+      ham_i.clear();
+    }
+    ham.clear();
   }
 
   void createCoreHamiltonian() {

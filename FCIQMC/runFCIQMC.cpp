@@ -68,7 +68,9 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
     schd.uniformExGen = false;
   }
 
-  semiStoch core(schd.determinantFile, DetLenMin);
+  if (schd.semiStoch) {
+    semiStoch core(schd.determinantFile, DetLenMin);
+  }
 }
 
 // This routine places all intial walkers on the Hartree--Fock determinant,

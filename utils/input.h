@@ -120,6 +120,7 @@ private:
       & targetPop
       & initiator
       & initiatorThresh
+      & semiStoch
       & uniformExGen
       & heatBathExGen
       & heatBathUniformSingExGen
@@ -314,6 +315,7 @@ public:
   double targetPop;
   bool initiator;
   double initiatorThresh;
+  bool semiStoch;
   bool uniformExGen;
   bool heatBathExGen;
   bool heatBathUniformSingExGen;
