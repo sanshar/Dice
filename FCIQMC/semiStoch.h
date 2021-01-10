@@ -212,7 +212,7 @@ class semiStoch {
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
           walkers.amps[pos][iReplica] = amps[i][iReplica];
         }
-        walkers.ht[dets[i]] = pos;
+        walkers.ht[detsThisProc[i]] = pos;
 
         walkers.nDets += 1;
       }
