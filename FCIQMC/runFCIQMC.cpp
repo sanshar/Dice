@@ -492,8 +492,9 @@ void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
 
   // Contributions from the off-diagonal of the Hamiltonian
   for (int j=0; j<spawn.nDets; j++) {
-    if (walkers.ht.find(spawn.dets[j]) != walkers.ht.end()) {
-      int iDet = walkers.ht[spawn.dets[j]];
+    Determinant det_j = Determinant(spawn.dets[j]);
+    if (walkers.ht.find(det_j) != walkers.ht.end()) {
+      int iDet = walkers.ht[det_j];
       double spawnAmp1 = spawn.amps[j][0];
       double spawnAmp2 = spawn.amps[j][1];
       double currAmp1 = walkers.amps[iDet][0];

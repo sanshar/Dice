@@ -256,9 +256,11 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
 
   for (int i = 0; i<nDets; i++) {
 
+    Determinant det_i = Determinant(dets[i]);
+
     // Is this spawned determinant already in the main list?
-    if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
-      int iDet = walkers.ht[dets[i]];
+    if (walkers.ht.find(det_i) != walkers.ht.end()) {
+      int iDet = walkers.ht[det_i];
       for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         double oldAmp = walkers.amps[iDet][iReplica];
 
@@ -313,9 +315,9 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
           pos = walkers.nDets;
           walkers.nDets += 1;
         }
-        walkers.dets[pos] = Determinant(dets[i]);
-        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
-        TrialWalk newWalk(wave, walkers.dets[pos]);
+        walkers.dets[pos] = det_i;
+        walkers.diagH[pos] = det_i.Energy(I1, I2, coreE);
+        TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
                                   schd.importanceSampling, schd.epsilon);
@@ -328,7 +330,7 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
           walkers.amps[pos][iReplica] = amps[i][iReplica];
         }
-        walkers.ht[dets[i]] = pos;
+        walkers.ht[det_i] = pos;
       }
 
     }
@@ -346,12 +348,14 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
 
   for (int i = 0; i<nDets; i++) {
 
+    Determinant det_i = Determinant(dets[i]);
+
     // Used for testing if an initiator flag is set:
     bitset<max_nreplicas> initFlags(flags[i]);
 
     // Is this spawned determinant already in the main list?
-    if (walkers.ht.find(dets[i]) != walkers.ht.end()) {
-      int iDet = walkers.ht[dets[i]];
+    if (walkers.ht.find(det_i) != walkers.ht.end()) {
+      int iDet = walkers.ht[det_i];
       for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         double oldAmp = walkers.amps[iDet][iReplica];
         // For the initiator criteria: only add in the spawned walker
@@ -404,9 +408,9 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
           pos = walkers.nDets;
           walkers.nDets += 1;
         }
-        walkers.dets[pos] = Determinant(dets[i]);
-        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
-        TrialWalk newWalk(wave, walkers.dets[pos]);
+        walkers.dets[pos] = det_i;
+        walkers.diagH[pos] = det_i.Energy(I1, I2, coreE);
+        TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
                                   schd.importanceSampling, schd.epsilon);
@@ -422,7 +426,7 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
             walkers.amps[pos][iReplica] = amps[i][iReplica];
           }
         }
-        walkers.ht[dets[i]] = pos;
+        walkers.ht[det_i] = pos;
       }
 
     }

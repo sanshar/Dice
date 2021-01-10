@@ -184,9 +184,11 @@ class semiStoch {
 
     for (int i = 0; i<nDetsThisProc; i++) {
 
+      Determinant det_i = Determinant(detsThisProc[i]);
+
       // Is this spawned determinant already in the main list?
-      if (walkers.ht.find(detsThisProc[i]) != walkers.ht.end()) {
-        int iDet = walkers.ht[detsThisProc[i]];
+      if (walkers.ht.find(det_i) != walkers.ht.end()) {
+        int iDet = walkers.ht[det_i];
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
           double oldAmp = walkers.amps[iDet][iReplica];
           double newAmp = amps[i][iReplica] + oldAmp;
@@ -197,9 +199,9 @@ class semiStoch {
       {
         // New determinant
         int pos = walkers.nDets;
-        walkers.dets[pos] = Determinant(detsThisProc[i]);
-        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
-        TrialWalk newWalk(wave, walkers.dets[pos]);
+        walkers.dets[pos] = det_i;
+        walkers.diagH[pos] = det_i.Energy(I1, I2, coreE);
+        TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
                                   schd.importanceSampling, schd.epsilon);
@@ -212,7 +214,7 @@ class semiStoch {
         for (int iReplica=0; iReplica<nreplicas; iReplica++) {
           walkers.amps[pos][iReplica] = amps[i][iReplica];
         }
-        walkers.ht[detsThisProc[i]] = pos;
+        walkers.ht[det_i] = pos;
 
         walkers.nDets += 1;
       }
