@@ -11,6 +11,9 @@
 class semiStoch {
 
  public:
+  // True if this instance is being used in a semi-stochastic
+  // FCIQMC simulation (if init has been called)
+  bool doingSemiStoch;
   // The number of determinants in the core space
   int nDets;
   // The number of determinants in the core space on this process
@@ -47,12 +50,16 @@ class semiStoch {
   // ham[i,j] is the j'th non-zero element in row i.
   vector<vector<double>> ham;
 
-  semiStoch() {}
+  semiStoch() {
+    doingSemiStoch = false;
+  }
 
   template<typename Wave, typename TrialWalk>
   void init(std::string SHCIFile, Wave& wave, TrialWalk& walk,
             walkersFCIQMC<TrialWalk>& walkers, int DetLenMin,
             int nreplicasLocal, workingArray& work) {
+
+    doingSemiStoch = true;
 
     nDets = 0;
     nDetsThisProc = 0;
@@ -223,26 +230,28 @@ class semiStoch {
   }
 
   ~semiStoch() {
-    delete[] determSizes;
-    delete[] determDispls;
-    dets.clear();
-    detsThisProc.clear();
-    sciAmps.clear();
-    deleteAmpsArray(amps);
-    deleteAmpsArray(ampsFull);
-    indices.clear();
-    flags.clear();
-    ht.clear();
+    if (doingSemiStoch) {
+      delete[] determSizes;
+      delete[] determDispls;
+      dets.clear();
+      detsThisProc.clear();
+      sciAmps.clear();
+      deleteAmpsArray(amps);
+      deleteAmpsArray(ampsFull);
+      indices.clear();
+      flags.clear();
+      ht.clear();
 
-    for (auto pos_i: pos) {
-      pos_i.clear();
-    }
-    pos.clear();
+      for (auto pos_i: pos) {
+        pos_i.clear();
+      }
+      pos.clear();
 
-    for (auto ham_i: ham) {
-      ham_i.clear();
+      for (auto ham_i: ham) {
+        ham_i.clear();
+      }
+      ham.clear();
     }
-    ham.clear();
   }
 
   void createCoreHamiltonian() {
