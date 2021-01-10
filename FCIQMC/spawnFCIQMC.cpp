@@ -235,13 +235,13 @@ void spawnFCIQMC::compress() {
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain(Wave& wave, TrialWalk& walk,
                                 walkersFCIQMC<TrialWalk>& walkers,
-                                const double minPop, bool initiator,
-                                workingArray& work) {
+                                semiStoch& core, const double minPop,
+                                bool initiator, workingArray& work) {
 
   if (initiator) {
-    mergeIntoMain_Initiator(wave, walk, walkers, minPop, work);
+    mergeIntoMain_Initiator(wave, walk, walkers, core, minPop, work);
   } else {
-    mergeIntoMain_NoInitiator(wave, walk, walkers, minPop, work);
+    mergeIntoMain_NoInitiator(wave, walk, walkers, core, minPop, work);
   }
 
 }
@@ -250,7 +250,8 @@ void spawnFCIQMC::mergeIntoMain(Wave& wave, TrialWalk& walk,
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
                                             walkersFCIQMC<TrialWalk>& walkers,
-                                            const double minPop, workingArray& work) {
+                                            semiStoch& core, const double minPop,
+                                            workingArray& work) {
   int pos;
 
   for (int i = 0; i<nDets; i++) {
@@ -260,15 +261,25 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
       int iDet = walkers.ht[dets[i]];
       for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         double oldAmp = walkers.amps[iDet][iReplica];
+
+        // If using semi-stochastic, don't round spawning to core dets
+        bool round = true;
+        if (schd.semiStoch) {
+          round = core.ht.find(dets[i]) == core.ht.end();
+        }
+
         // To ensure the various replicas are statistically independent,
         // we should stochastically round the spawning on a determinant
         // if it is currently unoccupied, and the new walker is below
         // the minimum threshold (since this is what happens if all
         // replicas are unoccupied):
-        if (abs(oldAmp) < 1.0e-12 && abs(amps[i][iReplica]) < minPop) {
-          bool keepDet;
-          stochastic_round(minPop, amps[i][iReplica], keepDet);
+        if (round) {
+          if (abs(oldAmp) < 1.0e-12 && abs(amps[i][iReplica]) < minPop) {
+            bool keepDet;
+            stochastic_round(minPop, amps[i][iReplica], keepDet);
+          }
         }
+
         double newAmp = amps[i][iReplica] + oldAmp;
         walkers.amps[iDet][iReplica] = newAmp;
       }
@@ -329,7 +340,8 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
                                           walkersFCIQMC<TrialWalk>& walkers,
-                                          const double minPop, workingArray& work) {
+                                          semiStoch& core, const double minPop,
+                                          workingArray& work) {
   int pos;
 
   for (int i = 0; i<nDets; i++) {
@@ -423,6 +435,7 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
 template void spawnFCIQMC::mergeIntoMain(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
+    semiStoch& core,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -430,12 +443,14 @@ template void spawnFCIQMC::mergeIntoMain(
 template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);
 
 template void spawnFCIQMC::mergeIntoMain_Initiator(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);
 
@@ -446,6 +461,7 @@ template void spawnFCIQMC::mergeIntoMain(
     CorrelatedWavefunction<Jastrow, Slater>& wave,
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -454,6 +470,7 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     CorrelatedWavefunction<Jastrow, Slater>& wave,
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);
 
@@ -461,6 +478,7 @@ template void spawnFCIQMC::mergeIntoMain_Initiator(
     CorrelatedWavefunction<Jastrow, Slater>& wave,
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);
 
@@ -469,6 +487,7 @@ template void spawnFCIQMC::mergeIntoMain(
     SelectedCI& wave,
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -477,6 +496,7 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     SelectedCI& wave,
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);
 
@@ -484,5 +504,6 @@ template void spawnFCIQMC::mergeIntoMain_Initiator(
     SelectedCI& wave,
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
+    semiStoch& core,
     const double minPop,
     workingArray& work);

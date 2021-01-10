@@ -44,11 +44,17 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
 
   HFEnergy = HFDet.Energy(I1, I2, coreE);
 
+  if (schd.semiStoch) {
+    if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl << flush;
+    core.init(schd.determinantFile, wave, walk, walkers, DetLenMin, schd.nreplicas, work);
+    if (commrank == 0) cout << "Semi-stochastic construction finished." << endl << flush;
+  }
+
   // Set up the initial walker list
   if (schd.trialInitFCIQMC) {
-    initWalkerListTrialWF(wave, walk, walkers, spawn, work);
+    initWalkerListTrialWF(wave, walk, walkers, spawn, core, work);
   } else {
-    initWalkerListHF(wave, walk, HFDet, DetLenMin, HFEnergy, walkers, work);
+    initWalkerListHF(wave, walk, walkers, spawn, core, work, HFDet, DetLenMin);
   }
 
   if (commrank == 0) {
@@ -56,9 +62,9 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
   }
 
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
-    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
+    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl << flush;
     hb.createArrays(norbs, I2);
-    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
+    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl << flush;
   }
 
   // The default excitation generator is the uniform one. If
@@ -66,45 +72,35 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
     schd.uniformExGen = false;
   }
-
-  if (schd.semiStoch) {
-    if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl;
-    core.init(schd.determinantFile, DetLenMin, schd.nreplicas);
-    if (commrank == 0) cout << "Semi-stochastic construction finished." << endl;
-  }
 }
 
 // This routine places all intial walkers on the Hartree--Fock determinant,
 // and sets all attributes in the walkersFCIQMC object as appropriate for
 // this state.
 template<typename Wave, typename TrialWalk>
-void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
-                      const int DetLenMin, double& HFEnergy,
-                      walkersFCIQMC<TrialWalk>& walkers, workingArray& work) {
+void initWalkerListHF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                      spawnFCIQMC& spawn, semiStoch& core, workingArray& work,
+                      Determinant& HFDet, const int DetLenMin) {
+
   // Processor that the HF determinant lives on
-  int HFDetProc = getProc(HFDet, DetLenMin);
+  int proc = getProc(HFDet, DetLenMin);
 
-  if (HFDetProc == commrank) {
-    walkers.dets[0] = HFDet;
-    walkers.diagH[0] = HFEnergy;
-    walkers.ht[HFDet] = 0;
-
-    double HFOvlp, HFLocalE, HFSVTotal;
-    TrialWalk HFWalk(wave, HFDet);
-    wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work,
-                              schd.importanceSampling, schd.epsilon);
-    walkers.ovlp[0] = HFOvlp;
-    walkers.localE[0] = HFLocalE;
-    walkers.SVTotal[0] = HFSVTotal;
-    walkers.trialWalk[0] = HFWalk;
-
-    // Set the population on the reference
-    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-      walkers.amps[0][iReplica] = schd.initialPop;
+  // Add a walker to the spawning array, on the HF determinant
+  if (proc == commrank) {
+    int ind = spawn.currProcSlots[proc];
+    spawn.dets[ind] = HFDet.getSimpleDet();
+    // Set the amplitude on the correct replica
+    for (int iSgn=0; iSgn<schd.nreplicas; iSgn++) {
+      spawn.amps[ind][iSgn] = schd.initialPop;
     }
-    // The number of determinants in the walker list
-    walkers.nDets = 1;
+    spawn.currProcSlots[proc] += 1;
   }
+
+  // Move the walker to the main list, using the communication and
+  // annihilation procedures
+  spawn.communicate();
+  spawn.compress();
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
 }
 
 // This routine creates the initial walker distribution by sampling the
@@ -115,7 +111,7 @@ void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
 // with a constant multiplicative factor.
 template<typename Wave, typename TrialWalk>
 void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
-                           spawnFCIQMC& spawn, workingArray& work) {
+                           spawnFCIQMC& spawn, semiStoch& core, workingArray& work) {
   double ham, ovlp;
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
@@ -186,7 +182,7 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
   // to the main walker list
   spawn.communicate();
   spawn.compress();
-  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, 0.0, work);
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
 
   vector<double> walkerPop, walkerPopTot;
   walkerPop.resize(schd.nreplicas, 0.0);
@@ -270,12 +266,39 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     //cout << walkers << endl;
 
+    // The number of core determinants found, accumulated during the
+    // loop over walkers
+    int nCoreFound = 0;
+
     // Loop over all walkers/determinants
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
-      // Is this unoccupied for all replicas? If so, add to the list of empty slots
+
+      //cout << "iDet: " << iDet << "  Det: " << walkers.dets[iDet] << "  amps: " << walkers.amps[iDet][0] << endl;
+
+      // Check if this is a core determinant, if doing semi-stochastic
+      bool coreDet = false;
+      if (schd.semiStoch) {
+        simpleDet parentSimpleDet = walkers.dets[iDet].getSimpleDet();
+        if (core.ht.find(parentSimpleDet) != core.ht.end()) {
+          coreDet = true;
+          for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+            core.amps[nCoreFound][iReplica] = walkers.amps[iDet][iReplica];
+          }
+
+          // Store the position of this core determinant in the main list
+          core.indices[nCoreFound] = iDet;
+          nCoreFound += 1;
+        }
+      }
+
+      // Is this unoccupied for all replicas? If so, add to the list of
+      // empty slots
       if (walkers.allUnoccupied(iDet)) {
-        walkers.lastEmpty += 1;
-        walkers.emptyDets[walkers.lastEmpty] = iDet;
+        // Never remove core dets from the main list
+        if (!coreDet) {
+          walkers.lastEmpty += 1;
+          walkers.emptyDets[walkers.lastEmpty] = iDet;
+        }
         continue;
       }
 
@@ -305,21 +328,46 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
           generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2,
                              pgen, pgen2, ex1, ex2);
 
-          // pgen=0.0 is set when a null excitation is returned.
+          // pgen=0 is set when a null excitation is returned
           if (pgen > 1.e-15) {
-            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet, spawn, I1, I2,
-                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
-                            schd.tau, schd.minSpawn, pgen, ex1, ex2);
+            // If the parent is a core determinant, check if we need to
+            // cancel the spawning
+            bool allowSpawn = true;
+            if (coreDet) {
+              simpleDet childSimpleDet = childDet.getSimpleDet();
+              if (core.ht.find(childSimpleDet) != core.ht.end()) {
+                allowSpawn = false;
+              }
+            }
+            if (allowSpawn) {
+              attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet, spawn, I1, I2,
+                              coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                              schd.tau, schd.minSpawn, pgen, ex1, ex2);
+            }
           }
+
           if (pgen2 > 1.e-15) {
-            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet2, spawn, I1, I2,
-                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
-                            schd.tau, schd.minSpawn, pgen2, ex1, ex2);
+            bool allowSpawn = true;
+            if (coreDet) {
+              simpleDet childSimpleDet2 = childDet2.getSimpleDet();
+              if (core.ht.find(childSimpleDet2) != core.ht.end()) {
+                allowSpawn = false;
+              }
+            }
+            if (allowSpawn) {
+              attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet2, spawn, I1, I2,
+                              coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                              schd.tau, schd.minSpawn, pgen2, ex1, ex2);
+            }
           }
 
         } // Loop over spawning attempts
       } // Loop over replicas
 
+    }
+
+    if (schd.semiStoch) {
+      core.determProjection(schd.tau, dat.Eshift);
     }
 
     // Perform annihilation of spawned walkers
@@ -336,10 +384,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     }
 
     performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
-    spawn.mergeIntoMain(wave, walk, walkers, schd.minPop, schd.initiator, work);
+    if (schd.semiStoch) {
+      core.determAnnihilation(walkers.amps);
+    }
+    spawn.mergeIntoMain(wave, walk, walkers, core, schd.minPop, schd.initiator, work);
 
     // Stochastic rounding of small walkers
-    walkers.stochasticRoundAll(schd.minPop);
+    walkers.stochasticRoundAll(schd.minPop, core.ht);
 
     walkers.calcStats(dat, HFDet, I1, I2, coreE);
     communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);

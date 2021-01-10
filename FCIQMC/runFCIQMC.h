@@ -35,8 +35,9 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
                 semiStoch& core, workingArray& work);
 
 template<typename Wave, typename TrialWalk>
-void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet, const int DetLenMin,
-                      double& HFEnergy, walkersFCIQMC<TrialWalk>& walkers, workingArray& work);
+void initWalkerListHF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                      spawnFCIQMC& spawn, semiStoch& core, workingArray& work,
+                      Determinant& HFDet, const int DetLenMin);
 
 template<typename Wave, typename TrialWalk>
 void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,

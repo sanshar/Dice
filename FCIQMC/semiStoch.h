@@ -34,10 +34,12 @@ class semiStoch {
   // Used to hold all walker amplitudes from all core determinants,
   // which is obtained by gathering the values in amps before projection
   double** ampsFull;
-  // Deterministic flags of the walkers in the main list
+  // The positions of the core determinants in the main walker list
+  vector<int> indices;
+  // Deterministic flags of the walkers in the main walker list
   vector<int> flags;
   // Hash table to find the position of a determinant in dets
-  unordered_map<Determinant, int> ht;
+  unordered_map<simpleDet, int, boost::hash<simpleDet>> ht;
   // The positions of non-zero elements in the core Hamiltonian.
   // pos[i,j] is the j'th non-zero column index in row i.
   vector<vector<int>> pos;
@@ -47,8 +49,11 @@ class semiStoch {
 
   semiStoch() {}
 
-  void init(std::string SHCIFile, int DetLenMin, int nreplicasLocal)
-  {
+  template<typename Wave, typename TrialWalk>
+  void init(std::string SHCIFile, Wave& wave, TrialWalk& walk,
+            walkersFCIQMC<TrialWalk>& walkers, int DetLenMin,
+            int nreplicasLocal, workingArray& work) {
+
     nDets = 0;
     nDetsThisProc = 0;
     nreplicas = nreplicasLocal;
@@ -133,12 +138,20 @@ class semiStoch {
       determDisplsDets[i] = determDispls[i] * 2*DetLen;
     }
 
+    //cout << "Dets this proc:" << endl;
+    //if (commrank == 0) {
+    //  for (int i=0; i<nDetsThisProc; i++) {
+    //    cout << Determinant(detsThisProc[i]) << endl << flush;
+    //  }
+    //}
+
     // Gather the determinants into the dets array
     dets.resize(nDets);
     MPI_Allgatherv(&detsThisProc.front(), nDetsThisProc*2*DetLen, MPI_LONG,
                    &dets.front(), determSizesDets, determDisplsDets,
                    MPI_LONG, MPI_COMM_WORLD);
 
+    //cout << "Dets all procs:" << endl;
     //if (commrank == 0) {
     //  for (int i=0; i<nDets; i++) {
     //    cout << Determinant(dets[i]) << endl << flush;
@@ -148,7 +161,7 @@ class semiStoch {
     // Create the hash table, mapping determinants to their position
     // in the full list of core determinants
     for (int i=0; i<nDets; i++) {
-      ht[ Determinant(dets[i]) ] = i;
+      ht[ dets[i] ] = i;
     }
 
     createCoreHamiltonian();
@@ -157,6 +170,54 @@ class semiStoch {
     // core space
     amps = allocateAmpsArray(nDetsThisProc, nreplicas, 0.0);
     ampsFull = allocateAmpsArray(nDets, nreplicas, 0.0);
+
+    indices.resize(nDetsThisProc, 0);
+
+    // Add the core determinants to the main list with zero amplitude
+    addCoreDetsToMainList(wave, walk, walkers, work);
+  }
+
+  template<typename Wave, typename TrialWalk>
+  void addCoreDetsToMainList(Wave& wave, TrialWalk& walk,
+                             walkersFCIQMC<TrialWalk>& walkers,
+                             workingArray& work) {
+
+    for (int i = 0; i<nDetsThisProc; i++) {
+
+      // Is this spawned determinant already in the main list?
+      if (walkers.ht.find(detsThisProc[i]) != walkers.ht.end()) {
+        int iDet = walkers.ht[detsThisProc[i]];
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          double oldAmp = walkers.amps[iDet][iReplica];
+          double newAmp = amps[i][iReplica] + oldAmp;
+          walkers.amps[iDet][iReplica] = newAmp;
+        }
+      }
+      else
+      {
+        // New determinant
+        int pos = walkers.nDets;
+        walkers.dets[pos] = Determinant(detsThisProc[i]);
+        walkers.diagH[pos] = walkers.dets[pos].Energy(I1, I2, coreE);
+        TrialWalk newWalk(wave, walkers.dets[pos]);
+        double ovlp, localE, SVTotal;
+        wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
+                                  schd.importanceSampling, schd.epsilon);
+        walkers.ovlp[pos] = ovlp;
+        walkers.localE[pos] = localE;
+        walkers.SVTotal[pos] = SVTotal;
+        walkers.trialWalk[pos] = newWalk;
+
+        // Add in the new walker population
+        for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+          walkers.amps[pos][iReplica] = amps[i][iReplica];
+        }
+        walkers.ht[dets[i]] = pos;
+
+        walkers.nDets += 1;
+      }
+    }
+
   }
 
   ~semiStoch() {
@@ -167,6 +228,7 @@ class semiStoch {
     sciAmps.clear();
     deleteAmpsArray(amps);
     deleteAmpsArray(ampsFull);
+    indices.clear();
     flags.clear();
     ht.clear();
 
@@ -194,9 +256,11 @@ class semiStoch {
       for (int j=0; j<nDets; j++) {
         Determinant det_j(dets[j]);
 
-        double HElem;
+        double HElem = 0.0;
         if (det_i == det_j) {
-          HElem = det_i.Energy(I1, I2, coreE);
+          // Don't include the diagonal contributions - these are
+          // taken care of in the death step
+          HElem = 0.0;
         } else {
           HElem = Hij(det_i, det_j, I1, I2, coreE);
         }
@@ -218,7 +282,7 @@ class semiStoch {
 
   }
 
-  void determProjection(double tau, vector<double>& EShift) {
+  void determProjection(double tau, vector<double>& Eshift) {
 
     int determSizesAmps[commsize];
     int determDisplsAmps[commsize];
@@ -228,8 +292,20 @@ class semiStoch {
       determDisplsAmps[i] = determDispls[i] * nreplicas;
     }
 
-    MPI_Allgatherv(amps, nDetsThisProc*nreplicas, MPI_DOUBLE,
-                   ampsFull, determSizesAmps, determDisplsAmps,
+    //cout << "Amps in:" << endl << flush;
+    //for (int i=0; i<nDetsThisProc; i++) {
+    //  cout << amps[i][0] << endl;
+    //}
+
+    // TODO: FIX
+    // Communication
+    //for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+    //  for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+    //    ampsFull[iDet][iReplica] = amps[iDet][iReplica];
+    //  }
+    //}
+    MPI_Allgatherv(&amps[0][0], nDetsThisProc*nreplicas, MPI_DOUBLE,
+                   &ampsFull[0][0], determSizesAmps, determDisplsAmps,
                    MPI_DOUBLE, MPI_COMM_WORLD);
 
     // Zero the amps array, which will be used for accumulating the
@@ -253,12 +329,12 @@ class semiStoch {
     }
 
     // Apply the shift term
-    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
-        int fullInd = iDet + determDispls[commrank];
-        amps[iDet][iReplica] += EShift[iReplica] * ampsFull[fullInd][iReplica];
-      }
-    }
+    //for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+    //  for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+    //    int fullInd = iDet + determDispls[commrank];
+    //    amps[iDet][iReplica] += Eshift[iReplica] * ampsFull[fullInd][iReplica];
+    //  }
+    //}
 
     // Now multiply by the time step to get the final projected vector
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
@@ -267,6 +343,23 @@ class semiStoch {
       }
     }
 
+    //cout << "Amps out:" << endl << flush;
+    //for (int i=0; i<nDetsThisProc; i++) {
+    //  cout << amps[i][0] << endl;
+    //}
+
+  }
+
+  void determAnnihilation(double** walkerAmps) {
+    for (int iDet=0; iDet<nDetsThisProc; iDet++) {
+      // The position of this core determinant in the main list
+      int ind = indices[iDet];
+      for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+        // Add the deterministic projection amplitudes into the main
+        // walker list amplitudes
+        walkerAmps[ind][iReplica] += amps[iDet][iReplica];
+      }
+    }
   }
 
 };
