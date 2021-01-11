@@ -117,7 +117,7 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
       std::cout << "could not read the norbs or nelec or MS2"<<std::endl;
       exit(0);
     }
-    nalpha = nelec/2 + sz;
+    nalpha = nelec/2 + sz/2;
     nbeta = nelec - nalpha;
     irrep.resize(norbs);
 #ifndef SERIAL
@@ -320,12 +320,13 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
       std::cout << "could not read the norbs or nelec or MS2"<<std::endl;
       exit(0);
     }
-    nalpha = nelec/2 + sz;
+    nalpha = nelec/2 + sz/2;
     nbeta = nelec - nalpha;
     irrep.resize(norbs);
 
 #ifndef SERIAL
   } // commrank=0
+
 
   mpi::broadcast(world, nalpha, 0);
   mpi::broadcast(world, nbeta, 0);
@@ -628,7 +629,8 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
     std::cout << "could not read the norbs or nelec or MS2"<<std::endl;
     exit(0);
   }
-  nalpha = nelec/2 + sz;
+  //sz = 0;
+  nalpha = nelec/2 + sz/2;
   nbeta = nelec - nalpha;
   
   Determinant::EffDetLen = (norbs) / 64 + 1;
@@ -689,6 +691,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
   dataset_energy_core = H5Dopen(file, "/energy_core", H5P_DEFAULT);
   status = H5Dread(dataset_energy_core, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, energy_core);
   coreE = energy_core[0];
+
 
   status = H5Fclose(file);
   //cout << "Finished reading integrals\n";

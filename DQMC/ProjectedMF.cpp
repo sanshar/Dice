@@ -12,10 +12,19 @@ using namespace Eigen;
 double WignerRotationSmall(double theta, int S, int m1, int m2) {
     if (S == 0 && m1 == 0 && m2 == 0)
         return 1.;
+
     else if (S == 1 && m1 == 1 && m2 == 1)
         return cos(theta/2);
+    else if (S == 1 && m1 == 1 && m2 == -1)
+        return -sin(theta/2);
+
     else if (S == 2 && m1 == 2 && m2 == 2)
         return 0.5*(1. + cos(theta));
+    else if (S == 2 && m1 == 2 && m2 == 0)
+        return -sin(theta)/sqrt(2.0);
+    else if (S == 2 && m1 == 2 && m2 == -2)
+        return 0.5*(1. - cos(theta));
+
     else if (S == 3 && m1 == 3 && m2 == 3)
         return 0.5*(1. + cos(theta)) * cos(theta/2.);
     else if (S == 4 && m1 == 1 && m2 == 1)
@@ -60,10 +69,11 @@ void applyProjectorSsq(MatrixXcd& bra, vector<MatrixXcd>& ketvec, vector<complex
     int count = 0;
     complex<double> iImag(0, 1.0);
 
-    coeffs.resize(2*ngrid*ngrid*ngrid);
-    ketvec.resize(2*ngrid*ngrid*ngrid); 
+    coeffs.resize(2*ngrid*ngrid*ngrid*(Sz+1));
+    ketvec.resize(2*ngrid*ngrid*ngrid*(Sz+1)); 
 
     int index = 0;
+    for (int kz = -Sz; kz <=Sz; kz+=2)
     for (int i=0; i<ngrid; i++) {
         for (int j=0; j<ngrid; j++) {
             for (int k=0; k<ngrid; k++) {
@@ -73,10 +83,10 @@ void applyProjectorSsq(MatrixXcd& bra, vector<MatrixXcd>& ketvec, vector<complex
                        gamma = 2. * M_PI * k / ngrid;
 
                 complex<double> coeff = exp(-iImag * alpha * m)/(1. * ngrid * 2. * M_PI)  * exp(-iImag * gamma * m)/(1. * ngrid * 2 * M_PI);
-                complex<double> wignerMat = WignerRotationSmall(beta, Sz, Sz, Sz) /(ngrid * M_PI); //assume s= 0 m and k = 0
+                complex<double> wignerMat = WignerRotationSmall(beta, Sz, Sz, kz) /(ngrid * M_PI); //assume s= 0 m and k = 0
 
                 coeffs[index] = coeff * wignerMat /sqrt(2.);    
-                coeffs[ngrid*ngrid*ngrid+index] = coeff * wignerMat/sqrt(2.);   
+                coeffs[(Sz+1)*ngrid*ngrid*ngrid+index] = coeff * wignerMat/sqrt(2.);   
 
                 VectorXcd phik = VectorXcd::Ones(2*norbs);
                 MatrixXcd phij = MatrixXcd::Zero(2*norbs, 2*norbs);
@@ -96,7 +106,7 @@ void applyProjectorSsq(MatrixXcd& bra, vector<MatrixXcd>& ketvec, vector<complex
                 phii.segment(norbs,norbs) *= exp(-iImag * alpha/2.);
 
                 ketvec[index]       = phii.asDiagonal() * phij * phik.asDiagonal() * bra;
-                ketvec[ngrid*ngrid*ngrid+index] = phii.asDiagonal() * phij * phik.asDiagonal() * bra.conjugate();
+                ketvec[(Sz+1)*ngrid*ngrid*ngrid+index] = phii.asDiagonal() * phij * phik.asDiagonal() * bra.conjugate();
                 index++;
             }
         }
