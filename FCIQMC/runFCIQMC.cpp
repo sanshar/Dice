@@ -236,7 +236,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
   // Get the initial stats
   walkers.calcStats(dat, HFDet, I1, I2, coreE);
   communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
-  calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+  if (schd.nreplicas == 2) {
+    if (schd.semiStoch) {
+      core.copyWalkerAmps(walkers);
+      core.determProjection(schd.tau);
+    }
+    calcVarEnergy(walkers, spawn, core, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+  }
   dat.walkerPopOldTot = dat.walkerPopTot;
 
   // Print the initial stats
@@ -368,7 +374,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     }
 
     if (schd.semiStoch) {
-      core.determProjection(schd.tau, dat.Eshift);
+      core.determProjection(schd.tau);
     }
 
     // Perform annihilation of spawned walkers
@@ -377,7 +383,9 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     // Calculate energies involving multiple replicas
     if (schd.nreplicas == 2) {
-      calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+      calcVarEnergy(walkers, spawn, core, I1, I2, coreE, schd.tau,
+                    dat.EVarNumAll, dat.EVarDenomAll);
+
       if (schd.calcEN2) {
         calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau,
                           dat.EVarNumAll, dat.EVarDenomAll, dat.EN2All);
@@ -478,8 +486,8 @@ void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determ
 // energy estimator. This can be used in replicas FCIQMC simulations.
 template<typename TrialWalk>
 void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
-                   const oneInt& I1, const twoInt& I2, double& coreE, const double tau,
-                   double& varEnergyNumAll, double& varEnergyDenomAll)
+                   semiStoch& core, const oneInt& I1, const twoInt& I2, double& coreE,
+                   const double tau, double& varEnergyNumAll, double& varEnergyDenomAll)
 {
   double varEnergyNum = 0.0;
   double varEnergyDenom = 0.0;
@@ -500,6 +508,17 @@ void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
       double spawnAmp2 = spawn.amps[j][1];
       double currAmp1 = walkers.amps[iDet][0];
       double currAmp2 = walkers.amps[iDet][1];
+      varEnergyNum -= ( currAmp1 * spawnAmp2 + spawnAmp1 * currAmp2 ) / ( 2.0 * tau);
+    }
+  }
+
+  // Semi-stochastic contributions
+  if (schd.semiStoch) {
+    for (int j=0; j<core.nDetsThisProc; j++) {
+      double spawnAmp1 = core.amps[j][0];
+      double spawnAmp2 = core.amps[j][1];
+      double currAmp1 = walkers.amps[core.indices[j]][0];
+      double currAmp2 = walkers.amps[core.indices[j]][1];
       varEnergyNum -= ( currAmp1 * spawnAmp2 + spawnAmp1 * currAmp2 ) / ( 2.0 * tau);
     }
   }

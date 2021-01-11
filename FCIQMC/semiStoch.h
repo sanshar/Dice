@@ -229,6 +229,27 @@ class semiStoch {
 
   }
 
+  template<typename TrialWalk>
+  void copyWalkerAmps(walkersFCIQMC<TrialWalk>& walkers) {
+
+    // Run through the main list and copy the core amplitudes to the
+    // core.amps array. This is needed for printing the correct stats
+    // in the first iteration, for some cases.
+    int nCoreFound = 0;
+    for (int iDet=0; iDet<walkers.nDets; iDet++) {
+      simpleDet det_i = walkers.dets[iDet].getSimpleDet();
+      if (ht.find(det_i) != ht.end()) {
+        for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+          amps[nCoreFound][iReplica] = walkers.amps[iDet][iReplica];
+        }
+        // Store the position of this core determinant in the main list
+        indices[nCoreFound] = iDet;
+        nCoreFound += 1;
+      }
+    }
+
+  }
+
   ~semiStoch() {
     if (doingSemiStoch) {
       delete[] determSizes;
@@ -293,7 +314,7 @@ class semiStoch {
 
   }
 
-  void determProjection(double tau, vector<double>& Eshift) {
+  void determProjection(double tau) {
 
     int determSizesAmps[commsize];
     int determDisplsAmps[commsize];
@@ -308,13 +329,6 @@ class semiStoch {
     //  cout << amps[i][0] << endl;
     //}
 
-    // TODO: FIX
-    // Communication
-    //for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-    //  for (int iReplica=0; iReplica<nreplicas; iReplica++) {
-    //    ampsFull[iDet][iReplica] = amps[iDet][iReplica];
-    //  }
-    //}
     MPI_Allgatherv(&amps[0][0], nDetsThisProc*nreplicas, MPI_DOUBLE,
                    &ampsFull[0][0], determSizesAmps, determDisplsAmps,
                    MPI_DOUBLE, MPI_COMM_WORLD);
@@ -338,14 +352,6 @@ class semiStoch {
         }
       }
     }
-
-    // Apply the shift term
-    //for (int iDet=0; iDet<nDetsThisProc; iDet++) {
-    //  for (int iReplica=0; iReplica<nreplicas; iReplica++) {
-    //    int fullInd = iDet + determDispls[commrank];
-    //    amps[iDet][iReplica] += Eshift[iReplica] * ampsFull[fullInd][iReplica];
-    //  }
-    //}
 
     // Now multiply by the time step to get the final projected vector
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
