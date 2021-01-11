@@ -146,25 +146,11 @@ class semiStoch {
       determDisplsDets[i] = determDispls[i] * 2*DetLen;
     }
 
-    //cout << "Dets this proc:" << endl;
-    //if (commrank == 0) {
-    //  for (int i=0; i<nDetsThisProc; i++) {
-    //    cout << Determinant(detsThisProc[i]) << endl << flush;
-    //  }
-    //}
-
     // Gather the determinants into the dets array
     dets.resize(nDets);
     MPI_Allgatherv(&detsThisProc.front(), nDetsThisProc*2*DetLen, MPI_LONG,
                    &dets.front(), determSizesDets, determDisplsDets,
                    MPI_LONG, MPI_COMM_WORLD);
-
-    //cout << "Dets all procs:" << endl;
-    //if (commrank == 0) {
-    //  for (int i=0; i<nDets; i++) {
-    //    cout << Determinant(dets[i]) << endl << flush;
-    //  }
-    //}
 
     // Create the hash table, mapping determinants to their position
     // in the full list of core determinants
@@ -369,11 +355,6 @@ class semiStoch {
       determDisplsAmps[i] = determDispls[i] * nreplicas;
     }
 
-    //cout << "Amps in:" << endl << flush;
-    //for (int i=0; i<nDetsThisProc; i++) {
-    //  cout << amps[i][0] << endl;
-    //}
-
     MPI_Allgatherv(&amps[0][0], nDetsThisProc*nreplicas, MPI_DOUBLE,
                    &ampsFull[0][0], determSizesAmps, determDisplsAmps,
                    MPI_DOUBLE, MPI_COMM_WORLD);
@@ -404,11 +385,6 @@ class semiStoch {
         amps[iDet][iReplica] *= tau;
       }
     }
-
-    //cout << "Amps out:" << endl << flush;
-    //for (int i=0; i<nDetsThisProc; i++) {
-    //  cout << amps[i][0] << endl;
-    //}
 
   }
 
