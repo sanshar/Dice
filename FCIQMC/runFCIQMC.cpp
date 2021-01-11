@@ -273,8 +273,6 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     // Loop over all walkers/determinants
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
 
-      //cout << "iDet: " << iDet << "  Det: " << walkers.dets[iDet] << "  amps: " << walkers.amps[iDet][0] << endl;
-
       // Check if this is a core determinant, if doing semi-stochastic
       bool coreDet = false;
       if (schd.semiStoch) {
@@ -308,7 +306,10 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
         // Update the initiator flag, if necessary
         int parentFlags = 0;
         if (schd.initiator) {
-          if (abs(walkers.amps[iDet][iReplica]) > schd.initiatorThresh) {
+          double amp = walkers.amps[iDet][iReplica];
+          // Condition for this det to be an initiator:
+          bool initDet = abs(amp) > schd.initiatorThresh || coreDet;
+          if (initDet) {
             // This walker is an initiator, so set the flag for the
             // appropriate replica
             parentFlags |= 1 << iReplica;
