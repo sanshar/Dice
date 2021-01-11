@@ -57,7 +57,7 @@ class SelectedCI
 
   void initWalker(SimpleWalker &walk, Determinant& d);
 
-  double getOverlapFactor(SimpleWalker& walk, Determinant& dcopy) ;
+  double getOverlapFactor(SimpleWalker& walk, Determinant& dcopy, bool doparity=true) ;
   
   double getOverlapFactor(int I, int A, SimpleWalker& walk, bool doparity);
 

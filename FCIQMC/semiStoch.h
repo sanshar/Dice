@@ -57,7 +57,8 @@ class semiStoch {
   template<typename Wave, typename TrialWalk>
   void init(std::string SHCIFile, Wave& wave, TrialWalk& walk,
             walkersFCIQMC<TrialWalk>& walkers, int DetLenMin,
-            int nreplicasLocal, workingArray& work) {
+            int nreplicasLocal, bool importanceSampling,
+            workingArray& work) {
 
     doingSemiStoch = true;
 
@@ -171,7 +172,11 @@ class semiStoch {
       ht[ dets[i] ] = i;
     }
 
-    createCoreHamiltonian();
+    if (importanceSampling) {
+      createCoreHamil_IS(wave, walk);
+    } else {
+      createCoreHamil();
+    }
 
     // Create arrays that will store the walker amplitudes in the
     // core space
@@ -275,7 +280,7 @@ class semiStoch {
     }
   }
 
-  void createCoreHamiltonian() {
+  void createCoreHamil() {
 
     // These will be used to hold the positions and elements
     // for each row of the core Hamiltonian
@@ -301,13 +306,53 @@ class semiStoch {
           tempPos.push_back(j);
           tempHam.push_back(HElem);
         }
-
       }
 
       // Add the elements for this row to the arrays
       pos.push_back(tempPos);
       ham.push_back(tempHam);
+      tempPos.clear();
+      tempHam.clear();
+    }
 
+  }
+
+  template<typename Wave, typename TrialWalk>
+  void createCoreHamil_IS(Wave& wave, TrialWalk& walk) {
+
+    // These will be used to hold the positions and elements
+    // for each row of the core Hamiltonian
+    vector<int> tempPos;
+    vector<double> tempHam;
+
+    for (int i=0; i<nDetsThisProc; i++) {
+      Determinant det_i(detsThisProc[i]);
+      TrialWalk walk_i(wave, det_i);
+
+      for (int j=0; j<nDets; j++) {
+        Determinant det_j(dets[j]);
+
+        double HElem = 0.0;
+        if (det_i == det_j) {
+          // Don't include the diagonal contributions - these are
+          // taken care of in the death step
+          HElem = 0.0;
+        } else {
+          HElem = Hij(det_i, det_j, I1, I2, coreE);
+        }
+
+        if (abs(HElem) > 1.e-12) {
+          // Apply importane sampling factor
+          HElem /= wave.getOverlapFactor(walk_i, det_j, true);
+
+          tempPos.push_back(j);
+          tempHam.push_back(HElem);
+        }
+      }
+
+      // Add the elements for this row to the arrays
+      pos.push_back(tempPos);
+      ham.push_back(tempHam);
       tempPos.clear();
       tempHam.clear();
     }

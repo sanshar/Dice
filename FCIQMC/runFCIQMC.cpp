@@ -46,7 +46,8 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
 
   if (schd.semiStoch) {
     if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl << flush;
-    core.init(schd.determinantFile, wave, walk, walkers, DetLenMin, schd.nreplicas, work);
+    core.init(schd.semiStochFile, wave, walk, walkers, DetLenMin,
+              schd.nreplicas, schd.importanceSampling, work);
     if (commrank == 0) cout << "Semi-stochastic construction finished." << endl << flush;
   }
 

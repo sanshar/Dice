@@ -38,6 +38,11 @@ class TrivialWF {
     return 1.0;
   }
 
+  double getOverlapFactor(const TrivialWalk& walk, Determinant& dNew,
+                          bool doparity) const {
+    return 1.0;
+  }
+
   double getOverlapFactor(int I, int J, int A, int B,
                           const TrivialWalk& walk, bool doparity) const {
     return 1.0;

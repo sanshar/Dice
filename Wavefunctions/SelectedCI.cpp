@@ -183,7 +183,7 @@ void SelectedCI::initWalker(SimpleWalker &walk, Determinant& d) {
 }
 
 //only used in deterministic calcs
-double SelectedCI::getOverlapFactor(SimpleWalker& walk, Determinant& dcopy) {
+double SelectedCI::getOverlapFactor(SimpleWalker& walk, Determinant& dcopy, bool doparity) {
   auto it1 = DetsMap.find(walk.d.getShortSimpleDet());
   auto it2 = DetsMap.find(dcopy.getShortSimpleDet());
   if (it1 != DetsMap.end() && it2 != DetsMap.end())
