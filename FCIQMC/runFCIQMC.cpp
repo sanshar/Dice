@@ -143,7 +143,7 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
       work.ovlpRatio[i] = cumOvlpRatio;
     }
 
-    if ((iter+1) % 30 == 0) {
+    if ((iter+1) % nitersPerWalker == 0) {
       // Put the current walker in the FCIQMC walker list. This
       // needs top be put in the spawning list to correctly perform
       // annihilation and send walkers to the correct processor.
