@@ -121,6 +121,7 @@ private:
       & initiator
       & initiatorThresh
       & semiStoch
+      & semiStochInit
       & semiStochFile
       & uniformExGen
       & heatBathExGen
@@ -317,6 +318,7 @@ public:
   bool initiator;
   double initiatorThresh;
   bool semiStoch;
+  bool semiStochInit;
   std::string semiStochFile;
   bool uniformExGen;
   bool heatBathExGen;

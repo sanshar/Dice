@@ -58,7 +58,7 @@ class semiStoch {
   void init(std::string SHCIFile, Wave& wave, TrialWalk& walk,
             walkersFCIQMC<TrialWalk>& walkers, int DetLenMin,
             int nreplicasLocal, bool importanceSampling,
-            workingArray& work) {
+            bool semiStochInit, double targetPop, workingArray& work) {
 
     doingSemiStoch = true;
 
@@ -169,10 +169,83 @@ class semiStoch {
     amps = allocateAmpsArray(nDetsThisProc, nreplicas, 0.0);
     ampsFull = allocateAmpsArray(nDets, nreplicas, 0.0);
 
+    // If true, then initialise from the SCI wave function
+    if (semiStochInit) {
+      if (importanceSampling) {
+        setAmpsToSCIWF_IS(wave, walk, targetPop);
+      } else {
+        setAmpsToSCIWF(targetPop);
+      }
+    }
+
     indices.resize(nDetsThisProc, 0);
 
     // Add the core determinants to the main list with zero amplitude
     addCoreDetsToMainList(wave, walk, walkers, work);
+  }
+
+  void setAmpsToSCIWF(double targetPop) {
+    // Set the amplitudes to those from the read-in SCI wave function
+
+    // Find the total population
+    double totPop = 0.0, totPopAll = 0.0;
+    for (int i=0; i<nDetsThisProc; i++) {
+      totPop += abs(sciAmps[i]);
+    }
+
+#ifdef SERIAL
+    totPopAll = totPop;
+#else
+    MPI_Allreduce(&totPop, &totPopAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+    // Factor to scale up the amplitudes to the correct initial
+    // walker population
+    double fac = targetPop/totPopAll;
+
+    for (int i=0; i<nDetsThisProc; i++) {
+      for (int j=0; j<nreplicas; j++) {
+        amps[i][j] = sciAmps[i] * fac;
+      }
+    }
+  }
+
+  template<typename Wave, typename TrialWalk>
+  void setAmpsToSCIWF_IS(Wave& wave, TrialWalk& walk, double targetPop) {
+    // Set the amplitudes to those from the read-in SCI wave function.
+    // This uses the importance sampled Hamiltonian, where the amplitudes
+    // should be C_i * psi_i^T, i.e. they include a factor from the trial
+    // wave function, psi_i^T, also.
+
+    // Find the total population
+    double totPop = 0.0, totPopAll = 0.0;
+    for (int i=0; i<nDetsThisProc; i++) {
+      Determinant det_i(detsThisProc[i]);
+      TrialWalk walk_i(wave, det_i);
+      double ovlp = wave.Overlap(walk_i);
+
+      totPop += abs(sciAmps[i]*ovlp);
+    }
+
+#ifdef SERIAL
+    totPopAll = totPop;
+#else
+    MPI_Allreduce(&totPop, &totPopAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+    // Factor to scale up the amplitudes to the correct initial
+    // walker population
+    double fac = targetPop/totPopAll;
+
+    for (int i=0; i<nDetsThisProc; i++) {
+      Determinant det_i(detsThisProc[i]);
+      TrialWalk walk_i(wave, det_i);
+      double ovlp = wave.Overlap(walk_i);
+
+      for (int j=0; j<nreplicas; j++) {
+        amps[i][j] = sciAmps[i] * ovlp * fac;
+      }
+    }
   }
 
   template<typename Wave, typename TrialWalk>

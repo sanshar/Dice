@@ -173,6 +173,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.initiator = input.get("FCIQMC.initiator", false);
     schd.initiatorThresh = input.get("FCIQMC.initiatorThresh", 2.0);
     schd.semiStoch = input.get("FCIQMC.semiStoch", false);
+    schd.semiStochInit = input.get("FCIQMC.semiStochInit", false);
     schd.semiStochFile = input.get("wavefunction.semiStochDets", "dets");
     schd.uniformExGen = input.get("FCIQMC.uniform", true);
     schd.heatBathExGen = input.get("FCIQMC.heatBath", false);

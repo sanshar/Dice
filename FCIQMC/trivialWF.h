@@ -48,6 +48,10 @@ class TrivialWF {
     return 1.0;
   }
 
+  double Overlap(const TrivialWalk& walk) const {
+    return 1.0;
+  }
+
   Determinant& getRef() {
     return d;
   }

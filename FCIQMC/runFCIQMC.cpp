@@ -46,16 +46,19 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
 
   if (schd.semiStoch) {
     if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl << flush;
-    core.init(schd.semiStochFile, wave, walk, walkers, DetLenMin,
-              schd.nreplicas, schd.importanceSampling, work);
+    core.init(schd.semiStochFile, wave, walk, walkers, DetLenMin, schd.nreplicas,
+              schd.importanceSampling, schd.semiStochInit, schd.initialPop, work);
     if (commrank == 0) cout << "Semi-stochastic construction finished." << endl << flush;
   }
 
-  // Set up the initial walker list
-  if (schd.trialInitFCIQMC) {
-    initWalkerListTrialWF(wave, walk, walkers, spawn, core, work);
-  } else {
-    initWalkerListHF(wave, walk, walkers, spawn, core, work, HFDet, DetLenMin);
+  // Set up the initial walker list, if we didn't do so in the
+  // semi-stochastic routine already
+  if (!schd.semiStochInit) {
+    if (schd.trialInitFCIQMC) {
+      initWalkerListTrialWF(wave, walk, walkers, spawn, core, work);
+    } else {
+      initWalkerListHF(wave, walk, walkers, spawn, core, work, HFDet, DetLenMin);
+    }
   }
 
   if (commrank == 0) {
