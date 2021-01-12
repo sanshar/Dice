@@ -527,8 +527,13 @@ void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
     }
   }
 
+#ifdef SERIAL
+  varEnergyNumAll = varEnergyNum;
+  varEnergyDenomAll = varEnergyDenom;
+#else
   MPI_Allreduce(&varEnergyNum,   &varEnergyNumAll,   1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&varEnergyDenom, &varEnergyDenomAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 }
 
 // Calculate the numerator of the second-order Epstein-Nesbet correction
@@ -561,7 +566,11 @@ void calcEN2Correction(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spa
 
   EN2 /= tau*tau;
 
+#ifdef SERIAL
+  EN2All = EN2;
+#else
   MPI_Allreduce(&EN2, &EN2All, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 }
 
 // Perform the death step for the determinant at position iDet in

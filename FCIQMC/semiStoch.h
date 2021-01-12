@@ -130,8 +130,12 @@ class semiStoch {
     determSizes = new int[commsize];
     determDispls = new int[commsize];
 
+#ifdef SERIAL
+    determSizes[0] = nDetsThisProc;
+#else
     MPI_Allgather(&nDetsThisProc, 1, MPI_INTEGER, determSizes, 1,
                   MPI_INTEGER, MPI_COMM_WORLD);
+#endif
 
     determDispls[0] = 0;
     for (int i = 1; i<commsize; i++) {
@@ -148,9 +152,15 @@ class semiStoch {
 
     // Gather the determinants into the dets array
     dets.resize(nDets);
+#ifdef SERIAL
+    for (int i=0; i<nDetsThisProc; i++) {
+      dets[i] = detsThisProc[i];
+    }
+#else
     MPI_Allgatherv(&detsThisProc.front(), nDetsThisProc*2*DetLen, MPI_LONG,
                    &dets.front(), determSizesDets, determDisplsDets,
                    MPI_LONG, MPI_COMM_WORLD);
+#endif
 
     // Create the hash table, mapping determinants to their position
     // in the full list of core determinants
@@ -428,9 +438,17 @@ class semiStoch {
       determDisplsAmps[i] = determDispls[i] * nreplicas;
     }
 
+#ifdef SERIAL
+    for (int i=0; i<nDetsThisProc; i++) {
+      for (int j=0; j<nreplicas; j++) {
+        ampsFull[i][j] = amps[i][j];
+      }
+    }
+#else
     MPI_Allgatherv(&amps[0][0], nDetsThisProc*nreplicas, MPI_DOUBLE,
                    &ampsFull[0][0], determSizesAmps, determDisplsAmps,
                    MPI_DOUBLE, MPI_COMM_WORLD);
+#endif
 
     // Zero the amps array, which will be used for accumulating the
     // results of the projection
