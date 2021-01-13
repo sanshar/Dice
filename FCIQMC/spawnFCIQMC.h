@@ -21,6 +21,7 @@
 
 #include <vector>
 #include "Determinants.h"
+#include "semiStoch.h"
 #include "walkersFCIQMC.h"
 #include "workingArray.h"
 
@@ -79,14 +80,14 @@ class spawnFCIQMC {
   // Move spawned walkers to the provided main walker list
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
-                     const double minPop, bool initiator, workingArray& work);
+                     semiStoch& core, const double minPop, bool initiator, workingArray& work);
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
-                                 walkersFCIQMC<TrialWalk>& walkers,
+                                 walkersFCIQMC<TrialWalk>& walkers, semiStoch& core,
                                  const double minPop, workingArray& work);
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
-                               walkersFCIQMC<TrialWalk>& walkers,
+                               walkersFCIQMC<TrialWalk>& walkers, semiStoch& core,
                                const double minPop, workingArray& work);
 
 };

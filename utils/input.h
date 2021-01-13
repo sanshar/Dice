@@ -120,6 +120,9 @@ private:
       & targetPop
       & initiator
       & initiatorThresh
+      & semiStoch
+      & semiStochInit
+      & semiStochFile
       & uniformExGen
       & heatBathExGen
       & heatBathUniformSingExGen
@@ -314,6 +317,9 @@ public:
   double targetPop;
   bool initiator;
   double initiatorThresh;
+  bool semiStoch;
+  bool semiStochInit;
+  std::string semiStochFile;
   bool uniformExGen;
   bool heatBathExGen;
   bool heatBathUniformSingExGen;

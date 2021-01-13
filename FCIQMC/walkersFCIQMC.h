@@ -142,11 +142,21 @@ class walkersFCIQMC {
     return all_of(&amps[i][0], &amps[i][nreplicas], [](double x) { return abs(x)<1.0e-12; });
   }
 
-  void stochasticRoundAll(const double minPop) {
+  void stochasticRoundAll(const double minPop, unordered_map<simpleDet, int, boost::hash<simpleDet>>& coreht) {
 
     for (int iDet=0; iDet<nDets; iDet++) {
+      // When semi-stochastic is turned on, core determinants should never
+      // be removed from the list or stochastically rounded.
+      if (schd.semiStoch) {
+        simpleDet simple = dets[iDet].getSimpleDet();
+        if (coreht.find(simple) != coreht.end()) {
+          continue;
+        }
+      }
+
       // To be a valid walker in the main list, there must be a corresponding
-      // hash table entry *and* the amplitude must be non-zero for a replica
+      // hash table entry *and* the amplitude must be non-zero for a replica.
+      // The exception is core determinants (see comments above).
       if ( ht.find(dets[iDet]) != ht.end() && !allUnoccupied(iDet) ) {
 
         bool keepDetAny = false;

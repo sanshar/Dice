@@ -22,7 +22,7 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
                 const int norbs, const int nel, const int nalpha, const int nbeta,
                 Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
                 walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn,
-                workingArray& work) {
+                semiStoch& core, workingArray& work) {
 
   // The number of 64-bit integers required to represent (the alpha
   // or beta part of) a determinant
@@ -44,11 +44,21 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
 
   HFEnergy = HFDet.Energy(I1, I2, coreE);
 
-  // Set up the initial walker list
-  if (schd.trialInitFCIQMC) {
-    initWalkerListTrialWF(wave, walk, walkers, spawn, work);
-  } else {
-    initWalkerListHF(wave, walk, HFDet, DetLenMin, HFEnergy, walkers, work);
+  if (schd.semiStoch) {
+    if (commrank == 0) cout << "Starting semi-stochastic construction..." << endl << flush;
+    core.init(schd.semiStochFile, wave, walk, walkers, DetLenMin, schd.nreplicas,
+              schd.importanceSampling, schd.semiStochInit, schd.initialPop, work);
+    if (commrank == 0) cout << "Semi-stochastic construction finished." << endl << flush;
+  }
+
+  // Set up the initial walker list, if we didn't do so in the
+  // semi-stochastic routine already
+  if (!schd.semiStochInit) {
+    if (schd.trialInitFCIQMC) {
+      initWalkerListTrialWF(wave, walk, walkers, spawn, core, work);
+    } else {
+      initWalkerListHF(wave, walk, walkers, spawn, core, work, HFDet, DetLenMin);
+    }
   }
 
   if (commrank == 0) {
@@ -56,9 +66,9 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
   }
 
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
-    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl;
+    if (commrank == 0) cout << "Starting heat bath excitation generator construction..." << endl << flush;
     hb.createArrays(norbs, I2);
-    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl;
+    if (commrank == 0) cout << "Heat bath excitation generator construction finished." << endl << flush;
   }
 
   // The default excitation generator is the uniform one. If
@@ -66,40 +76,35 @@ void initFCIQMC(Wave& wave, TrialWalk& walk,
   if (schd.heatBathExGen || schd.heatBathUniformSingExGen) {
     schd.uniformExGen = false;
   }
-
 }
 
 // This routine places all intial walkers on the Hartree--Fock determinant,
 // and sets all attributes in the walkersFCIQMC object as appropriate for
 // this state.
 template<typename Wave, typename TrialWalk>
-void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
-                      const int DetLenMin, double& HFEnergy,
-                      walkersFCIQMC<TrialWalk>& walkers, workingArray& work) {
+void initWalkerListHF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                      spawnFCIQMC& spawn, semiStoch& core, workingArray& work,
+                      Determinant& HFDet, const int DetLenMin) {
+
   // Processor that the HF determinant lives on
-  int HFDetProc = getProc(HFDet, DetLenMin);
+  int proc = getProc(HFDet, DetLenMin);
 
-  if (HFDetProc == commrank) {
-    walkers.dets[0] = HFDet;
-    walkers.diagH[0] = HFEnergy;
-    walkers.ht[HFDet] = 0;
-
-    double HFOvlp, HFLocalE, HFSVTotal;
-    TrialWalk HFWalk(wave, HFDet);
-    wave.HamAndOvlpAndSVTotal(HFWalk, HFOvlp, HFLocalE, HFSVTotal, work,
-                              schd.importanceSampling, schd.epsilon);
-    walkers.ovlp[0] = HFOvlp;
-    walkers.localE[0] = HFLocalE;
-    walkers.SVTotal[0] = HFSVTotal;
-    walkers.trialWalk[0] = HFWalk;
-
-    // Set the population on the reference
-    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-      walkers.amps[0][iReplica] = schd.initialPop;
+  // Add a walker to the spawning array, on the HF determinant
+  if (proc == commrank) {
+    int ind = spawn.currProcSlots[proc];
+    spawn.dets[ind] = HFDet.getSimpleDet();
+    // Set the amplitude on the correct replica
+    for (int iSgn=0; iSgn<schd.nreplicas; iSgn++) {
+      spawn.amps[ind][iSgn] = schd.initialPop;
     }
-    // The number of determinants in the walker list
-    walkers.nDets = 1;
+    spawn.currProcSlots[proc] += 1;
   }
+
+  // Move the walker to the main list, using the communication and
+  // annihilation procedures
+  spawn.communicate();
+  spawn.compress();
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
 }
 
 // This routine creates the initial walker distribution by sampling the
@@ -110,7 +115,7 @@ void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet,
 // with a constant multiplicative factor.
 template<typename Wave, typename TrialWalk>
 void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
-                           spawnFCIQMC& spawn, workingArray& work) {
+                           spawnFCIQMC& spawn, semiStoch& core, workingArray& work) {
   double ham, ovlp;
   auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
                           std::ref(generator));
@@ -141,7 +146,7 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
       work.ovlpRatio[i] = cumOvlpRatio;
     }
 
-    if ((iter+1) % 30 == 0) {
+    if ((iter+1) % nitersPerWalker == 0) {
       // Put the current walker in the FCIQMC walker list. This
       // needs top be put in the spawning list to correctly perform
       // annihilation and send walkers to the correct processor.
@@ -181,7 +186,7 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
   // to the main walker list
   spawn.communicate();
   spawn.compress();
-  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, 0.0, work);
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
 
   vector<double> walkerPop, walkerPopTot;
   walkerPop.resize(schd.nreplicas, 0.0);
@@ -216,12 +221,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
   heatBathFCIQMC hb;
   walkersFCIQMC<TrialWalk> walkers;
   spawnFCIQMC spawn;
+  semiStoch core;
 
   // Needed for calculating local energies
   workingArray work;
 
-  initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta,
-      HFDet, HFEnergy, hb, walkers, spawn, work);
+  initFCIQMC(wave, walk, norbs, nel, nalpha, nbeta, HFDet,
+             HFEnergy, hb, walkers, spawn, core, work);
 
   // ----- FCIQMC data -----
   double initEshift = HFEnergy + schd.initialShift;
@@ -234,7 +240,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
   // Get the initial stats
   walkers.calcStats(dat, HFDet, I1, I2, coreE);
   communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
-  calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+  if (schd.nreplicas == 2) {
+    if (schd.semiStoch) {
+      core.copyWalkerAmps(walkers);
+      core.determProjection(schd.tau);
+    }
+    calcVarEnergy(walkers, spawn, core, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+  }
   dat.walkerPopOldTot = dat.walkerPopTot;
 
   // Print the initial stats
@@ -264,12 +276,37 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     //cout << walkers << endl;
 
+    // The number of core determinants found, accumulated during the
+    // loop over walkers
+    int nCoreFound = 0;
+
     // Loop over all walkers/determinants
     for (int iDet=0; iDet<walkers.nDets; iDet++) {
-      // Is this unoccupied for all replicas? If so, add to the list of empty slots
+
+      // Check if this is a core determinant, if doing semi-stochastic
+      bool coreDet = false;
+      if (schd.semiStoch) {
+        simpleDet parentSimpleDet = walkers.dets[iDet].getSimpleDet();
+        if (core.ht.find(parentSimpleDet) != core.ht.end()) {
+          coreDet = true;
+          for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+            core.amps[nCoreFound][iReplica] = walkers.amps[iDet][iReplica];
+          }
+
+          // Store the position of this core determinant in the main list
+          core.indices[nCoreFound] = iDet;
+          nCoreFound += 1;
+        }
+      }
+
+      // Is this unoccupied for all replicas? If so, add to the list of
+      // empty slots
       if (walkers.allUnoccupied(iDet)) {
-        walkers.lastEmpty += 1;
-        walkers.emptyDets[walkers.lastEmpty] = iDet;
+        // Never remove core dets from the main list
+        if (!coreDet) {
+          walkers.lastEmpty += 1;
+          walkers.emptyDets[walkers.lastEmpty] = iDet;
+        }
         continue;
       }
 
@@ -279,7 +316,10 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
         // Update the initiator flag, if necessary
         int parentFlags = 0;
         if (schd.initiator) {
-          if (abs(walkers.amps[iDet][iReplica]) > schd.initiatorThresh) {
+          double amp = walkers.amps[iDet][iReplica];
+          // Condition for this det to be an initiator:
+          bool initDet = abs(amp) > schd.initiatorThresh || coreDet;
+          if (initDet) {
             // This walker is an initiator, so set the flag for the
             // appropriate replica
             parentFlags |= 1 << iReplica;
@@ -299,21 +339,46 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
           generateExcitation(hb, I1, I2, walkers.dets[iDet], nel, childDet, childDet2,
                              pgen, pgen2, ex1, ex2);
 
-          // pgen=0.0 is set when a null excitation is returned.
+          // pgen=0 is set when a null excitation is returned
           if (pgen > 1.e-15) {
-            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet, spawn, I1, I2,
-                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
-                            schd.tau, schd.minSpawn, pgen, ex1, ex2);
+            // If the parent is a core determinant, check if we need to
+            // cancel the spawning
+            bool allowSpawn = true;
+            if (coreDet) {
+              simpleDet childSimpleDet = childDet.getSimpleDet();
+              if (core.ht.find(childSimpleDet) != core.ht.end()) {
+                allowSpawn = false;
+              }
+            }
+            if (allowSpawn) {
+              attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet, spawn, I1, I2,
+                              coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                              schd.tau, schd.minSpawn, pgen, ex1, ex2);
+            }
           }
+
           if (pgen2 > 1.e-15) {
-            attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet2, spawn, I1, I2,
-                            coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
-                            schd.tau, schd.minSpawn, pgen2, ex1, ex2);
+            bool allowSpawn = true;
+            if (coreDet) {
+              simpleDet childSimpleDet2 = childDet2.getSimpleDet();
+              if (core.ht.find(childSimpleDet2) != core.ht.end()) {
+                allowSpawn = false;
+              }
+            }
+            if (allowSpawn) {
+              attemptSpawning(wave, parentWalk, walkers.dets[iDet], childDet2, spawn, I1, I2,
+                              coreE, schd.nAttemptsEach, parentAmp, parentFlags, iReplica,
+                              schd.tau, schd.minSpawn, pgen2, ex1, ex2);
+            }
           }
 
         } // Loop over spawning attempts
       } // Loop over replicas
 
+    }
+
+    if (schd.semiStoch) {
+      core.determProjection(schd.tau);
     }
 
     // Perform annihilation of spawned walkers
@@ -322,7 +387,9 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     // Calculate energies involving multiple replicas
     if (schd.nreplicas == 2) {
-      calcVarEnergy(walkers, spawn, I1, I2, coreE, schd.tau, dat.EVarNumAll, dat.EVarDenomAll);
+      calcVarEnergy(walkers, spawn, core, I1, I2, coreE, schd.tau,
+                    dat.EVarNumAll, dat.EVarDenomAll);
+
       if (schd.calcEN2) {
         calcEN2Correction(walkers, spawn, I1, I2, coreE, schd.tau,
                           dat.EVarNumAll, dat.EVarDenomAll, dat.EN2All);
@@ -330,10 +397,13 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     }
 
     performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
-    spawn.mergeIntoMain(wave, walk, walkers, schd.minPop, schd.initiator, work);
+    if (schd.semiStoch) {
+      core.determAnnihilation(walkers.amps);
+    }
+    spawn.mergeIntoMain(wave, walk, walkers, core, schd.minPop, schd.initiator, work);
 
     // Stochastic rounding of small walkers
-    walkers.stochasticRoundAll(schd.minPop);
+    walkers.stochasticRoundAll(schd.minPop, core.ht);
 
     walkers.calcStats(dat, HFDet, I1, I2, coreE);
     communicateEstimates(dat, walkers.nDets, spawn.nDets, nDetsTot, nSpawnedDetsTot);
@@ -420,8 +490,8 @@ void attemptSpawning(Wave& wave, TrialWalk& walk, Determinant& parentDet, Determ
 // energy estimator. This can be used in replicas FCIQMC simulations.
 template<typename TrialWalk>
 void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
-                   const oneInt& I1, const twoInt& I2, double& coreE, const double tau,
-                   double& varEnergyNumAll, double& varEnergyDenomAll)
+                   semiStoch& core, const oneInt& I1, const twoInt& I2, double& coreE,
+                   const double tau, double& varEnergyNumAll, double& varEnergyDenomAll)
 {
   double varEnergyNum = 0.0;
   double varEnergyDenom = 0.0;
@@ -435,8 +505,9 @@ void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
 
   // Contributions from the off-diagonal of the Hamiltonian
   for (int j=0; j<spawn.nDets; j++) {
-    if (walkers.ht.find(spawn.dets[j]) != walkers.ht.end()) {
-      int iDet = walkers.ht[spawn.dets[j]];
+    Determinant det_j = Determinant(spawn.dets[j]);
+    if (walkers.ht.find(det_j) != walkers.ht.end()) {
+      int iDet = walkers.ht[det_j];
       double spawnAmp1 = spawn.amps[j][0];
       double spawnAmp2 = spawn.amps[j][1];
       double currAmp1 = walkers.amps[iDet][0];
@@ -445,8 +516,24 @@ void calcVarEnergy(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spawn,
     }
   }
 
+  // Semi-stochastic contributions
+  if (schd.semiStoch) {
+    for (int j=0; j<core.nDetsThisProc; j++) {
+      double spawnAmp1 = core.amps[j][0];
+      double spawnAmp2 = core.amps[j][1];
+      double currAmp1 = walkers.amps[core.indices[j]][0];
+      double currAmp2 = walkers.amps[core.indices[j]][1];
+      varEnergyNum -= ( currAmp1 * spawnAmp2 + spawnAmp1 * currAmp2 ) / ( 2.0 * tau);
+    }
+  }
+
+#ifdef SERIAL
+  varEnergyNumAll = varEnergyNum;
+  varEnergyDenomAll = varEnergyDenom;
+#else
   MPI_Allreduce(&varEnergyNum,   &varEnergyNumAll,   1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&varEnergyDenom, &varEnergyDenomAll, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 }
 
 // Calculate the numerator of the second-order Epstein-Nesbet correction
@@ -479,7 +566,11 @@ void calcEN2Correction(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spa
 
   EN2 /= tau*tau;
 
+#ifdef SERIAL
+  EN2All = EN2;
+#else
   MPI_Allreduce(&EN2, &EN2All, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 }
 
 // Perform the death step for the determinant at position iDet in

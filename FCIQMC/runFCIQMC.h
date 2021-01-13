@@ -22,19 +22,22 @@
 
 #include "dataFCIQMC.h"
 #include "excitGen.h"
+#include "semiStoch.h"
 #include "spawnFCIQMC.h"
-#include "walkersFCIQMC.h"
 #include "utilsFCIQMC.h"
+#include "walkersFCIQMC.h"
 
 template<typename Wave, typename TrialWalk>
 void initFCIQMC(Wave& wave, TrialWalk& walk,
                 const int norbs, const int nel, const int nalpha, const int nbeta,
                 Determinant& HFDet, double& HFEnergy, heatBathFCIQMC& hb,
-                walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn, workingArray& work);
+                walkersFCIQMC<TrialWalk>& walkers, spawnFCIQMC& spawn,
+                semiStoch& core, workingArray& work);
 
 template<typename Wave, typename TrialWalk>
-void initWalkerListHF(Wave& wave, TrialWalk& walk, Determinant& HFDet, const int DetLenMin,
-                      double& HFEnergy, walkersFCIQMC<TrialWalk>& walkers, workingArray& work);
+void initWalkerListHF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
+                      spawnFCIQMC& spawn, semiStoch& core, workingArray& work,
+                      Determinant& HFDet, const int DetLenMin);
 
 template<typename Wave, typename TrialWalk>
 void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
