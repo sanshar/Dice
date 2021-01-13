@@ -69,6 +69,16 @@ then
     ../../clean.sh
 fi
 
+cd $here/FCIQMC/Ne_initiator_en2_ss
+../../clean.sh
+printf "...running FCIQMC/Ne_initiator_en2_ss\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc_replica' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
 cd $here/FCIQMC/water_vdz_hb
 ../../clean.sh
 printf "...running FCIQMC/water_vdz_hb\n"
@@ -82,6 +92,16 @@ fi
 cd $here/FCIQMC/N2_fixed_node
 ../../clean.sh
 printf "...running FCIQMC/N2_fixed_node\n"
+$MPICOMMAND $FCIQMCPATH > fciqmc.out
+python2 ../../testEnergy.py 'fciqmc_trial' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/FCIQMC/N2_is_ss
+../../clean.sh
+printf "...running FCIQMC/N2_is_ss\n"
 $MPICOMMAND $FCIQMCPATH > fciqmc.out
 python2 ../../testEnergy.py 'fciqmc_trial' $tol
 if [ $clean == 1 ]
