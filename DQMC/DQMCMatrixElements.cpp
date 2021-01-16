@@ -454,9 +454,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
   //hG[1] = green[1].cwiseProduct(h1).sum();
   ene += ciCoeffs[0] * (hG[0] + hG[1]);
   
-  complex<double> currEne(0., 0.);
-  currEne = ene;
-
   // 1e intermediate
   matArray roth1;
   roth1[0] = (greeno[0] * h1) * greenp[0];
@@ -504,7 +501,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
     gBlocks.push_back(blocks);
     gBlockDets.push_back(dets);
   }
-  currEne = ene;
   
   // 2e intermediates
   matArray int1, int2;
@@ -519,7 +515,8 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
       //exc[sz] = chol[n] * green[sz];
       l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
       int2[sz].noalias() = (greeno[sz] * chol[n]) * greenp[sz];
-      int1[sz].noalias() = lG[sz] * int2[sz] - (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
+      int1[sz] = lG[sz] * int2[sz];
+      int1[sz].noalias() -= (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
       //int1[sz] = lG[sz] * int2[sz] - green[sz] * chol[n] * int2[sz];
     }
 
@@ -628,7 +625,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
     
     } // dets
   } // chol
-  currEne = ene;
 
   overlap *= overlap0;
   ene *= overlap0;
