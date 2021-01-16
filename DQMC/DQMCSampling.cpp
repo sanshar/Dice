@@ -734,14 +734,14 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
-        prop.second += field_n_i * hsOperators[i].second;
+        //prop.second += field_n_i * hsOperators[i].second;
       }
       prop.first = (sqrt(dt) * prop.first).exp();
       rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop.first * (expOneBodyOperator.first * rn.first)));
       if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
       else {
-        prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+        //prop.second = (sqrt(dt) * prop.second).exp();
+        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.first * expOneBodyOperator.second * rn.second;
       }
 
       propTime += getTime() - init;
@@ -843,8 +843,8 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   }
   
   //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  int numEneSteps = eneSteps.size();
-  vector<complex<double>> numMean(numEneSteps, complex<double>(0., 0.)), denomMean(numEneSteps, complex<double>(0., 0.)), denomAbsMean(numEneSteps, complex<double>(0., 0.));
+  int nEneSteps = eneSteps.size();
+  DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0., qrTime = 0.;
   if (commrank == 0) cout << "Starting sampling sweeps\n";
@@ -856,6 +856,8 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
     VectorXd fields = VectorXd::Zero(nfields);
     complex<double> orthoFac = complex<double>(1., 0.);
     int eneStepCounter = 0;
+    ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
+    numSampleA.setZero(); denomSampleA.setZero();
     for (int n = 0; n < nsteps; n++) {
       // sampling
       double init = getTime();
@@ -865,26 +867,21 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
-        prop.second += field_n_i * hsOperators[i].second;
+        //prop.second += field_n_i * hsOperators[i].second;
       }
       prop.first = (sqrt(dt) * prop.first).exp();
       rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop.first * (expOneBodyOperator.first * rn.first)));
       if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
       else {
-        prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+        //prop.second = (sqrt(dt) * prop.second).exp();
+        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.first * expOneBodyOperator.second * rn.second;
       }
 
       propTime += getTime() - init;
       
       // orthogonalize for stability
       if (n % orthoSteps == 0) {
-        HouseholderQR<MatrixXcd> qr1(rn.first);
-        HouseholderQR<MatrixXcd> qr2(rn.second);
-        rn.first = qr1.householderQ() * MatrixXd::Identity(norbs, Determinant::nalpha);
-        rn.second = qr2.householderQ() * MatrixXd::Identity(norbs, Determinant::nbeta);
-        for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) orthoFac *= qr1.matrixQR().diagonal()(i);
-        for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
+        orthogonalize(rn, orthoFac);
       }
 
       // measure
@@ -902,53 +899,24 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
         numSample *= overlapT;
         num += numSample; den += overlapT;
 
-        denomMean[eneStepCounter] += (den - denomMean[eneStepCounter]) / (sweep + 1.);
-        denomAbsMean[eneStepCounter] += (abs(den) - denomAbsMean[eneStepCounter]) / (sweep + 1.);
-        numMean[eneStepCounter] += (num - numMean[eneStepCounter]) / (sweep + 1.);
+        numSampleA[eneStepCounter] = num;
+        denomSampleA[eneStepCounter] = den;
         eneStepCounter++;
       }
       eneTime += getTime() - init;
     }
+    stats.addSamples(numSampleA, denomSampleA);
   }
 
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
-    cout << "          iTime                 Energy                     Energy error         Average phase\n";
   }
 
-  for (int n = 0; n < numEneSteps; n++) {
-    complex<double> energyAll[commsize];
-    for (int i = 0; i < commsize; i++) energyAll[i] = complex<double>(0., 0.);
- 
-    complex<double> energyProc = numMean[n] / denomMean[n];
-    complex<double> numProc = numMean[n];
-    complex<double> denomProc = denomMean[n];
-    complex<double> denomAbsProc = denomAbsMean[n];
-    MPI_Gather(&(energyProc), 1, MPI_DOUBLE_COMPLEX, &(energyAll), 1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &energyProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &numProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &denomAbsProc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    
-    energyProc /= commsize;
-    numProc /= commsize;
-    denomProc /= commsize;
-    denomAbsProc /= commsize;
-    double stddev = 0., stddev2 = 0.;
-    for (int i = 0; i < commsize; i++) {
-      stddev += pow(abs(energyAll[i] - energyProc), 2);
-      stddev2 += pow(abs(energyAll[i] - energyProc), 4);
-    }
-    stddev /= (commsize - 1);
-    stddev2 /= commsize;
-    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
-    stddev = sqrt(stddev / commsize);
-
-    if (commrank == 0) {
-      cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % ((eneSteps[n] + 1) * dt) % energyProc.real() % energyProc.imag() % stddev % stddev2 % (denomProc / denomAbsProc).real() % (denomProc / denomAbsProc).imag(); 
-    }
-  }
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
+  stats.gatherAndPrintStatistics(iTime);
+  if (schd.printLevel > 10) stats.writeSamples();
 }
 
 // calculates mixed energy estimator of the imaginary time propagated wave function
@@ -1565,14 +1533,14 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
         prop.first += field_n_i * hsOperators[i].first;
-        prop.second += field_n_i * hsOperators[i].second;
+        //prop.second += field_n_i * hsOperators[i].second;
       }
       prop.first = (sqrt(dt) * prop.first).exp();
       rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop.first * (expOneBodyOperator.first * rn.first)));
       if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
       else {
-        prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn.second;
+        //prop.second = (sqrt(dt) * prop.second).exp();
+        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.first * expOneBodyOperator.second * rn.second;
       }
 
       propTime += getTime() - init;
