@@ -44,15 +44,19 @@ int main(int argc, char *argv[])
   vector<MatrixXd> chol;
   readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, h1, h1Mod, chol);
   
-  if (schd.optimizeOrbs)
-    optimizeProjectedSlater(coreE, h1, chol);
-  MPI_Barrier(MPI_COMM_WORLD);
 
   if (schd.wavefunctionType == "jastrow") {
     if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
     calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
   }
+  else if (schd.wavefunctionType == "multislater") {
+    if (commrank == 0) cout << "\nUsing multiSlater trial\n";
+    calcEnergyDirectMultiSlater(coreE, h1, h1Mod, chol);
+  }
   else if (schd.hf == "ghf") {
+    if (schd.optimizeOrbs)
+      optimizeProjectedSlater(coreE, h1, chol);
+    MPI_Barrier(MPI_COMM_WORLD);
     if (commrank == 0) cout << "\nUsing GHF trial\n";
     calcEnergyDirectGHF(coreE, h1, h1Mod, chol);
   }

@@ -31,6 +31,18 @@ std::complex<double> calcHamiltonianElement_sRI(std::pair<Eigen::MatrixXcd, Eige
 // leading cost: O(X N^2 M)
 std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol); 
 
+// Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
+// using precalculated half rotated cholesky vectors
+// leading cost: O(X N^2 M)
+// assumes rhf
+std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& phi0T, Eigen::MatrixXcd& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXcd>& rotChol); 
+
+
+// Hamiltonian matrix element < \sum _i phi_i | H | psi > / < \sum_i phi_i | psi >
+// multislater local energy
+// leading cost: O(X N_c + X N^2 M)
+std::pair<std::complex<double>, std::complex<double>> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations, std::vector<double>& ciParity, std::vector<double>& ciCoeffs, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol); 
+
 
 // Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
 // heat bath
