@@ -1,0 +1,24 @@
+{
+  "system":
+  {
+    "integrals": "FCIDUMP_chol"
+  },
+  "wavefunction":
+  {
+    "name": "multislater",
+    "hfType": "rhf"
+  },
+  "sampling":
+  {
+    "seed": 5,
+    "dt": 0.1,
+    "nsteps": 40,
+    "orthoSteps": 10,
+    "ene0Guess": -109.0569,
+    "stochasticIter": 1000
+  },
+  "optimizer":
+  {
+    "optimizeOrbs": false
+  }
+}
