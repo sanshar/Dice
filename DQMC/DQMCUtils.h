@@ -23,4 +23,7 @@ std::complex<double> prepPropagatorHS(std::pair<Eigen::MatrixXcd, Eigen::MatrixX
     std::vector<std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>>& hsOperators, 
     std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& oneBodyOperator);
 
+void printEnergy(std::vector<std::complex<double>>& numMean, std::vector<std::complex<double>>& denomMean, std::vector<std::complex<double>>& denomAbsMean, std::vector<int>& eneSteps, double dt,
+                    double eneTime, double propTime);
+
 #endif

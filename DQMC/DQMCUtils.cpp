@@ -7,6 +7,7 @@
 #include "Determinants.h"
 #include "DQMCUtils.h"
 #include "DQMCMatrixElements.h"
+#include <boost/format.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -281,4 +282,51 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
   }
 
   return mfConstant / 2.;
+}
+
+
+void printEnergy(vector<complex<double>>& numMean, vector<complex<double>>& denomMean, vector<complex<double>>& denomAbsMean, vector<int>& eneSteps, double dt,
+                  double eneTime, double propTime) {
+  int numEneSteps = numMean.size();
+  if (commrank == 0) {
+    cout << "Propagation time:  " << propTime << " s\n";
+    cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+    cout << "          iTime                 Energy                     Energy error         Average phase\n";
+  }
+
+  for (int n = 0; n < numEneSteps; n++) {
+    complex<double> energyAll[commsize];
+    for (int i = 0; i < commsize; i++) energyAll[i] = complex<double>(0., 0.);
+ 
+    complex<double> energyProc = numMean[n] / denomMean[n];
+    complex<double> numProc = numMean[n];
+    complex<double> denomProc = denomMean[n];
+    complex<double> denomAbsProc = denomAbsMean[n];
+    MPI_Gather(&(energyProc), 1, MPI_DOUBLE_COMPLEX, &(energyAll), 1, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &energyProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &numProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &denomProc, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &denomAbsProc, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    
+    energyProc /= commsize;
+    numProc /= commsize;
+    denomProc /= commsize;
+    denomAbsProc /= commsize;
+    double stddev = 0., stddev2 = 0.;
+    for (int i = 0; i < commsize; i++) {
+      stddev += pow(abs(energyAll[i] - energyProc), 2);
+      stddev2 += pow(abs(energyAll[i] - energyProc), 4);
+
+    }
+    stddev /= (commsize - 1);
+    stddev2 /= commsize;
+    stddev2 = sqrt((stddev2 - (commsize - 3) * pow(stddev, 2) / (commsize - 1)) / commsize) / 2. / sqrt(stddev) / sqrt(sqrt(commsize));
+    stddev = sqrt(stddev / commsize);
+
+    if (commrank == 0) {
+      cout << boost::format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % ((eneSteps[n] + 1) * dt) % energyProc.real() % energyProc.imag() % stddev % stddev2 % (denomProc / denomAbsProc).real() % (denomProc / denomAbsProc).imag(); 
+    }
+  }
+  if (commrank == 0)      cout << endl;
+
 }
