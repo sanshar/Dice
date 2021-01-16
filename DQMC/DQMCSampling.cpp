@@ -858,9 +858,9 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
-      stats.addSamples(numSampleA, denomSampleA);
+      stats.gatherAndPrintStatistics(iTime);
     }
-    
+
     matPair rn;
     rn = ref;
     VectorXd fields = VectorXd::Zero(nfields);
