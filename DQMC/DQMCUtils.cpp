@@ -276,8 +276,8 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
     oneBodyOperator.second += (mfShiftUp + mfShiftDn) * op.second;
     
     // make shifted hs ops
-    op.first.diagonal() -= VectorXcd::Constant(norbs, mfShiftUp/(1.*Determinant::nalpha));
-    op.second.diagonal() -= VectorXcd::Constant(norbs, mfShiftDn/(1.*Determinant::nbeta));
+    op.first.diagonal() -= VectorXcd::Constant(norbs, (mfShiftUp + mfShiftDn)/(1.* (Determinant::nalpha + Determinant::nbeta)));
+    op.second.diagonal() -= VectorXcd::Constant(norbs, (mfShiftUp + mfShiftDn)/(1.* (Determinant::nalpha + Determinant::nbeta)));
     hsOperators.push_back(op);
   }
 

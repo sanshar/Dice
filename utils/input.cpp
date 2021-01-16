@@ -160,6 +160,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     else {
       schd.eneSteps =  { int(0.4*schd.nsteps) - 1, int(0.6*schd.nsteps) - 1, int(0.8*schd.nsteps) - 1, int(schd.nsteps - 1) };
     }
+    schd.printFrequency = input.get("sampling.printFreq", 100);
     schd.dt = input.get("sampling.dt", 0.1);
     schd.fieldStepsize = input.get("sampling.stepsize", 0.1);
     schd.measureFreq = input.get("sampling.measureFreq", 10);
