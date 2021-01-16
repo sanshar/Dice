@@ -634,6 +634,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   size_t nsteps = schd.nsteps;
   size_t orthoSteps = schd.orthoSteps;
   double dt = schd.dt;
+  vector<int> eneSteps = schd.eneSteps;
 
   // prep and init
   // this is for mean field subtraction
@@ -709,7 +710,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
-  vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
+  //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
@@ -788,6 +789,7 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   size_t nbeta = Determinant::nbeta;
   size_t nelec = nalpha+nbeta;
   double dt = schd.dt;
+  vector<int> eneSteps = schd.eneSteps;
 
   // prep and init
   // this is for mean field subtraction
@@ -840,7 +842,7 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
-  vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
+  //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int numEneSteps = eneSteps.size();
   vector<complex<double>> numMean(numEneSteps, complex<double>(0., 0.)), denomMean(numEneSteps, complex<double>(0., 0.)), denomAbsMean(numEneSteps, complex<double>(0., 0.));
   auto iterTime = getTime();
@@ -1474,6 +1476,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   size_t nsteps = schd.nsteps;
   size_t orthoSteps = schd.orthoSteps;
   double dt = schd.dt;
+  vector<int> eneSteps = schd.eneSteps;
 
   // prep and init
   // this is for mean field subtraction
@@ -1538,7 +1541,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   }
   
   //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  vector<int> eneSteps = { int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
+  //vector<int> eneSteps = { int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();

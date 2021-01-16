@@ -19,8 +19,8 @@ Model name:            Intel(R) Xeon(R) Gold 6150 CPU @ 2.70GHz
 Stepping:              4
 CPU MHz:               2700.000
 Computation started at:
-Fri Jan 15 23:28:22 MST 2021
-git commit: 268969f3fd930ddd526d26a9a76b2c7eb2c4835f, branch: dqmc, compiled at: Fri Jan 15 23:22:52 MST 2021
+Sat Jan 16 00:31:07 MST 2021
+git commit: 382b6fb59448e51961e06eb333e5d945fbe2101c, branch: dqmc, compiled at: Sat Jan 16 00:24:32 MST 2021
 
 nproc used: 36 (NB: stochasticIter below is per proc)
 
@@ -39,6 +39,11 @@ Input file  :
         "seed": "5",
         "dt": "0.1",
         "nsteps": "40",
+        "eneSteps": [
+            "20",
+            "30",
+            "40"
+        ],
         "orthoSteps": "10",
         "ene0Guess": "-109.0569",
         "stochasticIter": "1000"
@@ -59,17 +64,17 @@ Initial state energy:  (-108.98,-0)
 Ground state energy guess:  (-109.057,0)
 
 Starting sampling sweeps
-200  4.86644 s
-400  9.84047 s
-600  14.8096 s
-800  19.7972 s
+200  5.14585 s
+400  10.3895 s
+600  15.6384 s
+800  20.8787 s
 
-Propagation time:  7.76802 s
-Energy evaluation time:  16.4755 s
+Propagation time:  8.16736 s
+Energy evaluation time:  17.4366 s
 
           iTime                 Energy                     Energy error         Average phase
-           2.40   ( -109.05728548,    -0.00006925)   (6.33e-04   (9.01e-05))   (-0.968, 0.000) 
-           3.20   ( -109.05612678,     0.00049833)   (7.74e-04   (1.20e-04))   (-0.944, -0.002) 
+           2.00   ( -109.05393810,    -0.00020613)   (5.36e-04   (8.40e-05))   (-0.978, 0.002) 
+           3.00   ( -109.05584241,     0.00027627)   (7.00e-04   (1.14e-04))   (-0.951, -0.001) 
            4.00   ( -109.05674676,    -0.00017222)   (8.91e-04   (1.69e-04))   (-0.918, 0.004) 
 
-Total calculation time:  26.1921 s
+Total calculation time:  26.2016 s

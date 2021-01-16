@@ -13,6 +13,7 @@
     "seed": 5,
     "dt": 0.1,
     "nsteps": 40,
+    "eneSteps": [ 20, 30, 40 ],
     "orthoSteps": 10,
     "ene0Guess": -109.0569,
     "stochasticIter": 1000

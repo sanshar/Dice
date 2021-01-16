@@ -151,6 +151,15 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     // dqmc
     schd.nsteps = input.get("sampling.nsteps", 10);
+    child = input.get_child_optional("sampling.eneSteps");
+    if (child) {
+      for (property_tree::iptree::value_type &eneSteps : input.get_child("sampling.eneSteps")) {
+        schd.eneSteps.push_back(stoi(eneSteps.second.data()) - 1);
+      }
+    }
+    else {
+      schd.eneSteps =  { int(0.4*schd.nsteps) - 1, int(0.6*schd.nsteps) - 1, int(0.8*schd.nsteps) - 1, int(schd.nsteps - 1) };
+    }
     schd.dt = input.get("sampling.dt", 0.1);
     schd.fieldStepsize = input.get("sampling.stepsize", 0.1);
     schd.measureFreq = input.get("sampling.measureFreq", 10);

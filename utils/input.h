@@ -125,6 +125,7 @@ private:
       // dqmc
       & dt
       & nsteps
+      & eneSteps
       & fieldStepsize
       & measureFreq
       & orthoSteps
@@ -323,6 +324,7 @@ public:
 
   // options for dqmc
   size_t nsteps;
+  std::vector<int> eneSteps;
   double dt;
   double fieldStepsize;
   size_t measureFreq;
