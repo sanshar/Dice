@@ -88,6 +88,10 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
 // iTime used only for printing
 void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
 {
+  ArrayXcd numMeanbkp = numMean;
+  ArrayXcd denomMeanbkp = denomMean;
+  ArrayXd denomAbsMeanbkp = denomAbsMean;
+
   // gather data across processes
   MPI_Allreduce(MPI_IN_PLACE, numMean.data(), numMean.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, denomMean.data(), denomMean.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
@@ -110,7 +114,13 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
       cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % eneEstimates(n).real() % eneEstimates(n).imag() % error(n) % error2(n) % avgPhase(n).real() % avgPhase(n).imag(); 
     }
   }
+
+  //restore the original running averages
+  numMean = numMeanbkp;
+  denomMean = denomMeanbkp;
+  denomAbsMean = denomAbsMeanbkp;  
 }
+
 
 
 // prints running averages from proc 0
