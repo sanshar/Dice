@@ -47,9 +47,15 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
 {
   ArrayXcd eneEstimates = numMean / denomMean;
   int nBlocks;
-  if (nSamples <= 100) nBlocks = 1;
-  else nBlocks = 10;
-  size_t blockSize = size_t(nSamples / 10);
+  size_t blockSize;
+  if (nSamples <= 100) {
+    nBlocks = 1;
+    blockSize = nSamples;
+  }
+  else {
+    nBlocks = 10;
+    blockSize = size_t(nSamples / 10);
+  }
   ArrayXd var(sampleSize), var2(sampleSize);
   var.setZero(); var2.setZero();
 
