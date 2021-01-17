@@ -692,6 +692,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     rotChol.first.push_back(rotUp);
     rotChol.second.push_back(rotDn);
   }
+  //vector<MatrixXd> richol(1, chol[0]); //sri
   
   // Gaussian sampling
   // field values arranged right to left
@@ -747,7 +748,9 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       propTime += getTime() - init;
       
       // orthogonalize for stability
-      orthogonalize(rn, orthoFac);
+      if (n % orthoSteps == 0) {
+        orthogonalize(rn, orthoFac);
+      }
 
       // measure
       init = getTime();
@@ -756,6 +759,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
         complex<double> numSample;
         if (Determinant::nalpha == Determinant::nbeta) numSample = overlap * calcHamiltonianElement(refT.first, rn.first, enuc, h1, rotChol.first);
         else numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
+        //numSample = overlap * (refEnergy + calcHamiltonianElement_sRI(refT, rn, refT, ref, enuc, h1, chol, richol)); 
         numSampleA[eneStepCounter] = numSample;
         denomSampleA[eneStepCounter] = overlap;
         eneStepCounter++;
@@ -1765,7 +1769,9 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
       propTime += getTime() - init;
       
       // orthogonalize for stability
-      orthogonalize(rn, orthoFac);
+      if (n % orthoSteps == 0) {
+        orthogonalize(rn, orthoFac);
+      }
 
       // measure
       init = getTime();
@@ -1773,6 +1779,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
         //complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
         //complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
         auto overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
+        //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
         complex<double> overlap = orthoFac * overlapHam.first;
         complex<double> numSample = orthoFac * overlapHam.second;

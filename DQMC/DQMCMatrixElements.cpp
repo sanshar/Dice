@@ -574,6 +574,7 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
       //exc[sz] = chol[n] * green[sz];
       l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
       int2[sz].noalias() = (greeno[sz] * chol[n]) * greenp[sz];
+      //int2[sz].noalias() = (greeno[sz] * chol[n].block(0, 0, norbs, norbsAct)) * greenp[sz].block(0, 0, norbsAct, norbs);
       int1[sz] = lG[sz] * int2[sz];
       int1[sz].noalias() -= (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
       //int1[sz] = lG[sz] * int2[sz] - green[sz] * chol[n] * int2[sz];
@@ -689,4 +690,42 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
   ene *= overlap0;
   ene += enuc * overlap;
   return pair<complex<double>, complex<double>>(overlap, ene);
+}
+
+
+// Hamiltonian matrix element < \sum _i phi_i | H | psi >
+// multislater local energy
+// leading cost: O(X N_c + X N^2 M)
+// returns both overlap and local energy
+// TODO: use either array or pair, not both; make interface consistent with other local energy functions perhaps by changing all returns to <overlap, local energy> pairs
+pair<complex<double>, complex<double>> calcHamiltonianElement_sRI(matPair& phi0T, std::array<vector<std::array<VectorXi, 2>>, 2>& ciExcitations, vector<double>& ciParity, vector<double>& ciCoeffs, matPair& psi, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, double ene0)
+{
+  
+  uniform_real_distribution<double> normal(-1., 1.);
+  vector<MatrixXd> richolvec;
+  MatrixXd richol = 0. * chol[0];
+
+  for (int j = 0; j < 10; j++) {
+    richol.setZero();
+    for (int i = 0; i < chol.size(); i++) {
+      double ran = normal(generator);
+      richol += ran/abs(ran) * chol[i];     
+    }
+    richol /= 10.;
+    richolvec.push_back(richol);
+  }
+
+  matPair phi0;
+  phi0.first = phi0T.first.adjoint();
+  phi0.second = phi0T.second.adjoint();
+
+  auto overlapHam1 = calcHamiltonianElement(phi0T, ciExcitations, ciParity, ciCoeffs, psi, enuc, h1, richolvec); 
+  auto overlapHam2 = calcHamiltonianElement(phi0T, ciExcitations, ciParity, ciCoeffs, phi0, enuc, h1, richolvec); 
+ 
+  pair<complex<double>, complex<double>> overlapHam;
+  overlapHam.first = overlapHam1.first;
+  overlapHam.second = overlapHam1.first * ene0 + overlapHam1.second - overlapHam2.second * overlapHam1.first / overlapHam2.first;
+
+  return overlapHam;
+  //return calcHamiltonianElement(phi0T, ciExcitations, ciParity, ciCoeffs, psi, enuc, h1, chol);
 }
