@@ -948,7 +948,6 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
 
 // calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
 // w/o jastrow
-/*
 void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol)
 {
   size_t norbs = Determinant::norbs;
@@ -959,7 +958,7 @@ void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   size_t nalpha = Determinant::nalpha;
   size_t nbeta = Determinant::nbeta;
   size_t nelec = nalpha+nbeta;
-  double dt = schd.dt;
+  //double dt = schd.dt;
   vector<int> eneSteps = schd.eneSteps;
 
   // prep and init
@@ -989,12 +988,22 @@ void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     refAd = 1.*hf.block(0,0,2*norbs, nelec).adjoint();// + 0.01*MatrixXcd::Random(2*norbs, nelec);
     refT = refAd.conjugate();
   }
+  int nCorrelatedT = 3;
+  vector<double> dt(3, schd.dt);
 
-  matPair expOneBodyOperator;
-  expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
-  expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
+  //largest to smallest with factors of 2
+  for (int j=0; j<nCorrelatedT; j++) {
+    dt[j] = schd.dt/pow(2.,j);
+    cout <<j<<"  "<<dt[j]<<"  "<<schd.dt<<endl;
+  }
 
-   vector<VectorXd> fields;
+  vector<matPair> expOneBodyOperator(nCorrelatedT);
+  for (int j=0; j<nCorrelatedT; j++) {
+    expOneBodyOperator[j].first =  (-dt[j] * (h1Mod - oneBodyOperator.first) / 2.).exp();
+    expOneBodyOperator[j].second = (-dt[j] * (h1Mod - oneBodyOperator.second) / 2.).exp();
+  }
+
+  vector<VectorXd> fields;
   normal_distribution<double> normal(0., 1.);
   
   //matPair green;
@@ -1014,14 +1023,14 @@ void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   }
   
   //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  int nCorrelatedT = 3;
+
   int nEneSteps = eneSteps.size();
   vector<DQMCStatistics> statsVec(nCorrelatedT, DQMCStatistics(nEneSteps)); //a separate statistics class for each dT
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0., qrTime = 0.;
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   ArrayXd iTime(nEneSteps);
-  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt[0] * (eneSteps[i] + 1);
 
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
@@ -1030,63 +1039,90 @@ void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
-      stats.gatherAndPrintStatistics(iTime);
+      for (int j=0; j<nCorrelatedT; j++) 
+        statsVec[j].gatherAndPrintStatistics(iTime);
     }
 
     vector<matPair> rn(nCorrelatedT, ref);
     VectorXd fields = VectorXd::Zero(nfields);
     vector<complex<double>> orthoFac(nCorrelatedT, complex<double>(1., 0.));
     int eneStepCounter = 0;
-    ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
-    numSampleA.setZero(); denomSampleA.setZero();
+
+    vector<ArrayXcd> numSampleA(nCorrelatedT, ArrayXcd(nEneSteps)), denomSampleA(nCorrelatedT, ArrayXcd(nEneSteps));
+    for (int j=0; j<nCorrelatedT; j++) {
+      numSampleA[j].setZero(); denomSampleA[j].setZero();
+    }
+
     for (int n = 0; n < nsteps; n++) {
       // sampling
       double init = getTime();
-      matPair prop;
-      prop.first = MatrixXcd::Zero(norbs, norbs);
-      prop.second = MatrixXcd::Zero(norbs, norbs);
+      vector<matPair> prop(nCorrelatedT);
+
+      MatrixXcd hsProp = MatrixXcd::Zero(norbs, norbs);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        prop.first += field_n_i * hsOperators[i].first;
+        hsProp += field_n_i * hsOperators[i].first;
         //prop.second += field_n_i * hsOperators[i].second;
       }
-      prop.first = (sqrt(dt) * prop.first).exp();
-      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop.first * (expOneBodyOperator.first * rn.first)));
-      if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
-      else {
-        //prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.first * expOneBodyOperator.second * rn.second;
+
+      //for each dt apply the Hamiltonian as many times as needed such that total time dt[0] is propogated
+      for (int j=0; j<nCorrelatedT; j++) {
+        int nterms = pow(2,j);
+        prop[j].first = exp((ene0 - enuc - mfConst) * dt[j] / (2. * Determinant::nalpha)) * (expOneBodyOperator[j].first * ( (sqrt(dt[j]/nterms) * hsProp).exp() * expOneBodyOperator[j].first));
+
+        for (int napply = 0; napply < nterms; napply++) {
+          rn[j].first =  prop[j].first * rn[j].first;
+        }
+
+        if (Determinant::nalpha == Determinant::nbeta) rn[j].second = rn[j].first;
+        else {
+          for (int napply = 0; napply < pow(2, j); napply++) {
+            rn[j].second = prop[j].first * rn[j].second;
+          }
+        }
+        //cout << rn[j].first<<endl<<endl<<endl;
       }
+      //cout << n<<"  "<<(prop[0].first - prop[1].first*prop[1].first).norm()<<endl;
+      //exit(0);
 
       propTime += getTime() - init;
       
       // orthogonalize for stability
       if (n % orthoSteps == 0) {
-        orthogonalize(rn, orthoFac);
+        for (int j=0; j<nCorrelatedT; j++)
+          orthogonalize(rn[j], orthoFac[j]);
       }
 
       // measure
       init = getTime();
       if (n == eneSteps[eneStepCounter]) {
-        complex<double> num, den;
-        complex<double> overlapAd, overlapT;
-        complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, chol, overlapAd);
-        overlapAd *= orthoFac;
-        numSample *= overlapAd;
-        num = numSample; den = overlapAd;
+        for (int j=0; j<nCorrelatedT; j++) {
+          complex<double> num, den;
+          complex<double> overlapAd, overlapT;
+          complex<double> numSample = calcHamiltonianElement(refAd, rn[j], enuc, h1, chol, overlapAd);
+          overlapAd *= orthoFac[j];
+          numSample *= overlapAd;
+          num = numSample; den = overlapAd;
 
-        numSample = calcHamiltonianElement(refT, rn, enuc, h1, chol, overlapT);
-        overlapT *= orthoFac;
-        numSample *= overlapT;
-        num += numSample; den += overlapT;
+          numSample = calcHamiltonianElement(refT, rn[j], enuc, h1, chol, overlapT);
+          overlapT *= orthoFac[j];
+          numSample *= overlapT;
+          num += numSample; den += overlapT;
 
-        numSampleA[eneStepCounter] = num;
-        denomSampleA[eneStepCounter] = den;
+          //cout << j<<" e "<<num<<"  "<<den<<"  "<<num/den<<"  "<<orthoFac[j]<<"  "<<nCorrelatedT<<endl;
+          numSampleA[j][eneStepCounter] = num;
+          denomSampleA[j][eneStepCounter] = den;
+        }
         eneStepCounter++;
+        //exit(0);
       }
+      
       eneTime += getTime() - init;
     }
-    stats.addSamples(numSampleA, denomSampleA);
+    for (int j=0; j<nCorrelatedT; j++) {
+      statsVec[j].addSamples(numSampleA[j], denomSampleA[j]);
+      //cout << j<<"  "<<numSampleA[j][0]<<"  "<<denomSampleA[j][0]<<endl;
+    }
   }
 
   if (commrank == 0) {
@@ -1094,10 +1130,10 @@ void findDtCorrelatedSamplingGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
   }
 
-  stats.gatherAndPrintStatistics(iTime);
-  if (schd.printLevel > 10) stats.writeSamples();
+  for (int j=0; j<nCorrelatedT; j++)
+    statsVec[j].gatherAndPrintStatistics(iTime);
+  //if (schd.printLevel > 10) stats.writeSamples();
 }
-*/
 
 
 

@@ -31,4 +31,5 @@ void calcEnergyJastrowDirectVariational(double enuc, Eigen::MatrixXd& h1, Eigen:
 
 void calcEnergyDirectGHF(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 
+void findDtCorrelatedSamplingGHF(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 #endif
