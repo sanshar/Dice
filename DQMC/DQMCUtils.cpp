@@ -7,6 +7,7 @@
 #include "Determinants.h"
 #include "DQMCUtils.h"
 #include "DQMCMatrixElements.h"
+#include <boost/format.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -282,3 +283,4 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
 
   return mfConstant / 2.;
 }
+

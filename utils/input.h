@@ -161,7 +161,8 @@ private:
       & fixedResTimeNEVPT_Norm
       & resTimeNEVPT_Ene
       & resTimeNEVPT_Norm
-      & ngrid;
+      & ngrid
+      & printFrequency;
   }
 public:
 //General options
@@ -332,6 +333,7 @@ public:
   double ene0Guess;
   size_t numJastrowSamples;
   int ngrid;
+  size_t printFrequency;
 };
 
 /**
