@@ -137,6 +137,65 @@ complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, 
 }
 
 
+// Hamiltonian matrix element < GHF | H | UHF > / < GHF | UHF >
+// rotates cholesky vectors
+complex<double> calcHamiltonianElement(MatrixXcd& ghf, matPair& A, double enuc, MatrixXd& h1, pair<vector<MatrixXcd>, vector<MatrixXcd>>& rotChol, complex<double>& ovlp) 
+{ 
+  // core energy
+  complex<double> ene = enuc;
+  
+  MatrixXcd B = ghf.adjoint();
+
+  // calculate theta and green
+  int numOrbs = A.first.rows();
+  int numElec = B.cols();
+  int nAlpha = A.first.cols();
+  int nBeta = A.second.cols();
+
+
+  MatrixXcd Afull = 0*B, theta, green;
+  Afull.block(0,0,numOrbs,A.first.cols()) = A.first;
+  Afull.block(numOrbs,A.first.cols(),numOrbs,A.second.cols()) = A.second;
+
+  MatrixXcd Ovlp = B.adjoint()*Afull;
+  ovlp = Ovlp.determinant();
+  theta = Afull * Ovlp.inverse();
+  green = (theta * B.adjoint()).transpose();
+
+  // one body part
+  ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
+
+  MatrixXcd thetaA = theta.block(0, 0, numOrbs, numElec),thetaB= theta.block(numOrbs, 0, numOrbs, numElec);
+
+  // two body part
+  //vector<MatrixXcd> rotChol(2, MatrixXcd(numElec, numOrbs)), W(2, MatrixXcd(numElec, numOrbs));
+  vector<MatrixXcd> W(2, MatrixXcd(numElec, numOrbs));
+
+
+  for (int i = 0; i < rotChol.first.size(); i++) {
+    //rotChol[0] = ghf.block(0, 0, numElec, numOrbs) * chol[i];
+    //rotChol[1] = ghf.block(0, numOrbs, numElec, numOrbs) * chol[i];
+
+    W[0] = rotChol.first[i] * thetaA;
+    W[1] = rotChol.second[i] * thetaB;
+
+    complex<double> W0trace = W[0].trace(), W1trace = W[1].trace();
+    complex<double> J = (W0trace + W1trace) * (W0trace + W1trace);
+    ene += J/2.;
+
+    complex<double> K = W[0].cwiseProduct(W[0].transpose()).sum() + 
+                        W[1].cwiseProduct(W[1].transpose()).sum() +
+                        W[0].cwiseProduct(W[1].transpose()).sum() +
+                        W[1].cwiseProduct(W[0].transpose()).sum() ;
+
+    ene -= K/2.; 
+
+  }
+
+  return ene;
+}
+
+
 complex<double> calcHamiltonianElementNaive(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) {
   // core energy
   complex<double> ene = enuc;
@@ -454,9 +513,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
   //hG[1] = green[1].cwiseProduct(h1).sum();
   ene += ciCoeffs[0] * (hG[0] + hG[1]);
   
-  complex<double> currEne(0., 0.);
-  currEne = ene;
-
   // 1e intermediate
   matArray roth1;
   roth1[0] = (greeno[0] * h1) * greenp[0];
@@ -504,7 +560,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
     gBlocks.push_back(blocks);
     gBlockDets.push_back(dets);
   }
-  currEne = ene;
   
   // 2e intermediates
   matArray int1, int2;
@@ -519,7 +574,8 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
       //exc[sz] = chol[n] * green[sz];
       l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
       int2[sz].noalias() = (greeno[sz] * chol[n]) * greenp[sz];
-      int1[sz].noalias() = lG[sz] * int2[sz] - (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
+      int1[sz] = lG[sz] * int2[sz];
+      int1[sz].noalias() -= (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
       //int1[sz] = lG[sz] * int2[sz] - green[sz] * chol[n] * int2[sz];
     }
 
@@ -628,7 +684,6 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
     
     } // dets
   } // chol
-  currEne = ene;
 
   overlap *= overlap0;
   ene *= overlap0;
