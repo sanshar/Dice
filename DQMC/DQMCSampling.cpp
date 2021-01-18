@@ -1745,9 +1745,18 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
-    if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
+    if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
+      if (commrank == 0) {
+        cout <<"sweep steps: "<< sweep <<endl<<"Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "\nPropagation time:  " << propTime << " s\n";
+        cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+      }
+      stats.gatherAndPrintStatistics(iTime);
+    }
 
     //sample the determinants
     if (schd.sampleDeterminants != -1)
@@ -1834,8 +1843,6 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
   }
 
-  ArrayXd iTime(nEneSteps);
-  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   stats.gatherAndPrintStatistics(iTime);
   if (schd.printLevel > 10) stats.writeSamples();
 }
