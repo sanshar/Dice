@@ -569,15 +569,14 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
     matArray exc;
     for (int sz = 0; sz < 2; sz++) {
       lG[sz] = chol[n].block(0, 0, nelec[sz], norbs).cwiseProduct(greeno[sz]).sum();
-      exc[sz].noalias() = chol[n].block(0, 0, norbs, nelec[sz]) * greeno[sz];
+      //exc[sz].noalias() = chol[n].block(0, 0, norbs, nelec[sz]) * greeno[sz];
+      exc[sz].noalias() = chol[n].block(0, 0, nelec[sz], norbs) * theta[sz];
       //lG[sz] = chol[n].cwiseProduct(green[sz]).sum();
-      //exc[sz] = chol[n] * green[sz];
       l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
       int2[sz].noalias() = (greeno[sz] * chol[n]) * greenp[sz];
       //int2[sz].noalias() = (greeno[sz] * chol[n].block(0, 0, norbs, norbsAct)) * greenp[sz].block(0, 0, norbsAct, norbs);
       int1[sz] = lG[sz] * int2[sz];
       int1[sz].noalias() -= (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
-      //int1[sz] = lG[sz] * int2[sz] - green[sz] * chol[n] * int2[sz];
     }
 
     // ref contribution
