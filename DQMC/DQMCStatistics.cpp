@@ -26,6 +26,9 @@ DQMCStatistics::DQMCStatistics(int pSampleSize)
   num2Mean = ArrayXcd::Zero(sampleSize);
   denom2Mean = ArrayXcd::Zero(sampleSize);
   num_denomMean = ArrayXcd::Zero(sampleSize);
+  converged.resize(sampleSize,-1);
+  convergedE = ArrayXcd::Zero(sampleSize);
+  convergedDev = ArrayXd::Zero(sampleSize);
 }
 
 
@@ -117,7 +120,20 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
   if (commrank == 0) {
     cout << "          iTime                 Energy                     Energy error         Average phase\n";
     for (int n = 0; n < sampleSize; n++) {
-      cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % eneEstimates(n).real() % eneEstimates(n).imag() % error(n) % error2(n) % avgPhase(n).real() % avgPhase(n).imag(); 
+      if (converged[n] == -1) {
+        cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % eneEstimates(n).real() % eneEstimates(n).imag() % error(n) % error2(n) % avgPhase(n).real() % avgPhase(n).imag(); 
+
+        //if error falls below 1.5e-3 then stop calculating it
+        if (error(n) < 1.5e-3 ) {
+          converged[n] = 1;
+          convergedE(n) = eneEstimates(n);
+          convergedDev(n) = error(n);
+        }
+      }
+      else { //after it has converged just use the old ones
+        cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   )   \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n) ; 
+      }
+
     }
   }
 

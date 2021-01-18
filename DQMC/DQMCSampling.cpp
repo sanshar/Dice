@@ -1749,10 +1749,9 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
-  //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  //vector<int> eneSteps = { int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
+
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
   ArrayXd iTime(nEneSteps);
@@ -1827,20 +1826,20 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
 
       // measure
       init = getTime();
-      if (n == eneSteps[eneStepCounter]) {
-        //complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
-        //complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-        pair<complex<double>, complex<double>> overlapHam;
-        if (schd.sampleDeterminants != -1)
-          overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
-        else 
-          overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
-        //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
+      if (n == eneSteps[eneStepCounter] ) { 
+        if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
+          pair<complex<double>, complex<double>> overlapHam;
+          if (schd.sampleDeterminants != -1)
+            overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
+          else 
+            overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
+          //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
-        complex<double> overlap = orthoFac * overlapHam.first;
-        complex<double> numSample = orthoFac * overlapHam.second;
-        numSampleA[eneStepCounter] = numSample;
-        denomSampleA[eneStepCounter] = overlap;
+          complex<double> overlap = orthoFac * overlapHam.first;
+          complex<double> numSample = orthoFac * overlapHam.second;
+          numSampleA[eneStepCounter] = numSample;
+          denomSampleA[eneStepCounter] = overlap;
+        }
         eneStepCounter++;
       }
       eneTime += getTime() - init;
