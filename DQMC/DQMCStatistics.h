@@ -20,7 +20,10 @@ class DQMCStatistics {
           & denomAbsMean
           & num2Mean
           & denom2Mean
-          & num_denomMean;
+          & num_denomMean
+          & converged
+          & convergedE
+          & convergedDev;
      }
   
  public:
@@ -31,7 +34,10 @@ class DQMCStatistics {
     Eigen::ArrayXcd numMean, denomMean;                    // running averages
     Eigen::ArrayXd denomAbsMean;                           // running averages
     Eigen::ArrayXcd num2Mean, denom2Mean, num_denomMean;   // running averages
-   
+    std::vector<int> converged;
+    Eigen::ArrayXcd convergedE;
+    Eigen::ArrayXd convergedDev;
+
     // constructor
     DQMCStatistics(int pSampleSize);
 

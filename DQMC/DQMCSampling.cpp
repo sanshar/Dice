@@ -716,9 +716,18 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
-    if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
+    if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
+      if (commrank == 0) {
+        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "\nPropagation time:  " << propTime << " s\n";
+        cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+      }
+      stats.gatherAndPrintStatistics(iTime);
+    }
     matPair rn;
     rn = ref;
     VectorXd fields = VectorXd::Zero(nfields);
@@ -774,8 +783,6 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
   }
 
-  ArrayXd iTime(nEneSteps);
-  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   stats.gatherAndPrintStatistics(iTime);
   if (schd.printLevel > 10) stats.writeSamples();
 }
@@ -874,7 +881,7 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
-        cout <<"sweep steps: "<< sweep <<endl<<"Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
@@ -1692,12 +1699,14 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   matPair refT;
   refT.first = ref.first.adjoint();
   refT.second = ref.second.adjoint();
-  string fname = "dets";
+  string fname = schd.determinantFile;
   std::array<std::vector<int>, 2> refDet; 
   std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2> ciExcitations;
   std::vector<double> ciParity; 
   std::vector<double> ciCoeffs;
-  readDeterminants(fname, refDet, ciExcitations, ciParity, ciCoeffs);
+  // if using text file name it "dets", if using binary use anything other than dets
+  if (fname == "dets") readDeterminants(fname, refDet, ciExcitations, ciParity, ciCoeffs);
+  else readDeterminantsBinary(fname, refDet, ciExcitations, ciParity, ciCoeffs);
 
   double cumulative;
   vector<int> alias; vector<double> prob;
@@ -1728,6 +1737,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   //matPair green;
   //calcGreensFunction(refT, ref, green);
   //complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
+  vector<double> times = { 0., 0.};
   auto refOverlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, ref, enuc, h1, chol);
   complex<double> refEnergy = refOverlapHam.second / refOverlapHam.first;
   //complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, rotChol);
@@ -1739,10 +1749,9 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     cout << format("Ground state energy guess:  %14.8f\n\n") % ene0;
   }
   
-  //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
-  //vector<int> eneSteps = { int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
+
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
   ArrayXd iTime(nEneSteps);
@@ -1751,7 +1760,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
-        cout <<"sweep steps: "<< sweep <<endl<<"Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
@@ -1817,20 +1826,20 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
 
       // measure
       init = getTime();
-      if (n == eneSteps[eneStepCounter]) {
-        //complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
-        //complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-        pair<complex<double>, complex<double>> overlapHam;
-        if (schd.sampleDeterminants != -1)
-          overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
-        else 
-          overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
-        //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
+      if (n == eneSteps[eneStepCounter] ) { 
+        if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
+          pair<complex<double>, complex<double>> overlapHam;
+          if (schd.sampleDeterminants != -1)
+            overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
+          else 
+            overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
+          //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
-        complex<double> overlap = orthoFac * overlapHam.first;
-        complex<double> numSample = orthoFac * overlapHam.second;
-        numSampleA[eneStepCounter] = numSample;
-        denomSampleA[eneStepCounter] = overlap;
+          complex<double> overlap = orthoFac * overlapHam.first;
+          complex<double> numSample = orthoFac * overlapHam.second;
+          numSampleA[eneStepCounter] = numSample;
+          denomSampleA[eneStepCounter] = overlap;
+        }
         eneStepCounter++;
       }
       eneTime += getTime() - init;
@@ -1841,6 +1850,8 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+    //cout << "Intermediates:  " << times[0] << endl;
+    //cout << "citer:  " << times[1] << endl << endl;
   }
 
   stats.gatherAndPrintStatistics(iTime);
