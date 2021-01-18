@@ -1735,8 +1735,8 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << refEnergy << endl;
-    cout << "Ground state energy guess:  " << ene0 << endl << endl; 
+    cout << format("Initial state energy:  %14.8f\n") % refEnergy;
+    cout << format("Ground state energy guess:  %14.8f\n\n") % ene0;
   }
   
   //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
