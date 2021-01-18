@@ -422,5 +422,9 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<i
 void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
 
+// same as above but for binary files
+void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
+
 void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
 #endif

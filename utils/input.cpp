@@ -707,6 +707,111 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
   }
 }
 
+// same as above but for binary files
+void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  int ndetsDice = 0, norbsDice = 0;
+  ifstream dump(input, ios::binary);
+  dump.read((char*) &ndetsDice, sizeof(int));
+  dump.read((char*) &norbsDice, sizeof(int));
+  bool isFirst = true;
+  Determinant refDet;
+  VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
+  for (int n = 0; n < ndetsDice; n++) {
+    if (isFirst) {// first det is ref
+      isFirst = false;
+      double ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(double));
+      ciCoeffs.push_back(ciCoeff);
+      ciParity.push_back(1);
+      std::array<VectorXi, 2> empty;
+      ciExcitations[0].push_back(empty);
+      ciExcitations[1].push_back(empty);
+      vector<int> closedBeta, openBeta; 
+      for (int i = 0; i < norbsDice; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          refDet.setoccA(i, true);
+          refDet.setoccB(i, true);
+          ref[0].push_back(i);
+          ref[1].push_back(i);
+        }
+        else if (detocc == 'a') {
+          refDet.setoccA(i, true);
+          ref[0].push_back(i);
+        }
+        else if (detocc == 'b') {
+          refDet.setoccB(i, true);
+          ref[1].push_back(i);
+        }
+      }
+      numDets++;
+      sizes(0) = 1;
+    }
+    else {
+      double ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(double));
+      vector<int> desA, creA, desB, creB;
+      for (int i = 0; i < norbsDice; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          if (!refDet.getoccA(i)) creA.push_back(i);
+          if (!refDet.getoccB(i)) creB.push_back(i);
+        }
+        else if (detocc == 'a') {
+          if (!refDet.getoccA(i)) creA.push_back(i);
+          if (refDet.getoccB(i)) desB.push_back(i);
+        }
+        else if (detocc == 'b') {
+          if (refDet.getoccA(i)) desA.push_back(i);
+          if (!refDet.getoccB(i)) creB.push_back(i);
+        }
+        else if (detocc == '0') {
+          if (refDet.getoccA(i)) desA.push_back(i);
+          if (refDet.getoccB(i)) desB.push_back(i);
+        }
+      }
+
+      std::array<VectorXi, 2> excitationsA;
+      excitationsA[0] = VectorXi::Zero(creA.size());
+      excitationsA[1] = VectorXi::Zero(desA.size());
+      for (int i = 0; i < creA.size(); i++) {
+        //des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
+        //cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
+        excitationsA[0](i) = desA[i];
+        excitationsA[1](i) = creA[i];
+      }
+
+      std::array<VectorXi, 2> excitationsB;
+      excitationsB[0] = VectorXi::Zero(creB.size());
+      excitationsB[1] = VectorXi::Zero(desB.size());
+      for (int i = 0; i < creB.size(); i++) {
+        //des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
+        //cre[i + creA.size()] = std::search_n(open.begin(), open.end(), 1, creB[i] + norbs) - open.begin();
+        excitationsB[0](i) = desB[i];
+        excitationsB[1](i) = creB[i];
+      }
+      
+      if (creA.size() + creB.size() > schd.excitationLevel) continue;
+      numDets++;
+      ciCoeffs.push_back(ciCoeff);
+      ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
+      ciExcitations[0].push_back(excitationsA);
+      ciExcitations[1].push_back(excitationsB);
+      if (creA.size() + creB.size() < 10) sizes(creA.size() + creB.size())++;
+    }
+  }
+  if (commrank == 0) {
+    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
+    cout << "Number of determinants " << numDets << endl << endl;
+  }
+}
+
 void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM) {
   // Read a 2-RDM from the spin-RDM text file output by Dice
   // Also construct the 1-RDM at the same time
