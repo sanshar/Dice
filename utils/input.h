@@ -162,7 +162,8 @@ private:
       & resTimeNEVPT_Ene
       & resTimeNEVPT_Norm
       & ngrid
-      & printFrequency;
+      & printFrequency
+      & sampleDeterminants;
   }
 public:
 //General options
@@ -334,6 +335,7 @@ public:
   size_t numJastrowSamples;
   int ngrid;
   size_t printFrequency;
+  int sampleDeterminants;
 };
 
 /**

@@ -168,7 +168,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ene0Guess = input.get("sampling.ene0Guess", 1e10); // assuming ground state energy will not be 1e10
     schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
     schd.ngrid = input.get("sampling.ngrid", 1);
-
+    schd.sampleDeterminants = input.get("sampling.sampleDeterminants", -1);
+    
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);

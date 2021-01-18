@@ -1699,6 +1699,14 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   std::vector<double> ciCoeffs;
   readDeterminants(fname, refDet, ciExcitations, ciParity, ciCoeffs);
 
+  double cumulative;
+  vector<int> alias; vector<double> prob;
+  setUpAliasMethod(&ciCoeffs[1], ciCoeffs.size()-1, cumulative, alias, prob);
+
+  std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2> ciExcitationsSample;
+  std::vector<double> ciParitySample; 
+  std::vector<double> ciCoeffsSample;
+
   matPair expOneBodyOperator;
   expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
   expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
@@ -1740,6 +1748,31 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
     if (sweep != 0 && sweep % (nsweeps/5) == 0 && commrank == 0) cout << sweep << "  " << getTime() - iterTime << " s\n";
+
+    //sample the determinants
+    if (schd.sampleDeterminants != -1)
+    {
+      int nSample = schd.sampleDeterminants;
+      ciExcitationsSample[0].clear(); ciExcitationsSample[1].clear();
+      ciParitySample.clear(); ciCoeffsSample.clear();
+
+      vector<int> sample(nSample,-1); vector<double> wts(nSample,0.); 
+      sample_N2_alias(&ciCoeffs[1], cumulative, sample, wts, alias, prob);
+      ciExcitationsSample[0].push_back(ciExcitations[0][0]);
+      ciExcitationsSample[1].push_back(ciExcitations[1][0]);
+      ciCoeffsSample.push_back(ciCoeffs[0]);
+      ciParitySample.push_back(ciParity[0]);
+
+      for (int j=0; j<sample.size(); j++) {
+        if (sample[j] == -1) break;
+        ciExcitationsSample[0].push_back(ciExcitations[0][sample[j]+1]);
+        ciExcitationsSample[1].push_back(ciExcitations[1][sample[j]+1]);
+        ciCoeffsSample.push_back(wts[j]);
+        ciParitySample.push_back(ciParity[sample[j]+1]);
+      }
+
+    }
+
     matPair rn;
     rn = ref;
     VectorXd fields = VectorXd::Zero(nfields);
@@ -1778,7 +1811,11 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
       if (n == eneSteps[eneStepCounter]) {
         //complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
         //complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-        auto overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
+        pair<complex<double>, complex<double>> overlapHam;
+        if (schd.sampleDeterminants != -1)
+          overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
+        else 
+          overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
         //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
         complex<double> overlap = orthoFac * overlapHam.first;

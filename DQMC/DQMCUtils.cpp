@@ -8,6 +8,7 @@
 #include "DQMCUtils.h"
 #include "DQMCMatrixElements.h"
 #include <boost/format.hpp>
+#include <stdlib.h>
 
 using namespace Eigen;
 using namespace std;
@@ -284,3 +285,61 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
   return mfConstant / 2.;
 }
 
+void setUpAliasMethod(double* ci, int cisize, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
+  alias.resize(cisize);
+  prob.resize(cisize);
+
+  cumulative = 0.0;
+  for (int i = 0; i < cisize; i++) cumulative += abs(ci[i]);
+
+  std::vector<double> larger, smaller;
+  for (int i=0; i<cisize; i++) {
+    prob[i] = abs(ci[i])*cisize/cumulative;
+    if (prob[i] < 1.0)
+      smaller.push_back(i);
+    else
+      larger.push_back(i);
+  }
+
+  while (larger.size() >0 && smaller.size() >0) {
+    int l = larger[larger.size()-1]; larger.pop_back();
+    int s = smaller[smaller.size()-1]; smaller.pop_back();
+
+    alias[s] = l;
+    prob[l] = prob[l] - (1.0 - prob[s]);
+    if (prob[l] < 1.0)
+      smaller.push_back(l);
+    else
+      larger.push_back(l);
+  }
+}
+
+int sample_N2_alias(double* ci, double& cumulative, std::vector<int>& Sample1, std::vector<CItype>& newWts, std::vector<int>& alias, std::vector<double>& prob) {
+
+  int niter = Sample1.size(); //Sample1.resize(0); newWts.resize(0);
+
+  int sampleIndex = 0;
+  for (int index = 0; index<niter; index++) {
+    int detIndex = floor(1.* ((double) rand() / (RAND_MAX))*alias.size() );
+
+    double rand_no = ((double) rand()/ (RAND_MAX));
+    if (rand_no >= prob[detIndex])
+      detIndex = alias[detIndex];
+
+    std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), detIndex);
+    if (it == Sample1.end()) {
+      Sample1[sampleIndex] = detIndex;
+      newWts[sampleIndex] = cumulative*ci[detIndex]/ abs(ci[detIndex]);
+      //newWts[sampleIndex] = ci(detIndex,0) < 0. ? -cumulative : cumulative;
+      sampleIndex++;
+    }
+    else {
+      newWts[distance(Sample1.begin(), it) ] += cumulative*ci[detIndex]/ abs(ci[detIndex]);
+      //newWts[distance(Sample1.begin(), it) ] += ci(detIndex,0) < 0. ? -cumulative : cumulative;
+    }
+  }
+
+  for (int i=0; i<niter; i++)
+    newWts[i] /= niter;
+  return sampleIndex;
+}
