@@ -1738,7 +1738,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   //calcGreensFunction(refT, ref, green);
   //complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
   vector<double> times = { 0., 0.};
-  auto refOverlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, ref, enuc, h1, chol, times);
+  auto refOverlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, ref, enuc, h1, chol);
   complex<double> refEnergy = refOverlapHam.second / refOverlapHam.first;
   //complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, rotChol);
   complex<double> ene0;
@@ -1792,7 +1792,6 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
 
     }
 
->>>>>>> 8c44e94488416cc58d9a89590a81b64bcea6b153
     matPair rn;
     rn = ref;
     VectorXd fields = VectorXd::Zero(nfields);
@@ -1831,16 +1830,11 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
       if (n == eneSteps[eneStepCounter]) {
         //complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
         //complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-<<<<<<< HEAD
-        //auto overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, times);
-        auto overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
-=======
         pair<complex<double>, complex<double>> overlapHam;
         if (schd.sampleDeterminants != -1)
           overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
         else 
           overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
->>>>>>> 8c44e94488416cc58d9a89590a81b64bcea6b153
         //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
         complex<double> overlap = orthoFac * overlapHam.first;
@@ -1857,8 +1851,8 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
-    cout << "Intermediates:  " << times[0] << endl;
-    cout << "citer:  " << times[1] << endl << endl;
+    //cout << "Intermediates:  " << times[0] << endl;
+    //cout << "citer:  " << times[1] << endl << endl;
   }
 
   stats.gatherAndPrintStatistics(iTime);
