@@ -230,10 +230,10 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    mpi::broadcast(world, &I2.store[i*maxint], maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, MPI_DOUBLE, 0);
+  mpi::broadcast(world, &I2.store[maxIter*maxint], I2memory - maxIter*maxint, 0);
   world.barrier();
 
   mpi::broadcast(world, I2.maxEntry, 0);
@@ -543,10 +543,10 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(&I2.store[i*maxint], maxint, MPI_DOUBLE, 0);
+    mpi::broadcast(world, &I2.store[i*maxint], maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(&I2.store[(maxIter)*maxint], I2memory - maxIter*maxint, MPI_DOUBLE, 0);
+  mpi::broadcast(world, &I2.store[maxIter*maxint], I2memory - maxIter*maxint, 0);
   world.barrier();
 
   mpi::broadcast(world, I2.maxEntry, 0);
@@ -653,10 +653,10 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2, bool cas) 
 
   if (!cas) {
 #ifndef SERIAL
-  MPI::COMM_WORLD.Bcast(&Singles(0,0), Singles.rows()*Singles.cols(), MPI_DOUBLE, 0);
+  mpi::broadcast(world, &Singles(0,0), Singles.rows()*Singles.cols(), 0);
 #endif
   }
-  
+
 
   I2.Singles.resize(0,0);
   size_t memRequired = 0;
@@ -820,18 +820,18 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath& I2, bool cas) 
   world.barrier();
   char* shrdMem = static_cast<char*>(startAddress);
   for (int i=0; i<maxIter; i++) {
-    MPI::COMM_WORLD.Bcast(shrdMem+i*maxint, maxint, MPI_CHAR, 0);
+    mpi::broadcast(world, shrdMem+i*maxint, maxint, 0);
     world.barrier();
   }
-  MPI::COMM_WORLD.Bcast(shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, MPI_CHAR, 0);
+  mpi::broadcast(world, shrdMem+(maxIter)*maxint, memRequired - maxIter*maxint, 0);
   world.barrier();
 #endif
 
 #ifndef SERIAL
-  MPI::COMM_WORLD.Bcast(&sameSpinPairExcitations(0,0), sameSpinPairExcitations.rows()*
-			sameSpinPairExcitations.cols(), MPI_DOUBLE, 0);
-  MPI::COMM_WORLD.Bcast(&oppositeSpinPairExcitations(0,0), oppositeSpinPairExcitations.rows()*
-			oppositeSpinPairExcitations.cols(), MPI_DOUBLE, 0);
+  mpi::broadcast(world, &sameSpinPairExcitations(0,0), sameSpinPairExcitations.rows()*
+        sameSpinPairExcitations.cols(), 0);
+  mpi::broadcast(world, &oppositeSpinPairExcitations(0,0), oppositeSpinPairExcitations.rows()*
+        oppositeSpinPairExcitations.cols(), 0);
 #endif
 
 } // end twoIntHeatBathSHM::constructClass
