@@ -41,6 +41,12 @@ std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& phi0T, Eigen::Matr
 // Hamiltonian matrix element < \sum _i phi_i | H | psi > / < \sum_i phi_i | psi >
 // multislater local energy
 // leading cost: O(X N_c + X N^2 M)
+std::pair<std::complex<double>, std::complex<double>> calcHamiltonianElement0(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations, std::vector<double>& ciParity, std::vector<double>& ciCoeffs, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol); 
+
+
+// Hamiltonian matrix element < \sum _i phi_i | H | psi > / < \sum_i phi_i | psi >
+// multislater local energy
+// leading cost: O(X N_c + X N M^2)
 std::pair<std::complex<double>, std::complex<double>> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations, std::vector<double>& ciParity, std::vector<double>& ciCoeffs, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol); 
 
 

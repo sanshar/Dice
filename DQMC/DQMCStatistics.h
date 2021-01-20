@@ -21,6 +21,7 @@ class DQMCStatistics {
           & num2Mean
           & denom2Mean
           & num_denomMean
+          & errorTargets
           & converged
           & convergedE
           & convergedDev;
@@ -34,6 +35,7 @@ class DQMCStatistics {
     Eigen::ArrayXcd numMean, denomMean;                    // running averages
     Eigen::ArrayXd denomAbsMean;                           // running averages
     Eigen::ArrayXcd num2Mean, denom2Mean, num_denomMean;   // running averages
+    std::vector<double> errorTargets;
     std::vector<int> converged;
     Eigen::ArrayXcd convergedE;
     Eigen::ArrayXd convergedDev;
@@ -52,6 +54,9 @@ class DQMCStatistics {
     // to be used at the end of a calculation
     // iTime used only for printing
     void gatherAndPrintStatistics(Eigen::ArrayXd iTime);
+
+    // if all energies are converged
+    bool isConverged();
 
     // prints running averages from proc 0
     void printStatistics();

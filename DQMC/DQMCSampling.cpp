@@ -1795,6 +1795,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   for (int sweep = 0; sweep < nsweeps; sweep++) {
+    if (stats.isConverged()) break;
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
         cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";

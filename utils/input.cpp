@@ -160,6 +160,15 @@ void readInput(string inputFile, schedule& schd, bool print) {
     else {
       schd.eneSteps =  { int(0.4*schd.nsteps) - 1, int(0.6*schd.nsteps) - 1, int(0.8*schd.nsteps) - 1, int(schd.nsteps - 1) };
     }
+    child = input.get_child_optional("sampling.errorTargets");
+    if (child) {
+      for (property_tree::iptree::value_type &errorTargets : input.get_child("sampling.errorTargets")) {
+        schd.errorTargets.push_back(stof(errorTargets.second.data()));
+      }
+    }
+    else {
+      for (int i = 0; i < schd.eneSteps.size(); i++) schd.errorTargets.push_back(1.5e-3);
+    }
     schd.printFrequency = input.get("sampling.printFreq", 100);
     schd.dt = input.get("sampling.dt", 0.1);
     schd.fieldStepsize = input.get("sampling.stepsize", 0.1);

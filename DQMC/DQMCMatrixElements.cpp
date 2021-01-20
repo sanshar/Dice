@@ -475,10 +475,10 @@ complex<double> calcHamiltonianElement(matPair& walker, workingArray& work, doub
 
 // Hamiltonian matrix element < \sum _i phi_i | H | psi >
 // multislater local energy
-// leading cost: O(X N_c + X N^2 M)
+// leading cost: O(X N_c + X N M^2)
 // returns both overlap and local energy
 // TODO: use either array or pair, not both; make interface consistent with other local energy functions perhaps by changing all returns to <overlap, local energy> pairs
-pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, std::array<vector<std::array<VectorXi, 2>>, 2>& ciExcitations, vector<double>& ciParity, vector<double>& ciCoeffs, matPair& psi, double enuc, MatrixXd& h1, vector<MatrixXd>& chol)
+pair<complex<double>, complex<double>> calcHamiltonianElement0(matPair& phi0T, std::array<vector<std::array<VectorXi, 2>>, 2>& ciExcitations, vector<double>& ciParity, vector<double>& ciCoeffs, matPair& psi, double enuc, MatrixXd& h1, vector<MatrixXd>& chol)
 {
   int norbs = Determinant::norbs;
   int nalpha = Determinant::nalpha;
@@ -695,6 +695,258 @@ pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, st
   ene += enuc * overlap;
   return pair<complex<double>, complex<double>>(overlap, ene);
 }
+
+
+// Hamiltonian matrix element < \sum _i phi_i | H | psi >
+// multislater local energy
+// leading cost: O(X N_c + X N M^2)
+// returns both overlap and local energy
+// TODO: use either array or pair, not both; make interface consistent with other local energy functions perhaps by changing all returns to <overlap, local energy> pairs
+pair<complex<double>, complex<double>> calcHamiltonianElement(matPair& phi0T, std::array<vector<std::array<VectorXi, 2>>, 2>& ciExcitations, vector<double>& ciParity, vector<double>& ciCoeffs, matPair& psi, double enuc, MatrixXd& h1, vector<MatrixXd>& chol)
+{
+  int norbs = Determinant::norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+  std::array<int, 2> nelec{nalpha, nbeta};
+  size_t ndets = ciCoeffs.size();
+
+  complex<double> overlap(0., 0.);
+  complex<double> ene(0., 0.);
+  matArray theta, green, greenp;
+  theta[0] = psi.first * (phi0T.first * psi.first).inverse();
+  theta[1] = psi.second * (phi0T.second * psi.second).inverse();
+  green[0] = (theta[0] * phi0T.first).transpose();
+  green[1] = (theta[1] * phi0T.second).transpose();
+  greenp[0] = green[0] - MatrixXcd::Identity(norbs, norbs);
+  greenp[1] = green[1] - MatrixXcd::Identity(norbs, norbs);
+  matArray greeno;
+  greeno[0] = green[0].block(0, 0, nalpha, norbs);
+  greeno[1] = green[1].block(0, 0, nbeta, norbs);
+  //green[0] = green[0].block(0, 0, nalpha, norbs);
+  //green[1] = green[1].block(0, 0, nbeta, norbs);
+
+  // all quantities henceforth will be calculated in "units" of overlap0 = < phi_0 | psi >
+  complex<double> overlap0 = (phi0T.first * psi.first).determinant() * (phi0T.second * psi.second).determinant();
+ 
+  // ref contribution
+  overlap += ciCoeffs[0];
+  std::array<complex<double>, 2> hG;
+  hG[0] = greeno[0].cwiseProduct(h1.block(0, 0, nalpha, norbs)).sum();
+  hG[1] = greeno[1].cwiseProduct(h1.block(0, 0, nbeta, norbs)).sum();
+  //hG[0] = green[0].cwiseProduct(h1).sum();
+  //hG[1] = green[1].cwiseProduct(h1).sum();
+  ene += ciCoeffs[0] * (hG[0] + hG[1]);
+  
+  // 1e intermediate
+  matArray roth1;
+  roth1[0] = (greeno[0] * h1) * greenp[0];
+  roth1[1] = (greeno[1] * h1) * greenp[1];
+
+  // G^{p}_{t} blocks
+  vector<matArray> gBlocks;
+  vector<std::array<complex<double>, 2>> gBlockDets;
+  matArray empty;
+  gBlocks.push_back(empty);
+  std::array<complex<double>, 2> identity{1., 1.};
+  gBlockDets.push_back(identity);
+  
+  // iterate over excitations
+  for (int i = 1; i < ndets; i++) {
+    matArray blocks;
+    std::array<complex<double>, 2> oneEne, dets;
+    for (int sz = 0; sz < 2; sz++) {
+      int rank = ciExcitations[sz][i][0].size();
+      if (rank == 0) {
+        dets[sz] = 1.;
+        oneEne[sz] = hG[sz];
+      }
+      else {
+        blocks[sz] = MatrixXcd::Zero(rank, rank);
+        for (int p = 0; p < rank; p++) 
+          for (int t = 0; t < rank; t++) 
+            blocks[sz](p, t) = green[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
+        
+        dets[sz] = blocks[sz].determinant();
+        oneEne[sz] = hG[sz] * dets[sz];
+
+        MatrixXcd temp;
+        for (int p = 0; p < rank; p++) {
+          temp = blocks[sz];
+          for (int t = 0; t < rank; t++)
+            temp(p, t) = roth1[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
+          oneEne[sz] -= temp.determinant();
+        }
+      }
+    }
+
+    overlap += ciCoeffs[i] * ciParity[i] * dets[0] * dets[1];
+    ene += ciCoeffs[i] * ciParity[i] * (oneEne[0] * dets[1] + dets[0] * oneEne[1]);
+    gBlocks.push_back(blocks);
+    gBlockDets.push_back(dets);
+  }
+  
+  // 2e intermediates
+  matArray int1, int2;
+  int1[0] = 0. * greeno[0];
+  int1[1] = 0. * greeno[0];
+  int2[0] = 0. * greeno[0];
+  int2[1] = 0. * greeno[0];
+  std::array<complex<double>, 2> l2G2Tot;
+  l2G2Tot[0] = complex<double>(0., 0.);
+  l2G2Tot[1] = complex<double>(0., 0.);
+  
+  // iterate over cholesky
+  for (int n = 0; n < chol.size(); n++) {
+    std::array<complex<double>, 2> lG, l2G2;
+    matArray exc;
+    for (int sz = 0; sz < 2; sz++) {
+      exc[sz].noalias() = chol[n].block(0, 0, nelec[sz], norbs) * theta[sz];
+      lG[sz] = exc[sz].trace();
+      l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
+      l2G2Tot[sz] += l2G2[sz];
+      //int2[sz].noalias() = (greeno[sz] * chol[n]) * greenp[sz];
+      int2[sz].setZero();
+      int2[sz].block(0, 0, nelec[sz], norbs) = (chol[n].block(0, 0, nelec[sz], norbs) * theta[sz]).transpose() * theta[sz].transpose();
+      int2[sz].noalias() -= greeno[sz] * chol[n]; 
+      //int2[sz].noalias() = (greeno[sz] * chol[n].block(0, 0, norbs, norbsAct)) * greenp[sz].block(0, 0, norbsAct, norbs);
+      int1[sz].noalias() += lG[sz] * int2[sz];
+      int1[sz].noalias() -= (greeno[sz] * chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
+    }
+
+    // ref contribution
+    ene += ciCoeffs[0] * (l2G2[0] + l2G2[1] + 2. * lG[0] * lG[1]) / 2.;
+    
+    // iterate over excitations
+    for (int i = 1; i < ndets; i++) {
+      std::array<complex<double>, 2> oneEne, twoEne;
+      for (int sz = 0; sz < 2; sz++) {
+        int rank = ciExcitations[sz][i][0].size();
+        if (rank == 0) {
+          oneEne[sz] = lG[sz];
+        }
+        if (rank == 1) {
+          oneEne[sz] = lG[sz] * gBlockDets[i][sz] - int2[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0));
+        }
+        else if (rank == 2) {
+          oneEne[sz] = lG[sz] * gBlockDets[i][sz] 
+                     - int2[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0)) * gBlocks[i][sz](1, 1)
+                     + int2[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](1)) * gBlocks[i][sz](1, 0)
+                     + int2[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](0)) * gBlocks[i][sz](0, 1)
+                     - int2[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](1)) * gBlocks[i][sz](0, 0);
+
+          twoEne[sz] = 2. * (  int2[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0))    
+                             * int2[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](1)) 
+                             - int2[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](0)) 
+                             * int2[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](1))  );
+        }
+        else {
+          // oneEne
+          {
+            oneEne[sz] = lG[sz] * gBlockDets[i][sz];
+
+            MatrixXcd temp;
+            for (int p = 0; p < rank; p++) {
+              temp = gBlocks[i][sz];
+              for (int t = 0; t < rank; t++)
+                temp(p, t) = int2[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
+              oneEne[sz] -= temp.determinant();
+            }
+          }
+          
+          // twoEne
+          {
+            twoEne[sz] = complex<double>(0., 0.);
+            // term 3
+            if (rank > 1) {
+              vector<int> range(rank);
+              for (int p = 0; p < rank; p++) range[p] = p;
+              for (int p = 0; p < rank; p++) {
+                for (int q = p + 1; q < rank; q++) {
+                  double parity_pq = ((p + q + 1)%2 == 0) ? 1. : -1.;
+                  vector<int> pq = {p, q};
+                  vector<int> diff0;
+                  std::set_difference(range.begin(), range.end(), pq.begin(), pq.end(), std::inserter(diff0, diff0.begin()));
+                  for (int t = 0; t < rank; t++) {
+                    for (int u = t + 1; u < rank; u++) {
+                      double parity_tu = ((t + u + 1)%2 == 0) ? 1. : -1.;
+                      vector<int> tu = {t, u};
+                      vector<int> diff1;
+                      std::set_difference(range.begin(), range.end(), tu.begin(), tu.end(), std::inserter(diff1, diff1.begin()));
+                      
+                      complex<double> blockBlockDet;
+                      if (rank < 3) blockBlockDet = 1.;
+                      else {
+                        MatrixXcd blockBlock = MatrixXcd::Zero(rank - 2, rank - 2);
+                        for (int mup = 0; mup < rank - 2; mup++) 
+                          for (int nup = 0; nup < rank - 2; nup++) 
+                            blockBlock(mup, nup) = gBlocks[i][sz](diff0[mup], diff1[nup]);
+                        blockBlockDet = blockBlock.determinant();
+                      }
+
+                      twoEne[sz] += 2. * parity_pq * parity_tu * blockBlockDet * (  int2[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) 
+                                                                                  * int2[sz](ciExcitations[sz][i][0](q), ciExcitations[sz][i][1](u)) 
+                                                                                  - int2[sz](ciExcitations[sz][i][0](q), ciExcitations[sz][i][1](t)) 
+                                                                                  * int2[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](u))  );
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } 
+      } // sz
+
+      ene += ciParity[i] * ciCoeffs[i] * (twoEne[0] * gBlockDets[i][1] + 2. * oneEne[0] * oneEne[1] + gBlockDets[i][0] * twoEne[1]) / 2.;
+    
+    } // dets
+  } // chol
+    
+  // iterate over excitations
+  for (int i = 1; i < ndets; i++) {
+    std::array<complex<double>, 2> oneEne, twoEne;
+    for (int sz = 0; sz < 2; sz++) {
+      int rank = ciExcitations[sz][i][0].size();
+      if (rank == 0) {
+        twoEne[sz] = l2G2Tot[sz];
+      }
+      else if (rank == 1) {
+        twoEne[sz] = l2G2Tot[sz] * gBlockDets[i][sz] - 2. * int1[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0));
+      }
+      else if (rank == 2) {
+        twoEne[sz] = l2G2Tot[sz] * gBlockDets[i][sz]
+                   + 2. * (- int1[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0)) * gBlocks[i][sz](1, 1)
+                           + int1[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](1)) * gBlocks[i][sz](1, 0)
+                           + int1[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](0)) * gBlocks[i][sz](0, 1)
+                           - int1[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](1)) * gBlocks[i][sz](0, 0)  );
+      }
+      else {
+        // twoEne
+        {
+          // term 1
+          twoEne[sz] = l2G2Tot[sz] * gBlockDets[i][sz];
+
+          //term 2
+          MatrixXcd temp;
+          for (int p = 0; p < rank; p++) {
+            temp = gBlocks[i][sz];
+            for (int t = 0; t < rank; t++)
+              temp(p, t) = int1[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
+            twoEne[sz] -= 2. * temp.determinant();
+          }
+        }
+      } 
+    } // sz
+
+    ene += ciParity[i] * ciCoeffs[i] * (twoEne[0] * gBlockDets[i][1] + gBlockDets[i][0] * twoEne[1]) / 2.;
+  
+  } // dets
+
+  overlap *= overlap0;
+  ene *= overlap0;
+  ene += enuc * overlap;
+  return pair<complex<double>, complex<double>>(overlap, ene);
+}
+
 
 
 // Hamiltonian matrix element < \sum _i phi_i | H | psi >
