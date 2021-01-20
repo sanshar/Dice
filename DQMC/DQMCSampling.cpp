@@ -29,7 +29,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   size_t nfields = chol.size();
   size_t nsweeps = schd.stochasticIter;
   size_t nsteps = schd.nsteps;
-  //size_t orthoSteps = schd.orthoSteps;
+  size_t orthoSteps = schd.orthoSteps;
   double stepsize = schd.fieldStepsize;
   double dt = schd.dt;
 
@@ -47,7 +47,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   
   // this is the actual reference in J | ref >
   hf = MatrixXd::Zero(norbs, norbs);
-  readMat(hf, "ref.txt");
+  readMat(hf, "rhf.txt");
   matPair ref;
   ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
   ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
@@ -67,7 +67,9 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   vector<VectorXd> fields;
   uniform_real_distribution<double> uniformStep(-stepsize, stepsize);
   uniform_real_distribution<double> uniform(0., 1.);
-  
+  normal_distribution<double> normal(0., 1.);
+
+  complex<double> rOrthoFac = 1., lOrthoFac = 1.;
   // right to left sweep
   vector<matPair> rn;
   rn.push_back(ref);
@@ -77,7 +79,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
     prop.first = MatrixXcd::Zero(norbs, norbs);
     prop.second = MatrixXcd::Zero(norbs, norbs);
     for (int i = 0; i < nfields; i++) {
-      fields[n](i) = uniformStep(generator);
+      fields[n](i) = normal(generator);//uniformStep(generator);
       prop.first += fields[n](i) * hsOperators[i].first;
       prop.second += fields[n](i) * hsOperators[i].second;
     }
@@ -86,6 +88,12 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
     matPair rni;
     rni.first = expOneBodyOperator.first * prop.first * expOneBodyOperator.first * rn[n].first;
     rni.second = expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn[n].second;
+
+    // orthogonalize for stability
+    if (n % orthoSteps == 0) {
+      orthogonalize(rni, rOrthoFac);
+    }
+
     rn.push_back(rni);
   }
 
@@ -108,6 +116,14 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
     matPair lni;
     lni.first = ln[n].first * expOneBodyOperator.first * prop.first * expOneBodyOperator.first;
     lni.second = ln[n].second * expOneBodyOperator.second * prop.second * expOneBodyOperator.second;
+
+    // orthogonalize for stability
+    if (n % orthoSteps == 0) {
+      matPair lniT; lniT.first = lni.first.adjoint(); lniT.second = lni.second.adjoint();
+      orthogonalize(lniT, lOrthoFac);
+      lni.first = lniT.first.adjoint(); lni.second = lniT.second.adjoint();
+    }
+
     ln.push_back(lni);
   }
 
@@ -124,6 +140,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
     // right to left sweep
     if (sweep % 2 == 0) {
       for (int n = 0; n < nsteps; n++) {
+        rOrthoFac = 1.0;
         // propose move
         double init = getTime();
         VectorXd proposedFields = VectorXd::Zero(nfields);
@@ -132,8 +149,9 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
         proposedProp.second = MatrixXcd::Zero(norbs, norbs);
         double expRatio = 1.;
         for (int i = 0; i < nfields; i++) {
-          proposedFields(i) = fields[n](i) + uniformStep(generator);
-          expRatio *= exp((fields[n](i) * fields[n](i) - proposedFields(i) * proposedFields(i))/2);
+          //proposedFields(i) = fields[n](i) + uniformStep(generator);
+          //expRatio *= exp((fields[n](i) * fields[n](i) - proposedFields(i) * proposedFields(i))/2);
+          proposedFields(i) = normal(generator);
           proposedProp.first += proposedFields(i) * hsOperators[i].first;
           proposedProp.second += proposedFields(i) * hsOperators[i].second;
         }
@@ -149,6 +167,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
         propTime += getTime() - init;
         complex<double> proposedOverlap = (ln[nsteps - n - 1].first * rni.first).determinant() * (ln[nsteps - n - 1].second * rni.second).determinant();
 
+        //cout << proposedOverlap<<"  "<<overlap<<endl;
         // accept / reject
         if (expRatio * abs(proposedOverlap) / abs(overlap) >= uniform(generator)) {
           accepted++;
@@ -170,17 +189,24 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
           rn[n + 1].second = expOneBodyOperator.second * prop.second * expOneBodyOperator.second * rn[n].second;
         }
 
+        if (n % orthoSteps == 0) {
+          orthogonalize(rn[n+1], rOrthoFac);
+        }
+
       }
       
       matPair green;
       calcGreensFunction(ln[0], rn[nsteps], green);
       denom(sweep/2) = overlap / abs(overlap);
       num(sweep/2) = denom(sweep/2) * calcHamiltonianElement(green, enuc, h1, chol);
+      //cout << denom(sweep/2)<<"  "<<num(sweep/2)<<"  "<<sweep/2<<"  "<<accepted<<endl;
     }
     
     // left to right sweep
     else {
       for (int n = 0; n < nsteps; n++) {
+        lOrthoFac = 1.0;
+
         // propose move
         VectorXd proposedFields = VectorXd::Zero(nfields);
         matPair proposedProp;
@@ -188,8 +214,9 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
         proposedProp.second = MatrixXcd::Zero(norbs, norbs);
         double expRatio = 1.;
         for (int i = 0; i < nfields; i++) {
-          proposedFields(i) = fields[nsteps - n - 1](i) + uniformStep(generator);
-          expRatio *= exp((fields[nsteps - n - 1](i) * fields[nsteps - n - 1](i) - proposedFields(i) * proposedFields(i))/2);
+          //proposedFields(i) = fields[nsteps - n - 1](i) + uniformStep(generator);
+          //expRatio *= exp((fields[nsteps - n - 1](i) * fields[nsteps - n - 1](i) - proposedFields(i) * proposedFields(i))/2);
+          proposedFields(i) = normal(generator);
           proposedProp.first += proposedFields(i) * hsOperators[i].first;
           proposedProp.second += proposedFields(i) * hsOperators[i].second;
         }
@@ -220,7 +247,14 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
           ln[n + 1].first = ln[n].first * expOneBodyOperator.first * prop.first * expOneBodyOperator.first;
           ln[n + 1].second = ln[n].second * expOneBodyOperator.second * prop.second * expOneBodyOperator.second;
         }
-        
+
+        if (n % orthoSteps == 0) {
+          matPair lniT; lniT.first = ln[n+1].first.adjoint(); lniT.second = ln[n+1].second.adjoint();
+          orthogonalize(lniT, lOrthoFac);
+          ln[n+1].first = lniT.first.adjoint(); ln[n+1].second = lniT.second.adjoint();
+        }
+
+
       }
     }
     
@@ -238,6 +272,7 @@ void calcEnergyMetropolis(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   }
   complex<double> numMean = num.mean();
   complex<double> denomMean = denom.mean();
+  //cout << denom.mean()<<"  "<<numMean<<endl;
   complex<double> energyTotAll[commsize];
   complex<double> numTotAll[commsize];
   complex<double> denomTotAll[commsize];
@@ -772,6 +807,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
         numSampleA[eneStepCounter] = numSample;
         denomSampleA[eneStepCounter] = overlap;
         eneStepCounter++;
+        cout << overlap<<endl;
       }
       eneTime += getTime() - init;
     }
@@ -955,6 +991,7 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   stats.gatherAndPrintStatistics(iTime);
   if (schd.printLevel > 10) stats.writeSamples();
 }
+
 
 
 // calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
