@@ -13,6 +13,7 @@
 #include "DQMCMatrixElements.h"
 #include "DQMCStatistics.h"
 #include "DQMCSampling.h"
+#include <iomanip> 
 
 using namespace Eigen;
 using namespace std;
@@ -667,6 +668,8 @@ void calcEnergyDirectVartiational(double enuc, MatrixXd& h1, MatrixXd& h1Mod, ve
   size_t nsteps = schd.nsteps;
   size_t orthoSteps = schd.orthoSteps;
   double dt = schd.dt;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
   vector<int> eneSteps = schd.eneSteps;
 
   // prep and init
@@ -710,22 +713,22 @@ void calcEnergyDirectVartiational(double enuc, MatrixXd& h1, MatrixXd& h1Mod, ve
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
-  //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
   int nEneSteps = eneSteps.size();
-  //DQMCStatistics stats(nEneSteps);
-  DQMCStatistics stats(2);
+  DQMCStatistics stats(nEneSteps);
+  //DQMCStatistics stats(2);
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
-  //ArrayXd iTime(nEneSteps);
-  //for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
-  ArrayXd iTime(2);
-  for (int i = 0; i < 2; i++) iTime(i) = dt * (eneSteps[0] + 1);
+  ArrayXd iTime(nEneSteps);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   if (commrank == 0) cout << "Starting sampling sweeps\n";
 
-  cout << normal(generator)<<"  first normal "<<endl;
   int nstepsHalf = schd.nsteps/2 + schd.nsteps%2;
-  //cout << dt<<"  "<<nsteps<<"  "<<nstepsHalf<<endl;
+
+  MatrixXcd Ham  = MatrixXcd::Zero(nstepsHalf+1, nstepsHalf+1),
+            Ovlp = MatrixXcd::Zero(nstepsHalf+1, nstepsHalf+1);
+
   for (int sweep = 0; sweep < nsweeps; sweep++) {
+
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
         cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
@@ -736,17 +739,20 @@ void calcEnergyDirectVartiational(double enuc, MatrixXd& h1, MatrixXd& h1Mod, ve
     }
     double init = getTime();
       
-    complex<double> orthoFacr = complex<double>(1., 0.), orthoFacl = 1., orthoFac2 = 1.;
+    complex<double> orthoFac = complex<double>(1., 0.);
     int eneStepCounter = 0;
-    //ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
-    ArrayXcd numSampleA(2), denomSampleA(2);
+    ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
     numSampleA.setZero(); denomSampleA.setZero();
 
-    matPair rn = rhf, ln = rhf, rn2 = rhf;
+    //matPair rn = rhf, ln = rhf;
     vector<MatrixXcd> rightPotMat(nstepsHalf, MatrixXcd::Zero(norbs, norbs)), 
                       leftPotMat(nstepsHalf, MatrixXcd::Zero(norbs, norbs));
     vector<MatrixXcd> rightPotProp(nstepsHalf, MatrixXcd::Zero(norbs, norbs)), 
                       leftPotProp(nstepsHalf, MatrixXcd::Zero(norbs, norbs));
+    vector<matPair> leftKderiv(nstepsHalf+1, rhf),
+                    rightKderiv(nstepsHalf+1, rhf);
+    vector<complex<double>> orthoFacLeftKderiv(nstepsHalf+1, 1.),
+                            orthoFacRightKderiv(nstepsHalf+1, 1.);
 
     propTime += getTime() - init;
     for (int n=0; n<nstepsHalf; n++) {
@@ -763,58 +769,73 @@ void calcEnergyDirectVartiational(double enuc, MatrixXd& h1, MatrixXd& h1Mod, ve
     }
 
     for (int n=0; n<nstepsHalf; n++) {
-      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (rightPotProp[n] * (expOneBodyOperator.first * rn.first)));
-      ln.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (leftPotProp[nstepsHalf - n -1].adjoint() * (expOneBodyOperator.first * ln.first)));
-      rn.second = rn.first;
-      ln.second = ln.first;
+      rightKderiv[0].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (rightPotProp[n] * (expOneBodyOperator.first * rightKderiv[0].first)));
+      leftKderiv[0].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (leftPotProp[n] * (expOneBodyOperator.first * leftKderiv[0].first)));
+      rightKderiv[0].second = rightKderiv[0].first;
+      leftKderiv[0].second = leftKderiv[0].first;
+
+      for (int k=0; k<nstepsHalf; k++) {
+        if (k < n) {
+          rightKderiv[k+1].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (rightPotProp[n] * (expOneBodyOperator.first * rightKderiv[k+1].first)));        
+          leftKderiv[k+1].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (leftPotProp[n] * (expOneBodyOperator.first * leftKderiv[k+1].first)));        
+        }
+        else if (k == n){
+          rightKderiv[k+1].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (h1Mod - oneBodyOperator.first) * (expOneBodyOperator.first * (rightPotProp[n] * (expOneBodyOperator.first * rightKderiv[k+1].first)));                
+          leftKderiv[k+1].first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (h1Mod - oneBodyOperator.first) * (expOneBodyOperator.first * (leftPotProp[n] * (expOneBodyOperator.first * leftKderiv[k+1].first)));                
+        }
+        else {
+          leftKderiv[k+1] = leftKderiv[0];
+          rightKderiv[k+1] = rightKderiv[0];
+        }
+        leftKderiv[k+1].second = leftKderiv[k+1].first;
+        rightKderiv[k+1].second = rightKderiv[k+1].first;
+      }
 
       if (n != 0 && n % orthoSteps == 0) {
-        orthogonalize(rn, orthoFacr);
-        orthogonalize(ln, orthoFacl);
+        for (int k=0; k<n+1; k++) {
+          orthogonalize(leftKderiv[k], orthoFacLeftKderiv[k]);
+          orthogonalize(rightKderiv[k], orthoFacRightKderiv[k]);
+        }
       }
     }
-
-    for (int n=0; n<nstepsHalf; n++) {
-      rn2.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (rightPotProp[n] * (expOneBodyOperator.first * rn2.first)));
-      rn2.second = rn2.first;
-      if (n != 0 && (n) % orthoSteps == 0) {
-        orthogonalize(rn2, orthoFac2);
-      }
-    }
-
-    for (int n=0; n<nstepsHalf; n++) {
-      rn2.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (leftPotProp[n] * (expOneBodyOperator.first * rn2.first)));
-      rn2.second = rn2.first;
-      if (n != 0 && (n) % orthoSteps == 0) {
-        orthogonalize(rn2, orthoFac2);
-      }
-    }
-
     propTime += getTime() - init;
 
     init = getTime();
-    matPair lnAd; lnAd.first = ln.first.adjoint(); lnAd.second = ln.second.adjoint();
-    complex<double> overlap = std::conj(orthoFacl)*orthoFacr * (lnAd.first * rn.first).determinant() * (lnAd.second * rn.second).determinant();
-    complex<double> numSample;
-    numSample = overlap * calcHamiltonianElement(lnAd, rn, enuc, h1, chol); 
-    numSampleA[eneStepCounter] = numSample;
-    denomSampleA[eneStepCounter] = overlap;
-
-    //if (Determinant::nalpha == Determinant::nbeta) numSample = overlap * calcHamiltonianElement(ln.first, rn.first, enuc, h1, rotChol.first);
-    //else numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
-
-    //cout << std::conj(orthoFacl)*orthoFacr <<"  "<<overlap<<"  "<<numSample<<endl;
-    //matPair green;
-    //calcGreensFunction(lnAd, rn, green);
-    //numSample = overlap * calcHamiltonianElement(green, enuc, h1, chol);
-
-    overlap = orthoFac2 * (refAd.first * rn2.first).determinant() * (refAd.second * rn2.second).determinant();
-    numSample = overlap * calcHamiltonianElement(refAd, rn2, enuc, h1, chol); 
-    //cout << orthoFac2 <<"  "<<overlap<<"  "<<numSample<<endl;
-    numSampleA[1] = numSample;
-    denomSampleA[1] = overlap;
+    for (int x = 0; x<nstepsHalf+1; x++) {
+      matPair lnAd; lnAd.first = leftKderiv[x].first.adjoint(); lnAd.second = leftKderiv[x].second.adjoint();
+      //for (int y = 0; y<nstepsHalf+1; y++) {
+      for (int y = 0; y<x+1; y++) {
+        complex<double> orthoFac = orthoFacLeftKderiv[x] * orthoFacRightKderiv[y];
+        complex<double> overlap = orthoFac * (lnAd.first * rightKderiv[y].first).determinant() * (lnAd.second * rightKderiv[y].second).determinant(); 
+        complex<double> numSample = overlap * calcHamiltonianElement(lnAd, rightKderiv[y], enuc, h1, chol); 
+        Ovlp(x,y) += overlap;
+        Ham (x,y) += numSample;
+        Ovlp(y,x) = Ovlp(x,y);
+        Ham(y,x) = Ham(x,y);
+        if (x == 0 && y == 0) {
+          numSampleA[eneStepCounter] = numSample;
+          denomSampleA[eneStepCounter] = overlap;
+        }
+      }
+    }
     eneTime += getTime() - init;
     stats.addSamples(numSampleA, denomSampleA);
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &Ovlp(0,0), Ovlp.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &Ham(0,0), Ham.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+
+  if (commrank == 0 ){
+    MatrixXcd OvlpInv = Ovlp.inverse();
+    MatrixXcd OinvHam = OvlpInv * Ham;
+    ComplexEigenSolver<MatrixXcd> ges;
+    ges.compute(OinvHam);
+    cout<<setprecision(12)<<endl;
+    cout << Ovlp/Ovlp(0,0)<<endl<<endl;
+    cout << Ham/Ovlp(0,0)<<endl<<endl;
+    cout << ges.eigenvalues().transpose()<<endl;
+    cout << ges.eigenvectors().col(nstepsHalf)<<endl;
+    cout << Ovlp.size()<<endl;
   }
   stats.gatherAndPrintStatistics(iTime);
 
