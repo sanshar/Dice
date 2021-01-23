@@ -285,6 +285,67 @@ complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<ma
   return mfConstant / 2.;
 }
 
+
+// makes hs operators from cholesky matrices including mean field subtraction, returns mean field constant
+// doesn't make unnecessary copies
+complex<double> prepPropagatorHS(matPair& ref, vector<MatrixXd>& chol, vector<complex<double>>& mfShifts, matPair& oneBodyOperator)
+{
+  size_t norbs = Determinant::norbs;
+  size_t nfields = chol.size();
+
+  // read or calculate rdm for mean field shifts
+  matPair green;
+  
+  bool readRDM = false;
+  std::string fname = "spinRDM.0.0.txt";
+  ifstream rdmfile(fname);
+  if (rdmfile) readRDM = true;
+  rdmfile.close();
+  if (readRDM){
+    if (commrank == 0) cout << "Reading RDM from disk for background subtraction\n\n";
+    MatrixXd oneRDM, twoRDM;
+    readSpinRDM("spinRDM.0.0.txt", oneRDM, twoRDM);
+    green.first = MatrixXcd::Zero(norbs, norbs);
+    green.second = MatrixXcd::Zero(norbs, norbs);
+    for (int i = 0; i < 2*norbs; i++) {
+      for (int j = 0; j < 2*norbs; j++) {
+        if (i%2 == 0 && j%2 == 0) green.first(i/2, j/2) = oneRDM(i, j); 
+        else if (i%2 == 1 && j%2 == 1) green.second(i/2, j/2) = oneRDM(i, j); 
+      }
+    }
+  }
+  else {
+    if (commrank == 0) cout << "Using RHF RDM for background subtraction\n\n";
+    matPair refT;
+    refT.first = ref.first.adjoint();
+    refT.second = ref.second.adjoint();
+    calcGreensFunction(refT, ref, green);
+  }
+
+  oneBodyOperator.first = MatrixXcd::Zero(norbs, norbs);
+  oneBodyOperator.second = MatrixXcd::Zero(norbs, norbs);
+  
+  complex<double> mfConstant(0., 0.);
+
+  for (int i = 0; i < nfields; i++) {
+    MatrixXcd op = complex<double>(0., 1.) * chol[i];
+    // calculate shifts
+    complex<double> mfShift = 1. * green.first.cwiseProduct(op).sum() + 1. * green.second.cwiseProduct(op).sum();
+    
+    // constant
+    mfConstant += pow(mfShift, 2);
+
+    // update one body ops
+    oneBodyOperator.first += mfShift * op;
+    oneBodyOperator.second += mfShift * op;
+    
+    mfShifts.push_back(mfShift);
+  }
+
+  return mfConstant / 2.;
+}
+
+
 void setUpAliasMethod(double* ci, int cisize, double& cumulative, std::vector<int>& alias, std::vector<double>& prob) {
   alias.resize(cisize);
   prob.resize(cisize);

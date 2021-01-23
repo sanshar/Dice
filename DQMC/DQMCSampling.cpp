@@ -1687,9 +1687,11 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   rhf.first = hf.block(0, 0, norbs, Determinant::nalpha);
   rhf.second = hf.block(0, 0, norbs, Determinant::nbeta);
   
-  vector<matPair> hsOperators;
+  //vector<matPair> hsOperators;
+  vector<complex<double>> mfShifts;
   matPair oneBodyOperator;
-  complex<double> mfConst = prepPropagatorHS(rhf, chol, hsOperators, oneBodyOperator);
+  //complex<double> mfConst = prepPropagatorHS(rhf, chol, hsOperators, oneBodyOperator);
+  complex<double> mfConst = prepPropagatorHS(rhf, chol, mfShifts, oneBodyOperator);
   
   // this is the initial state
   matPair ref;
@@ -1723,15 +1725,6 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
   expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
 
-  // rotate cholesky vectors
-  pair<vector<MatrixXcd>, vector<MatrixXcd>> rotChol;
-  for (int i = 0; i < chol.size(); i++) {
-    MatrixXcd rotUp = refT.first * chol[i];
-    MatrixXcd rotDn = refT.second * chol[i];
-    rotChol.first.push_back(rotUp);
-    rotChol.second.push_back(rotDn);
-  }
-  
   // Gaussian sampling
   // field values arranged right to left
   vector<VectorXd> fields;
@@ -1823,20 +1816,19 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     for (int n = 0; n < nsteps; n++) {
       // sampling
       double init = getTime();
-      matPair prop;
-      prop.first = MatrixXcd::Zero(norbs, norbs);
-      prop.second = MatrixXcd::Zero(norbs, norbs);
+      MatrixXcd prop = MatrixXcd::Zero(norbs, norbs);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        prop.first += field_n_i * hsOperators[i].first;
+        prop += field_n_i * complex<double>(0., 1.) * chol[i];
+        prop.diagonal() -= field_n_i * VectorXcd::Constant(norbs, mfShifts[i]/(1. * (Determinant::nalpha + Determinant::nbeta)));
         //prop.second += field_n_i * hsOperators[i].second;
       }
-      prop.first = (sqrt(dt) * prop.first).exp();
-      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop.first * (expOneBodyOperator.first * rn.first)));
+      prop = (sqrt(dt) * prop).exp();
+      rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop * (expOneBodyOperator.first * rn.first)));
       if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
       else {
         //prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop.first * expOneBodyOperator.second * rn.second;
+        rn.second = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * prop * expOneBodyOperator.second * rn.second;
       }
 
       propTime += getTime() - init;
