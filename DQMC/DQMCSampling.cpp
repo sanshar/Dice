@@ -1,4 +1,5 @@
 #ifndef SERIAL
+#include <iomanip>
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
@@ -679,7 +680,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
     refT.second = hfc.block(0, norbs, norbs, Determinant::nbeta).adjoint();
   }
-  
+ 
   matPair expOneBodyOperator;
   expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
   expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
@@ -702,13 +703,14 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
   //matPair green;
   //calcGreensFunction(refT, ref, green);
   //complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
-  complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, rotChol);
+  complex<double> refEnergy = calcHamiltonianElement(refT.first, ref.first, enuc, h1, rotChol.first);
+  //complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, chol);
   complex<double> ene0;
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
     cout << "Initial state energy:  " << refEnergy << endl;
-    cout << "Ground state energy guess:  " << ene0 << endl << endl; 
+    cout << "Ground state energy guess:  " << ene0 << endl << endl;
   }
   
   //vector<int> eneSteps = { int(0.2*nsteps) - 1, int(0.4*nsteps) - 1, int(0.6*nsteps) - 1, int(0.8*nsteps) - 1, int(nsteps - 1) };
@@ -768,6 +770,7 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
         complex<double> numSample;
         if (Determinant::nalpha == Determinant::nbeta) numSample = overlap * calcHamiltonianElement(refT.first, rn.first, enuc, h1, rotChol.first);
         else numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
+        //if (Determinant::nalpha == Determinant::nbeta) numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, chol);
         //numSample = overlap * (refEnergy + calcHamiltonianElement_sRI(refT, rn, refT, ref, enuc, h1, chol, richol)); 
         numSampleA[eneStepCounter] = numSample;
         denomSampleA[eneStepCounter] = overlap;
@@ -1745,10 +1748,28 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << refEnergy << endl;
+    cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
+  int nchol = chol.size();
+  complex<double> delta(0., 0.);
+  if (commrank == 0) cout << "Number of Cholesky vectors: " << nchol << endl;
+  vector<int> ncholVec = { int(0.3 * chol.size()), int(0.4 * chol.size()), int(0.5 * chol.size()), int(0.6 * chol.size()), int(0.7 * chol.size()) };
+  for (int i = 0; i < ncholVec.size(); i++) {
+    auto trefOverlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, ref, enuc, h1, chol, ncholVec[i]);
+    complex<double> trefEnergy = trefOverlapHam.second / trefOverlapHam.first;
+    if (abs(refEnergy - trefEnergy) < 1.e-2) {
+      nchol = ncholVec[i];
+      delta = refEnergy - trefEnergy;
+      if (commrank == 0) {
+        cout << "Using truncated Cholesky with " << nchol << " vectors\n";
+        cout << "Initial state energy with truncated Cholesky:  " << trefEnergy << endl << endl;
+      }
+      break;
+    }
+  }
+
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
 
@@ -1761,11 +1782,11 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     if (stats.isConverged()) break;
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
-        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << setprecision(6) << getTime() - iterTime << " s\n";
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
-      stats.gatherAndPrintStatistics(iTime);
+      stats.gatherAndPrintStatistics(iTime, delta);
     }
 
     //sample the determinants
@@ -1827,13 +1848,13 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
 
       // measure
       init = getTime();
-      if (n == eneSteps[eneStepCounter] ) { 
+      if (n == eneSteps[eneStepCounter] ) {
         if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
           pair<complex<double>, complex<double>> overlapHam;
           if (schd.sampleDeterminants != -1)
             overlapHam = calcHamiltonianElement(refT, ciExcitationsSample, ciParitySample, ciCoeffsSample, rn, enuc, h1, chol);
           else 
-            overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol);
+            overlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, nchol, schd.nciAct, schd.nciCore);
           //auto overlapHam = calcHamiltonianElement_sRI(refT, ciExcitations, ciParity, ciCoeffs, rn, enuc, h1, chol, std::real(refEnergy));
 
           complex<double> overlap = orthoFac * overlapHam.first;
@@ -1855,6 +1876,6 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
     //cout << "citer:  " << times[1] << endl << endl;
   }
 
-  stats.gatherAndPrintStatistics(iTime);
+  stats.gatherAndPrintStatistics(iTime, delta);
   if (schd.printLevel > 10) stats.writeSamples();
 }
