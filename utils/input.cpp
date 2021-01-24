@@ -178,6 +178,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
     schd.ngrid = input.get("sampling.ngrid", 1);
     schd.sampleDeterminants = input.get("sampling.sampleDeterminants", -1);
+    schd.choleskyThreshold = input.get("sampling.choleskyThreshold", 0.005);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc

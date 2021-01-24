@@ -1976,7 +1976,7 @@ void calcEnergyDirectMultiSlater(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vec
   for (int i = 0; i < ncholVec.size(); i++) {
     auto trefOverlapHam = calcHamiltonianElement(refT, ciExcitations, ciParity, ciCoeffs, ref, enuc, h1, chol, ncholVec[i]);
     complex<double> trefEnergy = trefOverlapHam.second / trefOverlapHam.first;
-    if (abs(refEnergy - trefEnergy) < 1.e-2) {
+    if (abs(refEnergy - trefEnergy) < schd.choleskyThreshold) {
       nchol = ncholVec[i];
       delta = refEnergy - trefEnergy;
       if (commrank == 0) {

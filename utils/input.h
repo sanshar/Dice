@@ -132,6 +132,7 @@ private:
       & orthoSteps
       & ene0Guess
       & numJastrowSamples
+      & choleskyThreshold
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -338,6 +339,7 @@ public:
   int ngrid;
   size_t printFrequency;
   int sampleDeterminants;
+  double choleskyThreshold;
 };
 
 /**
