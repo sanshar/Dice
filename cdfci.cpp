@@ -669,6 +669,40 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
   return result;
 }
 
+int CoordinatePickGcdGradOmpMultiRoot(vector<int>& column, vector<double>& x_vector, vector<double>& z_vector, vector<pair<double, double>>& ene) {
+  int num_threads;
+  vector<double> max_abs_grad;
+  vector<int> local_results;
+  // only optimize ground state
+  double norm = ene[0].second;
+  #pragma omp parallel 
+  {
+    num_threads = omp_get_num_threads();
+  }
+    max_abs_grad.resize(num_threads);
+    local_results.resize(num_threads);
+  #pragma omp parallel for
+  for(int i = 1; i < column.size(); i++) {
+    int thread_id = omp_get_thread_num();
+    auto x = x_vector[column[i]];
+    auto z = z_vector[column[i]];
+    auto abs_grad = std::abs(x*norm+z);
+    if (abs_grad > max_abs_grad[thread_id]) {
+      max_abs_grad[thread_id] = abs_grad;
+      local_results[thread_id] = column[i];
+    }
+  }
+  auto result = local_results[0];
+  auto result_idx = 0;
+  for (int i = 1; i<num_threads; i++) {
+    if (max_abs_grad[result_idx] < max_abs_grad[i]) {
+      result = local_results[i];
+      result_idx = i;
+    }
+  }
+  return result;
+}
+
 vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
   int nelec = dets[0].Noccupied();
   vector<pair<double, double>> result;
@@ -697,7 +731,17 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
   }
   return result;
 }
+double compute_residual(vector<double>& x, vector<double>& z, double E) {
 
+double residual = 0.0;
+const int size = x.size();
+#pragma omp parallel  reduction(+:residual)
+for (int i=0; i<size; i++) {
+  auto tmp = z[i]-E * x[i];
+  residual += tmp*tmp;
+}
+return residual;
+}
 void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
   robin_hood::unordered_set<Determinant> old_dets;
@@ -761,14 +805,15 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   }
   cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
-  int nroots = ci.size();
+  int nroots = schd.nroots;
   vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
-  vector<double> x_vector(dets_size, zero), z_vector(dets_size, zero);
+  MatrixXd xx = MatrixXd::Zero(nroots, nroots);
+  vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
-  ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
+  //ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
   
   auto num_iter = schd.cdfciIter;
-  int this_det_idx = dets_size - 1;
+  int this_det_idx = 0; //dets_size - 1;
   vector<int> column;
   getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
 
@@ -783,9 +828,11 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
       // now some logical codes, print out information and decide when to exit etc.
       if (i%schd.report_interval == 0 || i == num_iter) {
         auto curr_ene = ene[iroot].first/ene[iroot].second;
+        auto residual = compute_residual(x_vector, z_vector, curr_ene);
         cout << setw(10) << i << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
-        cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat << endl;
-        if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.cdfciTol) {
+        cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
+        cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
+        if (residual < schd.cdfciTol) {
           break;
         }
         prev_ene = curr_ene;
