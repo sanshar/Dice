@@ -45,7 +45,8 @@ namespace cdfci {
   void getDeterminantsVariational( Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        set<Determinant>& old_dets, set<Determinant>& new_dets,
+        robin_hood::unordered_set<Determinant>& old_dets,
+        robin_hood::unordered_set<Determinant>& new_dets,
         schedule& schd, int Nmc, int nelec);
   
   set<Determinant> sampleExtraEntry(hash_det& wfn, int nelec);

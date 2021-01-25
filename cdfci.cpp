@@ -30,7 +30,8 @@ void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        set<Determinant>& old_dets, set<Determinant>& new_dets,
+        robin_hood::unordered_set<Determinant>& old_dets,
+        robin_hood::unordered_set<Determinant>& new_dets,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
     /*!
@@ -699,8 +700,8 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
 
 void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
-  set<Determinant> old_dets;
-  set<Determinant> new_dets;
+  robin_hood::unordered_set<Determinant> old_dets;
+  robin_hood::unordered_set<Determinant> new_dets;
   int iter;
   bool converged;
 
@@ -718,7 +719,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     load >> converged;
     pout << "Load converged: " << converged << endl;
   }
-  
   int start_index = ci[0].rows();
   int dets_size = dets.size();
   double coreEbkp = coreE;
@@ -736,18 +736,30 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   for (int i = 0; i < dets_size; i++) {
     auto civec = ci[0](i, 0);
     cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+    if (i%schd.report_interval == 0) {
+      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
+    }
   }
 
   int new_dets_size = new_dets.size();
   cout << dets_size << " " << new_dets_size;
   for (auto new_det : new_dets) {
     dets.push_back(new_det);
-    det_to_index[new_det] = dets_size;
-    dets_size++;
   }
+  dets_size = dets.size();
   cout << " " << dets_size << endl;
-  set<Determinant>().swap(old_dets);
-  set<Determinant>().swap(new_dets);
+  robin_hood::unordered_set<Determinant>().swap(old_dets);
+  robin_hood::unordered_set<Determinant>().swap(new_dets);
+  //old_dets.clear();
+  //new_dets.clear();
+  cout << "build det to index" << endl;
+  for (int i = 0; i < dets.size(); i++) {
+    det_to_index[dets[i]] = i;
+    if (i % 10000000 == 0) {
+      cout << i << " dets constructed" << endl;
+    }
+  }
+  cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
   int nroots = ci.size();
   vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
