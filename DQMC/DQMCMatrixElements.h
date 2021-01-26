@@ -63,7 +63,9 @@ std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::M
 std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& ghf, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& A, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol, std::complex<double>& ovlp);
 std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& ghf, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& A, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& chol, std::complex<double>& ovlp) ;
 std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& A, Eigen::MatrixXcd& B, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol);
+std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& A, Eigen::MatrixXcd& B, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol);
 std::complex<double> calcGradient(Eigen::MatrixXcd& At, Eigen::MatrixXcd& B, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol, Eigen::MatrixXcd& Grad); 
+std::complex<double> calcGradient(Eigen::MatrixXcd& At, Eigen::MatrixXcd& B, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol, Eigen::MatrixXcd& Grad); 
 std::complex<double> calcHamiltonianElementNaive(Eigen::MatrixXcd& At, Eigen::MatrixXcd& B, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXd>& chol);
 
 #endif

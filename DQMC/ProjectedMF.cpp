@@ -148,22 +148,35 @@ complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, ve
     applyProjectorSsq(ref, ket, coeffs, Sz, ngrid);
     MatrixXcd refAd = ref.adjoint(), refT = ref.transpose();
 
-    MatrixXcd  S;
-    complex<double> O = 0, E=0.;
-    
-    for (int i=commrank; i<ket.size(); i+=commsize) {
-      complex<double> Ei = calcHamiltonianElement(refAd, ket[i], enuc, h1, chol);
-      S = refAd * ket[i];
-      complex<double> Oi = S.determinant();
-      E += (coeffs[i] * Ei * Oi).real();
-      O += (coeffs[i] * Oi).real();
-
+    pair<vector<MatrixXcd>, vector<MatrixXcd>> rotChol;
+    rotChol.first.resize(chol.size(), MatrixXcd::Zero(nalpha+nbeta, norbs)); 
+    rotChol.second.resize(chol.size(), MatrixXcd::Zero(nalpha+nbeta, norbs));
+    for (int i = commrank; i < chol.size(); i+=commsize) {
+        rotChol.first[i] = refAd.block(0,0,nalpha+nbeta,norbs) * chol[i];
+        rotChol.second[i] = refAd.block(0,norbs,nalpha+nbeta,norbs) * chol[i]; 
     }
 
-    MPI_Allreduce(MPI_IN_PLACE, &E, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &O, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    for (int i=0; i<chol.size(); i++) {
+        MPI_Bcast(&rotChol.first[i](0,0), (nalpha+nbeta)*norbs, MPI_DOUBLE_COMPLEX, i%commsize, MPI_COMM_WORLD);
+        MPI_Bcast(&rotChol.second[i](0,0), (nalpha+nbeta)*norbs, MPI_DOUBLE_COMPLEX, i%commsize, MPI_COMM_WORLD);
+        //MPI_Allreduce(MPI_IN_PLACE, &rotChol.first[i](0,0), (nalpha+nbeta)*norbs, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+        //MPI_Allreduce(MPI_IN_PLACE, &rotChol.second[i](0,0), (nalpha+nbeta)*norbs, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    }
 
-    complex<double> E0 = E/O;
+    MatrixXcd  S;
+    complex<double> Etot = 0., Otot = 0.;
+    for (int i=commrank; i<ket.size(); i+=commsize) {
+      complex<double> Ei = calcHamiltonianElement(refAd, ket[i], enuc, h1, rotChol);
+      S = refAd * ket[i];
+      complex<double> Oi = S.determinant();
+      Etot += (coeffs[i] * Ei * Oi).real();
+      Otot += (coeffs[i] * Oi).real();
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, &Etot, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &Otot, 1, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+
+    complex<double> E0 = Etot/Otot;
     return E0;
 }
 
