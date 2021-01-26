@@ -23,6 +23,10 @@ std::complex<double> prepPropagatorHS(std::pair<Eigen::MatrixXcd, Eigen::MatrixX
     std::vector<std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>>& hsOperators, 
     std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& oneBodyOperator);
 
+std::complex<double> prepPropagatorHS(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& ref, 
+    std::vector<Eigen::MatrixXd>& chol, 
+    std::vector<std::complex<double>>& mfShifts, 
+    std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& oneBodyOperator);
 
 void setUpAliasMethod(double* ci, int cisize, double& cumulative, std::vector<int>& alias, std::vector<double>& prob);
 int sample_N2_alias(double* ci, double& cumulative, std::vector<int>& Sample1, std::vector<double>& newWts, std::vector<int>& alias, std::vector<double>& prob);

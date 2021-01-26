@@ -53,7 +53,7 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
   ArrayXcd eneEstimates = numMean / denomMean;
   int nBlocks;
   size_t blockSize;
-  if (nSamples <= 100) {
+  if (nSamples <= 500) {
     nBlocks = 1;
     blockSize = nSamples;
   }
@@ -97,7 +97,7 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
 // gather data from all the processes and print quantities
 // to be used at the end of a calculation
 // iTime used only for printing
-void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
+void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> delta)
 {
   ArrayXcd numMeanbkp = numMean;
   ArrayXcd denomMeanbkp = denomMean;
@@ -117,6 +117,8 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
   // calc error estimates
   ArrayXd error, error2;
   calcError(error, error2);
+
+  eneEstimates += delta;
 
   // print
   if (commrank == 0) {

@@ -178,6 +178,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
     schd.ngrid = input.get("sampling.ngrid", 1);
     schd.sampleDeterminants = input.get("sampling.sampleDeterminants", -1);
+    schd.choleskyThreshold = input.get("sampling.choleskyThreshold", 0.005);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -617,9 +618,17 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs)
 {
   int norbs = Determinant::norbs;
+  int nact = norbs;
+  if (schd.nciAct > 0) nact = schd.nciAct;
+  int ncore = 0;
+  if (schd.nciCore > 0) ncore = schd.nciCore;
   ifstream dump(input.c_str());
   bool isFirst = true;
   Determinant refDet;
+  for (int i = 0; i < ncore; i++) {
+    refDet.setoccA(i, true);
+    refDet.setoccB(i, true);
+  }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
   
@@ -641,20 +650,20 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
         ciExcitations[0].push_back(empty);
         ciExcitations[1].push_back(empty);
         vector<int> closedBeta, openBeta; 
-        for (int i = 0; i < norbs; i++) {
+        for (int i = 0; i < nact; i++) {
           if (boost::iequals(tok[1+i], "2")) {
-            refDet.setoccA(i, true);
-            refDet.setoccB(i, true);
-            ref[0].push_back(i);
-            ref[1].push_back(i);
+            refDet.setoccA(ncore + i, true);
+            refDet.setoccB(ncore + i, true);
+            ref[0].push_back(ncore + i);
+            ref[1].push_back(ncore + i);
           }
           else if (boost::iequals(tok[1+i], "a")) {
-            refDet.setoccA(i, true);
-            ref[0].push_back(i);
+            refDet.setoccA(ncore + i, true);
+            ref[0].push_back(ncore + i);
           }
           else if (boost::iequals(tok[1+i], "b")) {
-            refDet.setoccB(i, true);
-            ref[1].push_back(i);
+            refDet.setoccB(ncore + i, true);
+            ref[1].push_back(ncore + i);
           }
         }
         numDets++;
@@ -662,22 +671,22 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
       }
       else {
         vector<int> desA, creA, desB, creB;
-        for (int i = 0; i < norbs; i++) {
+        for (int i = 0; i < nact; i++) {
           if (boost::iequals(tok[1+i], "2")) {
-            if (!refDet.getoccA(i)) creA.push_back(i);
-            if (!refDet.getoccB(i)) creB.push_back(i);
+            if (!refDet.getoccA(ncore + i)) creA.push_back(ncore + i);
+            if (!refDet.getoccB(ncore + i)) creB.push_back(ncore + i);
           }
           else if (boost::iequals(tok[1+i], "a")) {
-            if (!refDet.getoccA(i)) creA.push_back(i);
-            if (refDet.getoccB(i)) desB.push_back(i);
+            if (!refDet.getoccA(ncore + i)) creA.push_back(ncore + i);
+            if (refDet.getoccB(ncore + i)) desB.push_back(ncore + i);
           }
           else if (boost::iequals(tok[1+i], "b")) {
-            if (refDet.getoccA(i)) desA.push_back(i);
-            if (!refDet.getoccB(i)) creB.push_back(i);
+            if (refDet.getoccA(ncore + i)) desA.push_back(ncore + i);
+            if (!refDet.getoccB(ncore + i)) creB.push_back(ncore + i);
           }
           else if (boost::iequals(tok[1+i], "0")) {
-            if (refDet.getoccA(i)) desA.push_back(i);
-            if (refDet.getoccB(i)) desB.push_back(i);
+            if (refDet.getoccA(ncore + i)) desA.push_back(ncore + i);
+            if (refDet.getoccB(ncore + i)) desB.push_back(ncore + i);
           }
         }
 
@@ -722,14 +731,23 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs)
 {
   int norbs = Determinant::norbs;
+  int nact = norbs;
+  if (schd.nciAct > 0) nact = schd.nciAct;
+  int ncore = 0;
+  if (schd.nciCore > 0) ncore = schd.nciCore;
   int ndetsDice = 0, norbsDice = 0;
   ifstream dump(input, ios::binary);
   dump.read((char*) &ndetsDice, sizeof(int));
   dump.read((char*) &norbsDice, sizeof(int));
   bool isFirst = true;
   Determinant refDet;
+  for (int i = 0; i < ncore; i++) {
+    refDet.setoccA(i, true);
+    refDet.setoccB(i, true);
+  }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
+  
   for (int n = 0; n < ndetsDice; n++) {
     if (isFirst) {// first det is ref
       isFirst = false;
@@ -741,7 +759,7 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       ciExcitations[0].push_back(empty);
       ciExcitations[1].push_back(empty);
       vector<int> closedBeta, openBeta; 
-      for (int i = 0; i < norbsDice; i++) {
+      for (int i = ncore; i < ncore + norbsDice; i++) {
         char detocc;
         dump.read((char*) &detocc, sizeof(char));
         if (detocc == '2') {
@@ -766,7 +784,7 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       double ciCoeff;
       dump.read((char*) &ciCoeff, sizeof(double));
       vector<int> desA, creA, desB, creB;
-      for (int i = 0; i < norbsDice; i++) {
+      for (int i = ncore; i < ncore + norbsDice; i++) {
         char detocc;
         dump.read((char*) &detocc, sizeof(char));
         if (detocc == '2') {

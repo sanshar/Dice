@@ -53,7 +53,8 @@ class DQMCStatistics {
     // gather data from all the processes and print quantities
     // to be used at the end of a calculation
     // iTime used only for printing
-    void gatherAndPrintStatistics(Eigen::ArrayXd iTime);
+    // delta is used for energy extrapolation
+    void gatherAndPrintStatistics(Eigen::ArrayXd iTime, std::complex<double> delta = std::complex<double>(0., 0.));
 
     // if all energies are converged
     bool isConverged();
