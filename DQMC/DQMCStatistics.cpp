@@ -1,6 +1,5 @@
 #ifndef SERIAL
 #include <iostream>
-#include <fstream>
 #include <iomanip>
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -30,6 +29,8 @@ DQMCStatistics::DQMCStatistics(int pSampleSize)
   converged.resize(sampleSize,-1);
   convergedE = ArrayXcd::Zero(sampleSize);
   convergedDev = ArrayXd::Zero(sampleSize);
+  convergedDev2 = ArrayXd::Zero(sampleSize);
+  convergedPhase = ArrayXcd::Zero(sampleSize);
   errorTargets = schd.errorTargets;    // TODO: change this so that these are passed to the constructor
 }
 
@@ -45,6 +46,11 @@ void DQMCStatistics::addSamples(ArrayXcd& numSample, ArrayXcd& denomSample)
   nSamples++;
 }
 
+// get the current number of samples
+size_t DQMCStatistics::getNumSamples()
+{
+  return nSamples;
+}
 
 // calculates error by blocking data
 // use after gathering data across processes for better estimates
@@ -129,17 +135,20 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> del
 
       }
       else { //after it has converged just use the old ones
-        cout << format(" %14.2f   (%14.8f, %14.8f)   ( %8.2e )  \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n); 
+        cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n) % convergedDev2(n) % convergedPhase(n).real() % convergedPhase(n).imag(); 
       }
 
     }
   }
-  //if error falls below 1.5e-3 then stop calculating it
+
+  // if error falls below the specified threshold then stop calculating it
   for (int n = 0; n < sampleSize; n++) {
-    if (error(n) < errorTargets[n] ) {
+    if (error(n) < errorTargets[n]) {
       converged[n] = 1;
       convergedE(n) = eneEstimates(n);
       convergedDev(n) = error(n);
+      convergedDev2(n) = error2(n);
+      convergedPhase(n) = avgPhase(n);
     }
   }
   

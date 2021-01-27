@@ -2,7 +2,10 @@
 #define DQMCStatistics_HEADER_H
 #include <utility>
 #include <vector>
+#include <fstream>
 #include <boost/serialization/serialization.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <Eigen/Dense>
 
 // holds numerator and denominator samples from direct sampling in dqmc
@@ -24,7 +27,9 @@ class DQMCStatistics {
           & errorTargets
           & converged
           & convergedE
-          & convergedDev;
+          & convergedDev
+          & convergedDev2
+          & convergedPhase;
      }
   
  public:
@@ -37,8 +42,8 @@ class DQMCStatistics {
     Eigen::ArrayXcd num2Mean, denom2Mean, num_denomMean;   // running averages
     std::vector<double> errorTargets;
     std::vector<int> converged;
-    Eigen::ArrayXcd convergedE;
-    Eigen::ArrayXd convergedDev;
+    Eigen::ArrayXcd convergedE, convergedPhase;
+    Eigen::ArrayXd convergedDev, convergedDev2;
 
     // constructor
     DQMCStatistics(int pSampleSize);
@@ -46,12 +51,14 @@ class DQMCStatistics {
     // store samples and update running averages
     void addSamples(Eigen::ArrayXcd& numSample, Eigen::ArrayXcd& denomSample);
     
+    // get the current number of samples
+    size_t getNumSamples();
+    
     // calculates error by blocking data
     // use after gathering data across processes for better estimates
     void calcError(Eigen::ArrayXd& error, Eigen::ArrayXd& error2);
     
     // gather data from all the processes and print quantities
-    // to be used at the end of a calculation
     // iTime used only for printing
     // delta is used for energy extrapolation
     void gatherAndPrintStatistics(Eigen::ArrayXd iTime, std::complex<double> delta = std::complex<double>(0., 0.));
@@ -64,6 +71,31 @@ class DQMCStatistics {
 
     // write samples to disk
     void writeSamples();
+    
+    //// write bkp file
+    //void saveStats() 
+    //{
+    //  char file[5000];
+    //  std::sprintf (file, "dqmcStats_%d.bkp", commrank);
+    //  std::ofstream outfs(file, std::ios::binary);
+    //  boost::archive::binary_oarchive save(outfs);
+    //  save << *this;
+    //  outfs.close();
+    //};
+    //
+    //// read saved bkp file
+    //void loadStats()
+    //{
+    //  char file[5000];
+    //  std::sprintf (file, "dqmcStats_%d.bkp", commrank);
+    //  std::ifstream infs(file, std::ios::binary);
+    //  boost::archive::binary_iarchive load(infs);
+    //  load >> *this;
+    //  infs.close();
+    //
+    //  // if restarting do at least one sweep
+    //  for (int i = 0; i < sampleSize; i++) converged[i] = -1;  
+    //};
 }; 
 
 #endif
