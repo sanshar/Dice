@@ -21,12 +21,14 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <fstream>
 #include <list>
 #include <set>
 #include <tuple>
+
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -45,15 +47,16 @@
 #include <boost/mpi/environment.hpp>
 #endif
 #include <unistd.h>
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
+
 #include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"
 #include "communicate.h"
-
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
 #include <algorithm>
@@ -256,7 +259,7 @@ int main(int argc, char* argv[]) {
   }
 #else
   if (schd.doSOC) {
-    readSOCIntegrals(I1, norbs, "SOC");
+    readSOCIntegrals(I1, norbs, "SOC", schd);
 #ifndef SERIAL
     mpi::broadcast(world, I1, 0);
 #endif
@@ -305,60 +308,79 @@ int main(int argc, char* argv[]) {
          << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
   }
 
-  // Check and make sure that
+  if (schd.searchForLowestEnergyDet) {
+    // Set up the symmetry class
+    symmetry molSym(schd.pointGroup, irrep, schd.irrep);
 
-  symmetry molSym(schd.pointGroup, irrep);
+    // Check the users specified determinants. If they use multiple spins and/or
+    // irreps, ignore the give targetIrrep and just use the give determinants.
+    molSym.checkTargetStates(Dets, schd.spin);
 
-  if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
-      molSym.init_success) {
-    vector<Determinant> tempDets(Dets);
-    bool spin_specified = true;
-    if (schd.spin == -1) {  // Set spin if none specified by user
-      spin_specified = false;
-      schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-      // pout << "Setting spin to " << schd.spin << endl;
-    }
-    for (int d = 0; d < HFoccupied.size(); d++) {
-      // Guess the lowest energy det with given symmetry from one body
-      // integrals.
-      molSym.estimateLowestEnergyDet(schd.spin, schd.irrep, I1, irrep,
-                                     HFoccupied.at(d), tempDets.at(d));
+    if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
+        molSym.init_success) {
+      vector<Determinant> tempDets(Dets);
 
-      // Generate list of connected determinants to guess determinant.
-      SHCIgetdeterminants::getDeterminantsVariational(
-          tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
-          tempDets, schd, 0, nelec);
-
-      // If spin is specified we assume the user wants a particular determinant
-      // even if it's higher in energy than the HF so we keep it. If the user
-      // didn't specify then we keep the lowest energy determinant
-      // Check all connected and find lowest energy.
-      int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
-      if (spin_specified && spin_HF != schd.spin) {
-        Dets.at(d) = tempDets.at(0);
+      bool spin_specified = true;
+      if (schd.spin == -1) {  // Set spin if none specified by user
+        spin_specified = false;
+        schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
+        pout << "No spin specified, using spin from first reference "
+                "determinant. "
+                "Setting target spin to "
+             << schd.spin << endl;
       }
-      for (int cd = 0; cd < tempDets.size(); cd++) {
-        if (tempDets.at(d).connected(tempDets.at(cd))) {
-          if (abs(tempDets.at(cd).Nalpha() - tempDets.at(cd).Nbeta()) ==
-              schd.spin) {
-            char repArray[tempDets.at(cd).norbs];
-            tempDets.at(cd).getRepArray(repArray);
-            if (Dets.at(d).Energy(I1, I2, coreE) >
-                    tempDets.at(cd).Energy(I1, I2, coreE) &&
-                molSym.getSymmetry(repArray, irrep) == schd.irrep) {
-              Dets.at(d) = tempDets.at(cd);
+      for (int d = 0; d < HFoccupied.size(); d++) {
+        // Guess the lowest energy det with given symmetry from one body
+        // integrals.
+        molSym.estimateLowestEnergyDet(schd.spin, I1, irrep, HFoccupied.at(d),
+                                       tempDets.at(d));
+        // Generate list of connected determinants to guess determinant.
+        SHCIgetdeterminants::getDeterminantsVariational(
+            tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
+            tempDets, schd, 0, nelec);
+
+        // If spin is specified we assume the user wants a particular
+        // determinant even if it's higher in energy than the HF so we keep it.
+        // If the user didn't specify then we keep the lowest energy determinant
+        // Check all connected and find lowest energy.
+        int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
+        if (spin_specified && spin_HF != schd.spin) {
+          Dets.at(d) = tempDets.at(d);
+        }
+
+        // Same for irrep
+        if (molSym.targetIrrep != molSym.getDetSymmetry(Dets[d])) {
+          Dets.at(d) = tempDets.at(d);
+          pout << "WARNING: Given determinants have different irrep than the "
+                  "target irrep\n\tspecified. Using the specified irrep."
+               << endl;
+        }
+
+        for (int cd = 0; cd < tempDets.size(); cd++) {
+          if (tempDets.at(d).connected(tempDets.at(cd))) {
+            bool correct_spin = abs(tempDets.at(cd).Nalpha() -
+                                    tempDets.at(cd).Nbeta()) == schd.spin;
+            if (correct_spin) {
+              bool lower_energy = Dets.at(d).Energy(I1, I2, coreE) >
+                                  tempDets.at(cd).Energy(I1, I2, coreE);
+              bool correct_irrep =
+                  molSym.getDetSymmetry(tempDets.at(cd)) == molSym.targetIrrep;
+              if (lower_energy && correct_irrep) {
+                Dets.at(d) = tempDets.at(cd);
+              }
             }
           }
-        }
-      }  // end cd
-      pout << Dets[d] << " Starting Det. Energy: "
-           << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
-    }  // end d
+        }  // end cd
+        pout << Dets[d] << " Starting Det. Energy: "
+             << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
+      }  // end d
 
-  } else {
-    pout << "Skipping Ref. Determinant Search for pointgroup "
-         << schd.pointGroup << "\nUsing HF as ref determinant" << endl;
-  }  // End if (Search for Ref. Det)
+    } else {
+      pout << "\nWARNING: Skipping Ref. Determinant Search for pointgroup "
+           << schd.pointGroup << "\nUsing given determinants as reference"
+           << endl;
+    }  // End if (Search for Ref. Det)
+  }    // end searchForLowestEnergyDet
 
   schd.HF = Dets[0];
 
@@ -403,6 +425,20 @@ int main(int argc, char* argv[]) {
     fclose(f);
   }
 
+#ifdef Complex
+  //make the largest magnitude ci coefficient real
+  for (int root = 0; root < schd.nroots; root++) {
+    MatrixXx& prevci =  ci[root];
+    compAbs comp;
+    int m = distance(
+        &prevci(0, 0),
+        max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+    complex<double> maxC = prevci(m,0);
+    for (int i=0; i< static_cast<int>(DetsSize); i++)
+      prevci(i,0) = prevci(i,0)*abs(maxC)/maxC;
+  }
+#endif
+  
   // #####################################################################
   // Print the 5 most important determinants and their weights
   // #####################################################################
@@ -412,17 +448,19 @@ int main(int argc, char* argv[]) {
     pout << format("State : %3i") % (root) << endl;
     MatrixXx prevci = 1. * ci[root];
     int num = max(6, schd.printBestDeterminants);
+    complex<double> maxC = 0;
     for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
       compAbs comp;
       int m = distance(
           &prevci(0, 0),
           max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
       double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
+      if (i == 0) maxC = prevci(m,0);
 #ifdef Complex
-      pout << format("%4i %18.10f  ") % (i) % (abs(prevci(m, 0)));
+      pout << format("%4i %18.10f %18.10f ") % (i) % (prevci(m, 0)*abs(maxC)/maxC) % (abs(prevci(m,0)));
       pout << SHMDets[m] << endl;
 #else
-      pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0) * parity);
+      pout << format("%4i %18.10f  ") % (i) % (prevci(m, 0)*parity);
       pout << SHMDets[m] << endl;
 #endif
       // pout <<"#"<< i<<"  "<<prevci(m,0)<<"  "<<abs(prevci(m,0))<<"

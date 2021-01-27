@@ -7,7 +7,7 @@ nroots 1
 
 #variational
 schedule 
-0	0.
+0	0.0
 end
 davidsonTol 1e-12
 dE 1e-15

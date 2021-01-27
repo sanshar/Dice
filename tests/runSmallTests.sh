@@ -69,8 +69,6 @@ $MPICOMMAND $HCIPATH input3.dat > output3.dat
 python $here/test_energy.py 5e-5 e_spin_1.e
 $MPICOMMAND $HCIPATH input4.dat > output4.dat
 python $here/test_energy.py 5e-5 e_spin_3.e
-$MPICOMMAND $HCIPATH input5.dat > output5.dat
-python $here/test_energy.py 5e-5 e_spin_4.e
 
 cd $here/spin1rdm
 printf "...running spin1RDM tests\n"
@@ -100,6 +98,19 @@ python $here/test_onepdm.py spatial1RDM.0.0.txt pyscf_1RDM.npy 1e-8
 python $here/test_twopdm.py spatialRDM.0.0.txt pyscf_2RDM.npy 1e-9
 python $here/test_threepdm.py spatial3RDM.0.0.txt pyscf_3RDM.npy 1e-10
 python $here/test_rdm_nelec.py ../integrals/h2co_FCIDUMP_nosymm spatial1RDM.0.0.txt spatialRDM.0.0.txt spatial3RDM.0.0.txt 1e-11
+
+cd $here/lowest_energy_det
+printf "...running test for finding the lowest energy determinants\n"
+printf "        Running tests on Spin=0"
+bash run_spin=0_tests.sh "$MPICOMMAND" $HCIPATH
+printf "        Running tests on Spin=1"
+bash run_spin=1_tests.sh "$MPICOMMAND" $HCIPATH
+printf "        Running tests on Spin=2"
+bash run_spin=2_tests.sh "$MPICOMMAND" $HCIPATH
+printf "        Running tests on Spin=3"
+bash run_spin=3_tests.sh "$MPICOMMAND" $HCIPATH
+printf "        Running tests on Spin=4"
+bash run_spin=4_tests.sh "$MPICOMMAND" $HCIPATH
 
 ## Clean up
 cd $here

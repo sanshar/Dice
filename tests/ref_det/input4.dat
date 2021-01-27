@@ -5,6 +5,7 @@ end
 orbitals ../integrals/cn_FCIDUMP_nosym
 nroots 1
 spin 3
+searchForLowestEnergyDet
 
 #variational
 schedule 

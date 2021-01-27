@@ -4,6 +4,7 @@ nocc 12
 end
 orbitals ../integrals/o2_FCIDUMP_nosym
 spin 0
+searchForLowestEnergyDet
 
 # Variational
 schedule 
