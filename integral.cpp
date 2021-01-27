@@ -151,7 +151,12 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
   if (!readTxt) {  
-  auto dump2 = ifstream("FCIDUMP.bin", ios::out | ios::binary);
+  string fcidump_bin = fcidump+".bin";
+  auto dump2 = ifstream(fcidump_bin.c_str(), ios::out | ios::binary);
+  if (!dump2.good()) {
+    pout << "Integral file " << fcidump << " does not exist!" << endl;
+    exit(0);
+  }
   if (commrank == 0) {
     I1.store.clear();
     I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
