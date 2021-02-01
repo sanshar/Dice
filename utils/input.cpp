@@ -29,6 +29,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include "hdf5.h"
 
 
 #ifndef SERIAL
@@ -887,5 +888,59 @@ void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& tw
     for (int b = 0; b < nSpinOrbs; b++) {
       oneRDM(a,b) /= nelec-1;
     }
+  }
+}
+
+
+// reads ccsd amplitudes
+void readCCSDAmplitudes(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, string fname) 
+{
+  int nocc = singles.rows(), nopen = singles.cols();
+  int nexc = nocc * nopen;
+
+  hid_t file = (-1), dataset_singles, dataset_doubles;  /* identifiers */
+  herr_t status;
+
+  H5E_BEGIN_TRY {
+    file = H5Fopen(fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+ 
+  if (file < 0) {
+    if (commrank == 0) cout << "Amplitudes not found!" << endl;
+    exit(0);
+  }
+  
+  if (commrank == 0) {
+    cout << "Reading CCSD amplitudes\n";
+  }
+  
+  double *singlesMem = new double[ nocc * nopen ];
+  for (int i = 0; i < nocc; i++) 
+    for (int j = 0; j < nopen; j++)
+      singlesMem[i * nopen + j] = 0.;
+  dataset_singles = H5Dopen(file, "/singles", H5P_DEFAULT);
+  status = H5Dread(dataset_singles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, singlesMem);
+  for (int i = 0; i < nocc; i++) {
+    for (int j = 0; j < nopen; j++) {
+      singles(i, j) = singlesMem[i * nopen + j];
+    }
+  }
+  delete [] singlesMem;
+  
+  double *doublesMem = new double[ nexc * nexc ];
+  for (int i = 0; i < nexc; i++) 
+    for (int j = 0; j < nexc; j++)
+      doublesMem[i * nexc + j] = 0.;
+  dataset_doubles = H5Dopen(file, "/doubles", H5P_DEFAULT);
+  status = H5Dread(dataset_doubles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+  for (int i = 0; i < nexc; i++) {
+    for (int j = 0; j < nexc; j++) {
+      doubles(i, j) = doublesMem[i * nexc + j];
+    }
+  }
+  delete [] doublesMem;
+
+  if (commrank == 0) {
+    cout << "Finished reading CCSD amplitudes\n\n";
   }
 }

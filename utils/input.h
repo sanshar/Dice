@@ -432,5 +432,11 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
 void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
 
+
 void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
+
+
+// reads ccsd amplitudes
+void readCCSDAmplitudes(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, std::string fname = "amplitudes.h5");
+
 #endif

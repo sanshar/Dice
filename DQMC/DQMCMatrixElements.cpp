@@ -18,6 +18,13 @@ void calcGreensFunction(matPair& leftT, matPair& right, matPair& green)
 }
 
 
+// left is adjointed
+void calcGreensFunction(MatrixXcd& leftT, MatrixXcd& right, MatrixXcd& green) 
+{
+  green = right * (leftT * right).inverse() * leftT;
+}
+
+
 // Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
 // green: rdm between phi_1 and phi_2
 // leading cost: O(X M^3)
@@ -361,8 +368,10 @@ complex<double> calcHamiltonianElement_sRI(matPair& phi1T, matPair& phi2, matPai
 
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors
-complex<double> calcHamiltonianElement(matPair& phi0T, matPair& psi, double enuc, MatrixXd& h1, pair<vector<MatrixXcd>, vector<MatrixXcd>>& rotChol) 
+complex<double> calcHamiltonianElement(matPair& phi0T, matPair& psi, double enuc, MatrixXd& h1, pair<vector<MatrixXcd>, vector<MatrixXcd>>& rotChol, int nchol) 
 {
+
+  if (nchol == -1) nchol = rotChol.first.size();
   // core energy
   complex<double> ene = enuc;
   
@@ -379,7 +388,7 @@ complex<double> calcHamiltonianElement(matPair& phi0T, matPair& psi, double enuc
   // two body part
   MatrixXcd fup = MatrixXcd::Zero(rotChol.first[0].rows(), rotChol.first[0].rows());
   MatrixXcd fdn = MatrixXcd::Zero(rotChol.second[0].rows(), rotChol.second[0].rows());
-  for (int i = 0; i < rotChol.first.size(); i++) {
+  for (int i = 0; i < nchol; i++) {
     fup.noalias() = rotChol.first[i] * theta.first;
     fdn.noalias() = rotChol.second[i] * theta.second;
     complex<double> cup = fup.trace();
@@ -394,8 +403,9 @@ complex<double> calcHamiltonianElement(matPair& phi0T, matPair& psi, double enuc
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors
 // rhf
-complex<double> calcHamiltonianElement(MatrixXcd& phi0T, MatrixXcd& psi, double enuc, MatrixXd& h1, vector<MatrixXcd>& rotChol) 
+complex<double> calcHamiltonianElement(MatrixXcd& phi0T, MatrixXcd& psi, double enuc, MatrixXd& h1, vector<MatrixXcd>& rotChol, int nchol) 
 {
+  if (nchol == -1) nchol = rotChol.size();
   // core energy
   complex<double> ene = enuc;
   
@@ -409,7 +419,7 @@ complex<double> calcHamiltonianElement(MatrixXcd& phi0T, MatrixXcd& psi, double 
 
   // two body part
   MatrixXcd f = MatrixXcd::Zero(rotChol[0].rows(), rotChol[0].rows());
-  for (int i = 0; i < rotChol.size(); i++) {
+  for (int i = 0; i < nchol; i++) {
     f.noalias() = rotChol[i] * theta;
     complex<double> c = f.trace();
     ene += (2. * c * c - f.cwiseProduct(f.transpose()).sum());

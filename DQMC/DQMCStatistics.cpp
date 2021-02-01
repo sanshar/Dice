@@ -54,7 +54,7 @@ size_t DQMCStatistics::getNumSamples()
 
 // calculates error by blocking data
 // use after gathering data across processes for better estimates
-void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
+void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2, ArrayXcd& bias)
 {
   ArrayXcd eneEstimates = numMean / denomMean;
   int nBlocks;
@@ -67,8 +67,10 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
     nBlocks = 10;
     blockSize = size_t(nSamples / 10);
   }
-  ArrayXd var(sampleSize), var2(sampleSize);
-  var.setZero(); var2.setZero();
+  ArrayXd var(sampleSize), var2(sampleSize), denomVar(sampleSize), numVar(sampleSize);
+  var.setZero(); var2.setZero(); denomVar.setZero(); numVar.setZero();
+  ArrayXcd cov(sampleSize);
+  cov.setZero();
 
   // calculate variance of blocked energies on each process
   for (int i = 0; i < nBlocks; i++) {
@@ -84,15 +86,36 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
     blockEne = blockNum / blockDenom;
     var += (blockEne - eneEstimates).abs().pow(2);
     var2 += (blockEne - eneEstimates).abs().pow(4);
+    numVar += (blockNum - numMean).abs().pow(2);
+    denomVar += (blockDenom - denomMean).abs().pow(2);
+    cov += (blockNum - numMean) * (blockDenom - denomMean);
   }
   
   // gather variance across processes
   MPI_Allreduce(MPI_IN_PLACE, var.data(), var.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, var2.data(), var2.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, numVar.data(), numVar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, denomVar.data(), denomVar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, cov.data(), cov.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
 
   int nBlockedSamples = nBlocks * commsize;
   var /= (nBlockedSamples - 1);
   var2 /= (nBlockedSamples);
+  numVar /= (nBlockedSamples - 1);
+  denomVar /= (nBlockedSamples - 1);
+  cov /= (nBlockedSamples - 1);
+
+  // bias
+  bias = - (numMean * denomVar / denomMean.pow(3) - cov / denomMean.pow(2)) / nBlockedSamples;
+
+  //if (commrank == 0) {
+  //  cout << "\nnumMean:  " << numMean.transpose() << endl;
+  //  cout << "numVar:  " << numVar.transpose() << endl;
+  //  cout << "denomMean:  " << denomMean.transpose() << endl;
+  //  cout << "denomVar:  " << denomVar.transpose() << endl;
+  //  cout << "cov:  " << cov.transpose() << endl;
+  //  cout << "bias (not added to the energies):  " << bias.transpose() << endl << endl;
+  //}
 
   // calculate error estimates a la clt
   error = sqrt(var / nBlockedSamples);
@@ -122,9 +145,11 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> del
 
   // calc error estimates
   ArrayXd error, error2;
-  calcError(error, error2);
+  ArrayXcd bias;
+  calcError(error, error2, bias);
 
   eneEstimates += delta;
+  //eneEstimates += bias;
 
   // print
   if (commrank == 0) {

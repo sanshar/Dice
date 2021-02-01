@@ -53,6 +53,12 @@ int main(int argc, char *argv[])
     if (commrank == 0) cout << "\nUsing multiSlater trial\n";
     calcEnergyDirectMultiSlater(coreE, h1, h1Mod, chol);
   }
+  else if (schd.wavefunctionType == "ccsd") {
+    if (commrank == 0) cout << "\nUsing CCSD trial\n";
+    //calcEnergyCCSDDirect(coreE, h1, h1Mod, chol);
+    //calcEnergyCCSDDirectVariational(coreE, h1, h1Mod, chol);
+    calcEnergyCCSDMultiSlaterDirect(coreE, h1, h1Mod, chol);
+  }
   else if (schd.hf == "ghf") {
     if (schd.optimizeOrbs)
       optimizeProjectedSlater(coreE, h1, chol);

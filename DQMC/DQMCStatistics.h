@@ -56,7 +56,7 @@ class DQMCStatistics {
     
     // calculates error by blocking data
     // use after gathering data across processes for better estimates
-    void calcError(Eigen::ArrayXd& error, Eigen::ArrayXd& error2);
+    void calcError(Eigen::ArrayXd& error, Eigen::ArrayXd& error2, Eigen::ArrayXcd& bias);
     
     // gather data from all the processes and print quantities
     // iTime used only for printing

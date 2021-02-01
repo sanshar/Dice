@@ -10,6 +10,10 @@ void calcGreensFunction(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& leftT,
     std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& green);
 
 
+// left is adjointed
+void calcGreensFunction(Eigen::MatrixXcd& leftT, Eigen::MatrixXcd& right, Eigen::MatrixXcd& green);
+
+
 // Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
 // green: rdm between phi_1 and phi_2
 // leading cost: O(X M^3)
@@ -29,13 +33,13 @@ std::complex<double> calcHamiltonianElement_sRI(std::pair<Eigen::MatrixXcd, Eige
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors
 // leading cost: O(X N^2 M)
-std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol); 
+std::complex<double> calcHamiltonianElement(std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& phi0T, std::pair<Eigen::MatrixXcd, Eigen::MatrixXcd>& psi, double enuc, Eigen::MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol, int nchol = -1); 
 
 // Hamiltonian matrix element < phi_0 | H | psi > / < phi_0 | psi >
 // using precalculated half rotated cholesky vectors
 // leading cost: O(X N^2 M)
 // assumes rhf
-std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& phi0T, Eigen::MatrixXcd& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXcd>& rotChol); 
+std::complex<double> calcHamiltonianElement(Eigen::MatrixXcd& phi0T, Eigen::MatrixXcd& psi, double enuc, Eigen::MatrixXd& h1, std::vector<Eigen::MatrixXcd>& rotChol, int nchol = -1); 
 
 
 // Hamiltonian matrix element < \sum _i phi_i | H | psi > / < \sum_i phi_i | psi >

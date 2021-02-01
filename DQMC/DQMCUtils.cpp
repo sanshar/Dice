@@ -16,6 +16,7 @@ using namespace std;
 using matPair = pair<MatrixXcd, MatrixXcd>;
 using vecPair = pair<VectorXcd, VectorXcd>;
 
+
 // binning 
 void binning(VectorXcd& samples, VectorXd& stdDev, VectorXi binSizes) 
 {
@@ -51,7 +52,8 @@ MatrixXcd matExp(const MatrixXcd& mat, const int order)
 }
 
 
-void orthogonalize(matPair& rn, complex<double>& orthoFac){
+void orthogonalize(matPair& rn, complex<double>& orthoFac)
+{
   HouseholderQR<MatrixXcd> qr1(rn.first);
   HouseholderQR<MatrixXcd> qr2(rn.second);
   rn.first = qr1.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nalpha);
@@ -60,6 +62,61 @@ void orthogonalize(matPair& rn, complex<double>& orthoFac){
   for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) orthoFac *= qr2.matrixQR().diagonal()(i);
 }
 
+
+void orthogonalize(MatrixXcd& rn, complex<double>& orthoFac)
+{
+  HouseholderQR<MatrixXcd> qr(rn);
+  rn = qr.householderQ() * MatrixXd::Identity(Determinant::norbs, Determinant::nalpha);
+  for (int i = 0; i < qr.matrixQR().diagonal().size(); i++) orthoFac *= qr.matrixQR().diagonal()(i);
+}
+
+
+// hs for cc
+// assuming closed system for now
+void prepCCHS(MatrixXcd& ref, vector<MatrixXcd>& hsOperators, MatrixXcd& oneBodyOperator)
+{
+  int norbs = ref.rows();
+  int nocc = ref.cols();
+  int nopen = norbs - nocc;
+  int nexc = nocc * nopen;
+
+  // read amplitudes
+  MatrixXd singles = MatrixXd::Zero(nocc, nopen);
+  MatrixXd doubles = MatrixXd::Zero(nexc, nexc);
+  readCCSDAmplitudes(singles, doubles);
+  //doubles /= 2;
+
+  //if (commrank == 0) cout << "singles\n" << singles << endl << endl;
+  //if (commrank == 0) cout << "doubles\n" << doubles << endl << endl;
+  //exit(0);
+  if (commrank == 0) cout << "\nPreparing CC HS operators\n";
+  
+  oneBodyOperator = MatrixXcd::Zero(norbs, norbs);
+  oneBodyOperator.block(nocc, 0, nopen, nocc) = singles.transpose();
+
+  // calculate hs operators by diagonalizing doubles amplitudes
+  SelfAdjointEigenSolver<MatrixXd> eigensolver(doubles);
+  VectorXd eigenvalues = eigensolver.eigenvalues();
+  MatrixXd eigenvectors = eigensolver.eigenvectors();
+
+  //if (commrank == 0) cout << "eigenvalues:  " << eigenvalues.transpose() << endl << endl;
+  //if (commrank == 0) cout << "eigenvectors\n " << eigenvectors << endl << endl;
+
+  complex<double> mfConstant(0., 0.);
+
+  for (int i = 0; i < nexc; i++) {
+    MatrixXcd op = MatrixXcd::Zero(norbs, norbs);
+    for (int j = 0; j < nexc; j++) {
+      int p = j / nopen, k = nocc + j % nopen;
+      op(k, p) += eigenvectors(j, i);
+    }
+    
+    op *= sqrt(complex<double>(1.*eigenvalues(i), 0.));
+    hsOperators.push_back(op);
+  }
+ 
+  if (commrank == 0) cout << "Finished preparing CC HS operators\n\n";
+}
 
 // reads jastrow in VMC format (not exponential)
 // makes hs operators including mean field subtraction and the offshoot one body operator, returns mean field constant 
