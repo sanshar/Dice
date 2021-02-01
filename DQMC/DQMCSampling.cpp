@@ -473,7 +473,7 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << refEnergy << endl;
+    cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
@@ -487,9 +487,10 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
   for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
 
   for (int sweep = 0; sweep < nsweeps; sweep++) {
+    if (stats.isConverged()) break;
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
-        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << getTime() - iterTime << " s\n";
+        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << setprecision(6) << getTime() - iterTime << " s\n";
         cout << "\nPropagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
@@ -532,22 +533,24 @@ void calcEnergyDirectGHF(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Matr
       // measure
       init = getTime();
       if (n == eneSteps[eneStepCounter]) {
-        complex<double> num, den;
-        complex<double> overlapAd, overlapT;
-        //complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, chol, overlapAd);
-        complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, rotCholAd, overlapAd);
-        overlapAd *= orthoFac;
-        numSample *= overlapAd;
-        num = numSample; den = overlapAd;
+        if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
+          complex<double> num, den;
+          complex<double> overlapAd, overlapT;
+          //complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, chol, overlapAd);
+          complex<double> numSample = calcHamiltonianElement(refAd, rn, enuc, h1, rotCholAd, overlapAd);
+          overlapAd *= orthoFac;
+          numSample *= overlapAd;
+          num = numSample; den = overlapAd;
 
-        //numSample = calcHamiltonianElement(refT, rn, enuc, h1, chol, overlapT);
-        numSample = calcHamiltonianElement(refT, rn, enuc, h1, rotCholT, overlapT);
-        overlapT *= orthoFac;
-        numSample *= overlapT;
-        num += numSample; den += overlapT;
+          //numSample = calcHamiltonianElement(refT, rn, enuc, h1, chol, overlapT);
+          numSample = calcHamiltonianElement(refT, rn, enuc, h1, rotCholT, overlapT);
+          overlapT *= orthoFac;
+          numSample *= overlapT;
+          num += numSample; den += overlapT;
 
-        numSampleA[eneStepCounter] = num;
-        denomSampleA[eneStepCounter] = den;
+          numSampleA[eneStepCounter] = num;
+          denomSampleA[eneStepCounter] = den;
+        }
         eneStepCounter++;
       }
       eneTime += getTime() - init;
