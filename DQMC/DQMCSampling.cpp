@@ -779,18 +779,6 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   rhf.first = hf.block(0, 0, norbs, Determinant::nalpha);
   rhf.second = hf.block(0, 0, norbs, Determinant::nbeta);
   
-  // jastrow operators
-  matPair refAct;
-  size_t numActOrbs;
-  if (schd.nciAct < 0) numActOrbs = norbs;
-  else numActOrbs = schd.nciAct;
-  refAct.first = rhf.first.block(0, 0, numActOrbs, Determinant::nalpha);
-  refAct.second = rhf.second.block(0, 0, numActOrbs, Determinant::nbeta);
-  vector<vecPair> jhsOperators;
-  vecPair joneBodyOperator;
-  complex<double> jmfConst = prepJastrowHS(refAct, jhsOperators, joneBodyOperator);
-  size_t jnfields = jhsOperators.size();
-  
   // prop
   //vector<matPair> hsOperators;
   vector<complex<double>> mfShifts;
@@ -798,26 +786,59 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   //complex<double> mfConst = prepPropagatorHS(rhf, chol, hsOperators, oneBodyOperator);
   complex<double> mfConst = prepPropagatorHS(rhf, chol, mfShifts, oneBodyOperator);
   
-  // this is the initial state
-  matPair ref;
+  // this is the left state
+  matPair refT;
   if (schd.hf == "rhf") {
-    hf = MatrixXd::Zero(norbs, norbs);
-    readMat(hf, "rhf.txt");
-    ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
-    ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
+     MatrixXcd hfc = MatrixXcd::Zero(norbs, norbs);
+    readMat(hfc, "rhf.txt");
+    refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+  }
+  if (schd.hf == "rhfc") {
+    MatrixXcd hfc = MatrixXcd::Zero(norbs, norbs);
+    readMat(hfc, "rhfC.txt");
+    refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hfc.block(0, 0, norbs, Determinant::nbeta).adjoint();
   }
   else if (schd.hf == "uhf") {
     hf = MatrixXd::Zero(norbs, 2*norbs);
     readMat(hf, "uhf.txt");
-    ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
-    ref.second = hf.block(0, norbs, norbs, Determinant::nbeta);
+    refT.first = hf.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hf.block(0, norbs, norbs, Determinant::nbeta).adjoint();
   }
-
+  else if (schd.hf == "uhfc") {
+    MatrixXcd hfc = MatrixXcd::Zero(norbs, 2*norbs);
+    readMat(hfc, "uhfC.txt");
+    refT.first = hfc.block(0, 0, norbs, Determinant::nalpha).adjoint();
+    refT.second = hfc.block(0, norbs, norbs, Determinant::nbeta).adjoint();
+  }
+  
   matPair expOneBodyOperator;
   expOneBodyOperator.first =  (-dt * (h1Mod - oneBodyOperator.first) / 2.).exp();
   expOneBodyOperator.second = (-dt * (h1Mod - oneBodyOperator.second) / 2.).exp();
-  
 
+  // this is the initial state
+  // NB: refT need not be ref.adjoint()
+  matPair ref;
+  hf = MatrixXd::Zero(norbs, norbs);
+  readMat(hf, "ref.txt");
+  ref.first = hf.block(0, 0, norbs, Determinant::nalpha);
+  ref.second = hf.block(0, 0, norbs, Determinant::nbeta);
+
+  // Jastrow HS
+  matPair refAct;
+  size_t numActOrbs;
+  if (schd.nciAct < 0) numActOrbs = norbs;
+  else numActOrbs = schd.nciAct;
+  refAct.first = ref.first.block(0, 0, numActOrbs, Determinant::nalpha);
+  refAct.second = ref.second.block(0, 0, numActOrbs, Determinant::nbeta);
+  vector<vecPair> jhsOperators;
+  vecPair joneBodyOperator;
+  complex<double> jmfConst = prepJastrowHS(refAct, jhsOperators, joneBodyOperator);
+  size_t jnfields = jhsOperators.size();
+
+
+  // jref obtained by acting on refAct
   vecPair jexpOneBodyOperator;
   jexpOneBodyOperator.first = joneBodyOperator.first.array().exp();
   jexpOneBodyOperator.second = joneBodyOperator.second.array().exp();
@@ -825,24 +846,22 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
   jref.first = jexpOneBodyOperator.first.asDiagonal() * refAct.first;
   jref.second = jexpOneBodyOperator.second.asDiagonal() * refAct.second;
 
+  // rotate cholesky vectors
+  pair<vector<MatrixXcd>, vector<MatrixXcd>> rotChol;
+  for (int i = 0; i < chol.size(); i++) {
+    MatrixXcd rotUp = refT.first * chol[i];
+    MatrixXcd rotDn = refT.second * chol[i];
+    rotChol.first.push_back(rotUp);
+    rotChol.second.push_back(rotDn);
+  }
+  
   // Gaussian sampling
   // field values arranged right to left
   vector<VectorXd> fields;
   normal_distribution<double> normal(0., 1.);
-  matPair jrefT;
-  jrefT.first = jref.first.adjoint();
-  jrefT.second = jref.second.adjoint();
-  matPair refT;
-  refT.first = ref.first.adjoint();
-  refT.second = ref.second.adjoint();  
+  
 
-  matPair green;
-  calcGreensFunction(refT, ref, green);
-  complex<double> refEnergy = calcHamiltonianElement(green, enuc, h1, chol);
-
-  complex<double> jrefEnergy = calcHamiltonianElement(jrefT, ref,enuc, h1, chol);
-  vector<MatrixXd> richol(1, chol[0]); //sri
-
+  complex<double> refEnergy = calcHamiltonianElement(refT, ref, enuc, h1, rotChol);
   complex<double> ene0;
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
@@ -865,23 +884,36 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
     if (stats.isConverged()) break;
     if (sweep != 0 && sweep % (schd.printFrequency) == 0) {
       if (commrank == 0) {
-        cout << "Sweep steps: " << sweep << endl << "Total walltime: " << setprecision(6) << getTime() - iterTime << " s\n";
-        cout << "\nPropagation time:  " << propTime << " s\n";
+        cout << "\nSweep steps: " << sweep << endl << "Total walltime: " << setprecision(6) << getTime() - iterTime << " s\n";
+        cout << "Propagation time:  " << propTime << " s\n";
         cout << "Energy evaluation time:  " << eneTime << " s\n\n";
       }
       stats.gatherAndPrintStatistics(iTime);
     }
     
-    matPair rn = ref;
-    complex<double> orthoFac = complex<double> (1., 0.);
-    int eneStepCounter = 0;
+    matPair rn;
+    rn = jref;
 
-    // sampling
+    // apply the jastrow on jref
+    vecPair jprop;
+    jprop.first = VectorXcd::Zero(numActOrbs);
+    jprop.second = VectorXcd::Zero(numActOrbs);
+    for (int i = 0; i < jnfields; i++) {
+      double jfields = normal(generator);
+      jprop.first += jfields * jhsOperators[i].first;
+      jprop.second += jfields * jhsOperators[i].second;
+    }
+    rn.first = exp(jmfConst / (2. * Determinant::nalpha)) * jprop.first.array().exp().matrix().asDiagonal() * rn.first;
+    rn.second = exp(jmfConst / (2. * Determinant::nbeta)) * jprop.second.array().exp().matrix().asDiagonal() * rn.second;
+
+    VectorXd fields = VectorXd::Zero(nfields);
+    complex<double> orthoFac = complex<double>(1., 0.);
+    int eneStepCounter = 0;
     ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
     numSampleA.setZero(); denomSampleA.setZero();
-    VectorXd fields = VectorXd::Zero(nfields);
+
     for (int n = 0; n < nsteps; n++) {
-      // prop
+      // sampling
       double init = getTime();
       MatrixXd prop = MatrixXd::Zero(norbs, norbs);
       complex<double> shift(0., 0.);
@@ -889,12 +921,7 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
         double field_n_i = normal(generator);
         prop.noalias() += field_n_i * chol[i];
         shift += field_n_i * mfShifts[i];
-        //prop += field_n_i * complex<double>(0., 1.) * chol[i];
-        //prop.diagonal() -= field_n_i * VectorXcd::Constant(norbs, mfShifts[i]/(1. * (Determinant::nalpha + Determinant::nbeta)));
-        //prop.second += field_n_i * hsOperators[i].second;
       }
-      //prop = (sqrt(dt) * prop).exp();
-      //rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop * (expOneBodyOperator.first * rn.first)));
       
       rn.first = expOneBodyOperator.first * rn.first;
       MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop;
@@ -905,49 +932,31 @@ void calcEnergyJastrowDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<
       }
       rn.first = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * rn.first;
       
-      if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
-      else {
-        //prop.second = (sqrt(dt) * prop.second).exp();
-        rn.second = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * propc * expOneBodyOperator.second * rn.second;
+      rn.second = expOneBodyOperator.second * rn.second;
+      temp = rn.second;
+      for (int i = 1; i < 10; i++) {
+        temp = propc * temp / i;
+        rn.second += temp;
       }
+      rn.second = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nbeta)) * expOneBodyOperator.second * rn.second;
 
       propTime += getTime() - init;
       
       // orthogonalize for stability
-      if (n % orthoSteps == 0) {
+      if (n!= 0 && n % orthoSteps == 0) {
         orthogonalize(rn, orthoFac);
       }
 
       // measure
       init = getTime();
       if (n == eneSteps[eneStepCounter]) {
-        // sample left jastrow
-        size_t numJastrowSamples = schd.numJastrowSamples;
-        complex<double> jOverlap(0., 0.), jLocalEnergy(0., 0.);
-        for (int i = 0; i < numJastrowSamples; i++) {
-          VectorXd jfields = VectorXd::Zero(jnfields);
-          vecPair jpropLeft;
-          jpropLeft.first = VectorXcd::Zero(numActOrbs);
-          jpropLeft.second = VectorXcd::Zero(numActOrbs);
-          for (int i = 0; i < jnfields; i++) {
-            jfields(i) = normal(generator);
-            jpropLeft.first += jfields(i) * jhsOperators[i].first;
-            jpropLeft.second += jfields(i) * jhsOperators[i].second;
-          }
-          matPair ln;
-          ln.first = exp(jmfConst / (2. * Determinant::nalpha)) * jrefT.first * jpropLeft.first.array().exp().matrix().asDiagonal();
-          ln.second = exp(jmfConst / (2. * Determinant::nbeta)) * jrefT.second * jpropLeft.second.array().exp().matrix().asDiagonal();
-
-          complex<double> overlapSample = orthoFac * (ln.first * rn.first.block(0, 0, numActOrbs, Determinant::nalpha)).determinant() 
-                                        * (ln.second * rn.second.block(0, 0, numActOrbs, Determinant::nbeta)).determinant();
-          jOverlap += overlapSample;
-          jLocalEnergy += overlapSample * calcHamiltonianElement(ln, rn, enuc, h1, chol); 
-          //jLocalEnergy += overlapSample * (calcHamiltonianElement_sRI(ln, rn, jrefT, ref, enuc, h1, chol, richol) + jrefEnergy); 
+        if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
+          complex<double> overlap = orthoFac * (refT.first * rn.first).determinant() * (refT.second * rn.second).determinant();
+          complex<double> numSample;
+          numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol);
+          numSampleA[eneStepCounter] = numSample;
+          denomSampleA[eneStepCounter] = overlap;
         }
-        jOverlap /= numJastrowSamples;
-        jLocalEnergy /= numJastrowSamples;
-        numSampleA[eneStepCounter] = jLocalEnergy;
-        denomSampleA[eneStepCounter] = jOverlap;
         eneStepCounter++;
       }
       eneTime += getTime() - init;
@@ -1198,7 +1207,7 @@ void calcEnergyCCSDDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << refEnergy << endl;
+    cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
@@ -1228,7 +1237,7 @@ void calcEnergyCCSDDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
   auto iterTime = getTime();
   double propTime = 0., eneTime = 0.;
   ArrayXd iTime(nEneSteps);
-  for (int i = 0; i < nEneSteps; i++) iTime(i) = 2 * dt * (eneSteps[i] + 1);
+  for (int i = 0; i < nEneSteps; i++) iTime(i) = dt * (eneSteps[i] + 1);
   if (commrank == 0) cout << "Starting sampling sweeps\n";
   
   for (int sweep = 0; sweep < nsweeps; sweep++) {
@@ -1242,10 +1251,8 @@ void calcEnergyCCSDDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
       stats.gatherAndPrintStatistics(iTime);
     }
     
-
-    MatrixXcd rn, ln;
-    complex<double> orthoFacR = complex<double> (1., 0.);
-    complex<double> orthoFacL = complex<double> (1., 0.);
+    MatrixXcd rn;
+    complex<double> orthoFac = complex<double> (1., 0.);
 
     // right cc sampling
     MatrixXcd ccprop = MatrixXcd::Zero(norbs, norbs);
@@ -1254,21 +1261,12 @@ void calcEnergyCCSDDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
       ccprop.noalias() += ccfield_i * cchsOperators[i];
     }
     rn = ccprop.exp() * ccref;
-    
-    // left cc sampling
-    MatrixXcd ccpropT = MatrixXcd::Zero(norbs, norbs);
-    for (int i = 0; i < ccnfields; i++) {
-      double ccfield_i = normal(generator);
-      ccpropT.noalias() += ccfield_i * cchsOperators[i].adjoint();
-    }
-    ln = ccrefT * ccpropT.exp();
 
     // prop sampling
     int eneStepCounter = 0;
     ArrayXcd numSampleA(nEneSteps), denomSampleA(nEneSteps);
     numSampleA.setZero(); denomSampleA.setZero();
     for (int n = 0; n < nsteps; n++) {
-      // right prop
       double init = getTime();
       MatrixXd prop = MatrixXd::Zero(norbs, norbs);
       complex<double> shift(0., 0.);
@@ -1286,46 +1284,39 @@ void calcEnergyCCSDDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
       }
       rn = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * rn;
       
-      // left prop
-      MatrixXd propT = MatrixXd::Zero(norbs, norbs);
-      shift = complex<double>(0., 0.);
-      for (int i = 0; i < nfields; i++) {
-        double field_n_i = normal(generator);
-        propT.noalias() += field_n_i * chol[i];
-        shift += field_n_i * mfShifts[i];
-      }
-      ln = ln * expOneBodyOperator.first;
-      MatrixXcd propcT = sqrt(dt) * complex<double>(0, 1.) * propT;
-      MatrixXcd tempT = ln;
-      for (int i = 1; i < 10; i++) {
-        tempT = tempT * propcT / i;
-        ln += tempT;
-      }
-      ln = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * ln * expOneBodyOperator.first.adjoint();
-      
-      propTime += getTime() - init;
-      
       // orthogonalize for stability
       if (n % orthoSteps == 0 && n != 0) {
-        orthogonalize(rn, orthoFacR);
-        MatrixXcd lnT = ln.adjoint();
-        complex<double> orthoFacC(1., 0.);
-        orthogonalize(lnT, orthoFacC);
-        ln = lnT.adjoint();
-        orthoFacL *= std::conj(orthoFacC);
+        orthogonalize(rn, orthoFac);
       }
+      
+      propTime += getTime() - init;
 
       // measure
       init = getTime();
       if (n == eneSteps[eneStepCounter] ) {
         if (stats.converged[eneStepCounter] == -1) {//-1 means this time slice has not yet converged
-          complex<double> overlap = orthoFacL * orthoFacL * orthoFacR * orthoFacR * (ln * rn).determinant() * (ln * rn).determinant();
-          matPair lnP, rnP;
-          lnP.first = ln; lnP.second = ln;
-          rnP.first = rn; rnP.second = rn;
-          complex<double> numSample = overlap * calcHamiltonianElement(lnP, rnP, enuc, h1, chol);
-          numSampleA[eneStepCounter] = numSample;
-          denomSampleA[eneStepCounter] = overlap;
+          // left cc sampling
+          complex<double> ccOverlap(0., 0.), ccLocalEnergy(0., 0.);
+          int nccSamples = schd.numJastrowSamples;
+          for (int n = 0; n < nccSamples; n++) {
+            MatrixXcd ccpropT = MatrixXcd::Zero(norbs, norbs);
+            for (int i = 0; i < ccnfields; i++) {
+              double ccfield_i = normal(generator);
+              ccpropT.noalias() += ccfield_i * cchsOperators[i].adjoint();
+            }
+            //MatrixXcd lnT = ccrefT * ccpropT.exp();
+            MatrixXcd lnT = ccrefT;
+            lnT += lnT * ccpropT;
+            
+            complex<double> overlapSample = orthoFac * orthoFac * (lnT * rn).determinant() * (lnT * rn).determinant();
+            ccOverlap += overlapSample;
+            matPair lnP, rnP;
+            lnP.first = lnT; lnP.second = lnT;
+            rnP.first = rn; rnP.second = rn;
+            ccLocalEnergy += overlapSample * calcHamiltonianElement(lnP, rnP, enuc, h1, chol);
+          }
+          numSampleA[eneStepCounter] = ccLocalEnergy / nccSamples;
+          denomSampleA[eneStepCounter] = ccOverlap / nccSamples;
         }
         eneStepCounter++;
       }
@@ -1367,12 +1358,6 @@ void calcEnergyCCSDDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
   MatrixXcd cconeBodyOperator;
   prepCCHS(rhf.first, cchsOperators, cconeBodyOperator);
   size_t ccnfields = cchsOperators.size();
-
-  //if (commrank == 0) {
-  //  cout << "oneBody\n" << cconeBodyOperator << endl << endl << "hs\n\n";
-  //  for (int i = 0; i < ccnfields; i++) cout << i << endl << cchsOperators[i] << endl << endl;
-  //}
-  //exit(0);
 
   // prop
   vector<complex<double>> mfShifts;
@@ -1507,10 +1492,6 @@ void calcEnergyCCSDDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<Mat
       }
       eneTime += getTime() - init;
     }
-    //      complex<double> overlap = (refT * rn).determinant() * (refT * rn).determinant();
-    //      complex<double> numSample = overlap * calcHamiltonianElement(refT, rn, enuc, h1, rotChol, nchol);
-    //      numSampleA[eneStepCounter] = numSample;
-    //      denomSampleA[eneStepCounter] = overlap;
     stats.addSamples(numSampleA, denomSampleA);
   }
 
@@ -1596,10 +1577,6 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
   vecPair jexpOneBodyOperator;
   jexpOneBodyOperator.first = joneBodyOperator.first.array().exp();
   jexpOneBodyOperator.second = joneBodyOperator.second.array().exp();
-  //cout << joneBodyOperator.first<<endl<<endl;
-  //cout << joneBodyOperator.first.array()<<endl<<endl;
-  //cout << joneBodyOperator.first.array().exp()<<endl<<endl;
-  //exit(0);
   matPair jref;
   jref.first = jexpOneBodyOperator.first.asDiagonal() * refAct.first;
   jref.second = jexpOneBodyOperator.second.asDiagonal() * refAct.second;
@@ -1649,7 +1626,7 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
 
     int hindex = 0;
     double init = getTime();
-    //sample ham for time slice n
+    // sample ham for time slice n
     for (int n = 0; n < nsteps; n++) {
 
       
@@ -1662,7 +1639,7 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
       prop.first = (sqrt(dt) * prop.first).exp();
       expHam[hindex] = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * prop.first * expOneBodyOperator.first * expHam[hindex];
 
-      if (n % orthoSteps == 0) hindex++;
+      if (n!= 0 && n % orthoSteps == 0) hindex++;
       
     }
     propTime += getTime() - init;
@@ -1750,11 +1727,12 @@ void calcEnergyJastrowDirectVariational(double enuc, MatrixXd& h1, MatrixXd& h1M
       init = getTime();
 
       //Projected energy
-      complex<double> overlapSample =  orthoFacRRef * (ln.first * rnRefHam.first).determinant() 
-                                    * (ln.second * rnRefHam.second).determinant();
+      //cout << refT.first.rows()<<"  "<<refT.first.cols()<<"  "<<rnRefHam.first.rows()<<"  "<<rnRefHam.second.cols()<<endl;
+      complex<double> overlapSample =  orthoFacRRef * (refT.first * rnRefHam.first).determinant() 
+                                    * (refT.second * rnRefHam.second).determinant();
       jOverlapProj += overlapSample;
       //calcGreensFunction(ln, rnRefHam, green);
-      jLocalEnergyProj += overlapSample * calcHamiltonianElement(ln, rnRefHam, enuc, h1, chol);
+      jLocalEnergyProj += overlapSample * calcHamiltonianElement(refT, rnRefHam, enuc, h1, chol);
 
       overlapSample =  orthoFacLRef * (lnRefHam.first * rn.first).determinant() 
                                     * (lnRefHam.second * rn.second).determinant();

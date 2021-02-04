@@ -279,6 +279,51 @@ complex<double> calcHamiltonianElement(MatrixXcd& At, MatrixXcd& B, double enuc,
   return ene;
 }
 
+// Hamiltonian matrix element < GHF | H | GHF > / < GHF | UHF >
+// rotates cholesky vectors
+complex<double> calcHamiltonianElement(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, std::pair<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>>& rotChol) 
+{ 
+  // core energy
+  complex<double> ene = enuc;
+ 
+  // calculate theta and green
+  int numOrbs = B.rows()/2;
+  int numElec = B.cols();
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  MatrixXcd theta = B*(At * B).inverse();
+  MatrixXcd green = (theta*At);
+
+  MatrixXcd thetaA = theta.block(0, 0, numOrbs, numElec),thetaB= theta.block(numOrbs, 0, numOrbs, numElec);
+
+  // one body part
+  ene += green.block(0,0,numOrbs,numOrbs).cwiseProduct(h1).sum() + green.block(numOrbs,numOrbs,numOrbs,numOrbs).cwiseProduct(h1).sum();
+
+  
+  vector<MatrixXcd> W(2, MatrixXcd(numElec, numOrbs));
+
+  for (int i = 0; i < rotChol.first.size(); i++) {
+    //rotChol[0] = At.block(0,0,numElec,numOrbs) * chol[i];
+    //rotChol[1] = At.block(0,numOrbs,numElec,numOrbs) * chol[i]; //chol[i] * B.block(numOrbs,0,numOrbs, numElec);
+    W[0] = rotChol.first[i] * thetaA;
+    W[1] = rotChol.second[i] * thetaB;
+
+    complex<double> W0trace = W[0].trace(), W1trace = W[1].trace();
+    complex<double> J = (W0trace + W1trace) * (W0trace + W1trace);
+    ene += J/2.;
+
+    complex<double> K = W[0].cwiseProduct(W[0].transpose()).sum() + 
+                        W[1].cwiseProduct(W[1].transpose()).sum() +
+                        W[0].cwiseProduct(W[1].transpose()).sum() +
+                        W[1].cwiseProduct(W[0].transpose()).sum() ;
+
+    ene -= K/2.; 
+  }
+  
+  return ene;
+}
+
 // Hamiltonian matrix element < d GHF/cxi | H | GHF > / < GHF | UHF >
 // rotates cholesky vectors
 complex<double> calcGradient(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, MatrixXcd& Grad) 
@@ -337,6 +382,7 @@ complex<double> calcGradient(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd&
 
   return ene;
 }
+
 
 // Hamiltonian matrix element < phi_1 | H | phi_2 > / < phi_1 | phi_2 >
 // rotates cholesky vectors
