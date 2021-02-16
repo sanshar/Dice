@@ -497,27 +497,18 @@ void civectorUpdateNoSample(pair<double, double>& ene, vector<int>& column, doub
   x_vector[column[0]] += dx;
   ene.first += (dx * hij * dx + 2 * dx * hij * x);
   ene.second += dx * dx + 2 * dx * x;
-  double local_norm;
-  double global_norm;
   int num_iter = column.size();
-  #pragma omp parallel private(local_norm, dz, x) shared(global_norm)
-  {
-    local_norm = 0.0;
-    global_norm = 0.0;
-  #pragma omp for
+  double norm = 0.0;
+  #pragma omp parallel for private(dz, x), reduction (+:norm)
   for (int i = 1; i < num_iter; i++) {
     auto detj = dets[column[i]];
     auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
     dz = dx * hij;
     x = x_vector[column[i]];
     z_vector[column[i]] += dz;
-    local_norm += x*dz+dz*x;
+    norm += x*dz + dz*x;
   }
-  #pragma omp critical
-  global_norm += local_norm;
-  #pragma omp barrier
-  }
-  ene.first += global_norm;
+  ene.first += norm;
   return;
 }
 
@@ -580,9 +571,8 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
   vector<int> open(nopen, 0);
   det.getOpenClosed(open, closed);
   vector<int> result(1+nopen*nclosed+nopen*nopen*nclosed*nclosed, -1);
-
   result[0] = this_index;
-  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
+  //#pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
   for (int ia=0; ia<nopen*nclosed; ia++) {
     int i=ia/nopen, a=ia%nopen;
     if (closed[i]%2 == open[a]%2) {
@@ -597,7 +587,7 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
   }
 
   //get all existing double excitations
-  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
+  //#pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
   for(int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j=ij%nclosed;
     if(i<=j) continue;
@@ -622,7 +612,6 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
       }
     }
   }
-
   column.clear();
   column.push_back(result[0]);
   //#pragma omp parallel for
@@ -635,11 +624,27 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
   return;
 }
 
-int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vector<double>& z_vector, vector<pair<double, double>>& ene) {
-  int num_threads;
+int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vector<double>& z_vector, vector<pair<double, double>>& ene, int num_threads=1, int thread_id = 0) {
+  double max_abs_grad = 0.0;
+  double norm = ene[0].second;
+  int column_size = column.size();
+  int result;
+  for(int i = 0; i < column_size; i++) {
+    if (column[i] % num_threads == thread_id) {
+      auto x = x_vector[column[i]];
+      auto z = z_vector[column[i]];
+      auto abs_grad = std::abs(x*norm+z);
+      if (abs_grad > max_abs_grad) {
+        max_abs_grad = abs_grad;
+        result = column[i];
+      }
+    }
+  }
+  //cout << setw(4) << num_threads << setw(4) << thread_id << setw(4) << result << endl;
+  // only optimize ground state
+  /*int num_threads;
   vector<double> max_abs_grad;
   vector<int> local_results;
-  // only optimize ground state
   double norm = ene[0].second;
   #pragma omp parallel 
   {
@@ -665,7 +670,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
       result = local_results[i];
       result_idx = i;
     }
-  }
+  }*/
   return result;
 }
 
@@ -719,6 +724,7 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
     double norm = sqrt(abs(E0[iroot]-coreE));
     auto result_iroot = pair<double, double>(0.0, 0.0);
     double xz = 0.0;
+    #pragma omp parallel for private(column)
     for (int i = 0; i < x_size; i++) {
       auto dx = ci[iroot](i, 0) * norm;
       getSubDetsNoSample(dets, column, det_to_index, i, nelec);
@@ -749,6 +755,12 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   int iter;
   bool converged;
 
+  int thread_id;
+  int thread_num;
+  #pragma omp parallel
+  {
+    thread_num = omp_get_num_threads();
+  }
   if (schd.restart) {
     char file[5000];
     sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
@@ -794,8 +806,8 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   cout << " " << dets_size << endl;
   robin_hood::unordered_set<Determinant>().swap(old_dets);
   robin_hood::unordered_set<Determinant>().swap(new_dets);
-  //old_dets.clear();
-  //new_dets.clear();
+  old_dets.clear();
+  new_dets.clear();
   cout << "build det to index" << endl;
   for (int i = 0; i < dets.size(); i++) {
     det_to_index[dets[i]] = i;
@@ -803,6 +815,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
       cout << i << " dets constructed" << endl;
     }
   }
+  
   cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
   int nroots = schd.nroots;
@@ -810,26 +823,83 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   MatrixXd xx = MatrixXd::Zero(nroots, nroots);
   vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
-  //ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
+  ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
   
   auto num_iter = schd.cdfciIter;
-  int this_det_idx = 0; //dets_size - 1;
-  vector<int> column;
-  getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
+  double dx;
+  vector<int> this_det_idx(thread_num, 0);
+  vector<vector<int>> column;
+  column.resize(thread_num);
 
+  #pragma omp parallel
+  {
+    thread_id = omp_get_thread_num();
+    this_det_idx[thread_id] = start_index + thread_id;
+  }
+  cout << "start to optimize" << endl;
+
+  num_iter = num_iter/thread_num;
   for (int iroot = 0; iroot < nroots; iroot++) {
     auto prev_ene = ene[iroot].first/ene[iroot].second;
     auto start_time = getTime();
     for (int i = 1; i <= num_iter; i++) {
-      auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
-      civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
-      this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
-      getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
+      
+      // initialize dx on each thread
+      /*{
+        vector<double> x;
+        vector<double> z;
+        double& xx = ene[iroot].second;
+        double& xz = ene[iroot].first;
+        size_t orbDiff;
+        for (int thread = 0; thread < thread_num; thread++) {
+          x.push_back(x_vector[this_det_idx[thread]]);
+          z.push_back(z_vector[this_det_idx[thread]]);
+        }
+        for (int thread = 0; thread < thread_num; thread++) {
+          auto i = this_det_idx[thread];
+          dx[thread] = CoordinateUpdate(dets[i], x[thread], z[thread], xx, I1, I2, coreE);
+          auto dxi = dx[thread];
+          xx += x[thread]*dxi*2 + dxi*dxi;
+          auto det_energy = dets[i].Energy(I1, I2, coreE);
+          xz += dxi*det_energy*dxi + 2*dxi*det_energy*x[thread];
+          for (int thread_j = thread+1; thread_j < thread_num; thread_j++) {
+            auto j = this_det_idx[thread_j];
+            if (dets[i].ExcitationDistance(dets[j]) > 2 && i==j) continue;
+            else {
+              auto hij = Hij(dets[i], dets[j], I1, I2, coreE, orbDiff);
+              z[thread_j] += dxi * hij;
+            }
+          }
+        }
+      }*/
+
+      #pragma omp parallel
+      {
+        thread_id = omp_get_thread_num();
+        getSubDetsNoSample(dets, column[thread_id], det_to_index, this_det_idx[thread_id], nelec);
+      }
+
+      double dxz = 0.0;
+      thread_id = omp_get_thread_num();
+      for (int thread_i = 0; thread_i < thread_num; thread_i++) {
+        auto i = this_det_idx[thread_i];
+        dx = CoordinateUpdate(dets[i], x_vector[i], z_vector[i], ene[iroot].second, I1, I2, coreE);
+        civectorUpdateNoSample(ene[iroot], column[thread_i], dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
+      }
+
+      #pragma omp parallel
+      {
+        thread_id = omp_get_thread_num();
+        this_det_idx[thread_id] = CoordinatePickGcdGradOmp(column[thread_id], x_vector, z_vector, ene, thread_num, thread_id);
+      }
+      ene[iroot].first += dxz;
+      
+      #pragma omp barrier
       // now some logical codes, print out information and decide when to exit etc.
-      if (i%schd.report_interval == 0 || i == num_iter) {
+      if (i*thread_num%schd.report_interval < thread_num || i == num_iter) {
         auto curr_ene = ene[iroot].first/ene[iroot].second;
-        auto residual = compute_residual(x_vector, z_vector, curr_ene);
-        cout << setw(10) << i << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
+        auto residual = compute_residual(x_vector, z_vector, curr_ene)/ene[iroot].second;
+        cout << setw(10) << i*thread_num << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
         cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
         cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
         if (residual < schd.cdfciTol) {
