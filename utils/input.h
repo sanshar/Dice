@@ -133,6 +133,9 @@ private:
       & ene0Guess
       & numJastrowSamples
       & choleskyThreshold
+      & ciThreshold
+      & leftWave
+      & rightWave
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -304,6 +307,7 @@ public:
   double overlapCutoff; //used in SCCI
   std::string diagMethod;
   double powerShift;
+  double ciThreshold;
 
   //options for FCIQMC
   int nreplicas;
@@ -340,6 +344,8 @@ public:
   size_t printFrequency;
   int sampleDeterminants;
   double choleskyThreshold;
+  std::string leftWave;
+  std::string rightWave;
 };
 
 /**
@@ -437,6 +443,6 @@ void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& tw
 
 
 // reads ccsd amplitudes
-void readCCSDAmplitudes(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, std::string fname = "amplitudes.h5");
+void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "ccsd.h5");
 
 #endif

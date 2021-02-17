@@ -276,7 +276,8 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
     rotChol.first.push_back(rotUp);
     rotChol.second.push_back(rotDn);
   }
-  //vector<MatrixXd> richol(1, chol[0]); //sri
+  vector<MatrixXf> cholf; 
+  for (int i = 0; i < chol.size(); i++) cholf.push_back(chol[i].cast<float>()); 
   
   // Gaussian sampling
   // field values arranged right to left
@@ -329,28 +330,26 @@ void calcEnergyDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixX
       // sampling
       double init = getTime();
       //MatrixXcd prop = MatrixXcd::Zero(norbs, norbs);
-      MatrixXd prop = MatrixXd::Zero(norbs, norbs);
+      //MatrixXd prop = MatrixXd::Zero(norbs, norbs);
+      MatrixXf prop = MatrixXf::Zero(norbs, norbs);
       complex<double> shift(0., 0.);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        prop.noalias() += field_n_i * chol[i];
+        prop.noalias() += float(field_n_i) * cholf[i];
         shift += field_n_i * mfShifts[i];
-        //prop += field_n_i * complex<double>(0., 1.) * chol[i];
-        //prop.diagonal() -= field_n_i * VectorXcd::Constant(norbs, mfShifts[i]/(1. * (Determinant::nalpha + Determinant::nbeta)));
-        //prop.second += field_n_i * hsOperators[i].second;
       }
       //prop = (sqrt(dt) * prop).exp();
       //rn.first = exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * (expOneBodyOperator.first * (prop * (expOneBodyOperator.first * rn.first)));
       
       rn.first = expOneBodyOperator.first * rn.first;
-      MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop;
+      MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
       MatrixXcd temp = rn.first;
       for (int i = 1; i < 10; i++) {
         temp = propc * temp / i;
         rn.first += temp;
       }
       rn.first = exp(-sqrt(dt) * shift / (Determinant::nalpha + Determinant::nbeta)) * exp((ene0 - enuc - mfConst) * dt / (2. * Determinant::nalpha)) * expOneBodyOperator.first * rn.first;
-      
+
       if (Determinant::nalpha == Determinant::nbeta) rn.second = rn.first;
       else {
         //prop.second = (sqrt(dt) * prop.second).exp();
@@ -1059,6 +1058,9 @@ void calcEnergyCCSDMultiSlaterDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
       break;
     }
   }
+  
+  vector<MatrixXf> cholf; 
+  for (int i = 0; i < chol.size(); i++) cholf.push_back(chol[i].cast<float>()); 
  
   // Gaussian sampling
   // field values arranged right to left
@@ -1101,15 +1103,16 @@ void calcEnergyCCSDMultiSlaterDirect(double enuc, MatrixXd& h1, MatrixXd& h1Mod,
     for (int n = 0; n < nsteps; n++) {
       // prop
       double init = getTime();
-      MatrixXd prop = MatrixXd::Zero(norbs, norbs);
+      //MatrixXd prop = MatrixXd::Zero(norbs, norbs);
+      MatrixXf prop = MatrixXf::Zero(norbs, norbs);
       complex<double> shift(0., 0.);
       for (int i = 0; i < nfields; i++) {
         double field_n_i = normal(generator);
-        prop.noalias() += field_n_i * chol[i];
+        prop.noalias() += float(field_n_i) * cholf[i];
         shift += field_n_i * mfShifts[i];
       }
       rn = expOneBodyOperator.first * rn;
-      MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop;
+      MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
       MatrixXcd temp = rn;
       for (int i = 1; i < 10; i++) {
         temp = propc * temp / i;

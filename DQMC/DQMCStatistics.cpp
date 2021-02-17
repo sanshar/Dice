@@ -209,7 +209,7 @@ void DQMCStatistics::writeSamples()
   samplesFile << "num_i  denom_i\n";
   for (int i = 0; i < nSamples; i++) {
     for (int n = 0; n < sampleSize; n++)
-      samplesFile << setprecision(8) << numSamples[i](n) << "  "  << denomSamples[i](n) << "  |  ";
+      samplesFile << format("  (%14.8f, %14.8f) ,  (%14.8f, %14.8f)  |") % numSamples[i](n).real() % numSamples[i](n).imag() % denomSamples[i](n).real() % denomSamples[i](n).imag();
     samplesFile << endl;
   }
   samplesFile.close();

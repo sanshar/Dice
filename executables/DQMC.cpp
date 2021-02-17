@@ -9,8 +9,14 @@
 #include "input.h"
 #include "integral.h"
 #include "SHCIshm.h"
-#include "DQMCSampling.h"
+//#include "DQMCSampling.h"
 #include "ProjectedMF.h"
+#include "RHF.h"
+#include "UHF.h"
+#include "KSGHF.h"
+#include "Multislater.h"
+#include "CCSD.h"
+#include "MixedEstimator.h"
 
 int main(int argc, char *argv[])
 {
@@ -40,36 +46,89 @@ int main(int argc, char *argv[])
 
   generator = std::mt19937(schd.seed + commrank);
 
-  MatrixXd h1, h1Mod;
-  vector<MatrixXd> chol;
-  readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, h1, h1Mod, chol);
+  //MatrixXd h1, h1Mod;
+  //vector<MatrixXd> chol;
+  //int norbs, nalpha, nbeta;
+  //double ecore;
+  //readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
   
-
-  if (schd.wavefunctionType == "jastrow") {
-    if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
-    calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
+  Hamiltonian ham(schd.integralsFile);
+  DQMCWalker walker;
+ 
+  // left state
+  Wavefunction *waveLeft;
+  if (schd.leftWave == "rhf") {
+    waveLeft = new RHF(ham, true); 
   }
-  else if (schd.wavefunctionType == "multislater") {
-    if (commrank == 0) cout << "\nUsing multiSlater trial\n";
-    calcEnergyDirectMultiSlater(coreE, h1, h1Mod, chol);
+  else if (schd.leftWave == "uhf") {
+    waveLeft = new UHF(ham, true); 
   }
-  else if (schd.wavefunctionType == "ccsd") {
-    if (commrank == 0) cout << "\nUsing CCSD trial\n";
-    //calcEnergyCCSDDirect(coreE, h1, h1Mod, chol);
-    //calcEnergyCCSDDirectVariational(coreE, h1, h1Mod, chol);
-    calcEnergyCCSDMultiSlaterDirect(coreE, h1, h1Mod, chol);
-  }
-  else if (schd.hf == "ghf") {
+  else if (schd.leftWave == "ksghf") {
     if (schd.optimizeOrbs)
-      optimizeProjectedSlater(coreE, h1, chol);
+      optimizeProjectedSlater(ham.ecore, ham.h1, ham.chol);
     MPI_Barrier(MPI_COMM_WORLD);
-    if (commrank == 0) cout << "\nUsing GHF trial\n";
-    calcEnergyDirectGHF(coreE, h1, h1Mod, chol);
+    waveLeft = new KSGHF(ham, true); 
   }
-  else {
-    if (commrank == 0) cout << "\nUsing RHF trial\n";
-    calcEnergyDirect(coreE, h1, h1Mod, chol);
+  else if (schd.leftWave == "multislater") {
+    int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
+    waveLeft = new Multislater(schd.determinantFile, nact, schd.nciCore); 
   }
+  else if (schd.leftWave == "ccsd") {
+    if (commrank == 0) cout << "Not supported yet\n";
+    exit(0);
+  }
+  
+  // right state
+  Wavefunction *waveRight;
+  if (schd.rightWave == "rhf") {
+    waveRight = new RHF(ham, false); 
+  }
+  else if (schd.rightWave == "uhf") {
+    waveRight = new UHF(ham, false); 
+    walker = DQMCWalker(false);
+  }
+  else if (schd.rightWave == "ksghf") {
+    if (commrank == 0) cout << "Not supported yet\n";
+    exit(0);
+  }
+  else if (schd.rightWave == "multislater") { 
+    int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
+    waveLeft = new Multislater(schd.determinantFile, nact, schd.nciCore, true); 
+    walker = DQMCWalker(false);
+  }
+  else if (schd.rightWave == "ccsd") {
+    waveRight = new CCSD(ham.norbs, ham.nalpha);
+  }
+ 
+  calcMixedEstimator(*waveLeft, *waveRight, walker, ham);
+  //calcMixedEstimatorNoProp(waveLeft, waveRight, walker, ham);
+  //exit(0);
+
+  //if (schd.wavefunctionType == "jastrow") {
+  //  if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
+  //  calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
+  //}
+  //else if (schd.wavefunctionType == "multislater") {
+  //  if (commrank == 0) cout << "\nUsing multiSlater trial\n";
+  //  calcEnergyDirectMultiSlater(coreE, h1, h1Mod, chol);
+  //}
+  //else if (schd.wavefunctionType == "ccsd") {
+  //  if (commrank == 0) cout << "\nUsing CCSD trial\n";
+  //  calcEnergyCCSDDirect(coreE, h1, h1Mod, chol);
+  //  //calcEnergyCCSDDirectVariational(coreE, h1, h1Mod, chol);
+  //  //calcEnergyCCSDMultiSlaterDirect(coreE, h1, h1Mod, chol);
+  //}
+  //else if (schd.hf == "ghf") {
+  //  if (schd.optimizeOrbs)
+  //    optimizeProjectedSlater(coreE, h1, chol);
+  //  MPI_Barrier(MPI_COMM_WORLD);
+  //  if (commrank == 0) cout << "\nUsing GHF trial\n";
+  //  calcEnergyDirectGHF(coreE, h1, h1Mod, chol);
+  //}
+  //else {
+  //  if (commrank == 0) cout << "\nUsing RHF trial\n";
+  //  calcEnergyDirect(coreE, h1, h1Mod, chol);
+  //}
   if (commrank == 0) cout << "\nTotal calculation time:  " << getTime() - startofCalc << " s\n";
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

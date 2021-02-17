@@ -83,12 +83,10 @@ void prepCCHS(MatrixXcd& ref, vector<MatrixXcd>& hsOperators, MatrixXcd& oneBody
   // read amplitudes
   MatrixXd singles = MatrixXd::Zero(nocc, nopen);
   MatrixXd doubles = MatrixXd::Zero(nexc, nexc);
-  readCCSDAmplitudes(singles, doubles);
+  MatrixXd basisRotation = MatrixXd::Zero(norbs, norbs);
+  readCCSD(singles, doubles, basisRotation);
   //doubles /= 2;
 
-  //if (commrank == 0) cout << "singles\n" << singles << endl << endl;
-  //if (commrank == 0) cout << "doubles\n" << doubles << endl << endl;
-  //exit(0);
   if (commrank == 0) cout << "\nPreparing CC HS operators\n";
   
   oneBodyOperator = MatrixXcd::Zero(norbs, norbs);

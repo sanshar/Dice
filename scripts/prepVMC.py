@@ -234,11 +234,14 @@ def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
         fh5['energy_core'] = enuc
 
 # write ccsd amplitudes
-def write_ccsd(singles, doubles, filename='amplitudes.h5'):
+def write_ccsd(singles, doubles, rotation=None, filename='ccsd.h5'):
   doubles = np.transpose(doubles, (0, 2, 1, 3)).reshape((singles.size, singles.size))
+  if rotation is None:
+    rotation = np.eye(sum(singles.shape))
   with h5py.File(filename, 'w') as fh5:
     fh5['singles'] = singles.flatten()
     fh5['doubles'] = doubles.flatten()
+    fh5['rotation'] = rotation.flatten()
 
 # for tilted hubbard model
 def findSiteInUnitCell(newsite, size, latticeVectors, sites):
