@@ -29,6 +29,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include "hdf5.h"
 
 
 #ifndef SERIAL
@@ -82,6 +83,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     
     //jastrow multislater
     schd.ghfDets = input.get("wavefunction.ghfDets", false);
+    schd.ciThreshold = input.get("wavefunction.ciThreshold", 1.e-5);
 
     //resonating wave function
     schd.numResonants = input.get("wavefunction.numResonants", 1);
@@ -179,6 +181,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ngrid = input.get("sampling.ngrid", 1);
     schd.sampleDeterminants = input.get("sampling.sampleDeterminants", -1);
     schd.choleskyThreshold = input.get("sampling.choleskyThreshold", 0.005);
+    schd.leftWave = algorithm::to_lower_copy(input.get("wavefunction.left", "rhf"));
+    schd.rightWave = algorithm::to_lower_copy(input.get("wavefunction.right", "rhf"));
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -826,6 +830,7 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       }
       
       if (creA.size() + creB.size() > schd.excitationLevel) continue;
+      if (abs(ciCoeff) < schd.ciThreshold) break;
       numDets++;
       ciCoeffs.push_back(ciCoeff);
       ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
@@ -888,4 +893,66 @@ void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& tw
       oneRDM(a,b) /= nelec-1;
     }
   }
+}
+
+
+// reads ccsd amplitudes
+void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, string fname) 
+{
+  int nocc = singles.rows(), nopen = singles.cols();
+  int norbs = nocc + nopen;
+  int nexc = nocc * nopen;
+
+  hid_t file = (-1), dataset_singles, dataset_doubles, dataset_rotation;  /* identifiers */
+  herr_t status;
+
+  H5E_BEGIN_TRY {
+    file = H5Fopen(fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+ 
+  if (file < 0) {
+    if (commrank == 0) cout << "Amplitudes not found!" << endl;
+    exit(0);
+  }
+  
+  double *singlesMem = new double[ nocc * nopen ];
+  for (int i = 0; i < nocc; i++) 
+    for (int j = 0; j < nopen; j++)
+      singlesMem[i * nopen + j] = 0.;
+  dataset_singles = H5Dopen(file, "/singles", H5P_DEFAULT);
+  status = H5Dread(dataset_singles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, singlesMem);
+  for (int i = 0; i < nocc; i++) {
+    for (int j = 0; j < nopen; j++) {
+      singles(i, j) = singlesMem[i * nopen + j];
+    }
+  }
+  delete [] singlesMem;
+ 
+
+  double *rotationMem = new double[ norbs * norbs ];
+  for (int i = 0; i < norbs; i++) 
+    for (int j = 0; j < norbs; j++)
+      rotationMem[i * norbs + j] = 0.;
+  dataset_rotation = H5Dopen(file, "/rotation", H5P_DEFAULT);
+  status = H5Dread(dataset_rotation, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
+  for (int i = 0; i < norbs; i++) {
+    for (int j = 0; j < norbs; j++) {
+      basisRotation(i, j) = rotationMem[i * norbs + j];
+    }
+  }
+  delete [] rotationMem;
+  
+  
+  double *doublesMem = new double[ nexc * nexc ];
+  for (int i = 0; i < nexc; i++) 
+    for (int j = 0; j < nexc; j++)
+      doublesMem[i * nexc + j] = 0.;
+  dataset_doubles = H5Dopen(file, "/doubles", H5P_DEFAULT);
+  status = H5Dread(dataset_doubles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+  for (int i = 0; i < nexc; i++) {
+    for (int j = 0; j < nexc; j++) {
+      doubles(i, j) = doublesMem[i * nexc + j];
+    }
+  }
+  delete [] doublesMem;
 }

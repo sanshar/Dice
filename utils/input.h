@@ -133,6 +133,9 @@ private:
       & ene0Guess
       & numJastrowSamples
       & choleskyThreshold
+      & ciThreshold
+      & leftWave
+      & rightWave
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -304,6 +307,7 @@ public:
   double overlapCutoff; //used in SCCI
   std::string diagMethod;
   double powerShift;
+  double ciThreshold;
 
   //options for FCIQMC
   int nreplicas;
@@ -340,6 +344,8 @@ public:
   size_t printFrequency;
   int sampleDeterminants;
   double choleskyThreshold;
+  std::string leftWave;
+  std::string rightWave;
 };
 
 /**
@@ -432,5 +438,11 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
 void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
 
+
 void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
+
+
+// reads ccsd amplitudes
+void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "ccsd.h5");
+
 #endif
