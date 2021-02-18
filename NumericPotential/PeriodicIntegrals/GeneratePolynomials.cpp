@@ -1,7 +1,8 @@
 #include <cmath>
+#include <iostream>
 #include <algorithm>
 #include "GeneratePolynomials.h"
-
+#include "CxAlgebra.h"
 
 double getHermiteReciprocal(int l, double* pOut,
                           double Gx, double Gy, double Gz,
@@ -585,4 +586,48 @@ double getHermiteReciprocal(int l, double* pOut,
     return std::max(Gx12, std::max(Gy12, Gz12));
   }
   return -1.;
+}
+
+namespace ir{
+void EvalSlmX_Deriv0(double * Out, double x, double y, double z, unsigned L);
+};
+
+double getSphReciprocal(int la, int lb, double* pOut,
+                        double* pSpha, double* pSphb,
+                        double Gx, double Gy, double Gz,
+                        double Tx, double Ty, double Tz,
+                        double exponentVal,
+                        double Scale) {
+  
+  double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
+
+  int L = la > lb ? la : lb;
+  ir::EvalSlmX_Deriv0(pSpha, Gx, Gy, Gz, L);
+  //ir::EvalSlmX_Deriv0(pSphb, Gx, Gy, Gz, lb);
+
+  double preFactor = Scale * ExpVal;
+  if ( (la+lb)%4 == 0)
+    preFactor *= cos((Gx * Tx + Gy * Ty + Gz * Tz));
+  else if ((la+lb)%4 == 1)
+    preFactor *= -sin((Gx * Tx + Gy * Ty + Gz * Tz));
+  else if ((la+lb)%4 == 2)
+    preFactor *= -cos((Gx * Tx + Gy * Ty + Gz * Tz));
+  else if ((la+lb)%4 == 3)
+    preFactor *= sin((Gx * Tx + Gy * Ty + Gz * Tz));
+
+
+  int Nb = 2*lb+1, Na = 2*la+1;
+  //DGER(Na, Nb, preFactor, pSpha+la*la, 1, pSpha+lb*lb,1,pOut, Na);
+
+  for (int b=0; b<(2*lb+1); b++) {
+    double f = preFactor * pSpha[b+lb*lb];
+    for (int a=0; a<(2*la+1); a++) {
+      pOut[a + b * Na] += f * pSpha[a+la*la];
+    }
+  }
+
+  double maxG = 0.0;
+  for (int i=0; i<2*L+1; i++)
+    maxG = maxG > fabs(pSpha[L*L+i]) ? maxG :  fabs(pSpha[L*L+i]);
+  return maxG;
 }

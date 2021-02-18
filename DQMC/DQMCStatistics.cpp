@@ -8,6 +8,7 @@
 #include <boost/mpi.hpp>
 #endif
 #include <boost/format.hpp>
+#include "input.h"
 #include "global.h"
 #include "DQMCStatistics.h"
 
@@ -29,6 +30,7 @@ DQMCStatistics::DQMCStatistics(int pSampleSize)
   converged.resize(sampleSize,-1);
   convergedE = ArrayXcd::Zero(sampleSize);
   convergedDev = ArrayXd::Zero(sampleSize);
+  errorTargets = schd.errorTargets;    // TODO: change this so that these are passed to the constructor
 }
 
 
@@ -51,7 +53,7 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
   ArrayXcd eneEstimates = numMean / denomMean;
   int nBlocks;
   size_t blockSize;
-  if (nSamples <= 100) {
+  if (nSamples <= 500) {
     nBlocks = 1;
     blockSize = nSamples;
   }
@@ -95,7 +97,7 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
 // gather data from all the processes and print quantities
 // to be used at the end of a calculation
 // iTime used only for printing
-void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
+void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> delta)
 {
   ArrayXcd numMeanbkp = numMean;
   ArrayXcd denomMeanbkp = denomMean;
@@ -116,6 +118,8 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
   ArrayXd error, error2;
   calcError(error, error2);
 
+  eneEstimates += delta;
+
   // print
   if (commrank == 0) {
     cout << "          iTime                 Energy                     Energy error         Average phase\n";
@@ -123,19 +127,22 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
       if (converged[n] == -1) {
         cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % eneEstimates(n).real() % eneEstimates(n).imag() % error(n) % error2(n) % avgPhase(n).real() % avgPhase(n).imag(); 
 
-        //if error falls below 1.5e-3 then stop calculating it
-        if (error(n) < 1.5e-3 ) {
-          converged[n] = 1;
-          convergedE(n) = eneEstimates(n);
-          convergedDev(n) = error(n);
-        }
       }
       else { //after it has converged just use the old ones
-        cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   )   \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n) ; 
+        cout << format(" %14.2f   (%14.8f, %14.8f)   ( %8.2e )  \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n); 
       }
 
     }
   }
+  //if error falls below 1.5e-3 then stop calculating it
+  for (int n = 0; n < sampleSize; n++) {
+    if (error(n) < errorTargets[n] ) {
+      converged[n] = 1;
+      convergedE(n) = eneEstimates(n);
+      convergedDev(n) = error(n);
+    }
+  }
+  
 
   //restore the original running averages
   numMean = numMeanbkp;
@@ -143,6 +150,12 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime)
   denomAbsMean = denomAbsMeanbkp;  
 }
 
+// if all energies are converged
+bool DQMCStatistics::isConverged() 
+{
+  if (converged[sampleSize - 1]  == 1) return true;
+  else return false;
+};
 
 
 // prints running averages from proc 0

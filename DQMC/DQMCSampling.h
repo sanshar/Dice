@@ -17,6 +17,7 @@ void calcEnergyJastrowMetropolis(double enuc, Eigen::MatrixXd& h1, Eigen::Matrix
 
 // calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
 void calcEnergyDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
+void calcEnergyDirectVartiational(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 
 // calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
 void calcEnergyDirectMultiSlater(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);

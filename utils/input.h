@@ -126,11 +126,13 @@ private:
       & dt
       & nsteps
       & eneSteps
+      & errorTargets
       & fieldStepsize
       & measureFreq
       & orthoSteps
       & ene0Guess
       & numJastrowSamples
+      & choleskyThreshold
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -327,6 +329,7 @@ public:
   // options for dqmc
   size_t nsteps;
   std::vector<int> eneSteps;
+  std::vector<double> errorTargets;
   double dt;
   double fieldStepsize;
   size_t measureFreq;
@@ -336,6 +339,7 @@ public:
   int ngrid;
   size_t printFrequency;
   int sampleDeterminants;
+  double choleskyThreshold;
 };
 
 /**

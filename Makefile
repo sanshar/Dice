@@ -3,8 +3,8 @@ USE_INTEL = yes
 COMPILE_NUMERIC = yes
 
 EIGEN=/projects/sash2458/newApps/eigen/
-#BOOST=/projects/sash2458/newApps/boost_1_67_0/
-BOOST=/projects/anma2640/boost_1_66_0/
+BOOST=/projects/sash2458/newApps/boost_1_67_0/
+#BOOST=/projects/anma2640/boost_1_66_0/
 LIBIGL=/projects/sash2458/apps/libigl/include/
 HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 
@@ -172,11 +172,11 @@ FCIQMC: bin/FCIQMC
 
 
 #all: bin/VMC
-all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic bin/libPeriodic.so #bin/sPT  bin/GFMC
+all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic #bin/sPT  bin/GFMC
 FCIQMC: bin/FCIQMC
 #bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
-bin/periodic: bin/periodic
+bin/periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
 
 bin/libPeriodic.so: bin/libPeriodic.so
