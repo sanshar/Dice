@@ -16,6 +16,7 @@
 #include "KSGHF.h"
 #include "Multislater.h"
 #include "CCSD.h"
+#include "sJastrow.h"
 #include "MixedEstimator.h"
 
 int main(int argc, char *argv[])
@@ -54,7 +55,8 @@ int main(int argc, char *argv[])
   
   Hamiltonian ham(schd.integralsFile);
   DQMCWalker walker;
- 
+  if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
+
   // left state
   Wavefunction *waveLeft;
   if (schd.leftWave == "rhf") {
@@ -74,6 +76,10 @@ int main(int argc, char *argv[])
     waveLeft = new Multislater(schd.determinantFile, nact, schd.nciCore); 
   }
   else if (schd.leftWave == "ccsd") {
+    if (commrank == 0) cout << "Not supported yet\n";
+    exit(0);
+  }
+  else if (schd.leftWave == "jastrow") {
     if (commrank == 0) cout << "Not supported yet\n";
     exit(0);
   }
@@ -98,6 +104,9 @@ int main(int argc, char *argv[])
   }
   else if (schd.rightWave == "ccsd") {
     waveRight = new CCSD(ham.norbs, ham.nalpha);
+  }
+  else if (schd.rightWave == "jastrow") {
+    waveRight = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
   }
  
   calcMixedEstimator(*waveLeft, *waveRight, walker, ham);

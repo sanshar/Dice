@@ -79,6 +79,7 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/AGP.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
+	obj/SJastrow.o \
 	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/RBM.o \
@@ -149,6 +150,7 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/KSGHF.o \
 	obj/Multislater.o \
 	obj/CCSD.o \
+	obj/sJastrow.o \
 	obj/MixedEstimator.o \
 	obj/ProjectedMF.o
 
