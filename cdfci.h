@@ -63,6 +63,7 @@ namespace cdfci {
   
   hash_det precondition(pair<double, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
 
+  double compute_residual(vector<double>& x, vector<double>& z, double E);
   void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
 }
 #endif
