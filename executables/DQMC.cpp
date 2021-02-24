@@ -80,8 +80,7 @@ int main(int argc, char *argv[])
     exit(0);
   }
   else if (schd.leftWave == "jastrow") {
-    if (commrank == 0) cout << "Not supported yet\n";
-    exit(0);
+    waveLeft = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
   }
   
   // right state
@@ -109,35 +108,9 @@ int main(int argc, char *argv[])
     waveRight = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
   }
  
-  calcMixedEstimator(*waveLeft, *waveRight, walker, ham);
-  //calcMixedEstimatorNoProp(waveLeft, waveRight, walker, ham);
-  //exit(0);
-
-  //if (schd.wavefunctionType == "jastrow") {
-  //  if (commrank == 0) cout << "\nUsing Jastrow RHF trial\n";
-  //  calcEnergyJastrowDirect(coreE, h1, h1Mod, chol);
-  //}
-  //else if (schd.wavefunctionType == "multislater") {
-  //  if (commrank == 0) cout << "\nUsing multiSlater trial\n";
-  //  calcEnergyDirectMultiSlater(coreE, h1, h1Mod, chol);
-  //}
-  //else if (schd.wavefunctionType == "ccsd") {
-  //  if (commrank == 0) cout << "\nUsing CCSD trial\n";
-  //  calcEnergyCCSDDirect(coreE, h1, h1Mod, chol);
-  //  //calcEnergyCCSDDirectVariational(coreE, h1, h1Mod, chol);
-  //  //calcEnergyCCSDMultiSlaterDirect(coreE, h1, h1Mod, chol);
-  //}
-  //else if (schd.hf == "ghf") {
-  //  if (schd.optimizeOrbs)
-  //    optimizeProjectedSlater(coreE, h1, chol);
-  //  MPI_Barrier(MPI_COMM_WORLD);
-  //  if (commrank == 0) cout << "\nUsing GHF trial\n";
-  //  calcEnergyDirectGHF(coreE, h1, h1Mod, chol);
-  //}
-  //else {
-  //  if (commrank == 0) cout << "\nUsing RHF trial\n";
-  //  calcEnergyDirect(coreE, h1, h1Mod, chol);
-  //}
+  if (schd.dt == 0.) calcMixedEstimatorNoProp(*waveLeft, *waveRight, walker, ham);
+  else calcMixedEstimator(*waveLeft, *waveRight, walker, ham);
+  
   if (commrank == 0) cout << "\nTotal calculation time:  " << getTime() - startofCalc << " s\n";
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());

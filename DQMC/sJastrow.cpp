@@ -108,15 +108,75 @@ void sJastrow::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
 };
 
 
+complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, Hamiltonian& ham) 
+{ 
+  // core energy
+  complex<double> ene = ham.ecore;
+  
+  // calculate theta and green
+  int numActOrbs = phi1T[0].cols();
+  int numElecUp = phi2[0].cols();
+  int numElecDn = phi2[1].cols();
+  matPair theta, green;
+  theta[0] = phi2[0] * (phi1T[0] * phi2[0].block(0, 0, numActOrbs, numElecUp)).inverse();
+  theta[1] = phi2[1] * (phi1T[1] * phi2[1].block(0, 0, numActOrbs, numElecDn)).inverse();
+  green[0] = (theta[0] * phi1T[0]).transpose();
+  green[1] = (theta[1] * phi1T[1]).transpose();
+
+  // one body part
+  ene += green[0].cwiseProduct(ham.h1.block(0, 0, numActOrbs, ham.h1.rows())).sum() + green[1].cwiseProduct(ham.h1.block(0, 0, numActOrbs, ham.h1.rows())).sum();
+
+  // two body part
+  MatrixXcd fup = MatrixXcd::Zero(phi1T[0].rows(), phi1T[0].rows());
+  MatrixXcd fdn = MatrixXcd::Zero(phi1T[1].rows(), phi1T[1].rows());
+  MatrixXcd rotCholUp = MatrixXcd::Zero(phi1T[0].rows(), ham.h1.rows());
+  MatrixXcd rotCholDn = MatrixXcd::Zero(phi1T[1].rows(), ham.h1.rows());
+  for (int i = 0; i < ham.nchol; i++) {
+    rotCholUp.noalias() = phi1T[0] * ham.chol[i].block(0, 0, numActOrbs, ham.h1.rows());
+    rotCholDn.noalias() = phi1T[1] * ham.chol[i].block(0, 0, numActOrbs, ham.h1.rows());
+    fup.noalias() = rotCholUp * theta[0];
+    fdn.noalias() = rotCholDn * theta[1];
+    complex<double> cup = fup.trace();
+    complex<double> cdn = fdn.trace();
+    ene += (cup * cup + cdn * cdn + 2. * cup * cdn - fup.cwiseProduct(fup.transpose()).sum() - fdn.cwiseProduct(fdn.transpose()).sum()) / 2.;
+  }
+
+  return ene;
+}
+
 // to be defined
 std::array<std::complex<double>, 2> sJastrow::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham)
 {
-  return std::array<complex<double>, 2>();
+  complex<double> overlap(0., 0.), localEnergy(0., 0.);
+  int nSamples = schd.numJastrowSamples;
+  for (int n = 0; n < nSamples; n++) {
+    VectorXcd jprop = VectorXcd::Zero(norbs);
+    for (int i = 0; i < hsOperators.size(); i++) {
+      double jfield_i = normal(generator);
+      jprop.noalias() += jfield_i * hsOperators[i];
+    }
+    jprop = jprop.array().exp();
+    matPair detT;
+    detT[0] = refState[0].adjoint() * jprop.asDiagonal();
+    detT[1] = refState[1].adjoint() * jprop.asDiagonal();
+    
+    complex<double> overlapSample = (detT[0] * psi[0]).determinant() * (detT[1] * psi[1]).determinant();
+    overlap += overlapSample;
+    localEnergy += overlapSample * calcHamiltonianElement(detT, psi, ham);
+  }
+  
+  std::array<complex<double>, 2> hamOverlap;
+  hamOverlap[0] = localEnergy / nSamples;
+  hamOverlap[1] = overlap / nSamples;
+  return hamOverlap;
 };
 
 
 // to be defined
 std::array<std::complex<double>, 2> sJastrow::hamAndOverlap(Eigen::MatrixXcd& psi, Hamiltonian& ham)
 {
-  return std::array<complex<double>, 2>();
+  matPair psiP;
+  psiP[0] = psi;
+  psiP[1] = psi;
+  return hamAndOverlap(psiP, ham);
 };
