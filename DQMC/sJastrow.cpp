@@ -51,7 +51,9 @@ sJastrow::sJastrow(int pnorbs, int pnalpha, int pnbeta, std::string fname)
     ref = MatrixXd::Zero(norbs, norbs);
     readMat(ref, fname2); 
   }
-  else ref = rhf; 
+  else {
+    ref = basisRotation.transpose() * rhf; 
+  }
   
   refState[0] = ref.block(0, 0, norbs, pnalpha);
   refState[1] = ref.block(0, 0, norbs, pnbeta);
@@ -63,8 +65,8 @@ sJastrow::sJastrow(int pnorbs, int pnalpha, int pnbeta, std::string fname)
 
   oneBodyOperator = VectorXcd::Zero(norbs);
   matPair green, rhfState, rhfStateT;
-  rhfState[0] = rhf.block(0, 0, norbs, pnalpha);
-  rhfState[1] = rhf.block(0, 0, norbs, pnbeta);
+  rhfState[0] = basisRotation.transpose() * rhf.block(0, 0, norbs, pnalpha);
+  rhfState[1] = basisRotation.transpose() * rhf.block(0, 0, norbs, pnbeta);
   rhfStateT[0] = rhfState[0].adjoint();
   rhfStateT[1] = rhfState[1].adjoint();
   green[0] = rhfState[0] * (rhfStateT[0] * rhfState[0]).inverse() * rhfStateT[0];
