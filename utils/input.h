@@ -445,4 +445,7 @@ void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& tw
 // reads ccsd amplitudes
 void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "ccsd.h5");
 
+
+// reads uccsd amplitudes
+void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 2>& doubles, std::array<Eigen::MatrixXd, 2>& basisRotation, std::string fname = "uccsd.h5");
 #endif

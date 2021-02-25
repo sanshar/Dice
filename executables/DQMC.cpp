@@ -16,6 +16,7 @@
 #include "KSGHF.h"
 #include "Multislater.h"
 #include "CCSD.h"
+//#include "UCCSD.h"
 #include "sJastrow.h"
 #include "MixedEstimator.h"
 
@@ -79,6 +80,10 @@ int main(int argc, char *argv[])
     if (commrank == 0) cout << "Not supported yet\n";
     exit(0);
   }
+  //else if (schd.leftWave == "uccsd") {
+  //  if (commrank == 0) cout << "Not supported yet\n";
+  //  exit(0);
+  //}
   else if (schd.leftWave == "jastrow") {
     waveLeft = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
   }
@@ -104,6 +109,10 @@ int main(int argc, char *argv[])
   else if (schd.rightWave == "ccsd") {
     waveRight = new CCSD(ham.norbs, ham.nalpha);
   }
+  //else if (schd.rightWave == "uccsd") {
+  //  waveRight = new UCCSD(ham.norbs, ham.nalpha, ham.nbeta);
+  //  walker = DQMCWalker(false);
+  //}
   else if (schd.rightWave == "jastrow") {
     waveRight = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
   }
