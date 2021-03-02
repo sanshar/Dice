@@ -239,7 +239,7 @@ class walkersFCIQMC {
 
             // HF-based estimator data
             if (excitLevel == 0) {
-              dat.HFAmp.at(iReplica) = amps[iDet][iReplica];
+              dat.HFAmp.at(iReplica) = amps[iDet][iReplica] / ISFactor;
               dat.EProj.at(iReplica) +=
                   amps[iDet][iReplica] * HFDet.Energy(I1, I2, coreE) / ISFactor;
             } else if (excitLevel <= 2) {
