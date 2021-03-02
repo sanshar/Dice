@@ -307,8 +307,7 @@ void SelectedCI::HamAndOvlp(SimpleWalker &walk, double &ovlp, double &ham,
 
 void SelectedCI::HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
                                       double &ham, double& SVTotal,
-                                      workingArray& work, const bool is,
-                                      double epsilon)
+                                      workingArray& work, double epsilon)
 {
   int norbs = Determinant::norbs;
 
@@ -348,11 +347,7 @@ void SelectedCI::HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
     double contrib = parity * tia * ovlpRatio;
     ham += contrib;
     if (contrib > 0.0) {
-      if (is) {
-        SVTotal += contrib;
-      } else {
-        SVTotal += contrib / abs(ovlpRatio);
-      }
+      SVTotal += contrib;
     }
 
     work.ovlpRatio[i] = ovlpRatio;

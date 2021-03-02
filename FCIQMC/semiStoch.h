@@ -285,7 +285,7 @@ class semiStoch {
         TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
-                                  schd.importanceSampling, schd.epsilon);
+                                  schd.epsilon);
         walkers.ovlp[pos] = ovlp;
         walkers.localE[pos] = localE;
         walkers.SVTotal[pos] = SVTotal;

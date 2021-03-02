@@ -321,7 +321,7 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
         TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
-                                  schd.importanceSampling, schd.epsilon);
+                                  schd.epsilon);
         walkers.ovlp[pos] = ovlp;
         walkers.localE[pos] = localE;
         walkers.SVTotal[pos] = SVTotal;
@@ -430,7 +430,7 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
         TrialWalk newWalk(wave, det_i);
         double ovlp, localE, SVTotal;
         wave.HamAndOvlpAndSVTotal(newWalk, ovlp, localE, SVTotal, work,
-                                  schd.importanceSampling, schd.epsilon);
+                                  schd.epsilon);
         walkers.ovlp[pos] = ovlp;
         walkers.localE[pos] = localE;
         walkers.SVTotal[pos] = SVTotal;

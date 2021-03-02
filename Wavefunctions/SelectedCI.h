@@ -83,8 +83,7 @@ class SelectedCI
 
   void HamAndOvlpAndSVTotal(SimpleWalker &walk, double &ovlp,
                             double &ham, double& SVTotal,
-                            workingArray& work, const bool is,
-                            double epsilon);
+                            workingArray& work, double epsilon);
 
   // This version of HamAndOvlp is used for MRCI and NEVPT calculations,
   // where excitations occur into the first-order interacting space, but

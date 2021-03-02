@@ -26,7 +26,7 @@ class TrivialWF {
 
   void HamAndOvlpAndSVTotal(const TrivialWalk &walk, double &ovlp,
                             double &ham, double& SVTotal, workingArray& work,
-                            const bool is, double epsilon=schd.epsilon) const {
+                            double epsilon=schd.epsilon) const {
     work.setCounterToZero();
     ovlp = 1.0;
     ham = 0.0;
