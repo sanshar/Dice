@@ -591,6 +591,18 @@ void performDeath(const int iDet, walkersFCIQMC<TrialWalk>& walkers, oneInt &I1,
   }
 }
 
+template<typename TrialWalk>
+void expApproxLogging(walkersFCIQMC<TrialWalk>& walkers, int iDet, int iReplica, double fac) {
+  if (abs(walkers.amps[iDet][iReplica]) > 1.0e-12) {
+    cout << "# Exponential approximation applied." << endl;
+    cout << "# Determinant: " << walkers.dets[iDet] << endl;
+    cout << "# Population: " << walkers.amps[iDet][iReplica] << endl;
+    cout << "# Overlap: " << walkers.ovlp[iDet] << endl;
+    cout << "# Sign-flip potential: " << walkers.SVTotal[iDet] << endl;
+    cout << "# Total diagonal contribution: " << -fac << endl;
+  }
+}
+
 // Perform death for *all* walkers in the walker array, held in
 // walkers.dets
 template<typename TrialWalk>
@@ -606,7 +618,8 @@ void performDeathAllWalkers(walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoIn
     }
     for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
       double fac = tau * ( parentE - Eshift[iReplica] );
-      if (schd.expApprox && fac > 2.0) {
+      if (schd.expApprox && fac > 1.0) {
+        expApproxLogging(walkers, iDet, iReplica, fac);
         walkers.amps[iDet][iReplica] *= exp(-fac);
       } else {
         walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
