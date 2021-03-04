@@ -587,7 +587,12 @@ void performDeath(const int iDet, walkersFCIQMC<TrialWalk>& walkers, oneInt &I1,
   }
   for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
     double fac = tau * ( parentE - Eshift[iReplica] );
-    walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+    if (schd.expApprox && fac > 1.0) {
+      expApproxLogging(walkers, iDet, iReplica, fac);
+      walkers.amps[iDet][iReplica] *= exp(-fac);
+    } else {
+      walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+    }
   }
 }
 
