@@ -135,6 +135,7 @@ private:
       & releaseNodeIter
       & diagonalDumping
       & partialNodeFactor
+      & expApprox
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -332,6 +333,7 @@ public:
   int releaseNodeIter;
   bool diagonalDumping;
   double partialNodeFactor;
+  bool expApprox;
 
   //options for rbm
   int numHidden;
