@@ -169,7 +169,7 @@ void spawnFCIQMC::communicate() {
 
 // Merge multiple spawned walkers to the same determinant, so that each
 // determinant only appears once
-void spawnFCIQMC::compress() {
+void spawnFCIQMC::compress(vector<double>& nAnnihil) {
 
   if (nDets > 0) {
     // Perform sort
@@ -201,6 +201,9 @@ void spawnFCIQMC::compress() {
         }
         if ( dets[j] == dets[k] ) {
           for (int iReplica=0; iReplica<nreplicas; iReplica++) {
+            if (amps[j][iReplica]*amps[k][iReplica] < 0.0) {
+              nAnnihil[iReplica] += 2.0*min(abs(amps[j][iReplica]), abs(amps[k][iReplica]));
+            }
             amps[j][iReplica] += amps[k][iReplica];
           }
 
@@ -235,13 +238,14 @@ void spawnFCIQMC::compress() {
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain(Wave& wave, TrialWalk& walk,
                                 walkersFCIQMC<TrialWalk>& walkers,
-                                semiStoch& core, const double minPop,
-                                bool initiator, workingArray& work) {
+                                semiStoch& core, vector<double>& nAnnihil,
+                                const double minPop, bool initiator,
+                                workingArray& work) {
 
   if (initiator) {
-    mergeIntoMain_Initiator(wave, walk, walkers, core, minPop, work);
+    mergeIntoMain_Initiator(wave, walk, walkers, core, nAnnihil, minPop, work);
   } else {
-    mergeIntoMain_NoInitiator(wave, walk, walkers, core, minPop, work);
+    mergeIntoMain_NoInitiator(wave, walk, walkers, core, nAnnihil, minPop, work);
   }
 
 }
@@ -250,8 +254,8 @@ void spawnFCIQMC::mergeIntoMain(Wave& wave, TrialWalk& walk,
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
                                             walkersFCIQMC<TrialWalk>& walkers,
-                                            semiStoch& core, const double minPop,
-                                            workingArray& work) {
+                                            semiStoch& core, vector<double>& nAnnihil,
+                                            const double minPop, workingArray& work) {
   for (int i = 0; i<nDets; i++) {
 
     // Convert from simpleDet to Determinant object
@@ -282,6 +286,9 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
           }
         }
 
+        if (amps[i][iReplica]*oldAmp < 0.0) {
+          nAnnihil[iReplica] += 2.0*min(abs(amps[i][iReplica]), abs(oldAmp));
+        }
         double newAmp = amps[i][iReplica] + oldAmp;
         walkers.amps[iDet][iReplica] = newAmp;
       }
@@ -343,8 +350,8 @@ void spawnFCIQMC::mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
 template<typename Wave, typename TrialWalk>
 void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
                                           walkersFCIQMC<TrialWalk>& walkers,
-                                          semiStoch& core, const double minPop,
-                                          workingArray& work) {
+                                          semiStoch& core, vector<double>& nAnnihil,
+                                          const double minPop, workingArray& work) {
   for (int i = 0; i<nDets; i++) {
 
     // Convert from simpleDet to Determinant object
@@ -383,6 +390,9 @@ void spawnFCIQMC::mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
             }
           }
 
+          if (amps[i][iReplica]*oldAmp < 0.0) {
+            nAnnihil[iReplica] += 2.0*min(abs(amps[i][iReplica]), abs(oldAmp));
+          }
           double newAmp = amps[i][iReplica] + oldAmp;
           walkers.amps[iDet][iReplica] = newAmp;
         }
@@ -457,6 +467,7 @@ template void spawnFCIQMC::mergeIntoMain(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -465,6 +476,7 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
 
@@ -472,6 +484,7 @@ template void spawnFCIQMC::mergeIntoMain_Initiator(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
 
@@ -483,6 +496,7 @@ template void spawnFCIQMC::mergeIntoMain(
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -492,6 +506,7 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
 
@@ -500,6 +515,7 @@ template void spawnFCIQMC::mergeIntoMain_Initiator(
     Walker<Jastrow, Slater>& walk,
     walkersFCIQMC<JSWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
 
@@ -509,6 +525,7 @@ template void spawnFCIQMC::mergeIntoMain(
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     bool initiator,
     workingArray& work);
@@ -518,6 +535,7 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
 
@@ -526,5 +544,6 @@ template void spawnFCIQMC::mergeIntoMain_Initiator(
     SimpleWalker& walk,
     walkersFCIQMC<SimpleWalker>& walkers,
     semiStoch& core,
+    vector<double>& nAnnihil,
     const double minPop,
     workingArray& work);
