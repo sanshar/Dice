@@ -17,6 +17,9 @@ class dataFCIQMC {
     // WF-based projected energy estimator)
     vector<double> ampSum;
 
+    // The total number of walkers annihilated (on this process only)
+    vector<double> nAnnihil;
+
     // The shift to the diagonal of the Hamiltonian
     vector<double> Eshift;
     // True is the shift has started to vary (left the constant phase)
@@ -36,6 +39,8 @@ class dataFCIQMC {
     vector<double> trialEProjTot;
     // The denominator of the trial-WF-based projected energy
     vector<double> ampSumTot;
+    // The total number of walkers annihilated
+    vector<double> nAnnihilTot;
 
     // Estimates requiring two replicas simulations:
 
@@ -63,6 +68,9 @@ class dataFCIQMC {
       HFAmpTot.resize(nreplicas, 0.0);
       trialEProjTot.resize(nreplicas, 0.0);
       ampSumTot.resize(nreplicas, 0.0);
+
+      nAnnihil.resize(nreplicas, 0.0);
+      nAnnihilTot.resize(nreplicas, 0.0);
 
       EVarNumAll = 0.0;
       EVarDenomAll = 0.0;

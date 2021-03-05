@@ -13,6 +13,7 @@
     "targetPop": 500.0,
     "mainMemoryFac": 10.0,
     "spawnMemoryFac": 10.0,
-    "heatBathUniformSingles": "true"
+    "heatBathUniformSingles": "true",
+    "printAnnihilStats": false
   }
 }

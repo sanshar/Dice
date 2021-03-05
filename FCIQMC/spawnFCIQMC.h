@@ -75,20 +75,23 @@ class spawnFCIQMC {
   
   // Merge multiple spawned walkers to the same determinant, so that each
   // determinant only appears once
-  void compress();
+  void compress(vector<double>& nAnnihil);
   
   // Move spawned walkers to the provided main walker list
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& walkers,
-                     semiStoch& core, const double minPop, bool initiator, workingArray& work);
+                     semiStoch& core, vector<double>& nAnnihil, const double minPop,
+                     bool initiator, workingArray& work);
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain_NoInitiator(Wave& wave, TrialWalk& walk,
                                  walkersFCIQMC<TrialWalk>& walkers, semiStoch& core,
-                                 const double minPop, workingArray& work);
+                                 vector<double>& nAnnihil, const double minPop,
+                                 workingArray& work);
   template<typename Wave, typename TrialWalk>
   void mergeIntoMain_Initiator(Wave& wave, TrialWalk& walk,
                                walkersFCIQMC<TrialWalk>& walkers, semiStoch& core,
-                               const double minPop, workingArray& work);
+                               vector<double>& nAnnihil, const double minPop,
+                               workingArray& work);
 
 };
 

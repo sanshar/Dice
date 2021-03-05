@@ -13,6 +13,7 @@
     "mainMemoryFac": "10.0",
     "spawnMemoryFac": "10.0",
     "initiator": "true",
-    "heatBath": "true"
+    "heatBath": "true",
+    "printAnnihilStats": false
   }
 }

@@ -102,9 +102,10 @@ void initWalkerListHF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>& wal
 
   // Move the walker to the main list, using the communication and
   // annihilation procedures
+  vector<double> nAnnihil;
   spawn.communicate();
-  spawn.compress();
-  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
+  spawn.compress(nAnnihil);
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, nAnnihil, 0.0, work);
 }
 
 // This routine creates the initial walker distribution by sampling the
@@ -184,9 +185,10 @@ void initWalkerListTrialWF(Wave& wave, TrialWalk& walk, walkersFCIQMC<TrialWalk>
 
   // Communicate and compress spawned walkers, then move them
   // to the main walker list
+  vector<double> nAnnihil;
   spawn.communicate();
-  spawn.compress();
-  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, 0.0, work);
+  spawn.compress(nAnnihil);
+  spawn.mergeIntoMain_NoInitiator(wave, walk, walkers, core, nAnnihil, 0.0, work);
 
   vector<double> walkerPop, walkerPopTot;
   walkerPop.resize(schd.nreplicas, 0.0);
@@ -265,6 +267,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     fill(dat.walkerPop.begin(), dat.walkerPop.end(), 0.0);
     fill(dat.EProj.begin(), dat.EProj.end(), 0.0);
     fill(dat.HFAmp.begin(), dat.HFAmp.end(), 0.0);
+    fill(dat.nAnnihil.begin(), dat.nAnnihil.end(), 0.0);
 
     // Check whether to release the fixed node
     if (schd.releaseNodeFCIQMC) {
@@ -383,7 +386,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     // Perform annihilation of spawned walkers
     spawn.communicate();
-    spawn.compress();
+    spawn.compress(dat.nAnnihil);
 
     // Calculate energies involving multiple replicas
     if (schd.nreplicas == 2) {
@@ -400,7 +403,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
     if (schd.semiStoch) {
       core.determAnnihilation(walkers.amps);
     }
-    spawn.mergeIntoMain(wave, walk, walkers, core, schd.minPop, schd.initiator, work);
+    spawn.mergeIntoMain(wave, walk, walkers, core, dat.nAnnihil, schd.minPop, schd.initiator, work);
 
     // Stochastic rounding of small walkers
     walkers.stochasticRoundAll(schd.minPop, core.ht);
@@ -652,6 +655,7 @@ void communicateEstimates(dataFCIQMC& dat, const int nDets, const int nSpawnedDe
   MPI_Allreduce(&dat.HFAmp.front(),      &dat.HFAmpTot.front(),      schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&dat.trialEProj.front(), &dat.trialEProjTot.front(), schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&dat.ampSum.front(),     &dat.ampSumTot.front(),     schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&dat.nAnnihil.front(),   &dat.nAnnihilTot.front(),   schd.nreplicas, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&nDets,                  &nDetsTot,                  1,              MPI_INT,    MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(&nSpawnedDets,           &nSpawnedDetsTot,           1,              MPI_INT,    MPI_SUM, MPI_COMM_WORLD);
 #endif
@@ -688,10 +692,21 @@ void printDataTableHeader()
     int label;
 
     int nColPerReplica;
-    if (schd.trialWFEstimator) {
-      nColPerReplica = 6;
+    int annihilInd;
+    if (schd.printAnnihilStats) {
+      if (schd.trialWFEstimator) {
+        nColPerReplica = 7;
+        annihilInd = 6;
+      } else {
+        nColPerReplica = 5;
+        annihilInd = 4;
+      }
     } else {
-      nColPerReplica = 4;
+      if (schd.trialWFEstimator) {
+        nColPerReplica = 6;
+      } else {
+        nColPerReplica = 4;
+      }
     }
 
     // This loop is for properties printed on each replica
@@ -710,10 +725,18 @@ void printDataTableHeader()
           header.append(". Energy_Num_");
         } else if (j==3) {
           header.append(". Energy_Denom_");
-        } else if (j==4) {
-          header.append(". Trial_E_Num_");
-        } else if (j==5) {
-          header.append(". Trial_E_Denom_");
+        }
+        if (schd.trialWFEstimator) {
+          if (j==4) {
+            header.append(". Trial_E_Num_");
+          } else if (j==5) {
+            header.append(". Trial_E_Denom_");
+          }
+        }
+        if (schd.printAnnihilStats) {
+          if (j==annihilInd) {
+            header.append(". nAnnihil_");
+          }
         }
 
         header.append(to_string(iReplica+1));
@@ -754,6 +777,9 @@ void printDataTable(const dataFCIQMC& dat, const int iter, const int nDets,
       if (schd.trialWFEstimator) {
         printf ("%18.10f   ", dat.trialEProjTot[iReplica]);
         printf ("%18.10f   ", dat.ampSumTot[iReplica]);
+      }
+      if (schd.printAnnihilStats) {
+        printf ("%18.10f   ", dat.nAnnihilTot[iReplica]);
       }
     }
 

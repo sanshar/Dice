@@ -188,6 +188,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.diagonalDumping = input.get("FCIQMC.diagonalDumping", false);
     schd.partialNodeFactor = input.get("FCIQMC.partialNodeFactor", 1.0);
     schd.expApprox = input.get("FCIQMC.expApprox", false);
+    schd.printAnnihilStats = input.get("FCIQMC.printAnnihilStats", true);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 

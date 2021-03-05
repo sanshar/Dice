@@ -12,6 +12,7 @@
     "initialPop": 1000.0,
     "targetPop": 500000.0,
     "mainMemoryFac": 10.0,
-    "spawnMemoryFac": 10.0
+    "spawnMemoryFac": 10.0,
+    "printAnnihilStats": false
   }
 }

@@ -136,6 +136,7 @@ private:
       & diagonalDumping
       & partialNodeFactor
       & expApprox
+      & printAnnihilStats
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -334,6 +335,7 @@ public:
   bool diagonalDumping;
   double partialNodeFactor;
   bool expApprox;
+  bool printAnnihilStats;
 
   //options for rbm
   int numHidden;
