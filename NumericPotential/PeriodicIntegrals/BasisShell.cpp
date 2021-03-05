@@ -29,6 +29,14 @@ int BasisSet::getNbas() {
   return nbas;
 }
 
+int BasisSet::getNbas(int shlIndex) {
+  int nbas = 0;
+  for (int i = 0 ; i < shlIndex; i++) {
+    nbas += BasisShells[i].nCo * (2 * BasisShells[i].l + 1);
+  }
+  return nbas;
+}
+
 void BasisShell::PrintAligned(std::ostream &xout, uint Indent) const
 {
    using boost::format;

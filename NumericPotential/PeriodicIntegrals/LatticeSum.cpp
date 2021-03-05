@@ -58,8 +58,9 @@ void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
   Tx = Txmin; Ty = Tymin; Tz = Tzmin;
 }
 
-LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
-                       double _Eta2RhoCoul, double pscreen) {
+LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
+                       ct::FMemoryStack& Mem, BasisSet& basis, double _Eta2Rho,
+                       double _Eta2RhoCoul, double _Rscreen, double _Kscreen) {
   
   //int nr = 1, nk = 10;
   int ir = 0; int Nr = 4*nr+1;
@@ -135,13 +136,49 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
     Kcoord[3*i+2] = Kcoordcopy[3*idx[i]+2];
   }
 
-  Eta2RhoOvlp = _Eta2Rho/(Rdist[Nrkeep-1]);
+  Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
   Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
-  screen = pscreen;
-  cout << Eta2RhoOvlp<<"  "<<Eta2RhoCoul<<endl;
+  Rscreen = _Rscreen;
+  Kscreen = _Kscreen;
+  //cout << Eta2RhoOvlp<<"  "<<Eta2RhoCoul<<endl;
 
+  
+  //identify unique atom positions
+  atomCenters.reserve(basis.BasisShells.size());
+  for (int i = 0; i<basis.BasisShells.size(); i++) 
+    int idx = indexCenter(basis.BasisShells[i]);
+
+  OrderedLatticeSumForEachAtomPair(basis, Mem);
+  makeKsum(basis);
 }
 
+void LatticeSum::OrderedLatticeSumForEachAtomPair(BasisSet& basis, ct::FMemoryStack& Mem) {
+  int pnatm = atomCenters.size()/3;
+  int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
+  
+  //for coord A and B of atoms, arrange lattice space summations in
+  //increasing order by distance |pA - pB - T|, notice that this is not
+  //necessarily in the same order as increasing  |T|
+  ROrderedIdx.resize(nT, vector<size_t>(Rdist.size(), -1));
+  for (int sh1 = 0 ; sh1 < basis.BasisShells.size(); sh1++) {
+    for (int sh2 = 0 ; sh2 <= sh1; sh2++) {
+      int T1 = indexCenter(basis.BasisShells[sh1]);
+      int T2 = indexCenter(basis.BasisShells[sh2]);
+      int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+      
+      BasisShell *pA = &basis.BasisShells[sh1];
+      BasisShell *pC = &basis.BasisShells[sh2];
+
+      //otherwise it has already been populated
+      if (ROrderedIdx[T][0] == -1) { 
+        double Tx, Ty, Tz;
+        getRelativeCoords(pA, pC, Tx, Ty, Tz);
+        getIncreasingIndex(ROrderedIdx[T], Tx, Ty, Tz, Mem);          
+      }
+    }
+  }
+
+}
 
 void LatticeSum::printLattice() {
   cout <<"Rlattice: "<<endl;
@@ -172,6 +209,22 @@ void LatticeSum::getIncreasingIndex(size_t *&idx, double Tx, double Ty, double T
                     Tz + Rcoord[3*i + 2]);
   }
   std::stable_sort(idx, (idx+Rdist.size()),
+                   [&Tdist](size_t i1, size_t i2) {return Tdist[i1] < Tdist[i2];});
+
+  Mem.Free(Tdist);
+}
+
+void LatticeSum::getIncreasingIndex(vector<size_t>& idx, double Tx, double Ty, double Tz, ct::FMemoryStack& Mem) {
+
+  double* Tdist;
+  Mem.Alloc(Tdist, Rdist.size());
+  for (int i=0; i<Rdist.size(); i++) {
+    idx[i] = i;
+    Tdist[i] = dist(Tx + Rcoord[3*i + 0],
+                    Ty + Rcoord[3*i + 1],
+                    Tz + Rcoord[3*i + 2]);
+  }
+  std::stable_sort(&idx[0], (&idx[0]+Rdist.size()),
                    [&Tdist](size_t i1, size_t i2) {return Tdist[i1] < Tdist[i2];});
   
   Mem.Free(Tdist);
@@ -212,14 +265,12 @@ int LatticeSum::indexCenter(BasisShell& bas) {
 //but it does not depend on rho, only on the T (distance between basis)
 //and the L (anuglar moment)
 void LatticeSum::makeKsum(BasisSet& basis) {
-  //idensify unique atom positions
-  atomCenters.reserve(basis.BasisShells.size());
-  for (int i = 0; i<basis.BasisShells.size(); i++) 
-    int idx = indexCenter(basis.BasisShells[i]);
 
   int pnatm = atomCenters.size()/3;
-
   int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
+
+  ROrderedIdx.resize(nT, vector<size_t>(Rcoord.size(), 1));
+  
   int nL = 13; //for each pair there are maximum 12 Ls
 
   KSumIdx.resize(nT, vector<long>(nL,-1)); //make all elements -1
@@ -273,7 +324,8 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 					     Tx, Ty, Tz,
 					     expVal, scale);
 	  
-	  if (abs(maxG * scale * expVal) < screen) {
+	  //if (abs(maxG * scale * expVal) < Kscreen) {
+	  if (abs(maxG * scale * expVal) < 1e-13) {
 	    break;
 	  }
 	}      
@@ -281,9 +333,5 @@ void LatticeSum::makeKsum(BasisSet& basis) {
     }
   }
   
-  //now populate the various 
-  cout <<"start index "<< startIndex <<endl;
-  //now precalculate the 
-  //exit(0);
 }
 
