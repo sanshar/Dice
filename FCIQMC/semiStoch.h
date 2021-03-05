@@ -479,13 +479,16 @@ class semiStoch {
 
   }
 
-  void determAnnihilation(double** walkerAmps) {
+  void determAnnihilation(double** walkerAmps, vector<double> nAnnihil) {
     for (int iDet=0; iDet<nDetsThisProc; iDet++) {
       // The position of this core determinant in the main list
       int ind = indices[iDet];
       for (int iReplica=0; iReplica<nreplicas; iReplica++) {
         // Add the deterministic projection amplitudes into the main
         // walker list amplitudes
+        if (walkerAmps[ind][iReplica]*amps[iDet][iReplica] < 0.0) {
+          nAnnihil[iReplica] += 2.0*min(abs(walkerAmps[ind][iReplica]), abs(amps[iDet][iReplica]));
+        }
         walkerAmps[ind][iReplica] += amps[iDet][iReplica];
       }
     }

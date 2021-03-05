@@ -401,7 +401,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
 
     performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
     if (schd.semiStoch) {
-      core.determAnnihilation(walkers.amps);
+      core.determAnnihilation(walkers.amps, dat.nAnnihil);
     }
     spawn.mergeIntoMain(wave, walk, walkers, core, dat.nAnnihil, schd.minPop, schd.initiator, work);
 
