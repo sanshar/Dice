@@ -136,6 +136,7 @@ private:
       & ciThreshold
       & leftWave
       & rightWave
+      & ndets
 
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -346,6 +347,7 @@ public:
   double choleskyThreshold;
   std::string leftWave;
   std::string rightWave;
+  size_t ndets;
 };
 
 /**
@@ -447,5 +449,5 @@ void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixX
 
 
 // reads uccsd amplitudes
-void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 2>& doubles, std::array<Eigen::MatrixXd, 2>& basisRotation, std::string fname = "uccsd.h5");
+void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 3>& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "uccsd.h5");
 #endif

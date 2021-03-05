@@ -630,7 +630,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
     exit(0);
   }
   //sz = 0;
-  nalpha = nelec/2 + sz/2;
+  nalpha = (nelec + sz)/2;
   nbeta = nelec - nalpha;
   
   Determinant::EffDetLen = (norbs) / 64 + 1;

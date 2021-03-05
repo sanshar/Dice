@@ -5,12 +5,12 @@
 #include "Hamiltonian.h"
 #include "Wavefunction.h"
 
-// uccsd wave function
+// uccsd wave function, using rohf ref
 class UCCSD : public Wavefunction {
   public:
     std::array<std::vector<Eigen::MatrixXcd>, 2> hsOperators;
     std::array<Eigen::MatrixXcd, 2> oneBodyOperator;
-    std::array<Eigen::MatrixXd, 2> basisRotation;
+    Eigen::MatrixXd basisRotation;
     int norbs, nalpha, nbeta;
     std::normal_distribution<double> normal;
 

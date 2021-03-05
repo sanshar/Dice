@@ -16,7 +16,7 @@
 #include "KSGHF.h"
 #include "Multislater.h"
 #include "CCSD.h"
-//#include "UCCSD.h"
+#include "UCCSD.h"
 #include "sJastrow.h"
 #include "MixedEstimator.h"
 
@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
   
   Hamiltonian ham(schd.integralsFile);
   DQMCWalker walker;
+  if (commrank == 0) cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
   if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
 
   // left state
@@ -80,12 +81,16 @@ int main(int argc, char *argv[])
     if (commrank == 0) cout << "Not supported yet\n";
     exit(0);
   }
-  //else if (schd.leftWave == "uccsd") {
-  //  if (commrank == 0) cout << "Not supported yet\n";
-  //  exit(0);
-  //}
+  else if (schd.leftWave == "uccsd") {
+    if (commrank == 0) cout << "Not supported yet\n";
+    exit(0);
+  }
   else if (schd.leftWave == "jastrow") {
     waveLeft = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
+  }
+  else {
+    if (commrank == 0) cout << "Left wave function not specified\n";
+    exit(0);
   }
   
   // right state
@@ -109,12 +114,16 @@ int main(int argc, char *argv[])
   else if (schd.rightWave == "ccsd") {
     waveRight = new CCSD(ham.norbs, ham.nalpha);
   }
-  //else if (schd.rightWave == "uccsd") {
-  //  waveRight = new UCCSD(ham.norbs, ham.nalpha, ham.nbeta);
-  //  walker = DQMCWalker(false);
-  //}
+  else if (schd.rightWave == "uccsd") {
+    waveRight = new UCCSD(ham.norbs, ham.nalpha, ham.nbeta);
+    walker = DQMCWalker(false);
+  }
   else if (schd.rightWave == "jastrow") {
     waveRight = new sJastrow(ham.norbs, ham.nalpha, ham.nbeta);
+  }
+  else {
+    if (commrank == 0) cout << "Right wave function not specified\n";
+    exit(0);
   }
  
   if (schd.dt == 0.) calcMixedEstimatorNoProp(*waveLeft, *waveRight, walker, ham);

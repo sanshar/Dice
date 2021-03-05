@@ -183,6 +183,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.choleskyThreshold = input.get("sampling.choleskyThreshold", 0.005);
     schd.leftWave = algorithm::to_lower_copy(input.get("wavefunction.left", "rhf"));
     schd.rightWave = algorithm::to_lower_copy(input.get("wavefunction.right", "rhf"));
+    schd.ndets = input.get("wavefunction.ndets", 1e6);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -830,7 +831,7 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       }
       
       if (creA.size() + creB.size() > schd.excitationLevel) continue;
-      if (abs(ciCoeff) < schd.ciThreshold) break;
+      if (abs(ciCoeff) < schd.ciThreshold || numDets == schd.ndets) break;
       numDets++;
       ciCoeffs.push_back(ciCoeff);
       ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
@@ -959,14 +960,14 @@ void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixX
 
 
 // reads uccsd amplitudes
-void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 2>& doubles, std::array<Eigen::MatrixXd, 2>& basisRotation, std::string fname)
+void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 3>& doubles, Eigen::MatrixXd& basisRotation, std::string fname)
 {
   int nocc0 = singles[0].rows(), nopen0 = singles[0].cols();
   int nocc1 = singles[1].rows(), nopen1 = singles[1].cols();
   int norbs = nocc0 + nopen0;
   int nexc0 = nocc0 * nopen0, nexc1 = nocc1 * nopen1;
 
-  hid_t file = (-1), dataset_singles0, dataset_singles1, dataset_doubles0, dataset_doubles1, dataset_rotation0, dataset_rotation1;  /* identifiers */
+  hid_t file = (-1), dataset_singles0, dataset_singles1, dataset_doubles0, dataset_doubles1, dataset_doubles2, dataset_rotation;  /* identifiers */
   herr_t status;
 
   H5E_BEGIN_TRY {
@@ -1013,26 +1014,11 @@ void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::Matrix
     for (int i = 0; i < norbs; i++) 
       for (int j = 0; j < norbs; j++)
         rotationMem[i * norbs + j] = 0.;
-    dataset_rotation0 = H5Dopen(file, "/rotation0", H5P_DEFAULT);
-    status = H5Dread(dataset_rotation0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
+    dataset_rotation = H5Dopen(file, "/rotation", H5P_DEFAULT);
+    status = H5Dread(dataset_rotation, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j < norbs; j++) {
-        basisRotation[0](i, j) = rotationMem[i * norbs + j];
-      }
-    }
-    delete [] rotationMem;
-  }
-  
-  {
-    double *rotationMem = new double[ norbs * norbs ];
-    for (int i = 0; i < norbs; i++) 
-      for (int j = 0; j < norbs; j++)
-        rotationMem[i * norbs + j] = 0.;
-    dataset_rotation1 = H5Dopen(file, "/rotation1", H5P_DEFAULT);
-    status = H5Dread(dataset_rotation1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
-    for (int i = 0; i < norbs; i++) {
-      for (int j = 0; j < norbs; j++) {
-        basisRotation[1](i, j) = rotationMem[i * norbs + j];
+        basisRotation(i, j) = rotationMem[i * norbs + j];
       }
     }
     delete [] rotationMem;
@@ -1063,6 +1049,21 @@ void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::Matrix
     for (int i = 0; i < nexc1; i++) {
       for (int j = 0; j < nexc1; j++) {
         doubles[1](i, j) = doublesMem[i * nexc1 + j];
+      }
+    }
+    delete [] doublesMem;
+  }
+  
+  {
+    double *doublesMem = new double[ nexc0 * nexc1 ];
+    for (int i = 0; i < nexc0; i++) 
+      for (int j = 0; j < nexc1; j++)
+        doublesMem[i * nexc1 + j] = 0.;
+    dataset_doubles2 = H5Dopen(file, "/doubles2", H5P_DEFAULT);
+    status = H5Dread(dataset_doubles2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+    for (int i = 0; i < nexc0; i++) {
+      for (int j = 0; j < nexc1; j++) {
+        doubles[2](i, j) = doublesMem[i * nexc1 + j];
       }
     }
     delete [] doublesMem;

@@ -150,6 +150,7 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/KSGHF.o \
 	obj/Multislater.o \
 	obj/CCSD.o \
+	obj/UCCSD.o \
 	obj/sJastrow.o \
 	obj/MixedEstimator.o \
 	obj/ProjectedMF.o
