@@ -14,6 +14,7 @@
     "mainMemoryFac": 10.0,
     "spawnMemoryFac": 10.0,
     "initiator": true,
-    "nreplicas": 2
+    "nreplicas": 2,
+    "printAnnihilStats": false
   }
 }

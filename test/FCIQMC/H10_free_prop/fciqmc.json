@@ -30,7 +30,8 @@
     "importanceSampling": "false",
     "trialInit": "true",
     "applyNode": "false",
-    "diagonalDumping": "false"
+    "diagonalDumping": "false",
+    "printAnnihilStats": false
   },
   "optimizer":
   {

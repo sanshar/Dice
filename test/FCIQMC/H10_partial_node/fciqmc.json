@@ -31,7 +31,8 @@
     "trialInit": "true",
     "applyNode": "true",
     "diagonalDumping": "true",
-    "partialNodeFactor": 0.3
+    "partialNodeFactor": 0.3,
+    "printAnnihilStats": false
   },
   "optimizer":
   {

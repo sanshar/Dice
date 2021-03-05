@@ -16,6 +16,7 @@
     "initiator": true,
     "heatBath": true,
     "nreplicas": 2,
-    "EN2": true
+    "EN2": true,
+    "printAnnihilStats": false
   }
 }

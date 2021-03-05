@@ -29,7 +29,8 @@
     "trialWFEstimator": "true",
     "importanceSampling": "true",
     "trialInit": "true",
-    "semiStoch": "true"
+    "semiStoch": "true",
+    "printAnnihilStats": false
   },
   "optimizer":
   {
