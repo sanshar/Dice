@@ -34,8 +34,8 @@ UCCSD::UCCSD(int pnorbs, int pnalpha, int pnbeta, std::string fname)
   if (commrank == 0) cout << "\nPreparing CC HS operators\n";
   // calculate hs operators by diagonalizing doubles amplitudes
   MatrixXd doublesCombined = MatrixXd::Zero(nexc[0] + nexc[1], nexc[0] + nexc[1]);
-  doublesCombined.block(0, 0, nexc[0], nexc[0]) = doubles[0];
-  doublesCombined.block(nexc[0], nexc[0], nexc[1], nexc[1]) = doubles[1];
+  doublesCombined.block(0, 0, nexc[0], nexc[0]) = doubles[0] / 2;
+  doublesCombined.block(nexc[0], nexc[0], nexc[1], nexc[1]) = doubles[1] / 2;
   doublesCombined.block(0, nexc[0], nexc[0], nexc[1]) = doubles[2];
   doublesCombined.block(nexc[0], 0, nexc[1], nexc[0]) = doubles[2].transpose();
   SelfAdjointEigenSolver<MatrixXd> eigensolver(doublesCombined);
