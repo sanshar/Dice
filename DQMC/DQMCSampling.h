@@ -4,17 +4,6 @@
 #include <utility>
 #include <vector>
 
-
-// calculates energy of the imaginary time propagated wave function
-// w/o jastrow
-void calcEnergyMetropolis(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
-
-
-// calculates variational energy estimator of the imaginary time propagated wave function
-// w/ jastrow
-void calcEnergyJastrowMetropolis(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
-
-
 // calculates energy of the imaginary time propagated wave function using direct sampling of exponentials
 void calcEnergyDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 void calcEnergyDirectVartiational(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
@@ -25,6 +14,10 @@ void calcEnergyDirectMultiSlater(double enuc, Eigen::MatrixXd& h1, Eigen::Matrix
 // calculates mixed energy estimator of the imaginary time propagated wave function
 // w jastrow
 void calcEnergyJastrowDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
+
+void calcEnergyCCSDDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
+void calcEnergyCCSDDirectVariational(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
+void calcEnergyCCSDMultiSlaterDirect(double enuc, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::MatrixXd>& chol);
 
 // calculates variational energy estimator of the imaginary time propagated wave function
 // w jastrow

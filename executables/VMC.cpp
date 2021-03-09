@@ -113,17 +113,22 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "jastrowslater") {
+  else if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "jastrowmultislater") {
+  else if (schd.wavefunctionType == "sjastrowslater") {
+    CorrelatedWavefunction<SJastrow, Slater> wave; Walker<SJastrow, Slater> walk;
+    runVMC(wave, walk);
+  }
+  
+  else if (schd.wavefunctionType == "jastrowmultislater") {
     CorrelatedWavefunction<Jastrow, MultiSlater> wave; Walker<Jastrow, MultiSlater> walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "jastrowmultislater2") {
+  else if (schd.wavefunctionType == "jastrowmultislater2") {
     JastrowMultiSlater wave; JastrowMultiSlaterWalker walk;
     runVMC(wave, walk);
     if (commrank == 0 && schd.printLevel >= 9) {
@@ -133,32 +138,32 @@ int main(int argc, char *argv[])
     }
   }
   
-  if (schd.wavefunctionType == "resonatingwavefunction") {
+  else if (schd.wavefunctionType == "resonatingwavefunction") {
     ResonatingWavefunction wave; ResonatingWalker walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "resonatingtrwavefunction") {
+  else if (schd.wavefunctionType == "resonatingtrwavefunction") {
     ResonatingTRWavefunction wave; ResonatingTRWalker walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "trwavefunction") {
+  else if (schd.wavefunctionType == "trwavefunction") {
     TRWavefunction wave; TRWalker walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "permutedwavefunction") {
+  else if (schd.wavefunctionType == "permutedwavefunction") {
     PermutedWavefunction wave; PermutedWalker walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "permutedtrwavefunction") {
+  else if (schd.wavefunctionType == "permutedtrwavefunction") {
     PermutedTRWavefunction wave; PermutedTRWalker walk;
     runVMC(wave, walk);
   }
   
-  if (schd.wavefunctionType == "nnbs") {
+  else if (schd.wavefunctionType == "nnbs") {
     NNBS wave; NNBSWalker walk;
     runVMC(wave, walk);
   }

@@ -586,7 +586,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 } // end readIntegrals
 
 //=============================================================================
-void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol) {
+void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol) {
 //-----------------------------------------------------------------------------
     /*!
     Read fcidump file and populate "I1, I2, coreE, nelec, norbs"
@@ -598,7 +598,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
             Name of the FCIDUMP file
     */
 //-----------------------------------------------------------------------------
-  int nelec, sz, norbs, nalpha, nbeta, nchol;
+  int nelec, sz, nchol;
   hid_t file = (-1), dataset_header, dataset_hcore, dataset_hcoreMod, dataset_chol, dataset_energy_core ;  /* identifiers */
   herr_t status;
 
@@ -630,7 +630,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
     exit(0);
   }
   //sz = 0;
-  nalpha = nelec/2 + sz/2;
+  nalpha = (nelec + sz)/2;
   nbeta = nelec - nalpha;
   
   Determinant::EffDetLen = (norbs) / 64 + 1;
@@ -691,7 +691,7 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
   dataset_energy_core = H5Dopen(file, "/energy_core", H5P_DEFAULT);
   status = H5Dread(dataset_energy_core, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, energy_core);
   coreE = energy_core[0];
-
+  ecore = energy_core[0];
 
   status = H5Fclose(file);
   //cout << "Finished reading integrals\n";

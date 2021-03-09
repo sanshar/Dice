@@ -1,6 +1,5 @@
 #ifndef SERIAL
 #include <iostream>
-#include <fstream>
 #include <iomanip>
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -30,6 +29,8 @@ DQMCStatistics::DQMCStatistics(int pSampleSize)
   converged.resize(sampleSize,-1);
   convergedE = ArrayXcd::Zero(sampleSize);
   convergedDev = ArrayXd::Zero(sampleSize);
+  convergedDev2 = ArrayXd::Zero(sampleSize);
+  convergedPhase = ArrayXcd::Zero(sampleSize);
   errorTargets = schd.errorTargets;    // TODO: change this so that these are passed to the constructor
 }
 
@@ -45,10 +46,15 @@ void DQMCStatistics::addSamples(ArrayXcd& numSample, ArrayXcd& denomSample)
   nSamples++;
 }
 
+// get the current number of samples
+size_t DQMCStatistics::getNumSamples()
+{
+  return nSamples;
+}
 
 // calculates error by blocking data
 // use after gathering data across processes for better estimates
-void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
+void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2, ArrayXcd& bias)
 {
   ArrayXcd eneEstimates = numMean / denomMean;
   int nBlocks;
@@ -61,8 +67,10 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
     nBlocks = 10;
     blockSize = size_t(nSamples / 10);
   }
-  ArrayXd var(sampleSize), var2(sampleSize);
-  var.setZero(); var2.setZero();
+  ArrayXd var(sampleSize), var2(sampleSize), denomVar(sampleSize), numVar(sampleSize);
+  var.setZero(); var2.setZero(); denomVar.setZero(); numVar.setZero();
+  ArrayXcd cov(sampleSize);
+  cov.setZero();
 
   // calculate variance of blocked energies on each process
   for (int i = 0; i < nBlocks; i++) {
@@ -78,15 +86,36 @@ void DQMCStatistics::calcError(ArrayXd& error, ArrayXd& error2)
     blockEne = blockNum / blockDenom;
     var += (blockEne - eneEstimates).abs().pow(2);
     var2 += (blockEne - eneEstimates).abs().pow(4);
+    numVar += (blockNum - numMean).abs().pow(2);
+    denomVar += (blockDenom - denomMean).abs().pow(2);
+    cov += (blockNum - numMean) * (blockDenom - denomMean);
   }
   
   // gather variance across processes
   MPI_Allreduce(MPI_IN_PLACE, var.data(), var.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, var2.data(), var2.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, numVar.data(), numVar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, denomVar.data(), denomVar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, cov.data(), cov.size(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
 
   int nBlockedSamples = nBlocks * commsize;
   var /= (nBlockedSamples - 1);
   var2 /= (nBlockedSamples);
+  numVar /= (nBlockedSamples - 1);
+  denomVar /= (nBlockedSamples - 1);
+  cov /= (nBlockedSamples - 1);
+
+  // bias
+  bias = - (numMean * denomVar / denomMean.pow(3) - cov / denomMean.pow(2)) / nBlockedSamples;
+
+  //if (commrank == 0) {
+  //  cout << "\nnumMean:  " << numMean.transpose() << endl;
+  //  cout << "numVar:  " << numVar.transpose() << endl;
+  //  cout << "denomMean:  " << denomMean.transpose() << endl;
+  //  cout << "denomVar:  " << denomVar.transpose() << endl;
+  //  cout << "cov:  " << cov.transpose() << endl;
+  //  cout << "bias (not added to the energies):  " << bias.transpose() << endl << endl;
+  //}
 
   // calculate error estimates a la clt
   error = sqrt(var / nBlockedSamples);
@@ -116,9 +145,11 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> del
 
   // calc error estimates
   ArrayXd error, error2;
-  calcError(error, error2);
+  ArrayXcd bias;
+  calcError(error, error2, bias);
 
   eneEstimates += delta;
+  //eneEstimates += bias;
 
   // print
   if (commrank == 0) {
@@ -129,17 +160,20 @@ void DQMCStatistics::gatherAndPrintStatistics(ArrayXd iTime, complex<double> del
 
       }
       else { //after it has converged just use the old ones
-        cout << format(" %14.2f   (%14.8f, %14.8f)   ( %8.2e )  \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n); 
+        cout << format(" %14.2f   (%14.8f, %14.8f)   (%8.2e   (%8.2e))   (%3.3f, %3.3f) \n") % iTime(n) % convergedE(n).real() % convergedE(n).imag() % convergedDev(n) % convergedDev2(n) % convergedPhase(n).real() % convergedPhase(n).imag(); 
       }
 
     }
   }
-  //if error falls below 1.5e-3 then stop calculating it
+
+  // if error falls below the specified threshold then stop calculating it
   for (int n = 0; n < sampleSize; n++) {
-    if (error(n) < errorTargets[n] ) {
+    if (error(n) < errorTargets[n]) {
       converged[n] = 1;
       convergedE(n) = eneEstimates(n);
       convergedDev(n) = error(n);
+      convergedDev2(n) = error2(n);
+      convergedPhase(n) = avgPhase(n);
     }
   }
   
@@ -175,7 +209,7 @@ void DQMCStatistics::writeSamples()
   samplesFile << "num_i  denom_i\n";
   for (int i = 0; i < nSamples; i++) {
     for (int n = 0; n < sampleSize; n++)
-      samplesFile << setprecision(8) << numSamples[i](n) << "  "  << denomSamples[i](n) << "  |  ";
+      samplesFile << format("  (%14.8f, %14.8f) ,  (%14.8f, %14.8f)  |") % numSamples[i](n).real() % numSamples[i](n).imag() % denomSamples[i](n).real() % denomSamples[i](n).imag();
     samplesFile << endl;
   }
   samplesFile.close();

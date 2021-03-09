@@ -3,8 +3,8 @@ USE_INTEL = yes
 COMPILE_NUMERIC = yes
 
 EIGEN=/projects/sash2458/newApps/eigen/
-#BOOST=/projects/sash2458/newApps/boost_1_67_0/
-BOOST=/projects/anma2640/boost_1_66_0/
+BOOST=/projects/sash2458/newApps/boost_1_67_0/
+#BOOST=/projects/anma2640/boost_1_66_0/
 LIBIGL=/projects/sash2458/apps/libigl/include/
 HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 
@@ -16,7 +16,8 @@ HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 
 
-FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ -fpermissive #-DComplex
+FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
+
 
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
@@ -78,6 +79,7 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/AGP.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
+	obj/SJastrow.o \
 	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/RBM.o \
@@ -139,11 +141,22 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/SHCIshm.o \
 	obj/Determinants.o \
 	obj/Correlator.o \
-	obj/DQMCUtils.o \
 	obj/DQMCMatrixElements.o \
-	obj/DQMCSampling.o \
 	obj/DQMCStatistics.o \
+	obj/DQMCWalker.o \
+	obj/Hamiltonian.o \
+	obj/RHF.o \
+	obj/UHF.o \
+	obj/KSGHF.o \
+	obj/Multislater.o \
+	obj/CCSD.o \
+	obj/UCCSD.o \
+	obj/sJastrow.o \
+	obj/MixedEstimator.o \
 	obj/ProjectedMF.o
+
+#obj/DQMCSampling.o \
+#obj/DQMCUtils.o \
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
@@ -172,11 +185,11 @@ FCIQMC: bin/FCIQMC
 
 
 #all: bin/VMC
-all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic bin/libPeriodic.so #bin/sPT  bin/GFMC
+all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic #bin/sPT  bin/GFMC
 FCIQMC: bin/FCIQMC
 #bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
-bin/periodic: bin/periodic
+bin/periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
 
 bin/libPeriodic.so: bin/libPeriodic.so
