@@ -399,7 +399,7 @@ void runFCIQMC(Wave& wave, TrialWalk& walk, const int norbs, const int nel,
       }
     }
 
-    performDeathAllWalkers(walkers, I1, I2, coreE, dat.Eshift, schd.tau);
+    performDeathAllWalkers(walkers, I1, I2, core, coreE, dat.Eshift, schd.tau);
     if (schd.semiStoch) {
       core.determAnnihilation(walkers.amps, dat.nAnnihil);
     }
@@ -580,23 +580,39 @@ void calcEN2Correction(walkersFCIQMC<TrialWalk>& walkers, const spawnFCIQMC& spa
 // the walkers.det array
 template<typename TrialWalk>
 void performDeath(const int iDet, walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
-                  double& coreE, const vector<double>& Eshift, const double tau)
+                  semiStoch& core, double& coreE, const vector<double>& Eshift, const double tau)
 {
-  double parentE;
-  if (schd.diagonalDumping) {
-    parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
-  } else {
-    parentE = walkers.diagH[iDet];
+  bool coreDet = false;
+  if (schd.semiStoch) {
+    simpleDet parentSimpleDet = walkers.dets[iDet].getSimpleDet();
+    coreDet = core.ht.find(parentSimpleDet) != core.ht.end();
   }
-  for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-    double fac = tau * ( parentE - Eshift[iReplica] );
-    if (schd.expApprox && fac > 1.0) {
-      expApproxLogging(walkers, iDet, iReplica, fac);
-      walkers.amps[iDet][iReplica] *= exp(-fac);
+
+  if ( walkers.validWalker(iDet) || coreDet ) {
+    double parentE;
+    if (schd.diagonalDumping) {
+      parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
     } else {
-      walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+      parentE = walkers.diagH[iDet];
+    }
+    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+      double fac = tau * ( parentE - Eshift[iReplica] );
+      if (schd.expApprox && fac > 1.0) {
+        expApproxLogging(walkers, iDet, iReplica, fac);
+        walkers.amps[iDet][iReplica] *= exp(-fac);
+      } else {
+        walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+      }
+    }
+
+    // If the population is now 0 on all replicas then remove the ht entry
+    if (walkers.allUnoccupied(iDet) && !coreDet) {
+      walkers.ht.erase(walkers.dets[iDet]);
+      walkers.lastEmpty += 1;
+      walkers.emptyDets[walkers.lastEmpty] = iDet;
     }
   }
+
 }
 
 template<typename TrialWalk>
@@ -615,24 +631,42 @@ void expApproxLogging(walkersFCIQMC<TrialWalk>& walkers, int iDet, int iReplica,
 // walkers.dets
 template<typename TrialWalk>
 void performDeathAllWalkers(walkersFCIQMC<TrialWalk>& walkers, oneInt &I1, twoInt &I2,
-                  double& coreE, const vector<double>& Eshift, const double tau)
+                  semiStoch& core, double& coreE, const vector<double>& Eshift, const double tau)
 {
   for (int iDet=0; iDet<walkers.nDets; iDet++) {
-    double parentE;
-    if (schd.diagonalDumping) {
-      parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
-    } else {
-      parentE = walkers.diagH[iDet];
+
+    bool coreDet = false;
+    if (schd.semiStoch) {
+      simpleDet parentSimpleDet = walkers.dets[iDet].getSimpleDet();
+      coreDet = core.ht.find(parentSimpleDet) != core.ht.end();
     }
-    for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
-      double fac = tau * ( parentE - Eshift[iReplica] );
-      if (schd.expApprox && fac > 1.0) {
-        expApproxLogging(walkers, iDet, iReplica, fac);
-        walkers.amps[iDet][iReplica] *= exp(-fac);
+
+    if ( walkers.validWalker(iDet) || coreDet ) {
+      double parentE;
+      if (schd.diagonalDumping) {
+        parentE = walkers.diagH[iDet] + walkers.SVTotal[iDet] * schd.partialNodeFactor;
       } else {
-        walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+        parentE = walkers.diagH[iDet];
       }
+      for (int iReplica=0; iReplica<schd.nreplicas; iReplica++) {
+        double fac = tau * ( parentE - Eshift[iReplica] );
+        if (schd.expApprox && fac > 1.0) {
+          expApproxLogging(walkers, iDet, iReplica, fac);
+          walkers.amps[iDet][iReplica] *= exp(-fac);
+        } else {
+          walkers.amps[iDet][iReplica] -= fac * walkers.amps[iDet][iReplica];
+        }
+      }
+
+      // If the population is now 0 on all replicas then remove the ht entry
+      if (walkers.allUnoccupied(iDet) && !coreDet) {
+        walkers.ht.erase(walkers.dets[iDet]);
+        walkers.lastEmpty += 1;
+        walkers.emptyDets[walkers.lastEmpty] = iDet;
+      }
+
     }
+
   }
 }
 
