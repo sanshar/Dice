@@ -36,7 +36,8 @@ typedef FORTINT const
    &FINTARG;
 typedef double const
    &FDBLARG;
-#define FORT_Extern(lowercasef,UPPERCASEF) UPPERCASEF
+//#define FORT_Extern(lowercasef,UPPERCASEF) UPPERCASEF
+#define FORT_Extern(lowercasef,UPPERCASEF) lowercasef
 
 using std::ptrdiff_t;
 using std::size_t;
@@ -48,23 +49,23 @@ extern "C"{
 
         //  C := alpha*op( A )*op( B ) + beta*C,
         // Trans*: 'N' (notranspose), 'T' (transpose) or 'C' (conjugate-transpose)(=T)
-        #define DGEMM FORT_Extern(dgemm,DGEMM)
+        #define DGEMM FORT_Extern(dgemm_,DGEMM)
         void DGEMM( char const &TransA, char const &TransB, FINTARG M, FINTARG N, FINTARG K,
             FDBLARG alpha, double const *A, FINTARG lda, double const *B, FINTARG ldb,
             FDBLARG beta, double *C, FINTARG ldc );
 
         //  C := alpha*op(A)*op(A^T) + beta*C,
-        #define DSYRK FORT_Extern(dsyrk,DSYRK)
+        #define DSYRK FORT_Extern(dsyrk_,DSYRK)
         void DSYRK( char const &UpLo, char const &TransA, FINTARG N, FINTARG K,
             FDBLARG alpha, double const *A, FINTARG lda,
             FDBLARG beta, double *C, FINTARG ldc );
 
         // y += alpha * M * x
-        #define DGEMV FORT_Extern(dgemv,DGEMV)
+        #define DGEMV FORT_Extern(dgemv_,DGEMV)
         void DGEMV(char const &Trans, FINTARG M, FINTARG N, FDBLARG Alpha, double const * A, FINTARG lda, double const * X, FINTARG incx, FDBLARG Beta, double * y, FINTARG incy);
 
         // A += alpha * x y^T
-        #define DGER FORT_Extern(dger,DGER)
+        #define DGER FORT_Extern(dger_,DGER)
         void DGER(FINTARG M, FINTARG N, double const &Alpha, double const * X, FINTARG incx, double const * Y, FINTARG incy, double * A, FINTARG ldA);
 
         // computes eigenvalues and eigenvectors of a symmetric matrix:
@@ -76,12 +77,12 @@ extern "C"{
         //  Work: work space
         //  lWork: Work space size. "For optimal efficiency, LWORK >= (NB+2)*N,
         // where NB is the blocksize for DSYTRD returned by ILAENV."
-        #define DSYEV FORT_Extern(dsyev,DSYEV)
+        #define DSYEV FORT_Extern(dsyev_,DSYEV)
         void DSYEV(char const &jobz, char const &uplo, FINTARG N, double *A, FINTARG LDA, double *W, double *WORK, FINTARG LWORK, FORTINT &INFO);
-        #define DSYEVD FORT_Extern(dsyevd,DSYEVD)
+        #define DSYEVD FORT_Extern(dsyevd_,DSYEVD)
         void DSYEVD(char const &jobz, char const &uplo, FINTARG N, double *A, FINTARG LDA, double *W, double *WORK, FINTARG LWORK, FORTINT *IWORK, FINTARG LIWORK, FORTINT &INFO);
 
-        #define DSYGV FORT_Extern(dsygv,DSYGV)
+        #define DSYGV FORT_Extern(dsygv_,DSYGV)
         void DSYGV(FINTARG ITYPE, char const &JOBZ, char const &UPLO, FINTARG N,
             double *A, FINTARG LDA, double const *B, FINTARG LDB, double *EW,
             double *WORK, FORTINT &LWORK, FORTINT &INFO );
@@ -89,33 +90,33 @@ extern "C"{
         // compute m x n matrix LU factorization.
         // info: =0 success. > 0: matrix is singular, factorization cannot be used
         // to solve linear systems.
-        #define DGETRF FORT_Extern(dgetrf,DGETRF)
+        #define DGETRF FORT_Extern(dgetrf_,DGETRF)
         void DGETRF(FINTARG M, FINTARG N, double const *pA, FINTARG LDA, FORTINT *ipiv, FORTINT *INFO );
-        #define DTRTRI FORT_Extern(dtrtri,DTRTRI)
+        #define DTRTRI FORT_Extern(dtrtri_,DTRTRI)
         void DTRTRI(char const &Uplo, char const &Diag, FINTARG N, double *pA, FINTARG LDA, FORTINT *info);
 
 
         // solves A * X = B for X. n: number of equations (order of A).
         // needs LU decomposition as input.
-        #define DGESV FORT_Extern(dgesv,DGESV)
+        #define DGESV FORT_Extern(dgesv_,DGESV)
         void DGESV( FINTARG n, FINTARG nrhs, double *A, FINTARG lda, FINTARG ipivot, double *B,
             FINTARG ldb, FORTINT &info );
 
-        #define DPOTRF FORT_Extern(dpotrf,DPOTRF)
+        #define DPOTRF FORT_Extern(dpotrf_,DPOTRF)
         void DPOTRF(char const &UpLo, FINTARG n, double *A, FINTARG lda, FORTINT *info);
-        #define DPOTRS FORT_Extern(dpotrs,DPOTRS)
+        #define DPOTRS FORT_Extern(dpotrs_,DPOTRS)
         void DPOTRS(char const &UpLo, FINTARG n, FINTARG nRhs, double *A, FINTARG lda, double *B, FINTARG ldb, FORTINT *info);
-        #define DTRTRS FORT_Extern(dtrtrs,DTRTRS)
+        #define DTRTRS FORT_Extern(dtrtrs_,DTRTRS)
         void DTRTRS(char const &UpLo, char const &Trans, char const &Diag, FINTARG N, FINTARG NRHS, double *A, FINTARG lda, double *B, FINTARG ldb, FORTINT *info);
         // ^- gna.. dtrtrs is rather useless. It just does some argument checks and
         // then calls dtrsm with side == 'L' (which probably does the same checks again).
-        #define DTRSM FORT_Extern(dtrsm,DTRSM)
+        #define DTRSM FORT_Extern(dtrsm_,DTRSM)
         void DTRSM(char const &Side, char const &UpLo, char const &Trans, char const &Diag, FINTARG nRowsB, FINTARG nColsB, double const &Alpha, double *A, FINTARG lda, double *B, FINTARG ldb, FORTINT *info);
-        #define DTRMM FORT_Extern(dtrmm,DTRMM)
+        #define DTRMM FORT_Extern(dtrmm_,DTRMM)
         void DTRMM(char const &Side, char const &UpLo, char const &Trans, char const &Diag, FINTARG nRowsB, FINTARG nColsB, double const &Alpha, double *A, FINTARG lda, double *B, FINTARG ldb);
 
         // linear least squares using divide & conquer SVD.
-        #define DGELSS FORT_Extern(dgelss,DGELSS)
+        #define DGELSS FORT_Extern(dgelss_,DGELSS)
         void DGELSS(FINTARG M, FINTARG N, FINTARG NRHS, double *A, FINTARG LDA, double *B, FINTARG LDB, double *S, double const &RCOND, FORTINT *RANK,
             double *WORK, FINTARG LWORK, FORTINT *INFO );
 
@@ -124,7 +125,7 @@ extern "C"{
 //         void DGESVD(char const &JobU, char const &JobVT, FINTARG M, FINTARG N, double *A, FINTARG ldA, double *S, double *U, FINTARG ldU, double *Vt, FINTARG ldVt, double *Work, FINTARG lWork, FORTINT *info);
 //             double *WORK, FINTARG LWORK, FORTINT *INFO );
         // divide & conquer SVD.
-        #define DGESDD FORT_Extern(dgesdd,DGESDD)
+        #define DGESDD FORT_Extern(dgesdd_,DGESDD)
         void DGESDD(char const &JobZ, FINTARG M, FINTARG N, double *A, FINTARG ldA, double *S, double *U, FINTARG ldU, double *Vt, FINTARG ldVt, double *Work, FINTARG lWork, FORTINT *piWork, FORTINT *info);
 }
 
@@ -134,6 +135,8 @@ extern "C"{
 
 namespace ct {
 
+void Add2(double * pOut, double const * pIn, double f, size_t n);
+  
 void Mxm(double *pOut, ptrdiff_t iRowStO, ptrdiff_t iColStO,
          double const *pA, ptrdiff_t iRowStA, ptrdiff_t iColStA,
          double const *pB, ptrdiff_t iRowStB, ptrdiff_t iColStB,

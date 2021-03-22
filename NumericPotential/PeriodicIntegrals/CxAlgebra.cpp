@@ -25,6 +25,26 @@
 
 namespace ct {
 
+void Add2(double * pOut, double const * pIn, double f, size_t n)
+{
+  size_t i = 0;
+  for ( ; i < (n & ~3); i += 4 ) {
+    pOut[i]   += f * pIn[i];
+    pOut[i+1] += f * pIn[i+1];
+    pOut[i+2] += f * pIn[i+2];
+    pOut[i+3] += f * pIn[i+3];
+  }
+  pOut += i;
+  pIn += i;
+  switch(n - i) {
+    case 3: pOut[2] += f*pIn[2];
+    case 2: pOut[1] += f*pIn[1];
+    case 1: pOut[0] += f*pIn[0];
+    default: break;
+  }
+}
+
+  
 // Out = f * A * B
 void Mxm(double *pOut, ptrdiff_t iRowStO, ptrdiff_t iColStO,
          double const *pA, ptrdiff_t iRowStA, ptrdiff_t iColStA,

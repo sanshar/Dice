@@ -1,8 +1,10 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
+#include "CxMemoryStack.h"
 #include "GeneratePolynomials.h"
 #include "CxAlgebra.h"
+#include "IrAmrr.h"
 
 double getHermiteReciprocal(int l, double* pOut,
                           double Gx, double Gy, double Gz,
@@ -601,33 +603,613 @@ double getSphReciprocal(int la, int lb, double* pOut,
   
   double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
 
-  int L = la > lb ? la : lb;
-  ir::EvalSlmX_Deriv0(pSpha, Gx, Gy, Gz, L);
-  //ir::EvalSlmX_Deriv0(pSphb, Gx, Gy, Gz, lb);
+
+  if (la == 0 && lb == 0) {
+    pOut[0] += Scale * ExpVal * cos(Gx*Tx + Gy*Ty+Gz*Tz);
+    return 1.0;
+  }
+  else if (la == 0 && lb == 1 || lb == 0 && la == 1) {
+    double preFactor = Scale * ExpVal * -sin((Gx * Tx + Gy * Ty + Gz * Tz));
+    pOut[0] += preFactor * Gx;
+    pOut[1] += preFactor * Gy;
+    pOut[2] += preFactor * Gz;
+    return std::max(fabs(Gx), std::max(fabs(Gy),fabs(Gz)));
+  }
+  else if (la == 1 && lb == 1) {
+    double preFactor = Scale * ExpVal * -cos((Gx * Tx + Gy * Ty + Gz * Tz));
+    pOut[0] +=  preFactor * Gx * Gx;
+    pOut[1] +=  preFactor * Gy * Gx;
+    pOut[2] +=  preFactor * Gz * Gx;
+    pOut[3] +=  preFactor * Gx * Gy;
+    pOut[4] +=  preFactor * Gy * Gy;
+    pOut[5] +=  preFactor * Gz * Gy;
+    pOut[6] +=  preFactor * Gx * Gz;
+    pOut[7] +=  preFactor * Gy * Gz;
+    pOut[8] +=  preFactor * Gz * Gz;
+    return std::max(Gx*Gx, std::max(Gy*Gy, Gz*Gz));
+  }
+  else {
+    int L = la > lb ? la : lb;
+    ir::EvalSlcX_Deriv0(pSpha, Gx, Gy, Gz, L);
+
+
+    double preFactor = Scale * ExpVal;
+    if ( (la+lb)%4 == 0)
+      preFactor *= cos((Gx * Tx + Gy * Ty + Gz * Tz));
+    else if ((la+lb)%4 == 1)
+      preFactor *= -sin((Gx * Tx + Gy * Ty + Gz * Tz));
+    else if ((la+lb)%4 == 2)
+      preFactor *= -cos((Gx * Tx + Gy * Ty + Gz * Tz));
+    else if ((la+lb)%4 == 3)
+      preFactor *= sin((Gx * Tx + Gy * Ty + Gz * Tz));
+    
+    int Nb = 2*lb+1, Na = 2*la+1;
+    //DGER(Na, Nb, preFactor, pSpha+la*la, 1, pSpha+lb*lb,1,pOut, Na);
+    
+    
+    double *Amat = pSpha+la*la, *Bmat = pSpha+lb*lb;
+    
+    int index = 0;
+    for (int b=0; b<Nb; b++) {
+      for (int a=0; a<Na; a++) {
+	pOut[index] = pOut[index] + preFactor * Amat[a] * Bmat[b];
+	index ++;
+      }
+    }
+    
+    
+    double maxG1 = 0.0, maxG2 = 0.0;
+    for (int b=0; b<Nb; b++)
+      maxG1 = std::max(maxG1, fabs(Bmat[b]));
+    for (int a=0; a<Na; a++)
+      maxG2 = std::max(maxG2, fabs(Amat[a]));
+    
+    return maxG1*maxG2;
+  }
+}
+
+
+double getSphReciprocal3(int la, int lb, int lc, double* pOut,
+			 double* pSpha, double* pSphb, double* pSphc,
+			 double Gx, double Gy, double Gz,
+			 double Fx, double Fy, double Fz,
+			 double TABx, double TABy, double TABz,
+			 double TACx, double TACy, double TACz,
+			 double exponentVal,
+			 double Scale) {
+  
+  double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
+
+  ir::EvalSlcX_Deriv0(pSpha, -Gx-Fx, -Gy-Fy, -Gz-Fz, la);
+  ir::EvalSlcX_Deriv0(pSphb,     Fx,     Fy,     Fz, lb);
+  ir::EvalSlcX_Deriv0(pSphc,  Gx   ,  Gy   ,  Gz   , lc);
+
 
   double preFactor = Scale * ExpVal;
-  if ( (la+lb)%4 == 0)
-    preFactor *= cos((Gx * Tx + Gy * Ty + Gz * Tz));
-  else if ((la+lb)%4 == 1)
-    preFactor *= -sin((Gx * Tx + Gy * Ty + Gz * Tz));
-  else if ((la+lb)%4 == 2)
-    preFactor *= -cos((Gx * Tx + Gy * Ty + Gz * Tz));
-  else if ((la+lb)%4 == 3)
-    preFactor *= sin((Gx * Tx + Gy * Ty + Gz * Tz));
+  double cosArg = (Gx * TACx + Gy * TACy + Gz * TACz) + (Fx * TABx + Fy * TABy + Fz * TABz);
 
+  double sign = 1.;//la % 2 == 0 ? 1 : -1;
+  if ( (la+lb+lc)%4 == 0)
+    preFactor *= sign*cos(cosArg);
+  else if ((la+lb+lc)%4 == 1)
+    preFactor *= -sign*sin(cosArg);
+  else if ((la+lb+lc)%4 == 2)
+    preFactor *= -sign*cos(cosArg);
+  else if ((la+lb+lc)%4 == 3)
+    preFactor *= sign*sin(cosArg);
 
-  int Nb = 2*lb+1, Na = 2*la+1;
-  //DGER(Na, Nb, preFactor, pSpha+la*la, 1, pSpha+lb*lb,1,pOut, Na);
+  int Nb = 2*lb+1, Na = 2*la+1, Nc = 2*lc+1;
 
-  for (int b=0; b<(2*lb+1); b++) {
-    double f = preFactor * pSpha[b+lb*lb];
-    for (int a=0; a<(2*la+1); a++) {
-      pOut[a + b * Na] += f * pSpha[a+la*la];
+  
+  double *Amat = pSpha+la*la, *Bmat = pSphb+lb*lb, *Cmat = pSphc+lc*lc;
+
+  int index = 0;
+  for (int c=0; c<Nc; c++) {
+    double cfact = preFactor * Cmat[c];
+    
+    for (int b=0; b<Nb; b++) {
+      double bfact = cfact * Bmat[b];
+      
+      for (int a=0; a<Na; a++) {
+	pOut[index] = pOut[index] + bfact * Amat[a];
+	index ++;
+      }
     }
   }
 
-  double maxG = 0.0;
-  for (int i=0; i<2*L+1; i++)
-    maxG = maxG > fabs(pSpha[L*L+i]) ? maxG :  fabs(pSpha[L*L+i]);
-  return maxG;
+  double maxG1 = 0.0, maxG2 = 0.0, maxG3 = 0.0;
+  for (int b=0; b<Nb; b++)
+    maxG1 = std::max(maxG1, fabs(Bmat[b]));
+  for (int a=0; a<Na; a++)
+    maxG2 = std::max(maxG2, fabs(Amat[a]));
+  for (int c=0; c<Nc; c++)
+    maxG3 = std::max(maxG3, fabs(Cmat[c]));
+
+  return maxG1*maxG2*maxG3;
 }
+
+
+double getSphReciprocal2(int la, int lb, double* pOut,
+			 double* pSpha, double* pSphb, 
+			 double Gx, double Gy, double Gz,
+			 double Fx, double Fy, double Fz,
+			 double TAx, double TAy, double TAz,
+			 double TBx, double TBy, double TBz,
+			 double exponentVal,
+			 double Scale) {
+  
+  double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
+
+  ir::EvalSlcX_Deriv0(pSpha, -Gx-Fx, -Gy-Fy, -Gz-Fz, la);
+  ir::EvalSlcX_Deriv0(pSphb,     Fx,     Fy,     Fz, lb);
+
+
+  double preFactor = Scale * ExpVal;
+  double cosArg = (Gx * TAx + Gy * TAy + Gz * TAz)
+    + (Fx * (TAx-TBx) + Fy * (TAy-TBy) + Fz * (TAz-TBz));
+
+  if ( (la+lb)%4 == 0)
+    preFactor *= cos(cosArg);
+  else if ((la+lb)%4 == 1)
+    preFactor *= -sin(cosArg);
+  else if ((la+lb)%4 == 2)
+    preFactor *= -cos(cosArg);
+  else if ((la+lb)%4 == 3)
+    preFactor *= sin(cosArg);
+
+  int Nb = 2*lb+1, Na = 2*la+1;
+
+  
+  double *Amat = pSpha+la*la, *Bmat = pSphb+lb*lb;
+
+  int index = 0;
+  for (int b=0; b<Nb; b++) {
+    double bfact = preFactor * Bmat[b];
+      
+    for (int a=0; a<Na; a++) {
+      pOut[index] += bfact * Amat[a];
+      index ++;
+    }
+  }
+
+  double maxG1 = 0.0, maxG2 = 0.0, maxG3 = 0.0;
+  for (int b=0; b<Nb; b++)
+    maxG1 = std::max(maxG1, fabs(Bmat[b]));
+  for (int a=0; a<Na; a++)
+    maxG2 = std::max(maxG2, fabs(Amat[a]));
+
+  return maxG1*maxG2;
+}
+
+
+double getSphReciprocal3cos(int la, int lb, double* pOut,
+			    double* pSpha1, double* pSpha2,
+			    double* pSphb1, double* pSphb2, 
+			    double Gx, double Gy, double Gz,
+			    double Fx, double Fy, double Fz,
+			    double Ax, double Ay, double Az,
+			    double Bx, double By, double Bz,
+			    double exponentVal,
+			    double Scale) {
+  
+  double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
+
+  ir::EvalSlcX_Deriv0(pSpha1,  Gx+Fx,  Gy+Fy,  Gz+Fz, la);
+  ir::EvalSlcX_Deriv0(pSphb1,    -Fx,    -Fy,    -Fz, lb);
+
+
+  double preFactor = Scale * ExpVal;
+  double Arg1 = ((Gx + Fx) * Ax + (Gy + Fy) * Ay + (Gz + Fz) * Az);
+  double Arg2 = -(Fx * Bx + Fy * By + Fz * Bz);
+
+  double Oscillatory1;
+  if ( (la+lb)%4 == 0) 
+    { Oscillatory1 = preFactor*cos(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 1)
+    { Oscillatory1 = -preFactor*sin(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 2)
+    { Oscillatory1 = -preFactor*cos(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 3)
+    { Oscillatory1 = preFactor*sin(Arg1 + Arg2);}
+
+  int Nb = 2*lb+1, Na = 2*la+1;
+
+  
+  double *Amat1 = pSpha1+la*la;
+  double *Bmat1 = pSphb1+lb*lb;
+
+  int index = 0;
+  for (int b=0; b<Nb; b++) {
+    double bfact1 = Oscillatory1 * Bmat1[b];
+      
+    for (int a=0; a<Na; a++) {
+      pOut[index] += bfact1 * Amat1[a] ;
+      index ++;
+    }
+  }
+
+  double maxG1 = 0.0, maxG2 = 0.0, maxG3 = 0.0;
+  for (int b=0; b<Nb; b++)
+    maxG1 = std::max(maxG1, fabs(Bmat1[b]));
+  for (int a=0; a<Na; a++)
+    maxG2 = std::max(maxG2, fabs(Amat1[a]));
+
+  return maxG1*maxG2;
+}
+
+
+double getSphReciprocal3sin(int la, int lb, double* pOut,
+			    double* pSpha1, double* pSpha2,
+			    double* pSphb1, double* pSphb2, 
+			    double Gx, double Gy, double Gz,
+			    double Fx, double Fy, double Fz,
+			    double Ax, double Ay, double Az,
+			    double Bx, double By, double Bz,
+			    double exponentVal,
+			    double Scale) {
+  
+  double ExpVal = exponentVal;//exp(-exponentVal)/exponentVal; 
+
+  ir::EvalSlcX_Deriv0(pSpha1,  Gx+Fx,  Gy+Fy,  Gz+Fz, la);
+  ir::EvalSlcX_Deriv0(pSphb1,    -Fx,    -Fy,    -Fz, lb);
+
+
+  double preFactor = Scale * ExpVal;
+  double Arg1 = ((Gx + Fx) * Ax + (Gy + Fy) * Ay + (Gz + Fz) * Az);
+  double Arg2 = -(Fx * Bx + Fy * By + Fz * Bz);
+
+  double Oscillatory1;
+  if ( (la+lb)%4 == 0) 
+    { Oscillatory1 = preFactor*sin(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 1)
+    { Oscillatory1 = preFactor*cos(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 2)
+    { Oscillatory1 = -preFactor*sin(Arg1 + Arg2);}
+  else if ((la+lb)%4 == 3)
+    { Oscillatory1 = -preFactor*cos(Arg1 + Arg2);}
+
+  int Nb = 2*lb+1, Na = 2*la+1;
+
+  
+  double *Amat1 = pSpha1+la*la;
+  double *Bmat1 = pSphb1+lb*lb;
+
+  int index = 0;
+  for (int b=0; b<Nb; b++) {
+    double bfact1 = Oscillatory1 * Bmat1[b];
+      
+    for (int a=0; a<Na; a++) {
+      pOut[index] += bfact1 * Amat1[a] ;
+      index ++;
+    }
+  }
+
+  double maxG1 = 0.0, maxG2 = 0.0, maxG3 = 0.0;
+  for (int b=0; b<Nb; b++)
+    maxG1 = std::max(maxG1, fabs(Bmat1[b]));
+  for (int a=0; a<Na; a++)
+    maxG2 = std::max(maxG2, fabs(Amat1[a]));
+
+  return maxG1*maxG2;
+}
+
+void PolynomialsUsingRecursion(double* pCos, double* pSin, complex<double> &factorg,
+			       complex<double>& factorh, double alpha,
+			       complex<double> *g, complex<double> *h,
+			       int l) {
+
+  
+  pCos[0] = 0.5*(g[0] + h[0] ).real();
+  pSin[0] = 0.5*(g[0] - h[0] ).imag();
+
+  if (l == 0) return;
+
+
+  double factorial = 1.0;
+
+  g[1] = -factorg * g[0];
+  h[1] = -factorh * h[0];
+  
+  pCos[1] = 0.5 * factorial * ( g[1] + h[1] ).real();
+  pSin[1] = 0.5 * factorial * ( g[1] - h[1] ).imag();
+
+  if (l == 1) return;
+
+  factorial *= 2.;
+  g[2] = 1./2. * ( - factorg * g[1]  - 2. * alpha * g[0] );
+  h[2] = 1./2. * ( - factorh * h[1]  - 2. * alpha * h[0] );
+  
+  pCos[2] = 0.5 * factorial * ( g[2] + h[2] ).real();
+  pSin[2] = 0.5 * factorial * ( g[2] - h[2] ).imag();
+  
+  if (l == 2) return;
+
+  factorial *= 3.;
+  g[3] = 1./3. * ( - factorg * g[2]  - 2. * alpha * g[1] );
+  h[3] = 1./3. * ( - factorh * h[2]  - 2. * alpha * h[1] );
+  
+  pCos[3] = 0.5 * factorial * ( g[3] + h[3] ).real();
+  pSin[3] = 0.5 * factorial * ( g[3] - h[3] ).imag();
+  
+  if (l == 3) return;
+
+  factorial *= 4.;
+  g[4] = 1./4. * ( - factorg * g[3]  - 2. * alpha * g[2] );
+  h[4] = 1./4. * ( - factorh * h[3]  - 2. * alpha * h[2] );
+  
+  pCos[4] = 0.5 * factorial * ( g[4] + h[4] ).real();
+  pSin[4] = 0.5 * factorial * ( g[4] - h[4] ).imag();
+  
+  if (l == 4) return;
+
+  factorial *= 5.;
+  g[5] = 1./5. * ( - factorg * g[4]  - 2. * alpha * g[3] );
+  h[5] = 1./5. * ( - factorh * h[4]  - 2. * alpha * h[3] );
+  
+  pCos[5] = 0.5 * factorial * ( g[5] + h[5] ).real();
+  pSin[5] = 0.5 * factorial * ( g[5] - h[5] ).imag();
+  
+  if (l == 5) return;
+
+  factorial *= 6.;
+  g[6] = 1./6. * ( - factorg * g[5]  - 2. * alpha * g[4] );
+  h[6] = 1./6. * ( - factorh * h[5]  - 2. * alpha * h[4] );
+  
+  pCos[6] = 0.5 * factorial * ( g[6] + h[6] ).real();
+  pSin[6] = 0.5 * factorial * ( g[6] - h[6] ).imag();
+
+  if (l == 6) return;
+
+}
+
+void getCartesianHarmonics(double* x, double* y, double* z,
+			   double* cart, int l) {
+  using namespace ir;
+  if (l == 0) {
+    cart[0] = x[0] * y[0] * z[0];
+    return;
+  }
+  else if (l ==1) {
+    cart[0] = x[1] * y[0] * z[0];
+    cart[1] = x[0] * y[1] * z[0];
+    cart[2] = x[0] * y[0] * z[1];
+    return;
+  }
+  else if (l >= 2 && l <=6) {
+    int startL = nCartX(l-1), endL = nCartX(l);
+    for (int i = startL; i < endL; i++) 
+      cart[i - startL] = x[iCartPow[i][0]] *  y[iCartPow[i][1]] *  z[iCartPow[i][2]] ;
+  }
+  else {
+    cout << "l has to be less <= 6 but given "<<l<<endl;
+    exit(0);
+  }
+}
+
+
+void Recurse(complex<double>* pOut, complex<double>& Tx,
+	     double alpha, int LmaxA, int LmaxB) {
+
+  complex<double> Txc = -conj(Tx);
+  for (int la = 1; la < LmaxA; la++)
+    pOut[la] = Tx * pOut[la-1] + (la > 1 ? -2*alpha*(la-1)*pOut[la-2] : 0.);
+  for (int lb = 1; lb < LmaxB; lb++)
+    pOut[lb*LmaxA] = Txc * pOut[(lb-1)*LmaxA] + (lb > 1 ? -2*alpha*(lb-1)*pOut[lb-2] : 0.);
+  
+  for (int la = 1; la < LmaxA; la++)
+  for (int lb = 1; lb < LmaxB; lb++) {
+    pOut[la + lb * LmaxA] = Tx * pOut[la -1 + lb * LmaxA]
+      + 2 * alpha * lb * pOut[la -1 + (lb-1)*LmaxA]
+      + (la > 1 ? -2 * alpha * (la-1) * pOut[la -2, lb * LmaxA] : 0.); 
+  }
+}
+
+double getSphRealRecursion(int la, int lb, double* pOutCos, double* pOutSin,
+			   double Gx, double Gy, double Gz,
+			   double Qx, double Qy, double Qz,
+			   double Ax, double Ay, double Az,
+			   double Bx, double By, double Bz,
+			   double alpha, double a, double b,
+			   double exponentVal,
+			   double Scale, ct::FMemoryStack2& Mem) {
+  double arg = ( Gx * (a * Ax + b * Bx + b * Qx)
+		 +  Gy * (a * Ay + b * By + b * Qy)
+		 +  Gz * (a * Az + b * Bz + b * Qz) )/ (a + b);
+  
+  if (la == 0 && lb == 0) {
+    pOutCos[0] += exponentVal * Scale * cos(arg);
+    pOutSin[0] += exponentVal * Scale * sin(arg);
+    return 1.;
+  }
+  complex<double> Tx = complex<double>(-2.*alpha*(Ax-Bx-Qx), Gx * a /(a+b));
+  complex<double> Ty = complex<double>(-2.*alpha*(Ay-By-Qy), Gy * a /(a+b));
+  complex<double> Tz = complex<double>(-2.*alpha*(Az-Bz-Qz), Gz * a /(a+b));
+
+  complex<double> *Xab, *Yab, *Zab;
+  Mem.Alloc(Xab, (la+1)*(lb+1)); Mem.Alloc(Yab, (la+1)*(lb+1));
+  Mem.Alloc(Zab, (la+1)*(lb+1));
+
+  Xab[0] = complex<double>(1.,1.); Yab[0] = Xab[0]; Zab[0] = Xab[0];
+  Recurse(Xab, Tx, alpha, la+1, lb+1);
+  Recurse(Yab, Ty, alpha, la+1, lb+1);
+  Recurse(Zab, Tz, alpha, la+1, lb+1);
+
+
+  int ncarta = ir::nCartY(la), ncartb = ir::nCartY(lb);
+  double *cosInts, *sinInts;
+  Mem.Alloc(cosInts, ncarta * ncartb);
+  Mem.Alloc(sinInts, ncarta * ncartb);
+
+  complex<double> f = Xab[0];
+  complex<double> prefactor = Scale * exponentVal * complex<double>(cos(arg), sin(arg))/f/f/f;
+  
+  int aoff = ir::nCartX(la-1), boff = ir::nCartX(lb-1);
+  for (int i=0; i<ncarta; i++)
+  for (int j=0; j<ncartb; j++)
+  {
+    int ax = ir::iCartPow[aoff+i][0], ay = ir::iCartPow[aoff+i][1], az = ir::iCartPow[aoff+i][2];
+    int bx = ir::iCartPow[boff+j][0], by = ir::iCartPow[boff+j][1], bz = ir::iCartPow[boff+j][2];
+
+    complex<double> expInts = Xab[ax + bx * (la+1)] *
+      Yab[ay + by * (la+1)] *
+      Zab[az + bz * (la+1)] *
+      prefactor ;
+    
+    cosInts[i + j * ncarta] = expInts.real(); 
+    sinInts[i + j * ncarta] = expInts.imag();
+  }
+
+  double *pR1; Mem.Alloc(pR1, (2*lb+1)*ncarta);
+  int nterms = (2*la+1)*(2*lb+1);
+
+  double *pFinal; Mem.Alloc(pFinal, nterms);
+  ir::ShTrN(pR1, cosInts, ncarta, lb);
+  ir::ShTrN_NN(pFinal, pR1, (2*lb + 1), la);
+
+
+  for (int i=0; i<nterms; i++) pOutCos[i] += pFinal[i];
+  
+  ir::ShTrN(pR1, sinInts, ncarta, lb);
+  ir::ShTrN_NN(pFinal, pR1, (2*lb + 1), la);
+
+  for (int i=0; i<nterms; i++) pOutSin[i] += pFinal[i];
+
+  Mem.Free(Xab);
+  return 1.;
+}
+
+
+/*
+  double getSphRealRecursion(int la, int lb, double* pOutCos, double* pOutSin,
+  double* pSphaCos, double* pSphaSin,
+  double* pSphbCos, double* pSphbSin, 
+  double Gx, double Gy, double Gz,
+  double Qx, double Qy, double Qz,
+  double Ax, double Ay, double Az,
+  double Bx, double By, double Bz,
+  double alpha, double a, double b,
+  double exponentVal,
+  double Scale, ct::FMemoryStack2& Mem) {
+  double arg = ( Gx * (a * Ax + b * Bx + b * Qx)
+  +  Gy * (a * Ay + b * By + b * Qy)
+  +  Gz * (a * Az + b * Bz + b * Qz) )/ (a + b);
+  
+  if (la == 0 && lb == 0) {
+  pOutCos[0] += exponentVal * Scale * cos(arg);
+  pOutSin[0] += exponentVal * Scale * sin(arg);
+  return 1.;
+  }
+  else if (la == 0 && lb == 1) {
+  pOutCos[0] +=  exponentVal * Scale * (-Gx*a/(a+b) * sin(arg) - 2 * alpha * (Ax - Bx - Qx) * cos(arg));
+  pOutCos[1] +=  exponentVal * Scale * (-Gy*a/(a+b) * sin(arg) - 2 * alpha * (Ay - By - Qy) * cos(arg));
+  pOutCos[2] +=  exponentVal * Scale * (-Gz*a/(a+b) * sin(arg) - 2 * alpha * (Az - Bz - Qz) * cos(arg));
+  return 1.;
+  }
+  else if (la == 1 && lb == 0) {
+  pOutCos[0] +=  exponentVal * Scale * (-Gx*b/(a+b) * sin(arg) + 2 * alpha * (Ax - Bx - Qx) * cos(arg));
+  pOutCos[1] +=  exponentVal * Scale * (-Gy*b/(a+b) * sin(arg) + 2 * alpha * (Ay - By - Qy) * cos(arg));
+  pOutCos[2] +=  exponentVal * Scale * (-Gz*b/(a+b) * sin(arg) + 2 * alpha * (Az - Bz - Qz) * cos(arg));
+
+  pOutSin[0] +=  exponentVal * Scale * (Gx*b/(a+b) * cos(arg) + 2 * alpha * (Ax - Bx - Qx) * sin(arg));
+  pOutSin[1] +=  exponentVal * Scale * (Gy*b/(a+b) * cos(arg) + 2 * alpha * (Ay - By - Qy) * sin(arg));
+  pOutSin[2] +=  exponentVal * Scale * (Gz*b/(a+b) * cos(arg) + 2 * alpha * (Az - Bz - Qz) * sin(arg));
+  cout << pOutSin[0]<<endl;
+  pOutSin[0] = 0.0;
+  pOutSin[1] = 0.0;
+  pOutSin[2] = 0.0;
+  //return 1.;
+  }
+  int L = max(la, lb);
+  complex<double>* pOut; Mem.Alloc(pOut, ir::nCartX(L));
+  double *CartesianCos, *CartesianSin;
+  Mem.Alloc(CartesianCos, 2*ir::nCartY(L));
+  CartesianSin = CartesianCos + ir::nCartY(L);
+  
+  pOut[0] = complex<double>(cos(arg), sin(arg));
+  complex<double> Tx = complex<double>(-2.*alpha*(Ax-Bx-Qx), Gx * a /(a+b));
+  complex<double> Ty = complex<double>(-2.*alpha*(Ay-By-Qy), Gy * a /(a+b));
+  complex<double> Tz = complex<double>(-2.*alpha*(Az-Bz-Qz), Gz * a /(a+b));
+
+  double factorial = 1.0;
+  Recurse(&pOut[1], &pOut[0], &pOut[0], Tx, Ty, Tz, alpha, 1); 
+  for (int l=2; l<=la; l++) {
+  int lindex2 = ir::nCartX(l-1); 
+  int lindex1 = ir::nCartX(l-2); 
+  int lindex0 = ir::nCartX(l-3);
+  Recurse(&pOut[lindex2], &pOut[lindex1], &pOut[lindex0], Tx, Ty, Tz, alpha, l);
+  factorial *= l;
+  }
+
+  //make cartesian components
+  int ncartL = ir::nCartY(la), ncartLcum = ir::nCartX(la-1);
+  for (int i=0; i<ncartL; i++) {
+  CartesianCos[i] = pOut[i+ncartLcum].real() * factorial;
+  CartesianSin[i] = pOut[i+ncartLcum].imag() * factorial;
+  }
+
+  //make spherical components
+  ir::ShTrN(pSphaCos, CartesianCos, 1, la);
+  ir::ShTrN(pSphaSin, CartesianSin, 1, la);
+
+
+  Tx = complex<double>(2.*alpha*(Ax-Bx-Qx), Gx * b /(a+b));
+  Ty = complex<double>(2.*alpha*(Ay-By-Qy), Gy * b /(a+b));
+  Tz = complex<double>(2.*alpha*(Az-Bz-Qz), Gz * b /(a+b));
+
+  factorial = 1.0;
+  Recurse(&pOut[1], &pOut[0], &pOut[0], Tx, Ty, Tz, alpha, 1); 
+  for (int l=2; l<=lb; l++) {
+  int lindex2 = ir::nCartX(l-1); 
+  int lindex1 = ir::nCartX(l-2); 
+  int lindex0 = ir::nCartX(l-3);
+  Recurse(&pOut[lindex2], &pOut[lindex1], &pOut[lindex0], Tx, Ty, Tz, alpha, l);
+  factorial *= l;
+  }
+
+  //make cartesian components
+  ncartL = ir::nCartY(lb); ncartLcum = ir::nCartX(lb-1);
+  for (int i=0; i<ncartL; i++) {
+  cout << i<<"  "<<ncartL<<"  "<<ncartLcum<<"  "<<pOut[i+ncartLcum]<<endl;
+  CartesianCos[i] = pOut[i+ncartLcum].real() * factorial;
+  CartesianSin[i] = pOut[i+ncartLcum].imag() * factorial;
+  }
+
+  //make spherical components
+  ir::ShTrN(pSphbCos, CartesianCos, 1, lb);
+  ir::ShTrN(pSphbSin, CartesianSin, 1, lb);
+
+
+  
+  //now tensor multiply a,b
+  int Na = 2*la+1, Nb = 2*lb+1;
+  int index = 0;
+  double factor = exponentVal * Scale ;
+
+  for (int b=0; b<Nb; b++) {
+  double bfact1 = factor * pSphbCos[b];
+      
+  for (int a=0; a<Na; a++) {
+  pOutCos[index] += bfact1 * pSphaCos[a] ;
+  index ++;
+  }
+  }
+
+
+  index = 0;
+  for (int b=0; b<Nb; b++) {
+  double bfact1 = factor * pSphbSin[b];
+      
+  for (int a=0; a<Na; a++) {
+  pOutSin[index] += bfact1 * pSphaSin[a] ;
+  cout << index<<"  "<<pSphbSin[b]<<"  "<<pSphaSin[a]<<"  "<<a<<"  "<<b<<endl;
+  index ++;
+  }
+  }
+  cout << factor<<"  "<<pSphbSin[0]<<"  "<<pSphaSin[0]<<"  "<<pOutSin[0]<<endl;
+  exit(0);
+  Mem.Free(pOut);
+  return 1.;
+  }
+*/
+
+

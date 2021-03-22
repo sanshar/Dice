@@ -102,29 +102,38 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
   for (int i=0; i<9; i++) RLattice[i] = Lattice[i];
   RVolume = getKLattice(&KLattice[0], Lattice);
 
-  int Nk = 2*nk +1;
-  vector<double> Kcoordcopy(3*(Nk*Nk*Nk-1)), Kdistcopy(Nk*Nk*Nk-1);
-  Kcoord.resize(3 * (Nk*Nk*Nk-1));
-  Kdist.resize(Nk*Nk*Nk-1);
+  int Nk = 2*nk +1, Nkhalf = nk+1;
+  int NkLat = Nk*Nk*Nk;//Nkhalf;
+  //int NkLat = Nk*Nk*Nk/2+1;
 
+  vector<double> Kcoordcopy(3*NkLat), Kdistcopy(NkLat);
+  vector<int> Kcoordindexcopy(3*NkLat);
+  Kcoord.resize(3 * NkLat);
+  Kdist.resize(NkLat);
+  Kcoordindex.resize(3*NkLat);
+  
   ir = 0;
   //kvals
+  //for (int i =   0; i<=nk ; i++)
   for (int i = -nk; i<=nk ; i++)
   for (int j = -nk; j<=nk ; j++)
   for (int k = -nk; k<=nk ; k++) {
-    if (i == 0 && j == 0 && k == 0) continue;
+    //if (i == 0 && j < 0) continue;
+    //if (i == 0 && j == 0 && k < 0) continue;
+    
     Kcoordcopy[3*ir+0] = i * KLattice[0] + j * KLattice[3] + k * KLattice[6];
     Kcoordcopy[3*ir+1] = i * KLattice[1] + j * KLattice[4] + k * KLattice[7];
     Kcoordcopy[3*ir+2] = i * KLattice[2] + j * KLattice[5] + k * KLattice[8];
 
+    Kcoordindexcopy[3*ir+0]=i; Kcoordindexcopy[3*ir+1]=j; Kcoordindexcopy[3*ir+2]=k;
     Kdistcopy[ir] = Kcoordcopy[3*ir+0] * Kcoordcopy[3*ir+0]
                  +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
                  +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
 
     ir++;
   }
-
-  idx.resize(Nk*Nk*Nk-1);
+  cout << ir <<"  "<<NkLat<<endl;
+  idx.resize(NkLat);
   std::iota(idx.begin(), idx.end(), 0);
   std::stable_sort(idx.begin(), idx.end(),
                    [&Kdistcopy](size_t i1, size_t i2) {return Kdistcopy[i1] < Kdistcopy[i2];});
@@ -134,13 +143,15 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
     Kcoord[3*i+0] = Kcoordcopy[3*idx[i]+0];
     Kcoord[3*i+1] = Kcoordcopy[3*idx[i]+1];
     Kcoord[3*i+2] = Kcoordcopy[3*idx[i]+2];
+    Kcoordindex[3*i+0] = Kcoordindexcopy[3*idx[i]+0];
+    Kcoordindex[3*i+1] = Kcoordindexcopy[3*idx[i]+1];
+    Kcoordindex[3*i+2] = Kcoordindexcopy[3*idx[i]+2];
   }
 
   Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
   Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
   Rscreen = _Rscreen;
   Kscreen = _Kscreen;
-  //cout << Eta2RhoOvlp<<"  "<<Eta2RhoCoul<<endl;
 
   
   //identify unique atom positions
@@ -269,7 +280,6 @@ void LatticeSum::makeKsum(BasisSet& basis) {
   int pnatm = atomCenters.size()/3;
   int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
 
-  ROrderedIdx.resize(nT, vector<size_t>(Rcoord.size(), 1));
   
   int nL = 13; //for each pair there are maximum 12 Ls
 
@@ -314,7 +324,7 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 	int L = j;
 	double scale = 1.0;
 
-	for (int k=0; k<Kdist.size(); k++) {
+	for (int k=1; k<Kdist.size(); k++) {
 	  double expVal = kernel.getValueKSpace(Kdist[k], 1.0, Eta2RhoCoul);
 	  
 	  double maxG = getHermiteReciprocal(L, &KSumVal[idx],
@@ -323,8 +333,7 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 					     Kcoord[3*k+2],
 					     Tx, Ty, Tz,
 					     expVal, scale);
-	  
-	  //if (abs(maxG * scale * expVal) < Kscreen) {
+
 	  if (abs(maxG * scale * expVal) < 1e-13) {
 	    break;
 	  }
@@ -332,6 +341,5 @@ void LatticeSum::makeKsum(BasisSet& basis) {
       }    
     }
   }
-  
 }
 

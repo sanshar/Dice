@@ -52,6 +52,7 @@ struct BasisSet
   }
   int getNbas();
   int getNbas(int shlIndex);
+  int getNPrimitivebas(int shlIndex);
 };
 
 double RawGaussNorm(double fExp, unsigned l);

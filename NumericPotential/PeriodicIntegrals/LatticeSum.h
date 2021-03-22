@@ -14,6 +14,7 @@ struct LatticeSum {
   std::vector<double> Rdist;
 
   std::vector<double> Kcoord;
+  std::vector<int> Kcoordindex;
   std::vector<double> Kdist;
   std::vector<std::vector<long>> KSumIdx;
   std::vector<std::vector<size_t>> ROrderedIdx;

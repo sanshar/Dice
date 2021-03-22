@@ -13,30 +13,11 @@
 #include "Integral2c_Boys.h"
 #include "LatticeSum.h"
 #include "interface.h"
+#include "CxAlgebra.h"
 
 using namespace std;
 using namespace ir;
 
-
-void Add2(double * pOut, double const * pIn, double f, size_t n)
-{
-  size_t i = 0;
-  for ( ; i < (n & ~3); i += 4 ) {
-    pOut[i]   += f * pIn[i];
-    pOut[i+1] += f * pIn[i+1];
-    pOut[i+2] += f * pIn[i+2];
-    pOut[i+3] += f * pIn[i+3];
-  }
-  pOut += i;
-  pIn += i;
-  switch(n - i) {
-    case 3: pOut[2] += f*pIn[2];
-    case 2: pOut[1] += f*pIn[1];
-    case 1: pOut[0] += f*pIn[0];
-    default: break;
-  }
-  add2++;
-}
 
 
 
@@ -111,7 +92,7 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
             for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
               double CoAC = pC->contractions(iExpC, iCoC) *
                   pA->contractions(iExpA, iCoA);
-              Add2(&pCoFmT[(TotalL+1)*(iCoA + pA->nCo*iCoC)],
+	      ct::Add2(&pCoFmT[(TotalL+1)*(iCoA + pA->nCo*iCoC)],
                    pFmT, CoAC, (TotalL+1));
             }
       }
@@ -209,6 +190,10 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
     int T1 = latsum.indexCenter(*pA);
     int T2 = latsum.indexCenter(*pC);
     int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+
+    if (T >= latsum.KSumIdx.size()) return;
+    else if (L >= latsum.KSumIdx[T].size()) return;
+
     int startIdx = latsum.KSumIdx[T][L];
     if (startIdx != -1) {
       ksumKsum.start();
@@ -229,9 +214,8 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                   Gamma = pC->exponents[iExpC],
                   InvEta = 1./(Alpha + Gamma),
                   Rho = (Alpha * Gamma)*InvEta; 
-        
+
               if (Rho <= Eta2Rho) continue;
-        
               double Eta = sqrt(Eta2Rho/Rho);
               double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
               double Eta2rho = Eta2Rho;
@@ -250,10 +234,10 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
         
             }
 
-          Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+	  ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
                pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
           if (LA == 0 && LC == 0)
-            Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+	    ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
                  &bkgrnd, -1., (TotalLab+1)*(TotalLab+2)/2);
         }
     }
@@ -261,7 +245,9 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
   }
 
   ksumTime1.stop();
-  
+  //Mem.Free(pReciprocalSum);
+  //return;
+
   ksumTime2.start();
   //now go back to calculating contribution from reciprocal space
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
@@ -313,9 +299,9 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                                          0., 0., 0., Tx, Ty, Tz, expVal, scale);
     }
     
-    for (int k=0; k<latsum.Kdist.size(); k++) {
+    for (int k=1; k<latsum.Kdist.size(); k++) {
       double expVal = kernel->getValueKSpace(latsum.Kdist[k], 1.0, Eta2rho);
-      
+
       double maxG = getHermiteReciprocal(L, pReciprocalSum,
                                          latsum.Kcoord[3*k+0],
                                          latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
@@ -341,7 +327,7 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
       double CoAC = pC->contractions(iExpC, iCoC) *
           pA->contractions(iExpA, iCoA);
 
-      Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+      ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
            pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
     }
   }
@@ -414,8 +400,8 @@ void makeReciprocalSummation2(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
       double maxG = getSphReciprocal(LA, LC, pReciprocalSum, pSpha, pSphb,
                                          0., 0., 0., Tx, Ty, Tz, expVal, scale);
     }
-
-    for (int k=0; k<latsum.Kdist.size(); k++) {
+    int nterms = 0;
+    for (int k=1; k<latsum.Kdist.size(); k++) {
       double expVal = kernel->getValueKSpace(latsum.Kdist[k], 1.0, Eta2rho);
       
       double maxG = getSphReciprocal(LA, LC, pReciprocalSum, pSpha, pSphb,
@@ -423,11 +409,12 @@ void makeReciprocalSummation2(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
                                      latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
                                      Tx, Ty, Tz,
                                      expVal, scale);
+      nterms++;
       if (abs(maxG * scale * expVal * maxContraction) < screen ) {
         break;
       }
     }      
-
+    //cout << nterms<<endl;
     //the background term, only applies to coulomb kernel
     //if (!(Rho <= Eta2Rho) && LA == 0 && LC == 0 && kernel->getname() == coulombKernel) {
     if ( LA == 0 && LC == 0 && kernel->getname() == coulombKernel) {
@@ -441,8 +428,7 @@ void makeReciprocalSummation2(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
     for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
       double CoAC = pC->contractions(iExpC, iCoC) *
           pA->contractions(iExpA, iCoA);
-
-      Add2(&pOutR[Nterms*(iCoA + pA->nCo*iCoC)],
+      ct::Add2(&pOutR[Nterms*(iCoA + pA->nCo*iCoC)],
            pReciprocalSum, CoAC, Nterms);
     }
   }
@@ -454,7 +440,7 @@ void makeReciprocalSummation2(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
 
 
 
-void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
+void Int2e2c_EvalCoShY(double *&pOutR, double *&pOutK, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
 {
   //CHANGE THIS to minimum distance between A and periodic image of C
   double Tx, Ty, Tz;
@@ -471,6 +457,7 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   makeRealSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
   realSumTime.stop();
 
+
   kSumTime.start();
   Tx = pA->Xcoord - pC->Xcoord;
   Ty = pA->Ycoord - pC->Ycoord;
@@ -478,7 +465,6 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   makeReciprocalSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
   kSumTime.stop();
 
-  
 }
 
 void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
@@ -495,23 +481,35 @@ void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
        *pInv2Alpha, *pInv2Gamma;
    Mem.Alloc(pInv2Alpha, pA->nFn);
    Mem.Alloc(pInv2Gamma, pC->nFn);  
-   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+
+   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) {
      pInv2Alpha[iExpA] = bool(pA->l)? std::pow(+1.0/(2*pA->exponents[iExpA]), (int)pA->l) : 1.;
-   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+   }
+   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC) {
      pInv2Gamma[iExpC] = bool(pC->l)? std::pow(-1.0/(2*pC->exponents[iExpC]), (int)pC->l) : 1.;
+   }
   
 
    double
-      *pDataR, *pR1, *pFinal;
+     *pDataR, *pR1, *pFinal, *pDataK;
    
-   Int2e2c_EvalCoShY(pDataR, TotalCo, pA, pC, Prefactor, la + lc, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-
+   Int2e2c_EvalCoShY(pDataR, pDataK, TotalCo, pA, pC, Prefactor, la + lc, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
    Mem.Alloc(pR1, nCartY(la)*(2*lc+1) * TotalCo);
    Mem.Alloc(pFinal, (2*la+1)*(2*lc+1) * TotalCo);
 
    ShTrA_YY(pR1, pDataR, lc, (la + lc), TotalCo);
    ShTrA_YY(pFinal, pR1, la, la, (2*lc + 1)*TotalCo);
-   // now: (2*la+1) x (2*lc+1) x nCoA x nCoC
+
+   /*
+   kSumTime.start();
+   Mem.ClearAlloc(pDataK, (2*la+1)*(2*lc+1) * TotalCo);
+   double Tx = pA->Xcoord - pC->Xcoord;
+   double Ty = pA->Ycoord - pC->Ycoord;
+   double Tz = pA->Zcoord - pC->Zcoord;
+   makeReciprocalSummation2(pDataK, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
+   kSumTime.stop();
+   ct::Add2(pFinal, pDataK, 1.0, (2*la+1)*(2*lc+1) * TotalCo);
+   */
 
    Scatter2e2c(pOut, StrideA, StrideC, pFinal, la, lc, 1, pA->nCo, pC->nCo, Add);
 
