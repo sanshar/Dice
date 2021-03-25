@@ -632,8 +632,8 @@ void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<d
 
   //10 along R and G directions
   //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
-  //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 100., 1.e-11, 1e-11);
-  LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
+  LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 100., 1.e-11, 1e-11);
+  //LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
   cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<endl;
   cout <<"et2rho-Ovlp "<< latsum.Eta2RhoOvlp<<endl;
 
