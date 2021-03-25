@@ -12,7 +12,7 @@ double doubleFact(size_t n) {
   return val;
 }
 
-void initPeriodic(int* pshls, int *pao_loc, int *patm, int pnatm,
+void initPeriodic(int* pshls, int *patm, int pnatm,
                   int *pbas, int pnbas, double *penv,
                   double* lattice) {
   basis.BasisShells.resize(pnbas);

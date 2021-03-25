@@ -31,6 +31,5 @@ void PopulateAuxGMatrix(double* pOut, BasisShell* pC, size_t offset,
 void PopulatePairGMatrix(double* pOut, BasisShell* pA, BasisShell* pB, 
 			 size_t nFnPair, LatticeSum& latsum, ct::FMemoryStack2 &Mem) ;
 
-void ContractWithBasisPair(double *pOut, double* AuxGarray,  
-			   vector<int>& shls, BasisSet& basis, LatticeSum& latsum,
-			   ct::FMemoryStack2 &Mem) ;
+void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& latsum,
+	       ct::FMemoryStack2 &Mem) ;

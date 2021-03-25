@@ -988,9 +988,8 @@ void getCartesianHarmonics(double* x, double* y, double* z,
 
 
 void Recurse(complex<double>* pOut, complex<double>& Tx,
-	     double alpha, int LmaxA, int LmaxB) {
+	     complex<double>& Txc, double alpha, int LmaxA, int LmaxB) {
 
-  complex<double> Txc = -conj(Tx);
   for (int la = 1; la < LmaxA; la++)
     pOut[la] = Tx * pOut[la-1] + (la > 1 ? -2*alpha*(la-1)*pOut[la-2] : 0.);
   for (int lb = 1; lb < LmaxB; lb++)
@@ -1024,15 +1023,18 @@ double getSphRealRecursion(int la, int lb, double* pOutCos, double* pOutSin,
   complex<double> Tx = complex<double>(-2.*alpha*(Ax-Bx-Qx), Gx * a /(a+b));
   complex<double> Ty = complex<double>(-2.*alpha*(Ay-By-Qy), Gy * a /(a+b));
   complex<double> Tz = complex<double>(-2.*alpha*(Az-Bz-Qz), Gz * a /(a+b));
+  complex<double> Txb = complex<double>(2.*alpha*(Ax-Bx-Qx), Gx * b /(a+b));
+  complex<double> Tyb = complex<double>(2.*alpha*(Ay-By-Qy), Gy * b /(a+b));
+  complex<double> Tzb = complex<double>(2.*alpha*(Az-Bz-Qz), Gz * b /(a+b));
 
   complex<double> *Xab, *Yab, *Zab;
   Mem.Alloc(Xab, (la+1)*(lb+1)); Mem.Alloc(Yab, (la+1)*(lb+1));
   Mem.Alloc(Zab, (la+1)*(lb+1));
 
   Xab[0] = complex<double>(1.,1.); Yab[0] = Xab[0]; Zab[0] = Xab[0];
-  Recurse(Xab, Tx, alpha, la+1, lb+1);
-  Recurse(Yab, Ty, alpha, la+1, lb+1);
-  Recurse(Zab, Tz, alpha, la+1, lb+1);
+  Recurse(Xab, Tx, Txb, alpha, la+1, lb+1);
+  Recurse(Yab, Ty, Tyb, alpha, la+1, lb+1);
+  Recurse(Zab, Tz, Tzb, alpha, la+1, lb+1);
 
 
   int ncarta = ir::nCartY(la), ncartb = ir::nCartY(lb);

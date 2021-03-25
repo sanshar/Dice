@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <cmath>
 #include <string.h>
 #include <algorithm>
@@ -279,332 +280,7 @@ void EvalInt2e3c(double *pOut, size_t *Strides,
 }
 
 
-//this will do contractions and will give out solidharmonics for all pairs of
-//contracted gaussians in the two shells
-//the total amount of memory in pout is nG x (2la+1) x (2lb+1) x nCoa x nCob
-// assuming nG = 1000, la=6, lb = 6, nCoa=10, nCob=10, it will have 10^7 numbers
-//requiring 0.1 Gb which should be very doable
-/*
-void EvalInt2e2cKarrayKsum(double *pOut, BasisShell const *pA,
-			   BasisShell const *pB, double Prefactor, Kernel *pKernel,
-			   LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
 
-
-  double
-    *pInv2A, *pInv2B;
-  Mem.Alloc(pInv2A, pA->nFn);
-  Mem.Alloc(pInv2B, pB->nFn);  
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-    pInv2A[iExpA] = bool(pA->l)? std::pow(1.0/(2*pA->exponents[iExpA]), (int)pA->l) : 1.;
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-    pInv2B[iExpB] = bool(pB->l)? std::pow(1.0/(2*pB->exponents[iExpB]), (int)pB->l) : 1.;
-  
-  int la = pA->l, lb = pB->l;
-
-  double TAx =  pA->Xcoord,
-    TAy =  pA->Ycoord,
-    TAz =  pA->Zcoord;
-
-  double TABx =  pA->Xcoord - pB->Xcoord,
-    TABy =  pA->Ycoord - pB->Ycoord,
-    TABz =  pA->Zcoord - pB->Zcoord;
-
-  int nterms = (2*la+1)*(2*lb+1);
-
-  double *pReciprocalSum;
-  Mem.Alloc(pReciprocalSum, nterms);
-  
-  double *pSpha, *pSphb, *pSphc;
-  Mem.Alloc(pSpha, ((la+1)*(la+1)));
-  Mem.Alloc(pSphb, ((lb+1)*(lb+1)));
-  
-
-  double screen = latsum.Kscreen;
-  double PI11over2 = pow(M_PI, 5.5);
-  
-  ksumTime2.start();
-
-  //now go back to calculating contribution from reciprocal space
-  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-  {
-    double maxContraction = 0;
-    for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoABC = pC->contractions(iExpC, iCoC) *
-	pA->contractions(iExpA, iCoA) *
-	pB->contractions(iExpB, iCoB);
-      if (fabs(maxContraction) < fabs(CoABC))
-	maxContraction = fabs(CoABC);
-    }
-    
-    double
-      a = pA->exponents[iExpA],
-      b = pB->exponents[iExpB],
-      alpha = a * b /(a + b),
-      prefactor = Prefactor * PI11over2 / pow(a*b*c, 1.5) / pow(latsum.RVolume, 2);
-    
-
-    double scale = prefactor * pInv2A[iExpA] * pInv2B[iExpB]  * pInv2C[iExpC];
-    
-
-    for (int i=0; i<nterms; i++)
-      pReciprocalSum[i] = 0.0;
-
-    vector<double>& KLattice = latsum.KLattice;
-    vector<double>& RLattice = latsum.RLattice;
-
-    //this is the largest et2rho we will every encounter
-    double eta2rho = latsum.Eta2RhoCoul; 
-    int nloop = 0, gloop=0, validloop=0;
-    
-    for (int g=1; g<latsum.Kdist.size(); g++) {
-      double expVal = pKernel->getValueKSpace(latsum.Kdist[g], 1.0, eta2rho);
-      double Gx=latsum.Kcoord[3*g+0],  Gy=latsum.Kcoord[3*g+1],  Gz=latsum.Kcoord[3*g+2];
-      double Gsq = latsum.Kdist[g];
-
-      double sumOverF = 0.0;
-
-
-      int fterms = 0;
-      double logscreen = log(screen/expVal/scale/maxContraction);
-      bool foundNonZero = false;
-
-      for (int f=0; f<latsum.Kdist.size(); f++) {
-	double Fx=latsum.Kcoord[3*f+0],  Fy=latsum.Kcoord[3*f+1],  Fz=latsum.Kcoord[3*f+2];
-	double Fsq = Fx*Fx + Fy*Fy + Fz*Fz;
-	double expArg = - (Gx*Fx+Gy*Fy+Gz*Fz)/2./a - b*Gsq/4./a/(a+b) - Fsq/4./alpha;
-
-	if (expArg < logscreen) continue;
-	foundNonZero = true;
-	
-	double expval2 = exp(expArg); 
-	double maxG = getSphReciprocal3(la, lb, lc, pReciprocalSum, pSpha, pSphb, pSphc,
-					Gx, Gy, Gz,
-					Fx, Fy, Fz,
-					TACx, TACy, TACz,
-					TABx, TABy, TABz,
-					expVal*expval2, scale);
-
-	double checkScreen = expVal * expval2 * maxG * scale * maxContraction;
-	sumOverF += checkScreen;
-	nloop++; 
-	if (checkScreen > screen)
-	  validloop++;
-	
-	
-	//if ( checkScreen < screen ) {
-	  //exit(0);
-	  //break;
-	//}
-      }
-      gloop++;
-      if (!foundNonZero)
-	break;
-    }
-
-    cout <<"valid: "<<validloop<<" total: "<< nloop<<"  "<<gloop<<"  "<<rho<<"  "<<alpha<<"  "<<latsum.Kdist[1]<<endl;
-
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-    for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoAC = pC->contractions(iExpC, iCoC) *
-          pB->contractions(iExpB, iCoB) *
-          pA->contractions(iExpA, iCoA);
-
-      ct::Add2(&pOut[nterms*(iCoA + pA->nCo*(iCoB + pB->nCo*iCoC))],
-           pReciprocalSum, CoAC, nterms);
-    }
-
-  }
-  Mem.Free(pInt2A);
-
-}
-*/
-void EvalInt2e3cKKsum(double *pOut, BasisShell const *pA,
-		      BasisShell const *pB, BasisShell const *pC,
-		      double Prefactor, Kernel *pKernel,
-		      LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
-
-  double
-    *pInv2A, *pInv2B, *pInv2C;
-  Mem.Alloc(pInv2A, pA->nFn);
-  Mem.Alloc(pInv2B, pB->nFn);  
-  Mem.Alloc(pInv2C, pC->nFn);  
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-    pInv2A[iExpA] = bool(pA->l)? std::pow(1.0/(2*pA->exponents[iExpA]), (int)pA->l) : 1.;
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-    pInv2B[iExpB] = bool(pB->l)? std::pow(1.0/(2*pB->exponents[iExpB]), (int)pB->l) : 1.;
-  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-    pInv2C[iExpC] = bool(pC->l)? std::pow(1.0/(2*pC->exponents[iExpC]), (int)pC->l) : 1.;
-  
-  int la = pA->l, lb = pB->l, lc = pC->l;
-
-  double TACx =  pA->Xcoord - pC->Xcoord,
-    TACy =  pA->Ycoord - pC->Ycoord,
-    TACz =  pA->Zcoord - pC->Zcoord;
-
-  double TABx =  pA->Xcoord - pB->Xcoord,
-    TABy =  pA->Ycoord - pB->Ycoord,
-    TABz =  pA->Zcoord - pB->Zcoord;
-
-  int nterms = (2*la+1)*(2*lb+1)*(2*lc+1);
-  double *pReciprocalSum;
-  Mem.Alloc(pReciprocalSum, nterms);
-  
-  double *pSpha, *pSphb, *pSphc;
-  Mem.Alloc(pSpha, ((la+1)*(la+1)));
-  Mem.Alloc(pSphb, ((lb+1)*(lb+1)));
-  Mem.Alloc(pSphc, ((lc+1)*(lc+1)));
-  
-
-  double screen = latsum.Kscreen;
-  double PI11over2 = pow(M_PI, 5.5);
-  
-  ksumTime2.start();
-  //now go back to calculating contribution from reciprocal space
-  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-  {
-    double maxContraction = 0;
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-    for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoABC = pC->contractions(iExpC, iCoC) *
-          pA->contractions(iExpA, iCoA) *
-          pB->contractions(iExpB, iCoB);
-      if (fabs(maxContraction) < fabs(CoABC))
-        maxContraction = fabs(CoABC);
-    }
-    
-    double
-      a = pA->exponents[iExpA],
-      b = pB->exponents[iExpB],
-      c = pC->exponents[iExpC],
-      alpha = a * b /(a + b),
-      rho = (a+b)*c/(a+b+c),
-      prefactor = Prefactor * PI11over2 / pow(a*b*c, 1.5) / pow(latsum.RVolume, 2);
-      
-
-    double scale = prefactor * pInv2A[iExpA] * pInv2B[iExpB]  * pInv2C[iExpC];
-    
-
-    for (int i=0; i<nterms; i++)
-      pReciprocalSum[i] = 0.0;
-
-    vector<double>& KLattice = latsum.KLattice;
-    vector<double>& RLattice = latsum.RLattice;
-
-    
-    int nloop = 0;
-    int gloop=0, validloop=0;
-    //double logscreen = log(screen/scale/maxContraction);
-    
-    for (int g=1; g<latsum.Kdist.size(); g++) {
-      //double expVal = kernel->getValueKSpace(latsum.Kdist[g], 1.0, Eta2rho);
-      double expVal = pKernel->getValueKSpace(latsum.Kdist[g], 1.0, rho);
-      double Gx=latsum.Kcoord[3*g+0],  Gy=latsum.Kcoord[3*g+1],  Gz=latsum.Kcoord[3*g+2];
-      double Gsq = latsum.Kdist[g];
-
-      double sumOverF = 0.0;
-
-
-      int fterms = 0;
-      double logscreen = log(screen/expVal/scale/maxContraction);
-      bool foundNonZero = false;
-
-      //find the nearest grid point
-      double Fx0 = -b/(a+b)*Gx, Fy0 = -b/(a+b)*Gy, Fz0 = -b/(a+b)*Gz;
-      int fx0 = std::round((RLattice[0]*Fx0 + RLattice[1]*Fy0 + RLattice[2]*Fz0)/2/M_PI);
-      int fy0 = std::round((RLattice[3]*Fx0 + RLattice[4]*Fy0 + RLattice[5]*Fz0)/2/M_PI);
-      int fz0 = std::round((RLattice[6]*Fx0 + RLattice[7]*Fy0 + RLattice[8]*Fz0)/2/M_PI);
-      Fx0 = fx0*KLattice[0]+fy0*KLattice[3]+fz0*KLattice[6];
-      Fy0 = fx0*KLattice[1]+fy0*KLattice[4]+fz0*KLattice[7];
-      Fz0 = fx0*KLattice[2]+fy0*KLattice[5]+fz0*KLattice[8];
-
-      for (int f=0; f<latsum.Kdist.size(); f++) {
-	double Fx=Fx0+latsum.Kcoord[3*f+0],
-	  Fy=Fy0+latsum.Kcoord[3*f+1],
-	  Fz=Fz0+latsum.Kcoord[3*f+2];
-	
-	double Fsq = Fx*Fx + Fy*Fy + Fz*Fz;
-	double expArg = - (Gx*Fx+Gy*Fy+Gz*Fz)/2./a - b*Gsq/4./a/(a+b) - Fsq/4./alpha;
-
-	if (expArg < logscreen) continue;
-	foundNonZero = true;
-	
-	double expval2 = exp(expArg); //this one does
-	//if (Fx==0&&Fy==0&&Fz==0) expval2 /= 2.;
-
-	double maxG = getSphReciprocal3(la, lb, lc, pReciprocalSum, pSpha, pSphb, pSphc,
-					Gx, Gy, Gz,
-					Fx, Fy, Fz,
-					TACx, TACy, TACz,
-					TABx, TABy, TABz,
-					expVal*expval2, scale);
-
-	double checkScreen = expVal * expval2 * maxG * scale * maxContraction;
-	sumOverF += checkScreen;
-	nloop++; 
-	if (checkScreen > screen)
-	  validloop++;
-		
-      }
-      gloop++;
-      if (!foundNonZero)
-	break;
-    }
-
-
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-    for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoAC = pC->contractions(iExpC, iCoC) *
-          pB->contractions(iExpB, iCoB) *
-          pA->contractions(iExpA, iCoA);
-
-      ct::Add2(&pOut[nterms*(iCoA + pA->nCo*(iCoB + pB->nCo*iCoC))],
-           pReciprocalSum, CoAC, nterms);
-    }
-    //cout <<"valid: "<<validloop<<" total: "<< nloop<<"  gloop: "<<gloop<<"  "<<rho<<"  "<<alpha<<"  "<<latsum.Kdist[1]<<"  "<<pReciprocalSum[0]<<"  "<<pReciprocalSum[4]<<"  "<<pReciprocalSum[8]<<"  "<<pOut[0]<<"  "<<pOut[4]<<"  "<<pA->nCo<<"  "<<pB->nCo<<endl;
-
-  }
-  Mem.Free(pInv2A);
-  
-}
-
-
-void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<double>& Lattice, ct::FMemoryStack2& Mem) {
-
-  //10 along R and G directions
-  LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
-  cout <<"et2rho "<< latsum.Eta2RhoCoul<<endl;
-  
-  //first calculate the auxbasis G array and store it
-  size_t nAuxbas = basis.getNPrimitivebas(shls[5]) - basis.getNPrimitivebas(shls[4]);
-
-  //AuxGarray(c,G) -> c + G * nC
-  double* AuxGarray;
-  //Mem.ClearAlloc(AuxGarray, nAuxbas * latsum.Kcoord.size());
-
-  auto start = high_resolution_clock::now();
-  //PopulateAuxGMatrix(AuxGarray, basis, shls, latsum, Mem);
-  auto stop = high_resolution_clock::now();
-  auto duration = duration_cast<microseconds>(stop - start);
-  cout <<"Auxbas populate "<< duration.count()/1e6<<"  size: "<<nAuxbas*latsum.Kcoord.size()<<"  "<<nAuxbas<<"  "<<latsum.Kcoord.size()<<"  "<<shls[0]<<"  "<<shls[1]<<"  "<<shls[2]<<"  "<<shls[3]<<"  "<<shls[4]<<"  "<<shls[5]<<endl;
-
-  
-  cout << basis.getNPrimitivebas(shls[5])<<"  "<<basis.getNbas(shls[5])<<endl;
-  cout << basis.getNPrimitivebas(shls[4])<<"  "<<basis.getNbas(shls[4])<<endl;
-
-
-  //nbasis
-  size_t nbas = basis.getNbas(shls[1]) - basis.getNbas(shls[2]);
-  vector<double> Integral3c(nbas*nbas*nAuxbas,0.0);
-  ContractWithBasisPair(&Integral3c[0], AuxGarray, shls, basis, latsum, Mem);
-}
 
 void PopulateAuxGMatrix(double* pOut, BasisShell* pC, size_t offset,
 			size_t nAuxBas, LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
@@ -684,10 +360,10 @@ void PopulatePairGMatrixKspace(double* pOutCos, double* pOutSin,
   double pInv2A =  bool(la)? std::pow(1.0/(2*pA->exponents[iExpA]), (int)la) : 1.;
   double pInv2B =  bool(lb)? std::pow(1.0/(2*pB->exponents[iExpB]), (int)lb) : 1.;
   
-  double* pSpha1; Mem.Alloc(pSpha1, 2*la+1);
-  double* pSpha2; Mem.Alloc(pSpha2, 2*la+1);
-  double* pSphb1; Mem.Alloc(pSphb1, 2*lb+1);
-  double* pSphb2; Mem.Alloc(pSphb2, 2*lb+1);
+  double* pSpha1; Mem.Alloc(pSpha1, (la+1)*(la+1));
+  double* pSpha2; Mem.Alloc(pSpha2, (la+1)*(la+1));
+  double* pSphb1; Mem.Alloc(pSphb1, (lb+1)*(lb+1));
+  double* pSphb2; Mem.Alloc(pSphb2, (lb+1)*(lb+1));
   double Ax =  pA->Xcoord, Ay =  pA->Ycoord, Az =  pA->Zcoord;
   double Bx =  pB->Xcoord, By =  pB->Ycoord, Bz =  pB->Zcoord;
 
@@ -782,6 +458,7 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
 			       BasisShell* pA, BasisShell* pB,
 			       int iExpA, int iExpB,
 			       LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
+
   pairRTime.start();
     
   int la = pA->l, lb = pB->l; int nterms = (2*la +1)*(2*lb+1);
@@ -791,13 +468,12 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
   double pInv2A =  bool(la)? std::pow(1.0/(2*pA->exponents[iExpA]), (int)la) : 1.;
   double pInv2B =  bool(lb)? std::pow(1.0/(2*pB->exponents[iExpB]), (int)lb) : 1.;
   
-  double* pSpha1; Mem.Alloc(pSpha1, 2*la+1);
-  double* pSpha2; Mem.Alloc(pSpha2, 2*la+1);
-  double* pSphb1; Mem.Alloc(pSphb1, 2*lb+1);
-  double* pSphb2; Mem.Alloc(pSphb2, 2*lb+1);
   double Ax =  pA->Xcoord, Ay =  pA->Ycoord, Az =  pA->Zcoord;
   double Bx =  pB->Xcoord, By =  pB->Ycoord, Bz =  pB->Zcoord;
 
+  double Tx, Ty, Tz;
+  latsum.getRelativeCoords(pA, pB, Tx, Ty, Tz);
+  Bx = 2*Bx+Tx-Ax; By = 2*By+Ty-Ay; Bz = 2*Bz+Tz-Az; 
   
   double screen = latsum.Rscreen;
   double Eta2Rho =  latsum.Eta2RhoCoul;
@@ -823,7 +499,7 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
     
   double logscreen = log(screen) -
     log(maxContraction * scale);
-    
+
   for (int g=1; g<latsum.Kdist.size(); g++) {
     double Gx=latsum.Kcoord[3*g+0],
       Gy=latsum.Kcoord[3*g+1],
@@ -851,7 +527,8 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
 				     +  (Az-Bz-Qz)*(Az-Bz-Qz));
       
       if (expArgQ+expArgG < logscreen) break;
-
+      foundNonZero = true;
+      
       double expval2 = exp(expArgQ);
 
       //pReciprocalSumCos[0] += expval2 * scale * cos(arg);
@@ -862,22 +539,22 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
 			  Qx, Qy, Qz, Ax, Ay, Az,
 			  Bx, By, Bz, alpha, a, b, expval2,
 			  scale, Mem);
-      
+
     }
-    if (!foundNonZero) break;
     ct::Add2(&pOutCos[g*nterms], pReciprocalSumCos, 1.0, nterms);
     ct::Add2(&pOutSin[g*nterms], pReciprocalSumSin, 1.0, nterms);
+    if (!foundNonZero) break;
   }
   Mem.Free(pReciprocalSumCos);
   pairRTime.stop();
   
 }
 
-void contractCoulombKernel(double* pOut, double* AuxGarray,
-			   double* OrbPairGMatrixcos, double* OrbPairGMatrixsin,
+
+void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
+			   double* OrbPairGMatrixsin,
 			   LatticeSum& latsum, BasisShell* pA, BasisShell *pB,
-			   int iExpA, int iExpB,
-			   int nAuxbas, BasisSet& basis, vector<int>& shls,
+			   int iExpA, int iExpB, BasisShell* pC, int coffset,
 			   ct::FMemoryStack2 &Mem) {
 
   coulombContractTime.start();
@@ -888,124 +565,230 @@ void contractCoulombKernel(double* pOut, double* AuxGarray,
 
   double a = pA->exponents[iExpA], b = pB->exponents[iExpB];
   int la = pA->l, lb = pB->l;
-  int ntermsab = (2*la+1)*(2*lb+1);
+  int ntermsa = (2*la+1), ntermsb = (2*lb+1), ntermsab = ntermsa*ntermsb;
+  int lc = pC->l; int ntermsc = 2*lc+1; int nterms = ntermsab * ntermsc;
 
-  for (int shlc = shls[4]; shlc <shls[5]; shlc++) {
-    BasisShell *pC = & basis.BasisShells[shlc];
-    int lc = pC->l; int ntermsc = 2*lc+1; int nterms = ntermsab * ntermsc;
+  int bstride = ntermsa, cstride = ntermsab;
     
-    double *pSphc; Mem.Alloc(pSphc, (lc+1)*(lc+1));
-    double *pReciprocal; Mem.Alloc(pReciprocal, ntermsab*ntermsc);
-    
-    for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
-      double c = pC->exponents[iExpC];
-      double rho = min((a+b)*c/(a+b+c), Eta2Rho);
-      double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
-      double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.; 
-      double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
-      double prefactor = 1./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
+  double *pSphc; Mem.Alloc(pSphc, (lc+1)*(lc+1));
+  double *pReciprocal; Mem.Alloc(pReciprocal, ntermsab*ntermsc);
 
-      for (int i=0; i<ntermsab*ntermsc; i++) pReciprocal[i] = 0.0;
+  int nfnC = 0;
+  for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
+    double c = pC->exponents[iExpC];
+    double rho = min((a+b)*c/(a+b+c), Eta2Rho);
+    double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
+    double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.; 
+    double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
+    double prefactor = 1./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
 
-      double sum = 0.0;
-      for (int g=1; g<latsum.Kdist.size(); g++) {
-	double Gx=latsum.Kcoord[3*g+0],
-	  Gy=latsum.Kcoord[3*g+1],
-	  Gz=latsum.Kcoord[3*g+2];
-	double Gsq = latsum.Kdist[g];
-	double expArgG = -(Gsq)/4/rho;
+    for (int i=0; i<ntermsab*ntermsc; i++) pReciprocal[i] = 0.0;
 
-	if (expArgG < logscreen) break;
-	double Gkernel = exp(expArgG)/(Gsq/4.);
-	double Arg = Cx*Gx+Cy*Gy+Cz*Gz;
-	ir::EvalSlcX_Deriv0(pSphc, Gx, Gy, Gz, lc);
+    double sum = 0.0;
+    for (int g=1; g<latsum.Kdist.size(); g++) {
+      double Gx=latsum.Kcoord[3*g+0],
+	Gy=latsum.Kcoord[3*g+1],
+	Gz=latsum.Kcoord[3*g+2];
+      double Gsq = latsum.Kdist[g];
+      double expArgG = -(Gsq)/4/rho;
+      
+      if (expArgG < logscreen) break;
+      double Gkernel = exp(expArgG)/(Gsq/4.);
+      double Arg = Cx*Gx+Cy*Gy+Cz*Gz;
+      double cosarg = lc%2 == 0 ? cos(Arg) : sin(Arg);
+      double sinarg = lc%2 == 0 ? sin(Arg) : cos(Arg);
+      ir::EvalSlcX_Deriv0(pSphc, Gx, Gy, Gz, lc);
 
-	//(ab, P) = (P, G) (G)  (ab, G)
+      double* cmat = pSphc+lc*lc;
+      
+      //(ab, P) = (P, G) (G)  (ab, G)
+      for (int c = 0; c<ntermsc; c++)
 	for (int ab = 0; ab<ntermsab; ab++)
-	  for (int c = 0; c<ntermsc; c++)
-	    pReciprocal[ab+ntermsab*c] += pSphc[c] * Gkernel * prefactor *
-	      ( signCos * cos(Arg) * OrbPairGMatrixcos[ab + g*ntermsab] +
-		signSin * sin(Arg) * OrbPairGMatrixsin[ab + g*ntermsab]);
-	sum += Gkernel*prefactor * OrbPairGMatrixcos[g];
-
-      }
-
-      //contract the primitive
-      for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-      for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-      for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-	double CoAC = pC->contractions(iExpC, iCoC) *
-          pB->contractions(iExpB, iCoB) *
-          pA->contractions(iExpA, iCoA);
-	
-	ct::Add2(&pOut[nterms*(iCoA + pA->nCo*(iCoB + pB->nCo*iCoC))],
-		 pReciprocal, CoAC, nterms);
-      }
+	  pReciprocal[ab+ntermsab*c] += cmat[c] * Gkernel * prefactor *
+	    ( signCos * cosarg * OrbPairGMatrixcos[ab + g*ntermsab] +
+	      signSin * sinarg * OrbPairGMatrixsin[ab + g*ntermsab]);
+      //cout << cosarg<<"  "<<OrbPairGMatrixcos[0 + g*ntermsab]<<"  ";
+      //cout << sinarg<<"  "<<OrbPairGMatrixsin[0 + g*ntermsab]<<endl;
     }
-    Mem.Free(pSphc);
+
+    int cstart = c+nfnC;
+
+    for (int iCoC = 0; iCoC < pC->nCo; ++iCoC) {
+      double CoC = pC->contractions(iExpC, iCoC);
+      for (int c = 0; c<ntermsc; c++) 
+	for (int b = 0; b<ntermsb; b++)
+	  for (int a = 0; a<ntermsa; a++) {
+	    pOut[ a + b * ntermsa + (iCoC*ntermsc+c) * ntermsab]
+	      += pReciprocal[a + b*ntermsa + ntermsab*c] * CoC;
+	  }
+    }
+    nfnC += ntermsc;
   }
+  Mem.Free(pSphc);
   coulombContractTime.stop();
 }
 
-void ContractWithBasisPair(double *pOut, double* AuxGarray, 
-			   vector<int>& shls, BasisSet& basis, LatticeSum& latsum,
-			   ct::FMemoryStack2 &Mem) {
+void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<double>& Lattice, ct::FMemoryStack2& Mem) {
+
+  //10 along R and G directions
+  //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
+  //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 100., 1.e-11, 1e-11);
+  LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
+  cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<endl;
+  cout <<"et2rho-Ovlp "<< latsum.Eta2RhoOvlp<<endl;
+
+  //first calculate the auxbasis G array and store it
+  size_t nAuxbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
+
+  //nbasis
+  size_t nbas = basis.getNbas(shls[1]) - basis.getNbas(shls[0]);
+
+  cout <<nAuxbas<<"  "<<nbas<<endl;
+
+  vector<double> Integral3c(nbas*nbas*nAuxbas,0.0);
+  Int2e3cRK(&Integral3c[0], shls, basis, latsum, Mem);
+  
+}
+
+void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& latsum,
+	       ct::FMemoryStack2 &Mem) {
 
   int nG = latsum.Kcoord.size();
 
   size_t nAuxbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
+  size_t nbas = basis.getNbas(shls[1]) - basis.getNbas(shls[0]);
 
-  double* primitiveInts; Mem.ClearAlloc(primitiveInts, nAuxbas * 13*13);
+  int maxAuxShell = 0;
+  for (int shlc =shls[4]; shlc < shls[5]; shlc++) {
+    int nfn = basis.BasisShells[shlc].numFuns();
+    if (maxAuxShell < nfn)
+      maxAuxShell = nfn;
+  }
   
-  cout << basis.BasisShells.size()<<"  nshells "<<endl;
   auto start = high_resolution_clock::now();
-  for (int shla = shls[0]; shla < shls[1]; shla++) 
-  for (int shlb = shls[2]; shlb <= shla; shlb++) {
+
+  //loop over basis shells
+  int aoffset = 0;
+  for (int shla = shls[0]; shla < shls[1]; shla++) {
     BasisShell *pA = &basis.BasisShells[shla];
-    BasisShell *pB = &basis.BasisShells[shlb];    
-    //cout <<"contractions "<< pA->contractions(0,0)<<"  "<<pB->contractions(0,0)<<"  "<<endl;
-    cout <<"contractions "<< shla<<"  "<<shlb<<"  "<<pA->l<<"  "<<pB->l<<"  "<<endl;
-    
-    int la = pA->l, lb = pB->l; int ntermsab = (2*la+1)*(2*lb+1);
-    double* OrbPairGMatrixCos; Mem.Alloc(OrbPairGMatrixCos, nG*ntermsab);
-    double* OrbPairGMatrixSin; Mem.Alloc(OrbPairGMatrixSin, nG*ntermsab);
+    int la = pA->l;
+    int ntermsa = (2*la+1);
+  
+    int boffset = 0;
+    for (int shlb = shls[2]; shlb <= shla; shlb++) {
+      BasisShell *pB = &basis.BasisShells[shlb];    
+      
+      int lb = pB->l;
+      int ntermsb = (2*lb+1), ntermsab = (2*la+1)*(2*lb+1);
+      double* OrbPairGMatrixCos; Mem.Alloc(OrbPairGMatrixCos, nG*ntermsab);
+      double* OrbPairGMatrixSin; Mem.Alloc(OrbPairGMatrixSin, nG*ntermsab);
 
-    for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) 
-    for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB) {
-      double a = pA->exponents[iExpA], b = pB->exponents[iExpB];
+      size_t worklen = maxAuxShell*(2*la+1)*(2*lb+1);
+      double* KspaceSum; Mem.ClearAlloc(KspaceSum, worklen);
+      double* RspaceSum; Mem.ClearAlloc(RspaceSum, worklen);
 
-      //cout << "about to populate pair "<<a<<"  "<<b<<endl;
+      //cout << worklen<<endl;
+      //loop over individual basis functions
+      for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) 
+      for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB) {
+	double a = pA->exponents[iExpA], b = pB->exponents[iExpB];
+	
+	
+	for (int g=0; g<nG*ntermsab; g++){
+	  OrbPairGMatrixCos[g] = 0.0;
+	  OrbPairGMatrixSin[g] = 0.0;
+	}
+	
+	double alpha = a*b/(a+b);
+	if (alpha < latsum.Eta2RhoOvlp) {
+	  PopulatePairGMatrixKspace(OrbPairGMatrixCos, OrbPairGMatrixSin,
+				    pA, pB, iExpA, iExpB, latsum, Mem);
+	}
+	else {
+	  PopulatePairGMatrixRspace(OrbPairGMatrixCos, OrbPairGMatrixSin,
+				    pA, pB, iExpA, iExpB, latsum, Mem);
+	}
+	
+	int coffset = 0;
+	for (int shlc = shls[4]; shlc <shls[5]; shlc++) {
 
+	  BasisShell *pC = & basis.BasisShells[shlc];
+	  size_t worklen = pC->numFuns()*(2*la+1)*(2*lb+1);
+	  for (int i=0; i<worklen; i++) KspaceSum[i] = 0.;
+	  	  
+	  contractCoulombKernel(KspaceSum, OrbPairGMatrixCos,
+				OrbPairGMatrixSin,
+				latsum, pA, pB, iExpA, iExpB,
+				pC, coffset, Mem);
 
-      for (int g=0; g<nG*ntermsab; g++){
-	OrbPairGMatrixCos[g] = 0.0;
-	OrbPairGMatrixSin[g] = 0.0;
+	  int bstride = nbas     , bstrideInter = pA->numFuns();
+	  int cstride = nbas*nbas, cstrideInter = bstrideInter * (2*lb+1);
+
+	  
+	  double* Inter1;
+	  Mem.ClearAlloc(Inter1, pA->numFuns() * (2*lb+1) * pC->numFuns());
+	  
+	  int ntermsbc = (2*lb+1)*pC->numFuns();
+	  for (int bc = 0; bc<ntermsbc; bc++)
+	  for (int iCoA = 0; iCoA < pA->nCo; iCoA++) {
+	    double CoA = pA->contractions(iExpA, iCoA);
+	    for (int a = 0; a<ntermsa; a++)
+	      Inter1[iCoA*ntermsa+a + bc * bstrideInter] +=
+		CoA * KspaceSum[a + bc * ntermsa];
+	  }
+
+	  //cout << pA->numFuns()*(2*lb+1)*pC->numFuns()<<"  Inter size"<<endl;
+	  for (int iCoB = 0; iCoB < pB->nCo; iCoB++) {
+	    double CoB = pB->contractions(iExpB, iCoB);
+	    for (int b = 0; b<ntermsb ; b++) 
+	      for (int ic = 0; ic < pC->numFuns(); ic++) {
+		for (int ia = 0; ia < pA->numFuns(); ia++) {
+		  pOut[ ia + aoffset
+			+ (iCoB*ntermsb + b + boffset) * bstride
+			+ (ic + coffset) * cstride]
+		    += CoB * Inter1[ia + b * bstrideInter
+				    + ic * cstrideInter];
+		}
+	      }
+	  }
+
+	  //cout << "inter "<<pA->contractions(0,0)<<"  "<<pA->contractions(1,0)<<endl;
+	  //cout <<pA->contractions(iExpA,0)<<"  "<<pB->contractions(iExpB,0)<<" "<<iExpA<<"  "<<iExpB<<"  "<<shlc<<"  "<< pOut[3]<<endl;
+	  Mem.Free(Inter1);
+
+	  coffset += pC->numFuns();
+	}
+
       }
 
-      double alpha = a*b/(a+b);
-      if (alpha < 0.1)
-	PopulatePairGMatrixKspace(OrbPairGMatrixCos, OrbPairGMatrixSin,
-				  pA, pB, iExpA, iExpB, latsum, Mem);
-      else
-	PopulatePairGMatrixRspace(OrbPairGMatrixCos, OrbPairGMatrixSin,
-				  pA, pB, iExpA, iExpB, latsum, Mem);
-      contractCoulombKernel(primitiveInts, AuxGarray, OrbPairGMatrixCos,
-			    OrbPairGMatrixSin,
-			    latsum, pA, pB, iExpA, iExpB, nAuxbas, basis, shls, Mem);
-
+      Mem.Free(OrbPairGMatrixCos);
+      boffset += pB->numFuns();
     }
-    Mem.Free(OrbPairGMatrixCos);
-    
+    aoffset += pA->numFuns();
+
   }
+
+  vector<double> test(nbas*(nbas+1)/2*nAuxbas);
+  for (int k=0; k<nAuxbas; k++)
+  for (int j=0; j<nbas; j++)
+  for (int i=0; i<=j; i++)
+    test[k * nbas*(nbas+1)/2 + j*(j+1)/2+i] = pOut[j + i*nbas + k *nbas*nbas];
+  //cout << i<<"  "<<j<<"  "<<k<<"  "<<pOut[j + i*nbas + k *nbas*nbas]<<endl;
+
+  string name = "int2e3c";
+  ofstream file(name.c_str(), ios::binary);
+  file.write(reinterpret_cast<char*>(&test[0]), test.size()*sizeof(double));
+  file.close();
   auto stop = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>(stop - start);
   cout <<"Auxbas populate "<< duration.count()/1e6<<endl;
   cout << pairRTime<<"  "<<pairKTime<<"  "<<coulombContractTime<<endl;
-  exit(0);
+
 }
 
 
 
+/*
 void PopulatePairGMatrix(double* pOut, BasisShell* pA, BasisShell* pB, 
 			 size_t nFnPair, LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
 
@@ -1115,3 +898,4 @@ void PopulatePairGMatrix(double* pOut, BasisShell* pA, BasisShell* pB,
   
 }
 
+*/

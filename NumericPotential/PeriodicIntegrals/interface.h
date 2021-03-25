@@ -12,7 +12,7 @@ extern cumulTimer ksumTime2, ksumKsum;
 extern cumulTimer pairRTime, pairKTime, coulombContractTime;
 extern size_t add2;
 extern "C" {
-  void initPeriodic(int* pshls, int *pao_loc, int *patm, int pnatm,
+  void initPeriodic(int* pshls, int *patm, int pnatm,
                     int *pbas, int pnbas, double *penv,
                     double* lattice);
 };

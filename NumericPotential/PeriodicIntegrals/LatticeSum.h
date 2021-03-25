@@ -23,7 +23,8 @@ struct LatticeSum {
   
   double Eta2RhoOvlp, Eta2RhoCoul;
   LatticeSum(double* Lattice, int nr, int nk, ct::FMemoryStack& Mem,
-             BasisSet& basis, double _Eta2Rho=100.0, double _Eta2RhoCoul = 8.0, double Rscreen=1.e-9, double Kscreen=1e-12);
+             BasisSet& basis, double _Eta2Rho=100.0, double _Eta2RhoCoul = 8.0,
+	     double Rscreen=1.e-9, double Kscreen=1e-12);
   void getRelativeCoords(BasisShell *pA, BasisShell *pC,
                          double& Tx, double& Ty, double& Tz);
   void printLattice();

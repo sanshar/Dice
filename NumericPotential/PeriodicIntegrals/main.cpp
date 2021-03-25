@@ -23,7 +23,7 @@ cumulTimer realSumTime, kSumTime, ksumTime1, ksumTime2, ksumKsum;
 cumulTimer pairRTime, pairKTime, coulombContractTime;
 size_t add2;
 
-void testIntegral(Kernel& kernel, int nbas, int natm, vector<double>& Lattice, ct::FMemoryStack2& Mem) ;
+void testIntegral(Kernel& kernel, vector<int>& shls, vector<double>& Lattice, ct::FMemoryStack2& Mem) ;
 void FormIntIJA(double *pIntFai, vector<int>& shls, Kernel &IntKernel, LatticeSum& latsum, ct::FMemoryStack2 &Mem);
 
 void Symmetrize(vector<double>& array, int nbas) {
@@ -56,35 +56,34 @@ int main(int argc, char** argv) {
   ct::FMemoryStack2
       Mem(RequiredMem);
 
-  vector<int> atm, bas, shls, ao_loc;
+  vector<int> atm, bas, shls;
   vector<double> env, Lattice;
 
   readFile(atm    , "atm");
   readFile(bas    , "bas");
   readFile(shls   , "shls");
-  readFile(ao_loc , "aoloc");
   readFile(env    , "env");
   readFile(Lattice, "Lattice");
 
-  int n1 = ao_loc[shls[1]] - ao_loc[shls[0]]; 
-  int n2 = ao_loc[shls[3]] - ao_loc[shls[2]]; 
-  
-  vector<double> integrals(n1*n2, 0.0);
-
-
-  initPeriodic(&shls[0], &ao_loc[0], &atm[0], atm.size()/6,
+  initPeriodic(&shls[0], &atm[0], atm.size()/6,
                &bas[0], bas.size()/8, &env[0],
-               &Lattice[0]);  
+               &Lattice[0]);
+
+
+  
   CoulombKernel ckernel;
   OverlapKernel okernel;
   KineticKernel kkernel;
+  basis.PrintAligned(cout,0);
 
 
   cout << "n Basis: "<<basis.getNbas()<<endl;
-  basis.PrintAligned(cout,0);
+  basis.basisnormTodensitynorm(shls[4], shls[5]);
   ThreeCenterIntegrals(shls, basis, Lattice, Mem);
+  basis.densitynormTobasisnorm(shls[4], shls[5]);
+  
   //latsum.printLattice();
-
+  /*
   {
     size_t nbas = basis.getNbas();
     cout <<"nbas "<< nbas<<endl;
@@ -134,7 +133,7 @@ int main(int argc, char** argv) {
       }
       cout <<" FR "<< twoInt[0]<<" contraction "<<pbas->contractions(0,0)<<endl;
     }
-    */
+    /
 
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
@@ -160,33 +159,28 @@ int main(int argc, char** argv) {
     file.write(reinterpret_cast<char*>(&threeInt[0]), threeInt.size()*sizeof(double));
     file.close();
 
-    */
+    /
   }
-
-
-  int sh1 = 0, sh2 = 0;
-  //cout << basis.BasisShells[sh1].exponents[0]<<endl;
-  //basis.BasisShells[sh1].exponents[0] = 20.; basis.BasisShells[sh2].exponents[0] = 20.;
-  int nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
-  int nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
-
-
-
+  */
 
 
   
   cout <<endl;
   cout << "Testing Overlap"<<endl;
-  testIntegral(okernel, basis.getNbas(), atm.size()/6, Lattice, Mem); cout << endl;
+  testIntegral(okernel, shls, Lattice, Mem); cout << endl;
   cout << "Testing Kinetic"<<endl;
-  testIntegral(kkernel, basis.getNbas(), atm.size()/6, Lattice, Mem); cout << endl;
+  testIntegral(kkernel, shls, Lattice, Mem); cout << endl;
   cout << "Testing Coulomb"<<endl;
-  testIntegral(ckernel, basis.getNbas(), atm.size()/6, Lattice, Mem); cout << endl;
-
+  
+  basis.basisnormTodensitynorm(shls[4], shls[5]);
+  testIntegral(ckernel, shls, Lattice, Mem); cout << endl;
+  basis.densitynormTobasisnorm(shls[4], shls[5]);
 }
 
 
-void testIntegral(Kernel& kernel, int nbas, int natm, vector<double>& Lattice, ct::FMemoryStack2& Mem) {
+void testIntegral(Kernel& kernel, vector<int>&shls, vector<double>& Lattice, ct::FMemoryStack2& Mem) {
+  
+  int nbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
   vector<double> integrals(nbas*nbas);
 
   {
@@ -195,26 +189,20 @@ void testIntegral(Kernel& kernel, int nbas, int natm, vector<double>& Lattice, c
     ksumTime1 = cumulTimer();
     ksumTime2 = cumulTimer();
 
-    /*
-    int nx =2, ny=2, nz=2;
-    Lattice[0] = nx*Lattice[0]; Lattice[1] = nx*Lattice[1]; Lattice[2] = nx*Lattice[2];
-    Lattice[3] = ny*Lattice[3]; Lattice[4] = ny*Lattice[4]; Lattice[5] = ny*Lattice[5];
-    Lattice[6] = nz*Lattice[6]; Lattice[7] = nz*Lattice[7]; Lattice[8] = nz*Lattice[8];
-    */
     auto start = high_resolution_clock::now();
     LatticeSum latsum(&Lattice[0], 6, 20, Mem, basis, 5., 8.0, 1.e-10, 1e-11);
+
     {
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    cout <<"lattice sum "<< duration.count()/1e6<<endl;
+      auto stop = high_resolution_clock::now();
+      auto duration = duration_cast<microseconds>(stop - start);
+      cout <<"lattice sum "<< duration.count()/1e6<<endl;
     }
     
-    //if (kernel.getname() == coulombKernel) latsum.makeKsum(basis);
     int inbas = 0, jnbas = 0, nbas1, nbas2;
-    for (int sh1 = 0 ; sh1 <basis.BasisShells.size(); sh1++) {
+    for (int sh1 = shls[4] ; sh1 <shls[5]; sh1++) {
       nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
       jnbas = 0;
-      for (int sh2 = 0 ; sh2 <=sh1; sh2++) {
+      for (int sh2 = shls[4] ; sh2 <=sh1; sh2++) {
         nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
 
         EvalInt2e2c(&integrals[inbas + jnbas * nbas], 1, nbas, &basis.BasisShells[sh1],
@@ -249,10 +237,10 @@ void testIntegral(Kernel& kernel, int nbas, int natm, vector<double>& Lattice, c
     //if (kernel.getname() == coulombKernel) latsum.makeKsum(basis);
 
     int inbas = 0, jnbas = 0, nbas1, nbas2;
-    for (int sh1 = 0 ; sh1 <basis.BasisShells.size(); sh1++) {
+    for (int sh1 = shls[4] ; sh1 <shls[5]; sh1++) {
       nbas1 = basis.BasisShells[sh1].nCo * (2 * basis.BasisShells[sh1].l + 1);
       jnbas = 0;
-      for (int sh2 = 0 ; sh2 <=sh1; sh2++) {
+      for (int sh2 = shls[4] ; sh2 <=sh1; sh2++) {
         nbas2 = basis.BasisShells[sh2].nCo * (2 * basis.BasisShells[sh2].l + 1);
         EvalInt2e2c(&integrals[inbas + jnbas * nbas], 1, nbas, &basis.BasisShells[sh1],
                     &basis.BasisShells[sh2], 1.0, false, &kernel, latsum, Mem);

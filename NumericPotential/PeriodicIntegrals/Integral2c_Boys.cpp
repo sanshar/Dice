@@ -500,17 +500,6 @@ void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
    ShTrA_YY(pR1, pDataR, lc, (la + lc), TotalCo);
    ShTrA_YY(pFinal, pR1, la, la, (2*lc + 1)*TotalCo);
 
-   /*
-   kSumTime.start();
-   Mem.ClearAlloc(pDataK, (2*la+1)*(2*lc+1) * TotalCo);
-   double Tx = pA->Xcoord - pC->Xcoord;
-   double Ty = pA->Ycoord - pC->Ycoord;
-   double Tz = pA->Zcoord - pC->Zcoord;
-   makeReciprocalSummation2(pDataK, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-   kSumTime.stop();
-   ct::Add2(pFinal, pDataK, 1.0, (2*la+1)*(2*lc+1) * TotalCo);
-   */
-
    Scatter2e2c(pOut, StrideA, StrideC, pFinal, la, lc, 1, pA->nCo, pC->nCo, Add);
 
    Mem.Free(pInv2Alpha);
