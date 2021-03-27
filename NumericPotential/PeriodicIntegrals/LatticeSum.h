@@ -16,10 +16,16 @@ struct LatticeSum {
   std::vector<double> Kcoord;
   std::vector<int> Kcoordindex;
   std::vector<double> Kdist;
+
+  std::vector<double> KcoordHalf;
+  std::vector<double> KdistHalf;
+  
+  std::vector<double> atomCenters;
+
   std::vector<std::vector<long>> KSumIdx;
   std::vector<std::vector<size_t>> ROrderedIdx;
   std::vector<double> KSumVal;
-  std::vector<double> atomCenters;
+
   std::vector<std::vector<double>> CosKval3c;
   std::vector<std::vector<double>> SinKval3c;
   

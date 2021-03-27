@@ -64,14 +64,15 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
                        double _Eta2RhoCoul, double _Rscreen, double _Kscreen,
                        bool make2cIntermediates, bool make3cIntermediates) {
   
-  //int nr = 1, nk = 10;
+  //*********************
+  //MAKE RLATTICE VECTORS
+  //*********************
   int ir = 0; int Nr = 4*nr+1;
   vector<double> Rcoordcopy(3*Nr*Nr*Nr), Rdistcopy(Nr*Nr*Nr);
 
   int Nrkeep =  pow(2*nr+1, 3);
   Rcoord.resize(3*Nrkeep);
   Rdist.resize(Nrkeep);
-
   //rvals
   for (int i = -2*nr; i<=2*nr ; i++)
   for (int j = -2*nr; j<=2*nr ; j++)
@@ -97,9 +98,14 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
     Rcoord[3*i+1] = Rcoordcopy[3*idx[i]+1];
     Rcoord[3*i+2] = Rcoordcopy[3*idx[i]+2];
   }
-
+  //***************************
+  //***************************
   
-  //make klattice
+
+
+  //*********************
+  //MAKE KLATTICE VECTORS
+  //*********************
   KLattice.resize(9), RLattice.resize(9);
   for (int i=0; i<9; i++) RLattice[i] = Lattice[i];
   RVolume = getKLattice(&KLattice[0], Lattice);
@@ -134,7 +140,7 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
 
     ir++;
   }
-  cout << ir <<"  "<<NkLat<<endl;
+
   idx.resize(NkLat);
   std::iota(idx.begin(), idx.end(), 0);
   std::stable_sort(idx.begin(), idx.end(),
@@ -149,7 +155,56 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
     Kcoordindex[3*i+1] = Kcoordindexcopy[3*idx[i]+1];
     Kcoordindex[3*i+2] = Kcoordindexcopy[3*idx[i]+2];
   }
+  //**********************************
+  //**********************************
 
+
+
+  //*************************
+  //MAKE Half KLATTICE VECTORS
+  //*************************
+  NkLat = Nk*Nk*Nk/2+1;
+
+  Kcoordcopy.resize(3*NkLat); Kdistcopy.resize(NkLat);
+  KcoordHalf.resize(3 * NkLat);
+  KdistHalf.resize(NkLat);
+  
+  ir = 0;
+  //kvals
+  for (int i =   0; i<=nk ; i++)
+  for (int j = -nk; j<=nk ; j++)
+  for (int k = -nk; k<=nk ; k++) {
+    if (i == 0 && j < 0) continue;
+    if (i == 0 && j == 0 && k < 0) continue;
+    
+    Kcoordcopy[3*ir+0] = i * KLattice[0] + j * KLattice[3] + k * KLattice[6];
+    Kcoordcopy[3*ir+1] = i * KLattice[1] + j * KLattice[4] + k * KLattice[7];
+    Kcoordcopy[3*ir+2] = i * KLattice[2] + j * KLattice[5] + k * KLattice[8];
+
+    Kdistcopy[ir] = Kcoordcopy[3*ir+0] * Kcoordcopy[3*ir+0]
+                 +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
+                 +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
+
+    ir++;
+  }
+  cout << ir<<"  "<<NkLat<<endl;
+  idx.resize(NkLat);
+  std::iota(idx.begin(), idx.end(), 0);
+  std::stable_sort(idx.begin(), idx.end(),
+                   [&Kdistcopy](size_t i1, size_t i2) {return Kdistcopy[i1] < Kdistcopy[i2];});
+  
+  for (int i=0; i<idx.size(); i++) {
+    KdistHalf[i] = Kdistcopy[idx[i]];
+    KcoordHalf[3*i+0] = Kcoordcopy[3*idx[i]+0];
+    KcoordHalf[3*i+1] = Kcoordcopy[3*idx[i]+1];
+    KcoordHalf[3*i+2] = Kcoordcopy[3*idx[i]+2];
+  }
+  //**********************************
+  //**********************************
+
+  
+  
+  
   Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
   Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
   Rscreen = _Rscreen;
@@ -366,9 +421,9 @@ void LatticeSum::makeKsum3c(BasisSet& basis) {
 
   //for each center store all solid harmonics derivaties for each G-coord
   CosKval3c.resize(atomCenters.size(),
-                   std::vector<double>((nL+1)*(nL+1)*Kdist.size(), 0.0));
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
   SinKval3c.resize(atomCenters.size(),
-                   std::vector<double>((nL+1)*(nL+1)*Kdist.size(), 0.0));
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
 
   vector<int> filledT(atomCenters.size(), 0);
   
@@ -380,10 +435,10 @@ void LatticeSum::makeKsum3c(BasisSet& basis) {
     filledT[T] = 1;
     
     double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
-    for (int g=1; g<Kdist.size(); g++) {
-      double Gx=Kcoord[3*g+0],
-          Gy=Kcoord[3*g+1],
-          Gz=Kcoord[3*g+2];
+    for (int g=1; g<KdistHalf.size(); g++) {
+      double Gx=KcoordHalf[3*g+0],
+          Gy=KcoordHalf[3*g+1],
+          Gz=KcoordHalf[3*g+2];
     
       ir::EvalSlcX_Deriv0(&pSphc[0], Gx, Gy, Gz, nL);
       
@@ -405,8 +460,6 @@ void LatticeSum::makeKsum3c(BasisSet& basis) {
           CosKval3c[T][index + lc*lc + i] = cmat[i] * cosarglc;
           SinKval3c[T][index + lc*lc + i] = cmat[i] * sinarglc;
         }
-        if (g == 7 && T == 0 && lc == 0) 
-          cout << cmat[0]<<"  "<<cosarglc<<"  "<<sinarglc<<endl;
       }
     }
     

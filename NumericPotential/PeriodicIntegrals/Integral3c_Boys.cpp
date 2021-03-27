@@ -389,11 +389,11 @@ void PopulatePairGMatrixKspace(double* pOutCos, double* pOutSin,
   double logscreen = log(screen) -
     log(maxContraction * scale);
     
-  for (int g=1; g<latsum.Kdist.size(); g++) {
-    double Gx=latsum.Kcoord[3*g+0],
-      Gy=latsum.Kcoord[3*g+1],
-      Gz=latsum.Kcoord[3*g+2];
-    double Gsq = latsum.Kdist[g];
+  for (int g=1; g<latsum.KdistHalf.size(); g++) {
+    double Gx=latsum.KcoordHalf[3*g+0],
+      Gy=latsum.KcoordHalf[3*g+1],
+      Gz=latsum.KcoordHalf[3*g+2];
+    double Gsq = latsum.KdistHalf[g];
     double expArgG = -(Gsq)/4/min(a+b, Eta2Rho);
     
     if (expArgG < logscreen) break;
@@ -495,11 +495,11 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
   double logscreen = log(screen) -
     log(maxContraction * scale);
 
-  for (int g=1; g<latsum.Kdist.size(); g++) {
-    double Gx=latsum.Kcoord[3*g+0],
-      Gy=latsum.Kcoord[3*g+1],
-      Gz=latsum.Kcoord[3*g+2];
-    double Gsq = latsum.Kdist[g];
+  for (int g=1; g<latsum.KdistHalf.size(); g++) {
+    double Gx=latsum.KcoordHalf[3*g+0],
+      Gy=latsum.KcoordHalf[3*g+1],
+      Gz=latsum.KcoordHalf[3*g+2];
+    double Gsq = latsum.KdistHalf[g];
     double expArgG = -(Gsq)/4/min(a+b, Eta2Rho);
     
     if (expArgG < logscreen) break;
@@ -567,11 +567,10 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
   
   int bstride = ntermsa, cstride = ntermsab;
-  int nG = latsum.Kdist.size();
+  int nG = latsum.KdistHalf.size();
   
   double *pSphc; Mem.Alloc(pSphc, (lc+1)*(lc+1));
-  //double *cosCommon; Mem.ClearAlloc(cosCommon, (2*lc+1)*nG);
-  //double *sinCommon; Mem.ClearAlloc(sinCommon, (2*lc+1)*nG);
+
 
   int atomT = latsum.indexCenter(*pC); //find the index of the atom
 
@@ -592,19 +591,18 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
     double c = pC->exponents[iExpC];
     double rho = min((a+b)*c/(a+b+c), Eta2Rho);
-    double prefactor = 1./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
+    double prefactor = 2./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
 
     if (!RhoLargeDone) {
 
       int g = 1;
-      for (; g<latsum.Kdist.size(); g++) {
-        double Gsq = latsum.Kdist[g];
+      for (; g<latsum.KdistHalf.size(); g++) {
+        double Gsq = latsum.KdistHalf[g];
         double expArgG = -(Gsq)/4/rho;
         
         if (expArgG < logscreen) break;
         gkernel[g] = exp(expArgG)/(Gsq/4.);
       }
-
 
       int index2 = 0, index=0;
 
