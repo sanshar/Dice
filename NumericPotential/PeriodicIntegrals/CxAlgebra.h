@@ -54,6 +54,10 @@ extern "C"{
             FDBLARG alpha, double const *A, FINTARG lda, double const *B, FINTARG ldb,
             FDBLARG beta, double *C, FINTARG ldc );
 
+        #define DLACPY FORT_Extern(dlacpy_,DLACPY)
+        void DLACPY( char const &uplo,  FINTARG M, FINTARG N,
+                    double const *A, FINTARG lda, double const *B, FINTARG ldb);
+  
         //  C := alpha*op(A)*op(A^T) + beta*C,
         #define DSYRK FORT_Extern(dsyrk_,DSYRK)
         void DSYRK( char const &UpLo, char const &TransA, FINTARG N, FINTARG K,
@@ -136,6 +140,7 @@ extern "C"{
 namespace ct {
 
 void Add2(double * pOut, double const * pIn, double f, size_t n);
+  void Add2_0(double * pOut, double const * pIn, double f, size_t n);
   
 void Mxm(double *pOut, ptrdiff_t iRowStO, ptrdiff_t iColStO,
          double const *pA, ptrdiff_t iRowStA, ptrdiff_t iColStA,

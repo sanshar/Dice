@@ -5,6 +5,7 @@
 #include "BasisShell.h"
 #include "Kernel.h"
 #include "GeneratePolynomials.h"
+#include "IrAmrr.h"
 
 double dotProduct(double* vA, double* vB) {
   return vA[0] * vB[0] + vA[1] * vB[1] + vA[2] * vB[2];
@@ -60,7 +61,8 @@ void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
 
 LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
                        ct::FMemoryStack& Mem, BasisSet& basis, double _Eta2Rho,
-                       double _Eta2RhoCoul, double _Rscreen, double _Kscreen) {
+                       double _Eta2RhoCoul, double _Rscreen, double _Kscreen,
+                       bool make2cIntermediates, bool make3cIntermediates) {
   
   //int nr = 1, nk = 10;
   int ir = 0; int Nr = 4*nr+1;
@@ -159,8 +161,14 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
   for (int i = 0; i<basis.BasisShells.size(); i++) 
     int idx = indexCenter(basis.BasisShells[i]);
 
-  OrderedLatticeSumForEachAtomPair(basis, Mem);
-  makeKsum(basis);
+
+  if (make2cIntermediates) {
+    OrderedLatticeSumForEachAtomPair(basis, Mem);
+    makeKsum2c(basis);
+  }
+
+  if (make3cIntermediates) 
+    makeKsum3c(basis);
 }
 
 void LatticeSum::OrderedLatticeSumForEachAtomPair(BasisSet& basis, ct::FMemoryStack& Mem) {
@@ -275,7 +283,7 @@ int LatticeSum::indexCenter(BasisShell& bas) {
 //if rho > eta2rho, part of the summation is done in reciprocal space
 //but it does not depend on rho, only on the T (distance between basis)
 //and the L (anuglar moment)
-void LatticeSum::makeKsum(BasisSet& basis) {
+void LatticeSum::makeKsum2c(BasisSet& basis) {
 
   int pnatm = atomCenters.size()/3;
   int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
@@ -340,6 +348,68 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 	}      
       }    
     }
+  }
+}
+
+
+
+//in 3center integrals while doing reciprocal space summations the auxilliary basis
+//contributions only depend on the atom that they belong to and can be precalculated
+void LatticeSum::makeKsum3c(BasisSet& basis) {
+
+  int pnatm = atomCenters.size()/3;
+  int nT = pnatm ; //all atoms
+
+  
+  int nL = 6; //for each pair there are maximum 12 Ls
+  vector<double> pSphc((nL+1)*(nL+1));
+
+  //for each center store all solid harmonics derivaties for each G-coord
+  CosKval3c.resize(atomCenters.size(),
+                   std::vector<double>((nL+1)*(nL+1)*Kdist.size(), 0.0));
+  SinKval3c.resize(atomCenters.size(),
+                   std::vector<double>((nL+1)*(nL+1)*Kdist.size(), 0.0));
+
+  vector<int> filledT(atomCenters.size(), 0);
+  
+  for (int shlc = 0; shlc <basis.BasisShells.size(); shlc++) {
+    BasisShell *pC = &basis.BasisShells[shlc];
+    int T = indexCenter(*pC);
+    assert(T != -1);
+    if (filledT[T] == 1) continue;
+    filledT[T] = 1;
+    
+    double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
+    for (int g=1; g<Kdist.size(); g++) {
+      double Gx=Kcoord[3*g+0],
+          Gy=Kcoord[3*g+1],
+          Gz=Kcoord[3*g+2];
+    
+      ir::EvalSlcX_Deriv0(&pSphc[0], Gx, Gy, Gz, nL);
+      
+      double Arg = Cx*Gx+Cy*Gy+Cz*Gz;
+      double Cosarg = cos(Arg), Sinarg = sin(Arg);
+
+      int index = g * (nL+1) * (nL+1);
+      for (int lc = 0; lc<=nL; lc++) {
+        double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.;
+        double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
+        
+        double cosarglc = lc%2 == 0 ? signCos*Cosarg : signCos*Sinarg;
+        double sinarglc = lc%2 == 0 ? signSin*Sinarg : signSin*Cosarg;
+        
+        double* cmat = &pSphc[0]+lc*lc;
+        int ntermsc = 2*lc+1;
+        
+        for (int i=0; i<ntermsc; i++) {
+          CosKval3c[T][index + lc*lc + i] = cmat[i] * cosarglc;
+          SinKval3c[T][index + lc*lc + i] = cmat[i] * sinarglc;
+        }
+        if (g == 7 && T == 0 && lc == 0) 
+          cout << cmat[0]<<"  "<<cosarglc<<"  "<<sinarglc<<endl;
+      }
+    }
+    
   }
 }
 

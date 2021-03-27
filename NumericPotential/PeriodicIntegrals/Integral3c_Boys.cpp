@@ -227,6 +227,7 @@ void EvalInt2e3c(double *pOut, size_t *Strides,
                    Factor = pow15(M_PI * OvPC.InvEta) * Sab * Prefactor; // [1] (7)
 
                // make I[m] = (00|0)^m, m = 0..TotalL (inclusive)
+               //T = rho*ovpc.distsq;
                //pKernel->EvalGm(pGm, rho, T, TotalL, Factor);
 
                double eta = 0.0;
@@ -292,11 +293,6 @@ void PopulateAuxGMatrix(double* pOut, BasisShell* pC, size_t offset,
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
     pInv2C[iExpC]=bool(lc) ? std::pow(1.0/(2*pC->exponents[iExpC]), (int)lc) : 1.;
   
-  double maxCon = 0.;
-  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC) 
-      if (maxCon < fabs(pC->contractions(iExpC, iCoC)))
-	maxCon = fabs(pC->contractions(iExpC, iCoC));
   
   double* pSphc; Mem.Alloc(pSphc, 2*lc+1);
   double Cx =  pC->Xcoord,
@@ -306,7 +302,7 @@ void PopulateAuxGMatrix(double* pOut, BasisShell* pC, size_t offset,
   double screen = latsum.Kscreen;
   double Eta2Rho =  latsum.Eta2RhoCoul;
   
-  double logscreen = log(1.e-20)-log(maxCon);
+  double logscreen = log(screen);
   
   for (int g=1; g<latsum.Kdist.size(); g++) {
     double Gx=latsum.Kcoord[3*g+0],
@@ -318,10 +314,9 @@ void PopulateAuxGMatrix(double* pOut, BasisShell* pC, size_t offset,
     ir::EvalSlcX_Deriv0(pSphc, Gx, Gy, Gz, lc);
       
     for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC) {
-      if (-(Gx*Gx+Gy*Gy+Gz*Gz)/4/pC->exponents[iExpC] < logscreen) continue;
 	
       double c = pC->exponents[iExpC],
-	prefactor = 1./pow(c, 1.5) * pInv2C[iExpC];
+          prefactor = 1./pow(c, 1.5) * pInv2C[iExpC];
       
       double *cMat = &pSphc[lc*lc];
 
@@ -567,51 +562,81 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   int la = pA->l, lb = pB->l;
   int ntermsa = (2*la+1), ntermsb = (2*lb+1), ntermsab = ntermsa*ntermsb;
   int lc = pC->l; int ntermsc = 2*lc+1; int nterms = ntermsab * ntermsc;
-
+  double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
+  double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.;
+  double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
+  
   int bstride = ntermsa, cstride = ntermsab;
-    
+  int nG = latsum.Kdist.size();
+  
   double *pSphc; Mem.Alloc(pSphc, (lc+1)*(lc+1));
-  double *pReciprocal; Mem.Alloc(pReciprocal, ntermsab*ntermsc);
+  //double *cosCommon; Mem.ClearAlloc(cosCommon, (2*lc+1)*nG);
+  //double *sinCommon; Mem.ClearAlloc(sinCommon, (2*lc+1)*nG);
 
+  int atomT = latsum.indexCenter(*pC); //find the index of the atom
+
+  double* cosCommon = (&latsum.CosKval3c[atomT][0])+lc*lc;
+  double* sinCommon = (&latsum.SinKval3c[atomT][0])+lc*lc;
+  char n = 'N', t = 'T'; double alpha = 1.0, beta = 0.0; int one = 1;
+
+  
+  double *pReciprocal; Mem.Alloc(pReciprocal, ntermsab*ntermsc);
+  double *pReciprocalLargeRho; Mem.Alloc(pReciprocalLargeRho, ntermsab*ntermsc);
+  double *cosC; Mem.Alloc(cosC, (2*lc+1)*nG);
+  double *sinC; Mem.Alloc(sinC, (2*lc+1)*nG);
+  double *gkernel; Mem.ClearAlloc(gkernel, nG);
+
+  double RhoLargeDone = false; 
+  
   int nfnC = 0;
   for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
     double c = pC->exponents[iExpC];
     double rho = min((a+b)*c/(a+b+c), Eta2Rho);
-    double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
-    double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.; 
-    double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
     double prefactor = 1./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
 
-    for (int i=0; i<ntermsab*ntermsc; i++) pReciprocal[i] = 0.0;
+    if (!RhoLargeDone) {
 
-    double sum = 0.0;
-    for (int g=1; g<latsum.Kdist.size(); g++) {
-      double Gx=latsum.Kcoord[3*g+0],
-	Gy=latsum.Kcoord[3*g+1],
-	Gz=latsum.Kcoord[3*g+2];
-      double Gsq = latsum.Kdist[g];
-      double expArgG = -(Gsq)/4/rho;
-      
-      if (expArgG < logscreen) break;
-      double Gkernel = exp(expArgG)/(Gsq/4.);
-      double Arg = Cx*Gx+Cy*Gy+Cz*Gz;
-      double cosarg = lc%2 == 0 ? cos(Arg) : sin(Arg);
-      double sinarg = lc%2 == 0 ? sin(Arg) : cos(Arg);
-      ir::EvalSlcX_Deriv0(pSphc, Gx, Gy, Gz, lc);
+      int g = 1;
+      for (; g<latsum.Kdist.size(); g++) {
+        double Gsq = latsum.Kdist[g];
+        double expArgG = -(Gsq)/4/rho;
+        
+        if (expArgG < logscreen) break;
+        gkernel[g] = exp(expArgG)/(Gsq/4.);
+      }
 
-      double* cmat = pSphc+lc*lc;
+
+      int index2 = 0, index=0;
+
+      for (int i=0; i<g; i++) {
+        ct::Add2_0(cosC+index, cosCommon+index2, gkernel[i], ntermsc);
+        index += ntermsc; index2 += 49;
+      }
+
+      DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixcos, ntermsab,
+            cosC, ntermsc,  beta, pReciprocal, ntermsab );
       
-      //(ab, P) = (P, G) (G)  (ab, G)
-      for (int c = 0; c<ntermsc; c++)
-	for (int ab = 0; ab<ntermsab; ab++)
-	  pReciprocal[ab+ntermsab*c] += cmat[c] * Gkernel * prefactor *
-	    ( signCos * cosarg * OrbPairGMatrixcos[ab + g*ntermsab] +
-	      signSin * sinarg * OrbPairGMatrixsin[ab + g*ntermsab]);
-      //cout << cosarg<<"  "<<OrbPairGMatrixcos[0 + g*ntermsab]<<"  ";
-      //cout << sinarg<<"  "<<OrbPairGMatrixsin[0 + g*ntermsab]<<endl;
+      index = 0; index2 = 0;
+
+      for (int i=0; i<g; i++) {
+        ct::Add2_0(sinC+index, sinCommon+index2, gkernel[i], ntermsc);
+        index += ntermsc; index2 += 49;
+      }
+
+      DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixsin, ntermsab,
+            sinC, ntermsc,  alpha, pReciprocal, ntermsab );
+
+      if ((a+b)*c/(a+b+c) > Eta2Rho) {
+        RhoLargeDone = true;
+        for (int i=0; i<ntermsc*ntermsab; i++)
+          pReciprocalLargeRho[i] = pReciprocal[i]/prefactor;
+      }
+    }
+    else {
+      for (int i=0; i<ntermsc*ntermsab; i++)
+        pReciprocal[i] = pReciprocalLargeRho[i]*prefactor;
     }
 
-    int cstart = c+nfnC;
 
     for (int iCoC = 0; iCoC < pC->nCo; ++iCoC) {
       double CoC = pC->contractions(iExpC, iCoC);
@@ -622,17 +647,19 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
 	      += pReciprocal[a + b*ntermsa + ntermsab*c] * CoC;
 	  }
     }
+
     nfnC += ntermsc;
   }
   Mem.Free(pSphc);
   coulombContractTime.stop();
+
 }
 
 void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<double>& Lattice, ct::FMemoryStack2& Mem) {
 
   //10 along R and G directions
   //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
-  LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 100., 1.e-11, 1e-11);
+  LatticeSum latsum(&Lattice[0], 4, 4, Mem, basis, 1., 30., 1.e-10, 1e-10, false, true);
   //LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
   cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<endl;
   cout <<"et2rho-Ovlp "<< latsum.Eta2RhoOvlp<<endl;
@@ -693,7 +720,7 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
       for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB) {
 	double a = pA->exponents[iExpA], b = pB->exponents[iExpB];
 	
-	
+        
 	for (int g=0; g<nG*ntermsab; g++){
 	  OrbPairGMatrixCos[g] = 0.0;
 	  OrbPairGMatrixSin[g] = 0.0;
