@@ -94,6 +94,7 @@ namespace ir {
    // Output:
    // - pOut: strided [(2l+1)] x [nCount] array; with strides sb for Slc(x-B) components, and sa for Count.
    void OsrrC(double *IR_RP pOut, size_t sa, size_t sb, double const *IR_RP p0Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount);
+   void OsrrCAppend(double *IR_RP pOut, size_t sa, size_t sb, double const *IR_RP p0Z, double AmBx, double AmBy, double AmBz, unsigned lb, size_t nCount);
    // Transform integrals over CartX[(x-A)^lb] cartesian functions, centered at A, to solid harmoincs Slc(x-B), centered at B.
    // Inputs:
    // - p0Z: [nCartX(la+lb+0,la)] array of unscaled (a0| sets.

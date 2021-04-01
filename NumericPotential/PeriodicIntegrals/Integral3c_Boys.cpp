@@ -53,32 +53,6 @@ struct FGaussProduct
    }
 };
 
-/*
-static bool IsWithinRange(BasisShell const *pA, BasisShell const *pB) {
-   if (!pA->pRange || !pB->pRange)
-      return true; // shells have no screening data.
-   return ir::sqr(pA->MaxCoRange() + pB->MaxCoRange()) >= DistSq3(pA->vCen, pB->vCen);
-}
-
-static bool IsPrimitiveWithinRange(BasisShell const *pA, uint iExpA, BasisShell const *pB, uint iExpB, double fDistSqAB)
-{
-   if (!pA->pRange || !pB->pRange)
-      return true; // shells have no screening data.
-   return ir::sqr(pA->ExpRange(iExpA) + pB->ExpRange(iExpB)) >= fDistSqAB;
-}
-
-static bool IsContractionWithinRange(BasisShell const *pA, uint iCoA, BasisShell const *pB, uint iCoB, double fDistSqAB)
-{
-   if (!pA->pRange || !pB->pRange)
-      return true; // shells have no screening data.
-   return ir::sqr(pA->CoRange(iCoA) + pB->CoRange(iCoB)) >= fDistSqAB;
-}
-
-static bool IsPrimitiveWithinRange(BasisShell const *pA, uint iExpA, BasisShell const *pB, uint iExpB)
-{
-   return IsPrimitiveWithinRange(pA, iExpA, pB, iExpB, DistSq3(pA->vCen, pB->vCen));
-}
-*/
 
 inline void SubVec3(double *pOut, double const *pA, double const *pB) {
    pOut[0] = pA[0] - pB[0];
@@ -125,11 +99,12 @@ FGaussProduct::FGaussProduct(double XA, double YA, double ZA, double ExpA_,
 
 
 void EvalInt2e3c(double *pOut, size_t *Strides,
-                 BasisShell const *pA, BasisShell const *pB, BasisShell const *pCs,
+                 BasisShell *pA, BasisShell *pB, BasisShell *pCs,
                  size_t nC, double Prefactor, Kernel *pKernel,
                  LatticeSum& latsum, ct::FMemoryStack2 &Mem)
 {
-   void
+  double Eta2Rho = latsum.Eta2RhoCoul;
+  void
       *pBaseOfMemory = Mem.Alloc(0);
    size_t
       StrideA = Strides[0], StrideB = Strides[1], StrideC = Strides[2];
@@ -175,107 +150,153 @@ void EvalInt2e3c(double *pOut, size_t *Strides,
       // intermediates (xa|c) with A,B,C contracted and (xa| = nCartX(lb) x (2*la+1)
       *p_xAC_ccc = Mem.AllocN(nShA_CartXB * nFnC_Total * pA->nCo * pB->nCo, dbl);
 
+   double Bx =  pB->Xcoord, By =  pB->Ycoord, Bz =  pB->Zcoord;
+   double Ax =  pA->Xcoord, Ay =  pA->Ycoord, Az =  pA->Zcoord;
    double Tx, Ty, Tz;
-   //latsum.getRelativeCoords(pA, pC, Tx, Ty, Tz);
-   Tx = pA->Xcoord - pB->Xcoord;
-   Ty = pA->Ycoord - pB->Ycoord;
-   Tz = pA->Zcoord - pB->Zcoord;
+   latsum.getRelativeCoords(pA, pB, Tx, Ty, Tz);
+   double Ax0 = Bx+Tx, Ay0 = By+Ty, Az0 = Bz+Tz;
+   //double Ax0 = Ax, Ay0 = Ay, Az0 = Az;
 
-   //FVec3
-   //vAmB = FVec3(pA->vCen) - FVec3(pB->vCen);
-   double
-//       fRangeKernel = sqr(pKernel->MaxRange()),
-      fDistSqAB = Tx*Tx+Ty*Ty+Tz*Tz;
+   int T1 = latsum.indexCenter(*pA);
+   int T2 = latsum.indexCenter(*pB);
+   int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+   vector<size_t>& Tidx = latsum.ROrderedIdx[T];
 
-   for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-   {
-      memset(p_A0C_cpc, 0, nCartX_ABmA * nFnC_Total * pA->nCo * sizeof(*p_A0C_cpc));
+   double screen = latsum.Rscreen;
+   double logscreen = log(screen);
+   vector<double>& KLattice = latsum.KLattice;
+   vector<double>& RLattice = latsum.RLattice;
 
-      for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-      {
-         // skip if Dist(A,B) < Range(A) + Range(B)
-        //if (!IsPrimitiveWithinRange(pA, iExpA, pB, iExpB, fDistSqAB))
-        //continue;
+   int nQ = latsum.Rdist.size();
+   for (int Q = 0; Q<nQ; Q++) {
+     double Ax = Ax0 + latsum.Rcoord[3*Tidx[Q]+0];
+     double Ay = Ay0 + latsum.Rcoord[3*Tidx[Q]+1];
+     double Az = Az0 + latsum.Rcoord[3*Tidx[Q]+2];
+     Tx = Ax-Bx; Ty = Ay-By; Tz = Az-Bz;
 
+     bool FoundNonZero = false;
+     
+     memset(p_A0C_ccc, 0, nCartX_ABmA * nFnC_Total *  pA->nCo * pB->nCo * sizeof(*p_A0C_ccc));
+     for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB) {
+       memset(p_A0C_cpc, 0, nCartX_ABmA * nFnC_Total * pA->nCo * sizeof(*p_A0C_cpc));
+
+       
+       for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) {
+         
+         double fDistSqAB = Tx*Tx+Ty*Ty+Tz*Tz;
+         
          FGaussProduct
-             OvAB(pA->Xcoord, pA->Ycoord, pA->Zcoord, pA->exponents[iExpA],
-                  pB->Xcoord, pB->Ycoord, pB->Zcoord, pB->exponents[iExpB]);
-            // ^- P == OvAB.vCen
-         double
-            Sab = std::exp(-OvAB.Exp * fDistSqAB), // [1] (6)
-            PmA[3];
-         PmA[0] = OvAB.vCen[0] - pA->Xcoord;
-         PmA[1] = OvAB.vCen[1] - pA->Ycoord;
-         PmA[2] = OvAB.vCen[2] - pA->Zcoord;
-         //SubVec3(PmA, OvAB.vCen, pA->vCen);
+             OvAB(Ax, Ay, Az, pA->exponents[iExpA],
+                  Bx, By, Bz, pB->exponents[iExpB]);
 
+         if (OvAB.Eta <= Eta2Rho) continue;
+         if (-OvAB.Exp*fDistSqAB < logscreen) continue;
+         
+
+         //find the nearest grid point
+         double ABx0 = OvAB.vCen[0], ABy0 = OvAB.vCen[1], ABz0 = OvAB.vCen[2];
+         int abx0= std::round((KLattice[0]*ABx0 + KLattice[1]*ABy0 + KLattice[2]*ABz0)/2/M_PI);
+         int aby0= std::round((KLattice[3]*ABx0 + KLattice[4]*ABy0 + KLattice[5]*ABz0)/2/M_PI);
+         int abz0= std::round((KLattice[6]*ABx0 + KLattice[7]*ABy0 + KLattice[8]*ABz0)/2/M_PI);
+         ABx0 = abx0*RLattice[0]+aby0*RLattice[3]+abz0*RLattice[6];
+         ABy0 = abx0*RLattice[1]+aby0*RLattice[4]+abz0*RLattice[7];
+         ABz0 = abx0*RLattice[2]+aby0*RLattice[5]+abz0*RLattice[8];
+         
+         // ^- P == OvAB.vCen
+         double
+             Sab = std::exp(-OvAB.Exp * fDistSqAB), // [1] (6)
+             PmA[3];
+         PmA[0] = OvAB.vCen[0] - Ax;
+         PmA[1] = OvAB.vCen[1] - Ay;
+         PmA[2] = OvAB.vCen[2] - Az;
+         
          memset(p_A0C_ppc, 0, nCartX_ABmA * nFnC_Total * sizeof(*p_A0C_ppc));
          for (size_t iC = 0; iC < nC; ++ iC) {
-            BasisShell const *pC = &pCs[iC];
-            uint
-               TotalL = pA->l + pB->l + pC->l;
+           BasisShell  *pC = &pCs[iC];
+           double Cx0 = pC->Xcoord, Cy0=pC->Ycoord, Cz0 = pC->Zcoord;
+           //double Cx = pC->Xcoord, Cy=pC->Ycoord, Cz = pC->Zcoord;
+           
+           for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+           {
+             uint
+                 TotalL = pA->l + pB->l + pC->l;
+             double c = pC->exponents[iExpC];
+             if (OvAB.Eta*c/(OvAB.Eta+c) <=Eta2Rho) continue;
+             
+             int nP = 27;//latsum.Rdist.size();//0 +/- x,y,z
+             for (int P = 0; P<nP; P++) {
+               double Cx = Cx0+ABx0+latsum.Rcoord[3*P+0];
+               double Cy = Cy0+ABy0+latsum.Rcoord[3*P+1];
+               double Cz = Cz0+ABz0+latsum.Rcoord[3*P+2];
 
-            for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-            {
                FGaussProduct
                    OvPC(OvAB.vCen[0], OvAB.vCen[1], OvAB.vCen[2], OvAB.Eta,
-                        pC->Xcoord, pC->Ycoord, pC->Zcoord, pC->exponents[iExpC]);
+                        Cx, Cy, Cz, pC->exponents[iExpC]);
                double
                    *PmC = OvPC.vAmB,
                    Rho = OvPC.Exp, // [1] (3)
                    t = OvPC.DistSq,
                    Factor = pow15(M_PI * OvPC.InvEta) * Sab * Prefactor; // [1] (7)
 
-               // make I[m] = (00|0)^m, m = 0..TotalL (inclusive)
-               //T = rho*ovpc.distsq;
-               //pKernel->EvalGm(pGm, rho, T, TotalL, Factor);
+               double eta = 1.0;
+               if (Eta2Rho*t < 29) {
+                 FoundNonZero = true;
+                 eta = sqrt(Eta2Rho/Rho);
+                 
+                 pKernel->getValueRSpace(pFmT, Rho*t, TotalL, Factor, Rho, eta, Mem);
 
-               double eta = 0.0;
-               pKernel->getValueRSpace(pFmT, Rho*t, TotalL, Factor, Rho, eta, Mem);
+                 // make (a0|0)^m for a = 0..lab with lab + la+lb.
+                 OsrrA(p_A00, pFmT + pC->l, (pA->l + pB->l), PmA[0], PmA[1], PmA[2],
+                       PmC[0], PmC[1], PmC[2], Rho, OvAB.InvEta);
+                 
+                 // make (a0|c) for a = la..lab, c = 0..lc.
+                 double
+                     *p_A0C_sh;
+                 if (pC->l == 0) {
+                   p_A0C_sh = p_A00 + nCartX_Am1;
+                 } else {
+                   p_A0C_sh = p_A0C_sh_mem;
+                   OsrrB_3c_shc(p_A0C_sh, p_A00, pMemOsrrB, pA->l, (pA->l + pB->l), pC->l,
+                                PmC[0], PmC[1], PmC[2], OvPC.InvEta, Rho/pC->exponents[iExpC]);
+                 }
 
-               // make (a0|0)^m for a = 0..lab with lab + la+lb.
-               OsrrA(p_A00, pFmT + pC->l, (pA->l + pB->l), PmA[0], PmA[1], PmA[2],
-                  PmC[0], PmC[1], PmC[2], Rho, OvAB.InvEta);
-
-               // make (a0|c) for a = la..lab, c = 0..lc.
-               double
-                  *p_A0C_sh;
-               if (pC->l == 0) {
-                  p_A0C_sh = p_A00 + nCartX_Am1;
-               } else {
-                  p_A0C_sh = p_A0C_sh_mem;
-                  OsrrB_3c_shc(p_A0C_sh, p_A00, pMemOsrrB, pA->l, (pA->l + pB->l), pC->l,
-                     PmC[0], PmC[1], PmC[2], OvPC.InvEta, Rho/pC->exponents[iExpC]);
+                 Contract1(&p_A0C_ppc[nCartX_ABmA * piFnC[iC]], p_A0C_sh,
+                           nCartX_ABmA*pC->nSh(), pC, iExpC);
                }
-
-               // (a0|c) with solid harmonic c is ready now. Just need to add it to
-               // its contractions.
-               Contract1(&p_A0C_ppc[nCartX_ABmA * piFnC[iC]], p_A0C_sh,
-                  nCartX_ABmA*pC->nSh(), pC, iExpC);
-            } // c exponents
+             }// P lattice
+           } // c exponents
          } // c shells
          // p_A0C_ppc should be done now. Contract A and B.
-         Contract1(p_A0C_cpc, p_A0C_ppc, nCartX_ABmA * nFnC_Total, pA, iExpA);
-      } // a exponents
-      Contract1(p_A0C_ccc, p_A0C_cpc, (nCartX_ABmA * nFnC_Total * pA->nCo), pB, iExpB);
-   } // b exponents
-   // transform A to solid harmonics by factoring nCartX(lab) into nCartX(lb) x Slm(A).
-   ShTrA_XY(p_xAC_ccc, p_A0C_ccc, pA->l, (pA->l + pB->l), nFnC_Total * pA->nCo * pB->nCo);
 
-   // we now have nCartX(lb) x nShA x nFnC_Total x nCoA x nCoB at p_xAC_ccc.
-   // we still need to move the angular momentum from a to b and to write the
-   // output integrals to their final destination.
-   for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-      for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+         if (!FoundNonZero) continue;
+         Contract1(p_A0C_cpc, p_A0C_ppc, nCartX_ABmA * nFnC_Total, pA, iExpA);
+       } // a exponents
+
+       
+       if (!FoundNonZero) continue;
+       Contract1(p_A0C_ccc, p_A0C_cpc, (nCartX_ABmA * nFnC_Total * pA->nCo), pB, iExpB);
+     } // b exponents
+     
+     if (!FoundNonZero) continue;
+     // transform A to solid harmonics by factoring nCartX(lab) into nCartX(lb) x Slm(A).
+     ShTrA_XY(p_xAC_ccc, p_A0C_ccc, pA->l, (pA->l + pB->l), nFnC_Total * pA->nCo * pB->nCo);
+
+     // we now have nCartX(lb) x nShA x nFnC_Total x nCoA x nCoB at p_xAC_ccc.
+     // we still need to move the angular momentum from a to b and to write the
+     // output integrals to their final destination.
+     for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
+       for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
          for (uint iFnC = 0; iFnC < nFnC_Total; ++ iFnC) {
-            uint
+           uint
                iFnA = iCoA * pA->nSh(), iFnB = iCoB * pB->nSh();
-            OsrrC(
+           OsrrCAppend(
                &pOut[iFnA*StrideA + iFnB*StrideB + iFnC*StrideC], StrideA, StrideB,
                &p_xAC_ccc[nShA_CartXB * (iFnC + (nFnC_Total * (iCoA + pA->nCo * iCoB)))],
                Tx, Ty, Tz, pB->l, pA->nSh() );
          };
-      }
+       }
+     
+   } //Q lattice
 
    Mem.Free(pBaseOfMemory);
 }
@@ -389,7 +410,7 @@ void PopulatePairGMatrixKspace(double* pOutCos, double* pOutSin,
   double logscreen = log(screen) -
     log(maxContraction * scale);
     
-  for (int g=1; g<latsum.KdistHalf.size(); g++) {
+  for (int g=0; g<latsum.KdistHalf.size(); g++) {
     double Gx=latsum.KcoordHalf[3*g+0],
       Gy=latsum.KcoordHalf[3*g+1],
       Gz=latsum.KcoordHalf[3*g+2];
@@ -468,7 +489,13 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
 
   double Tx, Ty, Tz;
   latsum.getRelativeCoords(pA, pB, Tx, Ty, Tz);
-  Bx = 2*Bx+Tx-Ax; By = 2*By+Ty-Ay; Bz = 2*Bz+Tz-Az; 
+  //Bx = 2*Bx+Tx-Ax; By = 2*By+Ty-Ay; Bz = 2*Bz+Tz-Az;
+  Bx = Ax-Tx; By = Ay-Ty; Bz = Az-Tz;
+
+  int T1 = latsum.indexCenter(*pA);
+  int T2 = latsum.indexCenter(*pB);
+  int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+  vector<size_t>& Tidx = latsum.ROrderedIdx[T];
   
   double screen = latsum.Rscreen;
   double Eta2Rho =  latsum.Eta2RhoCoul;
@@ -492,10 +519,9 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
     prefactor = M_PI*M_PI*M_PI*M_PI / pow(a + b, 1.5) / latsum.RVolume;    
   double scale = prefactor * pInv2A * pInv2B ;
     
-  double logscreen = log(screen) -
-    log(maxContraction * scale);
+  double logscreen = log(screen/(maxContraction * scale));
 
-  for (int g=1; g<latsum.KdistHalf.size(); g++) {
+  for (int g=0; g<latsum.KdistHalf.size(); g++) {
     double Gx=latsum.KcoordHalf[3*g+0],
       Gy=latsum.KcoordHalf[3*g+1],
       Gz=latsum.KcoordHalf[3*g+2];
@@ -512,11 +538,10 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
     }
 
     for (int q=0; q<latsum.Rdist.size(); q++) {
-      double Qx = latsum.Rcoord[3*q+0],
-	Qy = latsum.Rcoord[3*q+1],
-	Qz = latsum.Rcoord[3*q+2];
+      double Qx = -latsum.Rcoord[3*Tidx[q]+0],
+	Qy = -latsum.Rcoord[3*Tidx[q]+1],
+	Qz = -latsum.Rcoord[3*Tidx[q]+2];
       
-      double Qsq = Qx*Qx + Qy*Qy + Qz*Qz;
       double expArgQ = -alpha * (    (Ax-Bx-Qx)*(Ax-Bx-Qx)
 				  +  (Ay-By-Qy)*(Ay-By-Qy)
 				     +  (Az-Bz-Qz)*(Az-Bz-Qz));
@@ -554,8 +579,18 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
 
   coulombContractTime.start();
   
+  double maxConA = 0, maxConB=0, maxConC=0;
+  for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
+    if (fabs(maxConB) < fabs(pB->contractions(iExpB,iCoB)))
+      maxConB = fabs(pB->contractions(iExpB,iCoB));
+  for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA)
+    if (fabs(maxConA) < fabs(pA->contractions(iExpA,iCoA)))
+      maxConA = fabs(pA->contractions(iExpA,iCoA));
+  double maxContraction = maxConA*maxConB;
+
+
   double Eta2Rho =  latsum.Eta2RhoCoul;
-  double logscreen = log(latsum.Kscreen);
+  double logscreen = log(latsum.Kscreen/maxContraction);
   int Pidx = 0;
 
   double a = pA->exponents[iExpA], b = pB->exponents[iExpB];
@@ -589,18 +624,26 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   
   int nfnC = 0;
   for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
+
+    maxConC = 0.;
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+      if (fabs(maxConC) < fabs(pC->contractions(iExpC,iCoC)))
+        maxConC = fabs(pC->contractions(iExpC,iCoC));
+    
     double c = pC->exponents[iExpC];
-    double rho = min((a+b)*c/(a+b+c), Eta2Rho);
+    double Rho = (a+b)*c/(a+b+c);
+    double rho = min(Rho, Eta2Rho);
     double prefactor = 2./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
 
-    if (!RhoLargeDone) {
+    double logscreenABC = logscreen - log(maxConC*prefactor);
+    if (!RhoLargeDone || Rho < Eta2Rho) {
 
       int g = 1;
       for (; g<latsum.KdistHalf.size(); g++) {
         double Gsq = latsum.KdistHalf[g];
         double expArgG = -(Gsq)/4/rho;
         
-        if (expArgG < logscreen) break;
+        if (expArgG < logscreenABC) break;
         gkernel[g] = exp(expArgG)/(Gsq/4.);
       }
 
@@ -609,8 +652,17 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
       for (int i=0; i<g; i++) {
         ct::Add2_0(cosC+index, cosCommon+index2, gkernel[i], ntermsc);
         index += ntermsc; index2 += 49;
+        //index ++; index2 ++;
       }
 
+      //this will include the constant background term
+      /*
+      if (lc == 0 && Rho > Eta2Rho) {
+        double Eta = sqrt(Eta2Rho/Rho);
+        double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
+        cosC[0] = -prefactor/Omega2/2.;
+      }
+      */
       DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixcos, ntermsab,
             cosC, ntermsc,  beta, pReciprocal, ntermsab );
       
@@ -624,7 +676,15 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
       DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixsin, ntermsab,
             sinC, ntermsc,  alpha, pReciprocal, ntermsab );
 
-      if ((a+b)*c/(a+b+c) > Eta2Rho) {
+      /*
+      if (lc == 0 && Rho > Eta2Rho) {
+        double Eta = sqrt(Eta2Rho/Rho);
+        double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
+        for (int ab=0;ab<ntermsab; ab++)
+          pReciprocal[ab] -= prefactor*OrbPairGMatrixcos[ab]/Omega2/2.;
+      }
+      */
+      if (Rho > Eta2Rho) {
         RhoLargeDone = true;
         for (int i=0; i<ntermsc*ntermsab; i++)
           pReciprocalLargeRho[i] = pReciprocal[i]/prefactor;
@@ -635,6 +695,14 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
         pReciprocal[i] = pReciprocalLargeRho[i]*prefactor;
     }
 
+
+
+    if (lc == 0 && Rho > Eta2Rho) {
+      double Eta = sqrt(Eta2Rho/Rho);
+      double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
+      for (int ab=0;ab<ntermsab; ab++)
+        pReciprocal[ab] -= prefactor*OrbPairGMatrixcos[ab]/Omega2/2.;
+    }
 
     for (int iCoC = 0; iCoC < pC->nCo; ++iCoC) {
       double CoC = pC->contractions(iExpC, iCoC);
@@ -657,7 +725,7 @@ void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<d
 
   //10 along R and G directions
   //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
-  LatticeSum latsum(&Lattice[0], 4, 4, Mem, basis, 1., 30., 1.e-10, 1e-10, false, true);
+  LatticeSum latsum(&Lattice[0], 3, 8, Mem, basis, 1., 30., 1.e-11, 1e-11, false, true);
   //LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
   cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<endl;
   cout <<"et2rho-Ovlp "<< latsum.Eta2RhoOvlp<<endl;
@@ -672,7 +740,20 @@ void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<d
 
   vector<double> Integral3c(nbas*nbas*nAuxbas,0.0);
   Int2e3cRK(&Integral3c[0], shls, basis, latsum, Mem);
-  
+  cout <<"after k "<< Integral3c[0]<<endl;
+  Int2e3cRR(&Integral3c[0], shls, basis, latsum, Mem);
+  cout <<"after r "<< Integral3c[0]<<endl;
+
+  vector<double> test(nbas*(nbas+1)/2*nAuxbas);
+  for (int k=0; k<nAuxbas; k++)
+  for (int j=0; j<nbas; j++)
+  for (int i=0; i<=j; i++) {
+    test[k * nbas*(nbas+1)/2 + j*(j+1)/2+i] = Integral3c[j + i*nbas + k *nbas*nbas];
+  }
+  string name = "int2e3c";
+  ofstream file(name.c_str(), ios::binary);
+  file.write(reinterpret_cast<char*>(&test[0]), test.size()*sizeof(double));
+  file.close();
 }
 
 void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& latsum,
@@ -793,17 +874,6 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
 
   }
 
-  vector<double> test(nbas*(nbas+1)/2*nAuxbas);
-  for (int k=0; k<nAuxbas; k++)
-  for (int j=0; j<nbas; j++)
-  for (int i=0; i<=j; i++)
-    test[k * nbas*(nbas+1)/2 + j*(j+1)/2+i] = pOut[j + i*nbas + k *nbas*nbas];
-  //cout << i<<"  "<<j<<"  "<<k<<"  "<<pOut[j + i*nbas + k *nbas*nbas]<<endl;
-
-  string name = "int2e3c";
-  ofstream file(name.c_str(), ios::binary);
-  file.write(reinterpret_cast<char*>(&test[0]), test.size()*sizeof(double));
-  file.close();
   auto stop = high_resolution_clock::now();
   auto duration = duration_cast<microseconds>(stop - start);
   cout <<"Auxbas populate "<< duration.count()/1e6<<endl;
@@ -812,115 +882,66 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
 }
 
 
+void Int2e3cRR(double *pIntFai, vector<int>& shls, BasisSet &basis, LatticeSum& latsum, ct::FMemoryStack2 &Mem)
+{
+  CoulombKernel IntKernel;
 
-/*
-void PopulatePairGMatrix(double* pOut, BasisShell* pA, BasisShell* pB, 
-			 size_t nFnPair, LatticeSum& latsum, ct::FMemoryStack2 &Mem) {
+  auto start = high_resolution_clock::now();
 
-  int la = pA->l, lb = pB->l; int nterms = (2*la +1)*(2*lb+1);
-  double* pReciprocalSum; Mem.Alloc(pReciprocalSum, nterms);
-
-  double
-    *pInv2A, *pInv2B;
-  Mem.Alloc(pInv2A, pA->nFn);
-  Mem.Alloc(pInv2B, pB->nFn);  
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) 
-    pInv2A[iExpA] = bool(la)? std::pow(1.0/(2*pA->exponents[iExpA]), (int)la) : 1.;
-  
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-    pInv2B[iExpB] = bool(lb)? std::pow(1.0/(2*pB->exponents[iExpB]), (int)lb) : 1.;
-  
-  double* pSpha; Mem.Alloc(pSpha, 2*la+1);
-  double* pSphb; Mem.Alloc(pSphb, 2*lb+1);
-  double Ax =  pA->Xcoord, Ay =  pA->Ycoord, Az =  pA->Zcoord;
-  double Bx =  pB->Xcoord, By =  pB->Ycoord, Bz =  pB->Zcoord;
-
-  
-  double screen = latsum.Kscreen;
-  double Eta2Rho =  latsum.Eta2RhoCoul;
-  double PI11over2 = pow(M_PI, 5.5);
-  
-  vector<double>& KLattice = latsum.KLattice;
-  vector<double>& RLattice = latsum.RLattice;
-  
-  for (uint iExpB = 0; iExpB < pB->nFn; ++ iExpB)
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-  {
-    double maxContraction = 0;
-    for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoAB = pA->contractions(iExpA, iCoA) *
-          pB->contractions(iExpB, iCoB);
-      if (fabs(maxContraction) < fabs(CoAB))
-        maxContraction = fabs(CoAB);
-    }
-
-    double
-      a = pA->exponents[iExpA],
-      b = pB->exponents[iExpB],
-      alpha = a * b /(a + b),
-      prefactor = PI11over2 / pow(a*b, 1.5) / pow(latsum.RVolume, 2);    
-    double scale = prefactor * pInv2A[iExpA] * pInv2B[iExpB] ;
-    
-    double logscreen = log(screen) -
-      log(maxContraction * scale);
-    
-    for (int g=1; g<latsum.Kdist.size(); g++) {
-      double Gx=latsum.Kcoord[3*g+0],
-	Gy=latsum.Kcoord[3*g+1],
-	Gz=latsum.Kcoord[3*g+2];
-      double Gsq = latsum.Kdist[g];
-      double expArgG = -(Gsq)/4/min(a+b, Eta2Rho);
-      
-      if (expArgG < logscreen) break;
-      bool foundNonZero = false;
+  void
+      *pBaseOfMemory = Mem.Alloc(0);
+   size_t
+       nAo1 = basis.getNbas(shls[1]) - basis.getNbas(shls[0]),
+       nAo2 = basis.getNbas(shls[3]) - basis.getNbas(shls[2]),
+       nFit = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
 
 
-      //find the nearest grid point
-      double Fx0 = -b/(a+b)*Gx, Fy0 = -b/(a+b)*Gy, Fz0 = -b/(a+b)*Gz;
-      int fx0= std::round((RLattice[0]*Fx0 + RLattice[1]*Fy0 + RLattice[2]*Fz0)/2/M_PI);
-      int fy0= std::round((RLattice[3]*Fx0 + RLattice[4]*Fy0 + RLattice[5]*Fz0)/2/M_PI);
-      int fz0= std::round((RLattice[6]*Fx0 + RLattice[7]*Fy0 + RLattice[8]*Fz0)/2/M_PI);
-      Fx0 = fx0*KLattice[0]+fy0*KLattice[3]+fz0*KLattice[6];
-      Fy0 = fx0*KLattice[1]+fy0*KLattice[4]+fz0*KLattice[7];
-      Fz0 = fx0*KLattice[2]+fy0*KLattice[5]+fz0*KLattice[8];
+   //double
+   //*pDF_NFi;
+   //Mem.Alloc(pDF_NFi, nAo1 * nFit * nAo2);
+   int iabas = 0, ibbas = 0, ifbas = 0;
+   for ( size_t iShF = shls[4]; iShF != shls[5]; ++ iShF ){
+      BasisShell &ShF = basis.BasisShells[iShF];
+      size_t nFnF = ShF.numFuns();
 
-      for (int i=0; i<nterms; i++)
-	pReciprocalSum[i] = 0.0;
-      
-      for (int f=0; f<latsum.Kdist.size(); f++) {
-	double Fx=Fx0+latsum.Kcoord[3*f+0],
-	  Fy=Fy0+latsum.Kcoord[3*f+1],
-	  Fz=Fz0+latsum.Kcoord[3*f+2];
-	
-	double Fsq = Fx*Fx + Fy*Fy + Fz*Fz;
-	double expArgF = - (Gx*Fx+Gy*Fy+Gz*Fz)/2./a - b*Gsq/4./a/(a+b) - Fsq/4./alpha;
-	if (expArgF+expArgG < logscreen) continue;
-	foundNonZero = true;
-
-	double expval2 = exp(expArgF);
-	if (Fx==0&&Fy==0&&Fz==0) expval2 /= 2.;
-
-	getSphReciprocal2(la, lb, pReciprocalSum,
-			  pSpha, pSphb, Gx, Gy, Gz,
-			  Fx, Fy, Fz, Ax, Ay, Az,
-			  Bx, By, Bz, expval2, 4.*scale);
-		  
+      ibbas = 0;
+      for ( size_t iShB = shls[2]; iShB < shls[3]; ++ iShB ){
+         BasisShell &ShB = basis.BasisShells[iShB];
+         size_t nFnB = ShB.numFuns();
+                  
+         iabas = 0;
+         for ( size_t iShA = shls[0]; iShA < shls[1]; ++ iShA ) {
+           if (iShB <= iShA) {
+             BasisShell &ShA = basis.BasisShells[iShA];
+             size_t nFnA = ShA.numFuns(),
+                 Strides[3] = {1, nFnA, nFnA * nFnB};
+             
+             double
+                 *pIntData;
+             Mem.ClearAlloc(pIntData, nFnA * nFnB * nFnF );
+             
+             EvalInt2e3c(pIntData, Strides, &ShA, &ShB, &ShF,1, 1.0, &IntKernel, latsum, Mem);
+             
+             for ( size_t iF = 0; iF < nFnF; ++ iF )
+               for ( size_t iB = 0; iB < nFnB; ++ iB )
+                 for ( size_t iA = 0; iA < nFnA; ++ iA ) {
+                   double
+                       f = pIntData[iA + nFnA * (iB + nFnB * iF)];
+                   pIntFai[ (iabas+iA) + nAo1 * ( (ibbas+iB) + (ifbas+iF) * nAo2)] += f;
+                 }
+             //exit(0);
+             iabas += nFnA;
+           }
+         }
+         ibbas += nFnB;
       }
+      ifbas += nFnF;
+   }
+   Mem.Free(pBaseOfMemory);
 
-      for (uint iCoB = 0; iCoB < pB->nCo; ++ iCoB)
-	for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-	  double CoAC = pB->contractions(iExpB, iCoB) *
-	    pA->contractions(iExpA, iCoA);
-	  
-	  ct::Add2(&pOut[nterms*(iCoA + pA->nCo*iCoB) + g * nFnPair],
-		   pReciprocalSum, CoAC, nterms);
-	}
-
-    }
-  }
-  Mem.Free(pReciprocalSum);
-  
+   auto stop = high_resolution_clock::now();
+   auto duration = duration_cast<microseconds>(stop - start);
+   cout <<"rspace "<< duration.count()/1e6<<endl;
 }
 
-*/
+

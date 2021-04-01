@@ -31,7 +31,7 @@ double dist(double a, double b, double c) {
   return a*a + b*b + c*c;
 }
 
-void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
+void LatticeSum::getRelativeCoords(const BasisShell *pA, const BasisShell *pC,
                                    double& Tx, double& Ty, double& Tz) {
   double Txmin = pA->Xcoord - pC->Xcoord,
       Tymin = pA->Ycoord - pC->Ycoord,
@@ -217,8 +217,8 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
     int idx = indexCenter(basis.BasisShells[i]);
 
 
+  OrderedLatticeSumForEachAtomPair(basis, Mem);
   if (make2cIntermediates) {
-    OrderedLatticeSumForEachAtomPair(basis, Mem);
     makeKsum2c(basis);
   }
 
@@ -319,7 +319,7 @@ bool isRhoLarge(BasisSet& basis, int sh1, int sh2, double eta2rho) {
   return false;
 }
 
-int LatticeSum::indexCenter(BasisShell& bas) {
+int LatticeSum::indexCenter(const BasisShell& bas) {
   double X=bas.Xcoord, Y=bas.Ycoord, Z=bas.Zcoord;
   
   int idx = -1;
