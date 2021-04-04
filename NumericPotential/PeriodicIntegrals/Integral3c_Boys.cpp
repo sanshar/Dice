@@ -551,8 +551,6 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
       
       double expval2 = exp(expArgQ);
 
-      //pReciprocalSumCos[0] += expval2 * scale * cos(arg);
-      //pReciprocalSumSin[0] += expval2 * scale * sin(arg);
       getSphRealRecursion(la, lb, pReciprocalSumCos,
 			  pReciprocalSumSin,
 			  Gx, Gy, Gz,
@@ -572,7 +570,7 @@ void PopulatePairGMatrixRspace(double* pOutCos, double* pOutSin,
 
 
 void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
-			   double* OrbPairGMatrixsin,
+			   double* OrbPairGMatrixsin, double* preMadeIntegrals,
 			   LatticeSum& latsum, BasisShell* pA, BasisShell *pB,
 			   int iExpA, int iExpB, BasisShell* pC, int coffset,
 			   ct::FMemoryStack2 &Mem) {
@@ -598,8 +596,6 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   int ntermsa = (2*la+1), ntermsb = (2*lb+1), ntermsab = ntermsa*ntermsb;
   int lc = pC->l; int ntermsc = 2*lc+1; int nterms = ntermsab * ntermsc;
   double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
-  double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.;
-  double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
   
   int bstride = ntermsa, cstride = ntermsab;
   int nG = latsum.KdistHalf.size();
@@ -620,7 +616,6 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
   double *sinC; Mem.Alloc(sinC, (2*lc+1)*nG);
   double *gkernel; Mem.ClearAlloc(gkernel, nG);
 
-  double RhoLargeDone = false; 
   
   int nfnC = 0;
   for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
@@ -636,7 +631,8 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
     double prefactor = 2./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
 
     double logscreenABC = logscreen - log(maxConC*prefactor);
-    if (!RhoLargeDone || Rho < Eta2Rho) {
+
+    if (Rho < Eta2Rho) {
 
       int g = 1;
       for (; g<latsum.KdistHalf.size(); g++) {
@@ -648,55 +644,34 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
       }
 
       int index2 = 0, index=0;
-
       for (int i=0; i<g; i++) {
         ct::Add2_0(cosC+index, cosCommon+index2, gkernel[i], ntermsc);
         index += ntermsc; index2 += 49;
-        //index ++; index2 ++;
       }
 
-      //this will include the constant background term
-      /*
-      if (lc == 0 && Rho > Eta2Rho) {
-        double Eta = sqrt(Eta2Rho/Rho);
-        double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
-        cosC[0] = -prefactor/Omega2/2.;
-      }
-      */
       DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixcos, ntermsab,
             cosC, ntermsc,  beta, pReciprocal, ntermsab );
       
-      index = 0; index2 = 0;
 
+      index = 0; index2 = 0;
       for (int i=0; i<g; i++) {
         ct::Add2_0(sinC+index, sinCommon+index2, gkernel[i], ntermsc);
         index += ntermsc; index2 += 49;
       }
+      
 
       DGEMM(n, t, ntermsab, ntermsc, g, prefactor, OrbPairGMatrixsin, ntermsab,
             sinC, ntermsc,  alpha, pReciprocal, ntermsab );
 
-      /*
-      if (lc == 0 && Rho > Eta2Rho) {
-        double Eta = sqrt(Eta2Rho/Rho);
-        double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
-        for (int ab=0;ab<ntermsab; ab++)
-          pReciprocal[ab] -= prefactor*OrbPairGMatrixcos[ab]/Omega2/2.;
-      }
-      */
-      if (Rho > Eta2Rho) {
-        RhoLargeDone = true;
-        for (int i=0; i<ntermsc*ntermsab; i++)
-          pReciprocalLargeRho[i] = pReciprocal[i]/prefactor;
-      }
     }
     else {
+      int index0 = atomT*ntermsab*49+ntermsab*lc*lc;
       for (int i=0; i<ntermsc*ntermsab; i++)
-        pReciprocal[i] = pReciprocalLargeRho[i]*prefactor;
+        pReciprocal[i] = preMadeIntegrals[index0+i]*prefactor;
     }
 
 
-
+    
     if (lc == 0 && Rho > Eta2Rho) {
       double Eta = sqrt(Eta2Rho/Rho);
       double Omega2 = Rho * Eta * Eta /(1. - Eta * Eta) ;
@@ -716,8 +691,64 @@ void contractCoulombKernel(double* pOut, double* OrbPairGMatrixcos,
 
     nfnC += ntermsc;
   }
+
   Mem.Free(pSphc);
   coulombContractTime.stop();
+
+}
+
+void premakeHighRhoIntegrals(double* preMadeIntegrals,  double* OrbPairGMatrixcos,
+                             double* OrbPairGMatrixsin, BasisShell *pA,
+                             BasisShell *pB, int iExpA, int iExpB, LatticeSum& latsum,
+                             ct::FMemoryStack2& Mem, BasisSet& basis,
+                             vector<int>& shls) {
+  int la = pA->l; int ntermsa = (2*la+1); double a= pA->exponents[iExpA];
+  int lb = pB->l; int ntermsb = (2*lb+1); double b= pB->exponents[iExpB];
+  int natom = latsum.atomCenters.size()/3, ntermsab = ntermsa*ntermsb;
+  
+  int* foundL; Mem.ClearAlloc(foundL, 7*natom);
+  int nG = latsum.KdistHalf.size();
+
+
+  double* gkernel = &latsum.CoulKernelG[0];
+  
+  for (int shlc = shls[4]; shlc <shls[5]; shlc++) {
+    BasisShell *pC = &basis.BasisShells[shlc];    
+    int lc = pC->l; int ntermsc = (2*lc+1);
+    double *cosC; Mem.Alloc(cosC, (2*lc+1)*nG);
+    double *sinC; Mem.Alloc(sinC, (2*lc+1)*nG);
+
+    int atomT = latsum.indexCenter(*pC); //find the index of the atom
+    double* cosCommon = (&latsum.CosKval3cWithGkernel[atomT][0])+lc*lc;
+    double* sinCommon = (&latsum.SinKval3cWithGkernel[atomT][0])+lc*lc;
+    char n = 'N', t = 'T'; double alpha = 1.0, beta = 0.0; int one = 1;
+
+    if (foundL[7*atomT + lc] == 1) continue;
+
+    for (int iExpC = 0; iExpC < pC->nFn; iExpC++) {
+      double c = pC->exponents[iExpC];
+      double Rho = (a+b)*c/(a+b+c);
+
+      if (Rho < latsum.Eta2RhoCoul) continue;
+      double prefactor = 1.0;//2./pow(c, 1.5) * std::pow(1.0/(2*c), lc);
+
+      double* pReciprocal = preMadeIntegrals
+          + atomT* ntermsab*49
+          + ntermsab*lc*lc;
+
+      DGEMM(n, t, ntermsab, ntermsc, nG, prefactor, OrbPairGMatrixcos, ntermsab,
+            cosCommon, 49,  beta, pReciprocal, ntermsab );
+
+      DGEMM(n, t, ntermsab, ntermsc, nG, prefactor, OrbPairGMatrixsin, ntermsab,
+            sinCommon, 49,  alpha, pReciprocal, ntermsab );
+      
+      foundL[7*atomT+lc] = 1;
+
+      break;
+    }
+    
+  }
+  Mem.Free(foundL);
 
 }
 
@@ -725,9 +756,10 @@ void ThreeCenterIntegrals(std::vector<int>& shls, BasisSet& basis, std::vector<d
 
   //10 along R and G directions
   //LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 2., 1.e-11, 1e-11);
-  LatticeSum latsum(&Lattice[0], 3, 8, Mem, basis, 1., 30., 1.e-11, 1e-11, false, true);
+  LatticeSum latsum(&Lattice[0], 3, 8, Mem, basis, 1., 30., 1.e-12, 1e-12, false, true);
+
   //LatticeSum latsum(&Lattice[0], 20, 20, Mem, basis, 1., 30., 1.e-11, 1e-11);
-  cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<endl;
+  cout <<"et2rho-Coul "<< latsum.Eta2RhoCoul<<"  "<<*latsum.CoulKernelG.rbegin()<<endl;
   cout <<"et2rho-Ovlp "<< latsum.Eta2RhoOvlp<<endl;
 
   //first calculate the auxbasis G array and store it
@@ -814,7 +846,13 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
 	  PopulatePairGMatrixRspace(OrbPairGMatrixCos, OrbPairGMatrixSin,
 				    pA, pB, iExpA, iExpB, latsum, Mem);
 	}
-	
+
+        double *preMadeIntegrals;
+        int natom = latsum.atomCenters.size()/3;
+        Mem.ClearAlloc(preMadeIntegrals , ntermsab*49*natom);
+        premakeHighRhoIntegrals(preMadeIntegrals, OrbPairGMatrixCos, OrbPairGMatrixSin,
+                                pA, pB, iExpA, iExpB, latsum, Mem, basis, shls);
+        
 	int coffset = 0;
 	for (int shlc = shls[4]; shlc <shls[5]; shlc++) {
 
@@ -823,7 +861,7 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
 	  for (int i=0; i<worklen; i++) KspaceSum[i] = 0.;
 	  	  
 	  contractCoulombKernel(KspaceSum, OrbPairGMatrixCos,
-				OrbPairGMatrixSin,
+				OrbPairGMatrixSin, preMadeIntegrals,
 				latsum, pA, pB, iExpA, iExpB,
 				pC, coffset, Mem);
 
@@ -864,6 +902,7 @@ void Int2e3cRK(double *pOut, vector<int>& shls, BasisSet& basis, LatticeSum& lat
 
 	  coffset += pC->numFuns();
 	}
+        Mem.Free(preMadeIntegrals);
 
       }
 
@@ -911,10 +950,10 @@ void Int2e3cRR(double *pIntFai, vector<int>& shls, BasisSet &basis, LatticeSum& 
                   
          iabas = 0;
          for ( size_t iShA = shls[0]; iShA < shls[1]; ++ iShA ) {
+           BasisShell &ShA = basis.BasisShells[iShA];
+           size_t nFnA = ShA.numFuns(),
+               Strides[3] = {1, nFnA, nFnA * nFnB};
            if (iShB <= iShA) {
-             BasisShell &ShA = basis.BasisShells[iShA];
-             size_t nFnA = ShA.numFuns(),
-                 Strides[3] = {1, nFnA, nFnA * nFnB};
              
              double
                  *pIntData;
@@ -930,8 +969,8 @@ void Int2e3cRR(double *pIntFai, vector<int>& shls, BasisSet &basis, LatticeSum& 
                    pIntFai[ (iabas+iA) + nAo1 * ( (ibbas+iB) + (ifbas+iF) * nAo2)] += f;
                  }
              //exit(0);
-             iabas += nFnA;
            }
+           iabas += nFnA;
          }
          ibbas += nFnB;
       }

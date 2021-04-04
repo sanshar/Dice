@@ -28,6 +28,10 @@ struct LatticeSum {
 
   std::vector<std::vector<double>> CosKval3c;
   std::vector<std::vector<double>> SinKval3c;
+  std::vector<std::vector<double>> CosKval3cWithGkernel;
+  std::vector<std::vector<double>> SinKval3cWithGkernel;
+
+  std::vector<double> CoulKernelG;
   
   double Eta2RhoOvlp, Eta2RhoCoul;
   LatticeSum(double* Lattice, int nr, int nk, ct::FMemoryStack& Mem,

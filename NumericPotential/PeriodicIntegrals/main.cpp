@@ -52,7 +52,7 @@ void readFile(vector<T>& vec, string fname) {
 
 int main(int argc, char** argv) {
   cout.precision(12);
-  size_t RequiredMem = 1e9;
+  size_t RequiredMem = 1e10;
   ct::FMemoryStack2
       Mem(RequiredMem);
 
@@ -74,14 +74,31 @@ int main(int argc, char** argv) {
   CoulombKernel ckernel;
   OverlapKernel okernel;
   KineticKernel kkernel;
-  basis.PrintAligned(cout,0);
-
-
+  //basis.PrintAligned(cout,0);
   cout << "n Basis: "<<basis.getNbas()<<endl;
-  basis.basisnormTodensitynorm(shls[4], shls[5]);
-  ThreeCenterIntegrals(shls, basis, Lattice, Mem);
-  basis.densitynormTobasisnorm(shls[4], shls[5]);
+
+  {
+    size_t nAuxbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
+    size_t nbas = basis.getNbas(shls[1]) - basis.getNbas(shls[0]);
+    vector<double> Integral3c(nbas*nbas*nAuxbas,0.0);
+    LatticeSum latsum(&Lattice[0], 3, 4, Mem, basis, 1., 30., 1.e-10, 1e-10, false, false);
+    auto start = high_resolution_clock::now();
+    //Int2e3cRR(&Integral3c[0], shls, basis, latsum, Mem);
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
+    cout <<"Executation time 3c2e--->: "<< duration.count()/1e6 << endl;
+
+    string name = "int2e3cR";
+    ofstream file(name.c_str(), ios::binary);
+    file.write(reinterpret_cast<char*>(&Integral3c[0]), Integral3c.size()*sizeof(double));
+    file.close();
+  }
   
+  //for (int i=0; i<10; i++) 
+  basis.basisnormTodensitynorm(shls[4], shls[5]);
+    ThreeCenterIntegrals(shls, basis, Lattice, Mem);
+  basis.densitynormTobasisnorm(shls[4], shls[5]);
+
   //latsum.printLattice();
   /*
   {
@@ -190,7 +207,7 @@ void testIntegral(Kernel& kernel, vector<int>&shls, vector<double>& Lattice, ct:
     ksumTime2 = cumulTimer();
 
     auto start = high_resolution_clock::now();
-    LatticeSum latsum(&Lattice[0], 6, 20, Mem, basis, 5., 8.0, 1.e-10, 1e-11);
+    LatticeSum latsum(&Lattice[0], 6, 20, Mem, basis, 5., 8.0, 1.e-10, 1e-11, true, false);
 
     {
       auto stop = high_resolution_clock::now();
@@ -233,7 +250,7 @@ void testIntegral(Kernel& kernel, vector<int>&shls, vector<double>& Lattice, ct:
   {
     vector<double> integrals(nbas*nbas, 0.0);
     auto start = high_resolution_clock::now();
-    LatticeSum latsum(&Lattice[0], 6, 20, Mem, basis, 10.0, 10.0, 1e-16, 1.e-16);
+    LatticeSum latsum(&Lattice[0], 6, 20, Mem, basis, 10.0, 10.0, 1e-16, 1.e-16, true, false);
     //if (kernel.getname() == coulombKernel) latsum.makeKsum(basis);
 
     int inbas = 0, jnbas = 0, nbas1, nbas2;
@@ -273,60 +290,5 @@ void testIntegral(Kernel& kernel, vector<int>&shls, vector<double>& Lattice, ct:
     //cout << maxInd/nbas<<"  "<<maxInd%nbas<<endl;
   }  
 
-}
-
-
-void FormIntIJA(double *pIntFai, vector<int>& shls, Kernel &IntKernel, LatticeSum& latsum, ct::FMemoryStack2 &Mem)
-{
-  //LatticeSum latsum(&Lattice[0], 4, 13, 100., 8.0, 1.e-14); //latsum.makeKsum();
-   void
-      *pBaseOfMemory = Mem.Alloc(0);
-   size_t
-       nAo1 = basis.getNbas(shls[1]) - basis.getNbas(shls[0]),
-       nAo2 = basis.getNbas(shls[3]) - basis.getNbas(shls[2]),
-       nFit = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
-
-   cout << nAo1<<"  "<<nAo2<<"  "<<nFit<<endl;
-   //double
-   //*pDF_NFi;
-   //Mem.Alloc(pDF_NFi, nAo1 * nFit * nAo2);
-   int iabas = 0, ibbas = 0, ifbas = 0;
-   for ( size_t iShF = shls[4]; iShF != shls[5]; ++ iShF ){
-      BasisShell &ShF = basis.BasisShells[iShF];
-      size_t nFnF = ShF.numFuns();
-
-      ibbas = 0;
-      for ( size_t iShB = shls[2]; iShB < shls[3]; ++ iShB ){
-         BasisShell &ShB = basis.BasisShells[iShB];
-         size_t nFnB = ShB.numFuns();
-                  
-         iabas = 0;
-         for ( size_t iShA = shls[0]; iShA < shls[1]; ++ iShA ) {
-            BasisShell &ShA = basis.BasisShells[iShA];
-            size_t nFnA = ShA.numFuns(),
-                Strides[3] = {1, nFnA, nFnA * nFnB};
-
-            double
-                *pIntData;
-            Mem.Alloc(pIntData, nFnA * nFnB * nFnF );
-
-            EvalInt2e3c(pIntData, Strides, &ShA, &ShB, &ShF,1, 1.0, &IntKernel, latsum, Mem);
-
-            for ( size_t iF = 0; iF < nFnF; ++ iF )
-               for ( size_t iB = 0; iB < nFnB; ++ iB )
-                  for ( size_t iA = 0; iA < nFnA; ++ iA ) {
-                     double
-                        f = pIntData[iA + nFnA * (iB + nFnB * iF)];
-                     pIntFai[ (iabas+iA) + nAo1 * ( (ibbas+iB) + (ifbas+iF) * nAo2)] = f;
-                  }
-
-           iabas += nFnA;
-         }
-         ibbas += nFnB;
-      }
-      ifbas += nFnF;
-   }
-   cout << pIntFai[0]<<"  first elements "<<endl;
-   Mem.Free(pBaseOfMemory);
 }
 

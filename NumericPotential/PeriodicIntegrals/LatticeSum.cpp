@@ -158,6 +158,11 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
   //**********************************
   //**********************************
 
+  Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
+  Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
+  Rscreen = _Rscreen;
+  Kscreen = _Kscreen;
+
 
 
   //*************************
@@ -168,6 +173,8 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
   Kcoordcopy.resize(3*NkLat); Kdistcopy.resize(NkLat);
   KcoordHalf.resize(3 * NkLat);
   KdistHalf.resize(NkLat);
+  CoulKernelG.resize(NkLat, 0.0);
+  vector<double> CoulKernelGcopy(NkLat, 0.0);
   
   ir = 0;
   //kvals
@@ -185,9 +192,13 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
                  +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
                  +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
 
+    if (i == 0 && j==0 && k == 0)
+      CoulKernelGcopy[ir] = 0.0;
+    else
+      CoulKernelGcopy[ir] = exp(-Kdistcopy[ir]/4./Eta2RhoCoul)/(Kdistcopy[ir]/4.); 
     ir++;
   }
-  cout << ir<<"  "<<NkLat<<endl;
+
   idx.resize(NkLat);
   std::iota(idx.begin(), idx.end(), 0);
   std::stable_sort(idx.begin(), idx.end(),
@@ -198,6 +209,7 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
     KcoordHalf[3*i+0] = Kcoordcopy[3*idx[i]+0];
     KcoordHalf[3*i+1] = Kcoordcopy[3*idx[i]+1];
     KcoordHalf[3*i+2] = Kcoordcopy[3*idx[i]+2];
+    CoulKernelG[i] = CoulKernelGcopy[idx[i]];
   }
   //**********************************
   //**********************************
@@ -205,11 +217,6 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
   
   
   
-  Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
-  Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
-  Rscreen = _Rscreen;
-  Kscreen = _Kscreen;
-
   
   //identify unique atom positions
   atomCenters.reserve(basis.BasisShells.size());
@@ -420,12 +427,16 @@ void LatticeSum::makeKsum3c(BasisSet& basis) {
   vector<double> pSphc((nL+1)*(nL+1));
 
   //for each center store all solid harmonics derivaties for each G-coord
-  CosKval3c.resize(atomCenters.size(),
+  CosKval3c.resize(atomCenters.size()/3,
                    std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
-  SinKval3c.resize(atomCenters.size(),
+  SinKval3c.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+  CosKval3cWithGkernel.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+  SinKval3cWithGkernel.resize(atomCenters.size()/3,
                    std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
 
-  vector<int> filledT(atomCenters.size(), 0);
+  vector<int> filledT(atomCenters.size()/3, 0);
   
   for (int shlc = 0; shlc <basis.BasisShells.size(); shlc++) {
     BasisShell *pC = &basis.BasisShells[shlc];
@@ -459,6 +470,9 @@ void LatticeSum::makeKsum3c(BasisSet& basis) {
         for (int i=0; i<ntermsc; i++) {
           CosKval3c[T][index + lc*lc + i] = cmat[i] * cosarglc;
           SinKval3c[T][index + lc*lc + i] = cmat[i] * sinarglc;
+
+          CosKval3cWithGkernel[T][index + lc*lc +i] = CosKval3c[T][index+lc*lc+i]*CoulKernelG[g];
+          SinKval3cWithGkernel[T][index + lc*lc +i] = SinKval3c[T][index+lc*lc+i]*CoulKernelG[g];
         }
       }
     }
