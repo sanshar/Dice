@@ -117,7 +117,7 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump) {
       std::cout << "could not read the norbs or nelec or MS2"<<std::endl;
       exit(0);
     }
-    nalpha = nelec/2 + sz;
+    nalpha = nelec/2 + sz/2;
     nbeta = nelec - nalpha;
     irrep.resize(norbs);
 #ifndef SERIAL
@@ -320,7 +320,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
       std::cout << "could not read the norbs or nelec or MS2"<<std::endl;
       exit(0);
     }
-    nalpha = nelec/2 + sz;
+    nalpha = nelec/2 + sz/2;
     nbeta = nelec - nalpha;
     irrep.resize(norbs);
 
