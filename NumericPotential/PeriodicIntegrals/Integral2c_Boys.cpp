@@ -1,9 +1,12 @@
 #include <iostream>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <string.h>
 #include <algorithm>
 #include <numeric> 
 #include <complex>
+#include "boost/format.hpp"
 
 #include "CxMemoryStack.h"
 #include "GeneratePolynomials.h"
@@ -17,7 +20,7 @@
 
 using namespace std;
 using namespace ir;
-
+using namespace boost;
 
 
 
@@ -122,15 +125,15 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   int T1 = latsum.indexCenter(*pA);
   int T2 = latsum.indexCenter(*pC);
   int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+  double sign = T1 >= T2 ? 1. : -1.; 
   vector<size_t>& Tidx = latsum.ROrderedIdx[T];
 
   for (int r = 0; r<latsum.Rdist.size(); r++) {
 
-    double Tx_r = Tx + latsum.Rcoord[3*Tidx[r]+0],
-           Ty_r = Ty + latsum.Rcoord[3*Tidx[r]+1],
-           Tz_r = Tz + latsum.Rcoord[3*Tidx[r]+2];
+    double Tx_r = Tx + sign*latsum.Rcoord[3*Tidx[r]+0],
+           Ty_r = Ty + sign*latsum.Rcoord[3*Tidx[r]+1],
+           Tz_r = Tz + sign*latsum.Rcoord[3*Tidx[r]+2];
 
-    
     Mem.ClearAlloc(pCoFmT, (L+1) * TotalCo);
     Int2e2c_EvalCoKernels(pCoFmT, L, pA, pC, Tx_r, Ty_r, Tz_r, Prefactor,
                           pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
@@ -526,4 +529,79 @@ void Scatter2e2c(double * pOut, size_t StrideA, size_t StrideC,
                   pOut[(iShA + nShA*iCoA)*StrideA + (iShC + nShC*iCoC)*StrideC]
                       = pIn[iShA + nShA * (iShC + nShC * nComp *(iCoA + nCoA * iCoC))];
    }
+}
+
+
+void TwoCenterIntegrals(std::vector<int>& shls, BasisSet& basis, Kernel& kernel, std::vector<double>& Lattice, vector<int>& kpoints, ct::FMemoryStack2& Mem) {
+
+  int Lx = kpoints[0], Ly = kpoints[1], Lz = kpoints[2];
+  int nL = Lx*Ly*Lz;
+  //displacements
+  vector<double> Lvecs(3*nL);
+
+  //copy it so some of the shells can be displaced
+  BasisSet Basis2 = basis;
+  Basis2.BasisShells.insert(Basis2.BasisShells.end(), basis.BasisShells.begin(),
+			    basis.BasisShells.end());
+
+  vector<int> Shls(4,0);
+  Shls[0]=shls[4]; Shls[1]=shls[5]; //shls[4] to shls[5]
+  Shls[2]=shls[4]+basis.BasisShells.size(); Shls[3]=shls[5]+basis.BasisShells.size();
+  
+  //make the supercell lattice
+  vector<double> LatticeSuper = Lattice;
+  LatticeSuper[0] = Lattice[0] * Lx; LatticeSuper[1] = Lattice[1] * Lx; LatticeSuper[2] = Lattice[2] * Lx;
+  LatticeSuper[3] = Lattice[3] * Ly; LatticeSuper[4] = Lattice[4] * Ly; LatticeSuper[5] = Lattice[5] * Ly;
+  LatticeSuper[6] = Lattice[6] * Lz; LatticeSuper[7] = Lattice[7] * Lz; LatticeSuper[8] = Lattice[8] * Lz;
+
+
+  int index = 0;
+  for (int i=0; i<Lx; i++)
+  for (int j=0; j<Ly; j++)
+  for (int k=0; k<Lz; k++)
+  {
+    Lvecs[3*index + 0] = i * Lattice[0] + j * Lattice[3] + k * Lattice[6];
+    Lvecs[3*index + 1] = i * Lattice[1] + j * Lattice[4] + k * Lattice[7];
+    Lvecs[3*index + 2] = i * Lattice[2] + j * Lattice[5] + k * Lattice[8];
+    index++;
+  }
+
+  int nbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
+  vector<double> integrals(nbas*nbas);
+
+  for (int l=0; l<nL; l++) {
+    Basis2.moveCenter(&Lvecs[3*l], 1.0, Shls[2], Shls[3]);
+
+    latticeSumTime.start();
+    LatticeSum latsum(&LatticeSuper[0], 1, 8, Mem, Basis2, 5., 30.0,
+		      1.e-11, 1e-11, true, false) ;
+    latticeSumTime.stop();
+    
+    int inbas = 0, jnbas = 0, nbas1, nbas2;
+    for (int sh1 = Shls[0] ; sh1 <Shls[1]; sh1++) {
+      nbas1 = Basis2.BasisShells[sh1].nCo * (2 * Basis2.BasisShells[sh1].l + 1);
+      jnbas = 0;
+
+      for (int sh2 = Shls[2] ; sh2 <Shls[3]; sh2++) {
+	if (sh2 - Shls[2] > sh1 - Shls[0]) continue;
+	
+	BasisShell *pB = &Basis2.BasisShells[sh2];
+
+	nbas2 = Basis2.BasisShells[sh2].nCo * (2 * Basis2.BasisShells[sh2].l + 1);
+	
+	EvalInt2e2c(&integrals[inbas + jnbas * nbas], 1, nbas, &Basis2.BasisShells[sh1],
+		    &Basis2.BasisShells[sh2], 1.0, false, &kernel, latsum, Mem);
+	jnbas += nbas2;
+
+
+      }
+      inbas += nbas1;
+    }
+    Basis2.moveCenter(&Lvecs[3*l], -1.0, Shls[2], Shls[3]);
+
+    string name = boost::str(format("j2c-%i.dat") %(l)) ;
+    ofstream file(name.c_str(), ios::binary);
+    file.write(reinterpret_cast<char*>(&integrals[0]), integrals.size()*sizeof(double));
+    file.close();
+  }
 }

@@ -19,7 +19,7 @@ using namespace std;
 using namespace std::chrono;
 using namespace boost;
 
-cumulTimer realSumTime, kSumTime, ksumTime1, ksumTime2, ksumKsum;
+cumulTimer realSumTime, kSumTime, latticeSumTime, ksumTime1, ksumTime2, ksumKsum;
 cumulTimer pairRTime, pairKTime, coulombContractTime;
 size_t add2;
 
@@ -69,9 +69,18 @@ int main(int argc, char** argv) {
                &bas[0], bas.size()/8, &env[0],
                &Lattice[0]);
 
-
   
   CoulombKernel ckernel;
+  auto start = high_resolution_clock::now();
+  vector<int> kpoint = {4,4,4};
+  TwoCenterIntegrals(shls, basis, ckernel, Lattice, kpoint, Mem); cout << endl;
+  auto stop = high_resolution_clock::now();
+  auto duration = duration_cast<microseconds>(stop - start);
+  cout <<"Executation time 3c2e--->: "<< duration.count()/1e6 << endl;
+  cout <<format("Real space summation : %10.5f\n") % (realSumTime);
+  cout <<format("K    space summation : %10.5f\n") % (kSumTime);
+  cout <<format("lattice summation    : %10.5f\n") % (latticeSumTime);
+  exit(0);
   OverlapKernel okernel;
   KineticKernel kkernel;
   //basis.PrintAligned(cout,0);
@@ -98,88 +107,6 @@ int main(int argc, char** argv) {
   basis.basisnormTodensitynorm(shls[4], shls[5]);
     ThreeCenterIntegrals(shls, basis, Lattice, Mem);
   basis.densitynormTobasisnorm(shls[4], shls[5]);
-
-  //latsum.printLattice();
-  /*
-  {
-    size_t nbas = basis.getNbas();
-    cout <<"nbas "<< nbas<<endl;
-    vector<double> threeInt(nbas*nbas*nbas,0.0);
-    vector<double> twoInt(nbas*nbas, 0.0);
-    LatticeSum latsum(&Lattice[0], 10, 10, Mem, basis, 1., 100., 1.e-14, 1e-14);
-
-    BasisShell trans; trans.Xcoord = 0.0; trans.Ycoord = 0.0; trans.Zcoord = 0.0;
-    trans.l = 0; trans.nFn = 1; trans.nCo = 1;
-    trans.exponents.resize(1, 0.05);
-    
-    trans.contractions = MatrixXd::Zero(1,1);
-    trans.contractions(0,0) = 1.0;
-
-    EvalInt2e2c(&twoInt[0], 1, nbas, &basis.BasisShells[0], &basis.BasisShells[0],
-		1.0, true, &ckernel, latsum, Mem);
-
-    //EvalInt2e2c(&twoInt[0], 1, nbas, &trans, &trans,
-    //1.0, true, &ckernel, latsum, Mem);
-
-    cout <<"j2c "<< twoInt[0]<<endl;
-    
-    auto start = high_resolution_clock::now();
-    /*
-    {
-      twoInt[0] = 0.0;
-      BasisShell *pbas = &basis.BasisShells[0];
-
-      BasisShell trans; trans.Xcoord = 0.0; trans.Ycoord = 0.0; trans.Zcoord = 0.0;
-      trans.l = 0; trans.nFn = 1; trans.nCo = 1;
-      trans.exponents.resize(1, 2*pbas->exponents[0]);
-      
-      trans.contractions = MatrixXd::Zero(1,1);
-      trans.contractions(0,0) = pow(pbas->contractions(0,0),2);
-
-      double old = 0.0;
-      for (int r=0; r<latsum.Rdist.size(); r++) {
-	double factor = exp(- pbas->exponents[0]/2. * latsum.Rdist[r]);
-	trans.Xcoord = latsum.Rcoord[3*r+0]/2.;
-	trans.Ycoord = latsum.Rcoord[3*r+1]/2.;
-	trans.Zcoord = latsum.Rcoord[3*r+2]/2.;
-	
-	EvalInt2e2c(&twoInt[0], 1, nbas, &trans, &basis.BasisShells[0],
-		    factor, true, &ckernel, latsum, Mem);
-	if (fabs(twoInt[0] - old)<1.e-11 ) break;
-	old = twoInt[0];
-      }
-      cout <<" FR "<< twoInt[0]<<" contraction "<<pbas->contractions(0,0)<<endl;
-    }
-    /
-
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    cout <<"Executation time overlap--->: "<< duration.count()/1e6 << endl;
-
-    start = high_resolution_clock::now();
-    /*
-    {
-
-      threeInt[0] = 0.0;
-      EvalInt2e3cKKsum(&threeInt[0], &basis.BasisShells[shls[0]], &basis.BasisShells[shls[0]],
-		       &basis.BasisShells[shls[0]], 1.0, &ckernel, latsum, Mem);
-      //&basis.BasisShells[0], 1.0, &ckernel, latsum, Mem);
-      cout <<"Int3c "<< threeInt[0]<<endl;
-    }
-      //FormIntIJA(&threeInt[0], shls, ckernel, latsum, Mem);
-    stop = high_resolution_clock::now();
-    duration = duration_cast<microseconds>(stop - start);
-    cout <<"Executation time overlap--->: "<< duration.count()/1e6 << endl;
-    exit(0);
-    cout <<"3-center "<< threeInt[0]<<endl;
-    ofstream file("nuc_ref", ios::binary);
-    file.write(reinterpret_cast<char*>(&threeInt[0]), threeInt.size()*sizeof(double));
-    file.close();
-
-    /
-  }
-  */
-
 
   
   cout <<endl;

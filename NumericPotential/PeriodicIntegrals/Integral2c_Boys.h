@@ -50,3 +50,9 @@ void Add2(double * pOut, double const * pIn, double f, size_t n);
 void Scatter2e2c(double * pOut, size_t StrideA, size_t StrideC,
                  double const * pIn, size_t la, size_t lc, size_t nComp,
                  size_t nCoA, size_t nCoC, bool Add);
+
+void TwoCenterIntegrals(std::vector<int>& shls,
+			BasisSet& basis, Kernel& kernel,
+			std::vector<double>& Lattice,
+			std::vector<int>& kpoints,
+			ct::FMemoryStack2& Mem);

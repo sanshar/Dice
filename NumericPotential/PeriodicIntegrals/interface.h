@@ -7,6 +7,7 @@
 extern BasisSet basis;
 extern cumulTimer realSumTime;
 extern cumulTimer kSumTime;
+extern cumulTimer latticeSumTime;
 extern cumulTimer ksumTime1;
 extern cumulTimer ksumTime2, ksumKsum;
 extern cumulTimer pairRTime, pairKTime, coulombContractTime;

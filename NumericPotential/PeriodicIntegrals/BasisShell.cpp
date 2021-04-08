@@ -21,6 +21,14 @@
 
 #include "BasisShell.h"
 
+void BasisSet::moveCenter(double* pos, double scale, int shls0, int shls1) {
+  for (int i=shls0; i<shls1; i++) {
+    BasisShells[i].Xcoord += scale*pos[0];
+    BasisShells[i].Ycoord += scale*pos[1];
+    BasisShells[i].Zcoord += scale*pos[2];
+  }
+}
+
 void BasisSet::basisnormTodensitynorm(int start, int end) {
   for (int i = start ; i < end; i++) {
     BasisShells[i].basisnormTodensitynorm();

@@ -58,6 +58,7 @@ struct BasisSet
   int getNPrimitivebas(int shlIndex);
   void basisnormTodensitynorm(int start, int end);
   void densitynormTobasisnorm(int start, int end);
+  void moveCenter(double* pos, double scale, int shls0, int shls1);
 };
 
 double RawGaussProdNorm(double fExp1, unsigned l1, double fExp2, unsigned l2);
