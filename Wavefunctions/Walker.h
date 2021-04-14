@@ -1320,6 +1320,14 @@ struct Walker<Corr, AGP> {
     corrHelper = WalkerHelper<Corr>(corr, d);
   }
 
+  template<typename Wave>
+  Walker(Wave &wave, const Determinant &pd)
+  {
+    d = pd;
+    refHelper = WalkerHelper<AGP>(wave.ref, pd);
+    corrHelper = WalkerHelper<Corr>(wave.corr, pd);
+  }
+
   Walker(Corr &corr, const AGP &ref, const Determinant &pd) : d(pd), refHelper(ref, pd), corrHelper(corr, pd) {}; 
 
   Determinant& getDet() {return d;}

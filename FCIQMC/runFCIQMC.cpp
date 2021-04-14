@@ -7,6 +7,7 @@
 #include "runFCIQMC.h"
 #include "walkersFCIQMC.h"
 
+#include "AGP.h"
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
@@ -862,6 +863,11 @@ void printFinalStats(const vector<double>& walkerPop, const int nDets,
 
 // Instantiate needed templates
 template void runFCIQMC(TrivialWF& wave, TrivialWalk& walk,
+                        const int norbs, const int nel,
+                        const int nalpha, const int nbeta);
+
+template void runFCIQMC(CorrelatedWavefunction<Jastrow, AGP>& wave,
+                        Walker<Jastrow, AGP>& walk,
                         const int norbs, const int nel,
                         const int nalpha, const int nbeta);
 

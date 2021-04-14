@@ -32,6 +32,7 @@
 #include "SHCIshm.h"
 #include "runFCIQMC.h"
 
+#include "AGP.h"
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
@@ -89,7 +90,21 @@ int main(int argc, char *argv[])
     TrivialWF wave;
     TrivialWalk walk;
     runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
-  } else if (schd.wavefunctionType == "jastrowslater") {
+  }
+  else if (schd.wavefunctionType == "jastrowagp") {
+    CorrelatedWavefunction<Jastrow, AGP> wave;
+    Walker<Jastrow, AGP> walk;
+    if (schd.restart || schd.fullRestart) {
+      wave.readWave();
+      wave.initWalker(walk);
+    } else {
+      printVMCHeader();
+      runVMC(wave, walk);
+    }
+    printFCIQMCHeader();
+    runFCIQMC(wave, walk, norbs, nel, nalpha, nbeta);
+  }
+  else if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave;
     Walker<Jastrow, Slater> walk;
     if (schd.restart || schd.fullRestart) {

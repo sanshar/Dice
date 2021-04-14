@@ -26,6 +26,7 @@
 #include "spawnFCIQMC.h"
 #include "walkersFCIQMC.h"
 
+#include "AGP.h"
 #include "CorrelatedWavefunction.h"
 #include "Jastrow.h"
 #include "Slater.h"
@@ -483,6 +484,37 @@ template void spawnFCIQMC::mergeIntoMain_NoInitiator(
 template void spawnFCIQMC::mergeIntoMain_Initiator(
     TrivialWF& wave, TrivialWalk& walk,
     walkersFCIQMC<TrivialWalk>& walkers,
+    semiStoch& core,
+    vector<double>& nAnnihil,
+    const double minPop,
+    workingArray& work);
+
+// Jastrow-AGP
+using JAGPWalker = Walker<Jastrow, AGP>;
+
+template void spawnFCIQMC::mergeIntoMain(
+    CorrelatedWavefunction<Jastrow, AGP>& wave,
+    Walker<Jastrow, AGP>& walk,
+    walkersFCIQMC<JAGPWalker>& walkers,
+    semiStoch& core,
+    vector<double>& nAnnihil,
+    const double minPop,
+    bool initiator,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_NoInitiator(
+    CorrelatedWavefunction<Jastrow, AGP>& wave,
+    Walker<Jastrow, AGP>& walk,
+    walkersFCIQMC<JAGPWalker>& walkers,
+    semiStoch& core,
+    vector<double>& nAnnihil,
+    const double minPop,
+    workingArray& work);
+
+template void spawnFCIQMC::mergeIntoMain_Initiator(
+    CorrelatedWavefunction<Jastrow, AGP>& wave,
+    Walker<Jastrow, AGP>& walk,
+    walkersFCIQMC<JAGPWalker>& walkers,
     semiStoch& core,
     vector<double>& nAnnihil,
     const double minPop,

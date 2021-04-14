@@ -131,6 +131,7 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/excitGen.o \
 	obj/utilsFCIQMC.o \
 	obj/Slater.o \
+	obj/AGP.o \
 	obj/Jastrow.o \
 	obj/SelectedCI.o \
 	obj/SimpleWalker.o \
