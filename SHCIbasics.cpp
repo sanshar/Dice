@@ -837,7 +837,7 @@ void print_memory_utility(schedule& schd, SparseHam& sparseHam, HamHelper4c & he
 //ci and dets are returned here
 //At input usually the Dets will just have a HF or some such determinant
 //and ci will be just 1.0
-vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinant> &Dets, cdfci::hash_det& wfn, schedule &schd,
+vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinant> &Dets, schedule &schd,
                                          twoInt &I2, twoIntHeatBathSHM &I2HB, vector<int> &irrep, oneInt &I1, double &coreE, int nelec, bool DoRDM)
 {
 
@@ -1162,11 +1162,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     mpi::broadcast(world, DetsSize, 0);
 #endif
 
-    if (iter == schd.maxExcitation) {
-      helper2.clear();
-      sparseHam.clear();
-      cdfci::solve(schd, I1, I2, coreEbkp, E0, ci, SHMDets, DetsSize);
-    }
     //************
     if (commrank == 0 && (schd.DavidsonType == DIRECT || schd.outputlevel == -1))
       printf("New size of determinant space %8i\n", DetsSize);
@@ -1286,14 +1281,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
         Dets.resize(DetsSize);
         for (int i = 0; i < DetsSize; i++) {
           Dets[i] = SHMDets[i];
-        }
-        if (schd.cdfciIter > 0) {
-          wfn.clear();
-          auto zero = complex<double>(0.0, 0.0);
-          auto val = std::array<cdfci::dcomplex, 2> {zero, zero};
-          for (int i = 0; i < DetsSize; i++) {
-            wfn[Dets[i]] = val;
-          }
         }
       }
       if (schd.io) writeVariationalResult(iter, ci, Dets, sparseHam, E0, true, schd, helper2);

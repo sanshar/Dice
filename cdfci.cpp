@@ -1,19 +1,19 @@
 #include "cdfci.h"
 #include "input.h"
 #include "math.h"
-#include "communicate.h"
-#include "Davidson.h"
-#include "omp.h"
 #include "SHCIbasics.h"
 #include <iostream>
+#include <fstream>
 #include <unordered_map>
 #include <map>
 #include <tuple>
 #include <vector>
+#include "omp.h"
 #include "Determinants.h"
 #include "SHCIgetdeterminants.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCItime.h"
+#include "input.h"
 #include "integral.h"
 #include "math.h"
 #include "communicate.h"
@@ -27,6 +27,114 @@ using namespace cdfci;
 using StitchDEH = SHCISortMpiUtils::StitchDEH;
 using cdfci::value_type;
 typedef unordered_map<Determinant, array<dcomplex, 2>> hash_det;
+
+void cdfci::getDeterminantsVariational(
+        Determinant& d, double epsilon, CItype ci1, CItype ci2,
+        oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
+        vector<int>& irreps, double coreE, double E0,
+        robin_hood::unordered_set<Determinant>& old_dets,
+        robin_hood::unordered_set<Determinant>& new_dets,
+        schedule& schd, int Nmc, int nelec) {
+//-----------------------------------------------------------------------------
+    /*!
+    Make the int represenation of open and closed orbitals of determinant
+    this helps to speed up the energy calculation
+
+    :Inputs:
+
+        Determinant& d:
+            The reference |D_i>
+        double epsilon:
+            The criterion for chosing new determinants (understood as epsilon/c_i)
+        CItype ci1:
+            The reference CI coefficient c_i
+        CItype ci2:
+            The reference CI coefficient c_i
+        oneInt& int1:
+            One-electron tensor of the Hamiltonian
+        twoInt& int2:
+            Two-electron tensor of the Hamiltonian
+        twoIntHeatBathSHM& I2hb:
+            The sorted two-electron integrals to choose the bi-excited determinants
+        vector<int>& irreps:
+            Irrep of the orbitals
+        double coreE:
+            The core energy
+        double E0:
+            The current variational energy
+        std::vector<Determinant>& dets:
+            The determinants' determinant
+        schedule& schd:
+            The schedule
+        int Nmc:
+            BM_description
+        int nelec:
+            Number of electrons
+    */
+//-----------------------------------------------------------------------------
+
+  // initialize variables
+  int norbs   = d.norbs;
+  int nclosed = nelec;
+  int nopen   = norbs-nclosed;
+  vector<int> closed(nelec,0);
+  vector<int> open(norbs-nelec,0);
+  d.getOpenClosed(open, closed);
+
+  // mono-excited determinants
+  for (int ia=0; ia<nopen*nclosed; ia++){
+    int i=ia/nopen, a=ia%nopen;
+    if (closed[i] < schd.ncore || open[a] >= schd.ncore+schd.nact) continue;
+    CItype integral = I2hb.Singles(open[a], closed[i]);
+
+    // generate determinant if integral is above the criterion
+    if (std::abs(integral) > epsilon ) {
+      Determinant di = d;
+      di.setocc(open[a], true); di.setocc(closed[i],false);
+      if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
+        new_dets.emplace(di);
+      }
+    }
+  } // ia
+
+  // bi-excitated determinants
+  if (std::abs(int2.maxEntry) < epsilon) return;
+  // for all pairs of closed
+  for (int ij=0; ij<nclosed*nclosed; ij++) {
+    int i=ij/nclosed, j = ij%nclosed;
+    if (i<=j) continue;
+    int I = closed[i]/2, J = closed[j]/2;
+    int X = max(I, J), Y = min(I, J);
+
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
+
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
+    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
+    std::complex<double>* integrals  = I2hb.integrals;
+    short* orbIndices = I2hb.pairs;
+    // for all HCI integrals
+    //std::cout << "double excitation" << std::endl;
+    for (size_t index=start; index<end; index++) {
+      // if we are going below the criterion, break
+      if (fabs(integrals[index]) < epsilon) break;
+
+      // otherwise: generate the determinant corresponding to the current excitation
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
+      //if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
+      if (a >= schd.ncore+schd.nact || b >= schd.ncore+schd.nact) continue;
+      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
+        Determinant di = d;
+        di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
+        if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
+          new_dets.emplace(di);
+        }
+        //if (Determinant::Trev != 0) di.makeStandard();
+      }
+    } // heatbath integrals
+  } // ij
+  return;
+} // end SHCIgetdeterminants::getDeterminantsVariational
 
 vector<value_type> cdfci::getSubDets(value_type& d, hash_det& wfn, int nelec, bool sample) {
   auto det = d.first;
@@ -374,11 +482,12 @@ dcomplex CoordinateUpdate(Determinant& det, dcomplex x, dcomplex z, double xx, o
   double dx_re = line_search(p1_re, z_re, x_re);
   double p1_im = xx + x_re * x_re - dA;
   double dx_im = line_search(p1_im, z_im, x_im);
-  result = dcomplex(dx_re, dx_im);
+  if (abs(dx_re) > abs(dx_im)) return dcomplex(dx_re, 0.0);
+  else return dcomplex(0.0, dx_im);
   return result;
 }
 
-void getSubDetsNoSample(Determinant* dets, vector<int>& column, DetToIndex& det_to_index, int this_index, int nelec) {
+void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, DetToIndex& det_to_index, int this_index, int nelec) {
   auto det = dets[this_index];
 
   int norbs = det.norbs;
@@ -388,9 +497,9 @@ void getSubDetsNoSample(Determinant* dets, vector<int>& column, DetToIndex& det_
   vector<int> open(nopen, 0);
   det.getOpenClosed(open, closed);
   vector<int> result(1+nopen*nclosed+nopen*nopen*nclosed*nclosed, -1);
-
+ 
   result[0] = this_index;
-  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
+
   for (int ia=0; ia<nopen*nclosed; ia++) {
     int i=ia/nopen, a=ia%nopen;
     Determinant di = det;
@@ -403,7 +512,6 @@ void getSubDetsNoSample(Determinant* dets, vector<int>& column, DetToIndex& det_
   }
 
   //get all existing double excitations
-  #pragma omp parallel for schedule(dynamic) shared(result, det_to_index)
   for(int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j=ij%nclosed;
     if(i<=j) continue;
@@ -458,7 +566,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<dcomplex>& x_vector, ve
   return result;
 }
 
-vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dcomplex>& z_vector, vector<MatrixXx>& ci, DetToIndex& det_to_index, Determinant* dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
+vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<double>& z_vec_re, vector<double>& z_vec_im, vector<MatrixXx>& ci, DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
   int nelec = dets[0].Noccupied();
   vector<pair<double, double>> result;
   vector<int> column;
@@ -467,64 +575,328 @@ vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dco
     pout << "cdfci currently only supports single root" << endl;
     exit(0);
   }
-
   for (int iroot = 0; iroot < nroots; iroot++) {
     int x_size = ci[iroot].rows();
     int z_size = det_to_index.size();
     double norm = sqrt(abs(E0[iroot]-coreE));
     auto result_iroot = pair<double, double>(0.0, 0.0);
-    dcomplex xz = 0.0;
     for (int i = 0; i < x_size; i++) {
       auto dx = ci[iroot](i, 0) * norm;
-      getSubDetsNoSample(dets, column, det_to_index, i, nelec);
-      civectorUpdateNoSample(result_iroot, column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
+      result_iroot.second += std::norm(dx);
+      x_vector[i] = dx;
     }
+    double xz = 0.0;
+    //#pragma omp declare reduction(complex_plus : dcomplex : std::plus<dcomplex>())
+    //#pragma omp parallel for private(column) reduction(complex_plus : xz)
+    for (int i = 0; i < x_size; i++) {
+      getSubDetsNoSample(dets, column, det_to_index, i, nelec);
+
+      auto column_size = column.size();
+      auto deti = dets[i];
+      auto hij = deti.Energy(I1, I2, coreE);
+      auto xi = x_vector[i];
+      xz += std::norm(xi) * hij;
+      z_vec_re[i] += (hij*xi).real();
+      z_vec_im[i] += (hij*xi).imag();
+      for (int entry = 1; entry < column_size; entry++) {
+        auto j = column[entry];
+        auto detj = dets[j];
+        auto xj = x_vector[j];
+        size_t orbDiff;
+        auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+        xz += (conj(xj) * hij * xi).real();
+        #pragma omp atomic
+        z_vec_re[j] += (hij*xi).real();
+        #pragma omp atomic
+        z_vec_im[j] += (hij*xi).imag();
+      }
+    }
+    result_iroot.first = xz;
     result.push_back(result_iroot);
+    auto residual = cdfci::compute_residual(x_vector, z_vec_re, z_vec_im, result_iroot);
+    cout << residual << endl;
   }
   return result;
 }
 
+double cdfci::compute_residual(vector<dcomplex>& x, vector<double>& zreal, vector<double>& zimag, pair<double, double> ene) {
+  auto energy = ene.first / ene.second;
+  double residual = 0.0;
+  const int size = x.size();
+  #pragma omp parallel reduction(+:residual)
+  for (int i = 0; i < size; i++) {
+    auto tmp_re = zreal[i] - energy * x[i].real();
+    auto tmp_im = zimag[i] - energy * x[i].imag();
+    residual += tmp_re*tmp_re + tmp_im*tmp_im;
+  }
+  return residual;
+}
 
-void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* dets, int dets_size) {
+double get_energy(pair<double, double> energy) {
+  return energy.first / energy.second;
+}
+void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
-  int start_index = ci[0].rows();
+  robin_hood::unordered_set<Determinant> old_dets;
+  robin_hood::unordered_set<Determinant> new_dets;
+  int iter;
+  bool converged;
+  int thread_id;
+  int thread_num;
+  #pragma omp parallel
+  {
+    thread_num = omp_get_num_threads();
+    cout << thread_num << endl;
+  }
   double coreEbkp = coreE;
   coreE = 0.0;
 
-  for (int i = 0; i < dets_size; i++) {
-    det_to_index[dets[i]] = i;
+  if (schd.restart) {
+    char file[5000];
+    sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
+    std::ifstream ifs(file, std::ios::binary);
+    boost::archive::binary_iarchive load(ifs);
+
+    load >> iter >> dets;
+    ci.resize(1, MatrixXx(dets.size(), 1));
+
+    load >> ci;
+    load >> E0;
+    load >> converged;
+    pout << "Load converged: " << converged << endl;
   }
 
-  // ene stores the rayleigh quotient quantities.
-  int nroots = ci.size();
-  vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
-  const dcomplex zero = 0.0;
-  vector<dcomplex> x_vector(dets_size, zero), z_vector(dets_size, zero);
-  auto start_time = getTime();
-  ene = precondition(x_vector, z_vector, ci, det_to_index, dets, E0, I1, I2, coreE);
+  int start_index = 0;//ci[0].rows();
+  int dets_size = dets.size();
 
+  for (int i = 0; i < dets_size; i++) {
+    det_to_index[dets[i]] = i;
+    old_dets.emplace(dets[i]);
+  }
+
+  const double epsilon1 = schd.epsilon1[schd.cdfci_on];
   const int nelec = dets[0].Noccupied();
+  const dcomplex zero = 0.0;
+
+  for (int i = 0; i < dets_size; i++) {
+    auto civec = ci[0](i, 0);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+    if (i%10000 == 0) {
+      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
+    }
+  }
+  int new_dets_size = new_dets.size();
+  for (auto new_det : new_dets) {
+    dets.push_back(new_det);
+  }
+  dets_size = dets.size();
+  robin_hood::unordered_set<Determinant>().swap(old_dets);
+  robin_hood::unordered_set<Determinant>().swap(new_dets);
+  old_dets.clear();
+  new_dets.clear();
+  cout << "build det to index" << endl;
+  for (int i = 0; i < dets_size; i++) {
+    det_to_index[dets[i]] = i;
+    if (i % 10000 == 0) {
+      cout << i << "dets constructed" << endl;
+    }
+  }
+  cout << "dets to index constructed" << endl;
+  // ene stores the rayleigh quotient quantities.
+  int nroots = schd.nroots;
+  vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
+  vector<dcomplex> x_vector(dets_size * nroots, zero);
+  vector<double> z_vec_re(dets_size * nroots, 0.0);
+  vector<double> z_vec_im(dets_size * nroots, 0.0);
+  auto start_time = getTime();
+  ene = precondition(x_vector, z_vec_re, z_vec_im, ci, det_to_index, dets, E0, I1, I2, coreE);
+  cout << get_energy(ene[0]) + coreEbkp << endl;
   auto num_iter = schd.cdfciIter;
-  int this_det_idx = 0;
+  vector<int> this_det_idx(thread_num, 0);
+  vector<dcomplex> dxs(thread_num, 0.0);
   vector<int> column;
-  getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
 
+  #pragma omp parallel
+  {
+    thread_id = omp_get_thread_num();
+    this_det_idx[thread_id] = start_index + thread_id;
+  }
+
+  cout << "start to optimize" << endl;
   for (int iroot = 0; iroot < nroots; iroot++) {
-    auto prev_ene = 0.0;
+    auto prev_ene = get_energy(ene[iroot]);
     auto start_time = getTime();
-    for (int i = 0; i < num_iter; i++) {
+    cout << thread_num << endl;
+    for (int iter = 0; iter*thread_num <= num_iter; iter++) {
 
-      auto dx = CoordinateUpdate(dets[this_det_idx], x_vector[this_det_idx], z_vector[this_det_idx], ene[iroot].second, I1, I2, coreE);
-      civectorUpdateNoSample(ene[iroot], column, dx, dets, x_vector, z_vector, det_to_index, I1, I2, coreE);
-      this_det_idx = CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene);
-      getSubDetsNoSample(dets, column, det_to_index, this_det_idx, nelec);
+      // initialize dx on each thread
+      {
+        vector<dcomplex> x;
+        vector<dcomplex> z;
+        size_t orbDiff;
+        for (int thread = 0; thread < thread_num; thread++) {
+          auto idx = this_det_idx[thread];
+          x.push_back(x_vector[idx]);
+          z.push_back(dcomplex(z_vec_re[idx], z_vec_im[idx]));
+        }
+        for (int thread = 0; thread < thread_num; thread++) {
+          auto idx_i = this_det_idx[thread];
+          dxs[thread] = CoordinateUpdate(dets[idx_i], x[thread], z[thread], ene[iroot].second, I1, I2, coreE);
+          auto dx = dxs[thread];
+          double hij = dets[idx_i].Energy(I1, I2, coreE);
+          auto xi = x_vector[idx_i];
+          ene[iroot].first += (std::norm(dx) * hij
+                            +  2. * dx.real() * hij * xi.real()
+                            +  2. * dx.imag() * hij * xi.imag());
+          ene[iroot].second += std::norm(dx+xi) - std::norm(xi);
+          x_vector[idx_i] += dx;
+          z_vec_re[idx_i] += hij*dx.real();
+          z_vec_im[idx_i] += hij*dx.imag();
+          for (int thread_j = thread+1; thread_j < thread_num; thread_j++) {
+            auto idx_j = this_det_idx[thread_j];
+            if (dets[idx_i].ExcitationDistance(dets[idx_j]) > 2 || idx_i==idx_j) continue;
+            else {
+              auto hij = Hij(dets[idx_i], dets[idx_j], I1, I2, coreE, orbDiff);
+              z[thread_j] += dx * hij;
+            }
+          }
+        }
 
+        // this step is because, although we are updating all the walkers simultaneously
+        // what in fact want to mimic the result of sequential update.
+        // but, we are updating all the x_vectors at the very beginning.
+        // the "later" x_vectors are updated earlier than expected, and will have an
+        // influence on the xz/ene.first term. So this influence needs to be deducted.
+        // xz += x*conj(dz) + conj(x)*dz. So dx*conj(dz)+conj(dx)*dz should be deducted. 
+        // Only terms with non vanishing dx has a contribution.
+        // which means that, only the dets with a to be updated x[j] will be affected.,
+        // xz -= dx[j]*conj(dz[i]) + conj(dx[j])*dz[i] dz[i] = hij*dx[i], with j > i. ,
+        // Because only when j > i, the future happening update is affecting the past.
+        for (int thread_i = 0; thread_i < thread_num; thread_i++) {
+          auto idx_i = this_det_idx[thread_i];
+          auto deti = dets[idx_i];
+          auto dxi = dxs[thread_i];
+          for(int thread_j = thread_i + 1; thread_j < thread_num; thread_j++) {
+            auto idx_j = this_det_idx[thread_j];
+            auto detj = dets[idx_j];
+            if (deti.ExcitationDistance(detj) > 2 || idx_i == idx_j) continue;
+            else {
+              auto dxj = dxs[thread_j];
+              auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+              auto dzi = hij * dxi;
+              ene[iroot].first -= 2.*(dxj.real()*dzi.real()+dxj.imag()*dzi.imag());
+            }
+          }
+        }
+      }
+
+      const int norbs = dets[0].norbs;
+      const int nclosed = dets[0].Noccupied();
+      const int nopen = norbs - nclosed;
+
+      #pragma omp parallel private(column)
+      {
+        int thread_id = omp_get_thread_num();
+        int det_idx = this_det_idx[thread_id];
+        auto deti = dets[det_idx];
+        vector<int> closed(nelec, 0);
+        vector<int> open(nopen, 0);
+        deti.getOpenClosed(open, closed);
+        const auto xx = ene[iroot].second;
+        double max_abs_grad = 0.0;
+        int selected_det = det_idx;
+
+        auto dx = dxs[thread_id];
+        bool real_part;
+        if (abs(dx.real()) < 1e-20) real_part = false;
+        else real_part = true;
+        auto det_energy = deti.Energy(I1, I2, coreE);
+        auto dz = dx * det_energy;
+        auto x = x_vector[det_idx];
+        double xz = 0.0;
+
+        for (int ia = 0; ia < nopen * nclosed; ia++) {
+          int i = ia / nopen, a = ia % nopen;
+          auto detj = deti;
+          detj.setocc(open[a], true);
+          detj.setocc(closed[i], false);
+          auto iter = det_to_index.find(detj);
+          if (iter != det_to_index.end()) {
+            auto j_idx = iter->second;
+            size_t orbDiff;
+            auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+            auto dz = dx * hij;
+            auto x = x_vector[j_idx];
+            #pragma omp atomic
+            z_vec_re[j_idx] += dz.real();
+            #pragma omp atomic
+            z_vec_im[j_idx] += dz.imag();
+            xz += 2.*(x.imag()*dz.imag()+x.real()*dz.real());
+            if (j_idx % thread_num == thread_id) {
+              auto grad_real = z_vec_re[j_idx] + x.real() * xx;
+              auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
+              auto abs_grad = abs(grad_real + grad_imag);
+              if (abs_grad > max_abs_grad) {
+                max_abs_grad = abs_grad;
+                selected_det = j_idx;
+              } 
+            }
+          }
+        } // single excitation ends.
+
+        for(int ij = 0; ij < nclosed * nclosed; ij++) {
+          int i = ij / nclosed, j = ij % nclosed;
+          if(i <= j) continue;
+          int I = closed[i], J = closed[j];
+          for (int kl = 0; kl < nopen * nopen; kl++) {
+            int k = kl / nopen;
+            int l = kl % nopen;
+            if (k <= l) continue;
+            int K=open[k], L=open[l];
+            int a = max(K,L), b = min(K,L);
+            auto detj = deti;
+            detj.setocc(a, true);
+            detj.setocc(b, true);
+            detj.setocc(I, false);
+            detj.setocc(J, false);
+            auto iter = det_to_index.find(detj);
+            if (iter != det_to_index.end()) {
+              auto j_idx = iter->second;
+              size_t orbDiff;
+              auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+              auto dz = dx * hij;
+              auto x = x_vector[j_idx];
+              #pragma omp atomic
+              z_vec_re[j_idx] += dz.real();
+              #pragma omp atomic
+              z_vec_im[j_idx] += dz.imag();
+              xz += 2.*(x.imag()*dz.imag()+x.real()*dz.real());
+              if (j_idx % thread_num == thread_id) {
+                auto grad_real = z_vec_re[j_idx] + x.real() * xx;
+                auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
+                auto abs_grad = abs(grad_real + grad_imag);
+                if (abs_grad > max_abs_grad) {
+                  max_abs_grad = abs_grad;
+                  selected_det = j_idx;
+                } 
+              }
+            }
+          }
+        }
+        this_det_idx[thread_id] = selected_det;
+        #pragma omp atomic
+        ene[iroot].first += xz;
+      }
+      #pragma omp barrier
+      
       // now some logical codes, print out information and decide when to exit etc.
-      if (i%schd.report_interval == 0) {
-        auto curr_ene = ene[iroot].first/ene[iroot].second;
-        cout << setw(10) << i << setw(20) <<std::setprecision(16) << curr_ene+coreEbkp << setw(20) <<std::setprecision(16) << prev_ene+coreEbkp;
-        cout << setw(20) << setprecision(6) << dx << std::setw(12) << std::setprecision(5) << scientific << getTime()-start_time << defaultfloat << endl;
-        if (abs(curr_ene - prev_ene)/(double)schd.report_interval < schd.dE) {
+      if (iter*thread_num%schd.report_interval < thread_num || iter == num_iter) {
+        auto curr_ene = get_energy(ene[iroot]);
+        auto residual = cdfci::compute_residual(x_vector, z_vec_re, z_vec_im, ene[iroot])/ene[iroot].second;
+        cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_ene+coreEbkp << setw(20) <<std::setprecision(14) << prev_ene+coreEbkp;
+        cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
+        cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
+        if (residual < schd.cdfciTol) {
           break;
         }
         prev_ene = curr_ene;

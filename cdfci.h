@@ -52,6 +52,14 @@ namespace cdfci {
   vector<value_type> getSubDets(value_type& det, hash_det& wfn, int nelec, bool sample=false);
   void civectorUpdate(vector<value_type> &column, hash_det& wfn, dcomplex dx, pair<dcomplex, double>& ene, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
   hash_det precondition(pair<dcomplex, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
-  void solve(schedule& schd, oneInt& I1, twoInt& I2, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, Determinant* SHMDets, int dets_size);
+  void getDeterminantsVariational(
+        Determinant& d, double epsilon, CItype ci1, CItype ci2,
+        oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
+        vector<int>& irreps, double coreE, double E0,
+        robin_hood::unordered_set<Determinant>& old_dets,
+        robin_hood::unordered_set<Determinant>& new_dets,
+        schedule& schd, int Nmc, int nelec);
+  double compute_residual(vector<dcomplex>& x, vector<double>& zreal, vector<double>& zimag, pair<double, double> ene);
+  void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
 }
 #endif

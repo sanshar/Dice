@@ -110,7 +110,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.max_determinants = 10000000;
   schd.sampleNewDets = false;
   schd.precondition = false;
-  schd.factor = 1.0;
   
   while (dump.good()) {
 
@@ -273,36 +272,35 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.stochastic = false;
     else if (boost::iequals(ArgName, "fullrestart"))
       schd.fullrestart = true;
-    else if (boost::iequals(ArgName, "dE") )
+    else if (boost::iequals(ArgName, "dE"))
       schd.dE = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "eps") )
+    else if (boost::iequals(ArgName, "eps"))
       schd.eps = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "prefix") )
+    else if (boost::iequals(ArgName, "prefix"))
       schd.prefix.push_back(tok[1]);
-    else if ( boost::iequals(ArgName, "pointGroup") )
+    else if (boost::iequals(ArgName, "pointGroup") )
       schd.pointGroup = tok[1];
-    else if ( boost::iequals(ArgName, "spin") )
+    else if (boost::iequals(ArgName, "spin"))
       schd.spin = atoi(tok[1].c_str());
-    else if ( boost::iequals(ArgName, "irrep") )
+    else if (boost::iequals(ArgName, "irrep"))
       schd.irrep = atoi(tok[1].c_str());
-    else if ( boost::iequals(ArgName, "DoOneRDM") )
+    else if (boost::iequals(ArgName, "DoOneRDM"))
       schd.DoOneRDM = true;
-    else if ( boost::iequals(ArgName, "DoThreeRDM") )
+    else if (boost::iequals(ArgName, "DoThreeRDM"))
       schd.DoThreeRDM = true;
-    else if ( boost::iequals(ArgName, "DoFourRDM") )
+    else if (boost::iequals(ArgName, "DoFourRDM"))
       schd.DoFourRDM = true;
-    else if ( boost::iequals(ArgName, "readText") )
+    else if (boost::iequals(ArgName, "readText"))
       schd.ReadTxt = true;
     else if (boost::iequals(ArgName, "schedule")) {
-
       std::getline(dump, Line);
       cout << Line << endl;
       vector<string> schd_tok;
       boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
-      while(!boost::iequals(schd_tok[0], "END")) {
-        if (!boost::iequals(schd_tok[0].substr(0,1), "#")) {
-          sweep_iter.push_back( atoi(schd_tok[0].c_str()));
-          sweep_epsilon.push_back( atof(schd_tok[1].c_str()));
+      while (!boost::iequals(schd_tok[0], "END")) {
+        if (!boost::iequals(schd_tok[0].substr(0, 1), "#")) {
+          sweep_iter.push_back(atoi(schd_tok[0].c_str()));
+          sweep_epsilon.push_back(atof(schd_tok[1].c_str()));
         }
         std::getline(dump, Line);
         cout << Line << endl;
@@ -313,11 +311,15 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       maxiter = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "cdfciIter"))
       schd.cdfciIter = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "report_interval"))
+    else if (boost::iequals(ArgName, "cdfciOn"))
+      schd.cdfci_on = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "cdfciTol"))
+      schd.cdfciTol = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "reportInterval"))
       schd.report_interval = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "z_threshold"))
       schd.z_threshold = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "cdfci_sample"))
+    else if (boost::iequals(ArgName, "cdfciSample"))
       schd.sampleNewDets = true;
     else if (boost::iequals(ArgName, "cdfci_precondition"))
       schd.precondition = true;
@@ -329,7 +331,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
     }
   }
 
-  if (maxiter < sweep_iter[sweep_iter.size()-1]) {
+  if (maxiter < sweep_iter[sweep_iter.size() - 1]) {
     cout << "maxiter should be greater than last entry of sweep_iter" << endl;
     exit(0);
   }

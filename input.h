@@ -159,12 +159,13 @@ public:
   bool DoFourRDM;
   bool ReadTxt;
   double z_threshold;
+  int cdfci_on;
   int cdfciIter;
   int report_interval;
   int max_determinants;
   bool sampleNewDets;
   bool precondition;
-  double factor;
+  double cdfciTol;
 };
 
 #endif
