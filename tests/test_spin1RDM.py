@@ -32,7 +32,7 @@ def test_spin_1RDM(spinRDM_file: str, spatialRDM_file: str, tol: float):
     error_per_element = l2_norm / spatialRDM.size
 
     if error_per_element > float(tol):
-        msg = "\tFailed Spin 1RDM Test: Error per Element: {:.3e}\n".format(
+        msg = "\t\033[91mFailed\033[00m  Spin 1RDM Test: Error per Element: {:.3e}\n".format(
             error_per_element
         )
         msg += "\t                   L2-Norm of Error: {:.3e}\n".format(l2_norm)
@@ -41,7 +41,7 @@ def test_spin_1RDM(spinRDM_file: str, spatialRDM_file: str, tol: float):
         )
         print(msg)
     else:
-        msg = "\tPASSED Spin 1RDM Test: Error per Element: {:.3e}".format(
+        msg = "\t\033[92mPassed\033[00m Spin 1RDM Test: Error per Element: {:.3e}".format(
             error_per_element
         )
         print(msg)

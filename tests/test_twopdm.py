@@ -38,7 +38,7 @@ def test2RDM(file1: str, file2: str, tol: float):
     error_per_element = l2_norm / rdm_1.size
 
     if error_per_element > float(tol):
-        msg = "\tFailed 2RDM Test: Error per Element: {:.3e}\n".format(
+        msg = "\t\033[91mFailed\033[00m  2RDM Test: Error per Element: {:.3e}\n".format(
             error_per_element
         )
         msg += "\t                   L2-Norm of Error: {:.3e}\n".format(l2_norm)
@@ -47,7 +47,9 @@ def test2RDM(file1: str, file2: str, tol: float):
         )
         print(msg)
     else:
-        msg = "\tPASSED 2RDM Test: Error per Element: {:.3e}".format(error_per_element)
+        msg = "\t\033[92mPassed\033[00m 2RDM Test: Error per Element: {:.3e}".format(
+            error_per_element
+        )
         print(msg)
 
 

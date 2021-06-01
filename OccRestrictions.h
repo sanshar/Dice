@@ -71,8 +71,8 @@ struct OccRestrictions {
   };
 };
 
-void initiateRestrictions(schedule& schd, vector<int>& closed);
-bool satisfiesRestrictions(schedule& schd, int i, int a) ;
-bool satisfiesRestrictions(schedule& schd, int i, int j, int a, int b) ;
+void initiateRestrictions(vector<OccRestrictions>& occres, vector<int>& closed);
+bool satisfiesRestrictions(vector<OccRestrictions>& occres, int i, int a) ;
+bool satisfiesRestrictions(vector<OccRestrictions>& occres, int i, int j, int a, int b) ;
 
 

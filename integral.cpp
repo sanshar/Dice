@@ -31,6 +31,7 @@
 #endif
 #include "communicate.h"
 #include "global.h"
+#include "input.h"
 
 using namespace boost;
 
@@ -389,7 +390,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
 
 #ifdef Complex
 //=============================================================================
-void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
+void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix, schedule& schd) {
   //-----------------------------------------------------------------------------
   /*!
   Read SOC integrals from files, to be put in "I1"
@@ -408,6 +409,22 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
     vector<string> tok;
     string msg;
 
+    //notice this is only B applied to the spin and not to
+    //angular momentum
+    if (schd.Bdirection.size() != 0 ) {
+      double ge = 2.002319304;
+      double xval = ge * schd.Bvalue * schd.Bdirection[0];
+      double yval = ge * schd.Bvalue * schd.Bdirection[0];
+      double zval = ge * schd.Bvalue * schd.Bdirection[0];
+      for (int i=0; i<norbs/2; i++) {
+        I1(2*i,2*i+1) += std::complex<double>(xval, -yval);
+        I1(2*i+1,2*i) += std::complex<double>(xval, yval);
+
+        I1(2*i,2*i)     += zval;
+        I1(2*i+1,2*i+1) += -zval;
+      }
+    }
+    
     // Read SOC.X
     {
       ifstream dump(str(boost::format("%s.X") % fileprefix));
@@ -431,13 +448,11 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
 
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
-        // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(0,integral/2.);
-        // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
-        // std::complex<double>(0,integral/2.);  //beta alpha
+
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral); // alpha beta
+            std::complex<double>(0, integral/2.); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(0, -integral); // beta alpha
+            std::complex<double>(0, integral/2.); // beta alpha
       }
     }
 
@@ -466,9 +481,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1) + 1) +=
-            std::complex<double>(integral, 0); // alpha beta
+            std::complex<double>(-integral/2, 0); // alpha beta
         I1(2 * (a - 1) + 1, 2 * (b - 1)) +=
-            std::complex<double>(-integral, 0); // beta alpha
+            std::complex<double>(integral/2, 0); // beta alpha
         // I1(2*(a-1), 2*(b-1)+1) += std::complex<double>(-integral/2.,0);
         // //alpha beta I1(2*(a-1)+1, 2*(b-1)) +=
         // std::complex<double>(integral/2.,0);  //beta alpha
@@ -489,6 +504,7 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         exit(0);
       }
 
+
       // I1soc[3].store.resize(N*(N+1)/2, 0.0);
       while (!dump.eof()) {
         std::getline(dump, msg);
@@ -500,9 +516,9 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1(2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral); // alpha, alpha
+            std::complex<double>(0.0, integral/2); // alpha, alpha
         I1(2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, -integral); // beta, beta
+            std::complex<double>(0, -integral/2); // beta, beta
         // I1(2*(a-1), 2*(b-1)) += std::complex<double>(0,-integral/2); //alpha,
         // alpha I1(2*(a-1)+1, 2*(b-1)+1) += std::complex<double>(0,integral/2);
         // //beta, beta
@@ -557,9 +573,9 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[0](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral); // alpha alpha
+            std::complex<double>(0, -integral); // alpha alpha
         I1[0](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral); // beta beta
+            std::complex<double>(0, -integral); // beta beta
       }
     }
 
@@ -588,9 +604,9 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[1](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral); // alpha alpha
+            std::complex<double>(0, -integral); // alpha alpha
         I1[1](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral); // beta beta
+            std::complex<double>(0, -integral); // beta beta
       }
     }
 
@@ -619,9 +635,9 @@ void readGTensorIntegrals(vector<oneInt> &I1, int norbs, string fileprefix) {
         double integral = atof(tok[0].c_str());
         int a = atoi(tok[1].c_str()), b = atoi(tok[2].c_str());
         I1[2](2 * (a - 1), 2 * (b - 1)) +=
-            std::complex<double>(0, integral); // alpha alpha
+            std::complex<double>(0, -integral); // alpha alpha
         I1[2](2 * (a - 1) + 1, 2 * (b - 1) + 1) +=
-            std::complex<double>(0, integral); // beta beta
+            std::complex<double>(0, -integral); // beta beta
       }
     }
   } // commrank=0

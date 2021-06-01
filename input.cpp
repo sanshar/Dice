@@ -19,12 +19,14 @@
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "input.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
 #include "global.h"
 
 using namespace std;
@@ -101,11 +103,15 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
 
   schd.pointGroup = "c1";
   schd.spin = -1;  // Default value overridden by HF spin if not specified
-  schd.irrep = 1;
+  schd.irrep = "None";
+  schd.searchForLowestEnergyDet = false;
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
 
+  schd.Bvalue = 0;
+  schd.Bdirection.resize(0);
+  
   while (dump.good()) {
     std::string Line;
     std::getline(dump, Line);
@@ -244,11 +250,42 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       int minElec = atoi(tok[1].c_str());
       int maxElec = atoi(tok[2].c_str());
       std::vector<int> orbs;
+      for (int i = 3; i < tok.size(); i++) {
+        orbs.push_back(2 * atoi(tok[i].c_str()));
+        orbs.push_back(2 * atoi(tok[i].c_str()) + 1);
+      }
+      schd.restrictionsV.push_back(OccRestrictions(minElec, maxElec, orbs));
+      schd.restrictionsPT.push_back(OccRestrictions(minElec, maxElec, orbs));
+    }
+    else if (boost::iequals(ArgName, "applyB")) {
+#ifndef Complex
+      cout << "applyB can only be used with ZDice"<<endl;
+      exit(0);
+#endif
+      if (tok.size() != 5) {
+        cout <<" applyB should be followed by 4 numbers on the same line"<<endl;
+        cout <<" magnitude of B and three additional numbers specifying the direction"<<endl;
+        cout <<" only "<<tok.size() -1<<" numbers found "<<endl;
+        exit(0);
+      }
+      schd.Bvalue = atof(tok[1].c_str());
+      schd.Bdirection.resize(3,0.0);
+      for (int i=0; i<3; i++)
+        schd.Bdirection[i] = atof(tok[i+2].c_str());
+      double norm = sqrt(pow(schd.Bdirection[0],2) +  pow(schd.Bdirection[1],2) +  pow(schd.Bdirection[2],2));
+      for (int i=0; i<3; i++)
+        schd.Bdirection[i] = schd.Bdirection[i]/norm;
+      
+    }
+    else if (boost::iequals(ArgName, "restrictv")) {
+      int minElec = atoi(tok[1].c_str());
+      int maxElec = atoi(tok[2].c_str());
+      std::vector<int> orbs;
       for (int i=3; i<tok.size(); i++) {
         orbs.push_back(2*atoi(tok[i].c_str()));
         orbs.push_back(2*atoi(tok[i].c_str())+1);
       }
-      schd.restrictions.push_back(OccRestrictions(minElec, maxElec, orbs));
+      schd.restrictionsV.push_back(OccRestrictions(minElec, maxElec, orbs));
     }
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
@@ -277,7 +314,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
     else if (boost::iequals(ArgName, "spin"))
       schd.spin = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "irrep"))
-      schd.irrep = atoi(tok[1].c_str());
+      schd.irrep = tok[1];
+    else if (boost::iequals(ArgName, "searchForLowestEnergyDet"))
+      schd.searchForLowestEnergyDet = true;
     else if (boost::iequals(ArgName, "DoOneRDM"))
       schd.DoOneRDM = true;
     else if (boost::iequals(ArgName, "DoThreeRDM"))
