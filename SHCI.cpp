@@ -402,6 +402,45 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
   }
+  
+  if (commrank == 0) {
+    if (schd.writeBestDeterminants > 0) {
+      int num = min(schd.writeBestDeterminants, static_cast<int>(DetsSize));
+      int nspatorbs = Determinant::norbs/2;
+      ofstream fout = ofstream("dets.bin", ios::binary);
+      fout.write((char*) &num, sizeof(int));
+      fout.write((char*) &nspatorbs, sizeof(int));
+      for (int root = 0; root < schd.nroots; root++) {
+        MatrixXx prevci = 1. * ci[root];
+        for (int i = 0; i < num; i++) {
+          compAbs comp;
+          int m = distance(
+              &prevci(0, 0),
+              max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+          double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
+          double wciCoeff = parity * std::real(prevci(m, 0));
+          fout.write((char*) &wciCoeff, sizeof(double));
+          Determinant wdet = SHMDets[m];
+          char det[norbs];
+          wdet.getRepArray(det);
+          for (int i = 0; i < nspatorbs; i++) {
+            char detocc;
+            if (det[2 * i] == false && det[2 * i + 1] == false)
+              detocc = '0';
+            else if (det[2 * i] == true && det[2 * i + 1] == false)
+              detocc = 'a';
+            else if (det[2 * i] == false && det[2 * i + 1] == true)
+              detocc = 'b';
+            else if (det[2 * i] == true && det[2 * i + 1] == true)
+              detocc = '2';
+            fout.write((char*) &detocc, sizeof(char));
+          }
+          prevci(m, 0) = 0.0;
+        }
+      }
+      fout.close();
+    }
+  }
 
   // #####################################################################
   // Print the 5 most important determinants and their weights
@@ -431,6 +470,7 @@ int main(int argc, char* argv[]) {
     }
   }  // end root
   pout << std::flush;
+ 
 
   // #####################################################################
   // RDMs
