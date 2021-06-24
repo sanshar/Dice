@@ -11,10 +11,10 @@
 #include <iomanip>
 #include "robin_hood.h"
 #include "input.h"
+#include <complex>
 
 using namespace std;
 using namespace Eigen;
-//using namespace Eigen;
 
 class Determinant;
 class oneInt;
@@ -59,7 +59,7 @@ namespace cdfci {
         robin_hood::unordered_set<Determinant>& old_dets,
         robin_hood::unordered_set<Determinant>& new_dets,
         schedule& schd, int Nmc, int nelec);
-  double compute_residual(vector<dcomplex>& x, vector<double>& zreal, vector<double>& zimag, pair<double, double> ene);
+  double compute_residual(vector<dcomplex>& x, vector<double>& zreal, vector<double>& zimag, vector<pair<double, double>>& ene, int& iroot);
   void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
 }
 #endif
