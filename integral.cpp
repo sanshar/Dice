@@ -154,7 +154,7 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   string fcidump_bin = fcidump+".bin";
   auto dump2 = ifstream(fcidump_bin.c_str(), ios::out | ios::binary);
   if (!dump2.good()) {
-    pout << "Integral file " << fcidump << " does not exist!" << endl;
+    pout << "Integral file " << fcidump_bin << " does not exist!" << endl;
     exit(0);
   }
   if (commrank == 0) {
