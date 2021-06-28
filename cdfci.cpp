@@ -622,8 +622,7 @@ vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dou
       x_vector[i*nroots+iroot] = dx;
     }
     double xz = 0.0;
-    //#pragma omp declare reduction(complex_plus : dcomplex : std::plus<dcomplex>())
-    //#pragma omp parallel for private(column) reduction(complex_plus : xz)
+    #pragma omp parallel for private(column) reduction(+:xz)
     for (int i = 0; i < x_size; i++) {
       getSubDetsNoSample(dets, column, det_to_index, i, nelec);
 
@@ -660,7 +659,7 @@ double cdfci::compute_residual(vector<dcomplex>& x, vector<double>& zreal, vecto
   double residual = 0.0;
   const int size = x.size();
   const int nroots = ene.size();
-  #pragma omp parallel reduction(+:residual)
+  #pragma omp parallel for reduction(+:residual)
   for (int i = iroot; i < size; i+=nroots) {
     auto tmp_re = zreal[i] - energy * x[i].real();
     auto tmp_im = zimag[i] - energy * x[i].imag();
@@ -876,7 +875,7 @@ new_dets.size() << endl;
         deti.getOpenClosed(open, closed);
         const auto xx = ene[iroot].second;
         double max_abs_grad = 0.0;
-        int selected_det = deti_idx+thread_num;
+        int selected_det = (deti_idx+thread_num)%dets_size;
 
         auto dx = dxs[thread_id];
         bool real_part;
