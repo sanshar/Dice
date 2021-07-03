@@ -25,7 +25,7 @@
 #include <iostream>
 #include <fstream>
 #include "evaluateE.h"
-#include <math.h>
+//#include <math.h>
 #include "global.h"
 #include "input.h"
 #include "statistics.h"
@@ -35,8 +35,8 @@
 #include "mpi.h"
 #endif
 
-using namespace std;
-using namespace Eigen;
+//using namespace std;
+//using namespace Eigen;
 
 /*
 void comb(int N, int K, vector<vector<int>> &combinations)

@@ -371,7 +371,7 @@ void generateAllDeterminantsActive(vector<Determinant>& allDets, const Determina
                                    const int nact, const int nalpha, const int nbeta);
 void generateAllDeterminantsFOIS(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
 
-template<> struct hash<Determinant>
+template<> struct std::hash<Determinant>
 {
   std::size_t operator()(Determinant const& d) const noexcept
   {
