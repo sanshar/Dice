@@ -28,8 +28,8 @@ struct std::hash<Determinant> {
     //Determinant this_det = det;
     //return det.repr[0];
     //return det.repr[0] + det.repr[1]*179426549;
-    return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577;
-    //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
+    //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577;
+    return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
   }
 };
 
@@ -37,7 +37,7 @@ namespace cdfci {
   // currently assumes real ci vector
   using value_type = std::pair<Determinant, array<double, 2>>;
   using hash_det = robin_hood::unordered_flat_map<Determinant, array<double, 2>, std::hash<Determinant>, std::equal_to<Determinant>>;
-  using DetToIndex = robin_hood::unordered_flat_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
+  using DetToIndex = robin_hood::unordered_node_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
   // retain the same function call as DoVariational in SHCIbasics.
   // use hash map for determinants internally
   vector<double> DoVariational(vector<MatrixXx>& ci, vector<Determinant> & Dets, schedule& schd, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, oneInt& I1, double& coreE, int nelec, bool DoRDM=false);
@@ -45,8 +45,7 @@ namespace cdfci {
   void getDeterminantsVariational( Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        robin_hood::unordered_set<Determinant>& old_dets,
-        robin_hood::unordered_set<Determinant>& new_dets,
+        DetToIndex& det_to_index,
         schedule& schd, int Nmc, int nelec);
   
   set<Determinant> sampleExtraEntry(hash_det& wfn, int nelec);

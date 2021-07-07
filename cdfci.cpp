@@ -33,8 +33,7 @@ void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        robin_hood::unordered_set<Determinant>& old_dets,
-        robin_hood::unordered_set<Determinant>& new_dets,
+        cdfci::DetToIndex& det_to_index,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
     /*!
@@ -103,9 +102,10 @@ void cdfci::getDeterminantsVariational(
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
       //std::cout << "single excitation: " << di << std::endl;
-      if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
-        new_dets.emplace(di);
-      }
+        if(det_to_index.find(di) == det_to_index.end()) {
+          int last_index = det_to_index.size();
+          det_to_index[di] = last_index;
+        }
       //if (Determinant::Trev != 0) di.makeStandard();
     }
   } // ia
@@ -142,8 +142,9 @@ void cdfci::getDeterminantsVariational(
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
-        if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
-          new_dets.emplace(di);
+        if(det_to_index.find(di) == det_to_index.end()) {
+          int last_index = det_to_index.size();
+          det_to_index[di] = last_index;
         }
         //if (Determinant::Trev != 0) di.makeStandard();
       }
@@ -645,7 +646,7 @@ double CoordinateUpdateIthRoot(Determinant& det, int& iroot, vector<double>& x, 
 }
 
 // need to resize the result vector
-void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::DetToIndex& det_to_index, int this_index, int nelec) {
+void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::DetToIndex& det_to_index, int this_index, int nelec, twoIntHeatBathSHM& I2hb, double epsilon) {
   auto det = dets[this_index];
 
   int norbs = det.norbs;
@@ -676,6 +677,27 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
     int i=ij/nclosed, j=ij%nclosed;
     if(i<=j) continue;
     int I = closed[i], J = closed[j];
+    int X = max(I/2, J/2), Y = min(I/2, J/2);
+    
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = I%2==J%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = I%2==J%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = I%2==J%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = I%2==J%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
+    for (size_t index = start; index < end; index++) {
+      if (fabs(integrals[index]) < epsilon) break;
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+      Determinant di = det;
+      di.setocc(a, true);
+      di.setocc(b, true);
+      di.setocc(I, false);
+      di.setocc(J, false);
+      auto iter = det_to_index.find(di);
+      if (iter != det_to_index.end()) {
+        result[1+nopen*nclosed+ij*nopen*nopen+a*nopen+b] = iter->second;
+      }
+    }
+    /*
     for (int kl=0;kl<nopen*nopen;kl++) {
       int k=kl/nopen;
       int l=kl%nopen;
@@ -694,7 +716,7 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
       if (iter != det_to_index.end()) {
         result[1+nopen*nclosed+ij*nopen*nopen+kl] = iter->second;
       }
-    }
+    }*/
   }
   column.clear();
   column.push_back(result[0]);
@@ -739,6 +761,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
   #pragma omp parallel for
   for(int i = 1; i < column.size(); i++) {
     int thread_id = omp_get_thread_num();
+    int pairIndex = X*(X+1)/2+Y;
     auto x = x_vector[column[i]];
     auto z = z_vector[column[i]];
     auto abs_grad = std::abs(x*norm+z);
@@ -746,7 +769,7 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<double>& x_vector, vect
       max_abs_grad[thread_id] = abs_grad;
       local_results[thread_id] = column[i];
     }
-  }
+  }lo
   auto result = local_results[0];
   auto result_idx = 0;
   for (int i = 1; i<num_threads; i++) {
@@ -792,7 +815,7 @@ int CoordinatePickGcdGradOmpMultiRoot(vector<int>& column, vector<double>& x_vec
   return result;
 }
 
-vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<vector<double>>& xx, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
+vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<vector<double>>& xx, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, double coreE, double epsilon) {
   int nelec = dets[0].Noccupied();
   vector<pair<double, double>> result;
   vector<int> column;
@@ -812,7 +835,8 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
     double xz = 0.0;
     #pragma omp parallel for private(column) reduction(+:xz)
     for (int i = 0; i < x_size; i++) {
-      getSubDetsNoSample(dets, column, det_to_index, i, nelec);
+      if(i%1000==0) cout << i << " " << getTime()-start << "\n";
+      getSubDetsNoSample(dets, column, det_to_index, i, nelec, I2HB, 1e-10);
       auto column_size = column.size();
       auto deti = dets[i];
       auto hij = deti.Energy(I1, I2, coreE);
@@ -840,6 +864,9 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
   for (int iroot=0; iroot<nroots; iroot++) {
     cout << residual[iroot] << endl;
   }
+  for (int iroot=0; iroot<nroots; iroot++) {
+    cout << cdfci::compute_residual(x_vector, z_vector, result, iroot) << endl;
+  }
   return result;
 }
 vector<double> cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair<double, double>>& ene) {
@@ -847,13 +874,9 @@ vector<double> cdfci::compute_residual(vector<double>& x, vector<double>& z, vec
   const int size = x.size()/nroots;
   vector<double> residual(nroots, 0.0);
   vector<double> energy(nroots, 0.0);
-  for(int iroot=0; iroot<nroots; iroot++) {
-    energy[iroot] = ene[iroot].first / ene[iroot].second;
-    cout << setprecision(6) << energy[iroot] << " " << ene[iroot].first << " " << ene[iroot].second << endl;
-  }
   for (int iroot = 0; iroot < nroots; iroot++) {
     double res_iroot = 0.0;
-    #pragma omp parallel  reduction(+:res_iroot)
+    #pragma omp parallel for reduction(+:res_iroot)
     for (int i=0; i<size; i++) {
       auto tmp = z[i*nroots+iroot]-energy[iroot] * x[i*nroots+iroot];
       res_iroot += tmp*tmp;
@@ -878,12 +901,11 @@ double cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair
       residual += tmp*tmp;
   }
   #pragma omp barrier
+  residual /= ene[iroot].second;
   return residual;
 }
 void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
-  robin_hood::unordered_set<Determinant> old_dets;
-  robin_hood::unordered_set<Determinant> new_dets;
   int iter;
   bool converged;
 
@@ -898,7 +920,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
     std::ifstream ifs(file, std::ios::binary);
     boost::archive::binary_iarchive load(ifs);
-
     load >> iter >> dets;
     ci.resize(1, MatrixXx(dets.size(), 1));
 
@@ -914,7 +935,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
-    old_dets.emplace(dets[i]);
   }
 
   const double epsilon1 = schd.epsilon1[schd.cdfci_on];
@@ -923,22 +943,17 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
 
   for (int i = 0; i < dets_size; i++) {
     auto civec = ci[0](i, 0);
-    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], det_to_index, schd, 0, nelec);
     if (i%10000 == 0) {
-      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
+      cout << "curr iter " << i << " dets size " << det_to_index.size() << endl;
     }
   }
-  int new_dets_size = new_dets.size();
-  cout << dets_size << " " << new_dets_size;
-  for (auto new_det : new_dets) {
-    dets.push_back(new_det);
+  dets.resize(det_to_index.size());
+  for (auto it : det_to_index) {
+    dets[it.second] = it.first;
   }
   dets_size = dets.size();
   cout << " " << dets_size << endl;
-  robin_hood::unordered_set<Determinant>().swap(old_dets);
-  robin_hood::unordered_set<Determinant>().swap(new_dets);
-  old_dets.clear();
-  new_dets.clear();
   cout << "build det to index" << endl;
   for (int i = 0; i < dets.size(); i++) {
     det_to_index[dets[i]] = i;
@@ -954,7 +969,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   vector<vector<double>> xx(nroots, vector<double>(nroots, 0.0));
   vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
-  ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, coreE);
+  ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, I2HB, coreE, epsilon1);
   start_index = 0;
   auto num_iter = schd.cdfciIter;
   vector<int> this_det_idx(thread_num, 0);
@@ -1234,8 +1249,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
 
 void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
-  robin_hood::unordered_set<Determinant> old_dets;
-  robin_hood::unordered_set<Determinant> new_dets;
   int iter;
   bool converged;
 
@@ -1266,7 +1279,6 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
   
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
-    old_dets.emplace(dets[i]);
   }
 
   const double epsilon1 = schd.epsilon1[schd.cdfci_on];
@@ -1275,26 +1287,21 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
 
   for (int i = 0; i < dets_size; i++) {
     auto civec = ci[0](i, 0);
-    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], det_to_index, schd, 0, nelec);
     if (i%10000 == 0) {
-      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
+      cout << "curr iter " << i << " dets size " << det_to_index.size() << endl;
     }
   }
-  int new_dets_size = new_dets.size();
-  cout << dets_size << " " << new_dets_size;
-  for (auto new_det : new_dets) {
-    dets.push_back(new_det);
+  dets.resize(det_to_index.size());
+  for (auto it : det_to_index) {
+    dets[it.second] = it.first;
   }
   dets_size = dets.size();
   cout << " " << dets_size << endl;
-  robin_hood::unordered_set<Determinant>().swap(old_dets);
-  robin_hood::unordered_set<Determinant>().swap(new_dets);
-  old_dets.clear();
-  new_dets.clear();
   cout << "build det to index" << endl;
   for (int i = 0; i < dets.size(); i++) {
     det_to_index[dets[i]] = i;
-    if (i % 1000 == 0) {
+    if (i % 10000000 == 0) {
       cout << i << " dets constructed" << endl;
     }
   }
@@ -1306,8 +1313,8 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
   vector<vector<double>> xx(nroots, vector<double>(nroots, 0.0));
   vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
-  ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, coreE);
-  
+  ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, I2HB, coreE, epsilon1);
+  cout << "precondition costs: " << getTime()-start_time << "\n"; 
   start_index = 0;
   auto num_iter = schd.cdfciIter;
   vector<int> this_det_idx(thread_num, 0);
@@ -1417,6 +1424,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         auto det_energy = deti.Energy(I1, I2, coreE);
         auto dz = dx * det_energy;
         auto x = x_vector[i_idx];
+        auto screen = 1e-10/sqrt(abs(x)/xx);
         double norm = 0.0;
         //for (int entry = 1; entry < column.size(); entry++) {
         for (int ia = 0; ia < nopen*nclosed; ia++) {
@@ -1449,16 +1457,17 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
           int i=ij/nclosed, j=ij%nclosed;
           if(i<=j) continue;
           int I = closed[i], J = closed[j];
-          for (int kl=0;kl<nopen*nopen;kl++) {
-            int k=kl/nopen;
-            int l=kl%nopen;
-            if(k<=l) continue;
-            int K=open[k], L=open[l];
-            int a = max(K,L), b = min(K,L);
-            if (a%2+b%2-I%2-J%2 != 0) {
-              continue;
-            }
-            auto detj = deti;
+          int X = max(I/2, J/2), Y = min(I/2, J/2);
+    
+          int pairIndex = X*(X+1)/2+Y;
+          size_t start = I%2==J%2 ? I2HB.startingIndicesSameSpin[pairIndex]   : I2HB.startingIndicesOppositeSpin[pairIndex];
+          size_t end   = I%2==J%2 ? I2HB.startingIndicesSameSpin[pairIndex+1] : I2HB.startingIndicesOppositeSpin[pairIndex+1];
+          float* integrals  = I%2==J%2 ?  I2HB.sameSpinIntegrals : I2HB.oppositeSpinIntegrals;
+          short* orbIndices = I%2==J%2 ?  I2HB.sameSpinPairs     : I2HB.oppositeSpinPairs;
+          for (size_t index = start; index < end; index++) {
+            if (fabs(integrals[index]) < screen) break;
+            int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+            Determinant detj = deti;
             detj.setocc(a, true);
             detj.setocc(b, true);
             detj.setocc(I, false);
@@ -1493,14 +1502,9 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         auto residual = cdfci::compute_residual(x_vector, z_vector, ene, iroot);
         auto curr_energy = ene[iroot].first/ene[iroot].second;
         auto prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
-        cout << ene[iroot].first << " " << ene[iroot].second << endl;
         cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_energy+coreEbkp << setw(20) <<std::setprecision  (14) << prev_energy+coreEbkp;
         cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
         cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
-        for(int jroot=0; jroot<nroots; jroot++) {
-          cout << xx[iroot][jroot] << " ";
-        }
-        cout << endl;
         double residual_sum = 0.0;
         if (residual < schd.cdfciTol) {
           break;
@@ -1508,7 +1512,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         prev_ene = ene;
       }
     }
-    }
+  }
   coreE = coreEbkp;
   return;
 }
