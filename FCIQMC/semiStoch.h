@@ -8,6 +8,11 @@
 #include "walkersFCIQMC.h"
 #include "utilsFCIQMC.h"
 
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+
 class semiStoch {
 
  public:
