@@ -1,21 +1,14 @@
 USE_MPI = yes
-USE_INTEL = yes
+USE_INTEL = no
 COMPILE_NUMERIC = yes
 
-EIGEN=/projects/sash2458/newApps/eigen/
-BOOST=/projects/sash2458/newApps/boost_1_67_0/
-LIBIGL=/projects/sash2458/apps/libigl/include/
-PYSCF=/projects/sash2458/newApps/pyscf/pyscf/lib/
-LIBCINT=/projects/sash2458/newApps/pyscf/pyscf/lib/deps/lib
-HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
-#TACO=/projects/sash2458/newApps/taco/install
-#EIGEN=/projects/ilsa8974/apps/eigen/
-#BOOST=/projects/ilsa8974/apps/boost_1_66_0/
-#LIBIGL=/projects/ilsa8974/apps/libigl/include/
-#MKL=/curc/sw/intel/17.4/mkl/
+BOOST=${BOOST_ROOT}
+HDF5=${CURC_HDF5_ROOT}
+EIGEN=/projects/ilsa8974/apps/eigen/
+LIBIGL=/projects/ilsa8974/apps/libigl/include/
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 
-FLAGS = -std=c++14 -O3 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-DComplex
+FLAGS = -std=c++14 -O3 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ -fpermissive -w #-DComplex
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 GIT_HASH=`git rev-parse HEAD`
@@ -49,7 +42,7 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L/opt/local/lib -lboost_serialization-mt -lboost_mpi-mt -lboost_program_options-mt
+		LFLAGS = -L${CURC_BOOST_LIB} -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
 	else
 		CXX = g++
 		CC = g++
