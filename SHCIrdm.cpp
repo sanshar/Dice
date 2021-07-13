@@ -516,12 +516,42 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
     }
 
     if (schd.DoSpinRDM) {
-      char file[5000];
-      sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
-      std::ofstream ofs(file, std::ios::binary);
-      boost::archive::binary_oarchive save(ofs);
+      // Original writing to binary
+      char file_bin[5000];
+      sprintf(file_bin, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
+      std::ofstream ofs_bin(file_bin, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs_bin);
       save << twoRDM;
+      ofs_bin.close();
       // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+
+      //
+      // (New 06/21/21) Writing to text file
+      //
+      const int norbs = 2* nSpatOrbs;
+      char file[5000];
+      sprintf(file, "%s/spin2RDM.%d.%d.txt", schd.prefix[0].c_str(), root,
+              root);
+      std::ofstream ofs(file, std::ios::out);
+      ofs << norbs << endl;
+
+      for (int p = 0; p < norbs; p++)
+        for (int q = 0; q < norbs; q++)
+          for (int r = 0; r < norbs; r++)
+            for (int s = 0; s < norbs; s++) {
+              int P = max(p, q), Q = min(p, q);
+              int R = max(r, s), S = min(r, s);
+              double sgn = 1.;
+              if (P != p) sgn *= -1;
+              if (R != r) sgn *= -1;
+              double value = sgn * twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S);
+
+
+              if (fabs(value) > 1.e-15)
+                ofs << str(boost::format("%3d   %3d   %3d   %3d   %16.12g\n") %
+                           p % q % r % s % value);
+            }
+      ofs.close();
     }
 
     {
