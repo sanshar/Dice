@@ -20,7 +20,7 @@ def check_results_fciqmc_replica(eRef1, eRef2, eRefVar, eRefEN2,
     passed_en2 = abs(eRefEN2 - eTestEN2) < tol
 
     if (passed_1 and passed_2 and passed_var and passed_en2):
-        print "test passed"
+        print("test passed")
     else:
         print("test failed")
         print("eRef1 = ", eRef1)
