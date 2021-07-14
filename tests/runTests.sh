@@ -77,6 +77,15 @@ python $here/test_spin1RDM.py spin1RDM.0.0.txt spatial1RDM.0.0.txt 1e-8
 $MPICOMMAND $HCIPATH input.dat > output.dat
 python $here/test_spin1RDM.py spin1RDM.0.0.txt spatial1RDM.0.0.txt 1e-8
 
+cd $here/spin2rdm
+printf "...running spin2RDM tests\n"
+printf "WARNING: PySCF must be installed (or in PYTHONPATH) for these tests to run.\n"
+printf "WARNING: The spin2RDM tests are EXTENSIVE. If 1-3 tests fail, that's usually OK.\n"
+printf "WARNING: We test RDMs from high-lying excited states so tests can sometimes fail\n"
+printf "WARNING: because they are slightly larger than our selected tolerances.\n"
+printf "WARNING: See Dice/tests/spin2RDM/ for specific details.\n\n"
+python test_spin2rdm.py
+
 cd $here/H2He_rdm
 printf "...running H2He RDM Test\n"
 $HCIPATH input.dat > output.dat

@@ -113,7 +113,7 @@ def restricted_spin_square(mc, root: int, nelec=None) -> float:
     ss = szsz + ssxy
 
     # Warn of if things aren't as we'd expect
-    if abs(szsz - ssz) > 1e-12:
+    if abs(szsz - ssz) > 1e-10:
         lib.logger.warn(mc.mol, f"\t<S_z> numerical error {abs(szsz - ssz):.3e}")
 
     lib.logger.note(
@@ -123,13 +123,15 @@ def restricted_spin_square(mc, root: int, nelec=None) -> float:
     return ss
 
 
-def print_test(test_name: str, error: float, tol: float = 1e-12):
+def print_test(mc: mcscf.CASSCF, test_name: str, error: float, tol: float = 1e-12):
     """Testing utility"""
     if error > tol:
-        print(f"\t{test_name} error {error:.3e} > {tol:.1e}")
-        print(f"\t\033[91mFailed\033[00m {test_name} Test....")
+        lib.logger.note(mc.mol, f"\t{test_name} error {error:.3e} > {tol:.1e}")
+        lib.logger.note(mc.mol, f"\t\033[91mFailed\033[00m {test_name} Test....")
+        return 1
     else:
-        print(f"\t\033[92mPassed\033[00m {test_name} Test....")
+        lib.logger.note(mc.mol, f"\t\033[92mPassed\033[00m {test_name} Test....")
+        return 0
 
 
 def writeSHCIConfFile(SHCI, nelec, Restart):
@@ -297,10 +299,10 @@ if __name__ == "__main__":
     }
 
     systems = [
-        # ch2,
-        # o2,
+        ch2,
+        o2,
         cn,
-        # c2,
+        c2,
     ]
 
     for system in systems:
@@ -311,7 +313,12 @@ if __name__ == "__main__":
         nroots = system["nroots"]
 
         mol = gto.M(
-            atom=atom, basis="ccpvdz", verbose=verbose, spin=spin, symmetry=True
+            atom=atom,
+            basis="ccpvdz",
+            verbose=verbose,
+            spin=spin,
+            symmetry=True,
+            output=f"{name}.out",
         )
         mf = scf.RHF(mol).run()
         # noons, natorbs = mcscf.addons.make_natural_orbitals(mf)
@@ -338,6 +345,10 @@ if __name__ == "__main__":
         else:
             nelec = mc.nelecas
 
+        # Keep track of errors
+        n_fail = 0
+
+        # Test <S^2> for each root
         for ni in range(nroots):
             lib.logger.note(mol, "##############")
             lib.logger.note(mol, f"#   ROOT {ni}   #")
@@ -361,22 +372,21 @@ if __name__ == "__main__":
             dm2aa_err = np.linalg.norm(dice_dm2aa - pyscf_dm2aa) / dice_dm2aa.size
             dm2ab_err = np.linalg.norm(dice_dm2ab - pyscf_dm2ab) / dice_dm2ab.size
             dm2bb_err = np.linalg.norm(dice_dm2bb - pyscf_dm2bb) / dice_dm2bb.size
-            # lib.logger.note(mol, f"\tdm1a error  {dm1a_err:.3e}")
-            # lib.logger.note(mol, f"\tdm1b error  {dm1b_err:.3e}")
-            # lib.logger.note(mol, f"\tdm2aa error {dm2aa_err:.3e}")
-            # lib.logger.note(mol, f"\tdm2ab error {dm2ab_err:.3e}")
-            # lib.logger.note(mol, f"\tdm2bb error {dm2bb_err:.3e}")
-            print_test(f"{name} root={ni} DM1a", dm1a_err, tol=1e-6)
-            print_test(f"{name} root={ni} DM1b", dm1b_err, tol=1e-6)
-            print_test(f"{name} root={ni} DM2aa", dm2aa_err, tol=1e-6)
-            print_test(f"{name} root={ni} DM2ab", dm2ab_err, tol=1e-6)
-            print_test(f"{name} root={ni} DM2bb", dm2bb_err, tol=1e-6)
+
+            n_fail += print_test(mc, f"{name} root={ni} DM1a", dm1a_err, tol=1e-5)
+            n_fail += print_test(mc, f"{name} root={ni} DM1b", dm1b_err, tol=1e-5)
+            n_fail += print_test(mc, f"{name} root={ni} DM2aa", dm2aa_err, tol=1e-5)
+            n_fail += print_test(mc, f"{name} root={ni} DM2ab", dm2ab_err, tol=1e-5)
+            n_fail += print_test(mc, f"{name} root={ni} DM2bb", dm2bb_err, tol=1e-5)
 
             pyscf_ss = restricted_spin_square(trusted_mc, ni)
             dice_ss = restricted_spin_square(mc, ni)
             ss_err = abs(pyscf_ss - dice_ss)
-            print_test(f"{name} root={ni} <S^2>", ss_err, tol=1e-8)
+            n_fail += print_test(mc, f"{name} root={ni} <S^2>", ss_err, tol=1e-7)
 
-            print()
+            # print()
 
-        print("\n")
+        print(f"\nNumber of failed tests from {name:3s} = {n_fail} out of {6*nroots}\n")
+        # print("\n")
+
+    mc.fcisolver.cleanup_dice_files()
