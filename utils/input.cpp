@@ -223,6 +223,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printLevel = input.get("print.level", 0);
     schd.printVars = input.get("print.vars", false);
     schd.printGrad = input.get("print.grad", false);
+    schd.printJastrow = input.get("print.jastrow", false);
     schd.debug = input.get("print.debug", false);
     // SC-NEVPT(2) print options:
     schd.printSCNorms = input.get("print.SCNorms", true);

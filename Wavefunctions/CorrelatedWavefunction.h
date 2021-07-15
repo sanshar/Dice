@@ -172,6 +172,11 @@ struct CorrelatedWavefunction {
     ref.printVariables();
   }
 
+  void printCorrToFile() const
+  {
+    corr.printVariablesToFile();
+  }
+
   void updateVariables(Eigen::VectorXd &v) 
   {
     Eigen::VectorBlock<VectorXd> vhead = v.head(corr.getNumVariables());

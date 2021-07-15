@@ -21,6 +21,7 @@
 #include "Determinants.h"
 #include <boost/container/static_vector.hpp>
 #include <fstream>
+#include <iomanip>
 #include "input.h"
 
 using namespace Eigen;
@@ -139,4 +140,21 @@ void Jastrow::printVariables() const
   //  for (int j=0; j<=i; j++)
   //    cout << SpinCorrelator(i,j);
   cout << SpinCorrelator << endl << endl;
+}
+
+void Jastrow::printVariablesToFile() const
+{
+  string jastrowFileName = "JASTROW";
+  ofstream out_jastrow;
+  out_jastrow.open(jastrowFileName);
+
+  out_jastrow.precision(12);
+  out_jastrow << scientific;
+  for (int i=0; i<SpinCorrelator.rows(); i++) {
+    for (int j=0; j<=i; j++) {
+      out_jastrow << " " << setw(4) << i << "   " << setw(4) << j << "   " << SpinCorrelator(i,j) << endl;
+    }
+  }
+
+  out_jastrow.close();
 }

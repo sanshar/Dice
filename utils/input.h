@@ -78,6 +78,7 @@ private:
       & optimizeRBM
       & printVars
       & printGrad
+      & printJastrow
       & Hamiltonian
       & useLastDet
       & useLogTime
@@ -209,6 +210,7 @@ public:
   bool optimizeRBM;                      //used in jrbm
   bool printVars;
   bool printGrad;
+  bool printJastrow;
   HAM Hamiltonian;
   bool useLastDet;                       //stores last det instead of bestdet
   bool useLogTime;                       //uses log sampled time in CTMC

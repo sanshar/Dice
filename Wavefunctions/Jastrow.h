@@ -100,6 +100,7 @@ class Jastrow {
   long getNumVariables() const;
   void updateVariables(const Eigen::VectorBlock<Eigen::VectorXd> &v);
   void printVariables() const;
+  void printVariablesToFile() const;
   void addNoise() ;
   std::string getfileName() const {return "Jastrow";};
 };
