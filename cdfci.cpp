@@ -630,7 +630,7 @@ vector<double> CoordinateUpdateMultiRoot(Determinant& det, vector<double> x, vec
   return dx;
 }
 
-double CoordinateUpdateIthRoot(Determinant& det, int& iroot, vector<double>& x, vector<double>& z, vector<vector<double>>& xx, oneInt& I1, twoInt& I2, double& coreE) {
+double CoordinateUpdateIthRoot(Determinant& det, int& iroot, vector<double>& x, vector<double>& z, vector<vector<float128>>& xx, oneInt& I1, twoInt& I2, double& coreE) {
   auto dA = det.Energy(I1, I2, coreE);
   const int nroots = x.size();
   int i = iroot;
@@ -684,20 +684,22 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
     size_t end   = I%2==J%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
     float* integrals  = I%2==J%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     short* orbIndices = I%2==J%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    for (size_t index = start; index < end; index++) {
-      if (fabs(integrals[index]) < epsilon) break;
+    /*for (size_t index = start; index < end; index++) {
+      //if (fabs(integrals[index]) < epsilon) break;
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      Determinant di = det;
-      di.setocc(a, true);
-      di.setocc(b, true);
-      di.setocc(I, false);
-      di.setocc(J, false);
-      auto iter = det_to_index.find(di);
-      if (iter != det_to_index.end()) {
-        result[1+nopen*nclosed+ij*nopen*nopen+a*nopen+b] = iter->second;
+      if (!(det.getocc(a) || det.getocc(b))) {
+        Determinant di = det;
+        di.setocc(a, true);
+        di.setocc(b, true);
+        di.setocc(I, false);
+        di.setocc(J, false);
+        auto iter = det_to_index.find(di);
+        if (iter != det_to_index.end()) {
+          result[1+nopen*nclosed+ij*nopen*nopen+a*nopen+b] = iter->second;
+        }
       }
-    }
-    /*
+    }*/
+    
     for (int kl=0;kl<nopen*nopen;kl++) {
       int k=kl/nopen;
       int l=kl%nopen;
@@ -716,7 +718,7 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, cdfci::D
       if (iter != det_to_index.end()) {
         result[1+nopen*nclosed+ij*nopen*nopen+kl] = iter->second;
       }
-    }*/
+    }
   }
   column.clear();
   column.push_back(result[0]);
@@ -815,9 +817,12 @@ int CoordinatePickGcdGradOmpMultiRoot(vector<int>& column, vector<double>& x_vec
   return result;
 }
 
-vector<pair<double, double>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<vector<double>>& xx, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, double coreE, double epsilon) {
+vector<pair<float128, float128>> precondition(vector<double>& x_vector, vector<double>& z_vector, vector<vector<float128>>& xx, vector<MatrixXx>& ci, cdfci::DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, double coreE, double epsilon) {
   int nelec = dets[0].Noccupied();
-  vector<pair<double, double>> result;
+  const int norbs = dets[0].norbs;
+  const int nclosed = dets[0].Noccupied();
+  const int nopen = norbs-nclosed;
+  vector<pair<float128, float128>> result;
   vector<int> column;
   int nroots = ci.size();
   
@@ -826,56 +831,100 @@ vector<pair<double, double>> precondition(vector<double>& x_vector, vector<doubl
     int x_size = ci[iroot].rows();
     int z_size = det_to_index.size();
     double norm = sqrt(abs(E0[iroot]-coreE));
-    auto result_iroot = pair<double, double>(0.0, 0.0);
+    auto result_iroot = pair<float128, float128>(0.0, 0.0);
     for (int i = 0; i < x_size; i++) {
       auto dx = ci[iroot](i, 0) * norm;
       result_iroot.second += dx*dx;
       x_vector[i*nroots+iroot] = dx;
     }
     double xz = 0.0;
-    #pragma omp parallel for private(column) reduction(+:xz)
+    #pragma omp parallel for reduction(+:xz)
     for (int i = 0; i < x_size; i++) {
-      if(i%1000==0) cout << i << " " << getTime()-start << "\n";
-      getSubDetsNoSample(dets, column, det_to_index, i, nelec, I2HB, 1e-10);
-      auto column_size = column.size();
+      if(i%10000==0) cout << i << " " << getTime()-start << "\n";
       auto deti = dets[i];
+      vector<int> closed(nelec, 0);
+      vector<int> open(nopen, 0);
+      deti.getOpenClosed(open, closed);
       auto hij = deti.Energy(I1, I2, coreE);
       auto xi = x_vector[i*nroots+iroot];
       xz += xi * xi * hij;
       #pragma omp atomic
       z_vector[i*nroots+iroot] += hij*xi;
-      for (int entry = 1; entry < column_size; entry++) {
-        auto j = column[entry];
-        auto detj = dets[j];
-        auto xj = x_vector[j*nroots+iroot];
-        size_t orbDiff;
-        hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
-        xz += xi * xj * hij;
-        #pragma omp atomic
-        z_vector[j*nroots+iroot] += xi*hij;
+      for (int ia = 0; ia < nopen*nclosed; ia++) {
+        int i = ia / nopen, a = ia % nopen;
+        if (closed[i]%2 == open[a]%2) {
+          auto detj = deti;
+          detj.setocc(open[a], true);
+          detj.setocc(closed[i], false);
+          auto iter = det_to_index.find(detj);
+          if (iter != det_to_index.end()) {
+            auto j = iter->second;
+            auto detj = dets[j];
+            auto xj = x_vector[j*nroots+iroot];
+            size_t orbDiff;
+            hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+            xz += xi * xj * hij;
+            #pragma omp atomic
+            z_vector[j*nroots+iroot] += xi*hij;
+          }
+        }
+      }
+      for(int ij=0; ij<nclosed*nclosed; ij++) {
+        int i=ij/nclosed, j=ij%nclosed;
+        if(i<=j) continue;
+        int I = closed[i], J = closed[j];
+        int X = max(I/2, J/2), Y = min(I/2, J/2);
+    
+        int pairIndex = X*(X+1)/2+Y;
+        size_t start = I%2==J%2 ? I2HB.startingIndicesSameSpin[pairIndex]   : I2HB.startingIndicesOppositeSpin[pairIndex];
+        size_t end   = I%2==J%2 ? I2HB.startingIndicesSameSpin[pairIndex+1] : I2HB.startingIndicesOppositeSpin[pairIndex+1];
+        float* integrals  = I%2==J%2 ?  I2HB.sameSpinIntegrals : I2HB.oppositeSpinIntegrals;
+        short* orbIndices = I%2==J%2 ?  I2HB.sameSpinPairs     : I2HB.oppositeSpinPairs;
+        for (size_t index = start; index < end; index++) {
+          //if (fabs(integrals[index]) < screen) break;
+          int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+          if(deti.getocc(a) || deti.getocc(b)) continue; 
+          Determinant detj = deti;
+          detj.setocc(a, true);
+          detj.setocc(b, true);
+          detj.setocc(I, false);
+          detj.setocc(J, false);
+          auto iter = det_to_index.find(detj);
+          if (iter != det_to_index.end()) {
+          auto j = iter->second;
+          auto detj = dets[j];
+          auto xj = x_vector[j*nroots+iroot];
+          size_t orbDiff;
+          hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+          xz += xi * xj * hij;
+          #pragma omp atomic
+          z_vector[j*nroots+iroot] += xi*hij;
+          }
+        }
       }
     }
+    #pragma omp barrier
     xx[iroot][iroot] = result_iroot.second;
     result_iroot.first = xz;
     result.push_back(result_iroot);
-    cout << result_iroot.first << " " << result_iroot.second << endl;
   }
   auto residual = cdfci::compute_residual(x_vector, z_vector, result);
   for (int iroot=0; iroot<nroots; iroot++) {
-    cout << residual[iroot] << endl;
+    cout << double(result[iroot].first/result[iroot].second) + coreE<< residual[iroot] << endl;
   }
   for (int iroot=0; iroot<nroots; iroot++) {
     cout << cdfci::compute_residual(x_vector, z_vector, result, iroot) << endl;
   }
   return result;
 }
-vector<double> cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair<double, double>>& ene) {
+vector<double> cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair<float128, float128>>& ene) {
   const int nroots = ene.size();
   const int size = x.size()/nroots;
   vector<double> residual(nroots, 0.0);
   vector<double> energy(nroots, 0.0);
   for (int iroot = 0; iroot < nroots; iroot++) {
     double res_iroot = 0.0;
+    energy[iroot] = ene[iroot].first / ene[iroot].second;
     #pragma omp parallel for reduction(+:res_iroot)
     for (int i=0; i<size; i++) {
       auto tmp = z[i*nroots+iroot]-energy[iroot] * x[i*nroots+iroot];
@@ -890,11 +939,11 @@ vector<double> cdfci::compute_residual(vector<double>& x, vector<double>& z, vec
   return residual;
 }
 
-double cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair<double, double>>& ene, int& iroot) {
+double cdfci::compute_residual(vector<double>& x, vector<double>& z, vector<pair<float128, float128>>& ene, int& iroot) {
   const int nroots = ene.size();
   const int size = x.size();
   double residual = 0.0;
-  auto energy = ene[iroot].first / ene[iroot].second;
+  double energy = ene[iroot].first / ene[iroot].second;
   #pragma omp parallel  reduction(+:residual)
   for (int i=iroot; i<size; i+=nroots) {
     auto tmp = z[i]-energy * x[i];
@@ -965,8 +1014,8 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
   int nroots = schd.nroots;
-  vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
-  vector<vector<double>> xx(nroots, vector<double>(nroots, 0.0));
+  vector<pair<float128, float128>> ene(nroots, make_pair(0.0, 0.0));
+  vector<vector<float128>> xx(nroots, vector<float128>(nroots, 0.0));
   vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
   ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, I2HB, coreE, epsilon1);
@@ -1032,7 +1081,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
         }
         for (int thread = 0; thread < thread_num; thread++) {
           auto i = this_det_idx[thread];
-          dxs[thread] = CoordinateUpdateMultiRoot(dets[i], x[thread], z[thread], xx, I1, I2, coreE);
+          dxs[thread] = vector<double>(nroots, 0.0);//CoordinateUpdateMultiRoot(dets[i], x[thread], z[thread], xx, I1, I2, coreE);
           auto hij = dets[i].Energy(I1, I2, coreE);
           auto dx = dxs[thread];
           
@@ -1208,14 +1257,11 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
       if (iter*thread_num%schd.report_interval < thread_num || iter == num_iter) {
         auto residual = cdfci::compute_residual(x_vector, z_vector, ene);
         for(int iroot = 0; iroot < nroots; iroot++) {
-          auto curr_energy = ene[iroot].first/ene[iroot].second;
-          auto prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
+          double curr_energy = ene[iroot].first/ene[iroot].second;
+          double prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
           cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_energy+coreEbkp << setw(20) <<std::setprecision  (14) << prev_energy+coreEbkp;
           cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
           cout << std::setw(12) << std::setprecision(4) << scientific << residual[iroot] << defaultfloat << endl;
-          for(int jroot=0; jroot<nroots; jroot++) {
-            cout << xx[iroot][jroot] << " ";
-          }
           cout << endl;
         }
         double residual_sum = 0.0;
@@ -1309,8 +1355,8 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
   cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
   int nroots = schd.nroots;
-  vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
-  vector<vector<double>> xx(nroots, vector<double>(nroots, 0.0));
+  vector<pair<float128, float128>> ene(nroots, make_pair(0.0, 0.0));
+  vector<vector<float128>> xx(nroots, vector<float128>(nroots, 0.0));
   vector<double> x_vector(dets_size * nroots, zero), z_vector(dets_size * nroots, zero);
   auto start_time = getTime();
   ene = precondition(x_vector, z_vector, xx, ci, det_to_index, dets, E0, I1, I2, I2HB, coreE, epsilon1);
@@ -1414,7 +1460,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         vector<int> closed(nelec, 0);
         vector<int> open(nopen, 0);
         deti.getOpenClosed(open, closed);
-        const auto xx = ene[iroot].second;
+        const double xx = ene[iroot].second;
         double max_abs_grad = 0.0;
         int selected_det = det_idx;
         int i_idx = det_idx * nroots+iroot;
@@ -1424,7 +1470,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         auto det_energy = deti.Energy(I1, I2, coreE);
         auto dz = dx * det_energy;
         auto x = x_vector[i_idx];
-        auto screen = 1e-10/sqrt(abs(x)/xx);
+        auto screen = 1e-10;
         double norm = 0.0;
         //for (int entry = 1; entry < column.size(); entry++) {
         for (int ia = 0; ia < nopen*nclosed; ia++) {
@@ -1465,8 +1511,9 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
           float* integrals  = I%2==J%2 ?  I2HB.sameSpinIntegrals : I2HB.oppositeSpinIntegrals;
           short* orbIndices = I%2==J%2 ?  I2HB.sameSpinPairs     : I2HB.oppositeSpinPairs;
           for (size_t index = start; index < end; index++) {
-            if (fabs(integrals[index]) < screen) break;
+            //if (fabs(integrals[index]) < screen) break;
             int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
+            if(deti.getocc(a) || deti.getocc(b)) continue; 
             Determinant detj = deti;
             detj.setocc(a, true);
             detj.setocc(b, true);
@@ -1492,7 +1539,11 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
             }
           }
         }
-        this_det_idx[thread_id] = selected_det;//CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene, thread_num, thread_id);
+        this_det_idx[thread_id] = selected_det;
+        if (iter % 10 == 0) {
+          this_det_idx[thread_id] = (iter/10*thread_num)%dets_size;
+        }
+        //CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene, thread_num, thread_id);
         #pragma omp atomic
         ene[iroot].first += norm;
       }
@@ -1500,11 +1551,12 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
       // now some logical codes, print out information and decide when to exit etc.
       if (iter*thread_num%schd.report_interval < thread_num || iter == num_iter) {
         auto residual = cdfci::compute_residual(x_vector, z_vector, ene, iroot);
-        auto curr_energy = ene[iroot].first/ene[iroot].second;
-        auto prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
+        double curr_energy = ene[iroot].first/ene[iroot].second;
+        double prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
         cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_energy+coreEbkp << setw(20) <<std::setprecision  (14) << prev_energy+coreEbkp;
         cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
         cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
+        
         double residual_sum = 0.0;
         if (residual < schd.cdfciTol) {
           break;

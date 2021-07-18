@@ -12,6 +12,8 @@
 #include "robin_hood.h"
 #include "input.h"
 
+#define float128 __float128
+
 using namespace std;
 using namespace Eigen;
 
@@ -62,8 +64,8 @@ namespace cdfci {
   
   hash_det precondition(pair<double, double>& ene, vector<Determinant>& dets, vector<MatrixXx> &ci, vector<double> energy, oneInt& I1, twoInt& I2, double& coreE, double thresh=1e10, bool sample=false);
 
-  vector<double> compute_residual(vector<double>& x, vector<double>& z, vector<pair<double, double>>& ene);
-  double compute_residual(vector<double>& x, vector<double>& z, vector<pair<double, double>>& ene, int& iroot);
+  vector<double> compute_residual(vector<double>& x, vector<double>& z, vector<pair<float128, float128>>& ene);
+  double compute_residual(vector<double>& x, vector<double>& z, vector<pair<float128, float128>>& ene, int& iroot);
   void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
   void sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
 }
