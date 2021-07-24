@@ -527,7 +527,7 @@ dcomplex CoordinateUpdateIthRoot(Determinant& det, vector<dcomplex>& x, vector<d
   else return dcomplex(0.0, dx_im);
 }
 
-void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, DetToIndex& det_to_index, int this_index, int nelec) {
+void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, DetToIndex& det_to_index, int this_index, int nelec, twoIntHeatBathSHM& I2HB, double screen=1e-10) {
   auto det = dets[this_index];
 
   int norbs = det.norbs;
@@ -556,20 +556,27 @@ void getSubDetsNoSample(vector<Determinant>& dets, vector<int>& column, DetToInd
     int i=ij/nclosed, j=ij%nclosed;
     if(i<=j) continue;
     int I = closed[i], J = closed[j];
-    for (int kl=0;kl<nopen*nopen;kl++) {
-      int k=kl/nopen;
-      int l=kl%nopen;
-      if(k<=l) continue;
-      int K=open[k], L=open[l];
-      int a = max(K,L), b = min(K,L);
-      Determinant di = det;
-      di.setocc(a, true);
-      di.setocc(b, true);
-      di.setocc(I, false);
-      di.setocc(J, false);
-      auto iter = det_to_index.find(di);
-      if (iter != det_to_index.end()) {
-        result[1+nopen*nclosed+ij*nopen*nopen+kl] = iter->second;
+    int X = max(I, J), Y = min(I, J);
+
+    int pairIndex = X*(X+1)/2+Y;
+    size_t start = I2HB.startingIndicesIntegrals[pairIndex];
+    size_t end   = I2HB.startingIndicesIntegrals[pairIndex+1];
+    std::complex<double>* integrals  = I2HB.integrals;
+    short* orbIndices = I2HB.pairs;
+    // for all HCI integrals
+    for (size_t index=start; index<end; index++) {
+      //if (abs(integrals[index]) < screen) break;
+      int a = orbIndices[2*index], b = orbIndices[2*index+1];
+      if (!(det.getocc(a) || det.getocc(b)) && a!=b) {
+        Determinant di = det;
+        di.setocc(a, true);
+        di.setocc(b, true);
+        di.setocc(I, false);
+        di.setocc(J, false);
+        auto iter = det_to_index.find(di);
+        if (iter != det_to_index.end()) {
+          result[1+nopen*nclosed+ij*nopen*nopen+a*nopen+b] = iter->second;
+        }
       }
     }
   }
@@ -606,12 +613,12 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<dcomplex>& x_vector, ve
   return result;
 }
 
-vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<double>& z_vec_re, vector<double>& z_vec_im, vector<MatrixXx>& ci, DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, double coreE) {
+vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<double>& z_vec_re, vector<double>& z_vec_im, vector<MatrixXx>& ci, DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, double coreE) {
   int nelec = dets[0].Noccupied();
   int nroots = ci.size();
   vector<pair<double, double>> result(nroots, make_pair<double, double>(0.0, 0.0));
   vector<int> column;
-  
+  auto start = getTime(); 
   for (int iroot = 0; iroot < nroots; iroot++) {
     int x_size = ci[iroot].rows();
     double norm = sqrt(abs(E0[iroot]-coreE));
@@ -624,7 +631,10 @@ vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dou
     double xz = 0.0;
     #pragma omp parallel for private(column) reduction(+:xz)
     for (int i = 0; i < x_size; i++) {
-      getSubDetsNoSample(dets, column, det_to_index, i, nelec);
+      if (i % 10000 == 0) {
+        cout << i << " " << getTime()-start << "\n";
+      }
+      getSubDetsNoSample(dets, column, det_to_index, i, nelec, I2HB);
 
       auto column_size = column.size();
       auto deti = dets[i];
@@ -722,8 +732,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     cmax = sqrt(cmax);
     cdfci::getDeterminantsVariational(dets[i], epsilon1/cmax, cmax, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
     if (i%10000 == 0) {
-      cout << "curr iter " << i << " new dets size " << 
-new_dets.size() << endl;
+      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
     }
   }
   int new_dets_size = new_dets.size();
@@ -750,7 +759,7 @@ new_dets.size() << endl;
   vector<double> z_vec_re(dets_size * nroots, 0.0);
   vector<double> z_vec_im(dets_size * nroots, 0.0);
   auto start_time = getTime();
-  ene = precondition(x_vector, z_vec_re, z_vec_im, ci, det_to_index, dets, E0, I1, I2, coreE);
+  ene = precondition(x_vector, z_vec_re, z_vec_im, ci, det_to_index, dets, E0, I1, I2, I2HB, coreE);
   vector<vector<double>> xx_re(nroots, vector<double>(nroots, 0.0));
   vector<vector<double>> xx_im(nroots, vector<double>(nroots, 0.0));
 
@@ -884,6 +893,7 @@ new_dets.size() << endl;
         auto det_energy = deti.Energy(I1, I2, coreE);
         auto dz = dx * det_energy;
         auto x = x_vector[i_idx];
+        double screen = 1e-10 / (abs(x) / xx_re[iroot][iroot]);
         double xz = 0.0;
 
         for (int ia = 0; ia < nopen * nclosed; ia++) {
@@ -931,49 +941,56 @@ new_dets.size() << endl;
           int i = ij / nclosed, j = ij % nclosed;
           if(i <= j) continue;
           int I = closed[i], J = closed[j];
-          for (int kl = 0; kl < nopen * nopen; kl++) {
-            int k = kl / nopen;
-            int l = kl % nopen;
-            if (k <= l) continue;
-            int K=open[k], L=open[l];
-            int a = max(K,L), b = min(K,L);
-            auto detj = deti;
-            detj.setocc(a, true);
-            detj.setocc(b, true);
-            detj.setocc(I, false);
-            detj.setocc(J, false);
-            auto iter = det_to_index.find(detj);
-            if (iter != det_to_index.end()) {
-              auto detj_idx = iter->second;
-              auto j_idx = detj_idx * nroots+iroot;
-              size_t orbDiff;
-              auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
-              auto dz = dx * hij;
-              auto x = x_vector[j_idx];
-              #pragma omp atomic
-              z_vec_re[j_idx] += dz.real();
-              #pragma omp atomic
-              z_vec_im[j_idx] += dz.imag();
-              xz += 2.*(x.imag()*dz.imag()+x.real()*dz.real());
-              if (j_idx % thread_num == thread_id) {
-                auto grad_real = z_vec_re[j_idx] + x.real() * xx;
-                auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
-                for(int jroot=0; jroot<nroots; jroot++) {
-                  if(jroot != iroot) {
-                    auto xj_jroot = x_vector[detj_idx*nroots+jroot];
-                    auto xj_jroot_re = xj_jroot.real();
-                    auto xj_jroot_im = xj_jroot.imag();
-                    grad_real += xj_jroot_re*xx_re[iroot][jroot]
-                               + xj_jroot_im*xx_im[iroot][jroot];
-                    grad_imag += xj_jroot_im*xx_re[iroot][jroot]
-                               - xj_jroot_re*xx_im[iroot][jroot];
-                  }
+          int X = max(I, J), Y = min(I, J);
+
+          int pairIndex = X*(X+1)/2+Y;
+          size_t start = I2HB.startingIndicesIntegrals[pairIndex];
+          size_t end   = I2HB.startingIndicesIntegrals[pairIndex+1];
+          std::complex<double>* integrals  = I2HB.integrals;
+          short* orbIndices = I2HB.pairs;
+          // for all HCI integrals
+          for (size_t index=start; index<end; index++) {
+            //if (abs(integrals[index]) < screen) break;
+            int a = orbIndices[2*index], b = orbIndices[2*index+1];
+            if (!(deti.getocc(a) || deti.getocc(b)) && a!=b) {
+              auto detj = deti;
+              detj.setocc(a, true);
+              detj.setocc(b, true);
+              detj.setocc(I, false);
+              detj.setocc(J, false);
+              auto iter = det_to_index.find(detj);
+              if (iter != det_to_index.end()) {
+                auto detj_idx = iter->second;
+                auto j_idx = detj_idx * nroots+iroot;
+                size_t orbDiff;
+                auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+                auto dz = dx * hij;
+                auto x = x_vector[j_idx];
+                #pragma omp atomic
+                z_vec_re[j_idx] += dz.real();
+                #pragma omp atomic
+                z_vec_im[j_idx] += dz.imag();
+                xz += 2.*(x.imag()*dz.imag()+x.real()*dz.real());
+                if (j_idx % thread_num == thread_id) {
+                  auto grad_real = z_vec_re[j_idx] + x.real() * xx;
+                  auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
+                  for(int jroot=0; jroot<nroots; jroot++) {
+                    if(jroot != iroot) {
+                      auto xj_jroot = x_vector[detj_idx*nroots+jroot];
+                      auto xj_jroot_re = xj_jroot.real();
+                      auto xj_jroot_im = xj_jroot.imag();
+                      grad_real += xj_jroot_re*xx_re[iroot][jroot]
+                                 + xj_jroot_im*xx_im[iroot][jroot];
+                      grad_imag += xj_jroot_im*xx_re[iroot][jroot]
+                                 - xj_jroot_re*xx_im[iroot][jroot];
+                    }
+                  } 
+                  auto abs_grad = abs(grad_real + grad_imag);
+                  if (abs_grad > max_abs_grad) {
+                    max_abs_grad = abs_grad;
+                    selected_det = detj_idx;
+                  } 
                 }
-                auto abs_grad = abs(grad_real + grad_imag);
-                if (abs_grad > max_abs_grad) {
-                  max_abs_grad = abs_grad;
-                  selected_det = detj_idx;
-                } 
               }
             }
           }
