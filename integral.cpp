@@ -372,10 +372,10 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
     for (int i=0; i<norbs; i++)
       for (int j=0; j<=i; j++) {
         //convert to CItype
-        std::map<std::pair<short,short>, std::multimap<CItype, std::pair<short,short>, compAbs > >::iterator it1 = I2.integral.find( std::pair<short,short>(i,j));
+        auto it1 = I2.integral.find( std::pair<short,short>(i,j));
 
         if (it1 != I2.integral.end()) {
-          for (std::multimap<std::complex<double>, std::pair<short,short>,compAbs >::reverse_iterator it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
+          for (auto it=it1->second.rbegin(); it!=it1->second.rend(); it++) {
             //sameSpinIntegrals[index] = it->first;
             //sameSpinPairs[2*index] = it->second.first;
             //sameSpinPairs[2*index+1] = it->second.second;
