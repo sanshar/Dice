@@ -134,11 +134,11 @@ void cdfci::getDeterminantsVariational(
         if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
           new_dets.emplace(di);
         }
-        Determinant detcpy(di);
+        /*Determinant detcpy(di);
         detcpy.flipAlphaBeta();
         if(old_dets.find(detcpy) == old_dets.end() && new_dets.find(detcpy) == new_dets.end()) {
           new_dets.emplace(detcpy);
-        }
+        }*/
         //if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
