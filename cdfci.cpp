@@ -615,6 +615,9 @@ int CoordinatePickGcdGradOmp(vector<int>& column, vector<dcomplex>& x_vector, ve
 
 vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<double>& z_vec_re, vector<double>& z_vec_im, vector<MatrixXx>& ci, DetToIndex& det_to_index, vector<Determinant>& dets, vector<double>& E0, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, double coreE) {
   int nelec = dets[0].Noccupied();
+  const int norbs = dets[0].norbs;
+  const int nclosed = dets[0].Noccupied();
+  const int nopen = norbs - nclosed;
   int nroots = ci.size();
   vector<pair<double, double>> result(nroots, make_pair<double, double>(0.0, 0.0));
   vector<int> column;
@@ -634,32 +637,78 @@ vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dou
       if (i % 10000 == 0) {
         cout << i << " " << getTime()-start << "\n";
       }
-      getSubDetsNoSample(dets, column, det_to_index, i, nelec, I2HB);
 
-      auto column_size = column.size();
       auto deti = dets[i];
       auto hij = deti.Energy(I1, I2, coreE);
       auto xi = x_vector[i*nroots+iroot];
       xz += std::norm(xi) * hij;
       z_vec_re[i*nroots+iroot] += (hij*xi).real();
       z_vec_im[i*nroots+iroot] += (hij*xi).imag();
-      for (int entry = 1; entry < column_size; entry++) {
-        auto j = column[entry];
-        auto detj = dets[j];
-        auto xj = x_vector[j*nroots+iroot];
-        size_t orbDiff;
-        auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
-        xz += (conj(xj) * hij * xi).real();
-        #pragma omp atomic
-        z_vec_re[j*nroots+iroot] += (hij*xi).real();
-        #pragma omp atomic
-        z_vec_im[j*nroots+iroot] += (hij*xi).imag();
+
+      vector<int> closed(nelec, 0);
+      vector<int> open(nopen, 0);
+      deti.getOpenClosed(open, closed);
+
+      for (int ia=0; ia<nopen*nclosed; ia++) {
+        int i=ia/nopen, a=ia%nopen;
+        auto detj = deti;
+        detj.setocc(open[a], true);
+        detj.setocc(closed[i], false);
+        auto iter = det_to_index.find(detj);
+        if (iter != det_to_index.end()) {
+          auto detj_idx = iter->second;
+          auto j_idx = detj_idx * nroots + iroot;
+          size_t orbDiff;
+          auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+          auto xj = x_vector[j_idx];
+          xz += (conj(xj) * hij * xi).real();
+          #pragma omp atomic
+          z_vec_re[j_idx] += (hij*xi).real();
+          #pragma omp atomic
+          z_vec_im[j_idx] += (hij*xi).imag();
+        }
+      }
+
+      for (int ij = 0; ij < nclosed * nclosed; ij++) {
+        int i = ij / nclosed, j = ij % nclosed;
+        if (i <= j) continue;
+        int I = closed[i], J = closed[j];
+        int X = max(I, J), Y = min(I, J);
+          
+        int pairIndex = X*(X+1)/2+Y;
+        size_t start = I2HB.startingIndicesIntegrals[pairIndex];
+        size_t end = I2HB.startingIndicesIntegrals[pairIndex+1];
+        std::complex<double>* integrals  = I2HB.integrals;
+        short* orbIndices = I2HB.pairs;
+        for (size_t index = start; index < end; index++) {
+          int a = orbIndices[2*index], b = orbIndices[2*index+1];
+          if (!(deti.getocc(a) || deti.getocc(b)) && a!=b) {
+            auto detj = deti;
+            detj.setocc(a, true);
+            detj.setocc(b, true);
+            detj.setocc(I, false);
+            detj.setocc(J, false);
+            auto iter = det_to_index.find(detj);
+            if (iter != det_to_index.end()) {
+              auto detj_idx = iter->second;
+              auto j_idx = detj_idx * nroots+iroot;
+              size_t orbDiff;
+              auto hij = Hij(deti, detj, I1, I2, coreE, orbDiff);
+              xz += (conj(x_vector[j_idx]) * hij * xi).real();
+              #pragma omp atomic
+              z_vec_re[j_idx] += (hij*xi).real();
+              #pragma omp atomic
+              z_vec_im[j_idx] += (hij*xi).imag();
+            }
+          }
+        }
       }
     }
     result_iroot.first = xz;
     result[iroot] = result_iroot;
     auto residual = cdfci::compute_residual(x_vector, z_vec_re, z_vec_im, result, iroot);
     cout << iroot << " " <<  residual << endl;
+    cout << "precondition costs: " << getTime() - start << endl;
   }
   return result;
 }
