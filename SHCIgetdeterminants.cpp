@@ -543,9 +543,9 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      Determinant detcpy(d);
-      detcpy.flipAlphaBeta();
-      dets.push_back(detcpy);
+      //Determinant detcpy(d);
+      //detcpy.flipAlphaBeta();
+      //dets.push_back(detcpy);
       //if (Determinant::Trev != 0) di.makeStandard();
     }
   } // ia
@@ -588,9 +588,9 @@ void SHCIgetdeterminants::getDeterminantsVariational(
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-      Determinant detcpy(d);
-      detcpy.flipAlphaBeta();
-      dets.push_back(detcpy);
+        //Determinant detcpy(d);
+        //detcpy.flipAlphaBeta();
+        //dets.push_back(detcpy);
         //if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
