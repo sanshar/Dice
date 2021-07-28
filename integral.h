@@ -128,9 +128,7 @@ class twoIntHeatBath {
           //oppositeSpin[IJ]=std::map<double, std::pair<int,int> >();
           for (int a=0; a<norbs; a++) {
             for (int b=0; b<a; b++) {
-              //if (a>=b && abs(I2(i, a, j, b) - I2(i, b, j, a)) > epsilon) {
-              //  integral[IJ].insert(pair<complex<double>, std::pair<short,short> >(I2(i, a, j, b) - I2(i, b, j, a), make_pair(a,b)));
-              if (abs(I2(i,a,j,b))>epsilon || abs(I2(i,b,j,a))>epsilon) {
+              if (abs(I2(i,a,j,b)-I2(i,b,j,a))>epsilon) {
                 integral[IJ].insert(pair<complex<double>, std::pair<short,short>>(I2(i,a,j,b)-I2(i,b,j,a), make_pair(a,b)));
               }
             }

@@ -318,7 +318,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
     //for (;it2!= I2.oppositeSpin.end(); it2++) nonZeroOppositeSpinIntegrals += it2->second.size();
 
     //total Memory required, have to think of it carefully
-    memRequired += nonZeroIntegrals*(sizeof(std::complex<double>)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
+    memRequired += nonZeroIntegrals*(sizeof(std::complex<double>)+2*sizeof(short))+ ((norbs*(norbs+1)/2+1)*sizeof(size_t));
     //memRequired += nonZeroOppositeSpinIntegrals*(sizeof(float)+2*sizeof(short))+ ( (norbs*(norbs+1)/2+1)*sizeof(size_t));
   }
 
@@ -363,7 +363,7 @@ void twoIntHeatBathSHM::constructClass(int norbs, twoIntHeatBath &I2) {
                                 + nonZeroIntegrals*sizeof(std::complex<double>));
   pairs                         = (short*)(startAddress
                                 + nonZeroIntegrals*sizeof(std::complex<double>)
-                                + norbs*(norbs + 1) / 2*sizeof(size_t));                            
+                                + (norbs*(norbs+1)/2+1)*sizeof(size_t));                            
 
   if (commrank == 0) {
     //startingIndicesSameSpin[0] = 0;
