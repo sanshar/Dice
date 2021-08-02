@@ -22,8 +22,8 @@ DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS) -DComplex
 LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -Wl,-rpath=$(BOOST)/stage/lib
 
 ifeq ($(USE_INTEL), yes)
-	#FLAGS += -qopenmp
-	#DFLAGS += -qopenmp
+	FLAGS += -qopenmp
+	DFLAGS += -qopenmp
 	ifeq ($(USE_MPI), yes)
 		CXX = mpiicpc
 		CC = mpiicpc
@@ -35,8 +35,8 @@ ifeq ($(USE_INTEL), yes)
 		DFLAGS += -DSERIAL
 	endif
 else
-	#FLAGS += -fopenmp
-	#DFLAGS += -fopenmp
+	FLAGS += -fopenmp
+	DFLAGS += -fopenmp
 	ifeq ($(USE_MPI), yes)
 		CXX = mpicxx
 		CC = mpicxx
