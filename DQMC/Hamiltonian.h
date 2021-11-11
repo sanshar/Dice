@@ -9,6 +9,7 @@ class Hamiltonian {
   public:
     Eigen::MatrixXd h1, h1Mod;
     std::vector<Eigen::MatrixXd> chol;
+    std::vector<std::vector<float>> floatChol;
     double ecore;
     int norbs, nalpha, nbeta, nchol;
 
@@ -22,6 +23,7 @@ class Hamiltonian {
 
     // flatten and convert to float
     //void floattenCholesky(std::vector<Eigen::MatrixXf>& floatChol);
-    void floattenCholesky(std::vector<std::vector<float>>& floatChol);
+    //void floattenCholesky(std::vector<std::vector<float>>& floatChol);
+    void floattenCholesky();
 };
 #endif

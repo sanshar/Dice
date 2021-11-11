@@ -55,9 +55,13 @@ int main(int argc, char *argv[])
   //readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
   
   Hamiltonian ham(schd.integralsFile);
-  DQMCWalker walker;
   if (commrank == 0) cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
+  DQMCWalker walker;
   if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
+  if (schd.phaseless) {
+    if (ham.nalpha == ham.nbeta) walker = DQMCWalker(true, true);
+    else walker = DQMCWalker(false, true);
+  }  
 
   // left state
   Wavefunction *waveLeft;
@@ -125,9 +129,15 @@ int main(int argc, char *argv[])
     if (commrank == 0) cout << "Right wave function not specified\n";
     exit(0);
   }
- 
-  if (schd.dt == 0.) calcMixedEstimatorNoProp(*waveLeft, *waveRight, walker, ham);
-  else calcMixedEstimator(*waveLeft, *waveRight, walker, ham);
+
+  if (schd.phaseless) {
+    calcMixedEstimatorLongProp(*waveLeft, *waveRight, walker, ham);
+  }
+  else {
+    if (schd.dt == 0.) calcMixedEstimatorNoProp(*waveLeft, *waveRight, walker, ham);
+    else calcMixedEstimator(*waveLeft, *waveRight, walker, ham);
+  }
+  //else calcMixedEstimatorLongProp(*waveLeft, *waveRight, walker, ham);
   
   if (commrank == 0) cout << "\nTotal calculation time:  " << getTime() - startofCalc << " s\n";
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());

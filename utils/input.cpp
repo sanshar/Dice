@@ -184,6 +184,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.leftWave = algorithm::to_lower_copy(input.get("wavefunction.left", "rhf"));
     schd.rightWave = algorithm::to_lower_copy(input.get("wavefunction.right", "rhf"));
     schd.ndets = input.get("wavefunction.ndets", 1e6);
+    schd.phaseless = input.get("sampling.phaseless", false);
     
     //gfmc 
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc

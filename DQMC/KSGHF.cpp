@@ -90,6 +90,29 @@ std::array<complex<double>, 2> calcHamiltonianElement(MatrixXcd& ghf, matPair& p
   return hamOverlap;
 };
 
+
+std::complex<double> KSGHF::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  return std::complex<double>();
+};
+
+
+std::complex<double> KSGHF::overlap(Eigen::MatrixXcd& psi)
+{
+  return std::complex<double>();
+};
+
+void KSGHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
+void KSGHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
 std::array<std::complex<double>, 2> KSGHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham) 
 {
   auto sample1 = calcHamiltonianElement(detAd, psi, ham, rotCholAd);

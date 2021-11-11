@@ -9,6 +9,7 @@ Hamiltonian::Hamiltonian(string fname)
 {
   readIntegralsCholeskyAndInitializeDeterminantStaticVariables(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
   nchol = chol.size();
+  floattenCholesky();
 };
 
 
@@ -30,7 +31,8 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Matri
 
 // flatten and convert to float
 //void Hamiltonian::floattenCholesky(std::vector<Eigen::MatrixXf>& floatChol)
-void Hamiltonian::floattenCholesky(std::vector<vector<float>>& floatChol)
+//void Hamiltonian::floattenCholesky(std::vector<vector<float>>& floatChol)
+void Hamiltonian::floattenCholesky()
 {
   //for (int n = 0; n < chol.size(); n++) floatChol.push_back(chol[n].cast<float>());
   for (int n = 0; n < chol.size(); n++) {

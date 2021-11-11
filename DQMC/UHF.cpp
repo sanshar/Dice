@@ -28,6 +28,30 @@ void UHF::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
 };
 
 
+std::complex<double> UHF::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  return std::complex<double>();
+};
+
+
+std::complex<double> UHF::overlap(Eigen::MatrixXcd& psi)
+{
+  return std::complex<double>();
+};
+
+
+void UHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
+void UHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
 std::array<std::complex<double>, 2> UHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham) 
 { 
   complex<double> overlap = (detT[0] * psi[0]).determinant() * (detT[1] * psi[1]).determinant();

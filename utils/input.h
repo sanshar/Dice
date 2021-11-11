@@ -137,7 +137,7 @@ private:
       & leftWave
       & rightWave
       & ndets
-
+      & phaseless
       // Options related to SC-NEVPT(s):
       & numSCSamples
       & printSCNorms
@@ -348,6 +348,7 @@ public:
   std::string leftWave;
   std::string rightWave;
   size_t ndets;
+  bool phaseless;
 };
 
 /**

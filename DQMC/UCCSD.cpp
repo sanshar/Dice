@@ -93,6 +93,29 @@ void UCCSD::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
 };
 
 
+std::complex<double> UCCSD::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  return std::complex<double>();
+};
+
+
+std::complex<double> UCCSD::overlap(Eigen::MatrixXcd& psi)
+{
+  return std::complex<double>();
+};
+
+void UCCSD::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
+void UCCSD::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
 // to be defined
 std::array<std::complex<double>, 2> UCCSD::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham)
 {

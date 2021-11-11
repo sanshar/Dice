@@ -146,6 +146,30 @@ complex<double> calcHamiltonianElement(matPair& phi1T, matPair& phi2, Hamiltonia
   return ene;
 }
 
+
+std::complex<double> sJastrow::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  return std::complex<double>();
+};
+
+
+std::complex<double> sJastrow::overlap(Eigen::MatrixXcd& psi)
+{
+  return std::complex<double>();
+};
+
+void sJastrow::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
+void sJastrow::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
 // to be defined
 std::array<std::complex<double>, 2> sJastrow::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham)
 {

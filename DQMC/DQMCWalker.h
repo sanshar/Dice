@@ -7,27 +7,32 @@
 class DQMCWalker {
   public:
     std::array<Eigen::MatrixXcd, 2> det;
-    std::complex<double> orthoFac;
+    std::complex<double> orthoFac, trialOverlap;
     std::vector<std::complex<double>> mfShifts;
     std::array<std::complex<double>, 2> propConstant;
     Eigen::MatrixXcd expOneBodyOperator;
     //std::vector<Eigen::MatrixXf> floatChol;
-    std::vector<std::vector<float>> floatChol;
-    bool rhfQ;
+    //std::vector<std::vector<float>> floatChol;
+    bool rhfQ, phaselessQ;
     double dt, ene0;
     std::normal_distribution<double> normal;
 
     // constructor
-    DQMCWalker(bool prhfQ = true);
+    DQMCWalker(bool prhfQ = true, bool pphaselessQ = false);
 
     void prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham, double pdt, double pene0);
 
     void setDet(std::array<Eigen::MatrixXcd, 2> pdet);
+    void setDet(std::vector<std::complex<double>>& serial, std::complex<double> ptrialOverlap);
+    std::complex<double> getDet(std::vector<std::complex<double>>& serial);
 
     void orthogonalize();
 
-    void propagate();
+    void propagate(Hamiltonian& ham);
+    double propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift);
 
+    std::complex<double> overlap(Wavefunction& wave);
+    void forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXcd& fb);
     std::array<std::complex<double>, 2> hamAndOverlap(Wavefunction& wave, Hamiltonian& ham);
 };
 #endif

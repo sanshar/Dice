@@ -22,6 +22,39 @@ void RHF::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
   sampleDet[1] = det;
 };
 
+std::complex<double> RHF::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  complex<double> overlap = (detT * psi[0]).determinant() * (detT * psi[1]).determinant();
+  return overlap;
+};
+
+std::complex<double> RHF::overlap(Eigen::MatrixXcd& psi)
+{
+  complex<double> overlap = (detT * psi).determinant();
+  overlap *= overlap;
+  return overlap;
+};
+
+void RHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  matPair thetaT;
+  thetaT[0] = (psi[0] * (detT * psi[0]).inverse()).transpose();
+  thetaT[1] = (psi[1] * (detT * psi[1]).inverse()).transpose();
+  fb = VectorXcd::Zero(rotChol.size());
+  for (int i = 0; i < rotChol.size(); i++) {
+    fb(i) = thetaT[0].cwiseProduct(rotChol[i]).sum() + thetaT[1].cwiseProduct(rotChol[i]).sum();
+  }
+};
+
+void RHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  MatrixXcd thetaT;
+  thetaT = (psi * (detT * psi).inverse()).transpose();
+  fb = VectorXcd::Zero(rotChol.size());
+  for (int i = 0; i < rotChol.size(); i++) {
+    fb(i) = 2. * thetaT.cwiseProduct(rotChol[i]).sum();
+  }
+};
 
 std::array<std::complex<double>, 2> RHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham) 
 { 

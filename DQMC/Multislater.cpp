@@ -55,6 +55,28 @@ void Multislater::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
 };
 
 
+std::complex<double> Multislater::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
+{
+  return std::complex<double>();
+};
+
+
+std::complex<double> Multislater::overlap(Eigen::MatrixXcd& psi)
+{
+  return std::complex<double>();
+};
+
+void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
+
+void Multislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
+{
+  return;
+};
+
 std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
