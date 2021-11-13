@@ -104,7 +104,8 @@ int main(int argc, char *argv[])
   }
   else if (schd.rightWave == "uhf") {
     waveRight = new UHF(ham, false); 
-    walker = DQMCWalker(false);
+    if(schd.phaseless) walker = DQMCWalker(false, true);
+    else walker = DQMCWalker(false);
   }
   else if (schd.rightWave == "ksghf") {
     if (commrank == 0) cout << "Not supported yet\n";

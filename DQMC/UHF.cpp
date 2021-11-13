@@ -30,25 +30,39 @@ void UHF::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet)
 
 std::complex<double> UHF::overlap(std::array<Eigen::MatrixXcd, 2>& psi)
 {
-  return std::complex<double>();
+  complex<double> overlap = (detT[0] * psi[0]).determinant() * (detT[1] * psi[1]).determinant();
+  return overlap;
 };
 
 
 std::complex<double> UHF::overlap(Eigen::MatrixXcd& psi)
 {
-  return std::complex<double>();
+  complex<double> overlap = (detT[0] * psi).determinant() * (detT[1] * psi).determinant();
+  return overlap;
 };
 
 
 void UHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
-  return;
+  matPair thetaT;
+  thetaT[0] = (psi[0] * (detT[0] * psi[0]).inverse()).transpose();
+  thetaT[1] = (psi[1] * (detT[1] * psi[1]).inverse()).transpose();
+  fb = VectorXcd::Zero(rotChol[0].size());
+  for (int i = 0; i < rotChol[0].size(); i++) {
+    fb(i) = thetaT[0].cwiseProduct(rotChol[0][i]).sum() + thetaT[1].cwiseProduct(rotChol[1][i]).sum();
+  }
 };
 
 
 void UHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
-  return;
+  matPair thetaT;
+  thetaT[0] = (psi * (detT[0] * psi).inverse()).transpose();
+  thetaT[1] = (psi * (detT[1] * psi).inverse()).transpose();
+  fb = VectorXcd::Zero(rotChol[0].size());
+  for (int i = 0; i < rotChol[0].size(); i++) {
+    fb(i) = thetaT[0].cwiseProduct(rotChol[0][i]).sum() + thetaT[1].cwiseProduct(rotChol[1][i]).sum();
+  }
 };
 
 
