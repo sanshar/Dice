@@ -128,6 +128,7 @@ void DQMCWalker::orthogonalize()
     orthoFac *= (tempOrthoFac * tempOrthoFac);
     if (phaselessQ) {
       trialOverlap /= (tempOrthoFac * tempOrthoFac);
+      orthoFac = 1.;
     }
   }
   else {
@@ -137,6 +138,7 @@ void DQMCWalker::orthogonalize()
     orthoFac *= tempOrthoFac;
     if (phaselessQ) {
       trialOverlap /= tempOrthoFac;
+      orthoFac = 1.;
     }
   }
 };
@@ -205,10 +207,12 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   MatrixXf prop = MatrixXf::Zero(norbs, norbs);
   vector<float> propr(norbs * (norbs + 1) / 2, 0.);
   vector<float> propi(norbs * (norbs + 1) / 2, 0.);
+  //MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   complex<double> shift(0., 0.), fbTerm(0., 0.);
   for (int n = 0; n < nfields; n++) {
     double field_n = normal(generator);
     complex<double> fieldShift = -sqrt(dt) * (complex<double>(0., 1.) * fb(n) - mfShifts[n]);
+    //propc += sqrt(dt) * complex<double>(0., 1.) * (field_n - fieldShift) * ham.chol[n];
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j <= i; j++) {
         propr[i * (i + 1) / 2 + j] += float(field_n - fieldShift.real()) * ham.floatChol[n][i * (i + 1) / 2 + j];
@@ -223,16 +227,16 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   //MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
   MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   for (int i = 0; i < norbs; i++) {
-    propc(i, i) = sqrt(dt) * (complex<double>(0, 1.) * propr[i * (i + 1) / 2 + i] - propi[i * (i + 1) / 2 + i]);
+    propc(i, i) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + i] - propi[i * (i + 1) / 2 + i]);
     for (int j = 0; j < i; j++) {
-      propc(i, j) = sqrt(dt) * (complex<double>(0, 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
-      propc(j, i) = sqrt(dt) * (complex<double>(0, 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+      propc(i, j) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+      propc(j, i) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
     }
   }
   
   det[0] = expOneBodyOperator * det[0];
   MatrixXcd temp = det[0];
-  for (int i = 1; i < 10; i++) {
+  for (int i = 1; i < 6; i++) {
     temp = propc * temp / i;
     det[0] += temp;
   }
@@ -243,7 +247,7 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   else {
     det[1] = expOneBodyOperator * det[1];
     temp = det[1];
-    for (int i = 1; i < 10; i++) {
+    for (int i = 1; i < 6; i++) {
       temp = propc * temp / i;
       det[1] += temp;
     }
@@ -253,22 +257,23 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   // phaseless
   complex<double> oldOverlap = trialOverlap;
   complex<double> newOverlap = this->overlap(wave);
-  complex<double> importanceFunction = exp(-sqrt(dt) * shift + fbTerm + dt * (propConstant[0] + eshift)) * newOverlap / oldOverlap;
-  double theta = std::arg(newOverlap / oldOverlap);
-  //cout << "det[0]:\n" << det[0] << endl;
-  //cout << "oldoverlap: " << oldOverlap << endl;
-  //cout << "newoverlap: " << newOverlap << endl;
-  //cout << "forceBias:\n" << fb << endl;
-  //cout << "shift: " << shift << endl;
-  //cout << "fbTerm: " << fbTerm << endl;
-  //cout << "propConstant: " << propConstant[0] << endl;
-  //cout << "eshift: " << eshift << endl;
-  //cout << "importanceFunction: " << importanceFunction << endl;
-  //cout << "theta: " << theta << endl << endl;
+  complex<double> importanceFunction = exp(-sqrt(dt) * shift + fbTerm + dt * (eshift + propConstant[0])) * newOverlap / oldOverlap;
+  double theta = std::arg( exp(-sqrt(dt) * shift) * newOverlap / oldOverlap );
+  //if (commrank == 0) {
+  ////cout << "det[0]:\n" << det[0] << endl;
+  //  cout << "forceBias:\n" << fb << endl;
+  //  cout << "\noldoverlap: " << oldOverlap << endl;
+  //  cout << "newoverlap: " << newOverlap << endl;
+  //  cout << "shift: " << shift << endl;
+  //  cout << "fbTerm: " << fbTerm << endl;
+  //  cout << "propConstant: " << propConstant[0] << endl;
+  //  cout << "eshift: " << eshift << endl;
+  //  cout << "importanceFunction: " << importanceFunction << endl;
+  //  cout << "theta: " << theta << endl << endl;
+  //}
   //exit(0);
   double importanceFunctionPhaseless = std::abs(importanceFunction) * cos(theta);
-  if (importanceFunctionPhaseless < 1.e-5) importanceFunctionPhaseless = 0.; 
-  else if (importanceFunctionPhaseless > 1.e5) importanceFunctionPhaseless = 1.e5;
+  if (importanceFunctionPhaseless < 1.e-3 || importanceFunctionPhaseless > 100. || std::isnan(importanceFunctionPhaseless)) importanceFunctionPhaseless = 0.; 
   return importanceFunctionPhaseless;
 };
 

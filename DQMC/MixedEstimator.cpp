@@ -278,26 +278,29 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   totalEnergies(0) = weightedEnergy / totalWeights(0) + delta.real(); 
   if (commrank == 0) {
     double initializationTime = getTime() - calcInitTime;
-    cout << "  block     propTime        weight           energy      cumulative_energy      walltime\n";
-    cout << boost::format(" %5d     %.3e       %.4e     %.4e       %7s             %.2e \n") % 0 % 0. % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
+    cout << "  block     propTime         eshift            weight           energy        cumulative_energy        walltime\n";
+    cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
   }
 
   double propTime = 0., eneTime = 0.;
-  double eshift = ene0.real();
+  double eshift = totalEnergies(0);
   double totalWeight = nwalk * commsize;
-  double averageEnergy = ene0.real(), averageNum = 0., averageDenom = 0.;
+  double averageEnergy = totalEnergies(0), averageNum = 0., averageDenom = 0.;
+  double averageEnergyEql = 0., averageNumEql = 0., averageDenomEql = 0.;
+  double eEstimate = totalEnergies(0);
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // propagate
     double init = getTime();
     for (int w = 0; w < walkers.size(); w++) {
-      weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
+      if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
     }
     propTime += getTime() - init;
-    //cout << "weights\n" << weights << endl << endl; 
+    
     // population control
     totalWeight = weights.sum();
     MPI_Allreduce(MPI_IN_PLACE, &totalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    eshift = averageEnergy - 1. * log(totalWeight/(nwalk * commsize)) / dt;
+    //eshift = averageEnergy - 0.1 * log(totalWeight/(nwalk * commsize)) / dt;
+    eshift = eEstimate - 1. * log(totalWeight/(nwalk * commsize)) / dt;
 
     // orthogonalize for stability
     if (step % orthoSteps == 0) {
@@ -313,9 +316,21 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         if (weights(w) != 0.) {
           auto hamOverlap = walkers[w].hamAndOverlap(waveLeft, ham);
           localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() + delta.real();
-          if (abs(localEnergy(w) - averageEnergy) > sqrt(2/dt)) {
-            if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2/dt);
-            else localEnergy(w) = averageEnergy - sqrt(2/dt);
+          if (std::isnan(localEnergy(w)) || std::isinf(localEnergy(w))) {
+            if (commrank == 0) {
+              cout << "local energy:  " << localEnergy(w) << endl;
+              cout << "weight:  " << weights(w) << endl;
+              cout << "overlap:  " << walkers[w].trialOverlap << "   " << hamOverlap[1] << endl;
+              cout << "ham:  " << hamOverlap[0] << endl;
+              cout << "orthofac:  " << walkers[w].orthoFac << endl;
+              exit(0);
+            }
+            localEnergy(w) = 0.;
+            weights(w) = 0.;
+          }
+          else if (abs(localEnergy(w) - averageEnergy) > sqrt(2./dt)) {
+            if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
+            else localEnergy(w) = averageEnergy - sqrt(2./dt);
           }
         }
         else localEnergy(w) = 0.;
@@ -326,15 +341,18 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       totalWeights(block) = totalWeight;
       totalEnergies(block) = weightedEnergy / totalWeight; 
       if (commrank == 0) {
-        if (step * dt < 10.)
-          cout << boost::format(" %5d     %.3e       %.4e     %.4e       %7s             %.2e \n") % block % (dt * step) % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+        if (step * dt < 10.) {
+          averageEnergy = eEstimate;
+          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+        }
         else {
           averageNum += totalEnergies(block) * totalWeights(block);
           averageDenom += totalWeights(block);
           averageEnergy = averageNum / averageDenom;
-          cout << boost::format(" %5d     %.3e       %.4e     %.4e        %.4e        %.2e \n") % block % (dt * step) % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
+          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e        %.6e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
         }
       }
+      eEstimate = 0.9 * eEstimate + 0.1 * totalEnergies(block) * 0.1;
     }
 
     // reconfigure for efficiency
@@ -363,6 +381,14 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       vector<complex<double>> newSerialGather, newOverlapsGather;
       double totalCumulativeWeight;
       if (commrank == 0) {
+        if (std::isnan(averageEnergy)) {
+          cout << "overlaps:  ";
+          for (int i = 0; i < overlapsGather.size(); i++) cout << overlapsGather[i] << "  ";
+          cout << "\n\nweights:  ";
+          for (int i = 0; i < weightsGather.size(); i++) cout << weightsGather[i] << "  ";
+          cout << endl << endl;
+          exit(0);
+        }
         vector<double> cumulativeWeights(weightsGather.size(), 0.);
         cumulativeWeights[0] = weightsGather[0];
         for (int i = 1; i < weightsGather.size(); i++) cumulativeWeights[i] = cumulativeWeights[i - 1] + weightsGather[i];
@@ -392,14 +418,14 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       }
       totalWeight = totalCumulativeWeight / commsize;
       //MPI_Barrier(MPI_COMM_WORLD);
-      //if (commrank == 1) {
+      //if (commrank == 0) {
       //  for (int w = 0; w < walkers.size(); w++) {
       //    cout << w << "  " << overlaps[w] << "  " << walkers[w].trialOverlap << endl;
       //  }
-      //  //cout << "weights:\n" << weights << endl << endl;
-      //  //for (int w = 0; w < walkers.size(); w++) {
-      //  //  cout << w << endl << walkers[w].det[0] << endl << endl;
-      //  //}
+      //  cout << "weights:\n" << weights << endl << endl;
+      //  for (int w = 0; w < walkers.size(); w++) {
+      //    cout << w << endl << walkers[w].det[0] << endl << endl;
+      //  }
       //}
       //MPI_Barrier(MPI_COMM_WORLD);
       //exit(0);
