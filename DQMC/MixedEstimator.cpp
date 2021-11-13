@@ -303,7 +303,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     totalWeight = weights.sum();
     MPI_Allreduce(MPI_IN_PLACE, &totalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     //eshift = averageEnergy - 0.1 * log(totalWeight/(nwalk * commsize)) / dt;
-    eshift = eEstimate - 1. * log(totalWeight/(nwalk * commsize)) / dt;
+    eshift = eEstimate - 0.1 * log(totalWeight/(nwalk * commsize)) / dt;
 
     // orthogonalize for stability
     if (step % orthoSteps == 0) {
@@ -440,5 +440,11 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+    string fname = "samples.dat";
+    ofstream samplesFile(fname, ios::app);
+    for (int i = 0; i < nsweeps; i++) {
+        samplesFile << boost::format("%.5e      %.6e \n") % totalWeights(i) % totalEnergies(i);
+    }
+    samplesFile.close();
   }
 };

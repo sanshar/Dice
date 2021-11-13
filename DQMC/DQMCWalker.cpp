@@ -212,6 +212,7 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   for (int n = 0; n < nfields; n++) {
     double field_n = normal(generator);
     complex<double> fieldShift = -sqrt(dt) * (complex<double>(0., 1.) * fb(n) - mfShifts[n]);
+    //complex<double> fieldShift = complex<double>(0., 0.);
     //propc += sqrt(dt) * complex<double>(0., 1.) * (field_n - fieldShift) * ham.chol[n];
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j <= i; j++) {
