@@ -286,9 +286,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double eshift = totalEnergies(0);
   double totalWeight = nwalk * commsize;
   double averageEnergy = totalEnergies(0), averageNum = 0., averageDenom = 0.;
-  double averageEnergyEql = 0., averageNumEql = 0., averageDenomEql = 0.;
+  double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
   for (int step = 1; step < nsweeps * nsteps; step++) {
+    // average before eql
+    if (step * dt < 10.) averageEnergy = averageEnergyEql;
+
     // propagate
     double init = getTime();
     for (int w = 0; w < walkers.size(); w++) {
@@ -342,7 +345,9 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       totalEnergies(block) = weightedEnergy / totalWeight; 
       if (commrank == 0) {
         if (step * dt < 10.) {
-          averageEnergy = eEstimate;
+          averageNumEql += totalEnergies(block) * totalWeights(block);
+          averageDenomEql += totalWeights(block);
+          averageEnergyEql = averageNumEql / averageDenomEql;
           cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
         }
         else {
