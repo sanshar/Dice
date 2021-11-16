@@ -357,7 +357,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e        %.6e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
         }
       }
-      eEstimate = 0.9 * eEstimate + 0.1 * totalEnergies(block) * 0.1;
+      eEstimate = 0.9 * eEstimate + 0.1 * totalEnergies(block);
     }
 
     // reconfigure for efficiency
