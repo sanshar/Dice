@@ -205,7 +205,7 @@ void calcMixedEstimatorNoProp(Wavefunction& waveLeft, Wavefunction& waveRight, D
 };
 
 
-void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWalker& walker, Hamiltonian& ham)
+void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight, Wavefunction& waveGuide, DQMCWalker& walker, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
@@ -230,7 +230,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
     cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
-    cout << "Ground state energy guess:  " << ene0 << endl << endl; 
+    //cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
   int nchol = ham.chol.size();
@@ -268,6 +268,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     walkers.push_back(walkerCopy);
     weights(w) = 1.;
     walkers[w].overlap(waveLeft);  // this initializes the trialOverlap in the walker, used in propagation
+    //walkers[w].overlap(waveGuide);  // this initializes the trialOverlap in the walker, used in propagation
     hamOverlap = walkers[w].hamAndOverlap(waveLeft, ham);
     localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real();
   }
@@ -278,8 +279,8 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   totalEnergies(0) = weightedEnergy / totalWeights(0) + delta.real(); 
   if (commrank == 0) {
     double initializationTime = getTime() - calcInitTime;
-    cout << "  block     propTime         eshift            weight           energy        cumulative_energy        walltime\n";
-    cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
+    cout << "  block     propTime         eshift            weight             energy          cumulative_energy          walltime\n";
+    cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e       %9s                %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
   }
 
   double propTime = 0., eneTime = 0.;
@@ -296,6 +297,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     double init = getTime();
     for (int w = 0; w < walkers.size(); w++) {
       if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
+      //if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveGuide, ham, eshift);
     }
     propTime += getTime() - init;
     
@@ -315,10 +317,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       localEnergy.setZero();
       int block = step / nsteps;
       init = getTime();
+      //ArrayXd overlapRatios = ArrayXd::Zero(walkers.size());
       for (int w = 0; w < walkers.size(); w++) {
         if (weights(w) != 0.) {
           auto hamOverlap = walkers[w].hamAndOverlap(waveLeft, ham);
           localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() + delta.real();
+          //localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() * std::abs(hamOverlap[1]/walkers[w].trialOverlap) + delta.real();
+          //overlapRatios(w) = std::abs(hamOverlap[1]/walkers[w].trialOverlap);
           if (std::isnan(localEnergy(w)) || std::isinf(localEnergy(w))) {
             if (commrank == 0) {
               cout << "local energy:  " << localEnergy(w) << endl;
@@ -340,21 +345,32 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       }
       eneTime += getTime() - init;
       weightedEnergy = (localEnergy * weights).sum();
+      //double ratioWeightedTotalWeight = (weights * overlapRatios).sum();
       MPI_Allreduce(MPI_IN_PLACE, &weightedEnergy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      //MPI_Allreduce(MPI_IN_PLACE, &ratioWeightedTotalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       totalWeights(block) = totalWeight;
       totalEnergies(block) = weightedEnergy / totalWeight; 
+      //totalEnergies(block) = weightedEnergy / ratioWeightedTotalWeight; 
       if (commrank == 0) {
         if (step * dt < 10.) {
           averageNumEql += totalEnergies(block) * totalWeights(block);
           averageDenomEql += totalWeights(block);
           averageEnergyEql = averageNumEql / averageDenomEql;
-          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e         %7s                %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+          //averageNumEql += totalEnergies(block) * ratioWeightedTotalWeight;
+          //averageDenomEql +=  ratioWeightedTotalWeight;
+          //averageEnergyEql = averageNumEql / averageDenomEql;
+          //cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % block % (dt * step) % eshift % ratioWeightedTotalWeight % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
         }
         else {
           averageNum += totalEnergies(block) * totalWeights(block);
           averageDenom += totalWeights(block);
           averageEnergy = averageNum / averageDenom;
-          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e        %.6e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
+          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e        %.9e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
+          //averageNum += totalEnergies(block) * ratioWeightedTotalWeight;
+          //averageDenom += ratioWeightedTotalWeight;
+          //averageEnergy = averageNum / averageDenom;
+          //cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e        %.6e        %.2e \n") % block % (dt * step) % eshift % ratioWeightedTotalWeight % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
         }
       }
       eEstimate = 0.9 * eEstimate + 0.1 * totalEnergies(block);
@@ -443,7 +459,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     string fname = "samples.dat";
     ofstream samplesFile(fname, ios::app);
     for (int i = 0; i < nsweeps; i++) {
-        samplesFile << boost::format("%.5e      %.6e \n") % totalWeights(i) % totalEnergies(i);
+        samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
     }
     samplesFile.close();
   }
