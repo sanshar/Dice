@@ -202,8 +202,8 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   fb.setZero();
   this->forceBias(wave, ham, fb);
   // capping fb
-  for (int n = 0; n < nfields; n++) 
-    if (std::abs(fb(n)) > 1./sqrt(dt)) fb(n) = fb(n) / std::abs(fb(n));
+  //for (int n = 0; n < nfields; n++) 
+  //  if (std::abs(fb(n)) > 1./sqrt(dt)) fb(n) = fb(n) / std::abs(fb(n));
   MatrixXf prop = MatrixXf::Zero(norbs, norbs);
   vector<float> propr(norbs * (norbs + 1) / 2, 0.);
   vector<float> propi(norbs * (norbs + 1) / 2, 0.);
