@@ -16,7 +16,7 @@ energies = samples[nEql:,1]
 weightedEnergies = np.multiply(weights, energies)
 print(f'mean: {weightedEnergies.sum() / weights.sum()}')
 print('blocked statistics:')
-blockSizes = np.array([ 1, 5, 10, 20, 50, 70, 100, 200, 500 ])
+blockSizes = np.array([ 1, 2, 5, 10, 20, 50, 70, 100, 200, 500 ])
 print('block size    # of blocks        mean                error')
 for i in blockSizes[blockSizes < nSamples/2.]:
   nBlocks = nSamples//i
