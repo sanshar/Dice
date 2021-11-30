@@ -142,6 +142,7 @@ void LCC::doLCC(
     uniqueDEH.MergeSortAndRemoveDuplicates();
     uniqueDEH.RemoveDetsPresentIn(SortedDets, DetsSize);
 
+#ifndef SERIAL
     // (communications) -------------------------------------------------------
     for (int level = 0; level <ceil(log2(size)); level++) {
       if (rank%ipow(2, level+1) == 0 && rank + ipow(2, level) < size) {
@@ -214,12 +215,15 @@ void LCC::doLCC(
       } // rank
     } // level
     // (communications) -------------------------------------------------------
+    #endif
 
 
     // Prepare Dets, Psi1, VPsi0 (and proj)
     vector<Determinant> Dets= *uniqueDEH.Det;
     int nDets = Dets.size();
+    #ifndef SERIAL
     boost::mpi::broadcast(world, Dets, 0);
+    #endif
     MatrixXx Psi1  = MatrixXx::Zero(nDets, 1);
     MatrixXx VPsi0 = MatrixXx::Zero(nDets, 1);
     for (int i=0; i<nDets; i++)
