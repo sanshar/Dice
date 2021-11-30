@@ -60,7 +60,6 @@
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
 #include <algorithm>
-#include <boost/bind.hpp>
 
 // Initialize
 using namespace Eigen;

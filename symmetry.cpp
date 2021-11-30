@@ -24,7 +24,6 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
-#include <boost/bind.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
