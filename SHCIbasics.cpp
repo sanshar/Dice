@@ -165,11 +165,11 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     }
 
     if (commsize > 1) {
-      boost::shared_ptr<vector<Determinant>> &Det = uniqueDEH.Det;
-      boost::shared_ptr<vector<CItype>> &Num = uniqueDEH.Num;
-      boost::shared_ptr<vector<CItype>> &Num2 = uniqueDEH.Num2;
-      boost::shared_ptr<vector<double>> &Energy = uniqueDEH.Energy;
-      boost::shared_ptr<vector<char>> &present = uniqueDEH.present;
+      std::shared_ptr<vector<Determinant>> &Det = uniqueDEH.Det;
+      std::shared_ptr<vector<CItype>> &Num = uniqueDEH.Num;
+      std::shared_ptr<vector<CItype>> &Num2 = uniqueDEH.Num2;
+      std::shared_ptr<vector<double>> &Energy = uniqueDEH.Energy;
+      std::shared_ptr<vector<char>> &present = uniqueDEH.present;
 
       std::vector<size_t> hashValues(Det->size());
 
@@ -508,12 +508,12 @@ double SHCIbasics::DoPerturbativeDeterministic(
   }
 
   if (commsize > 1) {
-    boost::shared_ptr<vector<Determinant>> &Det = uniqueDEH.Det;
-    boost::shared_ptr<vector<CItype>> &Num = uniqueDEH.Num;
-    boost::shared_ptr<vector<double>> &Energy = uniqueDEH.Energy;
-    boost::shared_ptr<vector<int>> &var_indices =
+    std::shared_ptr<vector<Determinant>> &Det = uniqueDEH.Det;
+    std::shared_ptr<vector<CItype>> &Num = uniqueDEH.Num;
+    std::shared_ptr<vector<double>> &Energy = uniqueDEH.Energy;
+    std::shared_ptr<vector<int>> &var_indices =
         uniqueDEH.var_indices_beforeMerge;
-    boost::shared_ptr<vector<size_t>> &orbDifference =
+    std::shared_ptr<vector<size_t>> &orbDifference =
         uniqueDEH.orbDifference_beforeMerge;
 
     std::vector<size_t> hashValues(Det->size());
