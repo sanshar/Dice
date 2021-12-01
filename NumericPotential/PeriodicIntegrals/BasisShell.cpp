@@ -21,10 +21,45 @@
 
 #include "BasisShell.h"
 
+void BasisSet::moveCenter(double* pos, double scale, int shls0, int shls1) {
+  for (int i=shls0; i<shls1; i++) {
+    BasisShells[i].Xcoord += scale*pos[0];
+    BasisShells[i].Ycoord += scale*pos[1];
+    BasisShells[i].Zcoord += scale*pos[2];
+  }
+}
+
+void BasisSet::basisnormTodensitynorm(int start, int end) {
+  for (int i = start ; i < end; i++) {
+    BasisShells[i].basisnormTodensitynorm();
+  }
+}
+void BasisSet::densitynormTobasisnorm(int start, int end) {
+  for (int i = start ; i < end; i++) {
+    BasisShells[i].densitynormTobasisnorm();
+  }
+}
+
 int BasisSet::getNbas() {
   int nbas = 0;
   for (int i = 0 ; i <BasisShells.size(); i++) {
     nbas += BasisShells[i].nCo * (2 * BasisShells[i].l + 1);
+  }
+  return nbas;
+}
+
+int BasisSet::getNbas(int shlIndex) {
+  int nbas = 0;
+  for (int i = 0 ; i < shlIndex; i++) {
+    nbas += BasisShells[i].nCo * (2 * BasisShells[i].l + 1);
+  }
+  return nbas;
+}
+
+int BasisSet::getNPrimitivebas(int shlIndex) {
+  int nbas = 0;
+  for (int i = 0 ; i < shlIndex; i++) {
+    nbas += BasisShells[i].nFn * (2 * BasisShells[i].l + 1);
   }
   return nbas;
 }
@@ -75,6 +110,64 @@ void BasisShell::PrintAligned(std::ostream &xout, uint Indent) const
    }
 }
 
+double densityNorm(double expl, int l) {
+  if (l == 0)
+    return pow(M_PI/expl, 1.5);
+  else if (l == 1)
+    return pow(3.,0.5)*pow(M_PI,1.5)/pow(expl,2.5)/2.;
+  else if (l == 2)
+    return pow(5.,0.5)*3.*pow(M_PI,1.5)/pow(expl,3.5)/4.;
+  else if (l == 3)
+    return pow(7.,0.5)*15.*pow(M_PI,1.5)/pow(expl,4.5)/8.;
+  else if (l == 4)
+    return pow(9.,0.5)*105.*pow(M_PI,1.5)/pow(expl,5.5)/16.;
+  else if (l == 5)
+    return pow(11.,0.5)*945.*pow(M_PI,1.5)/pow(expl,6.5)/32.;
+  else if (l == 6)
+    return pow(13.,0.5)*10395.*pow(M_PI,1.5)/pow(expl,7.5)/64.;
+}
+
+void BasisShell::basisnormTodensitynorm() {
+  //MatrixXd AOnorm(exponents.size(), exponents.size());
+  VectorXd DensityNorm(exponents.size());
+  for (int i=0; i<contractions.rows(); i++) {
+    DensityNorm[i] = densityNorm(exponents[i], l);
+    //for (int j=0; j<contractions.rows(); j++) {
+    //AOnorm(i,j) = RawGaussProdNorm(exponents[i],l,exponents[j], l);
+    //}
+  }
+
+  //loop over all contracted gaussians
+  for (int j=0; j<contractions.cols(); j++) {
+    //double jnorm = contractions.col(j).dot(AOnorm * contractions.col(j));
+    double densityNorm = contractions.col(j).dot(DensityNorm);
+
+    for (int i=0; i<contractions.rows(); i++)
+      contractions(i,j) /= densityNorm;
+  }
+}
+
+
+void BasisShell::densitynormTobasisnorm() {
+  MatrixXd AOnorm(exponents.size(), exponents.size());
+  VectorXd DensityNorm(exponents.size());
+  for (int i=0; i<contractions.rows(); i++) {
+    DensityNorm[i] = pow(exponents[i]/M_PI, 1.5);
+    for (int j=0; j<contractions.rows(); j++) {
+      AOnorm(i,j) = RawGaussProdNorm(exponents[i], l, exponents[j], l);
+    }
+  }
+
+  //loop over all contracted gaussians
+  for (int j=0; j<contractions.cols(); j++) {
+    double jnorm = contractions.col(j).dot(AOnorm * contractions.col(j));
+    double densityNorm = contractions.col(j).dot(DensityNorm);
+
+    for (int i=0; i<contractions.rows(); i++)
+      contractions(i,j) /= sqrt(jnorm);
+  }
+}
+
 unsigned DoubleFactR(int l) {
    unsigned r = 1;
    while (l > 1) {
@@ -82,6 +175,11 @@ unsigned DoubleFactR(int l) {
       l -= 2;
    }
    return r;
+}
+
+double RawGaussProdNorm(double fExp1, unsigned l1, double fExp2, unsigned l2)
+{
+  return pow(M_PI/(fExp1+fExp2),1.5) * DoubleFactR(l1+l2-1)/pow(2.*fExp1+2.*fExp2,(l1+l2)/2.);
 }
 
 double RawGaussNorm(double fExp, unsigned l)

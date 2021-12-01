@@ -702,7 +702,11 @@ struct JastrowMultiSlater {
           laplaceDet1 -= temp.determinant();
         }
       }
+<<<<<<< HEAD
       locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + complex<double>(ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+=======
+      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + (1.*ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+>>>>>>> 159ecb412ce6fbd924c19fe68b4b032c9ab3a96f
     }
     ciIterationTime += (getTime() - initTime);
     ham += locES1;

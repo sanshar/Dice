@@ -1,4 +1,9 @@
 {
+  "system":
+  {
+    "numAct": 4,
+    "numCore": 9
+  },
   "print":
   {
     "readSCNorms": false
@@ -6,8 +11,6 @@
   "wavefunction":
   {
     "name": "scpt",
-    "numAct": 4,
-    "numCore": 9,
     "overlapCutoff": 1.0e-8,
     "determinants": "dets"
   },

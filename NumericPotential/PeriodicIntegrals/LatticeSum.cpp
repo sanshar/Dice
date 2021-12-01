@@ -5,6 +5,7 @@
 #include "BasisShell.h"
 #include "Kernel.h"
 #include "GeneratePolynomials.h"
+#include "IrAmrr.h"
 
 double dotProduct(double* vA, double* vB) {
   return vA[0] * vB[0] + vA[1] * vB[1] + vA[2] * vB[2];
@@ -30,7 +31,7 @@ double dist(double a, double b, double c) {
   return a*a + b*b + c*c;
 }
 
-void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
+void LatticeSum::getRelativeCoords(const BasisShell *pA, const BasisShell *pC,
                                    double& Tx, double& Ty, double& Tz) {
   double Txmin = pA->Xcoord - pC->Xcoord,
       Tymin = pA->Ycoord - pC->Ycoord,
@@ -58,17 +59,20 @@ void LatticeSum::getRelativeCoords(BasisShell *pA, BasisShell *pC,
   Tx = Txmin; Ty = Tymin; Tz = Tzmin;
 }
 
-LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
-                       double _Eta2RhoCoul, double pscreen) {
+LatticeSum::LatticeSum(double* Lattice, int nr, int nk,
+                       ct::FMemoryStack& Mem, BasisSet& basis, double _Eta2Rho,
+                       double _Eta2RhoCoul, double _Rscreen, double _Kscreen,
+                       bool make2cIntermediates, bool make3cIntermediates) {
   
-  //int nr = 1, nk = 10;
+  //*********************
+  //MAKE RLATTICE VECTORS
+  //*********************
   int ir = 0; int Nr = 4*nr+1;
   vector<double> Rcoordcopy(3*Nr*Nr*Nr), Rdistcopy(Nr*Nr*Nr);
 
   int Nrkeep =  pow(2*nr+1, 3);
   Rcoord.resize(3*Nrkeep);
   Rdist.resize(Nrkeep);
-
   //rvals
   for (int i = -2*nr; i<=2*nr ; i++)
   for (int j = -2*nr; j<=2*nr ; j++)
@@ -94,28 +98,42 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
     Rcoord[3*i+1] = Rcoordcopy[3*idx[i]+1];
     Rcoord[3*i+2] = Rcoordcopy[3*idx[i]+2];
   }
-
+  //***************************
+  //***************************
   
-  //make klattice
+
+
+  //*********************
+  //MAKE KLATTICE VECTORS
+  //*********************
   KLattice.resize(9), RLattice.resize(9);
   for (int i=0; i<9; i++) RLattice[i] = Lattice[i];
   RVolume = getKLattice(&KLattice[0], Lattice);
 
-  int Nk = 2*nk +1;
-  vector<double> Kcoordcopy(3*(Nk*Nk*Nk-1)), Kdistcopy(Nk*Nk*Nk-1);
-  Kcoord.resize(3 * (Nk*Nk*Nk-1));
-  Kdist.resize(Nk*Nk*Nk-1);
+  int Nk = 2*nk +1, Nkhalf = nk+1;
+  int NkLat = Nk*Nk*Nk;//Nkhalf;
+  //int NkLat = Nk*Nk*Nk/2+1;
 
+  vector<double> Kcoordcopy(3*NkLat), Kdistcopy(NkLat);
+  vector<int> Kcoordindexcopy(3*NkLat);
+  Kcoord.resize(3 * NkLat);
+  Kdist.resize(NkLat);
+  Kcoordindex.resize(3*NkLat);
+  
   ir = 0;
   //kvals
+  //for (int i =   0; i<=nk ; i++)
   for (int i = -nk; i<=nk ; i++)
   for (int j = -nk; j<=nk ; j++)
   for (int k = -nk; k<=nk ; k++) {
-    if (i == 0 && j == 0 && k == 0) continue;
+    //if (i == 0 && j < 0) continue;
+    //if (i == 0 && j == 0 && k < 0) continue;
+    
     Kcoordcopy[3*ir+0] = i * KLattice[0] + j * KLattice[3] + k * KLattice[6];
     Kcoordcopy[3*ir+1] = i * KLattice[1] + j * KLattice[4] + k * KLattice[7];
     Kcoordcopy[3*ir+2] = i * KLattice[2] + j * KLattice[5] + k * KLattice[8];
 
+    Kcoordindexcopy[3*ir+0]=i; Kcoordindexcopy[3*ir+1]=j; Kcoordindexcopy[3*ir+2]=k;
     Kdistcopy[ir] = Kcoordcopy[3*ir+0] * Kcoordcopy[3*ir+0]
                  +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
                  +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
@@ -123,7 +141,7 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
     ir++;
   }
 
-  idx.resize(Nk*Nk*Nk-1);
+  idx.resize(NkLat);
   std::iota(idx.begin(), idx.end(), 0);
   std::stable_sort(idx.begin(), idx.end(),
                    [&Kdistcopy](size_t i1, size_t i2) {return Kdistcopy[i1] < Kdistcopy[i2];});
@@ -133,15 +151,115 @@ LatticeSum::LatticeSum(double* Lattice, int nr, int nk, double _Eta2Rho,
     Kcoord[3*i+0] = Kcoordcopy[3*idx[i]+0];
     Kcoord[3*i+1] = Kcoordcopy[3*idx[i]+1];
     Kcoord[3*i+2] = Kcoordcopy[3*idx[i]+2];
+    Kcoordindex[3*i+0] = Kcoordindexcopy[3*idx[i]+0];
+    Kcoordindex[3*i+1] = Kcoordindexcopy[3*idx[i]+1];
+    Kcoordindex[3*i+2] = Kcoordindexcopy[3*idx[i]+2];
+  }
+  //**********************************
+  //**********************************
+
+  Eta2RhoOvlp = _Eta2Rho/(Rdist[1]);
+  Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
+  Rscreen = _Rscreen;
+  Kscreen = _Kscreen;
+
+
+
+  //*************************
+  //MAKE Half KLATTICE VECTORS
+  //*************************
+  NkLat = Nk*Nk*Nk/2+1;
+
+  Kcoordcopy.resize(3*NkLat); Kdistcopy.resize(NkLat);
+  KcoordHalf.resize(3 * NkLat);
+  KdistHalf.resize(NkLat);
+  CoulKernelG.resize(NkLat, 0.0);
+  vector<double> CoulKernelGcopy(NkLat, 0.0);
+  
+  ir = 0;
+  //kvals
+  for (int i =   0; i<=nk ; i++)
+  for (int j = -nk; j<=nk ; j++)
+  for (int k = -nk; k<=nk ; k++) {
+    if (i == 0 && j < 0) continue;
+    if (i == 0 && j == 0 && k < 0) continue;
+    
+    Kcoordcopy[3*ir+0] = i * KLattice[0] + j * KLattice[3] + k * KLattice[6];
+    Kcoordcopy[3*ir+1] = i * KLattice[1] + j * KLattice[4] + k * KLattice[7];
+    Kcoordcopy[3*ir+2] = i * KLattice[2] + j * KLattice[5] + k * KLattice[8];
+
+    Kdistcopy[ir] = Kcoordcopy[3*ir+0] * Kcoordcopy[3*ir+0]
+                 +  Kcoordcopy[3*ir+1] * Kcoordcopy[3*ir+1]
+                 +  Kcoordcopy[3*ir+2] * Kcoordcopy[3*ir+2];
+
+    if (i == 0 && j==0 && k == 0)
+      CoulKernelGcopy[ir] = 0.0;
+    else
+      CoulKernelGcopy[ir] = exp(-Kdistcopy[ir]/4./Eta2RhoCoul)/(Kdistcopy[ir]/4.); 
+    ir++;
   }
 
-  Eta2RhoOvlp = _Eta2Rho/(Rdist[Nrkeep-1]);
-  Eta2RhoCoul = _Eta2RhoCoul/(Rdist[1]);
-  screen = pscreen;
-  cout << Eta2RhoOvlp<<"  "<<Eta2RhoCoul<<endl;
+  idx.resize(NkLat);
+  std::iota(idx.begin(), idx.end(), 0);
+  std::stable_sort(idx.begin(), idx.end(),
+                   [&Kdistcopy](size_t i1, size_t i2) {return Kdistcopy[i1] < Kdistcopy[i2];});
+  
+  for (int i=0; i<idx.size(); i++) {
+    KdistHalf[i] = Kdistcopy[idx[i]];
+    KcoordHalf[3*i+0] = Kcoordcopy[3*idx[i]+0];
+    KcoordHalf[3*i+1] = Kcoordcopy[3*idx[i]+1];
+    KcoordHalf[3*i+2] = Kcoordcopy[3*idx[i]+2];
+    CoulKernelG[i] = CoulKernelGcopy[idx[i]];
+  }
+  //**********************************
+  //**********************************
 
+  
+  
+  
+  
+  //identify unique atom positions
+  atomCenters.reserve(basis.BasisShells.size());
+  for (int i = 0; i<basis.BasisShells.size(); i++) 
+    int idx = indexCenter(basis.BasisShells[i]);
+
+
+  OrderedLatticeSumForEachAtomPair(basis, Mem);
+  if (make2cIntermediates) {
+    makeKsum2c(basis);
+  }
+
+  if (make3cIntermediates) 
+    makeKsum3c(basis);
 }
 
+void LatticeSum::OrderedLatticeSumForEachAtomPair(BasisSet& basis, ct::FMemoryStack& Mem) {
+  int pnatm = atomCenters.size()/3;
+  int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
+  
+  //for coord A and B of atoms, arrange lattice space summations in
+  //increasing order by distance |pA - pB - T|, notice that this is not
+  //necessarily in the same order as increasing  |T|
+  ROrderedIdx.resize(nT, vector<size_t>(Rdist.size(), -1));
+  for (int sh1 = 0 ; sh1 < basis.BasisShells.size(); sh1++) {
+    for (int sh2 = 0 ; sh2 <= sh1; sh2++) {
+      int T1 = indexCenter(basis.BasisShells[sh1]);
+      int T2 = indexCenter(basis.BasisShells[sh2]);
+      int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+      
+      BasisShell *pA = &basis.BasisShells[sh1];
+      BasisShell *pC = &basis.BasisShells[sh2];
+
+      //otherwise it has already been populated
+      if (ROrderedIdx[T][0] == -1) { 
+        double Tx, Ty, Tz;
+        getRelativeCoords(pA, pC, Tx, Ty, Tz);
+        getIncreasingIndex(ROrderedIdx[T], Tx, Ty, Tz, Mem);          
+      }
+    }
+  }
+
+}
 
 void LatticeSum::printLattice() {
   cout <<"Rlattice: "<<endl;
@@ -173,6 +291,22 @@ void LatticeSum::getIncreasingIndex(size_t *&idx, double Tx, double Ty, double T
   }
   std::stable_sort(idx, (idx+Rdist.size()),
                    [&Tdist](size_t i1, size_t i2) {return Tdist[i1] < Tdist[i2];});
+
+  Mem.Free(Tdist);
+}
+
+void LatticeSum::getIncreasingIndex(vector<size_t>& idx, double Tx, double Ty, double Tz, ct::FMemoryStack& Mem) {
+
+  double* Tdist;
+  Mem.Alloc(Tdist, Rdist.size());
+  for (int i=0; i<Rdist.size(); i++) {
+    idx[i] = i;
+    Tdist[i] = dist(Tx + Rcoord[3*i + 0],
+                    Ty + Rcoord[3*i + 1],
+                    Tz + Rcoord[3*i + 2]);
+  }
+  std::stable_sort(&idx[0], (&idx[0]+Rdist.size()),
+                   [&Tdist](size_t i1, size_t i2) {return Tdist[i1] < Tdist[i2];});
   
   Mem.Free(Tdist);
 }
@@ -192,7 +326,7 @@ bool isRhoLarge(BasisSet& basis, int sh1, int sh2, double eta2rho) {
   return false;
 }
 
-int LatticeSum::indexCenter(BasisShell& bas) {
+int LatticeSum::indexCenter(const BasisShell& bas) {
   double X=bas.Xcoord, Y=bas.Ycoord, Z=bas.Zcoord;
   
   int idx = -1;
@@ -211,15 +345,12 @@ int LatticeSum::indexCenter(BasisShell& bas) {
 //if rho > eta2rho, part of the summation is done in reciprocal space
 //but it does not depend on rho, only on the T (distance between basis)
 //and the L (anuglar moment)
-void LatticeSum::makeKsum(BasisSet& basis) {
-  //idensify unique atom positions
-  atomCenters.reserve(basis.BasisShells.size());
-  for (int i = 0; i<basis.BasisShells.size(); i++) 
-    int idx = indexCenter(basis.BasisShells[i]);
+void LatticeSum::makeKsum2c(BasisSet& basis) {
 
   int pnatm = atomCenters.size()/3;
-
   int nT = pnatm * (pnatm + 1)/2 ; //all pairs of atoms + one for each atom T=0
+
+  
   int nL = 13; //for each pair there are maximum 12 Ls
 
   KSumIdx.resize(nT, vector<long>(nL,-1)); //make all elements -1
@@ -263,7 +394,7 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 	int L = j;
 	double scale = 1.0;
 
-	for (int k=0; k<Kdist.size(); k++) {
+	for (int k=1; k<Kdist.size(); k++) {
 	  double expVal = kernel.getValueKSpace(Kdist[k], 1.0, Eta2RhoCoul);
 	  
 	  double maxG = getHermiteReciprocal(L, &KSumVal[idx],
@@ -272,18 +403,80 @@ void LatticeSum::makeKsum(BasisSet& basis) {
 					     Kcoord[3*k+2],
 					     Tx, Ty, Tz,
 					     expVal, scale);
-	  
-	  if (abs(maxG * scale * expVal) < screen) {
+
+	  if (abs(maxG * scale * expVal) < 1e-13) {
 	    break;
 	  }
 	}      
       }    
     }
   }
+}
+
+
+
+//in 3center integrals while doing reciprocal space summations the auxilliary basis
+//contributions only depend on the atom that they belong to and can be precalculated
+void LatticeSum::makeKsum3c(BasisSet& basis) {
+
+  int pnatm = atomCenters.size()/3;
+  int nT = pnatm ; //all atoms
+
   
-  //now populate the various 
-  cout <<"start index "<< startIndex <<endl;
-  //now precalculate the 
-  //exit(0);
+  int nL = 6; //for each pair there are maximum 12 Ls
+  vector<double> pSphc((nL+1)*(nL+1));
+
+  //for each center store all solid harmonics derivaties for each G-coord
+  CosKval3c.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+  SinKval3c.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+  CosKval3cWithGkernel.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+  SinKval3cWithGkernel.resize(atomCenters.size()/3,
+                   std::vector<double>((nL+1)*(nL+1)*KdistHalf.size(), 0.0));
+
+  vector<int> filledT(atomCenters.size()/3, 0);
+  
+  for (int shlc = 0; shlc <basis.BasisShells.size(); shlc++) {
+    BasisShell *pC = &basis.BasisShells[shlc];
+    int T = indexCenter(*pC);
+    assert(T != -1);
+    if (filledT[T] == 1) continue;
+    filledT[T] = 1;
+    
+    double Cx = pC->Xcoord, Cy = pC->Ycoord, Cz = pC->Zcoord;
+    for (int g=1; g<KdistHalf.size(); g++) {
+      double Gx=KcoordHalf[3*g+0],
+          Gy=KcoordHalf[3*g+1],
+          Gz=KcoordHalf[3*g+2];
+    
+      ir::EvalSlcX_Deriv0(&pSphc[0], Gx, Gy, Gz, nL);
+      
+      double Arg = Cx*Gx+Cy*Gy+Cz*Gz;
+      double Cosarg = cos(Arg), Sinarg = sin(Arg);
+
+      int index = g * (nL+1) * (nL+1);
+      for (int lc = 0; lc<=nL; lc++) {
+        double signCos = (lc%4 == 0 || lc%4==3 ) ?  1. : -1.;
+        double signSin = (lc%4 == 0 || lc%4==1 ) ?  1. : -1.;
+        
+        double cosarglc = lc%2 == 0 ? signCos*Cosarg : signCos*Sinarg;
+        double sinarglc = lc%2 == 0 ? signSin*Sinarg : signSin*Cosarg;
+        
+        double* cmat = &pSphc[0]+lc*lc;
+        int ntermsc = 2*lc+1;
+        
+        for (int i=0; i<ntermsc; i++) {
+          CosKval3c[T][index + lc*lc + i] = cmat[i] * cosarglc;
+          SinKval3c[T][index + lc*lc + i] = cmat[i] * sinarglc;
+
+          CosKval3cWithGkernel[T][index + lc*lc +i] = CosKval3c[T][index+lc*lc+i]*CoulKernelG[g];
+          SinKval3cWithGkernel[T][index + lc*lc +i] = SinKval3c[T][index+lc*lc+i]*CoulKernelG[g];
+        }
+      }
+    }
+    
+  }
 }
 

@@ -32,6 +32,7 @@
 
 #ifndef SERIAL
 #include "mpi.h"
+#include <boost/mpi.hpp>
 #endif
 
 class oneInt;

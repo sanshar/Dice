@@ -1,9 +1,12 @@
 #include <iostream>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <string.h>
 #include <algorithm>
 #include <numeric> 
 #include <complex>
+#include "boost/format.hpp"
 
 #include "CxMemoryStack.h"
 #include "GeneratePolynomials.h"
@@ -13,30 +16,11 @@
 #include "Integral2c_Boys.h"
 #include "LatticeSum.h"
 #include "interface.h"
+#include "CxAlgebra.h"
 
 using namespace std;
 using namespace ir;
-
-
-void Add2(double * pOut, double const * pIn, double f, size_t n)
-{
-  size_t i = 0;
-  for ( ; i < (n & ~3); i += 4 ) {
-    pOut[i]   += f * pIn[i];
-    pOut[i+1] += f * pIn[i+1];
-    pOut[i+2] += f * pIn[i+2];
-    pOut[i+3] += f * pIn[i+3];
-  }
-  pOut += i;
-  pIn += i;
-  switch(n - i) {
-    case 3: pOut[2] += f*pIn[2];
-    case 2: pOut[1] += f*pIn[1];
-    case 1: pOut[0] += f*pIn[0];
-    default: break;
-  }
-
-}
+using namespace boost;
 
 
 
@@ -53,58 +37,68 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
   Mem.Alloc(pFmT, TotalL + 1); // FmT for current primitive.
 
   double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
+
+  double polynomial = max(1., pow(sqrt(t), TotalL+1));
   
   // loop over primitives (that's all the per primitive stuff there is)
-  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-  {
-    double
-        Alpha = pA->exponents[iExpA],
-        Gamma = pC->exponents[iExpC],
-        InvEta = 1./(Alpha + Gamma),
-        Rho = (Alpha * Gamma)*InvEta, // = (Alpha * Gamma)*/(Alpha + Gamma)
-        Prefactor = (M_PI*InvEta)*std::sqrt(M_PI*InvEta); // = (M_PI/(Alpha+Gamma))^{3/2}
-    
-    Prefactor *= PrefactorExt;
-    Prefactor *= pInv2Gamma[iExpC] * pInv2Alpha[iExpA];
-    
-    
-    
-    //If eta is smaller than desiredrho then no contribution from real space
-    double eta = 1.0;
-    if (Rho <= Eta2Rho) continue;
-    else {
-      eta = sqrt(Eta2Rho/Rho);
-    }
+  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC) {
+    double maxContracC = 0.0;
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC) 
+      maxContracC = max(maxContracC, fabs(pC->contractions(iExpC, iCoC)));
 
-    if (Rho > Eta2Rho &&  kernel->getname() != coulombKernel) eta = 1.0;
-
-    // calculate derivatives (D/Dt)^m exp(-rho t) with t = (A-C)^2.
-    kernel->getValueRSpace(pFmT, Rho*t, TotalL, Prefactor, Rho, eta, Mem);
-    
-    // convert from Gm(rho,T) to Fm(rho,T) by absorbing powers of rho
-    // (those would normally be present in the R of the MDRR)
-    double
-        RhoPow = 1.;
-    double maxVal = 0;
-    for ( uint i = 0; i < TotalL + 1; ++ i ){
-      pFmT[i] *= RhoPow;
-      RhoPow *= -2*Rho;
-      if (maxVal < abs(pFmT[i])) maxVal = abs(pFmT[i]);
-    }
-
-    if (maxVal*max(1., pow(t,TotalL/2)) < latsum.screen) continue;
-    
-    // contract (lamely). However, normally either nCo
-    // or nFn, or TotalL (or even all of them at the same time)
-    // will be small, so I guess it's okay.
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoAC = pC->contractions(iExpC, iCoC) *
-          pA->contractions(iExpA, iCoA);
-      Add2(&pCoFmT[(TotalL+1)*(iCoA + pA->nCo*iCoC)],
-           pFmT, CoAC, (TotalL+1));
-    }
+      for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+      {
+        double maxContracA = 0.0;
+        for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) 
+          maxContracA = max(maxContracA, fabs(pA->contractions(iExpA, iCoA)));
+          
+          double
+              Alpha = pA->exponents[iExpA],
+              Gamma = pC->exponents[iExpC],
+              InvEta = 1./(Alpha + Gamma),
+              Rho = (Alpha * Gamma)*InvEta, // = (Alpha * Gamma)*/(Alpha + Gamma)
+              Prefactor = (M_PI*InvEta)*std::sqrt(M_PI*InvEta); // = (M_PI/(Alpha+Gamma))^{3/2}
+          
+          Prefactor *= PrefactorExt;
+          Prefactor *= pInv2Gamma[iExpC] * pInv2Alpha[iExpA];
+          
+          
+          
+          
+          double eta = 1.0;
+          
+          if (Rho <= Eta2Rho) continue; // all summations are done in real space
+          else eta = sqrt(Eta2Rho/Rho); //for coulomb kernel this is eta
+          
+          if (Rho > Eta2Rho &&  kernel->getname() != coulombKernel) eta = 1.0;
+          
+          // calculate derivatives (D/Dt)^m exp(-rho t) with t = (A-C)^2.
+          kernel->getValueRSpace(pFmT, Rho*t, TotalL, Prefactor, Rho, eta, Mem);
+          
+          // convert from Gm(rho,T) to Fm(rho,T) by absorbing powers of rho
+          // (those would normally be present in the R of the MDRR)
+          double
+              RhoPow = 1.;
+          double maxVal = 0;
+          for ( uint i = 0; i < TotalL + 1; ++ i ){
+            pFmT[i] *= RhoPow;
+            RhoPow *= -2*Rho;
+            if (maxVal < abs(pFmT[i])) maxVal = abs(pFmT[i]);
+          }
+          
+          if (polynomial*maxVal*maxContracA*maxContracC < latsum.Rscreen) continue;
+          
+          // contract (lamely). However, normally either nCo
+          // or nFn, or TotalL (or even all of them at the same time)
+          // will be small, so I guess it's okay.
+          for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+            for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+              double CoAC = pC->contractions(iExpC, iCoC) *
+                  pA->contractions(iExpA, iCoA);
+	      ct::Add2(&pCoFmT[(TotalL+1)*(iCoA + pA->nCo*iCoC)],
+                   pFmT, CoAC, (TotalL+1));
+            }
+      }
   }
   Mem.Free(pFmT);
 }
@@ -122,16 +116,24 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   Mem.ClearAlloc(pOutR_loc, (TotalLab+1)*(TotalLab+2)/2 * TotalCo);
   Mem.ClearAlloc(pDataR_LapC, (L+1)*(L+2)/2);
   
-  size_t *Tidx; //indexed such that T will increase
-  latsum.getIncreasingIndex(Tidx, Tx, Ty, Tz, Mem);
-  
+  //size_t *Tidx; //indexed such that T will increase
+  //latsum.getIncreasingIndex(Tidx, Tx, Ty, Tz, Mem);
+
+  //the array that ensures that lattice sums are done in increasing order by
+  //distance
+
+  int T1 = latsum.indexCenter(*pA);
+  int T2 = latsum.indexCenter(*pC);
+  int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+  double sign = T1 >= T2 ? 1. : -1.; 
+  vector<size_t>& Tidx = latsum.ROrderedIdx[T];
+
   for (int r = 0; r<latsum.Rdist.size(); r++) {
 
-    double Tx_r = Tx + latsum.Rcoord[3*Tidx[r]+0],
-           Ty_r = Ty + latsum.Rcoord[3*Tidx[r]+1],
-           Tz_r = Tz + latsum.Rcoord[3*Tidx[r]+2];
+    double Tx_r = Tx + sign*latsum.Rcoord[3*Tidx[r]+0],
+           Ty_r = Ty + sign*latsum.Rcoord[3*Tidx[r]+1],
+           Tz_r = Tz + sign*latsum.Rcoord[3*Tidx[r]+2];
 
-    
     Mem.ClearAlloc(pCoFmT, (L+1) * TotalCo);
     Int2e2c_EvalCoKernels(pCoFmT, L, pA, pC, Tx_r, Ty_r, Tz_r, Prefactor,
                           pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
@@ -160,8 +162,9 @@ void makeRealSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
       pOutR_loc[i] = 0.0; 
     }
     
+
     Mem.Free(pCoFmT);
-    if (maxPout < latsum.screen) {
+    if (maxPout < latsum.Rscreen) {
       break;
     }
   }
@@ -179,74 +182,89 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
   Mem.Alloc(pReciprocalSum, (L+1)*(L+2)/2);
 
   double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
-  double screen = latsum.screen;
+  double screen = latsum.Kscreen;
 
-  //this will work for all rho that are above the Et2Rho in coulomb kernel
+  //this will work for all rho that are larger the Et2Rho in coulomb kernel
 
   ksumTime1.start();
 
   if (kernel->getname() == coulombKernel) {
-    //for (int i=0; i<(L+1)*(L+2)/2; i++)
-    //pReciprocalSum[i] = 0.0 ;
-    ksumKsum.start();
+
     int T1 = latsum.indexCenter(*pA);
     int T2 = latsum.indexCenter(*pC);
     int T = T1 == T2 ? 0 : max(T1, T2)*(max(T1, T2)+1)/2 + min(T1, T2);
+
+    if (T >= latsum.KSumIdx.size()) return;
+    else if (L >= latsum.KSumIdx[T].size()) return;
+
     int startIdx = latsum.KSumIdx[T][L];
-    for (int i=0; i<(L+1)*(L+2)/2; i++)
-      pReciprocalSum[i] = latsum.KSumVal[startIdx+i] ;
-
-    ksumKsum.stop();
-    
-    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
-    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
-      double CoAC = 0;
-      double bkgrnd = 0.0;
-      for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
-      for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
-      {
-        double
-            Alpha = pA->exponents[iExpA],
-            Gamma = pC->exponents[iExpC],
-            InvEta = 1./(Alpha + Gamma),
-            Rho = (Alpha * Gamma)*InvEta; 
-        
-        if (Rho <= Eta2Rho) continue;
-        
-        double Eta = sqrt(Eta2Rho/Rho);
-        double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
-        double Eta2rho = Eta2Rho;
-        
-        double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];
-        scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume;
-        
-        CoAC += pC->contractions(iExpC, iCoC) *
-            pA->contractions(iExpA, iCoA) * scale;
-        
-        if (LA == 0 && LC == 0)
-          bkgrnd +=   pC->contractions(iExpC, iCoC) *
-            pA->contractions(iExpA, iCoA) *
-              M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
-              * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
-        
+    if (startIdx != -1) {
+      ksumKsum.start();
+      for (int i=0; i<(L+1)*(L+2)/2; i++) {
+        pReciprocalSum[i] = latsum.KSumVal[startIdx+i] ;
       }
+      ksumKsum.stop();
+    
+      for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+        for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+          double CoAC = 0;
+          double bkgrnd = 0.0;
+          for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+            for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+            {
+              double
+                  Alpha = pA->exponents[iExpA],
+                  Gamma = pC->exponents[iExpC],
+                  InvEta = 1./(Alpha + Gamma),
+                  Rho = (Alpha * Gamma)*InvEta; 
 
-      Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
-           pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
-      if (LA == 0 && LC == 0)
-        Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
-             &bkgrnd, -1., (TotalLab+1)*(TotalLab+2)/2);
+              if (Rho <= Eta2Rho) continue;
+              double Eta = sqrt(Eta2Rho/Rho);
+              double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
+              double Eta2rho = Eta2Rho;
+        
+              double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];
+              scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume;
+        
+              CoAC += pC->contractions(iExpC, iCoC) *
+                  pA->contractions(iExpA, iCoA) * scale;
+        
+              if (LA == 0 && LC == 0)
+                bkgrnd +=   pC->contractions(iExpC, iCoC) *
+                    pA->contractions(iExpA, iCoA) *
+                    M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
+                    * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
+        
+            }
 
+	  ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+               pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
+          if (LA == 0 && LC == 0)
+	    ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+                 &bkgrnd, -1., (TotalLab+1)*(TotalLab+2)/2);
+        }
     }
+
   }
 
   ksumTime1.stop();
-  
+  //Mem.Free(pReciprocalSum);
+  //return;
+
   ksumTime2.start();
   //now go back to calculating contribution from reciprocal space
   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
   {
+    double maxContraction = 0;
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+      double CoAC = pC->contractions(iExpC, iCoC) *
+          pA->contractions(iExpA, iCoA);
+      if (fabs(maxContraction) < fabs(CoAC))
+        maxContraction = fabs(CoAC);
+    }
+    
     double
         Alpha = pA->exponents[iExpA],
         Gamma = pC->exponents[iExpC],
@@ -284,16 +302,16 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
                                          0., 0., 0., Tx, Ty, Tz, expVal, scale);
     }
     
-    for (int k=0; k<latsum.Kdist.size(); k++) {
+    for (int k=1; k<latsum.Kdist.size(); k++) {
       double expVal = kernel->getValueKSpace(latsum.Kdist[k], 1.0, Eta2rho);
-      
+
       double maxG = getHermiteReciprocal(L, pReciprocalSum,
                                          latsum.Kcoord[3*k+0],
                                          latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
                                          Tx, Ty, Tz,
                                          expVal, scale);
       
-      if (abs(maxG * scale * expVal) < screen ) {
+      if (abs(maxG * scale * expVal * maxContraction) < screen ) {
         break;
       }
     }      
@@ -306,14 +324,13 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
           * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
     }
     
-    //cout <<"bkgrnd "<< pReciprocalSum[0]<<endl;
     
     for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
     for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
       double CoAC = pC->contractions(iExpC, iCoC) *
           pA->contractions(iExpA, iCoA);
 
-      Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
+      ct::Add2(&pOutR[(TotalLab+1)*(TotalLab+2)/2*(iCoA + pA->nCo*iCoC)],
            pReciprocalSum, CoAC, (TotalLab+1)*(TotalLab+2)/2);
     }
   }
@@ -324,8 +341,109 @@ void makeReciprocalSummation(double *&pOutR, unsigned &TotalCo, BasisShell *pA, 
 }
 
 
+void makeReciprocalSummation2(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Tx, double Ty, double Tz, double Prefactor,   double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
+{
+  int LA = pA->l, LC = pC->l;
 
-void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
+  double *pReciprocalSum;
+  Mem.Alloc(pReciprocalSum, (2*LA+1)*(2*LC+1));
+  double *pSpha, *pSphb;
+  Mem.Alloc(pSpha, ((LA+1)*(LA+1)));
+  Mem.Alloc(pSphb, ((LC+1)*(LC+1)));
+
+  double Eta2Rho = kernel->getname() == coulombKernel ? latsum.Eta2RhoCoul : latsum.Eta2RhoOvlp;
+  double screen = latsum.Kscreen;
+  
+  ksumTime2.start();
+  //now go back to calculating contribution from reciprocal space
+  for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+  for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+  {
+    double maxContraction = 0;
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+      double CoAC = pC->contractions(iExpC, iCoC) *
+          pA->contractions(iExpA, iCoA);
+      if (fabs(maxContraction) < fabs(CoAC))
+        maxContraction = fabs(CoAC);
+    }
+    
+    double
+        Alpha = pA->exponents[iExpA],
+        Gamma = pC->exponents[iExpC],
+        InvEta = 1./(Alpha + Gamma),
+        Rho = (Alpha * Gamma)*InvEta; // = (Alpha * Gamma)*/(Alpha + Gamma)
+    
+    //if (Rho < latsum.Kdist[0]/120) continue;
+    
+    double Eta = Rho <= Eta2Rho ? 1. : sqrt(Eta2Rho/Rho);
+    double Omega = Rho <= Eta2Rho ? 1.0e9 : sqrt(Rho * Eta * Eta /(1. - Eta * Eta)) ; 
+    double Eta2rho = Eta * Eta * Rho;
+
+    //coulomb kernel always includes reciprocal space summations
+    //if (Rho > Eta2Rho && kernel->getname() != coulombKernel) continue; 
+    if (Rho > Eta2Rho ) continue; 
+    else if (Rho <= Eta2Rho &&  kernel->getname() != coulombKernel) Eta2rho = Rho;
+
+    double scale = Prefactor * pInv2Gamma[iExpC] * pInv2Alpha[iExpA];    
+    if (kernel->getname() == coulombKernel)
+      scale *= M_PI*M_PI*M_PI*M_PI/pow(Alpha*Gamma, 1.5)/ latsum.RVolume; 
+    else if (kernel->getname() != coulombKernel)
+      scale *= pow(M_PI*M_PI/Alpha/Gamma, 1.5)/latsum.RVolume;
+    
+
+
+    for (int i=0; i<(2*LA+1)*(2*LC+1); i++)
+      pReciprocalSum[i] = 0.0;
+    
+    
+    //this is ugly, in coulomb kernel the G=0 term is discarded but not in others
+    if (kernel->getname() == overlapKernel) {
+      double expVal = kernel->getValueKSpace(0, 1.0, Eta2rho);
+      double maxG = getSphReciprocal(LA, LC, pReciprocalSum, pSpha, pSphb,
+                                         0., 0., 0., Tx, Ty, Tz, expVal, scale);
+    }
+    int nterms = 0;
+    for (int k=1; k<latsum.Kdist.size(); k++) {
+      double expVal = kernel->getValueKSpace(latsum.Kdist[k], 1.0, Eta2rho);
+      
+      double maxG = getSphReciprocal(LA, LC, pReciprocalSum, pSpha, pSphb,
+                                     latsum.Kcoord[3*k+0],
+                                     latsum.Kcoord[3*k+1], latsum.Kcoord[3*k+2],
+                                     Tx, Ty, Tz,
+                                     expVal, scale);
+      nterms++;
+      if (abs(maxG * scale * expVal * maxContraction) < screen ) {
+        break;
+      }
+    }      
+    //cout << nterms<<endl;
+    //the background term, only applies to coulomb kernel
+    //if (!(Rho <= Eta2Rho) && LA == 0 && LC == 0 && kernel->getname() == coulombKernel) {
+    if ( LA == 0 && LC == 0 && kernel->getname() == coulombKernel) {
+      pReciprocalSum[0] -= M_PI * 16.*M_PI*M_PI * tgamma((LA+3)/2.)/(2. * pow(Alpha,0.5*(LA+3)))
+          * tgamma((LC+3)/2.)/(2. * pow(Gamma,0.5*(LC+3)))/Omega/Omega/ latsum.RVolume;
+    }
+    
+
+    int Nterms = (2*LA+1)*(2*LC+1);
+    for (uint iCoC = 0; iCoC < pC->nCo; ++ iCoC)
+    for (uint iCoA = 0; iCoA < pA->nCo; ++ iCoA) {
+      double CoAC = pC->contractions(iExpC, iCoC) *
+          pA->contractions(iExpA, iCoA);
+      ct::Add2(&pOutR[Nterms*(iCoA + pA->nCo*iCoC)],
+           pReciprocalSum, CoAC, Nterms);
+    }
+  }
+  ksumTime2.stop();
+
+  
+  Mem.Free(pReciprocalSum);
+}
+
+
+
+void Int2e2c_EvalCoShY(double *&pOutR, double *&pOutK, unsigned &TotalCo, BasisShell *pA, BasisShell *pC, double Prefactor,   unsigned TotalLab, double* pInv2Alpha, double* pInv2Gamma, Kernel* kernel, LatticeSum& latsum, ct::FMemoryStack& Mem)
 {
   //CHANGE THIS to minimum distance between A and periodic image of C
   double Tx, Ty, Tz;
@@ -342,6 +460,7 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   makeRealSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
   realSumTime.stop();
 
+
   kSumTime.start();
   Tx = pA->Xcoord - pC->Xcoord;
   Ty = pA->Ycoord - pC->Ycoord;
@@ -349,7 +468,6 @@ void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA, BasisS
   makeReciprocalSummation(pOutR, TotalCo, pA, pC, Tx, Ty, Tz, Prefactor, TotalLab, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
   kSumTime.stop();
 
-  
 }
 
 void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
@@ -359,30 +477,31 @@ void EvalInt2e2c( double *pOut, size_t StrideA, size_t StrideC,
 {
    uint
       lc = pC->l, la = pA->l,
-      TotalCo;
+       TotalCo = pA->nCo * pC->nCo;
 
    //we will need these in both the real and reciprocal space summations
    double
        *pInv2Alpha, *pInv2Gamma;
    Mem.Alloc(pInv2Alpha, pA->nFn);
    Mem.Alloc(pInv2Gamma, pC->nFn);  
-   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA)
+
+   for (uint iExpA = 0; iExpA < pA->nFn; ++ iExpA) {
      pInv2Alpha[iExpA] = bool(pA->l)? std::pow(+1.0/(2*pA->exponents[iExpA]), (int)pA->l) : 1.;
-   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC)
+   }
+   for (uint iExpC = 0; iExpC < pC->nFn; ++ iExpC) {
      pInv2Gamma[iExpC] = bool(pC->l)? std::pow(-1.0/(2*pC->exponents[iExpC]), (int)pC->l) : 1.;
+   }
   
 
    double
-      *pDataR, *pR1, *pFinal;
+     *pDataR, *pR1, *pFinal, *pDataK;
    
-   Int2e2c_EvalCoShY(pDataR, TotalCo, pA, pC, Prefactor, la + lc, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
-
+   Int2e2c_EvalCoShY(pDataR, pDataK, TotalCo, pA, pC, Prefactor, la + lc, pInv2Alpha, pInv2Gamma, kernel, latsum, Mem);
    Mem.Alloc(pR1, nCartY(la)*(2*lc+1) * TotalCo);
    Mem.Alloc(pFinal, (2*la+1)*(2*lc+1) * TotalCo);
 
    ShTrA_YY(pR1, pDataR, lc, (la + lc), TotalCo);
    ShTrA_YY(pFinal, pR1, la, la, (2*lc + 1)*TotalCo);
-   // now: (2*la+1) x (2*lc+1) x nCoA x nCoC
 
    Scatter2e2c(pOut, StrideA, StrideC, pFinal, la, lc, 1, pA->nCo, pC->nCo, Add);
 
@@ -410,4 +529,79 @@ void Scatter2e2c(double * pOut, size_t StrideA, size_t StrideC,
                   pOut[(iShA + nShA*iCoA)*StrideA + (iShC + nShC*iCoC)*StrideC]
                       = pIn[iShA + nShA * (iShC + nShC * nComp *(iCoA + nCoA * iCoC))];
    }
+}
+
+
+void TwoCenterIntegrals(std::vector<int>& shls, BasisSet& basis, Kernel& kernel, std::vector<double>& Lattice, vector<int>& kpoints, ct::FMemoryStack2& Mem) {
+
+  int Lx = kpoints[0], Ly = kpoints[1], Lz = kpoints[2];
+  int nL = Lx*Ly*Lz;
+  //displacements
+  vector<double> Lvecs(3*nL);
+
+  //copy it so some of the shells can be displaced
+  BasisSet Basis2 = basis;
+  Basis2.BasisShells.insert(Basis2.BasisShells.end(), basis.BasisShells.begin(),
+			    basis.BasisShells.end());
+
+  vector<int> Shls(4,0);
+  Shls[0]=shls[4]; Shls[1]=shls[5]; //shls[4] to shls[5]
+  Shls[2]=shls[4]+basis.BasisShells.size(); Shls[3]=shls[5]+basis.BasisShells.size();
+  
+  //make the supercell lattice
+  vector<double> LatticeSuper = Lattice;
+  LatticeSuper[0] = Lattice[0] * Lx; LatticeSuper[1] = Lattice[1] * Lx; LatticeSuper[2] = Lattice[2] * Lx;
+  LatticeSuper[3] = Lattice[3] * Ly; LatticeSuper[4] = Lattice[4] * Ly; LatticeSuper[5] = Lattice[5] * Ly;
+  LatticeSuper[6] = Lattice[6] * Lz; LatticeSuper[7] = Lattice[7] * Lz; LatticeSuper[8] = Lattice[8] * Lz;
+
+
+  int index = 0;
+  for (int i=0; i<Lx; i++)
+  for (int j=0; j<Ly; j++)
+  for (int k=0; k<Lz; k++)
+  {
+    Lvecs[3*index + 0] = i * Lattice[0] + j * Lattice[3] + k * Lattice[6];
+    Lvecs[3*index + 1] = i * Lattice[1] + j * Lattice[4] + k * Lattice[7];
+    Lvecs[3*index + 2] = i * Lattice[2] + j * Lattice[5] + k * Lattice[8];
+    index++;
+  }
+
+  int nbas = basis.getNbas(shls[5]) - basis.getNbas(shls[4]);
+  vector<double> integrals(nbas*nbas);
+
+  for (int l=0; l<nL; l++) {
+    Basis2.moveCenter(&Lvecs[3*l], 1.0, Shls[2], Shls[3]);
+
+    latticeSumTime.start();
+    LatticeSum latsum(&LatticeSuper[0], 1, 8, Mem, Basis2, 5., 30.0,
+		      1.e-11, 1e-11, true, false) ;
+    latticeSumTime.stop();
+    
+    int inbas = 0, jnbas = 0, nbas1, nbas2;
+    for (int sh1 = Shls[0] ; sh1 <Shls[1]; sh1++) {
+      nbas1 = Basis2.BasisShells[sh1].nCo * (2 * Basis2.BasisShells[sh1].l + 1);
+      jnbas = 0;
+
+      for (int sh2 = Shls[2] ; sh2 <Shls[3]; sh2++) {
+	if (sh2 - Shls[2] > sh1 - Shls[0]) continue;
+	
+	BasisShell *pB = &Basis2.BasisShells[sh2];
+
+	nbas2 = Basis2.BasisShells[sh2].nCo * (2 * Basis2.BasisShells[sh2].l + 1);
+	
+	EvalInt2e2c(&integrals[inbas + jnbas * nbas], 1, nbas, &Basis2.BasisShells[sh1],
+		    &Basis2.BasisShells[sh2], 1.0, false, &kernel, latsum, Mem);
+	jnbas += nbas2;
+
+
+      }
+      inbas += nbas1;
+    }
+    Basis2.moveCenter(&Lvecs[3*l], -1.0, Shls[2], Shls[3]);
+
+    string name = boost::str(format("j2c-%i.dat") %(l)) ;
+    ofstream file(name.c_str(), ios::binary);
+    file.write(reinterpret_cast<char*>(&integrals[0]), integrals.size()*sizeof(double));
+    file.close();
+  }
 }

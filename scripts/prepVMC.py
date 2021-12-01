@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import h5py
 from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
 #from pyscf.shciscf import shci, settings
 from pyscf import lo
@@ -8,6 +9,7 @@ import sys
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
+
 
 def doRHF(mol):
   mf = scf.RHF(mol)
@@ -219,6 +221,44 @@ def prepValence(mol, ncore, nact, occ=None, loc="iao", dm=None, writeFcidump=Tru
   print(gmf.kernel(dm0 = dm))
   if writeMOs:
     writeMat(gmf.mo_coeff, "hf.txt", False)
+
+# write cholesky integrals
+def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
+                        filename='FCIDUMP_chol'):
+    assert len(chol.shape) == 2
+    with h5py.File(filename, 'w') as fh5:
+        fh5['header'] = np.array([nelec, nmo, ms, chol.shape[0]])
+        fh5['hcore'] = hcore.flatten()
+        fh5['hcore_mod'] = hcore_mod.flatten()
+        fh5['chol'] = chol.flatten()
+        fh5['energy_core'] = enuc
+
+# write ccsd amplitudes
+def write_ccsd(singles, doubles, rotation=None, filename='ccsd.h5'):
+  doubles = np.transpose(doubles, (0, 2, 1, 3)).reshape((singles.size, singles.size))
+  if rotation is None:
+    rotation = np.eye(sum(singles.shape))
+  with h5py.File(filename, 'w') as fh5:
+    fh5['singles'] = singles.flatten()
+    fh5['doubles'] = doubles.flatten()
+    fh5['rotation'] = rotation.flatten()
+
+
+# write uccsd amplitudes
+# NB: change from pyscf order for doubles { uu, ud, dd } -> { uu, dd, ud }
+def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
+  doubles0 = np.transpose(doubles[0], (0, 2, 1, 3)).reshape((singles[0].size, singles[0].size))
+  doubles1 = np.transpose(doubles[2], (0, 2, 1, 3)).reshape((singles[1].size, singles[1].size))
+  doubles2 = np.transpose(doubles[1], (0, 2, 1, 3)).reshape((singles[0].size, singles[1].size))
+  if rotation is None:
+    rotation = np.eye(sum(singles[0].shape))
+  with h5py.File(filename, 'w') as fh5:
+    fh5['singles0'] = singles[0].flatten()
+    fh5['singles1'] = singles[1].flatten()
+    fh5['doubles0'] = doubles0.flatten()
+    fh5['doubles1'] = doubles1.flatten()
+    fh5['doubles2'] = doubles2.flatten()
+    fh5['rotation'] = rotation.flatten()
 
 # for tilted hubbard model
 def findSiteInUnitCell(newsite, size, latticeVectors, sites):

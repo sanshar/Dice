@@ -30,6 +30,7 @@
 #include "Pfaffian.h"
 #include "CPS.h"
 #include "Jastrow.h"
+#include "SJastrow.h"
 #include "Gutzwiller.h"
 #include "RBM.h"
 #include "JRBM.h"
@@ -1134,6 +1135,103 @@ class WalkerHelper<Jastrow>
     return ratio;
   }
 };  
+
+
+template<>
+class WalkerHelper<SJastrow>
+{
+ public:
+  std::vector<double> intermediateForEachOrb;
+  VectorXi occ;
+
+  WalkerHelper() {};
+  WalkerHelper(SJastrow& cps, const Determinant& d) {
+    int norbs = Determinant::norbs;
+    intermediateForEachOrb.resize(norbs);
+    initHelper(cps, d);
+  }
+
+  void initHelper(SJastrow& cps, const Determinant& d) {
+    int norbs = Determinant::norbs;
+    vector<int> closed;
+    vector<int> open;
+    d.getOpenClosed(open, closed);
+    occ = VectorXi::Zero(norbs);
+    for (int i = 0; i < closed.size(); i++) occ[closed[i]/2]++;
+    
+    for (int i = 0; i < norbs; i++) {
+      intermediateForEachOrb[i] = 0.;
+      for (int j = 0; j < norbs; j++)
+        if (j != i) intermediateForEachOrb[i] += cps(i, j) * occ[j];
+    }
+  }
+  
+  void updateHelper(SJastrow& cps, const Determinant& d, int i, int a, bool sz) {
+    int norbs = Determinant::norbs;
+    for (int l = 0; l < norbs; l++) 
+      intermediateForEachOrb[l] += (cps(l, a) - cps(l, i));
+    intermediateForEachOrb[i] += cps(i, i);
+    intermediateForEachOrb[a] -= cps(a, a);
+    occ[i] -= 1;
+    occ[a] += 1;
+  }
+  
+  void updateHelper(SJastrow& cps, const Determinant& d, int i, int j, int a, int b, bool sz) {
+    int norbs = Determinant::norbs;
+    for (int l = 0; l < norbs; l++) 
+      intermediateForEachOrb[l] += (cps(l, a) + cps(l, b) - cps(l, i) - cps(l, j));
+    intermediateForEachOrb[i] += cps(i, i);
+    intermediateForEachOrb[a] -= cps(a, a);
+    intermediateForEachOrb[j] += cps(j, j);
+    intermediateForEachOrb[b] -= cps(b, b);
+    occ[i] -= 1;
+    occ[j] -= 1;
+    occ[a] += 1;
+    occ[b] += 1;
+  }
+
+
+  double OverlapRatio(int i, int a, const SJastrow& cps,
+                      const Determinant &dcopy, const Determinant &d) const
+  {
+    return exp(intermediateForEachOrb[a/2] - cps(i/2, a/2) - intermediateForEachOrb[i/2] + (2 * occ[a/2] + 1) * cps(a/2, a/2) - (2 * occ[i/2] - 1) * cps(i/2, i/2));
+  }
+  
+  double OverlapRatio(int i, int j, int a, int b, const SJastrow& cps,
+                      const Determinant &dcopy, const Determinant &d) const 
+  {
+    //VectorXi occCopy = occ;
+    //vector<double> intCopy = intermediateForEachOrb;
+    double exponent = intermediateForEachOrb[a/2] - cps(i/2, a/2) - intermediateForEachOrb[i/2] + (2 * occ[a/2] + 1) * cps(a/2, a/2) - (2 * occ[i/2] - 1) * cps(i/2, i/2);
+    double intCopyj = intermediateForEachOrb[j/2];
+    double intCopyb = intermediateForEachOrb[b/2];
+    int occCopyj = occ[j/2];
+    int occCopyb = occ[b/2];
+    //occCopy[i/2]--; occCopy[a/2]++;
+    //intCopy[j/2] += cps(j/2, a/2) - cps(j/2, i/2);
+    //intCopy[b/2] += cps(b/2, a/2) - cps(b/2, i/2);
+    intCopyj += cps(j/2, a/2) - cps(j/2, i/2);
+    intCopyb += cps(b/2, a/2) - cps(b/2, i/2);
+    //if (i/2 == j/2) intCopy[j/2] += cps(i/2, i/2);
+    //if (a/2 == j/2) intCopy[j/2] -= cps(a/2, a/2);
+    //if (i/2 == b/2) intCopy[b/2] += cps(i/2, i/2);
+    //if (a/2 == b/2) intCopy[b/2] -= cps(a/2, a/2);
+    if (i/2 == j/2) { intCopyj += cps(i/2, i/2); occCopyj--; }
+    if (a/2 == j/2) { intCopyj -= cps(a/2, a/2); occCopyj++; }
+    if (i/2 == b/2) { intCopyb += cps(i/2, i/2); occCopyb--; }
+    if (a/2 == b/2) { intCopyb -= cps(a/2, a/2); occCopyb++; }
+    //exponent += intCopy[b/2] - cps(j/2, b/2) - intCopy[j/2] + (2 * occCopy[b/2] + 1) * cps(b/2, b/2) - (2 * occCopy[j/2] - 1) * cps(j/2, j/2);
+    exponent += intCopyb - cps(j/2, b/2) - intCopyj + (2 * occCopyb + 1) * cps(b/2, b/2) - (2 * occCopyj - 1) * cps(j/2, j/2);
+
+    return exp(exponent);
+  }
+  
+  double OverlapRatio(const std::array<unordered_set<int> , 2> &from, const std::array<unordered_set<int> , 2> &to, const SJastrow& cps) const
+  {
+    return 0.;
+  }
+};  
+
 
 template<>
 class WalkerHelper<Gutzwiller>

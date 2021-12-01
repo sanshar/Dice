@@ -1,8 +1,11 @@
 {
+  "system":
+  {
+    "numAct": 4
+  },
   "wavefunction":
   {
     "name": "scpt",
-    "numAct": "4",
     "determinants": "dets",
     "detsInCAS": "false"
   },

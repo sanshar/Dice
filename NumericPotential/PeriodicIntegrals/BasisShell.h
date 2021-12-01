@@ -36,7 +36,11 @@ struct BasisShell
   double fCo(unsigned iExp, unsigned iCo) { return contractions(iExp, iCo); }
   double fExp(unsigned iExp) { return exponents[iExp]; }
   void PrintAligned(std::ostream &xout, uint Indent) const;
-  
+  size_t numFuns() const {return nCo * (2 * l + 1);}
+  size_t numPrimitiveFuns() const {return nFn * (2 * l + 1);}
+  size_t nSh() const {return (2 * l + 1);}
+  void basisnormTodensitynorm();
+  void densitynormTobasisnorm();
 };
 
 struct BasisSet
@@ -50,6 +54,12 @@ struct BasisSet
     xout << endl;
   }
   int getNbas();
+  int getNbas(int shlIndex);
+  int getNPrimitivebas(int shlIndex);
+  void basisnormTodensitynorm(int start, int end);
+  void densitynormTobasisnorm(int start, int end);
+  void moveCenter(double* pos, double scale, int shls0, int shls1);
 };
 
+double RawGaussProdNorm(double fExp1, unsigned l1, double fExp2, unsigned l2);
 double RawGaussNorm(double fExp, unsigned l);

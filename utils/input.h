@@ -44,6 +44,7 @@ private:
       & tol & correlatorFiles
       & fullRestart
       & wavefunctionType
+      & integralsFile
       & ghfDets
       & numResonants
       & singleJastrow
@@ -139,6 +140,22 @@ private:
       & expApprox
       & printAnnihilStats
 
+      // dqmc
+      & dt
+      & nsteps
+      & eneSteps
+      & errorTargets
+      & fieldStepsize
+      & measureFreq
+      & orthoSteps
+      & ene0Guess
+      & numJastrowSamples
+      & choleskyThreshold
+      & ciThreshold
+      & leftWave
+      & rightWave
+      & ndets
+      & phaseless
       // Options related to SC-NEVPT(s):
       & numSCSamples
       & printSCNorms
@@ -167,7 +184,10 @@ private:
       & fixedResTimeNEVPT_Ene
       & fixedResTimeNEVPT_Norm
       & resTimeNEVPT_Ene
-      & resTimeNEVPT_Norm;
+      & resTimeNEVPT_Norm
+      & ngrid
+      & printFrequency
+      & sampleDeterminants;
   }
 public:
 //General options
@@ -180,6 +200,11 @@ public:
   bool ifComplex;                        // breaks and restores complex conjugation symmetry
   bool uagp;                             // brakes S^2 symmetry in uagp
   bool ciCeption;                        // true, when using ci on top of selectedCI
+  
+  // system options
+  std::string integralsFile;            // file containing intergrals, could be text or hdf5 
+  int nciCore;                          // number of core spatial orbitals
+  int nciAct;                           // number of active spatial orbitals, assumed to be the first in the basis
 
 //input file to define the correlator parts of the wavefunction
   std::string wavefunctionType;
@@ -296,14 +321,13 @@ public:
   //options for configuration interaction
   int excitationLevel;
   int numActive; //number of active spatial orbitals, assumed to be the first in the basis
-  int nciCore; //number of core spatial orbitals
-  int nciAct; //number of active spatial orbitals, assumed to be the first in the basis
   bool usingFOIS; // Is this is a MRCI/MRPT calculation, sampling the FOIS only
   double actWidth; //used in lanczos
   double lanczosEpsilon; //used in lanczos
   double overlapCutoff; //used in SCCI
   std::string diagMethod;
   double powerShift;
+  double ciThreshold;
 
   // Options for FCIQMC
   int maxIterFCIQMC;
@@ -342,6 +366,24 @@ public:
   //options for rbm
   int numHidden;
 
+  // options for dqmc
+  size_t nsteps;
+  std::vector<int> eneSteps;
+  std::vector<double> errorTargets;
+  double dt;
+  double fieldStepsize;
+  size_t measureFreq;
+  size_t orthoSteps;
+  double ene0Guess;
+  size_t numJastrowSamples;
+  int ngrid;
+  size_t printFrequency;
+  int sampleDeterminants;
+  double choleskyThreshold;
+  std::string leftWave;
+  std::string rightWave;
+  size_t ndets;
+  bool phaseless;
 };
 
 /**
@@ -374,6 +416,8 @@ void readMat(Eigen::MatrixXd& mat, std::string fileName);
 
 void readMat(Eigen::MatrixXcd& mat, std::string fileName);
 
+void writeMat(Eigen::MatrixXcd& mat, std::string fileName);
+
 void readInput(const std::string inputFile, schedule& schd, bool print=true);
 
 /**
@@ -405,14 +449,41 @@ void readCorrelator(const std::pair<int, std::string>& p,
 void readDeterminants(std::string input, std::vector<Determinant>& determinants,
         std::vector<double>& ciExpansion);
 
-//reads determinants from Dice, for now assumes rhf dets and converts them into ghf = block_diag(rhf, rhf) 
-//the reference determinant, assumed to be the first in the file, is read in as a list of integers
-//the rest are stored as excitations from ref
-//assumes Dice parity included ci coeffs
-//the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
+// for vmc
+// reads determinants from Dice, for now assumes rhf dets and converts them into ghf = block_diag(rhf, rhf) 
+// the reference determinant, assumed to be the first in the file, is read in as a list of integers
+// the rest are stored as excitations from ref
+// assumes Dice parity included in ci coeffs
+// the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
 void readDeterminants(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
 
+
 void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<int>& open, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<int>& ciParity, std::vector<double>& ciCoeffs);
+
+
+// for dqmc
+// reads determinants from Dice, uses uhf dets
+// the reference determinant, assumed to be the first in the file, is read in as a list of integers
+// the rest are stored as excitations from ref
+// assumes Dice parity included in ci coeffs
+// the parity vector in the function arguments refers to parity of excitations required when using matrix det lemma
+void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
+
+// same as above but for binary files
+void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
+
+
+void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM);
+
+
+// reads ccsd amplitudes
+void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "ccsd.h5");
+
+
+// reads uccsd amplitudes
+void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 3>& doubles, Eigen::MatrixXd& basisRotation, std::string fname = "uccsd.h5");
 #endif

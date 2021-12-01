@@ -29,6 +29,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include "hdf5.h"
 
 
 #ifndef SERIAL
@@ -45,21 +46,24 @@ using namespace std;
 
 void readInput(string inputFile, schedule& schd, bool print) {
   if (commrank == 0) {
-    if (print)	{
-      cout << "**************************************************************" << endl;
-      cout << "Input file  :" << endl;
-      cout << "**************************************************************" << endl;
-    }
-    
     property_tree::iptree input;
     property_tree::read_json(inputFile, input);
     
     //print input file
-    stringstream ss;
-    property_tree::json_parser::write_json(ss, input);
-    cout << ss.str() << endl;
+    if (print)	{
+      cout << "**************************************************************" << endl;
+      cout << "Input file  :" << endl;
+      cout << "**************************************************************" << endl;
+      stringstream ss;
+      property_tree::json_parser::write_json(ss, input);
+      cout << ss.str() << endl;
+    }
 
-
+    // system options
+    schd.integralsFile = input.get("system.integrals", "FCIDUMP");
+    schd.nciCore = input.get("system.numCore", 0);                  // TODO: rename these because active spaces are also used without ci
+    schd.nciAct = input.get("system.numAct", -1);
+    
     //minimal checking for correctness
     //wavefunction
     schd.wavefunctionType = algorithm::to_lower_copy(input.get("wavefunction.name", "jastrowslater"));
@@ -79,6 +83,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     
     //jastrow multislater
     schd.ghfDets = input.get("wavefunction.ghfDets", false);
+    schd.ciThreshold = input.get("wavefunction.ciThreshold", 1.e-5);
 
     //resonating wave function
     schd.numResonants = input.get("wavefunction.numResonants", 1);
@@ -89,8 +94,6 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.numPermutations = input.get("wavefunction.numPermutations", 1);
 
     //ci and lanczos
-    schd.nciCore = input.get("wavefunction.numCore", 0);
-    schd.nciAct = input.get("wavefunction.numAct", -1);
     schd.usingFOIS = false;
     schd.overlapCutoff = input.get("wavefunction.overlapCutoff", 1.e-5);
     if (schd.wavefunctionType == "sci") schd.ciCeption = true;
@@ -148,6 +151,40 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.resTimeNEVPT_Norm = input.get("sampling.resTimeNEVPT_Norm", 5.0);
     schd.CASEnergy = input.get("sampling.CASEnergy", 0.0);
 
+    // dqmc
+    schd.nsteps = input.get("sampling.nsteps", 10);
+    child = input.get_child_optional("sampling.eneSteps");
+    if (child) {
+      for (property_tree::iptree::value_type &eneSteps : input.get_child("sampling.eneSteps")) {
+        schd.eneSteps.push_back(stoi(eneSteps.second.data()) - 1);
+      }
+    }
+    else {
+      schd.eneSteps =  { int(0.4*schd.nsteps) - 1, int(0.6*schd.nsteps) - 1, int(0.8*schd.nsteps) - 1, int(schd.nsteps - 1) };
+    }
+    child = input.get_child_optional("sampling.errorTargets");
+    if (child) {
+      for (property_tree::iptree::value_type &errorTargets : input.get_child("sampling.errorTargets")) {
+        schd.errorTargets.push_back(stof(errorTargets.second.data()));
+      }
+    }
+    else {
+      for (int i = 0; i < schd.eneSteps.size(); i++) schd.errorTargets.push_back(1.5e-3);
+    }
+    schd.printFrequency = input.get("sampling.printFreq", 100);
+    schd.dt = input.get("sampling.dt", 0.1);
+    schd.fieldStepsize = input.get("sampling.stepsize", 0.1);
+    schd.measureFreq = input.get("sampling.measureFreq", 10);
+    schd.orthoSteps = input.get("sampling.orthoSteps", 50);
+    schd.ene0Guess = input.get("sampling.ene0Guess", 1e10); // assuming ground state energy will not be 1e10
+    schd.numJastrowSamples = input.get("sampling.numJastrowSamples", 50);
+    schd.ngrid = input.get("sampling.ngrid", 1);
+    schd.sampleDeterminants = input.get("sampling.sampleDeterminants", -1);
+    schd.choleskyThreshold = input.get("sampling.choleskyThreshold", 0.005);
+    schd.leftWave = algorithm::to_lower_copy(input.get("wavefunction.left", "rhf"));
+    schd.rightWave = algorithm::to_lower_copy(input.get("wavefunction.right", "rhf"));
+    schd.ndets = input.get("wavefunction.ndets", 1e6);
+    schd.phaseless = input.get("sampling.phaseless", false);
     
     // GFMC
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -337,6 +374,15 @@ void readMat(MatrixXd& mat, std::string fileName)
   for (int i = 0; i < mat.rows(); i++) {
     for (int j = 0; j < mat.cols(); j++){
       dump >> mat(i, j);
+    }
+  }
+}
+
+void writeMat(MatrixXcd& mat, std::string fileName) {
+  ofstream dump(fileName);
+  for (int i = 0; i < mat.rows(); i++) {
+    for (int j = 0; j < mat.cols(); j++){
+      dump << mat(i, j);
     }
   }
 }
@@ -587,5 +633,457 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<i
         ciExcitations.push_back(excitations);
       }
     }
+  }
+}
+
+
+void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  int nact = norbs;
+  if (schd.nciAct > 0) nact = schd.nciAct;
+  int ncore = 0;
+  if (schd.nciCore > 0) ncore = schd.nciCore;
+  ifstream dump(input.c_str());
+  bool isFirst = true;
+  Determinant refDet;
+  for (int i = 0; i < ncore; i++) {
+    refDet.setoccA(i, true);
+    refDet.setoccB(i, true);
+  }
+  VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
+  
+  while (dump.good()) {
+    std::string Line;
+    std::getline(dump, Line);
+
+    boost::trim_if(Line, boost::is_any_of(", \t\n"));
+    
+    vector<string> tok;
+    boost::split(tok, Line, boost::is_any_of(", \t\n"), boost::token_compress_on);
+
+    if (tok.size() > 2 ) {
+      if (isFirst) {// first det is ref
+        isFirst = false;
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        ciParity.push_back(1);
+        std::array<VectorXi, 2> empty;
+        ciExcitations[0].push_back(empty);
+        ciExcitations[1].push_back(empty);
+        vector<int> closedBeta, openBeta; 
+        for (int i = 0; i < nact; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            refDet.setoccA(ncore + i, true);
+            refDet.setoccB(ncore + i, true);
+            ref[0].push_back(ncore + i);
+            ref[1].push_back(ncore + i);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            refDet.setoccA(ncore + i, true);
+            ref[0].push_back(ncore + i);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            refDet.setoccB(ncore + i, true);
+            ref[1].push_back(ncore + i);
+          }
+        }
+        numDets++;
+        sizes(0) = 1;
+      }
+      else {
+        vector<int> desA, creA, desB, creB;
+        for (int i = 0; i < nact; i++) {
+          if (boost::iequals(tok[1+i], "2")) {
+            if (!refDet.getoccA(ncore + i)) creA.push_back(ncore + i);
+            if (!refDet.getoccB(ncore + i)) creB.push_back(ncore + i);
+          }
+          else if (boost::iequals(tok[1+i], "a")) {
+            if (!refDet.getoccA(ncore + i)) creA.push_back(ncore + i);
+            if (refDet.getoccB(ncore + i)) desB.push_back(ncore + i);
+          }
+          else if (boost::iequals(tok[1+i], "b")) {
+            if (refDet.getoccA(ncore + i)) desA.push_back(ncore + i);
+            if (!refDet.getoccB(ncore + i)) creB.push_back(ncore + i);
+          }
+          else if (boost::iequals(tok[1+i], "0")) {
+            if (refDet.getoccA(ncore + i)) desA.push_back(ncore + i);
+            if (refDet.getoccB(ncore + i)) desB.push_back(ncore + i);
+          }
+        }
+
+        std::array<VectorXi, 2> excitationsA;
+        excitationsA[0] = VectorXi::Zero(creA.size());
+        excitationsA[1] = VectorXi::Zero(desA.size());
+        for (int i = 0; i < creA.size(); i++) {
+          //des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
+          //cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
+          excitationsA[0](i) = desA[i];
+          excitationsA[1](i) = creA[i];
+        }
+
+        std::array<VectorXi, 2> excitationsB;
+        excitationsB[0] = VectorXi::Zero(creB.size());
+        excitationsB[1] = VectorXi::Zero(desB.size());
+        for (int i = 0; i < creB.size(); i++) {
+          //des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
+          //cre[i + creA.size()] = std::search_n(open.begin(), open.end(), 1, creB[i] + norbs) - open.begin();
+          excitationsB[0](i) = desB[i];
+          excitationsB[1](i) = creB[i];
+        }
+        
+        if (creA.size() + creB.size() > schd.excitationLevel) continue;
+        numDets++;
+        ciCoeffs.push_back(atof(tok[0].c_str()));
+        ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
+        ciExcitations[0].push_back(excitationsA);
+        ciExcitations[1].push_back(excitationsB);
+        if (creA.size() + creB.size() < 10) sizes(creA.size() + creB.size())++;
+      }
+    }
+  }
+  if (commrank == 0) {
+    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
+    cout << "Number of determinants " << numDets << endl << endl;
+  }
+}
+
+// same as above but for binary files
+void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<double>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  int nact = norbs;
+  if (schd.nciAct > 0) nact = schd.nciAct;
+  int ncore = 0;
+  if (schd.nciCore > 0) ncore = schd.nciCore;
+  int ndetsDice = 0, norbsDice = 0;
+  ifstream dump(input, ios::binary);
+  dump.read((char*) &ndetsDice, sizeof(int));
+  dump.read((char*) &norbsDice, sizeof(int));
+  bool isFirst = true;
+  Determinant refDet;
+  for (int i = 0; i < ncore; i++) {
+    refDet.setoccA(i, true);
+    refDet.setoccB(i, true);
+  }
+  VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
+  
+  for (int n = 0; n < ndetsDice; n++) {
+    if (isFirst) {// first det is ref
+      isFirst = false;
+      double ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(double));
+      ciCoeffs.push_back(ciCoeff);
+      ciParity.push_back(1);
+      std::array<VectorXi, 2> empty;
+      ciExcitations[0].push_back(empty);
+      ciExcitations[1].push_back(empty);
+      vector<int> closedBeta, openBeta; 
+      for (int i = ncore; i < ncore + norbsDice; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          refDet.setoccA(i, true);
+          refDet.setoccB(i, true);
+          ref[0].push_back(i);
+          ref[1].push_back(i);
+        }
+        else if (detocc == 'a') {
+          refDet.setoccA(i, true);
+          ref[0].push_back(i);
+        }
+        else if (detocc == 'b') {
+          refDet.setoccB(i, true);
+          ref[1].push_back(i);
+        }
+      }
+      numDets++;
+      sizes(0) = 1;
+    }
+    else {
+      double ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(double));
+      vector<int> desA, creA, desB, creB;
+      for (int i = ncore; i < ncore + norbsDice; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          if (!refDet.getoccA(i)) creA.push_back(i);
+          if (!refDet.getoccB(i)) creB.push_back(i);
+        }
+        else if (detocc == 'a') {
+          if (!refDet.getoccA(i)) creA.push_back(i);
+          if (refDet.getoccB(i)) desB.push_back(i);
+        }
+        else if (detocc == 'b') {
+          if (refDet.getoccA(i)) desA.push_back(i);
+          if (!refDet.getoccB(i)) creB.push_back(i);
+        }
+        else if (detocc == '0') {
+          if (refDet.getoccA(i)) desA.push_back(i);
+          if (refDet.getoccB(i)) desB.push_back(i);
+        }
+      }
+
+      std::array<VectorXi, 2> excitationsA;
+      excitationsA[0] = VectorXi::Zero(creA.size());
+      excitationsA[1] = VectorXi::Zero(desA.size());
+      for (int i = 0; i < creA.size(); i++) {
+        //des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
+        //cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
+        excitationsA[0](i) = desA[i];
+        excitationsA[1](i) = creA[i];
+      }
+
+      std::array<VectorXi, 2> excitationsB;
+      excitationsB[0] = VectorXi::Zero(creB.size());
+      excitationsB[1] = VectorXi::Zero(desB.size());
+      for (int i = 0; i < creB.size(); i++) {
+        //des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
+        //cre[i + creA.size()] = std::search_n(open.begin(), open.end(), 1, creB[i] + norbs) - open.begin();
+        excitationsB[0](i) = desB[i];
+        excitationsB[1](i) = creB[i];
+      }
+      
+      if (creA.size() + creB.size() > schd.excitationLevel) continue;
+      if (abs(ciCoeff) < schd.ciThreshold || numDets == schd.ndets) break;
+      numDets++;
+      ciCoeffs.push_back(ciCoeff);
+      ciParity.push_back(refDet.parityA(creA, desA) * refDet.parityB(creB, desB));
+      ciExcitations[0].push_back(excitationsA);
+      ciExcitations[1].push_back(excitationsB);
+      if (creA.size() + creB.size() < 10) sizes(creA.size() + creB.size())++;
+    }
+  }
+  if (commrank == 0) {
+    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
+    cout << "Number of determinants " << numDets << endl << endl;
+  }
+}
+
+void readSpinRDM(std::string fname, Eigen::MatrixXd& oneRDM, Eigen::MatrixXd& twoRDM) {
+  // Read a 2-RDM from the spin-RDM text file output by Dice
+  // Also construct the 1-RDM at the same time
+
+  int nSpinOrbs = 2*Determinant::norbs;
+  int nPairs = nSpinOrbs * nSpinOrbs;
+
+  oneRDM = MatrixXd::Zero(nSpinOrbs, nSpinOrbs);
+  twoRDM = MatrixXd::Zero(nPairs, nPairs);
+
+  ifstream RDMFile(fname);
+  string lineStr;
+  while (getline(RDMFile, lineStr)) {
+    string buf;
+    stringstream ss(lineStr);
+    vector<string> words;
+    while (ss >> buf) words.push_back(buf);
+
+    int a = stoi(words[0]);
+    int b = stoi(words[1]);
+    int c = stoi(words[2]);
+    int d = stoi(words[3]);
+    double elem = stod(words[4]);
+
+    int ind1 = a * nSpinOrbs + b;
+    int ind2 = c * nSpinOrbs + d;
+    int ind3 = b * nSpinOrbs + a;
+    int ind4 = d * nSpinOrbs + c;
+
+    twoRDM(ind1, ind2) = elem;
+    twoRDM(ind3, ind2) = -elem;
+    twoRDM(ind1, ind4) = -elem;
+    twoRDM(ind3, ind4) = elem;
+
+    if (b == d) oneRDM(a,c) += elem;
+    if (b == c) oneRDM(a,d) += -elem;
+    if (a == d) oneRDM(b,c) += -elem;
+    if (a == c) oneRDM(b,d) += elem;
+  }
+
+  int nelec = Determinant::nalpha + Determinant::nbeta;
+
+  // Normalize the 1-RDM
+  for (int a = 0; a < nSpinOrbs; a++) {
+    for (int b = 0; b < nSpinOrbs; b++) {
+      oneRDM(a,b) /= nelec-1;
+    }
+  }
+}
+
+
+// reads ccsd amplitudes
+void readCCSD(Eigen::MatrixXd& singles, Eigen::MatrixXd& doubles, Eigen::MatrixXd& basisRotation, string fname) 
+{
+  int nocc = singles.rows(), nopen = singles.cols();
+  int norbs = nocc + nopen;
+  int nexc = nocc * nopen;
+
+  hid_t file = (-1), dataset_singles, dataset_doubles, dataset_rotation;  /* identifiers */
+  herr_t status;
+
+  H5E_BEGIN_TRY {
+    file = H5Fopen(fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+ 
+  if (file < 0) {
+    if (commrank == 0) cout << "Amplitudes not found!" << endl;
+    exit(0);
+  }
+  
+  double *singlesMem = new double[ nocc * nopen ];
+  for (int i = 0; i < nocc; i++) 
+    for (int j = 0; j < nopen; j++)
+      singlesMem[i * nopen + j] = 0.;
+  dataset_singles = H5Dopen(file, "/singles", H5P_DEFAULT);
+  status = H5Dread(dataset_singles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, singlesMem);
+  for (int i = 0; i < nocc; i++) {
+    for (int j = 0; j < nopen; j++) {
+      singles(i, j) = singlesMem[i * nopen + j];
+    }
+  }
+  delete [] singlesMem;
+ 
+
+  double *rotationMem = new double[ norbs * norbs ];
+  for (int i = 0; i < norbs; i++) 
+    for (int j = 0; j < norbs; j++)
+      rotationMem[i * norbs + j] = 0.;
+  dataset_rotation = H5Dopen(file, "/rotation", H5P_DEFAULT);
+  status = H5Dread(dataset_rotation, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
+  for (int i = 0; i < norbs; i++) {
+    for (int j = 0; j < norbs; j++) {
+      basisRotation(i, j) = rotationMem[i * norbs + j];
+    }
+  }
+  delete [] rotationMem;
+  
+  
+  double *doublesMem = new double[ nexc * nexc ];
+  for (int i = 0; i < nexc; i++) 
+    for (int j = 0; j < nexc; j++)
+      doublesMem[i * nexc + j] = 0.;
+  dataset_doubles = H5Dopen(file, "/doubles", H5P_DEFAULT);
+  status = H5Dread(dataset_doubles, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+  for (int i = 0; i < nexc; i++) {
+    for (int j = 0; j < nexc; j++) {
+      doubles(i, j) = doublesMem[i * nexc + j];
+    }
+  }
+  delete [] doublesMem;
+}
+
+
+// reads uccsd amplitudes
+void readUCCSD(std::array<Eigen::MatrixXd, 2>& singles, std::array<Eigen::MatrixXd, 3>& doubles, Eigen::MatrixXd& basisRotation, std::string fname)
+{
+  int nocc0 = singles[0].rows(), nopen0 = singles[0].cols();
+  int nocc1 = singles[1].rows(), nopen1 = singles[1].cols();
+  int norbs = nocc0 + nopen0;
+  int nexc0 = nocc0 * nopen0, nexc1 = nocc1 * nopen1;
+
+  hid_t file = (-1), dataset_singles0, dataset_singles1, dataset_doubles0, dataset_doubles1, dataset_doubles2, dataset_rotation;  /* identifiers */
+  herr_t status;
+
+  H5E_BEGIN_TRY {
+    file = H5Fopen(fname.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+ 
+  if (file < 0) {
+    if (commrank == 0) cout << "Amplitudes not found!" << endl;
+    exit(0);
+  }
+  
+  {
+    double *singlesMem = new double[ nocc0 * nopen0 ];
+    for (int i = 0; i < nocc0; i++) 
+      for (int j = 0; j < nopen0; j++)
+        singlesMem[i * nopen0 + j] = 0.;
+    dataset_singles0 = H5Dopen(file, "/singles0", H5P_DEFAULT);
+    status = H5Dread(dataset_singles0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, singlesMem);
+    for (int i = 0; i < nocc0; i++) {
+      for (int j = 0; j < nopen0; j++) {
+        singles[0](i, j) = singlesMem[i * nopen0 + j];
+      }
+    }
+    delete [] singlesMem;
+  }
+  
+  {
+    double *singlesMem = new double[ nocc1 * nopen1 ];
+    for (int i = 0; i < nocc1; i++) 
+      for (int j = 0; j < nopen1; j++)
+        singlesMem[i * nopen1 + j] = 0.;
+    dataset_singles1 = H5Dopen(file, "/singles1", H5P_DEFAULT);
+    status = H5Dread(dataset_singles1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, singlesMem);
+    for (int i = 0; i < nocc1; i++) {
+      for (int j = 0; j < nopen1; j++) {
+        singles[1](i, j) = singlesMem[i * nopen1 + j];
+      }
+    }
+    delete [] singlesMem;
+  }
+
+  {
+    double *rotationMem = new double[ norbs * norbs ];
+    for (int i = 0; i < norbs; i++) 
+      for (int j = 0; j < norbs; j++)
+        rotationMem[i * norbs + j] = 0.;
+    dataset_rotation = H5Dopen(file, "/rotation", H5P_DEFAULT);
+    status = H5Dread(dataset_rotation, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, rotationMem);
+    for (int i = 0; i < norbs; i++) {
+      for (int j = 0; j < norbs; j++) {
+        basisRotation(i, j) = rotationMem[i * norbs + j];
+      }
+    }
+    delete [] rotationMem;
+  }
+ 
+  {
+    double *doublesMem = new double[ nexc0 * nexc0 ];
+    for (int i = 0; i < nexc0; i++) 
+      for (int j = 0; j < nexc0; j++)
+        doublesMem[i * nexc0 + j] = 0.;
+    dataset_doubles0 = H5Dopen(file, "/doubles0", H5P_DEFAULT);
+    status = H5Dread(dataset_doubles0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+    for (int i = 0; i < nexc0; i++) {
+      for (int j = 0; j < nexc0; j++) {
+        doubles[0](i, j) = doublesMem[i * nexc0 + j];
+      }
+    }
+    delete [] doublesMem;
+  }
+  
+  {
+    double *doublesMem = new double[ nexc1 * nexc1 ];
+    for (int i = 0; i < nexc1; i++) 
+      for (int j = 0; j < nexc1; j++)
+        doublesMem[i * nexc1 + j] = 0.;
+    dataset_doubles1 = H5Dopen(file, "/doubles1", H5P_DEFAULT);
+    status = H5Dread(dataset_doubles1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+    for (int i = 0; i < nexc1; i++) {
+      for (int j = 0; j < nexc1; j++) {
+        doubles[1](i, j) = doublesMem[i * nexc1 + j];
+      }
+    }
+    delete [] doublesMem;
+  }
+  
+  {
+    double *doublesMem = new double[ nexc0 * nexc1 ];
+    for (int i = 0; i < nexc0; i++) 
+      for (int j = 0; j < nexc1; j++)
+        doublesMem[i * nexc1 + j] = 0.;
+    dataset_doubles2 = H5Dopen(file, "/doubles2", H5P_DEFAULT);
+    status = H5Dread(dataset_doubles2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, doublesMem);
+    for (int i = 0; i < nexc0; i++) {
+      for (int j = 0; j < nexc1; j++) {
+        doubles[2](i, j) = doublesMem[i * nexc1 + j];
+      }
+    }
+    delete [] doublesMem;
   }
 }

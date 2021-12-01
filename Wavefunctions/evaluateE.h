@@ -764,7 +764,7 @@ void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0
   Hessian = Hessian/(commsize);
   Smatrix = Smatrix/(commsize);
 
-  S1 /= cumdeltaT
+  S1 /= cumdeltaT;
   double n_eff = commsize * (cumdeltaT * cumdeltaT) / cumdeltaT2;
   stddev = sqrt(S1 * rk / n_eff);
 #ifndef SERIAL
@@ -826,7 +826,6 @@ class getGradientWrapper
   {
     w.updateVariables(vars);
     w.initWalker(walk);
-    if (schd.debug) cout << "vars\n" << vars << endl << endl;
     if (!deterministic)
     {
       if (ctmc)
@@ -865,7 +864,7 @@ class getGradientWrapper
   };
 
 /*
-  void getHessian(VectorXd &vars, VectorXd &grad, MatrixXd &Hessian, MatrixXd &smatrix, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, double &rt, bool deterministic)
+  void getHessian(VectorXd &vars, VectorXd &grad, MatrixXd &Hessian, MatrixXd &Smatrix, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, double &rt, bool deterministic)
   {
     if (!deterministic)
     {
@@ -879,7 +878,10 @@ class getGradientWrapper
       w.initWalker(walk);
       stddev = 0.0;
       rt = 1.0;
-      getGradientHessianDeterministic(w, walk, E0, nalpha, nbeta, norbs, I1, I2, I2hb, coreE, grad, Hessian, Smatrix)
+      int norbs = Determinant::norbs;
+      int nalpha = Determinant::nalpha;
+      int nbeta = Determinant::nbeta;
+      getGradientHessianDeterministic(w, walk, E0, nalpha, nbeta, norbs, I1, I2, I2hb, coreE, grad, Hessian, Smatrix);
     }
     w.writeWave();
   };

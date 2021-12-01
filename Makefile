@@ -2,13 +2,16 @@ USE_MPI = yes
 USE_INTEL = no
 COMPILE_NUMERIC = yes
 
-BOOST=${BOOST_ROOT}
-HDF5=${CURC_HDF5_ROOT}
 EIGEN=/projects/ilsa8974/apps/eigen/
-LIBIGL=/projects/ilsa8974/apps/libigl/include/
-SPARSEHASH=/projects/anma2640/sparsehash/src/
+BOOST=/projects/anma2640/boost_1_66_0/
+HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
+#HDF5=${CURC_HDF5_ROOT}
 
-FLAGS = -std=c++14 -O3 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ -fpermissive -w #-DComplex
+
+#FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include  -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
+FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include  -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
+
+
 #FLAGS = -std=c++14 -g   -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${LIBIGL} -I/opt/local/include/openmpi-mp/ #-DComplex
 
 GIT_HASH=`git rev-parse HEAD`
@@ -69,6 +72,7 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/AGP.o \
 	obj/Pfaffian.o \
 	obj/Jastrow.o \
+	obj/SJastrow.o \
 	obj/Gutzwiller.o \
 	obj/CPS.o \
 	obj/RBM.o \
@@ -134,6 +138,28 @@ OBJ_FCIQMC = obj/staticVariables.o \
     obj/sr.o \
     obj/evaluateE.o
 
+OBJ_DQMC = obj/staticVariables.o \
+	obj/input.o \
+	obj/integral.o\
+	obj/SHCIshm.o \
+	obj/Determinants.o \
+	obj/Correlator.o \
+	obj/DQMCMatrixElements.o \
+	obj/DQMCStatistics.o \
+	obj/DQMCWalker.o \
+	obj/Hamiltonian.o \
+	obj/RHF.o \
+	obj/UHF.o \
+	obj/KSGHF.o \
+	obj/Multislater.o \
+	obj/CCSD.o \
+	obj/UCCSD.o \
+	obj/sJastrow.o \
+	obj/MixedEstimator.o \
+	obj/ProjectedMF.o
+
+#obj/DQMCSampling.o \
+#obj/DQMCUtils.o \
 
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
@@ -143,6 +169,8 @@ obj/%.o: utils/%.cpp
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: VMC/%.cpp  
 	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+obj/%.o: DQMC/%.cpp  
+	$(CXX) $(FLAGS) -I./DQMC $(OPT) -c $< -o $@
 obj/%.o: FCIQMC/%.cpp  
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 obj/%.o: ICPT/%.cpp  
@@ -150,7 +178,7 @@ obj/%.o: ICPT/%.cpp
 obj/%.o: ICPT/StackArray/%.cpp  
 	$(CXX) $(FLAGS) $(INCLUDE_MKL) $(OPT) -c $< -o $@
 
-ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC
+ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
 ifeq ($(COMPILE_NUMERIC), yes)
 	ALL+= bin/periodic
 endif 
@@ -158,9 +186,17 @@ endif
 all: $(ALL) #bin/VMC bin/libPeriodic.so
 FCIQMC: bin/FCIQMC
 
+
+#all: bin/VMC
+all: bin/VMC bin/GFMC bin/FCIQMC bin/ICPT bin/periodic #bin/sPT  bin/GFMC
+FCIQMC: bin/FCIQMC
+#bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
+
 bin/periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
 
+bin/libPeriodic.so: bin/libPeriodic.so
+	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
 bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
 	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
@@ -177,6 +213,10 @@ bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
 bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
 	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
+
+bin/DQMC	: $(OBJ_DQMC) executables/DQMC.cpp
+	$(CXX)   $(FLAGS) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/sPT	: $(OBJ_sPT) 
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
