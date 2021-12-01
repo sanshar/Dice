@@ -21,7 +21,7 @@ void Int2e2c_EvalCoKernels(double *pCoFmT, uint TotalL,
                            Kernel* kernel,
                            LatticeSum& latsum, ct::FMemoryStack &Mem);
 
-void Int2e2c_EvalCoShY(double *&pOutR, unsigned &TotalCo, BasisShell *pA,
+void Int2e2c_EvalCoShY(double *&pOutR, double *&pOutK, unsigned &TotalCo, BasisShell *pA,
                        BasisShell *pC, double Tx, double Ty, double Tz,
                        double Prefactor,   unsigned TotalLab,
                        double* pInv2Alpha, double* pInv2Gamma,
@@ -50,3 +50,9 @@ void Add2(double * pOut, double const * pIn, double f, size_t n);
 void Scatter2e2c(double * pOut, size_t StrideA, size_t StrideC,
                  double const * pIn, size_t la, size_t lc, size_t nComp,
                  size_t nCoA, size_t nCoC, bool Add);
+
+void TwoCenterIntegrals(std::vector<int>& shls,
+			BasisSet& basis, Kernel& kernel,
+			std::vector<double>& Lattice,
+			std::vector<int>& kpoints,
+			ct::FMemoryStack2& Mem);
