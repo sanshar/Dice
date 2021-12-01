@@ -289,6 +289,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double averageEnergy = totalEnergies(0), averageNum = 0., averageDenom = 0.;
   double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
+  int nLargeDeviations = 0;
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
@@ -325,21 +326,35 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           //localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() * std::abs(hamOverlap[1]/walkers[w].trialOverlap) + delta.real();
           //overlapRatios(w) = std::abs(hamOverlap[1]/walkers[w].trialOverlap);
           if (std::isnan(localEnergy(w)) || std::isinf(localEnergy(w))) {
-            if (commrank == 0) {
-              cout << "local energy:  " << localEnergy(w) << endl;
-              cout << "weight:  " << weights(w) << endl;
-              cout << "overlap:  " << walkers[w].trialOverlap << "   " << hamOverlap[1] << endl;
-              cout << "ham:  " << hamOverlap[0] << endl;
-              cout << "orthofac:  " << walkers[w].orthoFac << endl;
-              exit(0);
-            }
+            cout << "local energy:  " << localEnergy(w) << endl;
+            cout << "weight:  " << weights(w) << endl;
+            cout << "overlap:  " << walkers[w].trialOverlap << "   " << hamOverlap[1] << endl;
+            cout << "ham:  " << hamOverlap[0] << endl;
+            cout << "orthofac:  " << walkers[w].orthoFac << endl;
+            exit(0);
             localEnergy(w) = 0.;
             weights(w) = 0.;
           }
           else if (abs(localEnergy(w) - averageEnergy) > sqrt(2./dt)) {
+            nLargeDeviations++;
+            weights(w) = 0.;
             if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
             else localEnergy(w) = averageEnergy - sqrt(2./dt);
           }
+          //else if (step * dt < 10. && abs(localEnergy(w) - averageEnergy) > sqrt(2./dt)) {
+          //  nLargeDeviations++;
+          //  weights(w) = 0.;
+          //  localEnergy(w) = 0.;
+          //  //if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
+          //  //else localEnergy(w) = averageEnergy - sqrt(2./dt);
+          //}
+          //else if (step * dt >= 10. && abs(localEnergy(w) - averageEnergy) > sqrt(0.1/dt)) {
+          //  nLargeDeviations++;
+          //  weights(w) = 0.;
+          //  localEnergy(w) = 0.;
+          //  //if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(0.1/dt);
+          //  //else localEnergy(w) = averageEnergy - sqrt(0.1/dt);
+          //}
         }
         else localEnergy(w) = 0.;
       }
@@ -350,6 +365,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       //MPI_Allreduce(MPI_IN_PLACE, &ratioWeightedTotalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       totalWeights(block) = totalWeight;
       totalEnergies(block) = weightedEnergy / totalWeight; 
+      MPI_Allreduce(MPI_IN_PLACE, &nLargeDeviations, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
       //totalEnergies(block) = weightedEnergy / ratioWeightedTotalWeight; 
       if (commrank == 0) {
         if (step * dt < 10.) {
@@ -456,6 +472,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
+    cout << "Number of large deviations:  " << nLargeDeviations << "\n";
     string fname = "samples.dat";
     ofstream samplesFile(fname, ios::app);
     for (int i = 0; i < nsweeps; i++) {
