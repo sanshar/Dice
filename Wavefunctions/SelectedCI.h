@@ -28,8 +28,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include "SimpleWalker.h"
-//#include <google/dense_hash_map>
-#include <sparsehash/dense_hash_map>
+#include <google/dense_hash_map>
+//#include <sparsehash/dense_hash_map>
 
 
 class SelectedCI
