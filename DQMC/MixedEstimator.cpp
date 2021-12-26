@@ -289,7 +289,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double averageEnergy = totalEnergies(0), averageNum = 0., averageDenom = 0.;
   double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
-  int nLargeDeviations = 0;
+  long nLargeDeviations = 0;
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
@@ -298,6 +298,10 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     double init = getTime();
     for (int w = 0; w < walkers.size(); w++) {
       if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
+      if (weights[w] > std::max(100., walkers.size() / 10.)) {
+        weights[w] = 0.;
+        nLargeDeviations++;
+      }
       //if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveGuide, ham, eshift);
     }
     propTime += getTime() - init;
@@ -337,7 +341,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           }
           else if (abs(localEnergy(w) - averageEnergy) > sqrt(2./dt)) {
             nLargeDeviations++;
-            weights(w) = 0.;
+            //weights(w) = 0.;
             if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
             else localEnergy(w) = averageEnergy - sqrt(2./dt);
           }
@@ -365,7 +369,6 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       //MPI_Allreduce(MPI_IN_PLACE, &ratioWeightedTotalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       totalWeights(block) = totalWeight;
       totalEnergies(block) = weightedEnergy / totalWeight; 
-      MPI_Allreduce(MPI_IN_PLACE, &nLargeDeviations, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
       //totalEnergies(block) = weightedEnergy / ratioWeightedTotalWeight; 
       if (commrank == 0) {
         if (step * dt < 10.) {
@@ -468,6 +471,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       //exit(0);
     }
   }
+  MPI_Allreduce(MPI_IN_PLACE, &nLargeDeviations, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
 
   if (commrank == 0) {
     cout << "\nPropagation time:  " << propTime << " s\n";
