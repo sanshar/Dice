@@ -32,8 +32,7 @@ void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        robin_hood::unordered_set<Determinant>& old_dets,
-        robin_hood::unordered_set<Determinant>& new_dets,
+        cdfci::DetToIndex& det_to_index,
         schedule& schd, int Nmc, int nelec) {
 //-----------------------------------------------------------------------------
     /*!
@@ -92,13 +91,15 @@ void cdfci::getDeterminantsVariational(
     if (std::abs(integral) > epsilon ) {
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
-        new_dets.emplace(di);
+      if(det_to_index.find(di) == det_to_index.end()) {
+        int last_index = det_to_index.size();
+        det_to_index[di] = last_index;
       }
       Determinant detcpy(di);
       detcpy.flipAlphaBeta();
-      if(old_dets.find(detcpy) == old_dets.end() && new_dets.find(detcpy) == new_dets.end()) {
-        new_dets.emplace(detcpy);
+      if(det_to_index.find(di) == det_to_index.end()) {
+        int last_index = det_to_index.size();
+        det_to_index[di] = last_index;
       }
     }
   } // ia
@@ -131,8 +132,9 @@ void cdfci::getDeterminantsVariational(
       if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         Determinant di = d;
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-        if(old_dets.find(di) == old_dets.end() && new_dets.find(di) == new_dets.end()) {
-          new_dets.emplace(di);
+        if(det_to_index.find(di) == det_to_index.end()) {
+          int last_index = det_to_index.size();
+          det_to_index[di] = last_index;
         }
         /*Determinant detcpy(di);
         detcpy.flipAlphaBeta();
@@ -510,15 +512,13 @@ dcomplex CoordinateUpdateIthRoot(Determinant& det, vector<dcomplex>& x, vector<d
   double q_re = z_re[iroot] + dA * x_re;
   double q_im = z_im[iroot] + dA * x_im;
   
-  for(int jroot = 0; jroot < nroots; jroot++) {
-    if (jroot != iroot) {
+  for(int jroot = 0; jroot < iroot; jroot++) {
     double xj_re = x[jroot].real(), xj_im = x[jroot].imag();
     auto xj_norm = xj_re*xj_re + xj_im*xj_im;
     p1_re += xj_norm;
     p1_im += xj_norm;
     q_re += xj_re * xx_re[iroot][jroot] + xj_im * xx_im[iroot][jroot] - xj_norm * x_re;
     q_im += xj_im * xx_re[iroot][jroot] - xj_re * xx_im[iroot][jroot] - xj_norm * x_im;
-    }
   }
 
   double dx_re = line_search(p1_re, q_re, x_re);
@@ -704,11 +704,12 @@ vector<pair<double, double>> precondition(vector<dcomplex>& x_vector, vector<dou
         }
       }
     }
+    cout << "precondition costs: " << getTime() - start << endl;
     result_iroot.first = xz;
     result[iroot] = result_iroot;
     auto residual = cdfci::compute_residual(x_vector, z_vec_re, z_vec_im, result, iroot);
     cout << iroot << " " <<  residual << endl;
-    cout << "precondition costs: " << getTime() - start << endl;
+    cout << "residual costs: " << getTime() - start << endl;
   }
   return result;
 }
@@ -732,8 +733,6 @@ double get_energy(pair<double, double> energy) {
 }
 void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets) {
   DetToIndex det_to_index;
-  robin_hood::unordered_set<Determinant> old_dets;
-  robin_hood::unordered_set<Determinant> new_dets;
   int iter;
   bool converged;
   int thread_id;
@@ -741,7 +740,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   #pragma omp parallel
   {
     thread_num = omp_get_num_threads();
-    cout << thread_num << endl;
   }
   double coreEbkp = coreE;
   coreE = 0.0;
@@ -766,7 +764,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
 
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
-    old_dets.emplace(dets[i]);
   }
 
   const double epsilon1 = schd.epsilon1[schd.cdfci_on];
@@ -779,20 +776,17 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
       cmax += norm(ci[iroot](i,0));
     }
     cmax = sqrt(cmax);
-    cdfci::getDeterminantsVariational(dets[i], epsilon1/cmax, cmax, zero, I1, I2, I2HB, irrep, coreE, E0[0], old_dets, new_dets, schd, 0, nelec);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/cmax, cmax, zero, I1, I2, I2HB, irrep, coreE, E0[0], det_to_index, schd, 0, nelec);
     if (i%10000 == 0) {
-      cout << "curr iter " << i << " new dets size " << new_dets.size() << endl;
+      cout << "curr iter " << i << " dets size " << det_to_index.size() << endl;
     }
   }
-  int new_dets_size = new_dets.size();
-  for (auto new_det : new_dets) {
-    dets.push_back(new_det);
+  cout << "curr iter " << dets_size << " dets size " << det_to_index.size() << endl;
+  dets.resize(det_to_index.size());
+  for (auto it : det_to_index) {
+    dets[it.second] = it.first;
   }
   dets_size = dets.size();
-  robin_hood::unordered_set<Determinant>().swap(old_dets);
-  robin_hood::unordered_set<Determinant>().swap(new_dets);
-  old_dets.clear();
-  new_dets.clear();
   cout << "build det to index" << endl;
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
@@ -868,7 +862,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           // update x^\dagger_i x_j matrix.
           // first index be the conjugate one.
           xx_re[iroot][iroot] += norm(dx);
-          for (int jroot = 0; jroot < nroots; jroot++) {
+          for (int jroot = iroot; jroot < nroots; jroot++) {
             //<x_i^\dagger| x_j>
             dcomplex dij = conj(dx) * x[thread][jroot];
             double dij_re = dij.real();
@@ -966,8 +960,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
             if (j_idx % thread_num == thread_id) {
               auto grad_real = z_vec_re[j_idx] + x.real() * xx;
               auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
-              for(int jroot=0; jroot<nroots; jroot++) {
-                if(jroot != iroot) {
+              for(int jroot=0; jroot<iroot; jroot++) {
                   auto xj_jroot = x_vector[detj_idx*nroots+jroot];
                   auto xj_jroot_re = xj_jroot.real();
                   auto xj_jroot_im = xj_jroot.imag();
@@ -975,7 +968,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                              + xj_jroot_im*xx_im[iroot][jroot];
                   grad_imag += xj_jroot_im*xx_re[iroot][jroot]
                              - xj_jroot_re*xx_im[iroot][jroot];
-                }
               }
               auto abs_grad = abs(grad_real + grad_imag);
               if (abs_grad > max_abs_grad) {
@@ -1023,8 +1015,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                 if (j_idx % thread_num == thread_id) {
                   auto grad_real = z_vec_re[j_idx] + x.real() * xx;
                   auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
-                  for(int jroot=0; jroot<nroots; jroot++) {
-                    if(jroot != iroot) {
+                  for(int jroot=0; jroot<iroot; jroot++) {
                       auto xj_jroot = x_vector[detj_idx*nroots+jroot];
                       auto xj_jroot_re = xj_jroot.real();
                       auto xj_jroot_im = xj_jroot.imag();
@@ -1032,7 +1023,6 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                                  + xj_jroot_im*xx_im[iroot][jroot];
                       grad_imag += xj_jroot_im*xx_re[iroot][jroot]
                                  - xj_jroot_re*xx_im[iroot][jroot];
-                    }
                   } 
                   auto abs_grad = abs(grad_real + grad_imag);
                   if (abs_grad > max_abs_grad) {
@@ -1045,6 +1035,9 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           }
         }
         this_det_idx[thread_id] = selected_det;
+        if (iter % 10 == 0) {
+          this_det_idx[thread_id] = (int(iter/10)*thread_num+thread_id)%dets_size;
+        }
         #pragma omp atomic
         ene[iroot].first += xz;
       }

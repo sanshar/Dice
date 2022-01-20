@@ -261,7 +261,6 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
 
   world.barrier();
   for (int i=0; i<maxIter; i++) {
-    cout << i << " " << maxIter << endl;
     mpi::broadcast(world, &I2.store[i * maxint], maxint, 0);
     world.barrier();
   }

@@ -460,7 +460,8 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       pout << format("Time(s):  %10.2f") % (getTime() - startofCalc) << endl;
       break;
     }
-    if (currentIter > schd.nPTiter) {
+    if (currentIter == schd.nPTiter) {
+      AvgenergyEN /= currentIter;
       pout << "Semistochastic PT calculation not converged" << endl;
       pout << "exit to prevent waste of time" << endl;
       pout << format("PTEnergy: %18.10f") % (E0 + AvgenergyEN) << " +/- ";

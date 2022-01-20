@@ -32,6 +32,7 @@ struct std::hash<Determinant> {
     //return det.repr[0] + det.repr[1]*179426549;
     //return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577;
     return det.repr[0] * 2038076783 + det.repr[1] * 179426549 + det.repr[2] * 500002577 + det.repr[3] * 255477023;
+
   }
 };
 
@@ -40,7 +41,7 @@ namespace cdfci {
   using dcomplex = std::complex<double>;
   using value_type = std::pair<Determinant, array<complex<double>, 2>>;
   using hash_det = robin_hood::unordered_flat_map<Determinant, array<complex<double>, 2>, std::hash<Determinant>, std::equal_to<Determinant>>;
-  using DetToIndex = robin_hood::unordered_flat_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
+  using DetToIndex = robin_hood::unordered_node_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
   // retain the same function call as DoVariational in SHCIbasics.
   // use hash map for determinants internally
   void init_hash_det(DetToIndex& det_to_index, Determinant* SHMDets, int start_index, int end_index);
@@ -56,8 +57,7 @@ namespace cdfci {
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
         oneInt& int1, twoInt& int2, twoIntHeatBathSHM& I2hb,
         vector<int>& irreps, double coreE, double E0,
-        robin_hood::unordered_set<Determinant>& old_dets,
-        robin_hood::unordered_set<Determinant>& new_dets,
+        DetToIndex& det_to_index,
         schedule& schd, int Nmc, int nelec);
   double compute_residual(vector<dcomplex>& x, vector<double>& zreal, vector<double>& zimag, vector<pair<double, double>>& ene, int& iroot);
   void solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, double& coreE, vector<double>& E0, vector<MatrixXx>& ci, vector<Determinant>& dets);
