@@ -576,11 +576,21 @@ int main(int argc, char* argv[]) {
       std::string efile;
       efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
       FILE* f = fopen(efile.c_str(), "wb");
+      CItype* cMaxSHM;
+      vector<CItype> cMax;
+      if (commrank == 0) {
+        cMax.resize(ci[0].rows(), 0);
+        for (int j = 0; j < ci[0].rows(); j++) {
+          for (int i = 0; i < ci.size(); i++) cMax[j] += pow(abs(ci[i](j, 0)), 2);
+          cMax[j] = pow(cMax[j], 0.5);
+        }
+      }
+      SHMVecFromVecs(cMax, cMaxSHM, shciDetsCI, DavidsonSegment, regionDavidson);
       for (int root = 0; root < schd.nroots; root++) {
         CItype* ciroot;
         SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
         ePT = SHCIbasics::DoPerturbativeDeterministic(
-            SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd,
+            SHMDets, cMaxSHM, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd,
             coreE, nelec, root, vdVector, Psi1Norm);
         ePT += E0[root];
         // pout << "Writing energy " << ePT << "  to file: " << efile << endl;
@@ -594,12 +604,22 @@ int main(int argc, char* argv[]) {
         std::string efile;
         efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
         FILE* f = fopen(efile.c_str(), "wb");
+        CItype* cMaxSHM;
+        vector<CItype> cMax;
+        if (commrank == 0) {
+          cMax.resize(ci[0].rows(), 0);
+          for (int j = 0; j < ci[0].rows(); j++) {
+            for (int i = 0; i < ci.size(); i++) cMax[j] += pow(abs(ci[i](j, 0)), 2);
+            cMax[j] = pow(cMax[j], 0.5);
+          }
+        }
+        SHMVecFromVecs(cMax, cMaxSHM, shciDetsCI, DavidsonSegment, regionDavidson);
         for (int root = 0; root < schd.nroots; root++) {
           CItype* ciroot;
           SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
           ePT[root] = SHCIbasics::
               DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
-                  SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
+                  SHMDets, cMaxSHM, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
                   schd, coreE, nelec, root);
           ePT[root] += E0[root];
           // pout << "Writing energy " << E0[root] << "  to file: " << efile <<

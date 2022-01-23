@@ -54,10 +54,11 @@ using namespace Eigen;
 using namespace boost;
 using namespace SHCISortMpiUtils;
 
-double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
-    Determinant* Dets, CItype* ci, int DetsSize, double& E0, oneInt& I1,
-    twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd,
-    double coreE, int nelec, int root) {
+double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *cmax, CItype *ci, int DetsSize, 
+          double& E0, oneInt& I1, twoInt& I2,
+          twoIntHeatBathSHM& I2HB,vector<int>& irrep,
+          schedule& schd, double coreE,
+          int nelec, int root) {
   if (schd.nPTiter == 0) return 0;
   double epsilon2 = schd.epsilon2;
   schd.epsilon2 = schd.epsilon2Large;
@@ -71,7 +72,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   double Psi1Norm;
   double EptLarge = 0.0;
   if (schd.epsilon2 < 999)
-    EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB,
+    EptLarge = DoPerturbativeDeterministic(Dets, cmax, ci, DetsSize, E0, I1, I2, I2HB,
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
 
@@ -159,7 +160,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     for (int i = 0; i < distinctSample; i++) {
       int I = Sample1[i];
       SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
-          Dets[I], schd.epsilon2 / abs(ci[I]), schd.epsilon2Large / abs(ci[I]),
+          Dets[I], schd.epsilon2 / abs(cmax[I]), schd.epsilon2Large / abs(cmax[I]),
           wts1[i], ci[I], I1, I2, I2HB, irrep, coreE, E0, *uniqueDEH.Det,
           *uniqueDEH.Num, *uniqueDEH.Num2, *uniqueDEH.present,
           *uniqueDEH.Energy, schd, Nmc, nelec);
@@ -474,7 +475,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 }
 
 double SHCIbasics::DoPerturbativeDeterministic(
-    Determinant* Dets, CItype* ci, int DetsSize, double& E0, oneInt& I1,
+    Determinant* Dets, CItype* cmax, CItype* ci, int DetsSize, double& E0, oneInt& I1,
     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd,
     double coreE, int nelec, int root, vector<MatrixXx>& vdVector,
     double& Psi1Norm, bool appendPsi1ToPsi0) {
@@ -513,7 +514,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
     for (int i = 0; i < DetsSize; i++) {
       if (i % size != rank) continue;
       SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
-          Dets[i], i, abs(schd.epsilon2 / ci[i]), ci[i], I1, I2, I2HB, irrep,
+          Dets[i], i, abs(schd.epsilon2 / cmax[i]), ci[i], I1, I2, I2HB, irrep,
           coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy,
           *uniqueDEH.var_indices_beforeMerge,
           *uniqueDEH.orbDifference_beforeMerge, schd, nelec);
