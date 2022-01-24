@@ -50,6 +50,7 @@ struct schedule {
     & onlyperturbative                        \
     & restart                                 \
     & fullrestart                             \
+    & ndetsRestart                            \ 
     & dE                                      \
     & eps                                     \
     & prefix                                  \
@@ -118,6 +119,7 @@ struct schedule {
   bool onlyperturbative;
   bool restart;
   bool fullrestart;
+  long ndetsRestart;
   double dE;
   double eps;
   vector<string> prefix;

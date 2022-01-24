@@ -59,6 +59,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.onlyperturbative = false;
   schd.restart = false;
   schd.fullrestart = false;
+  schd.ndetsRestart = -1;
   schd.dE = 1.e-8;
 
   schd.stochastic = true;
@@ -303,6 +304,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.stochastic = false;
     else if (boost::iequals(ArgName, "fullrestart"))
       schd.fullrestart = true;
+    else if (boost::iequals(ArgName, "ndetsRestart"))
+      schd.ndetsRestart = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dE"))
       schd.dE = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "eps"))

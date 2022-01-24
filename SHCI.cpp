@@ -429,10 +429,16 @@ int main(int argc, char* argv[]) {
     if (schd.writeBestDeterminants > 0) {
       int num = min(schd.writeBestDeterminants, static_cast<int>(DetsSize));
       int nspatorbs = Determinant::norbs/2;
-      ofstream fout = ofstream("dets.bin", ios::binary);
-      fout.write((char*) &num, sizeof(int));
-      fout.write((char*) &nspatorbs, sizeof(int));
+      //ofstream fout = ofstream("dets.bin", ios::binary);
+      //fout.write((char*) &num, sizeof(int));
+      //fout.write((char*) &nspatorbs, sizeof(int));
       for (int root = 0; root < schd.nroots; root++) {
+        string det_fname = "dets_";
+        det_fname.append(to_string(root));
+        det_fname.append(".bin");
+        ofstream fout = ofstream(det_fname, ios::binary);
+        fout.write((char*) &num, sizeof(int));
+        fout.write((char*) &nspatorbs, sizeof(int));
         MatrixXx prevci = 1. * ci[root];
         for (int i = 0; i < num; i++) {
           compAbs comp;
@@ -459,8 +465,8 @@ int main(int argc, char* argv[]) {
           }
           prevci(m, 0) = 0.0;
         }
+        fout.close();
       }
-      fout.close();
     }
   }
 

@@ -893,7 +893,12 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 #endif
     Dets.clear();
 
+
     // Make helpers and make sparse hamiltonian if full restart and not direct
+    if (schd.ndetsRestart > 0 && proc == 0) {
+      helper2.clear();
+      helper2.PopulateHelpers(SHMDets, DetsSize, 0);
+    }
     helper2.MakeSHMHelpers();
     if (!(schd.DavidsonType == DIRECT ||
           (!schd.fullrestart && converged &&
@@ -912,6 +917,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       iterstart++;
     else
       iterstart = 0;
+      
+      
 
     // if the calculation is converged then exit
     if (schd.outputlevel > 0)
@@ -931,12 +938,32 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
            << endl;
       Dets.resize(DetsSize);
       for (int i = 0; i < DetsSize; i++) Dets[i] = SHMDets[i];
+      
 
 #ifndef SERIAL
       MPI_Barrier(MPI_COMM_WORLD);
       mpi::broadcast(world, E0, 0);
 #endif
-      unpackTrevState(Dets, DetsSize, ci, sparseHam, false, I1, I2, coreE);
+     unpackTrevState(Dets, DetsSize, ci, sparseHam, 0, I1, I2, coreE);
+      if (Determinant::Trev != 0) {
+        // we add additional determinats
+        SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+      }
+      if (schd.DoOneRDM) {
+        pout << "\nCalculating 1-RDM" << endl;
+        for (int i = 0; i < schd.nroots; i++) {
+          MatrixXx s1RDM, oneRDM;
+          oneRDM = MatrixXx::Zero(norbs, norbs);
+          s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
+          CItype *SHMci;
+          SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment,
+                           regionDavidson);
+          SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
+                                  SHMci, SHMci, sparseHam.orbDifference, nelec,
+                                  schd, i, oneRDM, s1RDM);
+          SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+        }
+      }
 
       return E0;
     }
@@ -1516,6 +1543,27 @@ void SHCIbasics::readVariationalResult(
     load >> ci;
     load >> E0;
     load >> converged;
+    
+    if (schd.ndetsRestart > 0) {
+      converged = true;
+      MatrixXx prevci = 1. * ci[0];
+      std::vector<Determinant> DetsCopy = Dets;
+      Dets.clear();
+      for (int i = 0; i < min(schd.ndetsRestart, static_cast<long>(DetsCopy.size())); i++) {
+        compAbs comp;
+        int m = distance(
+            &prevci(0, 0),
+            max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+        ci[0](i, 0) = prevci(m, 0);
+        Dets.push_back(DetsCopy[m]);
+        prevci(m, 0) = 0.0;
+      }
+      ci[0].conservativeResize(min(schd.ndetsRestart, static_cast<long>(DetsCopy.size())), 1);
+      ci[0].col(0).normalize();
+      if (commrank == 1) 
+        for (int i = 0; i < Dets.size(); i++) cout << ci[0](i, 0) << "   " << Dets[i] << endl;
+    }
+
     if (schd.outputlevel > 0)
       pout << "Load converged: " << converged << endl;
     if (schd.onlyperturbative) {
