@@ -296,6 +296,12 @@ void DQMCWalker::forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXc
 };
 
 
+void DQMCWalker::oneRDM(Wavefunction& wave, Eigen::MatrixXcd& rdmSample)
+{
+  wave.oneRDM(det, rdmSample);
+};
+
+
 std::array<std::complex<double>, 2> DQMCWalker::hamAndOverlap(Wavefunction& wave, Hamiltonian& ham)
 {
   std::array<complex<double>, 2> hamOverlap = rhfQ ? wave.hamAndOverlap(det[0], ham) : wave.hamAndOverlap(det, ham);

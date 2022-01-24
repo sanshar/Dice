@@ -2,7 +2,7 @@
   "system":
   {
     "integrals": "FCIDUMP_chol",
-    "nact": 8
+    "numAct": 8
   },
   "wavefunction":
   {
