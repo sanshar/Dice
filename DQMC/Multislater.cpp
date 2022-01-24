@@ -290,9 +290,160 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
   //greenMulti[1] = greenMulti[1].block(0, 0, nbeta, norbs);
   //cout << "greenmulti[0]\n" << greenMulti[0] << endl << endl;
   //cout << "greenmulti[1]\n" << greenMulti[1] << endl << endl;
+  greenMulti[0] = greenMulti[0].transpose().eval();
+  greenMulti[1] = greenMulti[1].transpose().eval();
   for (int i = 0; i < ham.chol.size(); i++) 
-    fb(i) = (greenMulti[0].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum() + (greenMulti[1].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum();
+    fb(i) = (greenMulti[0].block(0, 0, norbs, nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, nact)).sum() + (greenMulti[1].block(0, 0, norbs, nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, nact)).sum();
+  //for (int i = 0; i < ham.chol.size(); i++) 
+  //  fb(i) = (greenMulti[0].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum() + (greenMulti[1].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum();
     //fb(i) = (greenMulti[0]).cwiseProduct(ham.chol[i]).sum() + (greenMulti[1]).cwiseProduct(ham.chol[i]).sum();
+};
+
+void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, Eigen::MatrixXcd& rdmSample) 
+{ 
+  int norbs = psi[0].rows();
+  int nalpha = psi[0].cols();
+  int nbeta = psi[1].cols();
+  std::array<int, 2> nelec{nalpha, nbeta};
+  size_t ndets = ciCoeffs.size();
+  rdmSample = MatrixXcd::Zero(norbs, norbs);
+
+  //matPair phi0T;
+  //phi0T[0] = MatrixXcd::Zero(nalpha, norbs);
+  //phi0T[1] = MatrixXcd::Zero(nbeta, norbs);
+  //for (int i = 0; i < nalpha; i++) phi0T[0](i, refDet[0][i]) = 1.;
+  //for (int i = 0; i < nbeta; i++) phi0T[1](i, refDet[1][i]) = 1.;
+
+  matPair theta, green, greenp, greeno;
+  //theta[0] = psi[0] * (phi0T[0] * psi[0]).inverse();
+  //theta[1] = psi[1] * (phi0T[1] * psi[1]).inverse();
+  //green[0] = (theta[0] * phi0T[0]).transpose();
+  //green[1] = (theta[1] * phi0T[1]).transpose();
+  //greenp[0] = green[0] - MatrixXcd::Identity(norbs, norbs);
+  //greenp[1] = green[1] - MatrixXcd::Identity(norbs, norbs);
+  theta[0] = psi[0] * (psi[0].block(0, 0, nalpha, nalpha)).inverse();
+  theta[1] = psi[1] * (psi[1].block(0, 0, nbeta, nbeta)).inverse();
+  green[0] = MatrixXcd::Zero(norbs, norbs);
+  green[1] = MatrixXcd::Zero(norbs, norbs);
+  green[0].block(0, 0, nalpha, norbs) = theta[0].transpose();
+  green[1].block(0, 0, nbeta, norbs) = theta[1].transpose();
+  greenp[0] = green[0] - MatrixXcd::Identity(norbs, norbs);
+  greenp[1] = green[1] - MatrixXcd::Identity(norbs, norbs);
+  
+  
+  greeno[0] = green[0].block(0, 0, nalpha, norbs);
+  greeno[1] = green[1].block(0, 0, nbeta, norbs);
+
+  // most quantities henceforth will be calculated in "units" of overlap0 = < phi_0 | psi >
+  complex<double> overlap0 = (psi[0].block(0, 0, nalpha, nalpha)).determinant() * (psi[1].block(0, 0, nbeta, nbeta)).determinant();
+  complex<double> overlap(0., 0.);
+  overlap += ciCoeffs[0];
+  matPair intermediate, greenMulti;
+  intermediate[0] = MatrixXcd::Zero(norbs, nalpha);
+  intermediate[1] = MatrixXcd::Zero(norbs, nbeta);
+
+  // iterate over excitations
+  for (int i = 1; i < ndets; i++) {
+    matPair temp;
+    std::array<complex<double>, 2> dets;
+    for (int sz = 0; sz < 2; sz++) {
+      int rank = ciExcitations[sz][i][0].size();
+      if (rank == 0) {
+        dets[sz] = 1.;
+      }
+      else if (rank == 1) {
+        dets[sz] = green[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0));
+        temp[sz] = MatrixXcd::Zero(1, 1);
+        temp[sz](0, 0) = -1.;
+      }
+      else if (rank == 2) {
+        Matrix2cd cofactors = Matrix2cd::Zero(2, 2);
+        cofactors(0, 0) = green[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](1));
+        cofactors(1, 1) = green[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](0));
+        cofactors(0, 1) = -green[sz](ciExcitations[sz][i][0](1), ciExcitations[sz][i][1](0));
+        cofactors(1, 0) = -green[sz](ciExcitations[sz][i][0](0), ciExcitations[sz][i][1](1));
+        dets[sz] = cofactors.determinant();
+        temp[sz] = -cofactors;
+      }
+      else if (rank == 3) {
+        Matrix3cd cofactors = Matrix3cd::Zero(3, 3);
+        Matrix2cd minorMat = Matrix2cd::Zero(2, 2);
+        for (int p = 0; p < rank; p++) {
+          for (int t = 0; t < rank; t++) {
+            minorMat.setZero();
+            for (int q = 0; q < rank - 1; q++) {
+              int q1 = q < p ? q : q + 1;
+              for (int u = 0; u < rank - 1; u++) { 
+                int u1 = u < t ? u : u + 1;
+                minorMat(q, u) = green[sz](ciExcitations[sz][i][0](q1), ciExcitations[sz][i][1](u1));
+              }
+            }
+            double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
+            cofactors(p, t) = parity_pt * minorMat.determinant();
+            dets[sz] += green[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+          }
+        }
+        temp[sz] = -cofactors;
+      }
+      else if (rank == 4) {
+        Matrix4cd cofactors = Matrix4cd::Zero(4, 4);
+        Matrix3cd minorMat = Matrix3cd::Zero(3, 3);
+        for (int p = 0; p < rank; p++) {
+          for (int t = 0; t < rank; t++) {
+            minorMat.setZero();
+            for (int q = 0; q < rank - 1; q++) {
+              int q1 = q < p ? q : q + 1;
+              for (int u = 0; u < rank - 1; u++) { 
+                int u1 = u < t ? u : u + 1;
+                minorMat(q, u) = green[sz](ciExcitations[sz][i][0](q1), ciExcitations[sz][i][1](u1));
+              }
+            }
+            double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
+            cofactors(p, t) = parity_pt * minorMat.determinant();
+            dets[sz] += green[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+          }
+        }
+        temp[sz] = -cofactors;
+      }
+      else {
+        MatrixXcd cofactors = MatrixXcd::Zero(rank, rank);
+        MatrixXcd minorMat = MatrixXcd::Zero(rank-1, rank-1);
+        for (int p = 0; p < rank; p++) {
+          for (int t = 0; t < rank; t++) {
+            minorMat.setZero();
+            for (int q = 0; q < rank - 1; q++) {
+              int q1 = q < p ? q : q + 1;
+              for (int u = 0; u < rank - 1; u++) { 
+                int u1 = u < t ? u : u + 1;
+                minorMat(q, u) = green[sz](ciExcitations[sz][i][0](q1), ciExcitations[sz][i][1](u1));
+              }
+            }
+            double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
+            cofactors(p, t) = parity_pt * minorMat.determinant();
+            dets[sz] += green[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+          }
+        }
+        temp[sz] = cofactors;
+      }
+    }
+
+    overlap += ciCoeffs[i] * ciParity[i] * dets[0] * dets[1];
+    for (int sz = 0; sz < 2; sz++) {
+      int rank = ciExcitations[sz][i][0].size();
+      if (rank > 0) {
+        for (int p = 0; p < rank; p++) 
+          for (int t = 0; t < rank; t++)
+            intermediate[sz](ciExcitations[sz][i][1](t), ciExcitations[sz][i][0](p)) += ciCoeffs[i] * ciParity[i] * temp[sz](p, t) * dets[1 - sz];
+      }
+    }
+  }
+  
+  greenMulti[0] = greenp[0] * intermediate[0] * greeno[0] + overlap * green[0];
+  greenMulti[1] = greenp[1] * intermediate[1] * greeno[1] + overlap * green[1];
+  overlap *= overlap0;
+  greenMulti[0] *= (overlap0 / overlap);
+  greenMulti[1] *= (overlap0 / overlap);
+  rdmSample = greenMulti[0] + greenMulti[1];
 };
 
 //void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)

@@ -62,6 +62,16 @@ int main(int argc, char *argv[])
     if (ham.nalpha == ham.nbeta) walker = DQMCWalker(true, true);
     else walker = DQMCWalker(false, true);
   }  
+  
+  //walker = DQMCWalker(false, true);
+  //std::array<Eigen::MatrixXcd, 2> det;
+  //det[0] = Eigen::MatrixXcd::Zero(4, 2);
+  //det[1] = Eigen::MatrixXcd::Zero(4, 2);
+  //readMat(det[0], "up.dat");
+  //readMat(det[1], "down.dat");
+  //cout << "up\n" << det[0] << endl << endl;
+  //cout << "dn\n" << det[1] << endl << endl;
+  //walker.setDet(det);
 
   // left state
   Wavefunction *waveLeft;
@@ -96,7 +106,20 @@ int main(int argc, char *argv[])
     if (commrank == 0) cout << "Left wave function not specified\n";
     exit(0);
   }
-  
+
+  //auto overlap = walker.overlap(*waveLeft);
+  //Eigen::VectorXcd fb;
+  //walker.forceBias(*waveLeft, ham, fb);
+  //Eigen::MatrixXcd rdmSample;
+  //walker.oneRDM(*waveLeft, rdmSample);
+  //auto hamOverlap = walker.hamAndOverlap(*waveLeft, ham);
+  //cout << "overlap:  " << overlap << endl << endl;
+  //cout << "fb\n" << fb << endl << endl;
+  //cout << "rdmSample\n" << rdmSample << endl << endl;
+  //cout << "ham:  " << hamOverlap[0] << ",  overlap:  " <<  hamOverlap[1] << endl << endl;
+  //cout << "eloc:  " << hamOverlap[0] / hamOverlap[1] << endl;
+  //exit(0);
+
   // right state
   Wavefunction *waveRight;
   if (schd.rightWave == "rhf") {

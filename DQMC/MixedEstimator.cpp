@@ -217,12 +217,20 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   size_t nwalk = schd.nwalk;             // number of walkers per process
   double dt = schd.dt;
 
-  MatrixXd hf = MatrixXd::Zero(norbs, norbs);
-  readMat(hf, "rhf.txt");
   matPair ref;
-  ref[0] = hf.block(0, 0, norbs, nalpha);
-  ref[1] = hf.block(0, 0, norbs, nbeta);
-  
+  if (walker.rhfQ) { 
+    MatrixXd hf = MatrixXd::Zero(norbs, norbs);
+    readMat(hf, "rhf.txt");
+    ref[0] = hf.block(0, 0, norbs, nalpha);
+    ref[1] = hf.block(0, 0, norbs, nbeta);
+  }
+  else {
+    MatrixXd hf = MatrixXd::Zero(norbs, 2*norbs);
+    readMat(hf, "uhf.txt");
+    ref[0] = hf.block(0, 0, norbs, nalpha);
+    ref[1] = hf.block(0, norbs, norbs, nbeta);
+  }
+
   auto hamOverlap = waveLeft.hamAndOverlap(ref, ham);
   complex<double> refEnergy = hamOverlap[0] / hamOverlap[1];
   complex<double> ene0;
@@ -286,10 +294,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double propTime = 0., eneTime = 0.;
   double eshift = totalEnergies(0);
   double totalWeight = nwalk * commsize;
+  double cumulativeWeight = 0.;
   double averageEnergy = totalEnergies(0), averageNum = 0., averageDenom = 0.;
   double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
   long nLargeDeviations = 0;
+  MatrixXd oneRDM = MatrixXd::Zero(norbs, norbs);
+  MatrixXcd rdmSample = MatrixXcd::Zero(norbs, norbs);
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
@@ -325,6 +336,16 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       //ArrayXd overlapRatios = ArrayXd::Zero(walkers.size());
       for (int w = 0; w < walkers.size(); w++) {
         if (weights(w) != 0.) {
+          // one rdm
+          if (step * dt > 10.) {
+            walkers[w].oneRDM(waveLeft, rdmSample);
+            oneRDM *= cumulativeWeight;
+            oneRDM += weights(w) * rdmSample.real();
+            cumulativeWeight += weights(w);
+            oneRDM /= cumulativeWeight;
+          }
+
+          // energy
           auto hamOverlap = walkers[w].hamAndOverlap(waveLeft, ham);
           localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() + delta.real();
           //localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() * std::abs(hamOverlap[1]/walkers[w].trialOverlap) + delta.real();
@@ -484,4 +505,19 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     }
     samplesFile.close();
   }
+  
+  // write one rdm 
+  string fname = "rdm_";
+  fname.append(to_string(commrank));
+  fname.append(".dat");
+  ofstream rdmdump(fname);
+  rdmdump << cumulativeWeight << endl;
+  for (int i = 0; i < oneRDM.rows(); i++) {
+    for (int j = 0; j < oneRDM.cols(); j++){
+      rdmdump << oneRDM(i, j) << "  ";
+    }
+    rdmdump << endl;
+  }
+  rdmdump.close();
+  
 };
