@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
   // read input
   std::string inputFile = "green.dat";
   if (argc > 1) inputFile = std::string(argv[1]);
-  if (commrank == 0) schd.readInput(inputFile);
+  schd.readInput(inputFile);
 
   if (schd.i % 2 != schd.j % 2) {
     pout << "i and j have different sz, G_ij = 0\n";
@@ -544,7 +544,7 @@ int main(int argc, char* argv[]) {
       //CItype g_ij1 = calcFirstGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, hasHEDDets, hasHEDNumerator, E0[0], w);
       //t3 = MPI_Wtime();
       //pout << w << "  " << g_ij << "  " << g_ij1 << "  " << " " << g_ij-((0,1.0)*g_ij1) << endl;
-      cout << format(" % .3e       ( % .8e, % .8e )  \n") % w.real() % g_ij.real() % g_ij.imag(); 
+      pout << format(" % .3e       ( % .8e, % .8e )  \n") % w.real() % g_ij.real() % g_ij.imag(); 
       
       // check for a peak
       if (i != 0 && i != npoints-1) {
@@ -609,7 +609,7 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
 #ifndef SERIAL
   world.barrier();
 #endif
-    
+  
   // solving for x0 using eigen linear solver
   //MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
   //MatrixXx HamiltonianNm1diag = HamiltonianNm1;// to store H0-E0-w
