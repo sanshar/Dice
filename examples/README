@@ -1,0 +1,6 @@
+# First do a variational dice calculation that generates a bkp file with the wave function
+mpirun -np 8 $Dice_binary dice.dat > dice.out
+
+# Then calculate the greens function using
+mpirun -np 8 $GreensFunction_binary green.dat > green.out
+
