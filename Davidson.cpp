@@ -260,8 +260,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
-        cout << "Eigenvalue solver unsuccessful."<<endl;
-        cout << hsubspace<<endl;
+        pout << "Eigenvalue solver unsuccessful."<<endl;
+        pout << hsubspace<<endl;
         abort();
       }
 
@@ -304,7 +304,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
       if (error < tol || numIter >800*x0.size()) {
         if (numIter >2000*x0.size()) {
-          cout << "Davidson calculation Didnt converge"<<endl;
+          pout << str(boost::format("Davidson calculation did not converge for root %3d, #iter %5d\n") % (convergedRoot+1) % (numIter) );
           exit(0);
           continueOrReturn = 2;
           //return eroots;
@@ -502,8 +502,8 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
       }
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
-        cout << "Eigenvalue solver unsuccessful."<<endl;
-        cout << hsubspace<<endl;
+        pout << "Eigenvalue solver unsuccessful."<<endl;
+        pout << hsubspace<<endl;
         abort();
       }
 
@@ -546,7 +546,7 @@ vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, Matrix
 
       if (error < tol || numIter >400*x0.size()) {
         if (numIter >400*x0.size()) {
-          cout << "Davidson calculation Didnt converge"<<endl;
+          pout << str(boost::format("Davidson calculation did not converge for root %3d, #iter %5d\n") % (convergedRoot+1) % (numIter) );
           exit(0);
           continueOrReturn = 2;
           //return eroots;
@@ -676,7 +676,7 @@ double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (true)
+    if (false)
       pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) {
       p.setZero(p.rows(),1);

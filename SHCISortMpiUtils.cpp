@@ -391,37 +391,37 @@ namespace SHCISortMpiUtils {
 
 
   StitchDEH::StitchDEH() {
-    Det = boost::shared_ptr<vector<Determinant> > (new vector<Determinant>() );
-    Num = boost::shared_ptr<vector<CItype> > (new vector<CItype>() );
-    Num2 = boost::shared_ptr<vector<CItype> > (new vector<CItype>() );
-    present = boost::shared_ptr<vector<char> > (new vector<char>() );
-    Energy = boost::shared_ptr<vector<double> > (new vector<double>() );
+    Det = std::shared_ptr<vector<Determinant> > (new vector<Determinant>() );
+    Num = std::shared_ptr<vector<CItype> > (new vector<CItype>() );
+    Num2 = std::shared_ptr<vector<CItype> > (new vector<CItype>() );
+    present = std::shared_ptr<vector<char> > (new vector<char>() );
+    Energy = std::shared_ptr<vector<double> > (new vector<double>() );
     extra_info = false;
-    var_indices = boost::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
-    orbDifference = boost::shared_ptr<vector<vector<size_t> > > (new vector<vector<size_t> >() );
-    var_indices_beforeMerge = boost::shared_ptr<vector<int > > (new vector<int >() );
-    orbDifference_beforeMerge = boost::shared_ptr<vector<size_t > > (new vector<size_t >() );
+    var_indices = std::shared_ptr<vector<vector<int> > > (new vector<vector<int> >() );
+    orbDifference = std::shared_ptr<vector<vector<size_t> > > (new vector<vector<size_t> >() );
+    var_indices_beforeMerge = std::shared_ptr<vector<int > > (new vector<int >() );
+    orbDifference_beforeMerge = std::shared_ptr<vector<size_t > > (new vector<size_t >() );
   }
 
-  StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
-		       boost::shared_ptr<vector<CItype> >pNum,
-		       boost::shared_ptr<vector<CItype> >pNum2,
-		       boost::shared_ptr<vector<char> >ppresent,
-		       boost::shared_ptr<vector<double> >pE,
-		       boost::shared_ptr<vector<vector<int> > >pvar,
-		       boost::shared_ptr<vector<vector<size_t> > >porb,
-		       boost::shared_ptr<vector<int > >pvar_beforeMerge,
-		       boost::shared_ptr<vector<size_t > >porb_beforeMerge)
+  StitchDEH::StitchDEH(std::shared_ptr<vector<Determinant> >pD,
+		       std::shared_ptr<vector<CItype> >pNum,
+		       std::shared_ptr<vector<CItype> >pNum2,
+		       std::shared_ptr<vector<char> >ppresent,
+		       std::shared_ptr<vector<double> >pE,
+		       std::shared_ptr<vector<vector<int> > >pvar,
+		       std::shared_ptr<vector<vector<size_t> > >porb,
+		       std::shared_ptr<vector<int > >pvar_beforeMerge,
+		       std::shared_ptr<vector<size_t > >porb_beforeMerge)
     : Det(pD), Num(pNum), Num2(pNum2), present(ppresent), Energy(pE), var_indices(pvar), orbDifference(porb), var_indices_beforeMerge(pvar_beforeMerge), orbDifference_beforeMerge(porb_beforeMerge)
   {
     extra_info=true;
   };
 
-  StitchDEH::StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
-		       boost::shared_ptr<vector<CItype> >pNum,
-		       boost::shared_ptr<vector<CItype> >pNum2,
-		       boost::shared_ptr<vector<char> >ppresent,
-		       boost::shared_ptr<vector<double> >pE)
+  StitchDEH::StitchDEH(std::shared_ptr<vector<Determinant> >pD,
+		       std::shared_ptr<vector<CItype> >pNum,
+		       std::shared_ptr<vector<CItype> >pNum2,
+		       std::shared_ptr<vector<char> >ppresent,
+		       std::shared_ptr<vector<double> >pE)
     : Det(pD), Num(pNum), Num2(pNum2), present(ppresent), Energy(pE)
   {
     extra_info=false;

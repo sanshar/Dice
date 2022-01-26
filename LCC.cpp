@@ -51,6 +51,7 @@ using namespace SHCISortMpiUtils;
 
 
 
+#ifndef Complex
 //=============================================================================
 void LCC::doLCC(
         Determinant *Dets, CItype *ci, int DetsSize,
@@ -141,6 +142,7 @@ void LCC::doLCC(
     uniqueDEH.MergeSortAndRemoveDuplicates();
     uniqueDEH.RemoveDetsPresentIn(SortedDets, DetsSize);
 
+#ifndef SERIAL
     // (communications) -------------------------------------------------------
     for (int level = 0; level <ceil(log2(size)); level++) {
       if (rank%ipow(2, level+1) == 0 && rank + ipow(2, level) < size) {
@@ -213,12 +215,15 @@ void LCC::doLCC(
       } // rank
     } // level
     // (communications) -------------------------------------------------------
+    #endif
 
 
     // Prepare Dets, Psi1, VPsi0 (and proj)
     vector<Determinant> Dets= *uniqueDEH.Det;
     int nDets = Dets.size();
+    #ifndef SERIAL
     boost::mpi::broadcast(world, Dets, 0);
+    #endif
     MatrixXx Psi1  = MatrixXx::Zero(nDets, 1);
     MatrixXx VPsi0 = MatrixXx::Zero(nDets, 1);
     for (int i=0; i<nDets; i++)
@@ -287,7 +292,7 @@ void LCC::doLCC(
   Hmult2 Hab(sparseHab);
 
   // Scenario1: show the different contributions
-  cout<<"Dets:";
+  cout<<"Dets/class:";
   for (int iclass=0; iclass<8; iclass++)
     cout<<format("%8i") %(Psi1nDets[iclass]);
   cout<<endl;
@@ -636,3 +641,4 @@ void LCC::get_landscape(
    cout<<"BM: what?? "<<i<<" "<<j<<" "<<a<<" "<<b<<" "<<schd.ncore<<" "<<schd.nact<<endl;
   }
 }
+#endif

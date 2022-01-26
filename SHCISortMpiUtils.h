@@ -90,41 +90,41 @@ namespace SHCISortMpiUtils {
    }
 
  public:
-   boost::shared_ptr<vector<Determinant> > Det;
-   boost::shared_ptr<vector<CItype> > Num;       //the numerator for the first Var state
-   boost::shared_ptr<vector<CItype> > Num2;      //the numberator for the second Var state (if present)
-   boost::shared_ptr<vector<char> > present;      //the numberator for the second Var state (if present)
-   boost::shared_ptr<vector<double> > Energy;
+   std::shared_ptr<vector<Determinant> > Det;
+   std::shared_ptr<vector<CItype> > Num;       //the numerator for the first Var state
+   std::shared_ptr<vector<CItype> > Num2;      //the numberator for the second Var state (if present)
+   std::shared_ptr<vector<char> > present;      //the numberator for the second Var state (if present)
+   std::shared_ptr<vector<double> > Energy;
 
    //the next two store information about where a determinant in "C" arose from
-   boost::shared_ptr<vector<int > > var_indices_beforeMerge;
-   boost::shared_ptr<vector<size_t > > orbDifference_beforeMerge;
+   std::shared_ptr<vector<int > > var_indices_beforeMerge;
+   std::shared_ptr<vector<size_t > > orbDifference_beforeMerge;
 
    //the next two store information about where a determinant in "C" arose from,
    //and takes into account the fact that a given determinant might have arisen from
    //multiple parent determinants in "V"
-   boost::shared_ptr<vector<vector<int> > > var_indices;
-   boost::shared_ptr<vector<vector<size_t> > > orbDifference;
+   std::shared_ptr<vector<vector<int> > > var_indices;
+   std::shared_ptr<vector<vector<size_t> > > orbDifference;
 
    bool extra_info; // whether to use var_indices, orbDifference
 
    StitchDEH();
 
-   StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
-	     boost::shared_ptr<vector<CItype> >pNum,
-	     boost::shared_ptr<vector<CItype> >pNum2,
-	     boost::shared_ptr<vector<char> >present,
-	     boost::shared_ptr<vector<double> >pE,
-	     boost::shared_ptr<vector<vector<int> > >pvar,
-	     boost::shared_ptr<vector<vector<size_t> > >porb,
-	     boost::shared_ptr<vector<int > >pvar_beforeMerge,
-	     boost::shared_ptr<vector<size_t > >porb_beforeMerge);
+   StitchDEH(std::shared_ptr<vector<Determinant> >pD,
+	     std::shared_ptr<vector<CItype> >pNum,
+	     std::shared_ptr<vector<CItype> >pNum2,
+	     std::shared_ptr<vector<char> >present,
+	     std::shared_ptr<vector<double> >pE,
+	     std::shared_ptr<vector<vector<int> > >pvar,
+	     std::shared_ptr<vector<vector<size_t> > >porb,
+	     std::shared_ptr<vector<int > >pvar_beforeMerge,
+	     std::shared_ptr<vector<size_t > >porb_beforeMerge);
 
-   StitchDEH(boost::shared_ptr<vector<Determinant> >pD,
-	     boost::shared_ptr<vector<CItype> >pNum,
-	     boost::shared_ptr<vector<CItype> >pNum2,
-	     boost::shared_ptr<vector<char> >present,
-	     boost::shared_ptr<vector<double> >pE);
+   StitchDEH(std::shared_ptr<vector<Determinant> >pD,
+	     std::shared_ptr<vector<CItype> >pNum,
+	     std::shared_ptr<vector<CItype> >pNum2,
+	     std::shared_ptr<vector<char> >present,
+	     std::shared_ptr<vector<double> >pE);
 
    void QuickSortAndRemoveDuplicates() ;
    void MergeSort() ;

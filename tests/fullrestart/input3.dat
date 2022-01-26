@@ -3,9 +3,7 @@ nocc 10
 end
 nroots 1
 schedule 
-0	0.005
-3	0.001
-6	1e-04
+6	5e-05
 end
 davidsonTol 5e-05
 dE 1e-08

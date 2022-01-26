@@ -6,6 +6,7 @@
 *.exe
 *.o
 *.so
+Dice
 
 # Packages #
 ############
@@ -26,4 +27,21 @@
 #########
 *.swp
 *.doctree
+*.bkp
 output*.dat
+tests/mn_really_quick
+tests/*/shci.e
+tests/*/spatialRDM.*.txt
+tests/*/spatial1RDM.*.txt
+tests/*/spatial3RDM.*.txt
+tests/*/spatial3RDM.*.bin
+tests/*/spin1RDM.*.txt
+tests/__pycache__
+benchmark/*/shci.e
+benchmark/*/output.dat
+benchmark/*/benchmark_raw.out
+benchmark/*/benchmark.out
+.vscode
+*slurm-*.out
+run_all.sh
+pyscf.out
