@@ -195,6 +195,7 @@ int main(int argc, char* argv[]) {
   load >> ciReal;
   load >> E0;
   ifs.close();
+  E0[0] += coreE;
   MatrixXx ci = ciReal[0];
   ciReal.clear(); 
   pout << "# Variational ground state energy: " << E0[0] << endl; 
