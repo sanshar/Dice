@@ -1455,7 +1455,7 @@ void SHCIbasics::writeVariationalResult(
     pout << format("#Begin writing variational wf %29.2f\n") %
                 (getTime() - startofCalc);
 
-  {
+  if (commrank == 0) {
     char file[5000];
     sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
     std::ofstream ofs(file, std::ios::binary);
@@ -1467,25 +1467,25 @@ void SHCIbasics::writeVariationalResult(
     ofs.close();
   }
 
-  if (converged) {
-    char file[5000];
-    sprintf(file, "%s/%d-hamiltonian.bkp", schd.prefix[0].c_str(), commrank);
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << sparseHam.connections << sparseHam.Helements
-         << sparseHam.orbDifference;
-  }
+  //if (converged) {
+  //  char file[5000];
+  //  sprintf(file, "%s/%d-hamiltonian.bkp", schd.prefix[0].c_str(), commrank);
+  //  std::ofstream ofs(file, std::ios::binary);
+  //  boost::archive::binary_oarchive save(ofs);
+  //  save << sparseHam.connections << sparseHam.Helements
+  //       << sparseHam.orbDifference;
+  //}
 
-  if (commrank == 0) {
-    char file[5000];
-    sprintf(file, "%s/%d-helpers.bkp", schd.prefix[0].c_str(), commrank);
-    std::ofstream ofs(file, std::ios::binary);
-    boost::archive::binary_oarchive save(ofs);
-    save << helper2.AlphaMajorToBeta << helper2.AlphaMajorToDet
-         << helper2.BetaMajorToAlpha << helper2.BetaMajorToDet
-         << helper2.SinglesFromAlpha << helper2.SinglesFromBeta << helper2.BetaN
-         << helper2.AlphaN;
-  }
+  //if (commrank == 0) {
+  //  char file[5000];
+  //  sprintf(file, "%s/%d-helpers.bkp", schd.prefix[0].c_str(), commrank);
+  //  std::ofstream ofs(file, std::ios::binary);
+  //  boost::archive::binary_oarchive save(ofs);
+  //  save << helper2.AlphaMajorToBeta << helper2.AlphaMajorToDet
+  //       << helper2.BetaMajorToAlpha << helper2.BetaMajorToDet
+  //       << helper2.SinglesFromAlpha << helper2.SinglesFromBeta << helper2.BetaN
+  //       << helper2.AlphaN;
+  //}
 
   if (schd.outputlevel > 0)
     pout << format("#End   writing variational wf %29.2f\n") %
