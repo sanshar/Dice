@@ -79,7 +79,6 @@ void license() {
   pout << endl;
 }
 
-// only works for i = j = 0, need to fix creation/annihilation operator action
 CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
         Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) ; 
 
