@@ -1,0 +1,26 @@
+#system
+nocc 6
+0 3 4 7 8 11
+end
+orbitals ./FCIDUMP
+nroots 1
+
+#variational
+schedule 
+0	1e-9
+end
+davidsonTol 1e-06
+dE 1e-08
+maxiter 20
+
+#pt
+nPTiter 0
+epsilon2 1e-07
+#epsilon2Large 2e-5
+targetError 1e-5
+sampleN 200
+
+#misc
+io 
+#DoRDM
+#DoSpinRDM

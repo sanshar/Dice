@@ -1,0 +1,103 @@
+
+     ____  _
+    |  _ \(_) ___ ___
+    | | | | |/ __/ _ \
+    | |_| | | (_|  __/
+    |____/|_|\___\___|   v1.0
+
+
+**************************************************************
+Dice  Copyright (C) 2017  Sandeep Sharma
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+Author:       Sandeep Sharma
+Contributors: James E Smith, Adam A Holmes, Bastien Mussard
+For detailed documentation on Dice please visit
+https://sanshar.github.io/Dice/
+and our group page for up to date information on other projects
+http://www.colorado.edu/lab/sharmagroup/
+**************************************************************
+
+User:             anma2640
+Date:             Wed Jan 26 08:46:15 2022
+PID:              7244
+
+Path:             /projects/anma2640/newDice/green/merge/Dice
+Commit:           9f1d545b9ee7784b4726c88752e9de14d6bd0cc1
+Branch:           greensFunction
+Compilation Date: Jan 26 2022 01:16:13
+
+
+**************************************************************
+INPUT FILE
+**************************************************************
+#system
+nocc 8
+0 1 2 3 4 5 6 7 
+orbitals ./FCIDUMP
+nroots 1
+
+#variational
+schedule
+0	5e-4
+end
+davidsonTol 1e-06
+dE 1e-08
+maxiter 20
+
+#pt
+nPTiter 0
+epsilon2 1e-07
+#epsilon2Large 2e-5
+targetError 1e-5
+sampleN 200
+
+#misc
+io
+#DoRDM
+#DoSpinRDM
+
+
+
+**************************************************************
+SELECTING REFERENCE DETERMINANT(S)
+**************************************************************
+2 2 2 2 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0  Given Ref. Energy:        -76.0267610958
+
+
+**************************************************************
+VARIATIONAL STEP  
+**************************************************************
+Iter Root       Eps1   #Var. Det.               Energy   #Davidson     Time(s)
+   0    0    5.00e-04        2001       -76.2292693508          8        0.10
+   1    0    5.00e-04       18985       -76.2371502883          9        0.31
+   2    0    5.00e-04       20898       -76.2374304672          7        0.39
+   3    0    5.00e-04       20964       -76.2374399631          4        0.44
+   4    0    5.00e-04       20964       -76.2374399631          1        0.49
+Performing final tight davidson with tol: 1e-06
+Exiting variational iterations
+
+Variational calculation result
+Root             Energy     Time(s)
+   0      -76.2374399635        0.51
+
+Printing most important determinants
+ Det     weight  Determinant string
+State :   0
+   0       0.9721546597  2 2 2 2 0   0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 
+   1      -0.0505026004  2 2 2 0 0   0 0 0 0 2   0 0 0 0 0   0 0 0 0 0   0 0 0 
+   2      -0.0359708158  2 0 2 2 0   0 2 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 
+   3      -0.0348501377  2 2 0 2 0   0 0 0 2 0   0 0 0 0 0   0 0 0 0 0   0 0 0 
+   4      -0.0296504497  2 0 2 2 0   2 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 
+   5      -0.0281969329  2 0 2 2 0   0 0 2 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 
+
+
+**************************************************************
+Returning without error
+**************************************************************
+
+
