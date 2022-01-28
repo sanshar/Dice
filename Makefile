@@ -4,6 +4,7 @@
 
 USE_MPI = yes
 USE_INTEL = yes
+USING_OSX = no
 EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
 BOOST=/projects/anma2640/boost_1_66_0
 
