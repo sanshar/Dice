@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import time
 import h5py
 from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp
 #from pyscf.shciscf import shci, settings
@@ -221,6 +222,152 @@ def prepValence(mol, ncore, nact, occ=None, loc="iao", dm=None, writeFcidump=Tru
   print(gmf.kernel(dm0 = dm))
   if writeMOs:
     writeMat(gmf.mo_coeff, "hf.txt", False)
+
+# cholesky generation functions are from pauxy
+def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False):
+    # Unpack SCF data.
+    # Step 1. Rotate core Hamiltonian to orthogonal basis.
+    if verbose:
+        print(" # Transforming hcore and eri to ortho AO basis.")
+    if (len(X.shape) == 2):
+        h1e = np.dot(X.T, np.dot(hcore, X))
+    elif (len(X.shape) == 3):
+        h1e = np.dot(X[0].T, np.dot(hcore, X[0]))
+
+    nbasis = h1e.shape[-1]
+    # Step 2. Genrate Cholesky decomposed ERIs in non-orthogonal AO basis.
+    if verbose:
+        print (" # Performing modified Cholesky decomposition on ERI tensor.")
+    chol_vecs = chunked_cholesky(mol, max_error=chol_cut, verbose=verbose)
+    if verbose:
+        print (" # Orthogonalising Cholesky vectors.")
+    start = time.time()
+    # Step 2.a Orthogonalise Cholesky vectors.
+    if (len(X.shape) == 2):
+        ao2mo_chol(chol_vecs, X)
+    elif (len(X.shape) == 3):
+        ao2mo_chol(chol_vecs, X[0])
+    if verbose:
+        print (" # Time to orthogonalise: %f"%(time.time() - start))
+    enuc = mol.energy_nuc()
+    # Step 3. (Optionally) freeze core / virtuals.
+    nelec = mol.nelec
+    return h1e, chol_vecs, nelec, enuc
+
+def ao2mo_chol(eri, C):
+    nb = C.shape[-1]
+    for i, cv in enumerate(eri):
+        half = np.dot(cv.reshape(nb,nb), C)
+        eri[i] = np.dot(C.conj().T, half).ravel()
+
+def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
+    """Modified cholesky decomposition from pyscf eris.
+
+    See, e.g. [Motta17]_
+
+    Only works for molecular systems.
+
+    Parameters
+    ----------
+    mol : :class:`pyscf.mol`
+        pyscf mol object.
+    orthoAO: :class:`numpy.ndarray`
+        Orthogonalising matrix for AOs. (e.g., mo_coeff).
+    delta : float
+        Accuracy desired.
+    verbose : bool
+        If true print out convergence progress.
+    cmax : int
+        nchol = cmax * M, where M is the number of basis functions.
+        Controls buffer size for cholesky vectors.
+
+    Returns
+    -------
+    chol_vecs : :class:`numpy.ndarray`
+        Matrix of cholesky vectors in AO basis.
+    """
+    nao = mol.nao_nr()
+    diag = np.zeros(nao*nao)
+    nchol_max = cmax * nao
+    # This shape is more convenient for pauxy.
+    chol_vecs = np.zeros((nchol_max, nao*nao))
+    ndiag = 0
+    dims = [0]
+    nao_per_i = 0
+    for i in range(0,mol.nbas):
+        l = mol.bas_angular(i)
+        nc = mol.bas_nctr(i)
+        nao_per_i += (2*l+1)*nc
+        dims.append(nao_per_i)
+    # print (dims)
+    for i in range(0,mol.nbas):
+        shls = (i,i+1,0,mol.nbas,i,i+1,0,mol.nbas)
+        buf = mol.intor('int2e_sph', shls_slice=shls)
+        di, dk, dj, dl = buf.shape
+        diag[ndiag:ndiag+di*nao] = buf.reshape(di*nao,di*nao).diagonal()
+        ndiag += di * nao
+    nu = np.argmax(diag)
+    delta_max = diag[nu]
+    if verbose:
+        print("# Generating Cholesky decomposition of ERIs."%nchol_max)
+        print("# max number of cholesky vectors = %d"%nchol_max)
+        print("# iteration %5d: delta_max = %f"%(0, delta_max))
+    j = nu // nao
+    l = nu % nao
+    sj = np.searchsorted(dims, j)
+    sl = np.searchsorted(dims, l)
+    if dims[sj] != j and j != 0:
+        sj -= 1
+    if dims[sl] != l and l != 0:
+        sl -= 1
+    Mapprox = np.zeros(nao*nao)
+    # ERI[:,jl]
+    eri_col = mol.intor('int2e_sph',
+                         shls_slice=(0,mol.nbas,0,mol.nbas,sj,sj+1,sl,sl+1))
+    cj, cl = max(j-dims[sj],0), max(l-dims[sl],0)
+    chol_vecs[0] = np.copy(eri_col[:,:,cj,cl].reshape(nao*nao)) / delta_max**0.5
+
+    nchol = 0
+    while abs(delta_max) > max_error:
+        # Update cholesky vector
+        start = time.time()
+        # M'_ii = L_i^x L_i^x
+        Mapprox += chol_vecs[nchol] * chol_vecs[nchol]
+        # D_ii = M_ii - M'_ii
+        delta = diag - Mapprox
+        nu = np.argmax(np.abs(delta))
+        delta_max = np.abs(delta[nu])
+        # Compute ERI chunk.
+        # shls_slice computes shells of integrals as determined by the angular
+        # momentum of the basis function and the number of contraction
+        # coefficients. Need to search for AO index within this shell indexing
+        # scheme.
+        # AO index.
+        j = nu // nao
+        l = nu % nao
+        # Associated shell index.
+        sj = np.searchsorted(dims, j)
+        sl = np.searchsorted(dims, l)
+        if dims[sj] != j and j != 0:
+            sj -= 1
+        if dims[sl] != l and l != 0:
+            sl -= 1
+        # Compute ERI chunk.
+        eri_col = mol.intor('int2e_sph',
+                            shls_slice=(0,mol.nbas,0,mol.nbas,sj,sj+1,sl,sl+1))
+        # Select correct ERI chunk from shell.
+        cj, cl = max(j-dims[sj],0), max(l-dims[sl],0)
+        Munu0 = eri_col[:,:,cj,cl].reshape(nao*nao)
+        # Updated residual = \sum_x L_i^x L_nu^x
+        R = np.dot(chol_vecs[:nchol+1,nu], chol_vecs[:nchol+1,:])
+        chol_vecs[nchol+1] = (Munu0 - R) / (delta_max)**0.5
+        nchol += 1
+        if verbose:
+            step_time = time.time() - start
+            info = (nchol, delta_max, step_time)
+            print ("# iteration %5d: delta_max = %13.8e: time = %13.8e"%info)
+
+    return chol_vecs[:nchol]
 
 # write cholesky integrals
 def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
