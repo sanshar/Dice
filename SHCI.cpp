@@ -463,19 +463,19 @@ int main(int argc, char* argv[]) {
     }
   }
 
-#ifdef Complex
-  //make the largest magnitude ci coefficient real
-  for (int root = 0; root < schd.nroots; root++) {
-    MatrixXx& prevci =  ci[root];
-    compAbs comp;
-    int m = distance(
-        &prevci(0, 0),
-        max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
-    complex<double> maxC = prevci(m,0);
-    for (int i=0; i< static_cast<int>(DetsSize); i++)
-      prevci(i,0) = prevci(i,0)*abs(maxC)/maxC;
-  }
-#endif
+//#ifdef Complex
+//  //make the largest magnitude ci coefficient real
+//  for (int root = 0; root < schd.nroots; root++) {
+//    MatrixXx& prevci =  ci[root];
+//    compAbs comp;
+//    int m = distance(
+//        &prevci(0, 0),
+//        max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+//    complex<double> maxC = prevci(m,0);
+//    for (int i=0; i< static_cast<int>(DetsSize); i++)
+//      prevci(i,0) = prevci(i,0)*abs(maxC)/maxC;
+//  }
+//#endif
   
   // #####################################################################
   // Print the 5 most important determinants and their weights
