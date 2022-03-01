@@ -1,9 +1,12 @@
 {
-  "sampling":
+ "sampling":
   {
     "tau": 0.001,
+    "seed": 20
+  },
+  "FCIQMC":
+  {
     "maxIter": 12000,
-    "seed": 20,
     "shiftDamping": 0.01,
     "initialShift": 0.0,
     "initialPop": 100.0,
@@ -11,6 +14,7 @@
     "mainMemoryFac": 10.0,
     "spawnMemoryFac": 10.0,
     "initiator": true,
-    "nreplicas": 2
+    "nreplicas": 2,
+    "printAnnihilStats": false
   }
 }

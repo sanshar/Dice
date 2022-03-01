@@ -570,8 +570,8 @@ struct JastrowMultiSlater {
           }
         }
       }
-      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + (1.*ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
-      locES2 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam2 + (1.*ref.ciParity[i]) * (laplaceDet20 + laplaceDet21 + laplaceDet22)) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + complex<double>(ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+      locES2 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam2 + complex<double>(ref.ciParity[i]) * (laplaceDet20 + laplaceDet21 + laplaceDet22)) * walk.walker.refHelper.refOverlap).real() / refOverlap;
     }
     ciIterationTime += (getTime() - initTime);
     ham += (locES1 + locES2);
@@ -702,7 +702,7 @@ struct JastrowMultiSlater {
           laplaceDet1 -= temp.determinant();
         }
       }
-      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + (1.*ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
+      locES1 += ref.ciCoeffs[i] * ((walk.walker.refHelper.ciOverlapRatios[i] * complexHam1 + complex<double>(ref.ciParity[i]) * laplaceDet1) * walk.walker.refHelper.refOverlap).real() / refOverlap;
     }
     ciIterationTime += (getTime() - initTime);
     ham += locES1;

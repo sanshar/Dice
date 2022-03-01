@@ -638,6 +638,7 @@ void getLanczosCoeffsContinuousTime(Wfn &w, Walker &walk, double &alpha, Eigen::
 
 }
 
+/*
 template<typename Wfn, typename Walker>
 void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, VectorXd &grad, MatrixXd& Hessian, MatrixXd& Smatrix, double &rk, int niter, double targetError)
 {
@@ -780,6 +781,7 @@ void getStochasticGradientHessianContinuousTime(Wfn &w, Walker& walk, double &E0
     save << bestDet;
   }
 }
+*/
 
 //############################################################Metropolis Evaluation############################################################################
 template<typename Wfn, typename Walker>
@@ -861,6 +863,7 @@ class getGradientWrapper
       w.writeWave();
   };
 
+/*
   void getHessian(VectorXd &vars, VectorXd &grad, MatrixXd &Hessian, MatrixXd &Smatrix, double &E0, double &stddev, oneInt &I1, twoInt &I2, twoIntHeatBathSHM &I2hb, double &coreE, double &rt, bool deterministic)
   {
     if (!deterministic)
@@ -882,5 +885,7 @@ class getGradientWrapper
     }
     w.writeWave();
   };
+*/
+
 };
 #endif

@@ -21,11 +21,12 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <random>
 #include <Eigen/Dense>
+#include "input.h"
 #ifndef SERIAL
 #include "mpi.h"
 extern MPI_Comm shmcomm, localcomm;
 #endif
-class schedule;
+//class schedule;
 class Profile;
 class twoInt;
 class oneInt;

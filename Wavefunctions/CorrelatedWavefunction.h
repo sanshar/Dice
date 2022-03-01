@@ -22,8 +22,9 @@
 #include <set>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
-#include "Walker.h"
 #include <unordered_set>
+#include "input.h"
+#include "Walker.h"
 
 class oneInt;
 class twoInt;
@@ -111,15 +112,20 @@ struct CorrelatedWavefunction {
     Determinant dcopy = walk.d;
     dcopy.setocc(i, false);
     dcopy.setocc(a, true);
-      
-    return walk.corrHelper.OverlapRatio(i, a, corr, dcopy, walk.d)
+
+    double overlapRatio = walk.corrHelper.OverlapRatio(i, a, corr, dcopy, walk.d)
         * walk.getDetFactor(i, a, ref);
-    //* slater.OverlapRatio(i, a, walk, doparity); 
+
+    if (doparity) {
+      overlapRatio *= walk.d.parityFull(0, i, 0, a, 0);
+    }
+      
+    return overlapRatio;
   }
 
   double getOverlapFactor(int I, int J, int A, int B, const Walker<Corr, Reference>& walk, bool doparity) const  
   {
-    //singleexcitation
+    // Single excitation
     if (J == 0 && B == 0) return getOverlapFactor(I, A, walk, doparity);
   
     Determinant dcopy = walk.d;
@@ -128,9 +134,15 @@ struct CorrelatedWavefunction {
     dcopy.setocc(A, true);
     dcopy.setocc(B, true);
 
-    return walk.corrHelper.OverlapRatio(I, J, A, B, corr, dcopy, walk.d)
+    double overlapRatio = walk.corrHelper.OverlapRatio(I, J, A, B, corr, dcopy, walk.d)
         * walk.getDetFactor(I, J, A, B, ref);
-        //* slater.OverlapRatio(I, J, A, B, walk, doparity);
+
+    if (doparity) {
+      int ex2 = J * 2 * Determinant::norbs + B;
+      overlapRatio *= walk.d.parityFull(ex2, I, J, A, B);
+    }
+
+    return overlapRatio;
   }
   
   double getOverlapFactor(const Walker<Corr, Reference>& walk, std::array<unordered_set<int>, 2> &from, std::array<unordered_set<int>, 2> &to) const
@@ -158,6 +170,11 @@ struct CorrelatedWavefunction {
   {
     corr.printVariables();
     ref.printVariables();
+  }
+
+  void printCorrToFile() const
+  {
+    corr.printVariablesToFile();
   }
 
   void updateVariables(Eigen::VectorXd &v) 
@@ -271,6 +288,43 @@ struct CorrelatedWavefunction {
     if (schd.debug) cout << endl;
   }
 
+  void HamAndOvlpAndSVTotal(const Walker<Corr, Reference> &walk, double &ovlp,
+                            double &ham, double& SVTotal, workingArray& work,
+                            double epsilon=schd.epsilon) const
+  {
+    int norbs = Determinant::norbs;
+
+    ovlp = Overlap(walk);
+    ham = walk.d.Energy(I1, I2, coreE);
+    SVTotal = 0.0;
+
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, epsilon, schd.screen, work, false);
+    generateAllScreenedDoubleExcitation(walk.d, epsilon, schd.screen, work, false);
+
+    // Loop over all the screened excitations
+    for (int i=0; i<work.nExcitations; i++) {
+      int ex1 = work.excitation1[i];
+      int ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+
+      double ovlpRatio = getOverlapFactor(I, J, A, B, walk, false);
+
+      double contrib = tia * ovlpRatio;
+      ham += contrib;
+
+      // Accumulate the sign violating terms for the appropriate Hamiltonian.
+      if (contrib > 0.0) {
+        SVTotal += contrib;
+      }
+
+      work.ovlpRatio[i] = ovlpRatio;
+    }
+  }
+
   void HamAndOvlpLanczos(const Walker<Corr, Reference> &walk,
                          Eigen::VectorXd &lanczosCoeffsSample,
                          double &ovlpSample,
@@ -317,6 +371,15 @@ struct CorrelatedWavefunction {
   template<typename Walker>
   bool checkWalkerExcitationClass(Walker &walk) {
     return true;
+  }
+
+  // For some situation, such as FCIQMC, we want to know the ratio of
+  // overlaps with the correct parity. This function will calculate
+  // this parity, relative to what is returned by getOverlapFactor.
+  // (For some wave functions this is always 1).
+  double parityFactor(Determinant& d, const int ex2, const int i,
+                      const int j, const int a, const int b) const {
+    return d.parityFull(ex2, i, j, a, b);
   }
   
 };

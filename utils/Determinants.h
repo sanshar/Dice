@@ -138,7 +138,7 @@ class Determinant {
   double parity(const vector<int>& aArray, const vector<int>& iArray, bool sz) const ;
   double parityAA(const int& i, const int& j, const int& a, const int& b) const ;
   double parityBB(const int& i, const int& j, const int& a, const int& b) const ;
-
+  double parityFull(const int ex2, const int i, const int j, const int a, const int b) const;
   
   double Energy(const oneInt& I1, const twoInt& I2, const double& coreE) const ;
   CItype Hij_1ExciteScreened(const int& a, const int& i, const twoIntHeatBathSHM& Ishm,
@@ -371,7 +371,7 @@ void generateAllDeterminantsActive(vector<Determinant>& allDets, const Determina
                                    const int nact, const int nalpha, const int nbeta);
 void generateAllDeterminantsFOIS(vector<Determinant>& allDets, int norbs, int nalpha, int nbeta);
 
-template<> struct hash<Determinant>
+template<> struct std::hash<Determinant>
 {
   std::size_t operator()(Determinant const& d) const noexcept
   {

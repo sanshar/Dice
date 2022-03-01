@@ -187,30 +187,46 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ndets = input.get("wavefunction.ndets", 1e6);
     schd.phaseless = input.get("sampling.phaseless", false);
     
-    //gfmc 
+    // GFMC
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
     schd.nwalk = input.get("sampling.nwalk", 100);
     schd.tau = input.get("sampling.tau", 0.001);
     schd.fn_factor = input.get("sampling.fn_factor", 1.0);
     schd.nGeneration = input.get("sampling.nGeneration", 30.0);
     
-    //FCIQMC options
-    schd.nreplicas = input.get("sampling.nReplicas", 1);
-    schd.nAttemptsEach = input.get("sampling.nAttemptsEach", 1);
-    schd.mainMemoryFac = input.get("sampling.mainMemoryFac", 5.0);
-    schd.spawnMemoryFac = input.get("sampling.spawnMemoryFac", 5.0);
-    schd.shiftDamping = input.get("sampling.shiftDamping", 0.01);
-    schd.initialShift = input.get("sampling.initialShift", 0.0);
-    schd.minSpawn = input.get("sampling.minSpawn", 0.01);
-    schd.minPop = input.get("sampling.minPop", 1.0);
-    schd.initialPop = input.get("sampling.initialPop", 100.0);
-    schd.targetPop = input.get("sampling.targetPop", 1000.0);
-    schd.initiator = input.get("sampling.initiator", false);
-    schd.initiatorThresh = input.get("sampling.initiatorThresh", 2.0);
-    schd.uniformExGen = input.get("sampling.uniform", true);
-    schd.heatBathExGen = input.get("sampling.heatBath", false);
-    schd.heatBathUniformSingExGen = input.get("sampling.heatBathUniformSingles", false);
-    schd.calcEN2 = input.get("sampling.EN2", false);
+    // FCIQMC options
+    schd.maxIterFCIQMC = input.get("FCIQMC.maxIter", 50);
+    schd.nreplicas = input.get("FCIQMC.nReplicas", 1);
+    schd.nAttemptsEach = input.get("FCIQMC.nAttemptsEach", 1);
+    schd.mainMemoryFac = input.get("FCIQMC.mainMemoryFac", 5.0);
+    schd.spawnMemoryFac = input.get("FCIQMC.spawnMemoryFac", 5.0);
+    schd.shiftDamping = input.get("FCIQMC.shiftDamping", 0.01);
+    schd.initialShift = input.get("FCIQMC.initialShift", 0.0);
+    schd.minSpawn = input.get("FCIQMC.minSpawn", 0.01);
+    schd.minPop = input.get("FCIQMC.minPop", 1.0);
+    schd.initialPop = input.get("FCIQMC.initialPop", 100.0);
+    schd.initialNDets = input.get("FCIQMC.initialNDets", 1);
+    schd.trialInitFCIQMC = input.get("FCIQMC.trialInit", false);
+    schd.targetPop = input.get("FCIQMC.targetPop", 1000.0);
+    schd.initiator = input.get("FCIQMC.initiator", false);
+    schd.initiatorThresh = input.get("FCIQMC.initiatorThresh", 2.0);
+    schd.semiStoch = input.get("FCIQMC.semiStoch", false);
+    schd.semiStochInit = input.get("FCIQMC.semiStochInit", false);
+    schd.semiStochFile = input.get("wavefunction.semiStochDets", "dets");
+    schd.uniformExGen = input.get("FCIQMC.uniform", true);
+    schd.heatBathExGen = input.get("FCIQMC.heatBath", false);
+    schd.heatBathUniformSingExGen = input.get("FCIQMC.heatBathUniformSingles", false);
+    schd.calcEN2 = input.get("FCIQMC.EN2", false);
+    schd.useTrialFCIQMC = input.get("FCIQMC.useTrial", false);
+    schd.trialWFEstimator = input.get("FCIQMC.trialWFEstimator", false);
+    schd.importanceSampling = input.get("FCIQMC.importanceSampling", false);
+    schd.applyNodeFCIQMC = input.get("FCIQMC.applyNode", false);
+    schd.releaseNodeFCIQMC = input.get("FCIQMC.releaseNode", false);
+    schd.releaseNodeIter = input.get("FCIQMC.releaseNodeIter", 2000);
+    schd.diagonalDumping = input.get("FCIQMC.diagonalDumping", false);
+    schd.partialNodeFactor = input.get("FCIQMC.partialNodeFactor", 1.0);
+    schd.expApprox = input.get("FCIQMC.expApprox", false);
+    schd.printAnnihilStats = input.get("FCIQMC.printAnnihilStats", true);
 
     //optimization
     string method = algorithm::to_lower_copy(input.get("optimizer.method", "amsgrad")); 
@@ -245,6 +261,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printLevel = input.get("print.level", 0);
     schd.printVars = input.get("print.vars", false);
     schd.printGrad = input.get("print.grad", false);
+    schd.printJastrow = input.get("print.jastrow", false);
     schd.debug = input.get("print.debug", false);
     // SC-NEVPT(2) print options:
     schd.printSCNorms = input.get("print.SCNorms", true);

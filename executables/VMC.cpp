@@ -116,6 +116,7 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
     runVMC(wave, walk);
+    if (schd.printJastrow && commrank==0) wave.printCorrToFile();
   }
   
   else if (schd.wavefunctionType == "sjastrowslater") {
@@ -172,11 +173,13 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "jastrowagp") {
     CorrelatedWavefunction<Jastrow, AGP> wave; Walker<Jastrow, AGP> walk;
     runVMC(wave, walk);
+    if (schd.printJastrow && commrank==0) wave.printCorrToFile();
   }
   
   else if (schd.wavefunctionType == "jastrowpfaffian") {
     CorrelatedWavefunction<Jastrow, Pfaffian> wave; Walker<Jastrow, Pfaffian> walk;
     runVMC(wave, walk);
+    if (schd.printJastrow && commrank==0) wave.printCorrToFile();
   }
   
   else if (schd.wavefunctionType == "rbm") {

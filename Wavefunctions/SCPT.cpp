@@ -1714,7 +1714,7 @@ void SCPT<Wfn>::readNormDataBinary(vector<Determinant>& initDets, vector<double>
 /*
 template<typename Wfn>
 void SCPT<Wfn>::readNormDataText(vector<Determinant>& initDets, vector<double>& largestCoeffs,
-                      double& energyCAS_Tot, Eigen::VectorXd& norms_Tot)
+                      double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, double& deltaT_Tot)
 {
   // Read in the stochastically-sampled norms
   if (commrank == 0) cout << "About to read stochastically-sampled norms..." << endl;
@@ -1729,11 +1729,9 @@ void SCPT<Wfn>::readNormDataText(vector<Determinant>& initDets, vector<double>& 
   if (commrank == 0) cout << "Reading complete." << endl;
 
   // Read in the exactly-calculated norms
-  if (schd.readInitDets) {
-    if (commrank == 0) cout << "About to read initial determinants..." << endl;
-    readInitDets(initDets, largestCoeffs);
-    if (commrank == 0) cout << "Reading complete." << endl;
-  }
+  if (commrank == 0) cout << "About to read initial determinants..." << endl;
+  readInitDets(initDets, largestCoeffs);
+  if (commrank == 0) cout << "Reading complete." << endl;
 
   if (commrank == 0) cout << endl;
 }

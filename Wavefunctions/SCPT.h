@@ -25,6 +25,10 @@
 #include "Determinants.h"
 #include "workingArray.h"
 #include <boost/filesystem.hpp>
+#ifndef SERIAL
+#include "mpi.h"
+#include <boost/mpi.hpp>
+#endif
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -209,7 +213,7 @@ class SCPT
                           double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, double& deltaT_Tot, bool readDeltaT);
 
   void readNormDataText(vector<Determinant>& initDets, vector<double>& largestCoeffs,
-                        double& energyCAS_Tot, Eigen::VectorXd& norms_Tot);
+                        double& energyCAS_Tot, Eigen::VectorXd& norms_Tot, double& deltaT_Tot);
   
   template<typename Walker>
   double doNEVPT2_CT_Efficient(Walker& walk);
