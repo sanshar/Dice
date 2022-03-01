@@ -1,0 +1,816 @@
+#INFO: **** input file is /projects/anma2640/VMC/dqmc/VMC/examples/DQMC/br_soc_afqmc/br.py ****
+#!/usr/bin/env python
+import os,sys,numpy
+from pyscf import gto, scf, lib, tools, ao2mo, mcscf
+from pyscf.shciscf import shci, socutils
+import h5py
+import prepVMC
+import numpy as np
+import scipy.linalg as la
+
+# write cholesky integrals
+def write_dqmc_soc(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_chol'):
+    assert len(chol.shape) == 2
+    with h5py.File(filename, 'w') as fh5:
+        fh5['header'] = np.array([nelec, nmo, chol.shape[0]])
+        fh5['hcore_real'] = hcore.real.flatten()
+        fh5['hcore_imag'] = hcore.imag.flatten()
+        fh5['hcore_mod_real'] = hcore_mod.real.flatten()
+        fh5['hcore_mod_imag'] = hcore_mod.imag.flatten()
+        fh5['chol'] = chol.flatten()
+        fh5['energy_core'] = enuc
+
+mol = gto.M(
+    atom = 'Br 0 0 0',
+    basis = 'crenbl',
+    ecp = 'crenbl',
+    verbose=4,
+    symmetry=1,
+    spin = 1)
+
+mf = scf.ROHF(mol)
+mf.irrep_nelec = {'A1g':(2,2), 'A1u':(1,0), 'E1ux':(1,1), 'E1uy':(1,1), 'E2gx':(1,1), 'E2gy':(1,1), 'E1gx':(1,1), 'E1gy':(1,1)}
+mf.level_shift = 0.1
+mf.kernel()
+mf.analyze()
+rohf_dm = mf.make_rdm1()
+mo_coeff = mf.mo_coeff
+
+energy_core = mol.energy_nuc()
+moAct = mo_coeff
+h1e = moAct.T.dot(mf.get_hcore()).dot(moAct)
+eri = ao2mo.kernel(mol, moAct)
+tools.fcidump.from_integrals('FCIDUMP', h1e, eri, mol.nao, mol.nelectron, energy_core)
+mc = mcscf.CASSCF(mf, mol.nao, sum(mol.nelec))
+mc.make_rdm1 = lambda *args: rohf_dm
+mc.mo_coeff = mo_coeff
+socutils.writeSOCIntegrals(mc, pictureChange1e = "bp", pictureChange2e = "bp")
+
+mol.symmetry = 0
+gmf = scf.GHF(mol)
+#mf.with_soc = True
+s = .5 * lib.PauliMatrices
+ecpso = -1j * lib.einsum('sxy,spq->xpyq', s, mol.intor('ECPso'))
+hcore = gmf.get_hcore()
+hcore = hcore + ecpso.reshape(hcore.shape)
+gmf.get_hcore = lambda *args: hcore
+norb = mol.nao
+ncore = (sum(mol.nelec) - 5)//2
+
+# diagonalize soc ham in p space to get initial guess for ghf
+porbs = numpy.zeros((2*norb, 6))
+for i in range(3):
+  porbs[:norb, 2*i] = mo_coeff[:, ncore + i]
+  porbs[norb:, 2*i+1] = mo_coeff[:, ncore + i]
+soc_ham = porbs.T.dot(ecpso.reshape(hcore.shape)).dot(porbs)
+numpy.set_printoptions(4, linewidth=1000, suppress=True, threshold=sys.maxsize)
+print(f'\nsoc_ham:\n{soc_ham}\n')
+soc_e, soc_c = numpy.linalg.eigh(soc_ham)
+print(f'\nenergy: {soc_e}\n')
+print(f'\nstates:\n{soc_c}\n')
+
+soc_orbs = porbs.dot(soc_c)
+ghf_coeffs_guess = numpy.zeros((2*norb, sum(mol.nelec))) * 1.j
+ghf_coeffs_guess[:norb, :ncore] = mo_coeff[:, :ncore]
+ghf_coeffs_guess[norb:, ncore:2*ncore] = mo_coeff[:, :ncore]
+
+# ground state
+for i in range(5):
+  ghf_coeffs_guess[:, 2*ncore+i] = soc_orbs[:, i]
+dm = ghf_coeffs_guess.dot(ghf_coeffs_guess.T.conj())
+gmf.level_shift = 0.2
+gmf.max_cycle = 100
+gmf.kernel(dm0=dm)
+gmf.analyze()
+
+# excited state
+gmf_1 = scf.GHF(mol)
+gmf_1.get_hcore = lambda *args: hcore
+ghf_coeffs_guess = numpy.zeros((2*norb, sum(mol.nelec))) * 1.j
+ghf_coeffs_guess[:norb, :ncore] = mo_coeff[:, :ncore]
+ghf_coeffs_guess[norb:, ncore:2*ncore] = mo_coeff[:, :ncore]
+for i in range(5):
+  ghf_coeffs_guess[:, 2*ncore+i] = soc_orbs[:, i+1]
+dm = ghf_coeffs_guess.dot(ghf_coeffs_guess.T.conj())
+gmf_1.level_shift = 0.2
+gmf_1.max_cycle = 100
+gmf_1.kernel(dm0=dm)
+gmf_1.analyze()
+
+# write ghf coeffs
+overlap = gmf.get_ovlp(mol)
+basis = la.block_diag(mo_coeff, mo_coeff)
+ghfCoeffs = basis.T.dot(overlap).dot(gmf.mo_coeff)
+prepVMC.writeMat(ghfCoeffs, "ghf.txt", True)
+ghfCoeffs_1 = basis.T.dot(overlap).dot(gmf_1.mo_coeff)
+prepVMC.writeMat(ghfCoeffs_1, "ghf_1.txt", True)
+
+# calculate and write cholecky integrals
+h1e, chol, nelec, enuc = prepVMC.generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut=1e-5, verbose=True)
+
+nbasis = h1e.shape[-1]
+print(f'nelec: {nelec}')
+print(f'nbasis: {nbasis}')
+print(f'chol.shape: {chol.shape}')
+chol = chol.reshape((-1, nbasis, nbasis))
+v0 = 0.5 * numpy.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+
+h1e = basis.T.dot(hcore).dot(basis)
+h1e_mod = h1e - numpy.block([ [v0, numpy.zeros((nbasis, nbasis)) ] , [ numpy.zeros((nbasis, nbasis)), v0 ] ])
+chol = chol.reshape((chol.shape[0], -1))
+write_dqmc_soc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, filename='FCIDUMP_chol')
+
+#INFO: ******************** input file end ********************
+
+
+System: uname_result(system='Linux', node='bhpc-c7-u7-1.rc.int.colorado.edu', release='3.10.0-1160.15.2.el7.x86_64', version='#1 SMP Wed Feb 3 15:06:38 UTC 2021', machine='x86_64', processor='x86_64')  Threads 36
+Python 3.8.3 (default, May 19 2020, 18:47:26) 
+[GCC 7.3.0]
+numpy 1.19.1  scipy 1.5.2
+Date: Tue Mar  1 01:31:12 2022
+PySCF version 1.7.4
+PySCF path  /projects/anma2640/pyscf/pyscf
+GIT HEAD      ref: refs/heads/master
+GIT master branch  14142ec394cbdcffb8e214fba6b1d6cde9025e9a
+
+[CONFIG] conf_file None
+[INPUT] verbose = 4
+[INPUT] num. atoms = 1
+[INPUT] num. electrons = 17
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 1
+[INPUT] symmetry 1 subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 Br     0.000000000000   0.000000000000   0.000000000000 AA    0.000000000000   0.000000000000   0.000000000000 Bohr
+
+nuclear repulsion = 0
+point group symmetry = SO3, use subgroup Dooh
+num. orbitals of irrep A1g = 7
+num. orbitals of irrep E1gx = 4
+num. orbitals of irrep E1gy = 4
+num. orbitals of irrep A1u = 3
+num. orbitals of irrep E1uy = 3
+num. orbitals of irrep E1ux = 3
+num. orbitals of irrep E2gx = 4
+num. orbitals of irrep E2gy = 4
+number of shells = 10
+number of NR pGTOs = 32
+number of NR cGTOs = 32
+basis = crenbl
+ecp = crenbl
+CPU time:         0.71
+
+
+******** <class 'pyscf.scf.hf_symm.SymAdaptedROHF'> ********
+method = SymAdaptedROHF-ROHF-RHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0.1
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-09
+SCF conv_tol_grad = None
+SCF max_cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /rc_scratch/anma2640/tmprx6zu5y7
+max_memory 4000 MB (current use 85 MB)
+num. doubly occ = 8  num. singly occ = 1
+irrep_nelec {'A1g': (2, 2), 'A1u': (1, 0), 'E1ux': (1, 1), 'E1uy': (1, 1), 'E2gx': (1, 1), 'E2gy': (1, 1), 'E1gx': (1, 1), 'E1gy': (1, 1)}
+Freeze 17 electrons in irreps ['A1g', 'A1u', 'E1ux', 'E1uy', 'E2gx', 'E2gy', 'E1gx', 'E1gy']
+    0 free electrons in irreps 
+Set gradient conv threshold to 3.16228e-05
+init E= -134.971498544183
+HOMO (E1ux) = -0.435893625862002  LUMO (E1ux) = 0.674838374191189
+cycle= 1 E= -152.877397875149  delta_E= -17.9  |g|= 1.11  |ddm|= 3.62
+HOMO (A1u) = -0.263298160989485  LUMO (A1u) = 0.724144027259029
+cycle= 2 E= -152.92613925615  delta_E= -0.0487  |g|= 0.312  |ddm|= 0.406
+HOMO (A1u) = -0.226894168938782  LUMO (A1u) = 0.742805917086125
+cycle= 3 E= -152.930590585455  delta_E= -0.00445  |g|= 0.0267  |ddm|= 0.0477
+HOMO (A1u) = -0.222490425467628  LUMO (A1u) = 0.744570995652265
+cycle= 4 E= -152.930670205093  delta_E= -7.96e-05  |g|= 0.00414  |ddm|= 0.0243
+HOMO (A1u) = -0.223971645444417  LUMO (A1u) = 0.743760563515618
+cycle= 5 E= -152.930674933805  delta_E= -4.73e-06  |g|= 0.00076  |ddm|= 0.00775
+HOMO (A1u) = -0.223863695322757  LUMO (A1u) = 0.743731878179246
+cycle= 6 E= -152.930675138869  delta_E= -2.05e-07  |g|= 4.17e-05  |ddm|= 0.00168
+HOMO (A1u) = -0.223864371010037  LUMO (A1u) = 0.74372196798878
+cycle= 7 E= -152.93067513997  delta_E= -1.1e-09  |g|= 6.94e-06  |ddm|= 6.36e-05
+HOMO (A1u) = -0.223867640039113  LUMO (A1u) = 0.743718151875086
+cycle= 8 E= -152.930675140005  delta_E= -3.51e-11  |g|= 7.95e-07  |ddm|= 1.35e-05
+HOMO (A1u) = -0.273867317240004  LUMO (A1u) = 0.643718231950181
+Extra cycle  E= -152.930675140005  delta_E= -4.26e-13  |g|= 2.08e-07  |ddm|= 1.08e-06
+converged SCF energy = -152.930675140005
+**** SCF Summaries ****
+Total Energy =                        -152.930675140005434
+Nuclear Repulsion Energy =               0.000000000000000
+One-electron Energy =                 -270.522192241202674
+Two-electron Energy =                  117.591517101197240
+TODO: total wave-function symmetry for Dooh
+occupancy for each irrep:    A1g E1gx E1gy  A1u E1uy E1ux E2gx E2gy
+double occ                     3    1    1    0    1    1    0    0
+single occ                     0    0    0    1    0    0    0    0
+**** MO energy ****
+                          Roothaan           | alpha              | beta
+MO #1   (A1g #1 ) energy= -3.11140895371477  | -3.11941889093502  | -3.10339901649452  occ= 2
+MO #2   (E1gx #1 ) energy= -3.10801442519927  | -3.11422876453828  | -3.10180008586021  occ= 2
+MO #3   (E1gy #1 ) energy= -3.10801442519925  | -3.11422876453827  | -3.10180008586021  occ= 2
+MO #4   (E2gx #1 ) energy= -3.0978683831513   | -3.09874845085974  | -3.09698831544285  occ= 2
+MO #5   (E2gy #1 ) energy= -3.0978683831513   | -3.09874845085974  | -3.09698831544285  occ= 2
+MO #6   (A1g #2 ) energy= -1.01438401428856  | -1.06854602781947  | -0.960222000757613 occ= 2
+MO #7   (E1uy #1 ) energy= -0.438348495191635 | -0.45219925559133  | -0.424497734791941 occ= 2
+MO #8   (E1ux #1 ) energy= -0.438348495191635 | -0.45219925559133  | -0.424497734791941 occ= 2
+MO #9   (A1u #1 ) energy= -0.273867317240004 | -0.510643530443686 | -0.0370910542081178 occ= 1
+MO #10  (A1u #2 ) energy= 0.643718231950181  | 0.612357484086796  | 0.675078929985589  occ= 0
+MO #11  (E1uy #2 ) energy= 0.657655481000867  | 0.652904088801562  | 0.662406873200172  occ= 0
+MO #12  (E1ux #2 ) energy= 0.657655481000865  | 0.652904088801562  | 0.662406873200171  occ= 0
+MO #13  (A1g #3 ) energy= 0.720994999684964  | 0.707834157900795  | 0.734155841469118  occ= 0
+MO #14  (A1g #4 ) energy= 4.13692165290066   | 4.11543799053438   | 4.15840531526695   occ= 0
+MO #15  (E1gx #2 ) energy= 4.14215719106672   | 4.12532864829753   | 4.15898573383591   occ= 0
+MO #16  (E1gy #2 ) energy= 4.14215719106673   | 4.12532864829754   | 4.15898573383592   occ= 0
+MO #17  (E2gx #2 ) energy= 4.15802059722971   | 4.15531219354351   | 4.16072900091592   occ= 0
+MO #18  (E2gy #2 ) energy= 4.15802059722971   | 4.15531219354351   | 4.16072900091592   occ= 0
+MO #19  (A1u #3 ) energy= 12.2384252575338   | 12.2286402362382   | 12.2482102788292   occ= 0
+MO #20  (E1uy #3 ) energy= 12.2578657396815   | 12.2561873610887   | 12.2595441182744   occ= 0
+MO #21  (E1ux #3 ) energy= 12.2578657396815   | 12.2561873610887   | 12.2595441182744   occ= 0
+MO #22  (A1g #5 ) energy= 25.0815880935765   | 25.0789696933199   | 25.0842064938331   occ= 0
+MO #23  (E1gx #3 ) energy= 25.0848987867042   | 25.0828539750434   | 25.0869435983649   occ= 0
+MO #24  (E1gy #3 ) energy= 25.0848987867042   | 25.0828539750434   | 25.0869435983649   occ= 0
+MO #25  (E2gx #3 ) energy= 25.0946327745847   | 25.0942098228593   | 25.0950557263102   occ= 0
+MO #26  (E2gy #3 ) energy= 25.0946327745847   | 25.0942098228593   | 25.0950557263101   occ= 0
+MO #27  (A1g #6 ) energy= 25.6679571720305   | 25.6645958386851   | 25.6713185053758   occ= 0
+MO #28  (A1g #7 ) energy= 125.203090357692   | 125.202840540969   | 125.203340174414   occ= 0
+MO #29  (E1gx #4 ) energy= 125.204064494971   | 125.203866233361   | 125.204262756582   occ= 0
+MO #30  (E1gy #4 ) energy= 125.204064494972   | 125.203866233361   | 125.204262756582   occ= 0
+MO #31  (E2gx #4 ) energy= 125.206986875152   | 125.206943412463   | 125.207030337841   occ= 0
+MO #32  (E2gy #4 ) energy= 125.206986875152   | 125.206943412464   | 125.207030337841   occ= 0
+
+WARN: Weak orthogonality for localized orbitals 1.0393717289070202e-09
+
+ ** Mulliken pop on meta-lowdin orthogonal AOs  **
+ ** Mulliken pop  **
+pop of  0 Br 4s        1.30438
+pop of  0 Br 5s        0.05982
+pop of  0 Br 6s        0.63581
+pop of  0 Br 4px       0.00253
+pop of  0 Br 4py       0.11434
+pop of  0 Br 4pz       0.11434
+pop of  0 Br 5px       0.03791
+pop of  0 Br 5py       1.88427
+pop of  0 Br 5pz       1.88427
+pop of  0 Br 6px       0.95956
+pop of  0 Br 6py       0.00139
+pop of  0 Br 6pz       0.00139
+pop of  0 Br 3dxy      1.99996
+pop of  0 Br 3dyz      1.99996
+pop of  0 Br 3dz^2     1.99995
+pop of  0 Br 3dxz      1.99996
+pop of  0 Br 3dx2-y2    1.99996
+pop of  0 Br 4dxy      0.00000
+pop of  0 Br 4dyz      0.00000
+pop of  0 Br 4dz^2     0.00000
+pop of  0 Br 4dxz      0.00000
+pop of  0 Br 4dx2-y2    0.00000
+pop of  0 Br 5dxy      0.00003
+pop of  0 Br 5dyz      0.00002
+pop of  0 Br 5dz^2     0.00002
+pop of  0 Br 5dxz      0.00002
+pop of  0 Br 5dx2-y2    0.00003
+pop of  0 Br 6dxy      0.00001
+pop of  0 Br 6dyz      0.00001
+pop of  0 Br 6dz^2     0.00001
+pop of  0 Br 6dxz      0.00001
+pop of  0 Br 6dx2-y2    0.00001
+ ** Mulliken atomic charges  **
+charge of  0Br =      0.00000
+Dipole moment(X, Y, Z, Debye):  0.00000,  0.00000,  0.00000
+
+soc_ham:
+[[ 0.    +0.j      0.    +0.j      0.    +0.006j   0.    +0.j      0.    +0.j      0.    -0.0061j]
+ [ 0.    +0.j      0.    +0.j      0.    +0.j      0.    -0.006j   0.    -0.0061j  0.    +0.j    ]
+ [ 0.    -0.006j   0.    +0.j      0.    +0.j      0.    +0.j      0.    +0.j      0.0061+0.j    ]
+ [ 0.    +0.j      0.    +0.006j   0.    +0.j      0.    +0.j     -0.0061+0.j      0.    +0.j    ]
+ [ 0.    +0.j      0.    +0.0061j  0.    +0.j     -0.0061+0.j      0.    +0.j      0.    +0.j    ]
+ [ 0.    +0.0061j  0.    +0.j      0.0061+0.j      0.    +0.j      0.    +0.j      0.    +0.j    ]]
+
+
+energy: [-0.0121 -0.0121  0.006   0.006   0.0062  0.0062]
+
+
+states:
+[[ 0.    +0.j     -0.5758+0.j      0.7061+0.j      0.0379+0.j     -0.0248+0.j      0.4097+0.j    ]
+ [-0.5758+0.0006j  0.    +0.j      0.0375-0.0058j -0.6978+0.108j  -0.4084-0.0336j -0.0247-0.002j ]
+ [ 0.    +0.j      0.    -0.5758j -0.    -0.7061j -0.    -0.0379j  0.    -0.0248j -0.    +0.4097j]
+ [ 0.0006+0.5758j  0.    +0.j      0.0058+0.0375j -0.108 -0.6978j -0.0336+0.4084j -0.002 +0.0247j]
+ [ 0.0006+0.5805j  0.    +0.j     -0.    -0.j      0.    +0.j      0.0667-0.81j    0.004 -0.0489j]
+ [ 0.    -0.j      0.    +0.5805j -0.    -0.j     -0.    -0.j      0.    -0.0491j -0.    +0.8128j]]
+
+
+
+******** <class 'pyscf.scf.ghf.GHF'> ********
+method = GHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0.2
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-09
+SCF conv_tol_grad = None
+SCF max_cycles = 100
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /rc_scratch/anma2640/tmp_59eaq0z
+max_memory 4000 MB (current use 327 MB)
+Set gradient conv threshold to 3.16228e-05
+init E= -152.9363687307
+  HOMO = -0.335659865181839  LUMO = 0.156172772539996
+cycle= 1 E= -152.93832737728  delta_E= -0.00196  |g|= 0.019  |ddm|= 0.0412
+  HOMO = -0.335223007248979  LUMO = 0.156357812822489
+cycle= 2 E= -152.93842829235  delta_E= -0.000101  |g|= 0.00411  |ddm|= 0.0128
+  HOMO = -0.334843729581724  LUMO = 0.156488484645758
+cycle= 3 E= -152.938439297123  delta_E= -1.1e-05  |g|= 0.000855  |ddm|= 0.00539
+  HOMO = -0.334789733414786  LUMO = 0.156458674403375
+cycle= 4 E= -152.938440534784  delta_E= -1.24e-06  |g|= 0.000373  |ddm|= 0.00175
+  HOMO = -0.334778680798803  LUMO = 0.156462021731125
+cycle= 5 E= -152.938440977579  delta_E= -4.43e-07  |g|= 0.0003  |ddm|= 0.000728
+  HOMO = -0.334797436305594  LUMO = 0.15646073993037
+cycle= 6 E= -152.938441471989  delta_E= -4.94e-07  |g|= 0.000285  |ddm|= 0.000783
+  HOMO = -0.334546946349112  LUMO = 0.156494465906872
+cycle= 7 E= -152.938444903037  delta_E= -3.43e-06  |g|= 0.00018  |ddm|= 0.00738
+  HOMO = -0.334374151847162  LUMO = 0.156500433077451
+cycle= 8 E= -152.938445737372  delta_E= -8.34e-07  |g|= 0.000112  |ddm|= 0.00353
+  HOMO = -0.334194875701148  LUMO = 0.15647746080172
+cycle= 9 E= -152.938446031911  delta_E= -2.95e-07  |g|= 7.09e-05  |ddm|= 0.00291
+  HOMO = -0.334187166493544  LUMO = 0.15645888745126
+cycle= 10 E= -152.938446053174  delta_E= -2.13e-08  |g|= 2.96e-05  |ddm|= 0.000629
+  HOMO = -0.334181439324992  LUMO = 0.156474897006164
+cycle= 11 E= -152.938446057602  delta_E= -4.43e-09  |g|= 1.84e-05  |ddm|= 0.000217
+  HOMO = -0.33418196995337  LUMO = 0.156467319705027
+cycle= 12 E= -152.93844605932  delta_E= -1.72e-09  |g|= 1.72e-05  |ddm|= 6.01e-05
+  HOMO = -0.334182543672354  LUMO = 0.15646729874143
+cycle= 13 E= -152.938446060575  delta_E= -1.25e-09  |g|= 1.71e-05  |ddm|= 3.4e-05
+  HOMO = -0.334182521186894  LUMO = 0.156467296644682
+cycle= 14 E= -152.938446060487  delta_E= 8.81e-11  |g|= 1.73e-05  |ddm|= 3.04e-06
+  HOMO = -0.434182695966874  LUMO = -0.0435329181637454
+Extra cycle  E= -152.938446061838  delta_E= -1.35e-09  |g|= 1.73e-05  |ddm|= 3.58e-05
+converged SCF energy = -152.938446061838  <S^2> = 0.75150447  2S+1 = 2.0015039
+**** MO energy ****
+MO #1   energy= -3.13208178185128  occ= 1
+MO #2   energy= -3.1306957099087   occ= 1
+MO #3   energy= -3.12589354619647  occ= 1
+MO #4   energy= -3.12535290293433  occ= 1
+MO #5   energy= -3.09110666647319  occ= 1
+MO #6   energy= -3.08941662543462  occ= 1
+MO #7   energy= -3.0847086070206   occ= 1
+MO #8   energy= -3.08439026167278  occ= 1
+MO #9   energy= -3.08375690443565  occ= 1
+MO #10  energy= -3.08049988058624  occ= 1
+MO #11  energy= -1.03382720480919  occ= 1
+MO #12  energy= -0.993024077345483 occ= 1
+MO #13  energy= -0.483042650132517 occ= 1
+MO #14  energy= -0.466264403032301 occ= 1
+MO #15  energy= -0.448262791622844 occ= 1
+MO #16  energy= -0.435277625369695 occ= 1
+MO #17  energy= -0.434182695966874 occ= 1
+MO #18  energy= -0.0435329181637454 occ= 0
+MO #19  energy= 0.626733921813977  occ= 0
+MO #20  energy= 0.63114811891168   occ= 0
+MO #21  energy= 0.64770475203715   occ= 0
+MO #22  energy= 0.661291777313849  occ= 0
+MO #23  energy= 0.661666197707125  occ= 0
+MO #24  energy= 0.706744991134185  occ= 0
+MO #25  energy= 0.716946125878943  occ= 0
+MO #26  energy= 0.726774798121316  occ= 0
+MO #27  energy= 4.1180125749087    occ= 0
+MO #28  energy= 4.12071063493087   occ= 0
+MO #29  energy= 4.12889164402729   occ= 0
+MO #30  energy= 4.13207310293373   occ= 0
+MO #31  energy= 4.14901251499865   occ= 0
+MO #32  energy= 4.15996942763432   occ= 0
+MO #33  energy= 4.16374306630687   occ= 0
+MO #34  energy= 4.16537736718961   occ= 0
+MO #35  energy= 4.17257326618158   occ= 0
+MO #36  energy= 4.18273666401094   occ= 0
+MO #37  energy= 12.0897289927182   occ= 0
+MO #38  energy= 12.1015345696694   occ= 0
+MO #39  energy= 12.101587521548    occ= 0
+MO #40  energy= 12.1052920135816   occ= 0
+MO #41  energy= 12.5602204734688   occ= 0
+MO #42  energy= 12.5614110238382   occ= 0
+MO #43  energy= 25.0244388106693   occ= 0
+MO #44  energy= 25.0249892774926   occ= 0
+MO #45  energy= 25.0294445687045   occ= 0
+MO #46  energy= 25.0296745019      occ= 0
+MO #47  energy= 25.1289232251518   occ= 0
+MO #48  energy= 25.130130041996    occ= 0
+MO #49  energy= 25.1303873108908   occ= 0
+MO #50  energy= 25.1329345123402   occ= 0
+MO #51  energy= 25.134892968382    occ= 0
+MO #52  energy= 25.1352593388235   occ= 0
+MO #53  energy= 25.6687636554024   occ= 0
+MO #54  energy= 25.6708227232028   occ= 0
+MO #55  energy= 124.695432474487   occ= 0
+MO #56  energy= 124.695445581046   occ= 0
+MO #57  energy= 124.69681148448    occ= 0
+MO #58  energy= 124.696861788058   occ= 0
+MO #59  energy= 125.54719737053    occ= 0
+MO #60  energy= 125.547212227911   occ= 0
+MO #61  energy= 125.547791245934   occ= 0
+MO #62  energy= 125.547829865795   occ= 0
+MO #63  energy= 125.548957787878   occ= 0
+MO #64  energy= 125.549075485959   occ= 0
+Dipole moment(X, Y, Z, Debye): -0.00000, -0.00000,  0.00000
+ ** Mulliken pop alpha/beta on meta-lowdin orthogonal AOs **
+ ** Mulliken pop       alpha | beta **
+pop of  0 Br 4s        0.65221 | 0.65223   
+pop of  0 Br 5s        0.02987 | 0.03006   
+pop of  0 Br 6s        0.31788 | 0.31767   
+pop of  0 Br 4px       0.00250 | 0.00081   
+pop of  0 Br 4py       0.04850 | 0.05718   
+pop of  0 Br 4pz       0.04850 | 0.05718   
+pop of  0 Br 5px       0.03462 | 0.01194   
+pop of  0 Br 5py       0.79222 | 0.94145   
+pop of  0 Br 5pz       0.79230 | 0.94153   
+pop of  0 Br 6px       0.96049 | 0.30810   
+pop of  0 Br 6py       0.00058 | 0.00077   
+pop of  0 Br 6pz       0.00058 | 0.00077   
+pop of  0 Br 3dxy      0.99997 | 0.99997   
+pop of  0 Br 3dyz      0.99997 | 0.99997   
+pop of  0 Br 3dz^2     0.99997 | 0.99997   
+pop of  0 Br 3dxz      0.99997 | 0.99997   
+pop of  0 Br 3dx2-y2    0.99997 | 0.99997   
+pop of  0 Br 4dxy      0.00000 | 0.00000   
+pop of  0 Br 4dyz      0.00000 | 0.00001   
+pop of  0 Br 4dz^2     0.00001 | 0.00001   
+pop of  0 Br 4dxz      0.00000 | 0.00001   
+pop of  0 Br 4dx2-y2    0.00000 | 0.00000   
+pop of  0 Br 5dxy      0.00001 | 0.00001   
+pop of  0 Br 5dyz      0.00001 | 0.00002   
+pop of  0 Br 5dz^2     0.00001 | 0.00002   
+pop of  0 Br 5dxz      0.00001 | 0.00002   
+pop of  0 Br 5dx2-y2    0.00001 | 0.00001   
+pop of  0 Br 6dxy      0.00001 | 0.00002   
+pop of  0 Br 6dyz      0.00002 | 0.00002   
+pop of  0 Br 6dz^2     0.00003 | 0.00002   
+pop of  0 Br 6dxz      0.00002 | 0.00002   
+pop of  0 Br 6dx2-y2    0.00001 | 0.00002   
+In total             8.68028 | 8.31972   
+ ** Mulliken atomic charges   ( Nelec_alpha | Nelec_beta ) **
+charge of  0Br =     -0.00000  (     8.68028      8.31972 )
+
+
+******** <class 'pyscf.scf.ghf.GHF'> ********
+method = GHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0.2
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-09
+SCF conv_tol_grad = None
+SCF max_cycles = 100
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /rc_scratch/anma2640/tmpx4yd539u
+max_memory 4000 MB (current use 342 MB)
+Set gradient conv threshold to 3.16228e-05
+init E= -152.917607644002
+  HOMO = -0.32570029426712  LUMO = 0.142948680863845
+cycle= 1 E= -152.920599729593  delta_E= -0.00299  |g|= 0.0243  |ddm|= 0.06
+  HOMO = -0.328352517612999  LUMO = 0.140056705657006
+cycle= 2 E= -152.920823451917  delta_E= -0.000224  |g|= 0.00646  |ddm|= 0.0209
+  HOMO = -0.327739944156637  LUMO = 0.140443983709233
+cycle= 3 E= -152.9208567915  delta_E= -3.33e-05  |g|= 0.00179  |ddm|= 0.01
+  HOMO = -0.327632248485051  LUMO = 0.140434510811391
+cycle= 4 E= -152.92086001784  delta_E= -3.23e-06  |g|= 0.000782  |ddm|= 0.00299
+  HOMO = -0.3274892472471  LUMO = 0.140470982364153
+cycle= 5 E= -152.920860942465  delta_E= -9.25e-07  |g|= 0.000226  |ddm|= 0.00217
+  HOMO = -0.327472552820476  LUMO = 0.14047455089701
+cycle= 6 E= -152.92086113742  delta_E= -1.95e-07  |g|= 0.000188  |ddm|= 0.000611
+  HOMO = -0.327470308968451  LUMO = 0.140474816869935
+cycle= 7 E= -152.920861129373  delta_E= 8.05e-09  |g|= 0.000189  |ddm|= 3.42e-05
+  HOMO = -0.327468882621875  LUMO = 0.140474698450744
+cycle= 8 E= -152.920861113178  delta_E= 1.62e-08  |g|= 0.000188  |ddm|= 4.1e-05
+  HOMO = -0.327338689223578  LUMO = 0.140482062911165
+cycle= 9 E= -152.920859944823  delta_E= 1.17e-06  |g|= 0.000161  |ddm|= 0.00355
+  HOMO = -0.327213816498529  LUMO = 0.140485588237074
+cycle= 10 E= -152.920859319154  delta_E= 6.26e-07  |g|= 0.000107  |ddm|= 0.00386
+  HOMO = -0.327188468077944  LUMO = 0.1404542658603
+cycle= 11 E= -152.920859266287  delta_E= 5.29e-08  |g|= 3.52e-05  |ddm|= 0.0012
+  HOMO = -0.327181678353316  LUMO = 0.140468422836978
+cycle= 12 E= -152.920859261724  delta_E= 4.56e-09  |g|= 1.05e-05  |ddm|= 0.000381
+  HOMO = -0.327180122202789  LUMO = 0.140468677737226
+cycle= 13 E= -152.92085926151  delta_E= 2.14e-10  |g|= 2.84e-06  |ddm|= 8.79e-05
+  HOMO = -0.427181097379011  LUMO = -0.0595311738901628
+Extra cycle  E= -152.920859261518  delta_E= -7.45e-12  |g|= 1.17e-06  |ddm|= 4.11e-06
+converged SCF energy = -152.920859261518  <S^2> = 0.75257592  2S+1 = 2.0025743
+**** MO energy ****
+MO #1   energy= -3.13608656504488  occ= 1
+MO #2   energy= -3.13171567585112  occ= 1
+MO #3   energy= -3.1272799411696   occ= 1
+MO #4   energy= -3.12277443606215  occ= 1
+MO #5   energy= -3.0954185109794   occ= 1
+MO #6   energy= -3.09479810563778  occ= 1
+MO #7   energy= -3.09420928130411  occ= 1
+MO #8   energy= -3.09365185633872  occ= 1
+MO #9   energy= -3.09312571149381  occ= 1
+MO #10  energy= -3.09263075717048  occ= 1
+MO #11  energy= -1.03579015244786  occ= 1
+MO #12  energy= -0.996779359444358 occ= 1
+MO #13  energy= -0.489861355111418 occ= 1
+MO #14  energy= -0.45793134670588  occ= 1
+MO #15  energy= -0.44755787808518  occ= 1
+MO #16  energy= -0.437307160013577 occ= 1
+MO #17  energy= -0.427181097379011 occ= 1
+MO #18  energy= -0.0595311738901628 occ= 0
+MO #19  energy= 0.621950603761889  occ= 0
+MO #20  energy= 0.648330019035754  occ= 0
+MO #21  energy= 0.652303483784289  occ= 0
+MO #22  energy= 0.656197297561861  occ= 0
+MO #23  energy= 0.660011898565445  occ= 0
+MO #24  energy= 0.683509705606103  occ= 0
+MO #25  energy= 0.714992559455156  occ= 0
+MO #26  energy= 0.723939348697277  occ= 0
+MO #27  energy= 4.11299390590271   occ= 0
+MO #28  energy= 4.12734233459799   occ= 0
+MO #29  energy= 4.14145654051079   occ= 0
+MO #30  energy= 4.14577949136707   occ= 0
+MO #31  energy= 4.14801438965373   occ= 0
+MO #32  energy= 4.15020119335188   occ= 0
+MO #33  energy= 4.15232898764576   occ= 0
+MO #34  energy= 4.15440436232369   occ= 0
+MO #35  energy= 4.1553461041156    occ= 0
+MO #36  energy= 4.15642670924636   occ= 0
+MO #37  energy= 12.0903455186727   occ= 0
+MO #38  energy= 12.0916661310913   occ= 0
+MO #39  energy= 12.09289420242     occ= 0
+MO #40  energy= 12.0940303785993   occ= 0
+MO #41  energy= 12.5523428719662   occ= 0
+MO #42  energy= 12.5674806610858   occ= 0
+MO #43  energy= 25.0208223945167   occ= 0
+MO #44  energy= 25.0220559293151   occ= 0
+MO #45  energy= 25.0232475306623   occ= 0
+MO #46  energy= 25.0243973320481   occ= 0
+MO #47  energy= 25.1255870665018   occ= 0
+MO #48  energy= 25.1258730947987   occ= 0
+MO #49  energy= 25.1261340420781   occ= 0
+MO #50  energy= 25.1263699576043   occ= 0
+MO #51  energy= 25.1265808732465   occ= 0
+MO #52  energy= 25.1267668047828   occ= 0
+MO #53  energy= 25.6636745994565   occ= 0
+MO #54  energy= 25.6657448410189   occ= 0
+MO #55  energy= 124.690804265248   occ= 0
+MO #56  energy= 124.690836630455   occ= 0
+MO #57  energy= 124.690850427246   occ= 0
+MO #58  energy= 124.690851928116   occ= 0
+MO #59  energy= 125.542692432964   occ= 0
+MO #60  energy= 125.542722679695   occ= 0
+MO #61  energy= 125.542744686898   occ= 0
+MO #62  energy= 125.542758459963   occ= 0
+MO #63  energy= 125.542761324618   occ= 0
+MO #64  energy= 125.542764004153   occ= 0
+Dipole moment(X, Y, Z, Debye): -0.00000, -0.00000,  0.00000
+ ** Mulliken pop alpha/beta on meta-lowdin orthogonal AOs **
+ ** Mulliken pop       alpha | beta **
+pop of  0 Br 4s        0.65194 | 0.65216   
+pop of  0 Br 5s        0.02958 | 0.02999   
+pop of  0 Br 6s        0.31845 | 0.31781   
+pop of  0 Br 4px       0.00165 | 0.00248   
+pop of  0 Br 4py       0.05836 | 0.03734   
+pop of  0 Br 4pz       0.05836 | 0.03734   
+pop of  0 Br 5px       0.01929 | 0.03169   
+pop of  0 Br 5py       0.94115 | 0.62658   
+pop of  0 Br 5pz       0.94115 | 0.62658   
+pop of  0 Br 6px       0.64956 | 0.96583   
+pop of  0 Br 6py       0.00049 | 0.00082   
+pop of  0 Br 6pz       0.00049 | 0.00082   
+pop of  0 Br 3dxy      0.99997 | 0.99995   
+pop of  0 Br 3dyz      0.99996 | 0.99996   
+pop of  0 Br 3dz^2     0.99996 | 0.99997   
+pop of  0 Br 3dxz      0.99996 | 0.99996   
+pop of  0 Br 3dx2-y2    0.99997 | 0.99995   
+pop of  0 Br 4dxy      0.00000 | 0.00001   
+pop of  0 Br 4dyz      0.00001 | 0.00001   
+pop of  0 Br 4dz^2     0.00001 | 0.00001   
+pop of  0 Br 4dxz      0.00001 | 0.00001   
+pop of  0 Br 4dx2-y2    0.00000 | 0.00001   
+pop of  0 Br 5dxy      0.00001 | 0.00002   
+pop of  0 Br 5dyz      0.00002 | 0.00002   
+pop of  0 Br 5dz^2     0.00002 | 0.00002   
+pop of  0 Br 5dxz      0.00002 | 0.00002   
+pop of  0 Br 5dx2-y2    0.00001 | 0.00002   
+pop of  0 Br 6dxy      0.00002 | 0.00002   
+pop of  0 Br 6dyz      0.00003 | 0.00002   
+pop of  0 Br 6dz^2     0.00003 | 0.00003   
+pop of  0 Br 6dxz      0.00003 | 0.00002   
+pop of  0 Br 6dx2-y2    0.00002 | 0.00002   
+In total             8.67050 | 8.32950   
+ ** Mulliken atomic charges   ( Nelec_alpha | Nelec_beta ) **
+charge of  0Br =     -0.00000  (     8.67050      8.32950 )
+ # Transforming hcore and eri to ortho AO basis.
+ # Performing modified Cholesky decomposition on ERI tensor.
+# Generating Cholesky decomposition of ERIs.
+# max number of cholesky vectors = 320
+# iteration     0: delta_max = 6.075449
+# iteration     1: delta_max = 1.33881613e+00: time = 3.69063579e-04
+# iteration     2: delta_max = 1.11326384e+00: time = 7.52245076e-04
+# iteration     3: delta_max = 6.98172426e-01: time = 7.16819428e-04
+# iteration     4: delta_max = 6.85153456e-01: time = 7.92996027e-04
+# iteration     5: delta_max = 6.30944660e-01: time = 6.66838139e-04
+# iteration     6: delta_max = 5.21013749e-01: time = 7.93142244e-04
+# iteration     7: delta_max = 3.87996058e-01: time = 6.66656531e-04
+# iteration     8: delta_max = 3.74033603e-01: time = 7.85107724e-04
+# iteration     9: delta_max = 3.55506603e-01: time = 6.81234524e-04
+# iteration    10: delta_max = 3.30330596e-01: time = 7.60160387e-04
+# iteration    11: delta_max = 3.13058053e-01: time = 6.97364099e-04
+# iteration    12: delta_max = 3.13058053e-01: time = 7.40770251e-04
+# iteration    13: delta_max = 2.97297386e-01: time = 6.97636046e-04
+# iteration    14: delta_max = 2.97297386e-01: time = 7.22016208e-04
+# iteration    15: delta_max = 2.86212037e-01: time = 6.49062917e-04
+# iteration    16: delta_max = 2.78482955e-01: time = 8.00672919e-04
+# iteration    17: delta_max = 2.61256434e-01: time = 7.18172640e-04
+# iteration    18: delta_max = 2.61256434e-01: time = 7.91315921e-04
+# iteration    19: delta_max = 2.52236251e-01: time = 7.20798969e-04
+# iteration    20: delta_max = 2.51745664e-01: time = 7.64581375e-04
+# iteration    21: delta_max = 2.12528954e-01: time = 7.06558116e-04
+# iteration    22: delta_max = 2.04945037e-01: time = 7.67892227e-04
+# iteration    23: delta_max = 2.03612395e-01: time = 6.66936859e-04
+# iteration    24: delta_max = 2.03612395e-01: time = 7.93356448e-04
+# iteration    25: delta_max = 1.85712405e-01: time = 6.95443712e-04
+# iteration    26: delta_max = 1.77984824e-01: time = 7.70443119e-04
+# iteration    27: delta_max = 1.51673395e-01: time = 7.09757209e-04
+# iteration    28: delta_max = 1.37297730e-01: time = 7.99329951e-04
+# iteration    29: delta_max = 1.35361190e-01: time = 6.93007372e-04
+# iteration    30: delta_max = 1.32287366e-01: time = 7.85404816e-04
+# iteration    31: delta_max = 1.32287366e-01: time = 6.77288510e-04
+# iteration    32: delta_max = 1.22390515e-01: time = 7.68048689e-04
+# iteration    33: delta_max = 1.20952995e-01: time = 7.01889396e-04
+# iteration    34: delta_max = 1.17054452e-01: time = 7.59472139e-04
+# iteration    35: delta_max = 1.14342160e-01: time = 6.78353012e-04
+# iteration    36: delta_max = 1.05540953e-01: time = 7.89061189e-04
+# iteration    37: delta_max = 9.83151380e-02: time = 7.09717162e-04
+# iteration    38: delta_max = 9.24162649e-02: time = 8.01152550e-04
+# iteration    39: delta_max = 9.24162649e-02: time = 7.17973337e-04
+# iteration    40: delta_max = 9.08989258e-02: time = 8.03594477e-04
+# iteration    41: delta_max = 9.08989258e-02: time = 7.40189105e-04
+# iteration    42: delta_max = 8.41951701e-02: time = 7.70036131e-04
+# iteration    43: delta_max = 8.36251060e-02: time = 7.32505694e-04
+# iteration    44: delta_max = 8.36251060e-02: time = 8.04632902e-04
+# iteration    45: delta_max = 8.05745245e-02: time = 1.01927761e-03
+# iteration    46: delta_max = 8.01590757e-02: time = 8.20989721e-04
+# iteration    47: delta_max = 7.95311233e-02: time = 7.21687451e-04
+# iteration    48: delta_max = 7.42398924e-02: time = 8.18457454e-04
+# iteration    49: delta_max = 7.34268852e-02: time = 7.02966005e-04
+# iteration    50: delta_max = 7.34268852e-02: time = 7.62965530e-04
+# iteration    51: delta_max = 6.51208380e-02: time = 7.87581317e-04
+# iteration    52: delta_max = 6.51208380e-02: time = 6.94029033e-04
+# iteration    53: delta_max = 6.41903726e-02: time = 7.92933628e-04
+# iteration    54: delta_max = 6.31581945e-02: time = 7.11479224e-04
+# iteration    55: delta_max = 6.31581945e-02: time = 7.72046857e-04
+# iteration    56: delta_max = 6.12139503e-02: time = 7.29965977e-04
+# iteration    57: delta_max = 6.10172510e-02: time = 8.19250010e-04
+# iteration    58: delta_max = 5.58265752e-02: time = 7.15414062e-04
+# iteration    59: delta_max = 4.56799593e-02: time = 8.32033344e-04
+# iteration    60: delta_max = 4.38491639e-02: time = 7.35717826e-04
+# iteration    61: delta_max = 4.38491639e-02: time = 7.99608417e-04
+# iteration    62: delta_max = 4.37076485e-02: time = 7.51909800e-04
+# iteration    63: delta_max = 4.33276950e-02: time = 8.10937025e-04
+# iteration    64: delta_max = 3.99482678e-02: time = 7.40579329e-04
+# iteration    65: delta_max = 3.88020065e-02: time = 8.08313489e-04
+# iteration    66: delta_max = 3.88020065e-02: time = 6.93215057e-04
+# iteration    67: delta_max = 3.82130509e-02: time = 7.96527602e-04
+# iteration    68: delta_max = 3.43348894e-02: time = 7.47124664e-04
+# iteration    69: delta_max = 3.43348894e-02: time = 8.64423811e-04
+# iteration    70: delta_max = 3.33117169e-02: time = 7.48332590e-04
+# iteration    71: delta_max = 3.03086321e-02: time = 7.80533999e-04
+# iteration    72: delta_max = 2.91410165e-02: time = 7.13395886e-04
+# iteration    73: delta_max = 2.91410165e-02: time = 8.14886764e-04
+# iteration    74: delta_max = 2.62005413e-02: time = 7.27276318e-04
+# iteration    75: delta_max = 2.32945708e-02: time = 8.23565759e-04
+# iteration    76: delta_max = 2.25647016e-02: time = 7.51694664e-04
+# iteration    77: delta_max = 2.13972724e-02: time = 8.49816017e-04
+# iteration    78: delta_max = 2.03549551e-02: time = 7.74371438e-04
+# iteration    79: delta_max = 2.03549551e-02: time = 8.20817426e-04
+# iteration    80: delta_max = 2.00462371e-02: time = 8.38560984e-04
+# iteration    81: delta_max = 1.96877777e-02: time = 7.26632774e-04
+# iteration    82: delta_max = 1.96877777e-02: time = 8.38704407e-04
+# iteration    83: delta_max = 1.94989890e-02: time = 8.80106352e-04
+# iteration    84: delta_max = 1.94989890e-02: time = 7.81756826e-04
+# iteration    85: delta_max = 1.93140248e-02: time = 8.62287357e-04
+# iteration    86: delta_max = 1.89918718e-02: time = 8.93839635e-04
+# iteration    87: delta_max = 1.87792202e-02: time = 8.72805715e-04
+# iteration    88: delta_max = 1.86743464e-02: time = 1.17077492e-03
+# iteration    89: delta_max = 1.86743464e-02: time = 8.49070959e-04
+# iteration    90: delta_max = 1.84973571e-02: time = 8.69242474e-04
+# iteration    91: delta_max = 1.82883953e-02: time = 8.36810097e-04
+# iteration    92: delta_max = 1.82883953e-02: time = 8.38262029e-04
+# iteration    93: delta_max = 1.66450058e-02: time = 8.46806914e-04
+# iteration    94: delta_max = 1.66450058e-02: time = 8.47280957e-04
+# iteration    95: delta_max = 1.36730145e-02: time = 8.74244608e-04
+# iteration    96: delta_max = 1.30890008e-02: time = 8.98197293e-04
+# iteration    97: delta_max = 1.18295285e-02: time = 8.77853483e-04
+# iteration    98: delta_max = 1.18295285e-02: time = 8.70463438e-04
+# iteration    99: delta_max = 1.06971420e-02: time = 8.43489543e-04
+# iteration   100: delta_max = 1.06971420e-02: time = 8.57708976e-04
+# iteration   101: delta_max = 1.06260154e-02: time = 8.73938203e-04
+# iteration   102: delta_max = 8.76453786e-03: time = 8.88049603e-04
+# iteration   103: delta_max = 8.42126075e-03: time = 8.67155381e-04
+# iteration   104: delta_max = 8.11890063e-03: time = 8.57060775e-04
+# iteration   105: delta_max = 7.69954604e-03: time = 8.94193538e-04
+# iteration   106: delta_max = 6.95970528e-03: time = 8.78411345e-04
+# iteration   107: delta_max = 6.95970528e-03: time = 8.90704803e-04
+# iteration   108: delta_max = 6.92081392e-03: time = 8.51353630e-04
+# iteration   109: delta_max = 6.55016090e-03: time = 8.87538306e-04
+# iteration   110: delta_max = 5.81879635e-03: time = 8.87360424e-04
+# iteration   111: delta_max = 5.27652901e-03: time = 8.68845731e-04
+# iteration   112: delta_max = 5.27652901e-03: time = 8.54979269e-04
+# iteration   113: delta_max = 4.56013172e-03: time = 8.38366337e-04
+# iteration   114: delta_max = 4.56013172e-03: time = 8.55213031e-04
+# iteration   115: delta_max = 4.28990018e-03: time = 8.68619420e-04
+# iteration   116: delta_max = 4.15999558e-03: time = 8.69063661e-04
+# iteration   117: delta_max = 3.61292712e-03: time = 9.26204026e-04
+# iteration   118: delta_max = 3.57656457e-03: time = 8.61153007e-04
+# iteration   119: delta_max = 3.57656457e-03: time = 3.80321406e-04
+# iteration   120: delta_max = 3.51905048e-03: time = 3.94982286e-04
+# iteration   121: delta_max = 3.51905048e-03: time = 3.74988653e-04
+# iteration   122: delta_max = 3.47353832e-03: time = 4.04552557e-04
+# iteration   123: delta_max = 3.41473744e-03: time = 3.76952812e-04
+# iteration   124: delta_max = 3.41473744e-03: time = 3.85409221e-04
+# iteration   125: delta_max = 3.41455114e-03: time = 3.73505987e-04
+# iteration   126: delta_max = 3.41455114e-03: time = 3.73691320e-04
+# iteration   127: delta_max = 3.32236800e-03: time = 3.89217399e-04
+# iteration   128: delta_max = 3.30265708e-03: time = 3.92026268e-04
+# iteration   129: delta_max = 3.30265708e-03: time = 3.97744589e-04
+# iteration   130: delta_max = 3.28466047e-03: time = 3.94567847e-04
+# iteration   131: delta_max = 3.24683097e-03: time = 5.55007719e-04
+# iteration   132: delta_max = 2.96003135e-03: time = 3.98826785e-04
+# iteration   133: delta_max = 2.96003135e-03: time = 3.84775922e-04
+# iteration   134: delta_max = 2.82347999e-03: time = 4.01278958e-04
+# iteration   135: delta_max = 2.68088864e-03: time = 3.91853042e-04
+# iteration   136: delta_max = 2.62897278e-03: time = 3.81677411e-04
+# iteration   137: delta_max = 2.52549030e-03: time = 3.71366739e-04
+# iteration   138: delta_max = 2.22977139e-03: time = 3.66184860e-04
+# iteration   139: delta_max = 2.05444812e-03: time = 3.79415229e-04
+# iteration   140: delta_max = 1.63051862e-03: time = 3.73108312e-04
+# iteration   141: delta_max = 1.63051862e-03: time = 3.82223167e-04
+# iteration   142: delta_max = 1.52996151e-03: time = 3.78350727e-04
+# iteration   143: delta_max = 1.52996151e-03: time = 3.76575626e-04
+# iteration   144: delta_max = 1.39913400e-03: time = 4.03789803e-04
+# iteration   145: delta_max = 1.35436758e-03: time = 3.98490578e-04
+# iteration   146: delta_max = 1.18339824e-03: time = 4.07417305e-04
+# iteration   147: delta_max = 1.14751548e-03: time = 4.00056131e-04
+# iteration   148: delta_max = 1.14665340e-03: time = 3.89144756e-04
+# iteration   149: delta_max = 1.11532856e-03: time = 4.12495807e-04
+# iteration   150: delta_max = 1.01771934e-03: time = 3.84625979e-04
+# iteration   151: delta_max = 9.71682567e-04: time = 3.95659357e-04
+# iteration   152: delta_max = 9.09997467e-04: time = 4.02799807e-04
+# iteration   153: delta_max = 9.09997467e-04: time = 3.96340154e-04
+# iteration   154: delta_max = 6.09384676e-04: time = 4.14259732e-04
+# iteration   155: delta_max = 5.53511986e-04: time = 4.03016806e-04
+# iteration   156: delta_max = 5.53511986e-04: time = 4.15842049e-04
+# iteration   157: delta_max = 5.09298033e-04: time = 3.98159958e-04
+# iteration   158: delta_max = 5.09298033e-04: time = 4.00787219e-04
+# iteration   159: delta_max = 5.03607995e-04: time = 4.15978953e-04
+# iteration   160: delta_max = 4.92168450e-04: time = 4.04494815e-04
+# iteration   161: delta_max = 4.92168450e-04: time = 4.09173779e-04
+# iteration   162: delta_max = 4.55775816e-04: time = 4.05647792e-04
+# iteration   163: delta_max = 4.40005549e-04: time = 4.03807499e-04
+# iteration   164: delta_max = 4.01427668e-04: time = 3.92475165e-04
+# iteration   165: delta_max = 3.23191033e-04: time = 3.89510766e-04
+# iteration   166: delta_max = 2.92876505e-04: time = 3.91556881e-04
+# iteration   167: delta_max = 2.80484331e-04: time = 3.90863977e-04
+# iteration   168: delta_max = 2.77771115e-04: time = 4.06933948e-04
+# iteration   169: delta_max = 2.74465976e-04: time = 4.17487696e-04
+# iteration   170: delta_max = 2.52387664e-04: time = 4.02753241e-04
+# iteration   171: delta_max = 2.29693957e-04: time = 4.15316783e-04
+# iteration   172: delta_max = 2.29693957e-04: time = 4.11868095e-04
+# iteration   173: delta_max = 1.57741766e-04: time = 8.92383978e-04
+# iteration   174: delta_max = 1.35358020e-04: time = 4.37051058e-04
+# iteration   175: delta_max = 1.35358020e-04: time = 4.12790105e-04
+# iteration   176: delta_max = 1.26263597e-04: time = 4.11283225e-04
+# iteration   177: delta_max = 1.26263597e-04: time = 4.22099605e-04
+# iteration   178: delta_max = 8.83173578e-05: time = 3.98452394e-04
+# iteration   179: delta_max = 5.19162086e-05: time = 3.85133550e-04
+# iteration   180: delta_max = 5.17758352e-05: time = 3.80612910e-04
+# iteration   181: delta_max = 5.17758352e-05: time = 3.78625467e-04
+# iteration   182: delta_max = 5.14437877e-05: time = 3.87952663e-04
+# iteration   183: delta_max = 5.14437877e-05: time = 3.78593802e-04
+# iteration   184: delta_max = 4.38318446e-05: time = 3.93985771e-04
+# iteration   185: delta_max = 4.38318446e-05: time = 3.85046937e-04
+# iteration   186: delta_max = 3.87708686e-05: time = 3.78146768e-04
+# iteration   187: delta_max = 3.87708686e-05: time = 3.89756635e-04
+# iteration   188: delta_max = 3.73302264e-05: time = 3.69059853e-04
+# iteration   189: delta_max = 3.58781539e-05: time = 4.06173989e-04
+# iteration   190: delta_max = 2.60029334e-05: time = 4.18367796e-04
+# iteration   191: delta_max = 1.78868909e-05: time = 3.91296111e-04
+# iteration   192: delta_max = 1.68271467e-05: time = 3.96627933e-04
+# iteration   193: delta_max = 1.60481424e-05: time = 3.76777723e-04
+# iteration   194: delta_max = 1.02247370e-05: time = 3.78478318e-04
+# iteration   195: delta_max = 8.45924884e-06: time = 3.98406759e-04
+ # Orthogonalising Cholesky vectors.
+ # Time to orthogonalise: 0.002225
+nelec: (9, 8)
+nbasis: 32
+chol.shape: (195, 1024)

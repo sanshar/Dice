@@ -290,5 +290,6 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump);
 void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump);
 
 void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol);
+void readIntegralsCholeskyAndInitializeDeterminantStaticVariablesSOC(string fcidump, int& norbs, int& nelec, double& ecore, MatrixXcd& h1, MatrixXcd& h1Mod, vector<MatrixXd>& chol);
 
 #endif

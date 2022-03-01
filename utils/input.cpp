@@ -63,6 +63,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.integralsFile = input.get("system.integrals", "FCIDUMP");
     schd.nciCore = input.get("system.numCore", 0);                  // TODO: rename these because active spaces are also used without ci
     schd.nciAct = input.get("system.numAct", -1);
+    schd.soc = input.get("system.soc", false);
     
     //minimal checking for correctness
     //wavefunction

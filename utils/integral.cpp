@@ -699,6 +699,136 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
 
 
 //=============================================================================
+void readIntegralsCholeskyAndInitializeDeterminantStaticVariablesSOC(string fcidump, int& norbs, int& nelec, double& ecore, MatrixXcd& h1, MatrixXcd& h1Mod, vector<MatrixXd>& chol) {
+//-----------------------------------------------------------------------------
+    /*!
+    Read fcidump file and populate "I1, I2, coreE, nelec, norbs"
+    NB: I2 assumed to be 8-fold symmetric, irreps not implemented
+
+    :Inputs:
+
+        string fcidump:
+            Name of the FCIDUMP file
+    */
+//-----------------------------------------------------------------------------
+  int nchol;
+  hid_t file = (-1), dataset_header, dataset_hcore_real, dataset_hcore_imag, dataset_hcoreMod_real, dataset_hcoreMod_imag, dataset_chol, dataset_energy_core ;  /* identifiers */
+  herr_t status;
+  
+  //cout << "Reading integrals\n";
+  norbs = -1;
+  nelec = -1;
+  nchol = -1;
+  H5E_BEGIN_TRY {
+  file = H5Fopen(fcidump.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+ 
+  if (file < 0) {
+    if (commrank == 0) cout << "FCIDUMP not found!" << endl;
+    exit(0);
+  }
+
+  int header[3];
+  header[0] = 0;  //nelec
+  header[1] = 0;  //norbs
+  header[2] = 0;  //nchol
+  dataset_header = H5Dopen(file, "/header", H5P_DEFAULT);
+  status = H5Dread(dataset_header, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, header);
+  I2.ksym = false;
+  bool startScaling = false;
+  nelec = header[0]; norbs = header[1]; nchol = header[2];
+  if (norbs == -1 || nelec == -1 || nchol == -1) {
+    std::cout << "could not read the norbs or nelec or nchol" << std::endl;
+    exit(0);
+  }
+  
+  Determinant::EffDetLen = (norbs) / 64 + 1;
+  Determinant::norbs = norbs;
+  Determinant::nalpha = 0;
+  Determinant::nbeta = 0;
+
+  double *hcore_real = new double[4 * norbs * norbs];
+  double *hcore_imag = new double[4 * norbs * norbs];
+  double *hcoreMod_real = new double[4 * norbs * norbs];
+  double *hcoreMod_imag = new double[4 * norbs * norbs];
+  for (int i = 0; i < 2*norbs; i++) {
+    for (int j = 0; j < 2*norbs; j++) {
+      hcore_real[i * 2*norbs + j] = 0.;
+      hcore_imag[i * 2*norbs + j] = 0.;
+      hcoreMod_real[i * 2*norbs + j] = 0.;
+      hcoreMod_imag[i * 2*norbs + j] = 0.;
+    }
+  }
+  h1 = MatrixXcd::Zero(2*norbs, 2*norbs);
+  h1Mod = MatrixXcd::Zero(2*norbs, 2*norbs);
+
+  dataset_hcore_real = H5Dopen(file, "/hcore_real", H5P_DEFAULT);
+  status = H5Dread(dataset_hcore_real, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, hcore_real);
+  for (int i = 0; i < 2*norbs; i++) {
+    for (int j = 0; j < 2*norbs; j++) {
+      h1(i, j) += hcore_real[i * 2*norbs + j];
+    }
+  }
+  delete [] hcore_real;
+  
+  dataset_hcore_imag = H5Dopen(file, "/hcore_imag", H5P_DEFAULT);
+  status = H5Dread(dataset_hcore_imag, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, hcore_imag);
+  for (int i = 0; i < 2*norbs; i++) {
+    for (int j = 0; j < 2*norbs; j++) {
+      h1(i, j) += std::complex<double>(0.,1.) * hcore_imag[i * 2*norbs + j];
+    }
+  }
+  delete [] hcore_imag;
+  
+  dataset_hcoreMod_real = H5Dopen(file, "/hcore_mod_real", H5P_DEFAULT);
+  status = H5Dread(dataset_hcoreMod_real, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, hcoreMod_real);
+  for (int i = 0; i < 2*norbs; i++) {
+    for (int j = 0; j < 2*norbs; j++) {
+      h1Mod(i, j) += hcoreMod_real[i * 2*norbs + j];
+    }
+  }
+  delete [] hcoreMod_real;
+
+  dataset_hcoreMod_imag = H5Dopen(file, "/hcore_mod_imag", H5P_DEFAULT);
+  status = H5Dread(dataset_hcoreMod_imag, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, hcoreMod_imag);
+  for (int i = 0; i < 2*norbs; i++) {
+    for (int j = 0; j < 2*norbs; j++) {
+      h1Mod(i, j) += std::complex<double>(0.,1.) * hcoreMod_imag[i * 2*norbs + j];
+    }
+  }
+  delete [] hcoreMod_imag;
+  
+  unsigned int eri_size = nchol * norbs * norbs;
+  double *eri = new double[eri_size];
+  for (unsigned int i = 0; i < eri_size; i++)
+    eri[i] = 0.;
+  
+  dataset_chol = H5Dopen(file, "/chol", H5P_DEFAULT);
+  status = H5Dread(dataset_chol, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, eri);
+  for (int n = 0; n < nchol; n++) {
+    MatrixXd cholMat = MatrixXd::Zero(norbs, norbs);
+    for (int i = 0; i < norbs; i++) { 
+      for (int j = 0; j < norbs; j++) {
+        cholMat(i, j) = eri[n * norbs * norbs + i * norbs + j];
+      }
+    }
+    chol.push_back(cholMat);
+  }
+  delete [] eri;
+
+  coreE = 0.;
+  double energy_core[1];
+  energy_core[0] = 0.;
+  dataset_energy_core = H5Dopen(file, "/energy_core", H5P_DEFAULT);
+  status = H5Dread(dataset_energy_core, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, energy_core);
+  coreE = energy_core[0];
+  ecore = energy_core[0];
+
+  status = H5Fclose(file);
+  //cout << "Finished reading integrals\n";
+} 
+
+//=============================================================================
 int readNorbs(string fcidump) {
 //-----------------------------------------------------------------------------
     /*!

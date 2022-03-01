@@ -7,22 +7,25 @@
 class DQMCWalker {
   public:
     std::array<Eigen::MatrixXcd, 2> det;
+    Eigen::MatrixXcd detSOC;
     std::complex<double> orthoFac, trialOverlap;
     std::vector<std::complex<double>> mfShifts;
     std::array<std::complex<double>, 2> propConstant;
     Eigen::MatrixXcd expOneBodyOperator;
     //std::vector<Eigen::MatrixXf> floatChol;
     //std::vector<std::vector<float>> floatChol;
-    bool rhfQ, phaselessQ;
+    bool rhfQ, socQ, phaselessQ;
     double dt, ene0;
     std::normal_distribution<double> normal;
 
     // constructor
-    DQMCWalker(bool prhfQ = true, bool pphaselessQ = false);
+    DQMCWalker(bool prhfQ = true, bool pphaselessQ = false, bool psocQ = false);
 
     void prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham, double pdt, double pene0);
+    void prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, double pene0);
 
     void setDet(std::array<Eigen::MatrixXcd, 2> pdet);
+    void setDet(Eigen::MatrixXcd pdet);
     void setDet(std::vector<std::complex<double>>& serial, std::complex<double> ptrialOverlap);
     std::complex<double> getDet(std::vector<std::complex<double>>& serial);
 

@@ -13,6 +13,7 @@
 #include "ProjectedMF.h"
 #include "RHF.h"
 #include "UHF.h"
+#include "GHF.h"
 #include "KSGHF.h"
 #include "Multislater.h"
 #include "CCSD.h"
@@ -53,15 +54,22 @@ int main(int argc, char *argv[])
   //int norbs, nalpha, nbeta;
   //double ecore;
   //readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+ 
+  Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc);
+  if (commrank == 0) {
+    if (schd.soc) cout << "Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
+    else cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
+  }
   
-  Hamiltonian ham(schd.integralsFile);
-  if (commrank == 0) cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
   DQMCWalker walker;
-  if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
-  if (schd.phaseless) {
-    if (ham.nalpha == ham.nbeta) walker = DQMCWalker(true, true);
-    else walker = DQMCWalker(false, true);
-  }  
+  if (schd.soc) walker = DQMCWalker(false, true, true);
+  else {
+    if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
+    if (schd.phaseless) {
+      if (ham.nalpha == ham.nbeta) walker = DQMCWalker(true, true);
+      else walker = DQMCWalker(false, true);
+    }  
+  }
   
   //walker = DQMCWalker(false, true);
   //std::array<Eigen::MatrixXcd, 2> det;
@@ -80,6 +88,9 @@ int main(int argc, char *argv[])
   }
   else if (schd.leftWave == "uhf") {
     waveLeft = new UHF(ham, true); 
+  }
+  else if (schd.leftWave == "ghf") {
+    waveLeft = new GHF(ham, true); 
   }
   else if (schd.leftWave == "ksghf") {
     if (schd.optimizeOrbs)
@@ -129,6 +140,9 @@ int main(int argc, char *argv[])
     waveRight = new UHF(ham, false); 
     if(schd.phaseless) walker = DQMCWalker(false, true);
     else walker = DQMCWalker(false);
+  }
+  else if (schd.rightWave == "ghf") {
+    waveRight = new GHF(ham, false); 
   }
   else if (schd.rightWave == "ksghf") {
     if (commrank == 0) cout << "Not supported yet\n";

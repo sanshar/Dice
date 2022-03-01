@@ -1,0 +1,10 @@
+# To generate integrals and other input files:
+python br.py > pyscf.out
+
+# To run afqmc/dqmc
+# for excited sate replace ghf.txt with ghf_1.txt
+mpirun -np 28 $DQMC_binary afqmc.json > afqmc.out
+
+# To do autocorrelation and error analysis for afqmc
+python $VMC_ROOT/scritps/blocking.py samples.dat 50 > blocking.out
+

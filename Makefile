@@ -140,6 +140,7 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/Hamiltonian.o \
 	obj/RHF.o \
 	obj/UHF.o \
+	obj/GHF.o \
 	obj/KSGHF.o \
 	obj/Multislater.o \
 	obj/CCSD.o \
