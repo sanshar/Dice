@@ -1,0 +1,345 @@
+#INFO: **** input file is /projects/anma2640/VMC/master/VMC/examples/DQMC/c_afqmc/c.py ****
+import sys, os
+import numpy
+from pyscf import gto, scf, mcscf, fci, ao2mo, lib, tools, cc
+from pyscf.shciscf import shci
+import QMCUtils
+
+# these need to be provided
+nproc = 8
+dice_binary = "/projects/anma2640/newDice/Dice/Dice"
+vmc_root = "/projects/anma2640/VMC/master/VMC"
+
+# build your molecule
+mol = gto.M(
+    atom="C 0 0 0",
+    basis='augccpvtz',
+    verbose=4,
+    unit='bohr',
+    symmetry=1,
+    spin=2)
+mf = scf.RHF(mol)
+mf.irrep_nelec = {'A1g':(2,2), 'A1u':(0,0), 'E1ux':(1,0), 'E1uy':(1,0)}
+mf.kernel()
+
+# ccsd
+mycc = cc.CCSD(mf)
+mycc.frozen = 1
+mycc.verbose = 5
+mycc.kernel()
+
+et = mycc.ccsd_t()
+print('CCSD(T) energy', mycc.e_tot + et)
+
+# casscf
+norbFrozen = 1
+mc0 = mcscf.CASSCF(mf, 8, 4)
+mo = mc0.sort_mo_by_irrep({'A1g': 2, 'A1u': 2, 'E1ux': 2, 'E1uy': 2}, {'A1g': 1})
+mc0.frozen = norbFrozen
+mc0.mc1step(mo)
+
+# dice
+
+# writing input and integrals
+print("\nPreparing Dice calculation")
+# dummy shciscf object for specifying options
+mc = shci.SHCISCF(mf, 8, 4)
+mc.mo_coeff = mc0.mo_coeff
+mc.fcisolver.sweep_iter = [ 0 ]
+mc.fcisolver.sweep_epsilon = [ 1e-5 ]
+mc.fcisolver.davidsonTol = 5.e-5
+mc.fcisolver.dE = 1.e-6
+mc.fcisolver.maxiter = 6
+mc.fcisolver.nPTiter = 0
+mc.fcisolver.DoRDM = False
+shci.dryrun(mc, mc.mo_coeff)
+command = "mv input.dat dice.dat"
+os.system(command)
+with open("dice.dat", "a") as fh:
+  fh.write("writebestdeterminants 10000")
+
+# run dice calculation
+print("Starting Dice calculation")
+command = f"mpirun -np {nproc} {dice_binary} dice.dat > dice.out; rm -f shci.e"
+os.system(command)
+print("Finished Dice calculation\n")
+
+# afqmc
+
+print("Preparing AFQMC calculation")
+# write hf wave function coefficients
+# rohf states are treated as uhf
+rhfCoeffs = numpy.eye(mol.nao - norbFrozen)
+uhfCoeffs = numpy.block([ rhfCoeffs, rhfCoeffs ])
+QMCUtils.writeMat(uhfCoeffs, "uhf.txt")
+
+# calculate and write cholesky integrals
+# dummy mcsscf for core averaging
+mc = mcscf.CASSCF(mf, mol.nao-norbFrozen, mol.nelectron-2*norbFrozen)
+mc.mo_coeff = mc0.mo_coeff
+QMCUtils.prepAFQMC(mol, mf, mc)
+
+# write afqmc input and perform calculation
+afqmc_binary = vmc_root + "/bin/DQMC"
+blocking_script = vmc_root + "/scripts/blocking.py"
+
+os.system("export OMP_NUM_THREADS=1; rm samples.dat -f")
+
+# rohf trial
+QMCUtils.write_afqmc_input(seed=89649, left="uhf", right="uhf", nwalk=25, stochasticIter=200, choleskyThreshold=2.e-3, fname="afqmc_rohf.json")
+print("\nStarting AFQMC / ROHF calculation")
+command = f'''
+              mpirun -np {nproc} {afqmc_binary} afqmc_rohf.json > afqmc_rohf.out;
+              mv samples.dat samples_rohf.dat
+              python {blocking_script} samples_rohf.dat 50 > blocking_rohf.out;
+              cat blocking_rohf.out;
+           '''
+os.system(command)
+print("Finished AFQMC / ROHF calculation\n")
+
+# hci trial
+QMCUtils.write_afqmc_input(seed=142108, numAct=8, left="multislater", right="uhf", nwalk=25, stochasticIter=200, choleskyThreshold=2.e-3, fname="afqmc_multislater.json")
+print("Starting AFQMC / HCI calculation")
+command = f'''
+              mpirun -np {nproc} {afqmc_binary} afqmc_multislater.json > afqmc_multislater.out;
+              mv samples.dat samples_multislater.dat
+              python {blocking_script} samples_multislater.dat 50 > blocking_multislater.out;
+              cat blocking_multislater.out;
+           '''
+os.system(command)
+print("Finished AFQMC / HCI calculation")
+#INFO: ******************** input file end ********************
+
+
+System: uname_result(system='Linux', node='bhpc-c7-u19-21.rc.int.colorado.edu', release='3.10.0-1160.15.2.el7.x86_64', version='#1 SMP Wed Feb 3 15:06:38 UTC 2021', machine='x86_64', processor='x86_64')  Threads 36
+Python 3.8.3 (default, May 19 2020, 18:47:26) 
+[GCC 7.3.0]
+numpy 1.19.1  scipy 1.5.2
+Date: Thu Mar 10 21:24:59 2022
+PySCF version 1.7.4
+PySCF path  /projects/anma2640/pyscf/pyscf
+GIT HEAD      ref: refs/heads/master
+GIT master branch  14142ec394cbdcffb8e214fba6b1d6cde9025e9a
+
+[CONFIG] conf_file None
+[INPUT] verbose = 4
+[INPUT] num. atoms = 1
+[INPUT] num. electrons = 6
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 2
+[INPUT] symmetry 1 subgroup None
+[INPUT] Mole.unit = bohr
+[INPUT]  1 C      0.000000000000   0.000000000000   0.000000000000 AA    0.000000000000   0.000000000000   0.000000000000 Bohr
+
+nuclear repulsion = 0
+point group symmetry = SO3, use subgroup Dooh
+num. orbitals of irrep A1g = 8
+num. orbitals of irrep E1gx = 3
+num. orbitals of irrep E1gy = 3
+num. orbitals of irrep A1u = 6
+num. orbitals of irrep E1uy = 6
+num. orbitals of irrep E1ux = 6
+num. orbitals of irrep E2gx = 3
+num. orbitals of irrep E2gy = 3
+num. orbitals of irrep E2uy = 2
+num. orbitals of irrep E2ux = 2
+num. orbitals of irrep E3uy = 2
+num. orbitals of irrep E3ux = 2
+number of shells = 13
+number of NR pGTOs = 58
+number of NR cGTOs = 46
+basis = augccpvtz
+ecp = {}
+CPU time:         0.65
+
+
+******** <class 'pyscf.scf.hf_symm.SymAdaptedROHF'> ********
+method = SymAdaptedROHF-ROHF-RHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-09
+SCF conv_tol_grad = None
+SCF max_cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /rc_scratch/anma2640/tmp1qzjqaua
+max_memory 4000 MB (current use 85 MB)
+num. doubly occ = 2  num. singly occ = 2
+irrep_nelec {'A1g': (2, 2), 'A1u': (0, 0), 'E1ux': (1, 0), 'E1uy': (1, 0)}
+Freeze 6 electrons in irreps ['A1g', 'A1u', 'E1ux', 'E1uy']
+    0 free electrons in irreps E1gx E1gy E2gx E2gy E2uy E2ux E3uy E3ux
+Set gradient conv threshold to 3.16228e-05
+init E= -37.284380435047
+HOMO (E1uy) = -0.0482135556441134  LUMO (A1u) = -0.0482135556441138
+cycle= 1 E= -37.6059544062497  delta_E= -0.322  |g|= 0.255  |ddm|= 0.577
+HOMO (E1uy) = -0.275969974093204  LUMO (A1u) = -0.0718511978129734
+cycle= 2 E= -37.6825931753365  delta_E= -0.0766  |g|= 0.115  |ddm|= 0.421
+HOMO (E1ux) = -0.143821085813573  LUMO (A1u) = 0.0212321771232807
+cycle= 3 E= -37.6863771322934  delta_E= -0.00378  |g|= 0.0263  |ddm|= 0.098
+HOMO (E1ux) = -0.128069544810593  LUMO (A1u) = 0.0302457040634998
+cycle= 4 E= -37.6866720962516  delta_E= -0.000295  |g|= 0.00788  |ddm|= 0.0546
+HOMO (E1ux) = -0.130398011102437  LUMO (A1u) = 0.028327516185089
+cycle= 5 E= -37.686823916984  delta_E= -0.000152  |g|= 0.00229  |ddm|= 0.0356
+HOMO (E1uy) = -0.13029339764551  LUMO (A1u) = 0.0282868199452372
+cycle= 6 E= -37.6868366897473  delta_E= -1.28e-05  |g|= 0.000152  |ddm|= 0.00766
+HOMO (E1ux) = -0.130267097668727  LUMO (A1u) = 0.0283200100395818
+cycle= 7 E= -37.6868367398696  delta_E= -5.01e-08  |g|= 9.74e-06  |ddm|= 0.000438
+HOMO (E1uy) = -0.13026329473953  LUMO (A1u) = 0.0283183634051131
+cycle= 8 E= -37.6868367398731  delta_E= -3.47e-12  |g|= 5.08e-06  |ddm|= 2.41e-05
+HOMO (E1uy) = -0.130264444528055  LUMO (A1u) = 0.0283185979447878
+Extra cycle  E= -37.686836739917  delta_E= -4.39e-11  |g|= 3.94e-06  |ddm|= 2.8e-05
+converged SCF energy = -37.686836739917
+
+WARN: RCCSD method does not support ROHF method. ROHF object is converted to UHF object and UCCSD method is called.
+
+
+******** <class 'pyscf.cc.uccsd.UCCSD'> ********
+CC2 = 0
+CCSD nocc = (3, 1), nmo = (45, 45)
+frozen orbitals 1
+max_cycle = 50
+direct = 0
+conv_tol = 1e-07
+conv_tol_normt = 1e-06
+diis_space = 6
+diis_start_cycle = 0
+diis_start_energy_diff = 1e+09
+max_memory 4000 MB (current use 136 MB)
+Init t2, MP2 energy = -0.069311126816164
+    CPU time for init mp2      0.02 sec, wall time      0.00 sec
+Init E_corr(CCSD) = -0.0725900435221841
+cycle = 1  E_corr(CCSD) = -0.0861801313918667  dE = -0.0135900879  norm(t1,t2) = 0.0460278
+    CPU time for CCSD iter      3.12 sec, wall time      0.09 sec
+cycle = 2  E_corr(CCSD) = -0.0899558346776248  dE = -0.00377570329  norm(t1,t2) = 0.019427
+    CPU time for CCSD iter      3.36 sec, wall time      0.09 sec
+cycle = 3  E_corr(CCSD) = -0.0926222782125316  dE = -0.00266644353  norm(t1,t2) = 0.00984596
+    CPU time for CCSD iter      3.45 sec, wall time      0.10 sec
+cycle = 4  E_corr(CCSD) = -0.0925977220624475  dE = 2.45561501e-05  norm(t1,t2) = 0.00173112
+    CPU time for CCSD iter      3.77 sec, wall time      0.11 sec
+cycle = 5  E_corr(CCSD) = -0.0926164078568325  dE = -1.86857944e-05  norm(t1,t2) = 0.000244961
+    CPU time for CCSD iter      3.59 sec, wall time      0.10 sec
+cycle = 6  E_corr(CCSD) = -0.0926123559423992  dE = 4.05191443e-06  norm(t1,t2) = 5.07711e-05
+    CPU time for CCSD iter      3.76 sec, wall time      0.10 sec
+cycle = 7  E_corr(CCSD) = -0.0926138405338408  dE = -1.48459144e-06  norm(t1,t2) = 1.28265e-05
+    CPU time for CCSD iter      3.19 sec, wall time      0.09 sec
+cycle = 8  E_corr(CCSD) = -0.0926136408523955  dE = 1.99681445e-07  norm(t1,t2) = 3.02502e-06
+    CPU time for CCSD iter      2.83 sec, wall time      0.08 sec
+cycle = 9  E_corr(CCSD) = -0.092613648739452  dE = -7.88705649e-09  norm(t1,t2) = 7.70837e-07
+    CPU time for CCSD iter      2.83 sec, wall time      0.08 sec
+    CPU time for CCSD     29.90 sec, wall time      0.83 sec
+UCCSD converged
+E(UCCSD) = -37.77945038865644  E_corr = -0.09261364873945201
+max_memory 3564 MB (435 MB in use)
+max_memory 3564 MB (435 MB in use)
+    CPU time for UCCSD(T)      4.49 sec, wall time      0.13 sec
+UCCSD(T) correction = -0.00226554006123598
+CCSD(T) energy -37.781715928717674
+ncore for each irreps {'A1g': 1}
+ncas for each irreps {'A1g': 2, 'A1u': 2, 'E1ux': 2, 'E1uy': 2}
+(0-based) caslst = [1 2 3 4 5 6 7 8]
+
+******** <class 'pyscf.mcscf.mc1step_symm.SymAdaptedCASSCF'> ********
+CAS (3e+1e, 8o), ncore = 1, nvir = 37
+frozen orbitals 1
+max_cycle_macro = 50
+max_cycle_micro = 4
+conv_tol = 1e-07
+conv_tol_grad = None
+orbital rotation max_stepsize = 0.02
+augmented hessian ah_max_cycle = 30
+augmented hessian ah_conv_tol = 1e-12
+augmented hessian ah_linear dependence = 1e-14
+augmented hessian ah_level shift = 0
+augmented hessian ah_start_tol = 2.5
+augmented hessian ah_start_cycle = 3
+augmented hessian ah_grad_trust_region = 3
+kf_trust_region = 3
+kf_interval = 4
+ci_response_space = 4
+ci_grad_trust_region = 3
+with_dep4 0
+natorb = False
+canonicalization = True
+sorting_mo_energy = False
+ao2mo_level = 2
+chkfile = /rc_scratch/anma2640/tmp1qzjqaua
+max_memory 4000 MB (current use 323 MB)
+internal_rotation = False
+******** <class 'pyscf.fci.direct_spin1_symm.FCISolver'> ********
+max. cycles = 50
+conv_tol = 1e-08
+davidson only = True
+linear dependence = 1e-10
+level shift = 0.001
+max iter space = 12
+max_memory 4000 MB
+nroots = 1
+pspace_size = 0
+spin = None
+CI wfn symmetry = None
+Active space CI wfn symmetry = A2g
+CASCI E = -37.7002270427758  S^2 = 2.0000000
+Set conv_tol_grad to 0.000316228
+macro iter 1 (21 JK  4 micro), CASSCF E = -37.7136191759388  dE = -0.013392133  S^2 = 2.0000000
+               |grad[o]|=0.0264  |grad[c]|= 0.016303377175384815  |ddm|=0.0347
+macro iter 2 (21 JK  4 micro), CASSCF E = -37.7224699260179  dE = -0.0088507501  S^2 = 2.0000000
+               |grad[o]|=0.0188  |grad[c]|= 0.0131360483362416  |ddm|=0.00955
+macro iter 3 (21 JK  4 micro), CASSCF E = -37.7283185216741  dE = -0.0058485957  S^2 = 2.0000000
+               |grad[o]|=0.0156  |grad[c]|= 0.007705199872279485  |ddm|=0.00416
+macro iter 4 (21 JK  4 micro), CASSCF E = -37.7298815569069  dE = -0.0015630352  S^2 = 2.0000000
+               |grad[o]|=0.00675  |grad[c]|= 0.004022837762348946  |ddm|=0.00298
+macro iter 5 (21 JK  4 micro), CASSCF E = -37.7301493791793  dE = -0.00026782227  S^2 = 2.0000000
+               |grad[o]|=0.00183  |grad[c]|= 0.0017072344578828603  |ddm|=0.000943
+macro iter 6 (21 JK  4 micro), CASSCF E = -37.7302419420056  dE = -9.2562826e-05  S^2 = 2.0000000
+               |grad[o]|=0.00119  |grad[c]|= 0.0007284290191813214  |ddm|=0.000773
+macro iter 7 (6 JK  2 micro), CASSCF E = -37.7302424763642  dE = -5.3435864e-07  S^2 = 2.0000000
+               |grad[o]|=0.000372  |grad[c]|= 0.00013816264723170364  |ddm|=0.000281
+macro iter 8 (6 JK  1 micro), CASSCF E = -37.7302425428482  dE = -6.6484006e-08  S^2 = 2.0000000
+               |grad[o]|=5.15e-05  |grad[c]|= 0.00010948412757409426  |ddm|=2.93e-05
+1-step CASSCF converged in 8 macro (138 JK 27 micro) steps
+CASSCF canonicalization
+Density matrix diagonal elements [1.94098257 0.99497258 0.99497258 0.02617063 0.01277286 0.00638005
+ 0.00638005 0.01736867]
+CASSCF energy = -37.7302425428482
+CASCI E = -37.7302425428482  E(CI) = -5.37086035748971  S^2 = 2.0000000
+
+Preparing Dice calculation
+Starting Dice calculation
+Finished Dice calculation
+
+Preparing AFQMC calculation
+nelec: (3, 1)
+nbasis: 45
+chol.shape: (271, 45, 45)
+
+Starting AFQMC / ROHF calculation
+reading samples from samples_rohf.dat, ignoring first 50
+mean: -37.776350813721045
+blocked statistics:
+block size    # of blocks        mean                error
+     1            150       -3.77763508e+01       4.764319e-04
+     2             75       -3.77763508e+01       5.557165e-04
+     5             30       -3.77763508e+01       6.586119e-04
+    10             15       -3.77763508e+01       8.027412e-04
+    20              7       -3.77764224e+01       8.500862e-04
+    50              3       -3.77763508e+01       5.442415e-04
+    70              2       -3.77764224e+01       1.329509e-03
+Finished AFQMC / ROHF calculation
+
+Starting AFQMC / HCI calculation
+reading samples from samples_multislater.dat, ignoring first 50
+mean: -37.780564103702446
+blocked statistics:
+block size    # of blocks        mean                error
+     1            150       -3.77805641e+01       2.824043e-04
+     2             75       -3.77805641e+01       3.255415e-04
+     5             30       -3.77805641e+01       3.328776e-04
+    10             15       -3.77805641e+01       4.268710e-04
+    20              7       -3.77805761e+01       5.387390e-04
+    50              3       -3.77805641e+01       3.777471e-04
+    70              2       -3.77805761e+01       3.888112e-04
+Finished AFQMC / HCI calculation

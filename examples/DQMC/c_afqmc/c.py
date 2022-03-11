@@ -1,86 +1,109 @@
+import sys, os
 import numpy
-from pyscf import gto, scf, dft, ao2mo, mcscf, tools, lib, symm, cc
-from pyscf.tools import molden
-import scipy.linalg as la
-from pauxy.utils.from_pyscf import generate_integrals
+from pyscf import gto, scf, mcscf, fci, ao2mo, lib, tools, cc
 from pyscf.shciscf import shci
-import prepVMC
+import QMCUtils
 
-mol = gto.Mole(symmetry=False)
-mol.atom = '''C 0 0 0'''
-mol.verbose = 4
-mol.symmetry = False
-mol.spin = 2
-mol.basis = 'augccpvtz'
-mol.build()
+# these need to be provided
+nproc = 8
+dice_binary = "/projects/anma2640/newDice/Dice/Dice"
+vmc_root = "/projects/anma2640/VMC/master/VMC"
 
-mf = scf.ROHF(mol)
+# build your molecule
+mol = gto.M(
+    atom="C 0 0 0",
+    basis='augccpvtz',
+    verbose=4,
+    unit='bohr',
+    symmetry=1,
+    spin=2)
+mf = scf.RHF(mol)
+mf.irrep_nelec = {'A1g':(2,2), 'A1u':(0,0), 'E1ux':(1,0), 'E1uy':(1,0)}
 mf.kernel()
-norb = mol.nao
-
-# casscf
-norbAct = 8
-nelecAct = 4
-norbFrozen = 1
-mc = mcscf.CASSCF(mf, norbAct, nelecAct)
-mc.frozen = norbFrozen
-mc.mc1step()
-
-# core averaged integrals for dice
-moFrozen = mc.mo_coeff[:,:norbFrozen]
-core_dm = 2 * moFrozen.dot(moFrozen.T)
-corevhf = mc.get_veff(mol, core_dm)
-energy_core = mol.energy_nuc()
-energy_core += numpy.einsum('ij,ji', core_dm, mc.get_hcore())
-energy_core += numpy.einsum('ij,ji', core_dm, corevhf) * .5
-moActDice = mc.mo_coeff[:, norbFrozen:norbAct + norbFrozen]
-h1eff = moActDice.T.dot(mc.get_hcore() + corevhf).dot(moActDice)
-eri = ao2mo.kernel(mol, moActDice)
-tools.fcidump.from_integrals('FCIDUMP_can', h1eff, eri, norbAct, nelecAct, energy_core)
-
-
-# set up dqmc calculation
-# this is rohf really
-norbAct = mol.nao - norbFrozen
-overlap = mf.get_ovlp(mol)
-rhfCoeffs = numpy.eye(norbAct)
-rhfCoeffs = prepVMC.basisChange(mf.mo_coeff[:, norbFrozen:], mc.mo_coeff[:, norbFrozen:], overlap)
-prepVMC.writeMat(rhfCoeffs, "rhf.txt")
-
-# also rohf
-uhfCoeffs = numpy.zeros((norbAct, 2*norbAct))
-uhfCoeffs[:,:norbAct] = rhfCoeffs
-uhfCoeffs[:,norbAct:] = rhfCoeffs
-prepVMC.writeMat(uhfCoeffs, "uhf.txt")
-
-# generating choleskies
-h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mc.mo_coeff, chol_cut=1e-5, verbose=True)
-
-# core averaging choleskies
-moAct = mc.mo_coeff[:,norbFrozen:]
-nbasis = h1e.shape[-1]
-rotCorevhf = moAct.T.dot(corevhf).dot(moAct)
-h1e = h1e[norbFrozen:, norbFrozen:] + rotCorevhf
-chol = chol.reshape((-1, nbasis, nbasis))
-chol = chol[:, norbFrozen:, norbFrozen:]
-mol.nelec = (mol.nelec[0]-norbFrozen, mol.nelec[1]-norbFrozen)
-enuc = energy_core
-nbasis = h1e.shape[-1]
-print(f'nelec: {nelec}')
-print(f'nbasis: {nbasis}')
-print(f'chol.shape: {chol.shape}')
-chol = chol.reshape((-1, nbasis, nbasis))
-v0 = 0.5 * numpy.einsum('nik,njk->ij', chol, chol, optimize='optimal')
-h1e_mod = h1e - v0
-chol = chol.reshape((chol.shape[0], -1))
-prepVMC.write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
 # ccsd
 mycc = cc.CCSD(mf)
-mycc.frozen = norbFrozen
+mycc.frozen = 1
 mycc.verbose = 5
 mycc.kernel()
-#prepVMC.write_ccsd(mycc.t1, mycc.t2)
 
 et = mycc.ccsd_t()
 print('CCSD(T) energy', mycc.e_tot + et)
+
+# casscf
+norbFrozen = 1
+mc0 = mcscf.CASSCF(mf, 8, 4)
+mo = mc0.sort_mo_by_irrep({'A1g': 2, 'A1u': 2, 'E1ux': 2, 'E1uy': 2}, {'A1g': 1})
+mc0.frozen = norbFrozen
+mc0.mc1step(mo)
+
+# dice
+
+# writing input and integrals
+print("\nPreparing Dice calculation")
+# dummy shciscf object for specifying options
+mc = shci.SHCISCF(mf, 8, 4)
+mc.mo_coeff = mc0.mo_coeff
+mc.fcisolver.sweep_iter = [ 0 ]
+mc.fcisolver.sweep_epsilon = [ 1e-5 ]
+mc.fcisolver.davidsonTol = 5.e-5
+mc.fcisolver.dE = 1.e-6
+mc.fcisolver.maxiter = 6
+mc.fcisolver.nPTiter = 0
+mc.fcisolver.DoRDM = False
+shci.dryrun(mc, mc.mo_coeff)
+command = "mv input.dat dice.dat"
+os.system(command)
+with open("dice.dat", "a") as fh:
+  fh.write("writebestdeterminants 10000")
+
+# run dice calculation
+print("Starting Dice calculation")
+command = f"mpirun -np {nproc} {dice_binary} dice.dat > dice.out; rm -f shci.e"
+os.system(command)
+print("Finished Dice calculation\n")
+
+# afqmc
+
+print("Preparing AFQMC calculation")
+# write hf wave function coefficients
+# rohf states are treated as uhf
+rhfCoeffs = numpy.eye(mol.nao - norbFrozen)
+uhfCoeffs = numpy.block([ rhfCoeffs, rhfCoeffs ])
+QMCUtils.writeMat(uhfCoeffs, "uhf.txt")
+
+# calculate and write cholesky integrals
+# dummy mcsscf for core averaging
+mc = mcscf.CASSCF(mf, mol.nao-norbFrozen, mol.nelectron-2*norbFrozen)
+mc.mo_coeff = mc0.mo_coeff
+QMCUtils.prepAFQMC(mol, mf, mc)
+
+# write afqmc input and perform calculation
+afqmc_binary = vmc_root + "/bin/DQMC"
+blocking_script = vmc_root + "/scripts/blocking.py"
+
+os.system("export OMP_NUM_THREADS=1; rm samples.dat -f")
+
+# rohf trial
+QMCUtils.write_afqmc_input(seed=89649, left="uhf", right="uhf", nwalk=25, stochasticIter=200, choleskyThreshold=2.e-3, fname="afqmc_rohf.json")
+print("\nStarting AFQMC / ROHF calculation", flush=True)
+command = f'''
+              mpirun -np {nproc} {afqmc_binary} afqmc_rohf.json > afqmc_rohf.out;
+              mv samples.dat samples_rohf.dat
+              python {blocking_script} samples_rohf.dat 50 > blocking_rohf.out;
+              cat blocking_rohf.out;
+           '''
+os.system(command)
+print("Finished AFQMC / ROHF calculation\n")
+
+# hci trial
+QMCUtils.write_afqmc_input(seed=142108, numAct=8, left="multislater", right="uhf", nwalk=25, stochasticIter=200, choleskyThreshold=2.e-3, fname="afqmc_multislater.json")
+print("Starting AFQMC / HCI calculation", flush=True)
+command = f'''
+              mpirun -np {nproc} {afqmc_binary} afqmc_multislater.json > afqmc_multislater.out;
+              mv samples.dat samples_multislater.dat
+              python {blocking_script} samples_multislater.dat 50 > blocking_multislater.out;
+              cat blocking_multislater.out;
+           '''
+os.system(command)
+print("Finished AFQMC / HCI calculation")
