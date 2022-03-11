@@ -1,19 +1,24 @@
 USE_MPI = yes
 USE_INTEL = yes
-COMPILE_NUMERIC = yes
+ONLY_DQMC = yes
 
 EIGEN=/projects/ilsa8974/apps/eigen/
 BOOST=/projects/anma2640/boost_1_66_0/
 HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
+
+COMPILE_NUMERIC = no
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 LIBIGL=/projects/sash2458/apps/libigl/include/
-#HDF5=${CURC_HDF5_ROOT}
 
+ifeq ($(ONLY_DQMC), yes)
+  FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./VMC -I./utils -I./Wavefunctions  -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
+else 
+  FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+endif
 
-#FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include  -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
-DQMC_FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include  -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
-
-FLAGS = -std=c++14 -O3 -g -march=core-avx2 -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/ #-fpermissive #-DComplex
+ifeq ($(USE_INTEL), no)
+  FLAGS += -fpermissive -w
+endif
 
 GIT_HASH=`git rev-parse HEAD`
 COMPILE_TIME=`date`
@@ -29,7 +34,12 @@ ifeq ($(USE_INTEL), yes)
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpiicpc #-mkl
 		CC = mpiicpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+        ifeq ($(ONLY_DQMC), yes)
+           LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
+		else
+		   LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+		endif
+		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
 		#CXX = mpicxx
 		#CC = mpicc
 		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi  -lboost_program_options -lboost_system -lboost_filesystem -lrt -L${HDF5}/lib -lhdf5
@@ -46,8 +56,13 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${CURC_BOOST_LIB} -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
-	else
+		LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+        ifeq ($(ONLY_DQMC), yes)
+           LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
+		else
+		   LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+        endif
+    else
 		CXX = g++
 		CC = g++
 		LFLAGS = -L/opt/local/lib -lboost_serialization-mt
@@ -171,7 +186,7 @@ obj/%.o: utils/%.cpp
 obj/%.o: VMC/%.cpp  
 	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
 obj/%.o: DQMC/%.cpp  
-	$(CXX) $(DQMC_FLAGS) -I./DQMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS) -I./DQMC $(OPT) -c $< -o $@
 obj/%.o: FCIQMC/%.cpp  
 	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
 obj/%.o: ICPT/%.cpp  
@@ -216,8 +231,8 @@ bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/DQMC	: $(OBJ_DQMC) executables/DQMC.cpp
-	$(CXX)   $(DQMC_FLAGS) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
-	$(CXX)   $(DQMC_FLAGS) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS) $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS) $(VERSION_FLAGS)
 
 bin/sPT	: $(OBJ_sPT) 
 	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
