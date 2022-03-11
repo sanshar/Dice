@@ -63,6 +63,6 @@ block size    # of blocks        mean                error
    200              2       -5.38261626e+00       3.212095e-03
 ```
 
-The first 50 samples (batches) were discarded as equilibration steps. The error column shows increasing values of the sample variance as block size is increased indicating serial correlation. It is clear that there is a plateau in error values around 1.e-3 mH for block sizes of 5-20 after which the errors seem to diverge because of small number of blocks. So the energy in this example can be reported as -5.383(1) H. 
-4. All parallelization is done through MPI and thereading should be disabled so as not to interfere with MPI. The parallelization is not perfect because there needs to be communication for population control. 
-5. I use DQMC and AFQMC interchangeably in many places and not in others. For example, the dqmc examples in this directory refer to free projection, but the binary DQMC is used for both free projection AFQMC and phaseless AFQMC calculations. 
+The first 50 samples (batches) were discarded as equilibration steps. The error column shows increasing values of the sample variance as block size is increased indicating serial correlation. It is clear that there is a plateau in error values around 1.e-3 mH for block sizes of 5-20 after which the errors seem to diverge because of small number of blocks. So the energy in this example can be reported as -5.383(1) H.
+4. All parallelization is done through MPI and thereading should be disabled so as not to interfere with MPI. The parallelization is not perfect because there needs to be communication for population control.
+5. I use DQMC and AFQMC interchangeably in many places and not in others. For example, the dqmc examples in this directory refer to free projection, but the binary DQMC is used for both free projection AFQMC and phaseless AFQMC calculations.
