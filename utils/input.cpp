@@ -270,7 +270,10 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
     schd.printSCEnergies = input.get("print.SCEnergies", false);
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
-    
+    // dqmc
+    schd.writeOneRDM = input.get("print.writeOneRDM", false);
+
+
     //deprecated, or I don't know what they do
     schd.actWidth = input.get("wavefunction.actWidth", 100);
     schd.numActive = input.get("wavefunction.numActive", -1);

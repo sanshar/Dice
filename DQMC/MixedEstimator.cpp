@@ -507,17 +507,18 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   }
   
   // write one rdm 
-  string fname = "rdm_";
-  fname.append(to_string(commrank));
-  fname.append(".dat");
-  ofstream rdmdump(fname);
-  rdmdump << cumulativeWeight << endl;
-  for (int i = 0; i < oneRDM.rows(); i++) {
-    for (int j = 0; j < oneRDM.cols(); j++){
-      rdmdump << oneRDM(i, j) << "  ";
+  if (schd.writeOneRDM) {
+    string fname = "rdm_";
+    fname.append(to_string(commrank));
+    fname.append(".dat");
+    ofstream rdmdump(fname);
+    rdmdump << cumulativeWeight << endl;
+    for (int i = 0; i < oneRDM.rows(); i++) {
+      for (int j = 0; j < oneRDM.cols(); j++){
+        rdmdump << oneRDM(i, j) << "  ";
+      }
+      rdmdump << endl;
     }
-    rdmdump << endl;
+    rdmdump.close();
   }
-  rdmdump.close();
-  
 };
