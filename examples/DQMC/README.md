@@ -47,21 +47,21 @@ The three options "nsteps", "nwalk", and "stochasticIter" determine the number o
 2. For HCI trial states, using more dets leads to less noisy and usually less biased estimators but at a higher cost. We find it useful to pick determinants from a moderately sized active space from which converged energies can be obtained with less than ~100k dets.
 3. Blocking analysis is performed with the script vmc_root/scripts/blocking.py to estimate stochastic errors from the serially correlated samples. To estimate the stochastic error, one needs to look for an intermediate plateau in the error as a function of the block size. Consider the following example:
 
-```
-reading samples from samples_rhf.dat, ignoring first 50
-mean: -5.382689152884524
-blocked statistics:
-block size    # of blocks        mean                error
-     1            450       -5.38268915e+00       5.397366e-04
-     2            225       -5.38268915e+00       7.067836e-04
-     5             90       -5.38268915e+00       1.029813e-03
-    10             45       -5.38268915e+00       1.039668e-03
-    20             22       -5.38266672e+00       1.036828e-03
-    50              9       -5.38268915e+00       1.512644e-03
-    70              6       -5.38272344e+00       1.395108e-03
-   100              4       -5.38261626e+00       1.733287e-03
-   200              2       -5.38261626e+00       3.212095e-03
-```
+    ```
+    reading samples from samples_rhf.dat, ignoring first 50
+    mean: -5.382689152884524
+    blocked statistics:
+    block size    # of blocks        mean                error
+         1            450       -5.38268915e+00       5.397366e-04
+         2            225       -5.38268915e+00       7.067836e-04
+         5             90       -5.38268915e+00       1.029813e-03
+        10             45       -5.38268915e+00       1.039668e-03
+        20             22       -5.38266672e+00       1.036828e-03
+        50              9       -5.38268915e+00       1.512644e-03
+        70              6       -5.38272344e+00       1.395108e-03
+       100              4       -5.38261626e+00       1.733287e-03
+       200              2       -5.38261626e+00       3.212095e-03
+    ```
 
 The first 50 samples (batches) were discarded as equilibration steps. The error column shows increasing values of the sample variance as block size is increased indicating serial correlation. It is clear that there is a plateau in error values around 1.e-3 mH for block sizes of 5-20 after which the errors seem to diverge because of small number of blocks. So the energy in this example can be reported as -5.383(1) H.
 4. All parallelization is done through MPI and thereading should be disabled so as not to interfere with MPI. The parallelization is not perfect because there needs to be communication for population control.
