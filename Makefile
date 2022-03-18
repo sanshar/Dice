@@ -1,6 +1,7 @@
 USE_MPI = yes
 USE_INTEL = yes
-ONLY_DQMC = yes
+ONLY_DQMC = no
+HAS_AVX2 = yes
 
 EIGEN=/projects/ilsa8974/apps/eigen/
 BOOST=/projects/anma2640/boost_1_66_0/
@@ -11,9 +12,13 @@ SPARSEHASH=/projects/anma2640/sparsehash/src/
 LIBIGL=/projects/sash2458/apps/libigl/include/
 
 ifeq ($(ONLY_DQMC), yes)
-  FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./VMC -I./utils -I./Wavefunctions  -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
+  FLAGS = -std=c++14 -O3 -g -I./VMC -I./utils -I./Wavefunctions  -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
 else 
-  FLAGS = -std=c++14 -O3 -march=core-avx2 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+  FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+endif
+
+ifeq ($(HAS_AVX2), yes)
+  FLAGS += -march=core-avx2
 endif
 
 ifeq ($(USE_INTEL), no)
@@ -29,6 +34,8 @@ INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
 LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
 
 ifeq ($(USE_INTEL), yes) 
+    LANG=en_US.utf8
+    LC_ALL=en_US.utf8
 	FLAGS += -qopenmp
 	DFLAGS += -qopenmp
 	ifeq ($(USE_MPI), yes) 
