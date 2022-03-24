@@ -105,7 +105,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     // nnb and rbm
     schd.numHidden = input.get("wavefunction.numHidden", 1);
-
+    schd.numHiddenLayers = input.get("wavefunction.numHiddenLayers", 1);
 
     // multi-Slater
     schd.excitationLevel = input.get("wavefunction.excitationLevel", 10);

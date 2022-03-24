@@ -107,6 +107,7 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & numHiddenLayers
       & maxIterFCIQMC
       & nreplicas
       & nAttemptsEach
@@ -366,6 +367,7 @@ public:
 
   //options for rbm
   int numHidden;
+  int numHiddenLayers;
 
   // options for dqmc
   size_t nsteps;
