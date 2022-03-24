@@ -40,8 +40,8 @@ class fnn
       numLayers = pSizes.size();
       sizes = pSizes;
       for (int i = 1; i < numLayers; i++) {
-        weights.push_back(MatrixXd::Random(sizes[i], sizes[i - 1])/pow(sizes[i - 1]*sizes[i], 0.5));
-        biases.push_back(VectorXd::Random(sizes[i]));
+        weights.push_back(MatrixXd::Random(sizes[i], sizes[i - 1])/pow(sizes[i - 1]*sizes[i], 1));
+        biases.push_back(VectorXd::Random(sizes[i])/pow(sizes[i], 1));
       }
     }
 
