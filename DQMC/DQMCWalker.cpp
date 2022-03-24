@@ -61,7 +61,20 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
   complex<double> constant(0., 0.);
   constant += ene0 - ham.ecore;
   for (int i = 0; i < nfields; i++) {
-    MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+    MatrixXd chol = ham.chol[i];
+    if (ham.chol[i].rows() == 0) {
+      chol = MatrixXd::Zero(norbs, norbs);
+      long counter = 0;
+      for (int j = 0; j < norbs; j++) {
+        for (int k = 0; k <= j; k++) {
+          chol(j, k) = ham.floatChol[i][counter];
+          chol(k, j) = ham.floatChol[i][counter];
+          counter++;
+        }
+      }
+    }
+    //MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+    MatrixXcd op = complex<double>(0., 1.) * chol;
     complex<double> mfShift = 1. * green[0].cwiseProduct(op).sum() + 1. * green[1].cwiseProduct(op).sum();
     constant -= pow(mfShift, 2) / 2.;
     oneBodyOperator -= mfShift * op;

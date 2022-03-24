@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 
   if (schd.phaseless) {
     Wavefunction *waveGuide;
-    waveGuide = new RHF(ham, true); 
+    waveGuide = new RHF(ham, false); 
     calcMixedEstimatorLongProp(*waveLeft, *waveRight, *waveGuide, walker, ham);
   }
   else {
