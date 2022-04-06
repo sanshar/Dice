@@ -654,6 +654,8 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
   for (int i = 0; i < ncore; i++) {
     refDet.setoccA(i, true);
     refDet.setoccB(i, true);
+    ref[0].push_back(i);
+    ref[1].push_back(i);
   }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
@@ -770,6 +772,8 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
   for (int i = 0; i < ncore; i++) {
     refDet.setoccA(i, true);
     refDet.setoccB(i, true);
+    ref[0].push_back(i);
+    ref[1].push_back(i);
   }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
