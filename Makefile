@@ -3,9 +3,13 @@ USE_INTEL = yes
 ONLY_DQMC = no
 HAS_AVX2 = yes
 
+#EIGEN=/projects/ilsa8974/apps/eigen/
+#BOOST=/projects/anma2640/boost_1_66_0/
+#HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
+
+BOOST=${BOOST_ROOT}
+HDF5=${CURC_HDF5_ROOT}
 EIGEN=/projects/ilsa8974/apps/eigen/
-BOOST=/projects/anma2640/boost_1_66_0/
-HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
 
 COMPILE_NUMERIC = no
 SPARSEHASH=/projects/anma2640/sparsehash/src/
@@ -42,9 +46,9 @@ ifeq ($(USE_INTEL), yes)
 		CXX = mpiicpc #-mkl
 		CC = mpiicpc
         ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
+           LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
 		else
-		   LFLAGS = -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+		   LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
 		endif
 		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
 		#CXX = mpicxx
