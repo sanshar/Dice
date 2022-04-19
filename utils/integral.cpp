@@ -674,16 +674,21 @@ void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump
   
   dataset_chol = H5Dopen(file, "/chol", H5P_DEFAULT);
   status = H5Dread(dataset_chol, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, eri);
-  for (int n = 0; n < nchol; n++) {
-    MatrixXd cholMat = MatrixXd::Zero(norbs, norbs);
-    for (int i = 0; i < norbs; i++) { 
-      for (int j = 0; j < norbs; j++) {
-        cholMat(i, j) = eri[n * norbs * norbs + i * norbs + j];
+  for (int p = 0; p < commsize; p++) { 
+    if (commrank == p) {
+      for (int n = 0; n < nchol; n++) {
+        MatrixXd cholMat = MatrixXd::Zero(norbs, norbs);
+        for (int i = 0; i < norbs; i++) { 
+          for (int j = 0; j < norbs; j++) {
+            cholMat(i, j) = eri[n * norbs * norbs + i * norbs + j];
+          }
+        }
+        chol.push_back(cholMat);
       }
+      delete [] eri;
     }
-    chol.push_back(cholMat);
+    MPI_Barrier(MPI_COMM_WORLD);
   }
-  delete [] eri;
 
   coreE = 0.;
   double energy_core[1];

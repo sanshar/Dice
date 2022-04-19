@@ -10,7 +10,7 @@ import sys
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
-
+import json
 
 def doRHF(mol):
   mf = scf.RHF(mol)
@@ -223,6 +223,35 @@ def prepValence(mol, ncore, nact, occ=None, loc="iao", dm=None, writeFcidump=Tru
   if writeMOs:
     writeMat(gmf.mo_coeff, "hf.txt", False)
 
+
+# calculate and write cholesky integrals
+# mc has to be provided if using frozen core
+def prepAFQMC(mol, mf, mc=None, chol_cut=1e-5, verbose=False):
+  mo_coeff = mf.mo_coeff
+  if mc is not None:
+    mo_coeff = mc.mo_coeff.copy()
+  h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut, verbose)
+  nbasis = h1e.shape[-1]
+  nelec = mol.nelec
+
+  if mc is not None:
+    if mc.ncore != 0:
+      nelec = mc.nelecas
+      h1e, enuc = mc.get_h1eff()
+      chol = chol.reshape((-1, nbasis, nbasis))
+      chol = chol[:, mc.ncore:, mc.ncore:]
+
+  nbasis = h1e.shape[-1]
+  print(f'nelec: {nelec}')
+  print(f'nbasis: {nbasis}')
+  print(f'chol.shape: {chol.shape}')
+  chol = chol.reshape((-1, nbasis, nbasis))
+  v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+  h1e_mod = h1e - v0
+  chol = chol.reshape((chol.shape[0], -1))
+  write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+
+
 # cholesky generation functions are from pauxy
 def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False):
     # Unpack SCF data.
@@ -420,6 +449,40 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
     fh5['doubles1'] = doubles1.flatten()
     fh5['doubles2'] = doubles2.flatten()
     fh5['rotation'] = rotation.flatten()
+
+
+def write_afqmc_input(numAct = None, left = "rhf", right = "rhf", ndets = 100, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, fname = 'afqmc.json'):
+  system = { }
+  system["integrals"] = "FCIDUMP_chol"
+  if numAct is not None:
+    system["numAct"] = numAct
+
+  wavefunction = { }
+  wavefunction["left"] = f"{left}"
+  wavefunction["right"] = f"{right}"
+  if left == "multislater":
+    wavefunction["determinants"] = "dets.bin"
+    wavefunction["ndets"] = ndets
+
+  sampling = { }
+  if seed is None:
+    seed = np.random.randint(1, 1e6)
+  sampling["seed"] = seed
+  sampling["phaseless"] = True
+  sampling["dt"] = dt
+  sampling["nsteps"] = nsteps
+  sampling["nwalk"] = nwalk
+  sampling["stochasticIter"] = stochasticIter
+  sampling["choleskyThreshold"] = choleskyThreshold
+  sampling["orthoSteps"] = orthoSteps
+
+  json_input = {"system": system, "wavefunction": wavefunction, "sampling": sampling}
+  json_dump = json.dumps(json_input, indent = 2)
+
+  with open(fname, "w") as outfile:
+    outfile.write(json_dump)
+  return
+
 
 # for tilted hubbard model
 def findSiteInUnitCell(newsite, size, latticeVectors, sites):

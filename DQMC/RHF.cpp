@@ -13,7 +13,7 @@ RHF::RHF(Hamiltonian& ham, bool pleftQ, std::string fname)
   det = hf.block(0, 0, ham.norbs, ham.nalpha);
   detT = det.adjoint();
   leftQ = pleftQ;
-  if (leftQ) ham.rotateCholesky(detT, rotChol);
+  if (leftQ) ham.rotateCholesky(detT, rotChol, true);
 };
 
 void RHF::getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet) 
@@ -55,6 +55,11 @@ void RHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& f
     fb(i) = 2. * thetaT.cwiseProduct(rotChol[i]).sum();
   }
 };
+
+void RHF::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, Eigen::MatrixXcd& rdmSample) 
+{
+  rdmSample = (psi[0] * (detT * psi[0]).inverse() * detT).transpose() + (psi[1] * (detT * psi[1]).inverse() * detT).transpose();
+}
 
 std::array<std::complex<double>, 2> RHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham) 
 { 

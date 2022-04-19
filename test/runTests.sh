@@ -14,7 +14,7 @@ NEVPTREADPATH="../../../../bin/VMC nevpt_read.json"
 FCIQMCPATH="../../../bin/FCIQMC fciqmc.json"
 here=`pwd`
 tol=1.0e-7
-clean=0
+clean=1
 
 # VMC tests
 
@@ -351,44 +351,48 @@ then
     ../../clean.sh
 fi
 
-cd $here/FCIQMC/N2_fixed_node
-../../clean.sh
-printf "...running FCIQMC/N2_fixed_node\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python2 ../../testEnergy.py 'fciqmc_trial' $tol
-if [ $clean == 1 ]
-then
-    ../../clean.sh
-fi
+#cd $here/FCIQMC/N2_fixed_node
+#../../clean.sh
+#printf "...running FCIQMC/N2_fixed_node\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python2 ../../testEnergy.py 'fciqmc_trial' $tol
+#if [ $clean == 1 ]
+#then
+#    ../../clean.sh
+#fi
+#
+#cd $here/FCIQMC/N2_is_ss
+#../../clean.sh
+#printf "...running FCIQMC/N2_is_ss\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python2 ../../testEnergy.py 'fciqmc_trial' $tol
+#if [ $clean == 1 ]
+#then
+#    ../../clean.sh
+#fi
+#
+#cd $here/FCIQMC/H10_free_prop
+#../../clean.sh
+#printf "...running FCIQMC/H10_free_prop\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python2 ../../testEnergy.py 'fciqmc_trial' $tol
+#if [ $clean == 1 ]
+#then
+#    ../../clean.sh
+#fi
+#
+#cd $here/FCIQMC/H10_partial_node
+#../../clean.sh
+#printf "...running FCIQMC/H10_partial_node\n"
+#$MPICOMMAND $FCIQMCPATH > fciqmc.out
+#python2 ../../testEnergy.py 'fciqmc_trial' $tol
+#if [ $clean == 1 ]
+#then
+#    ../../clean.sh
+#fi
 
-cd $here/FCIQMC/N2_is_ss
-../../clean.sh
-printf "...running FCIQMC/N2_is_ss\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python2 ../../testEnergy.py 'fciqmc_trial' $tol
-if [ $clean == 1 ]
-then
-    ../../clean.sh
-fi
+cd $here
 
-cd $here/FCIQMC/H10_free_prop
-../../clean.sh
-printf "...running FCIQMC/H10_free_prop\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python2 ../../testEnergy.py 'fciqmc_trial' $tol
-if [ $clean == 1 ]
-then
-    ../../clean.sh
-fi
-
-cd $here/FCIQMC/H10_partial_node
-../../clean.sh
-printf "...running FCIQMC/H10_partial_node\n"
-$MPICOMMAND $FCIQMCPATH > fciqmc.out
-python2 ../../testEnergy.py 'fciqmc_trial' $tol
-if [ $clean == 1 ]
-then
-    ../../clean.sh
-fi
+./runDQMC.sh
 
 cd $here

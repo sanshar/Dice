@@ -63,7 +63,10 @@ struct NNBS {
   NNBS() {
     int norbs = Determinant::norbs;
     int nelec = Determinant::nalpha + Determinant::nbeta;
-    vector<int> sizes = {2*norbs, schd.numHidden, nelec * nelec};
+    vector<int> sizes = {2*norbs};    
+    for (int i = 0; i < schd.numHiddenLayers; i++) 
+      sizes.push_back(schd.numHidden);
+    sizes.push_back(nelec * nelec);
     fnnb = fnn(sizes);
     int size = 2*norbs;
     moCoeffs = MatrixXd::Zero(size, size);

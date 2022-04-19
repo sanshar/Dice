@@ -11,6 +11,17 @@ def check_results(eRef, eTest, tol):
         print("eRef = ", eRef)
         print("eTest = ", eTest)
 
+def check_results_afqmc(eRef, eTest, wRef, wTest, tol):
+
+    if ((abs(eRef - eTest)) < tol and (abs(wRef - wTest) < tol)):
+        print("test passed")
+    else:
+        print("test failed")
+        print("eRef = ", eRef)
+        print("eTest = ", eTest)
+        print("wRef = ", wRef)
+        print("wTest = ", wTest)
+
 def check_results_fciqmc_replica(eRef1, eRef2, eRefVar, eRefEN2,
                                  eTest1, eTest2, eTestVar, eTestEN2, tol):
 
@@ -65,6 +76,21 @@ if __name__ == '__main__':
         eTest = float(line.split()[1])
 
         check_results(eRef, eTest, tol)
+
+    elif mc == 'afqmc':
+        fh = open('samples.ref', 'r')
+        for line in fh:
+            pass
+        wRef = float(line.split()[0])
+        eRef = float(line.split()[1])
+
+        fh = open('samples.dat', 'r')
+        for line in fh:
+            pass
+        wTest = float(line.split()[0])
+        eTest = float(line.split()[1])
+
+        check_results_afqmc(eRef, eTest, wRef, wTest, tol)
 
     elif mc == 'nevpt' or mc == 'nevpt_print' or mc == 'nevpt_read':
         fh = open(mc+'.ref', 'r')

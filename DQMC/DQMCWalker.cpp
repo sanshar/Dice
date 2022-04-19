@@ -49,7 +49,7 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
     }
   }
   else {
-    if (commrank == 0) cout << "Using ROHF RDM for background subtraction\n\n";
+    if (commrank == 0) cout << "Using HF RDM for background subtraction\n\n";
     matPair refT;
     refT[0] = ref[0].adjoint();
     refT[1] = ref[1].adjoint();
@@ -62,12 +62,25 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
   complex<double> constant(0., 0.);
   constant += ene0 - ham.ecore;
   for (int i = 0; i < nfields; i++) {
-    MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+    MatrixXd chol = ham.chol[i];
+    if (ham.chol[i].rows() == 0) {
+      chol = MatrixXd::Zero(norbs, norbs);
+      long counter = 0;
+      for (int j = 0; j < norbs; j++) {
+        for (int k = 0; k <= j; k++) {
+          chol(j, k) = ham.floatChol[i][counter];
+          chol(k, j) = ham.floatChol[i][counter];
+          counter++;
+        }
+      }
+    }
+    //MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+    MatrixXcd op = complex<double>(0., 1.) * chol;
     complex<double> mfShift = 1. * green[0].cwiseProduct(op).sum() + 1. * green[1].cwiseProduct(op).sum();
     constant -= pow(mfShift, 2) / 2.;
     oneBodyOperator -= mfShift * op;
     if (phaselessQ) mfShifts.push_back(mfShift);
-    else mfShifts.push_back(mfShift / (ham.nalpha + ham.nbeta));
+    else mfShifts.push_back(mfShift /(1. * (ham.nalpha + ham.nbeta)));
   }
 
   if (phaselessQ) {
@@ -75,8 +88,8 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
     propConstant[1] = constant - ene0;
   }
   else {
-    propConstant[0] = constant / ham.nalpha;
-    propConstant[1] = constant / ham.nbeta;
+    propConstant[0] = constant / (1. * ham.nalpha);
+    propConstant[1] = constant / (1. * ham.nbeta);
   }
   expOneBodyOperator =  (-dt * oneBodyOperator / 2.).exp();
 
@@ -230,10 +243,10 @@ void DQMCWalker::propagate(Hamiltonian& ham)
   //MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
   MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   for (int i = 0; i < norbs; i++) {
-    propc(i, i) = sqrt(dt) * complex<double>(0, 1.) * prop[i * (i + 1) / 2 + i];
+    propc(i, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0, 1.) * prop[i * (i + 1) / 2 + i]);
     for (int j = 0; j < i; j++) {
-      propc(i, j) = sqrt(dt) * complex<double>(0, 1.) * prop[i * (i + 1) / 2 + j];
-      propc(j, i) = sqrt(dt) * complex<double>(0, 1.) * prop[i * (i + 1) / 2 + j];
+      propc(i, j) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0, 1.) * prop[i * (i + 1) / 2 + j]);
+      propc(j, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0, 1.) * prop[i * (i + 1) / 2 + j]);
     }
   }
   
@@ -288,16 +301,16 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
     }
     //prop.noalias() += float(field_n) * floatChol[i];
     shift += (field_n - fieldShift) * mfShifts[n];
-    fbTerm += (field_n * fieldShift - fieldShift * fieldShift / 2);
+    fbTerm += (field_n * fieldShift - fieldShift * fieldShift / 2.);
   }
 
   //MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
   MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   for (int i = 0; i < norbs; i++) {
-    propc(i, i) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + i] - propi[i * (i + 1) / 2 + i]);
+    propc(i, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + i] - propi[i * (i + 1) / 2 + i]);
     for (int j = 0; j < i; j++) {
-      propc(i, j) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
-      propc(j, i) = sqrt(dt) * (complex<double>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+      propc(i, j) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+      propc(j, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
     }
   }
  

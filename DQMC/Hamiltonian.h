@@ -20,7 +20,7 @@ class Hamiltonian {
     void setNchol(int pnchol);
 
     // rotate cholesky
-    void rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::MatrixXd>& rotChol);
+    void rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::MatrixXd>& rotChol, bool deleteOriginalChol=false);
     void rotateCholesky(Eigen::MatrixXcd& phiAd, std::vector<std::array<Eigen::MatrixXcd, 2>>& rotChol);
 
     // flatten and convert to float

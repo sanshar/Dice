@@ -107,6 +107,7 @@ private:
       & powerShift
       & expCorrelator
       & numHidden
+      & numHiddenLayers
       & maxIterFCIQMC
       & nreplicas
       & nAttemptsEach
@@ -157,6 +158,7 @@ private:
       & ndets
       & phaseless
       & soc
+      & writeOneRDM
       // Options related to SC-NEVPT(s):
       & numSCSamples
       & printSCNorms
@@ -366,6 +368,7 @@ public:
 
   //options for rbm
   int numHidden;
+  int numHiddenLayers;
 
   // options for dqmc
   size_t nsteps;
@@ -386,6 +389,7 @@ public:
   size_t ndets;
   bool phaseless;
   bool soc;
+  bool writeOneRDM;
 };
 
 /**

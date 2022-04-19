@@ -1,0 +1,24 @@
+{
+  "system": {
+    "integrals": "FCIDUMP_chol",
+    "numAct": 8,
+    "numCore": 1
+  },
+  "wavefunction": {
+    "left": "multislater",
+    "right": "uhf",
+    "determinants": "dets.bin",
+    "ndets": 100
+  },
+  "sampling": {
+    "seed": 142108,
+    "phaseless": true,
+    "dt": 0.005,
+    "nsteps": 50,
+    "nwalk": 20,
+    "stochasticIter": 50,
+    "choleskyThreshold": 0.002,
+    "orthoSteps": 20
+  },
+  "print": {}
+}

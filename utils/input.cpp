@@ -106,7 +106,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     // nnb and rbm
     schd.numHidden = input.get("wavefunction.numHidden", 1);
-
+    schd.numHiddenLayers = input.get("wavefunction.numHiddenLayers", 1);
 
     // multi-Slater
     schd.excitationLevel = input.get("wavefunction.excitationLevel", 10);
@@ -271,7 +271,10 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.sampleNEVPT2Energy = input.get("print.sampleNEVPT2Energy", true);
     schd.printSCEnergies = input.get("print.SCEnergies", false);
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
-    
+    // dqmc
+    schd.writeOneRDM = input.get("print.writeOneRDM", false);
+
+
     //deprecated, or I don't know what they do
     schd.actWidth = input.get("wavefunction.actWidth", 100);
     schd.numActive = input.get("wavefunction.numActive", -1);
@@ -652,6 +655,8 @@ void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, s
   for (int i = 0; i < ncore; i++) {
     refDet.setoccA(i, true);
     refDet.setoccB(i, true);
+    ref[0].push_back(i);
+    ref[1].push_back(i);
   }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
@@ -768,6 +773,8 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
   for (int i = 0; i < ncore; i++) {
     refDet.setoccA(i, true);
     refDet.setoccB(i, true);
+    ref[0].push_back(i);
+    ref[1].push_back(i);
   }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;

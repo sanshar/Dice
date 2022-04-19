@@ -28,11 +28,12 @@ void Hamiltonian::setNchol(int pnchol)
 
 
 // rotate cholesky
-void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::MatrixXd>& rotChol) 
+void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::MatrixXd>& rotChol, bool deleteOriginalChol) 
 {
   for (int i = 0; i < chol.size(); i++) {
     MatrixXd rot = phiT * chol[i];
     rotChol.push_back(rot);
+    if (deleteOriginalChol) chol[i].resize(0, 0);
   }
 };
 
