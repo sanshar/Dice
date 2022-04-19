@@ -634,10 +634,10 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen:
   
   // 2e intermediates
   matPair int1, int2;
-  int1[0] = 0. * greeno[0].block(0, 0, nelec[0], nact + ncore);
-  int1[1] = 0. * greeno[1].block(0, 0, nelec[1], nact + ncore);
-  int2[0] = 0. * greeno[0].block(0, 0, nelec[0], nact + ncore);
-  int2[1] = 0. * greeno[1].block(0, 0, nelec[1], nact + ncore);
+  int1[0] = 0. * greeno[0].block(0, 0, nelec[0], nact);
+  int1[1] = 0. * greeno[1].block(0, 0, nelec[1], nact);
+  int2[0] = 0. * greeno[0].block(0, 0, nelec[0], nact);
+  int2[1] = 0. * greeno[1].block(0, 0, nelec[1], nact);
   std::array<complex<double>, 2> l2G2Tot;
   l2G2Tot[0] = complex<double>(0., 0.);
   l2G2Tot[1] = complex<double>(0., 0.);
@@ -652,7 +652,7 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen:
       lG[sz] = exc[sz].trace();
       l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
       l2G2Tot[sz] += l2G2[sz];
-      int2[sz].noalias() = (greeno[sz] * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp[sz].block(0, ncore, nact + ncore, nact + ncore);
+      int2[sz].noalias() = (greeno[sz] * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp[sz].block(0, ncore, nact + ncore, nact);
       int1[sz].noalias() += lG[sz] * int2[sz];
       int1[sz].noalias() -= (greeno[sz] * ham.chol[n].block(0, 0, norbs, nelec[sz])) * int2[sz];
     }
@@ -986,8 +986,8 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   
   // 2e intermediates
   MatrixXcd int1, int2;
-  int1 = 0. * greeno.block(0, 0, nelec[0], nact + ncore);
-  int2 = 0. * greeno.block(0, 0, nelec[0], nact + ncore);
+  int1 = 0. * greeno.block(0, 0, nelec[0], nact);
+  int2 = 0. * greeno.block(0, 0, nelec[0], nact);
   complex<double> l2G2Tot(0., 0.);
   
   for (int n = 0; n < nchol; n++) {
@@ -997,7 +997,7 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
     lG = exc.trace();
     l2G2 = lG * lG - exc.cwiseProduct(exc.transpose()).sum();
     l2G2Tot += l2G2;
-    int2.noalias() = (greeno * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact + ncore);
+    int2.noalias() = (greeno * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
     int1.noalias() += lG * int2;
     int1.noalias() -= (greeno * ham.chol[n].block(0, 0, norbs, nelec[0])) * int2;
 
