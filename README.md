@@ -25,8 +25,7 @@ Note that the Boost libraries (mpi and serializtion) have to be compiled with th
 ```
 make bin/DQMC -j
 ```
- 
-There are two phaseless AFQMC examples in the "examples" directory along with output files that can be used to make sure that the code is working correctly. The python scripts used in these examples require python 3.6 or newer. They also require pyscf and pandas packages. Tests to be added soon!
+Tests can be run using the runDQMC.sh script in the "test" directory. Examples of phaseless AFQMC calculations are in the "examples" directory along with output files. The python scripts used in these examples require python 3.6 or newer. They also require pyscf and pandas packages. 
 
 
 ## Compiling other parts of the code

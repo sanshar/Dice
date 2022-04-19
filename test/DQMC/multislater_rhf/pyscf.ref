@@ -1,0 +1,12 @@
+converged SCF energy = -108.864599611748
+CASSCF energy = -109.016191662362
+CASCI E = -109.016191662362  E(CI) = -32.1184849425394  S^2 = 0.0000000
+
+Preparing Dice calculation
+Starting Dice calculation
+Finished Dice calculation
+
+Preparing AFQMC calculation
+nelec: (7, 7)
+nbasis: 18
+chol.shape: (92, 324)
