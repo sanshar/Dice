@@ -366,6 +366,26 @@ def prepAFQMC(mol, mf, mc=None, chol_cut=1e-5, verbose=False):
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
+# calculate and write cholesky integrals
+def prepAFQMC_soc(mol, mf, soc, chol_cut=1e-5, verbose=False):
+  mo_coeff = mf.mo_coeff
+  h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut, verbose)
+  nbasis = h1e.shape[-1]
+  nelec = mol.nelec
+  nbasis = h1e.shape[-1]
+
+  mo_coeff_sp = np.block([ [ mo_coeff, np.zeros((nbasis, nbasis)) ] , [ np.zeros((nbasis, nbasis)), mo_coeff ] ])
+  h1e = np.block([ [ h1e, np.zeros((nbasis, nbasis)) ] , [ np.zeros((nbasis, nbasis)), h1e ] ])
+  h1e = h1e + mo_coeff_sp.T.dot(soc).dot(mo_coeff_sp)
+  print(f'nelec: {nelec}')
+  print(f'nbasis: {nbasis}')
+  print(f'chol.shape: {chol.shape}')
+  chol = chol.reshape((-1, nbasis, nbasis))
+  v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+  h1e_mod = h1e - np.block([ [ v0, np.zeros((nbasis, nbasis)) ] , [ np.zeros((nbasis, nbasis)), v0 ] ])
+  chol = chol.reshape((chol.shape[0], -1))
+  write_dqmc_soc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, filename='FCIDUMP_chol')
+
 # calculate and write cholesky-like integrals given eri's
 def calculate_write_afqmc_uihf_integrals(ham_ints, norb, nelec, ms = 0, chol_cut = 1e-6, filename = 'FCIDUMP_chol', dm=None):
   block_eri = np.block([[ ham_ints['eri'][0], ham_ints['eri'][2] ], [ ham_ints['eri'][2].T, ham_ints['eri'][1] ]])
@@ -571,6 +591,17 @@ def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
         fh5['chol'] = chol.flatten()
         fh5['energy_core'] = enuc
 
+def write_dqmc_soc(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_chol'):
+    assert len(chol.shape) == 2
+    with h5py.File(filename, 'w') as fh5:
+        fh5['header'] = np.array([nelec, nmo, chol.shape[0]])
+        fh5['hcore_real'] = hcore.real.flatten()
+        fh5['hcore_imag'] = hcore.imag.flatten()
+        fh5['hcore_mod_real'] = hcore_mod.real.flatten()
+        fh5['hcore_mod_imag'] = hcore_mod.imag.flatten()
+        fh5['chol'] = chol.flatten()
+        fh5['energy_core'] = enuc
+
 def write_dqmc_uihf(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
                         filename='FCIDUMP_chol'):
     with h5py.File(filename, 'w') as fh5:
@@ -681,13 +712,15 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
     fh5['rotation'] = rotation.flatten()
 
 
-def write_afqmc_input(numAct = None, numCore = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, rdm = False, fname = 'afqmc.json'):
+def write_afqmc_input(numAct = None, numCore = None, soc = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, rdm = False, fname = 'afqmc.json'):
   system = { }
   system["integrals"] = "FCIDUMP_chol"
   if numAct is not None:
     system["numAct"] = numAct
   if numCore is not None:
     system["numCore"] = numCore
+  if soc is not None:
+    system["soc"] = soc
 
   wavefunction = { }
   wavefunction["left"] = f"{left}"

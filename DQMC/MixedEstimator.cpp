@@ -210,6 +210,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
   int nbeta = ham.nbeta;
+  int nelec = ham.nelec;
   size_t nsweeps = schd.stochasticIter;  // number of energy evaluations
   size_t nsteps = schd.nsteps;           // number of steps per energy evaluation
   size_t nburn = schd.burnIter;          // number of equilibration steps
@@ -218,27 +219,36 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double dt = schd.dt;
 
   matPair ref;
-  if (walker.rhfQ) { 
-    MatrixXd hf = MatrixXd::Zero(norbs, norbs);
-    readMat(hf, "rhf.txt");
-    ref[0] = hf.block(0, 0, norbs, nalpha);
-    ref[1] = hf.block(0, 0, norbs, nbeta);
+  MatrixXcd refSOC;
+  std::array<std::complex<double>, 2> hamOverlap;
+  if (schd.soc) {
+    MatrixXcd hf = MatrixXcd::Zero(2*norbs, 2*norbs);
+    readMat(hf, "ghf.txt");
+    refSOC = hf.block(0, 0, 2*norbs, nelec);
+    hamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
   }
-  else {
-    MatrixXd hf = MatrixXd::Zero(norbs, 2*norbs);
-    readMat(hf, "uhf.txt");
-    ref[0] = hf.block(0, 0, norbs, nalpha);
-    ref[1] = hf.block(0, norbs, norbs, nbeta);
+  else { 
+    if (walker.rhfQ) { 
+      MatrixXd hf = MatrixXd::Zero(norbs, norbs);
+      readMat(hf, "rhf.txt");
+      ref[0] = hf.block(0, 0, norbs, nalpha);
+      ref[1] = hf.block(0, 0, norbs, nbeta);
+    }
+    else {
+      MatrixXd hf = MatrixXd::Zero(norbs, 2*norbs);
+      readMat(hf, "uhf.txt");
+      ref[0] = hf.block(0, 0, norbs, nalpha);
+      ref[1] = hf.block(0, norbs, norbs, nbeta);
+    }
+    
+    hamOverlap = waveLeft.hamAndOverlap(ref, ham);
   }
-
-  auto hamOverlap = waveLeft.hamAndOverlap(ref, ham);
   complex<double> refEnergy = hamOverlap[0] / hamOverlap[1];
   complex<double> ene0;
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
-    //cout << "Ground state energy guess:  " << ene0 << endl << endl; 
+    cout << "Initial state energy:  " << setprecision(8) << refEnergy.real() << endl;
   }
   
   int nchol = ham.chol.size();
@@ -247,7 +257,9 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   vector<int> ncholVec = { int(0.3 * nchol), int(0.4 * nchol), int(0.5 * nchol), int(0.6 * nchol), int(0.7 * nchol) };
   for (int i = 0; i < ncholVec.size(); i++) {
     ham.setNchol(ncholVec[i]);
-    auto thamOverlap = waveLeft.hamAndOverlap(ref, ham);
+    std::array<complex<double>, 2> thamOverlap;
+    if (schd.soc) thamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
+    else thamOverlap = waveLeft.hamAndOverlap(ref, ham);
     complex<double> trefEnergy = thamOverlap[0] / thamOverlap[1];
     if (abs(refEnergy - trefEnergy) < schd.choleskyThreshold) {
       nchol = ncholVec[i];
@@ -266,13 +278,21 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   ArrayXd localEnergy = ArrayXd::Zero(nwalk);
   ArrayXd totalWeights = ArrayXd::Zero(nsweeps);
   ArrayXd totalEnergies = ArrayXd::Zero(nsweeps);
-  walker.prepProp(ref, ham, dt, ene0.real());
+  if (schd.soc) walker.prepProp(refSOC, ham, dt, ene0.real());
+  else walker.prepProp(ref, ham, dt, ene0.real());
   auto calcInitTime = getTime();
   for (int w = 0; w < nwalk; w++) {
     DQMCWalker walkerCopy = walker;
-    matPair rn;
-    waveRight.getSample(rn);
-    walkerCopy.setDet(rn);
+    if (schd.soc) {
+      MatrixXcd rn;
+      waveRight.getSample(rn);
+      walkerCopy.setDet(rn);
+    }
+    else {
+      matPair rn;
+      waveRight.getSample(rn);
+      walkerCopy.setDet(rn);
+    }
     walkers.push_back(walkerCopy);
     weights(w) = 1.;
     walkers[w].overlap(waveLeft);  // this initializes the trialOverlap in the walker, used in propagation
@@ -419,7 +439,9 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     // reconfigure for efficiency
     if (step % nsteps == 0) {
       // serialize walkers
-      int matSize = ham.norbs * (ham.nalpha  + ham.nbeta);
+      int matSize;
+      if (schd.soc) matSize = 2*ham.norbs * ham.nelec;
+      else matSize = ham.norbs * (ham.nalpha  + ham.nbeta);
       vector<complex<double>> serial(nwalk * matSize, complex<double>(0., 0.)), serialw(matSize, complex<double>(0., 0.)), overlaps(nwalk, complex<double>(0., 0.));
       for (int w = 0; w < walkers.size(); w++) {
         overlaps[w] = walkers[w].getDet(serialw);

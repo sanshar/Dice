@@ -1,0 +1,5 @@
+converged SCF energy = -152.930675140005
+converged SCF energy = -152.938446704798  <S^2> = 0.75150461  2S+1 = 2.001504
+nelec: (9, 8)
+nbasis: 32
+chol.shape: (195, 1024)

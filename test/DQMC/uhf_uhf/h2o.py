@@ -24,4 +24,4 @@ uhfCoeffs[:,norb:] = mf.mo_coeff.T.dot(overlap).dot(umf.mo_coeff[1])
 QMCUtils.writeMat(uhfCoeffs, "uhf.txt")
 
 QMCUtils.prepAFQMC(mol, mf)
-QMCUtils.write_afqmc_input(seed = 4321, left="uhf", right="uhf", nwalk=20, stochasticIter=50, choleskyThreshold=1.e-3, fname="afqmc_uhf.json")
+QMCUtils.write_afqmc_input(seed = 4321, left="uhf", right="uhf", nwalk=20, stochasticIter=50, choleskyThreshold=1.e-3, fname="afqmc.json")

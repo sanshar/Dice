@@ -5,9 +5,17 @@ using namespace std;
 using namespace Eigen;
 
 // constructor
-Hamiltonian::Hamiltonian(string fname) 
+Hamiltonian::Hamiltonian(string fname, bool socQ) 
 {
-  readIntegralsCholeskyAndInitializeDeterminantStaticVariables(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+  if (socQ) {
+    readIntegralsCholeskyAndInitializeDeterminantStaticVariablesSOC(fname, norbs, nelec, ecore, h1soc, h1socMod, chol);
+    nalpha = 0;
+    nbeta = 0;
+  }
+  else {
+    readIntegralsCholeskyAndInitializeDeterminantStaticVariables(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+    nelec = nalpha + nbeta;
+  }
   nchol = chol.size();
   floattenCholesky();
 };
@@ -29,6 +37,17 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Matri
   }
 };
 
+
+// rotate cholesky soc
+void Hamiltonian::rotateCholesky(Eigen::MatrixXcd& phiAd, std::vector<std::array<Eigen::MatrixXcd, 2>>& rotChol) 
+{
+  for (int i = 0; i < chol.size(); i++) {
+    std::array<Eigen::MatrixXcd, 2> rot;
+    rot[0] = phiAd.block(0, 0, nelec, norbs) * chol[i];
+    rot[1] = phiAd.block(0, norbs, nelec, norbs) * chol[i];
+    rotChol.push_back(rot);
+  }
+};
 
 // flatten and convert to float
 //void Hamiltonian::floattenCholesky(std::vector<Eigen::MatrixXf>& floatChol)

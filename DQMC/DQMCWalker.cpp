@@ -11,10 +11,11 @@ using namespace Eigen;
 using matPair = std::array<MatrixXcd, 2>;
 
 // constructor
-DQMCWalker::DQMCWalker(bool prhfQ, bool pphaselessQ) 
+DQMCWalker::DQMCWalker(bool prhfQ, bool pphaselessQ, bool psocQ) 
 {
   rhfQ = prhfQ;
   phaselessQ = pphaselessQ;
+  socQ = psocQ;
   orthoFac = complex<double> (1., 0.);
   normal = normal_distribution<double>(0., 1.);
 };
@@ -96,9 +97,49 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
 };
 
 
+// for soc
+// only works for phaseless
+// ene0 not used
+void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, double ene0)
+{
+  dt = pdt;
+  int norbs = ham.norbs;
+  int nfields = ham.chol.size();
+
+  // calculate rdm 
+  if (commrank == 0) cout << "Using GHF RDM for background subtraction\n\n";
+  MatrixXcd green = ref * ref.adjoint();
+  MatrixXcd greenTrace = green.block(0, 0, norbs, norbs) + green.block(norbs, norbs, norbs, norbs);
+
+  // calculate mean field shifts
+  MatrixXcd oneBodyOperator = ham.h1socMod;
+  complex<double> constant(0., 0.);
+  constant += ene0 - ham.ecore;
+  for (int i = 0; i < nfields; i++) {
+    MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+    complex<double> mfShift = 1. * greenTrace.cwiseProduct(op).sum();
+    constant -= pow(mfShift, 2) / 2.;
+    oneBodyOperator.block(0, 0, norbs, norbs) -= mfShift * op;
+    oneBodyOperator.block(norbs, norbs, norbs, norbs) -= mfShift * op;
+    mfShifts.push_back(mfShift);
+  }
+
+  propConstant[0] = constant - ene0;
+  propConstant[1] = constant - ene0;
+  expOneBodyOperator =  (-dt * oneBodyOperator / 2.).exp();
+};
+
+
 void DQMCWalker::setDet(std::array<Eigen::MatrixXcd, 2> pdet) 
 {
   det = pdet;
+  orthoFac = complex<double> (1., 0.);
+};
+
+
+void DQMCWalker::setDet(Eigen::MatrixXcd pdet) 
+{
+  detSOC = pdet;
   orthoFac = complex<double> (1., 0.);
 };
  
@@ -106,25 +147,41 @@ void DQMCWalker::setDet(std::array<Eigen::MatrixXcd, 2> pdet)
 void DQMCWalker::setDet(std::vector<std::complex<double>>& serial, std::complex<double> ptrialOverlap)
 {
   trialOverlap = ptrialOverlap;
-  int norbs = det[0].rows(), nalpha = det[0].cols(), nbeta = det[1].cols();
-  for (int i = 0; i < norbs; i++)
-    for (int j = 0; j < nalpha; j++)
-      det[0](i, j) = serial[i * nalpha + j];
-  for (int i = 0; i < norbs; i++)
-    for (int j = 0; j < nbeta; j++)
-      det[1](i, j) = serial[nalpha * norbs + i * nbeta + j];
+  if (socQ) {
+    int norbs = detSOC.rows(), nelec = detSOC.cols();
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nelec; j++)
+        detSOC(i, j) = serial[i * nelec + j];
+  }
+  else {
+    int norbs = det[0].rows(), nalpha = det[0].cols(), nbeta = det[1].cols();
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nalpha; j++)
+        det[0](i, j) = serial[i * nalpha + j];
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nbeta; j++)
+        det[1](i, j) = serial[nalpha * norbs + i * nbeta + j];
+  }
 };
 
 
 std::complex<double> DQMCWalker::getDet(std::vector<std::complex<double>>& serial)
 {
-  int norbs = det[0].rows(), nalpha = det[0].cols(), nbeta = det[1].cols();
-  for (int i = 0; i < norbs; i++)
-    for (int j = 0; j < nalpha; j++)
-      serial[i * nalpha + j] = det[0](i, j);
-  for (int i = 0; i < norbs; i++)
-    for (int j = 0; j < nbeta; j++)
-      serial[nalpha * norbs + i * nbeta + j] = det[1](i, j);
+  if (socQ) {
+    int norbs = detSOC.rows(), nelec = detSOC.cols();
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nelec; j++)
+        serial[i * nelec + j] = detSOC(i, j);
+  }
+  else {
+    int norbs = det[0].rows(), nalpha = det[0].cols(), nbeta = det[1].cols();
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nalpha; j++)
+        serial[i * nalpha + j] = det[0](i, j);
+    for (int i = 0; i < norbs; i++)
+      for (int j = 0; j < nbeta; j++)
+        serial[nalpha * norbs + i * nbeta + j] = det[1](i, j);
+  }
   return trialOverlap;
 };
 
@@ -134,24 +191,32 @@ std::complex<double> DQMCWalker::getDet(std::vector<std::complex<double>>& seria
 void DQMCWalker::orthogonalize()
 {
   complex<double> tempOrthoFac(1., 0.);
-  HouseholderQR<MatrixXcd> qr1(det[0]);
-  det[0] = qr1.householderQ() * MatrixXd::Identity(det[0].rows(), det[0].cols());
-  for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) tempOrthoFac *= qr1.matrixQR().diagonal()(i);
-  if (rhfQ) {
-    orthoFac *= (tempOrthoFac * tempOrthoFac);
-    if (phaselessQ) {
-      trialOverlap /= (tempOrthoFac * tempOrthoFac);
-      orthoFac = 1.;
-    }
+  if (socQ) {
+    HouseholderQR<MatrixXcd> qr1(detSOC);
+    detSOC = qr1.householderQ() * MatrixXd::Identity(detSOC.rows(), detSOC.cols());
+    for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) tempOrthoFac *= qr1.matrixQR().diagonal()(i);
+    trialOverlap /= tempOrthoFac;
   }
   else {
-    HouseholderQR<MatrixXcd> qr2(det[1]);
-    det[1] = qr2.householderQ() * MatrixXd::Identity(det[1].rows(), det[1].cols());
-    for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) tempOrthoFac *= qr2.matrixQR().diagonal()(i);
-    orthoFac *= tempOrthoFac;
-    if (phaselessQ) {
-      trialOverlap /= tempOrthoFac;
-      orthoFac = 1.;
+    HouseholderQR<MatrixXcd> qr1(det[0]);
+    det[0] = qr1.householderQ() * MatrixXd::Identity(det[0].rows(), det[0].cols());
+    for (int i = 0; i < qr1.matrixQR().diagonal().size(); i++) tempOrthoFac *= qr1.matrixQR().diagonal()(i);
+    if (rhfQ) {
+      orthoFac *= (tempOrthoFac * tempOrthoFac);
+      if (phaselessQ) {
+        trialOverlap /= (tempOrthoFac * tempOrthoFac);
+        orthoFac = 1.;
+      }
+    }
+    else {
+      HouseholderQR<MatrixXcd> qr2(det[1]);
+      det[1] = qr2.householderQ() * MatrixXd::Identity(det[1].rows(), det[1].cols());
+      for (int i = 0; i < qr2.matrixQR().diagonal().size(); i++) tempOrthoFac *= qr2.matrixQR().diagonal()(i);
+      orthoFac *= tempOrthoFac;
+      if (phaselessQ) {
+        trialOverlap /= tempOrthoFac;
+        orthoFac = 1.;
+      }
     }
   }
 };
@@ -209,7 +274,8 @@ void DQMCWalker::propagate(Hamiltonian& ham)
 
 double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift)
 {
-  int norbs = det[0].rows();
+  int norbs = ham.norbs;
+  int nelec = ham.nelec;
   int nfields = ham.floatChol.size(); 
   VectorXcd fb(nfields);
   fb.setZero();
@@ -247,25 +313,36 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
       propc(j, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
     }
   }
-  
-  det[0] = expOneBodyOperator * det[0];
-  MatrixXcd temp = det[0];
-  for (int i = 1; i < 6; i++) {
-    temp = propc * temp / i;
-    det[0] += temp;
+ 
+  if (socQ) {
+    detSOC = expOneBodyOperator * detSOC;
+    MatrixXcd temp = detSOC;
+    for (int i = 1; i < 6; i++) {
+      temp.block(0, 0, norbs, nelec)  = propc * temp.block(0, 0, norbs, nelec) / i;
+      temp.block(norbs, 0, norbs, nelec)  = propc * temp.block(norbs, 0, norbs, nelec) / i;
+      detSOC += temp;
+    }
+    detSOC = expOneBodyOperator * detSOC;
   }
-  det[0] = expOneBodyOperator * det[0];
-
-
-  if (rhfQ) det[1] = det[0];
   else {
-    det[1] = expOneBodyOperator * det[1];
-    temp = det[1];
+    det[0] = expOneBodyOperator * det[0];
+    MatrixXcd temp = det[0];
     for (int i = 1; i < 6; i++) {
       temp = propc * temp / i;
-      det[1] += temp;
+      det[0] += temp;
     }
-    det[1] = expOneBodyOperator * det[1];
+    det[0] = expOneBodyOperator * det[0];
+
+    if (rhfQ) det[1] = det[0];
+    else {
+      det[1] = expOneBodyOperator * det[1];
+      temp = det[1];
+      for (int i = 1; i < 6; i++) {
+        temp = propc * temp / i;
+        det[1] += temp;
+      }
+      det[1] = expOneBodyOperator * det[1];
+    }
   }
   
   // phaseless
@@ -296,7 +373,9 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
 // only used in phaseless
 std::complex<double> DQMCWalker::overlap(Wavefunction& wave)
 {
-  std::complex<double> overlap = rhfQ ? wave.overlap(det[0]) : wave.overlap(det);
+  std::complex<double> overlap;
+  if (socQ) overlap = wave.overlap(detSOC); 
+  else overlap = rhfQ ? wave.overlap(det[0]) : wave.overlap(det);
   trialOverlap = overlap;
   return overlap;
 };
@@ -304,7 +383,8 @@ std::complex<double> DQMCWalker::overlap(Wavefunction& wave)
 
 void DQMCWalker::forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
-  if (rhfQ) wave.forceBias(det[0], ham, fb);
+  if (socQ) wave.forceBias(detSOC, ham, fb);
+  else if (rhfQ) wave.forceBias(det[0], ham, fb);
   else wave.forceBias(det, ham, fb);
 };
 
@@ -317,7 +397,10 @@ void DQMCWalker::oneRDM(Wavefunction& wave, Eigen::MatrixXcd& rdmSample)
 
 std::array<std::complex<double>, 2> DQMCWalker::hamAndOverlap(Wavefunction& wave, Hamiltonian& ham)
 {
-  std::array<complex<double>, 2> hamOverlap = rhfQ ? wave.hamAndOverlap(det[0], ham) : wave.hamAndOverlap(det, ham);
+
+  std::array<complex<double>, 2> hamOverlap;
+  if (socQ) hamOverlap = wave.hamAndOverlap(detSOC, ham);
+  else hamOverlap = rhfQ ? wave.hamAndOverlap(det[0], ham) : wave.hamAndOverlap(det, ham);
   hamOverlap[0] *= orthoFac;
   hamOverlap[1] *= orthoFac;
   return hamOverlap;

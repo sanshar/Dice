@@ -68,3 +68,15 @@ if [ $clean == 1 ]
 then
     ../../clean.sh
 fi
+
+cd $here/DQMC/ghf_soc
+../../clean.sh
+printf "...running DQMC/ghf_soc\n"
+$MPICOMMAND $DQMCPATH > afqmc.out
+python2 ../../testEnergy.py 'afqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here

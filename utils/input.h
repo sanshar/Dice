@@ -157,6 +157,7 @@ private:
       & rightWave
       & ndets
       & phaseless
+      & soc
       & writeOneRDM
       // Options related to SC-NEVPT(s):
       & numSCSamples
@@ -387,6 +388,7 @@ public:
   std::string rightWave;
   size_t ndets;
   bool phaseless;
+  bool soc;
   bool writeOneRDM;
 };
 

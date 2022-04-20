@@ -409,6 +409,20 @@ def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0,
         fh5['chol'] = chol.flatten()
         fh5['energy_core'] = enuc
 
+
+# write soc integrals
+def write_dqmc_soc(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_chol'):
+    assert len(chol.shape) == 2
+    with h5py.File(filename, 'w') as fh5:
+        fh5['header'] = np.array([nelec, nmo, chol.shape[0]])
+        fh5['hcore_real'] = hcore.real.flatten()
+        fh5['hcore_imag'] = hcore.imag.flatten()
+        fh5['hcore_mod_real'] = hcore_mod.real.flatten()
+        fh5['hcore_mod_imag'] = hcore_mod.imag.flatten()
+        fh5['chol'] = chol.flatten()
+        fh5['energy_core'] = enuc
+
+
 # write ccsd amplitudes
 def write_ccsd(singles, doubles, rotation=None, filename='ccsd.h5'):
   doubles = np.transpose(doubles, (0, 2, 1, 3)).reshape((singles.size, singles.size))
