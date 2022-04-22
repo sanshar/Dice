@@ -414,8 +414,8 @@ void readSOCIntegrals(oneInt &I1, int norbs, string fileprefix, schedule& schd) 
     if (schd.Bdirection.size() != 0 ) {
       double ge = 2.002319304;
       double xval = ge * schd.Bvalue * schd.Bdirection[0];
-      double yval = ge * schd.Bvalue * schd.Bdirection[0];
-      double zval = ge * schd.Bvalue * schd.Bdirection[0];
+      double yval = ge * schd.Bvalue * schd.Bdirection[1];
+      double zval = ge * schd.Bvalue * schd.Bdirection[2];
       for (int i=0; i<norbs/2; i++) {
         I1(2*i,2*i+1) += std::complex<double>(xval, -yval);
         I1(2*i+1,2*i) += std::complex<double>(xval, yval);
