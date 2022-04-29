@@ -328,7 +328,7 @@ def modified_cholesky(mat, max_error=1e-6):
     chol_vecs[0] = np.copy(mat[nu]) / delta_max**0.5
 
     nchol = 0
-    while abs(delta_max) > max_error:
+    while abs(delta_max) > max_error and (nchol + 1) < nchol_max:
         Mapprox += chol_vecs[nchol] * chol_vecs[nchol]
         delta = diag - Mapprox
         nu = np.argmax(np.abs(delta))
@@ -341,20 +341,35 @@ def modified_cholesky(mat, max_error=1e-6):
 
 # calculate and write cholesky integrals
 # mc has to be provided if using frozen core
-def prepAFQMC(mol, mf, mc=None, chol_cut=1e-5, verbose=False):
+def prepAFQMC(mol, mf, mc=None, chol_cut=1e-5, mo_chol=False):
   mo_coeff = mf.mo_coeff
   if mc is not None:
     mo_coeff = mc.mo_coeff.copy()
-  h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut, verbose)
-  nbasis = h1e.shape[-1]
-  nelec = mol.nelec
 
-  if mc is not None:
-    if mc.ncore != 0:
-      nelec = mc.nelecas
-      h1e, enuc = mc.get_h1eff()
-      chol = chol.reshape((-1, nbasis, nbasis))
-      chol = chol[:, mc.ncore:, mc.ncore:]
+  if mo_chol and mc is not None: # generate cholesky in mo basis
+    nelec = mc.nelecas
+    h1e, enuc = mc.get_h1eff()
+    eri = ao2mo.restore(4, mc.get_h2eff(mo_coeff), mc.ncas)
+    chol0 = modified_cholesky(eri, chol_cut)
+    nchol = chol0.shape[0]
+    chol = np.zeros((nchol, mc.ncas, mc.ncas))
+    for i in range(nchol):
+      for m in range(mc.ncas):
+        for n in range(m+1):
+          triind = m*(m+1)//2 + n
+          chol[i, m, n] = chol0[i, triind]
+          chol[i, n, m] = chol0[i, triind]
+  else: # generate cholesky in ao basis
+    h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut, verbose)
+    nbasis = h1e.shape[-1]
+    nelec = mol.nelec
+
+    if mc is not None:
+      if mc.ncore != 0:
+        nelec = mc.nelecas
+        h1e, enuc = mc.get_h1eff()
+        chol = chol.reshape((-1, nbasis, nbasis))
+        chol = chol[:, mc.ncore:mc.ncore + mc.ncas, mc.ncore:mc.ncore + mc.ncas]
 
   nbasis = h1e.shape[-1]
   print(f'nelec: {nelec}')
