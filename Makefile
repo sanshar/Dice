@@ -1,24 +1,20 @@
 USE_MPI = yes
-USE_INTEL = yes
+USE_INTEL = no
 ONLY_DQMC = no
 HAS_AVX2 = yes
 
-#EIGEN=/projects/ilsa8974/apps/eigen/
-#BOOST=/projects/anma2640/boost_1_66_0/
-#HDF5=/curc/sw/hdf5/1.10.1/impi/17.3/intel/17.4/
-
 BOOST=${BOOST_ROOT}
 HDF5=${CURC_HDF5_ROOT}
-EIGEN=/projects/ilsa8974/apps/eigen/
+EIGEN=./eigen/
 
 COMPILE_NUMERIC = no
 SPARSEHASH=/projects/anma2640/sparsehash/src/
 LIBIGL=/projects/sash2458/apps/libigl/include/
 
 ifeq ($(ONLY_DQMC), yes)
-  FLAGS = -std=c++14 -O3 -g -I./VMC -I./utils -I./Wavefunctions  -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
+  FLAGS = -std=c++14 -O3 -g -w -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
 else 
-  FLAGS = -std=c++14 -O3 -g -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
 endif
 
 ifeq ($(HAS_AVX2), yes)
