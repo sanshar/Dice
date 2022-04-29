@@ -307,7 +307,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   totalEnergies(0) = weightedEnergy / totalWeights(0) + delta.real(); 
   if (commrank == 0) {
     double initializationTime = getTime() - calcInitTime;
-    cout << "  block     propTime         eshift            weight             energy          cumulative_energy          walltime\n";
+    cout << "  block     propTime           eshift          weight             energy          cumulative_energy          walltime\n";
     cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e       %9s                %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
   }
 
