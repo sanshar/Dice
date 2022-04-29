@@ -3,6 +3,7 @@
   "wavefunction":
   {
     "name": "cpsslater",
+    "determinants": "bestDet", 
     "hfType": "ghf",
     "correlators":
     { 
