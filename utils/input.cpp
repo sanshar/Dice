@@ -778,7 +778,8 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
   }
   VectorXi sizes = VectorXi::Zero(10);
   int numDets = 0;
-  
+  std::array<std::vector<int>, 2> open;
+
   for (int n = 0; n < ndetsDice; n++) {
     if (isFirst) {// first det is ref
       isFirst = false;
@@ -802,10 +803,16 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
         else if (detocc == 'a') {
           refDet.setoccA(i, true);
           ref[0].push_back(i);
+          open[1].push_back(i);
         }
         else if (detocc == 'b') {
           refDet.setoccB(i, true);
           ref[1].push_back(i);
+          open[0].push_back(i);
+        }
+        else if (detocc == '0') {
+          open[0].push_back(i);
+          open[1].push_back(i);
         }
       }
       numDets++;
@@ -842,7 +849,9 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       for (int i = 0; i < creA.size(); i++) {
         //des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
         //cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
-        excitationsA[0](i) = desA[i];
+        excitationsA[0](i) = std::search_n(ref[0].begin(), ref[0].end(), 1, desA[i]) - ref[0].begin();
+        //excitationsA[1](i) = std::search_n(open[0].begin(), open[0].end(), 1, creA[i]) - open[0].begin();
+        //excitationsA[0](i) = desA[i];
         excitationsA[1](i) = creA[i];
       }
 
@@ -852,7 +861,9 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
       for (int i = 0; i < creB.size(); i++) {
         //des[i + desA.size()] = std::search_n(ref.begin(), ref.end(), 1, desB[i] + norbs) - ref.begin();
         //cre[i + creA.size()] = std::search_n(open.begin(), open.end(), 1, creB[i] + norbs) - open.begin();
-        excitationsB[0](i) = desB[i];
+        excitationsB[0](i) = std::search_n(ref[1].begin(), ref[1].end(), 1, desB[i]) - ref[1].begin();
+        //excitationsB[1](i) = std::search_n(open[1].begin(), open[1].end(), 1, creB[i]) - open[1].begin();
+        //excitationsB[0](i) = desB[i];
         excitationsB[1](i) = creB[i];
       }
       

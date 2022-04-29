@@ -8,7 +8,8 @@
 // multislater wave function
 class Multislater : public Wavefunction {
   public:
-    std::array<std::vector<int>, 2> refDet; 
+    //std::array<std::vector<int>, 2> refDet; 
+    std::array<Eigen::VectorXi, 2> refDet; 
     std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2> ciExcitations;
     std::vector<double> ciParity; 
     std::vector<double> ciCoeffs;
