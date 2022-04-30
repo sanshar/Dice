@@ -11,6 +11,34 @@ using namespace Eigen;
 
 using matPair = std::array<MatrixXcd, 2>;
 
+
+void blocking(const ArrayXd& weights, const ArrayXd& energies, std::string fname = "blocking.tmp") 
+{
+  int nSamples = weights.size();
+  VectorXi blockSizes {{ 1, 2, 5, 10, 20, 50, 70, 100, 200, 500 }};
+  ofstream blockingFile(fname);
+  blockingFile << "number of samples: " << nSamples << endl;
+  blockingFile << "block size    # of blocks        mean                error" << endl;
+  for (int i = 0; i < blockSizes.size(); i++) {
+    if (blockSizes(i) > nSamples/2.) break;
+    int nBlocks = nSamples / blockSizes(i);
+    ArrayXd weightedEnergies = weights * energies;
+    ArrayXd blockedWeights = ArrayXd::Zero(nBlocks);
+    ArrayXd blockedEnergies = ArrayXd::Zero(nBlocks);
+    for (int j = 0; j < nBlocks; j++) { 
+      blockedWeights(j) = weights(Eigen::seq(j*blockSizes(i), (j+1)*blockSizes(i) - 1)).sum();
+      blockedEnergies(j) = weightedEnergies(Eigen::seq(j*blockSizes(i), (j+1)*blockSizes(i) - 1)).sum() / blockedWeights(j);
+    }
+    double v1 = blockedWeights.sum();
+    double v2 = (blockedWeights.pow(2)).sum();
+    double mean = (blockedWeights * blockedEnergies).sum() / v1;
+    double error = sqrt(((blockedWeights * (blockedEnergies - mean).pow(2)).sum() / (v1 - v2 / v1) / (nBlocks - 1)));
+    blockingFile << boost::format("  %4d           %4d       %.8e       %.6e\n") % blockSizes(i) % nBlocks % mean % error;
+  }
+  blockingFile.close();
+}
+
+
 void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWalker& walker, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
@@ -319,6 +347,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
   long nLargeDeviations = 0;
+  int measureCounter = 0;
   MatrixXd oneRDM = MatrixXd::Zero(norbs, norbs);
   MatrixXcd rdmSample = MatrixXcd::Zero(norbs, norbs);
   for (int step = 1; step < nsweeps * nsteps; step++) {
@@ -350,6 +379,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
 
     // measure
     if (step % nsteps == 0) { 
+      measureCounter++;
       localEnergy.setZero();
       int block = step / nsteps;
       init = getTime();
@@ -357,7 +387,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       for (int w = 0; w < walkers.size(); w++) {
         if (weights(w) != 0.) {
           // one rdm
-          if (step * dt > 10.) {
+          if (step * dt > 10. && step > schd.burnIter * nsteps) {
             walkers[w].oneRDM(waveLeft, rdmSample);
             oneRDM *= cumulativeWeight;
             oneRDM += weights(w) * rdmSample.real();
@@ -412,7 +442,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       totalEnergies(block) = weightedEnergy / totalWeight; 
       //totalEnergies(block) = weightedEnergy / ratioWeightedTotalWeight; 
       if (commrank == 0) {
-        if (step * dt < 10.) {
+        if (step * dt < 10. || step < schd.burnIter * nsteps) {
           averageNumEql += totalEnergies(block) * totalWeights(block);
           averageDenomEql += totalWeights(block);
           averageEnergyEql = averageNumEql / averageDenomEql;
@@ -513,6 +543,46 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       //MPI_Barrier(MPI_COMM_WORLD);
       //exit(0);
     }
+
+    // periodically carry out blocking analysis and print to disk
+    if (commrank == 0) {
+      if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
+        blocking(totalWeights.head(measureCounter).tail(measureCounter - 40), totalEnergies.head(measureCounter).tail(measureCounter - 40));
+        // rdm
+        if (schd.writeOneRDM) {
+          string fname = "rdm_";
+          fname.append(to_string(commrank));
+          fname.append(".dat");
+          ofstream rdmdump(fname);
+          rdmdump << cumulativeWeight << endl;
+          for (int i = 0; i < oneRDM.rows(); i++) {
+            for (int j = 0; j < oneRDM.cols(); j++){
+              rdmdump << oneRDM(i, j) << "  ";
+            }
+            rdmdump << endl;
+          }
+          rdmdump.close();
+        }
+      }
+    }
+    
+    if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
+      // rdm
+      if (schd.writeOneRDM) {
+        string fname = "rdm_";
+        fname.append(to_string(commrank));
+        fname.append(".dat");
+        ofstream rdmdump(fname);
+        rdmdump << cumulativeWeight << endl;
+        for (int i = 0; i < oneRDM.rows(); i++) {
+          for (int j = 0; j < oneRDM.cols(); j++){
+            rdmdump << oneRDM(i, j) << "  ";
+          }
+          rdmdump << endl;
+        }
+        rdmdump.close();
+      }
+    }
   }
   MPI_Allreduce(MPI_IN_PLACE, &nLargeDeviations, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
 
@@ -521,7 +591,8 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
     cout << "Number of large deviations:  " << nLargeDeviations << "\n";
     string fname = "samples.dat";
-    ofstream samplesFile(fname, ios::app);
+    //ofstream samplesFile(fname, ios::app);
+    ofstream samplesFile(fname);
     for (int i = 0; i < nsweeps; i++) {
         samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
     }
@@ -544,3 +615,4 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     rdmdump.close();
   }
 };
+

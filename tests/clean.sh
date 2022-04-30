@@ -16,3 +16,4 @@ find . -name stoch_samples_* | xargs rm >/dev/null 2>&1
 find . -name fciqmc.out | xargs rm >/dev/null 2>&1
 find . -name samples.dat | xargs rm >/dev/null 2>&1
 find . -name afqmc.out | xargs rm >/dev/null 2>&1
+find . -name blocking.tmp | xargs rm >/dev/null 2>&1
