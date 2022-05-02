@@ -137,7 +137,7 @@ void copyFromMat(VectorXd& var, MatrixXcd& ref){
     }
 }
 
-complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, vector<MatrixXd>& chol) {
+complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, vector<Eigen::Map<MatrixXd>>& chol) {
     size_t norbs = Determinant::norbs;
     size_t nalpha = Determinant::nalpha;
     size_t nbeta = Determinant::nbeta;
@@ -180,7 +180,7 @@ complex<double> getEnergyProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, ve
     return E0;
 }
 
-complex<double> getGradientProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, MatrixXcd& Grad) {
+complex<double> getGradientProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, vector<Eigen::Map<MatrixXd>>& chol, MatrixXcd& Grad) {
     size_t norbs = Determinant::norbs;
     size_t nalpha = Determinant::nalpha;
     size_t nbeta = Determinant::nbeta;
@@ -219,7 +219,7 @@ complex<double> getGradientProjected(MatrixXcd& ref, double enuc, MatrixXd& h1, 
     return E0;
 }
 
-void optimizeProjectedSlater(double enuc, MatrixXd& h1, vector<MatrixXd>& chol) {
+void optimizeProjectedSlater(double enuc, MatrixXd& h1, vector<Eigen::Map<MatrixXd>>& chol) {
     size_t norbs = Determinant::norbs;
     size_t nalpha = Determinant::nalpha;
     size_t nbeta = Determinant::nbeta;

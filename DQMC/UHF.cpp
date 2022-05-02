@@ -16,8 +16,7 @@ UHF::UHF(Hamiltonian& ham, bool pleftQ, std::string fname)
   detT[1] = det[1].adjoint();
   leftQ = pleftQ;
   if (leftQ) {
-    ham.rotateCholesky(detT[0], rotChol[0]);
-    ham.rotateCholesky(detT[1], rotChol[1], true);
+    ham.rotateCholesky(detT, rotChol, true);
   }
 };
 

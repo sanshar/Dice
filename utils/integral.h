@@ -289,7 +289,7 @@ void readIntegralsAndInitializeDeterminantStaticVariables(string fcidump);
 
 void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump);
 
-void readIntegralsCholeskyAndInitializeDeterminantStaticVariables(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<MatrixXd>& chol);
-void readIntegralsCholeskyAndInitializeDeterminantStaticVariablesSOC(string fcidump, int& norbs, int& nelec, double& ecore, MatrixXcd& h1, MatrixXcd& h1Mod, vector<MatrixXd>& chol);
+void readDQMCIntegrals(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, Eigen::MatrixXd& h1, Eigen::MatrixXd& h1Mod, std::vector<Eigen::Map<Eigen::MatrixXd>>& chol);
+void readDQMCIntegralsSOC(string fcidump, int& norbs, int& nelec, double& ecore, Eigen::MatrixXcd& h1, Eigen::MatrixXcd& h1Mod, std::vector<Eigen::Map<Eigen::MatrixXd>>& chol);
 
 #endif

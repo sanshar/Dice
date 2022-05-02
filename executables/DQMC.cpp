@@ -180,8 +180,8 @@ int main(int argc, char *argv[])
   //else calcMixedEstimatorLongProp(*waveLeft, *waveRight, walker, ham);
   
   if (commrank == 0) cout << "\nTotal calculation time:  " << getTime() - startofCalc << " s\n";
-  boost::interprocess::shared_memory_object::remove(shciint2.c_str());
-  boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
-  boost::interprocess::shared_memory_object::remove(shciint2shmcas.c_str());
+  
+  removeSHM();
+  
   return 0;
 }

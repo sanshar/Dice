@@ -29,8 +29,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include "hdf5.h"
-
 
 #ifndef SERIAL
 #include "mpi.h"
@@ -380,6 +378,45 @@ void readMat(MatrixXd& mat, std::string fileName)
       dump >> mat(i, j);
     }
   }
+}
+
+void readMat(MatrixXd& mat, hid_t& file, std::string datasetName) {
+  int nrows = mat.rows(), ncols = mat.cols();
+  double *matRead = new double[nrows * ncols];
+  for (int i = 0; i < nrows; i++) {
+    for (int j = 0; j < ncols; j++) {
+      matRead[i * ncols + j] = 0.;
+    }
+  }
+
+  hid_t dataset = (-1);
+  herr_t status;
+  H5E_BEGIN_TRY {
+    dataset = H5Dopen(file, datasetName.c_str(), H5P_DEFAULT);
+    status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, matRead);
+  } H5E_END_TRY
+  if (dataset < 0) {
+    if (commrank == 0) cout << datasetName << " dataset could not be read." << endl;
+    exit(1);
+  }
+  
+  for (int i = 0; i < nrows; i++) {
+    for (int j = 0; j < ncols; j++) {
+      mat(i, j) = matRead[i * ncols + j];
+    }
+  }
+  delete [] matRead;
+}
+
+void readMat(MatrixXcd& mat, hid_t& file, std::string datasetName) {
+  int nrows = mat.rows(), ncols = mat.cols();
+  MatrixXd matR = Eigen::MatrixXd::Zero(nrows, ncols);
+  MatrixXd matI = Eigen::MatrixXd::Zero(nrows, ncols);
+  std::string datasetRName = datasetName + "_real";
+  std::string datasetIName = datasetName + "_imag";
+  readMat(matR, file, datasetRName);
+  readMat(matI, file, datasetIName);
+  mat = matR + std::complex<double>(0., 1.) * matI;
 }
 
 void writeMat(MatrixXcd& mat, std::string fileName) {

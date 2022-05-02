@@ -63,13 +63,14 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
   constant += ene0 - ham.ecore;
   for (int i = 0; i < nfields; i++) {
     MatrixXd chol = ham.chol[i];
-    if (ham.chol[i].rows() == 0) {
+    if (ham.rotFlag == true) {
       chol = MatrixXd::Zero(norbs, norbs);
+      size_t triSize = (norbs * (norbs + 1) / 2);
       long counter = 0;
       for (int j = 0; j < norbs; j++) {
         for (int k = 0; k <= j; k++) {
-          chol(j, k) = ham.floatChol[i][counter];
-          chol(k, j) = ham.floatChol[i][counter];
+          chol(j, k) = ham.floatChol[i * triSize + counter];
+          chol(k, j) = ham.floatChol[i * triSize + counter];
           counter++;
         }
       }
@@ -92,8 +93,6 @@ void DQMCWalker::prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham
     propConstant[1] = constant / (1. * ham.nbeta);
   }
   expOneBodyOperator =  (-dt * oneBodyOperator / 2.).exp();
-
-  //ham.floattenCholesky(floatChol);
 };
 
 
@@ -225,18 +224,19 @@ void DQMCWalker::orthogonalize()
 void DQMCWalker::propagate(Hamiltonian& ham)
 {
   int norbs = det[0].rows();
-  int nfields = ham.floatChol.size(); 
+  int nfields = ham.chol.size(); 
   //MatrixXf prop = MatrixXf::Zero(norbs, norbs);
   vector<float> prop(norbs * (norbs + 1) / 2, 0.);
   complex<double> shift(0., 0.);
   VectorXd fields(nfields);
   fields.setZero();
+  size_t triSize = (norbs * (norbs + 1)) / 2;
   for (int n = 0; n < nfields; n++) {
     double field_n = normal(generator);
     fields(n) = field_n;
     for (int i = 0; i < norbs; i++)
       for (int j = 0; j <= i; j++)
-        prop[i * (i + 1) / 2 + j] += float(field_n) * ham.floatChol[n][i * (i + 1) / 2 + j];
+        prop[i * (i + 1) / 2 + j] += float(field_n) * ham.floatChol[n * triSize + i * (i + 1) / 2 + j];
     //prop.noalias() += float(field_n) * floatChol[i];
     shift += field_n * mfShifts[n];
   }
@@ -276,7 +276,7 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
 {
   int norbs = ham.norbs;
   int nelec = ham.nelec;
-  int nfields = ham.floatChol.size(); 
+  int nfields = ham.chol.size(); 
   VectorXcd fb(nfields);
   fb.setZero();
   this->forceBias(wave, ham, fb);
@@ -288,6 +288,7 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   vector<float> propi(norbs * (norbs + 1) / 2, 0.);
   //MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   complex<double> shift(0., 0.), fbTerm(0., 0.);
+  size_t triSize = (norbs * (norbs + 1)) / 2;
   for (int n = 0; n < nfields; n++) {
     double field_n = normal(generator);
     complex<double> fieldShift = -sqrt(dt) * (complex<double>(0., 1.) * fb(n) - mfShifts[n]);
@@ -295,8 +296,8 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
     //propc += sqrt(dt) * complex<double>(0., 1.) * (field_n - fieldShift) * ham.chol[n];
     for (int i = 0; i < norbs; i++) {
       for (int j = 0; j <= i; j++) {
-        propr[i * (i + 1) / 2 + j] += float(field_n - fieldShift.real()) * ham.floatChol[n][i * (i + 1) / 2 + j];
-        propi[i * (i + 1) / 2 + j] += float(- fieldShift.imag()) * ham.floatChol[n][i * (i + 1) / 2 + j];
+        propr[i * (i + 1) / 2 + j] += float(field_n - fieldShift.real()) * ham.floatChol[n * triSize + i * (i + 1) / 2 + j];
+        propi[i * (i + 1) / 2 + j] += float(- fieldShift.imag()) * ham.floatChol[n * triSize + i * (i + 1) / 2 + j];
       }
     }
     //prop.noalias() += float(field_n) * floatChol[i];

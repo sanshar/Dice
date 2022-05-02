@@ -326,7 +326,7 @@ complex<double> calcHamiltonianElement(MatrixXcd& At, MatrixXcd& B, double enuc,
 
 // Hamiltonian matrix element < d GHF/cxi | H | GHF > / < GHF | UHF >
 // rotates cholesky vectors
-complex<double> calcGradient(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<MatrixXd>& chol, MatrixXcd& Grad) 
+complex<double> calcGradient(MatrixXcd& At, MatrixXcd& B, double enuc, MatrixXd& h1, vector<Eigen::Map<Eigen::MatrixXd>>& chol, MatrixXcd& Grad) 
 { 
   Grad.setZero();
 

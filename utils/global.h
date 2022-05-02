@@ -60,6 +60,18 @@ extern boost::interprocess::shared_memory_object int2SHMCASSegment;
 extern boost::interprocess::mapped_region regionInt2SHMCAS;
 extern std::string shciint2shmcas;
 
+extern boost::interprocess::shared_memory_object cholSegment;
+extern boost::interprocess::mapped_region cholRegion;
+extern std::string cholSHMName;
+
+extern boost::interprocess::shared_memory_object floatCholSegment;
+extern boost::interprocess::mapped_region floatCholRegion;
+extern std::string floatCholSHMName;
+
+extern boost::interprocess::shared_memory_object rotCholSegment;
+extern boost::interprocess::mapped_region rotCholRegion;
+extern std::string rotCholSHMName;
+
 extern std::mt19937 generator;
 double getTime();
 void   license();

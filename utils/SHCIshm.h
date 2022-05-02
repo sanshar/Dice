@@ -13,10 +13,12 @@ You should have received a copy of the GNU General Public License along with thi
 #define SHCI_SHM_H
 #include <vector>
 #include <string>
+#include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "global.h"
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include "hdf5.h"
 
 using namespace Eigen;
 
@@ -82,7 +84,6 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 }
 
 
-
 template <typename T>
 void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname, 
 		    boost::interprocess::shared_memory_object& SHMsegment,
@@ -141,8 +142,9 @@ void SHMVecFromVecs(T *vec, int vecsize, T* &SHMvec, std::string& SHMname,
 }
 
 
-
-
+void readHDF5ToSHM(hid_t file, std::string datasetName, size_t size, double* &SHMAddress, std::string SHMName, 
+		    boost::interprocess::shared_memory_object& SHMSegment,
+		    boost::interprocess::mapped_region& SHMRegion); 
 
 
 #endif

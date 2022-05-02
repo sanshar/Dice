@@ -39,6 +39,18 @@ boost::interprocess::shared_memory_object int2SHMCASSegment;
 boost::interprocess::mapped_region regionInt2SHMCAS;
 std::string shciint2shmcas;
 
+boost::interprocess::shared_memory_object cholSegment;
+boost::interprocess::mapped_region cholRegion;
+std::string cholSHMName;
+
+boost::interprocess::shared_memory_object floatCholSegment;
+boost::interprocess::mapped_region floatCholRegion;
+std::string floatCholSHMName;
+
+boost::interprocess::shared_memory_object rotCholSegment;
+boost::interprocess::mapped_region rotCholRegion;
+std::string rotCholSHMName;
+
 std::mt19937 generator;
 
 #ifndef SERIAL

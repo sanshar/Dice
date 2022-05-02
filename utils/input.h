@@ -24,6 +24,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/map.hpp>
 #include <vector>
+#include "hdf5.h"
 
 class Correlator;
 class Determinant;
@@ -420,8 +421,9 @@ void readPairMat(Eigen::MatrixXd& pairMat);
  */
 
 void readMat(Eigen::MatrixXd& mat, std::string fileName);
-
 void readMat(Eigen::MatrixXcd& mat, std::string fileName);
+void readMat(Eigen::MatrixXd& mat, hid_t& file, std::string datasetName); 
+void readMat(Eigen::MatrixXcd& mat, hid_t& file, std::string datasetName); 
 
 void writeMat(Eigen::MatrixXcd& mat, std::string fileName);
 
