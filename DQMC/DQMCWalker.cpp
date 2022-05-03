@@ -18,6 +18,7 @@ DQMCWalker::DQMCWalker(bool prhfQ, bool pphaselessQ, bool psocQ)
   socQ = psocQ;
   orthoFac = complex<double> (1., 0.);
   normal = normal_distribution<double>(0., 1.);
+  vhsTime = 0.; expTime = 0.; fbTime = 0.;
 };
 
 
@@ -289,6 +290,7 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
   //MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
   complex<double> shift(0., 0.), fbTerm(0., 0.);
   size_t triSize = (norbs * (norbs + 1)) / 2;
+  auto initTime = getTime();
   for (int n = 0; n < nfields; n++) {
     double field_n = normal(generator);
     complex<double> fieldShift = -sqrt(dt) * (complex<double>(0., 1.) * fb(n) - mfShifts[n]);
@@ -300,10 +302,12 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
         propi[i * (i + 1) / 2 + j] += float(- fieldShift.imag()) * ham.floatChol[n * triSize + i * (i + 1) / 2 + j];
       }
     }
+    
     //prop.noalias() += float(field_n) * floatChol[i];
     shift += (field_n - fieldShift) * mfShifts[n];
     fbTerm += (field_n * fieldShift - fieldShift * fieldShift / 2.);
   }
+  vhsTime += getTime() - initTime;
 
   //MatrixXcd propc = sqrt(dt) * complex<double>(0, 1.) * prop.cast<double>();
   MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
@@ -314,7 +318,8 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
       propc(j, i) = sqrt(dt) * static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
     }
   }
- 
+
+  initTime = getTime();
   if (socQ) {
     detSOC = expOneBodyOperator * detSOC;
     MatrixXcd temp = detSOC;
@@ -345,7 +350,8 @@ double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, doub
       det[1] = expOneBodyOperator * det[1];
     }
   }
-  
+  expTime += getTime() - initTime;
+
   // phaseless
   complex<double> oldOverlap = trialOverlap;
   complex<double> newOverlap = this->overlap(wave);
@@ -384,9 +390,11 @@ std::complex<double> DQMCWalker::overlap(Wavefunction& wave)
 
 void DQMCWalker::forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
+  auto initTime = getTime();
   if (socQ) wave.forceBias(detSOC, ham, fb);
   else if (rhfQ) wave.forceBias(det[0], ham, fb);
   else wave.forceBias(det, ham, fb);
+  fbTime += getTime() - initTime;
 };
 
 

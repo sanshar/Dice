@@ -17,6 +17,7 @@ class DQMCWalker {
     bool rhfQ, socQ, phaselessQ;
     double dt, ene0;
     std::normal_distribution<double> normal;
+    double vhsTime, expTime, fbTime;
 
     // constructor
     DQMCWalker(bool prhfQ = true, bool pphaselessQ = false, bool psocQ = false);

@@ -587,9 +587,19 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   MPI_Allreduce(MPI_IN_PLACE, &nLargeDeviations, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
 
   if (commrank == 0) {
-    cout << "\nPropagation time:  " << propTime << " s\n";
+    double totalVhsTime = 0., totalExpTime = 0., totalFbTime = 0.;
+    for (int w = 0; w < walkers.size(); w++) {
+      totalVhsTime += walkers[w].vhsTime;
+      totalExpTime += walkers[w].expTime;
+      totalFbTime += walkers[w].fbTime;
+    }
+    cout << "\nTotal propagation time:  " << propTime << " s\n";
+    cout << "   VHS Time: " << totalVhsTime << " s\n";
+    cout << "   Matmul Time: " << totalExpTime << " s\n";
+    cout << "   Force bias Time: " << totalFbTime << " s\n";
     cout << "Energy evaluation time:  " << eneTime << " s\n\n";
     cout << "Number of large deviations:  " << nLargeDeviations << "\n";
+    
     string fname = "samples.dat";
     //ofstream samplesFile(fname, ios::app);
     ofstream samplesFile(fname);
