@@ -360,7 +360,7 @@ def prepAFQMC(mol, mf, mc=None, chol_cut=1e-5, mo_chol=False):
           chol[i, m, n] = chol0[i, triind]
           chol[i, n, m] = chol0[i, triind]
   else: # generate cholesky in ao basis
-    h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut, verbose)
+    h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut)
     nbasis = h1e.shape[-1]
     nelec = mol.nelec
 
