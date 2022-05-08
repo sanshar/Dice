@@ -43,6 +43,10 @@ boost::interprocess::shared_memory_object cholSegment;
 boost::interprocess::mapped_region cholRegion;
 std::string cholSHMName;
 
+boost::interprocess::shared_memory_object cholSegmentUp, cholSegmentDn;
+boost::interprocess::mapped_region cholRegionUp, cholRegionDn;
+std::string cholSHMNameUp, cholSHMNameDn;
+
 boost::interprocess::shared_memory_object floatCholSegment;
 boost::interprocess::mapped_region floatCholRegion;
 std::string floatCholSHMName;

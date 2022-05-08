@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
   //double ecore;
   //readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
  
-  Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc);
+  Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc, schd.intType);
   if (commrank == 0) {
     if (schd.soc) cout << "Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
     else cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;

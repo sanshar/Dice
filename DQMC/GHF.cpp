@@ -74,7 +74,7 @@ std::array<std::complex<double>, 2> GHF::hamAndOverlap(Eigen::MatrixXcd& psi, Ha
   int norbs = ham.norbs, nelec = ham.nelec;
   MatrixXcd fup = MatrixXcd::Zero(nelec, nelec);
   MatrixXcd fdn = MatrixXcd::Zero(nelec, nelec);
-  for (int i = 0; i < ham.nchol; i++) {
+  for (int i = 0; i < ham.ncholEne; i++) {
     fup.noalias() = rotChol[i][0] * theta.block(0, 0, norbs, nelec);
     fdn.noalias() = rotChol[i][1] * theta.block(norbs, 0, norbs, nelec);
     complex<double> cup = fup.trace();

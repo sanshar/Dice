@@ -7,22 +7,23 @@
 class DQMCWalker {
   public:
     std::array<Eigen::MatrixXcd, 2> det;
-    Eigen::MatrixXcd detSOC;
+    Eigen::MatrixXcd detG;
     std::complex<double> orthoFac, trialOverlap;
     std::vector<std::complex<double>> mfShifts;
     std::array<std::complex<double>, 2> propConstant;
     Eigen::MatrixXcd expOneBodyOperator;
-    //std::vector<Eigen::MatrixXf> floatChol;
-    //std::vector<std::vector<float>> floatChol;
-    bool rhfQ, socQ, phaselessQ;
+    std::array<Eigen::MatrixXcd, 2> expOneBodyOperatorU;
+    bool rhfQ, szQ, phaselessQ;  // come up with a better name for szQ (szQ == false for ghf dets)
     double dt, ene0;
     std::normal_distribution<double> normal;
     double vhsTime, expTime, fbTime;
 
     // constructor
-    DQMCWalker(bool prhfQ = true, bool pphaselessQ = false, bool psocQ = false);
+    DQMCWalker(bool prhfQ = true, bool pphaselessQ = false, bool pszQ = false);
 
     void prepProp(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham, double pdt, double pene0);
+    void prepPropR(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham, double pdt, double pene0);
+    void prepPropU(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ham, double pdt, double pene0);
     void prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, double pene0);
 
     void setDet(std::array<Eigen::MatrixXcd, 2> pdet);
@@ -34,10 +35,13 @@ class DQMCWalker {
 
     void propagate(Hamiltonian& ham);
     double propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift);
+    double propagatePhaselessR(Wavefunction& wave, Hamiltonian& ham, double eshift);
+    double propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, double eshift);
 
     std::complex<double> overlap(Wavefunction& wave);
     void forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXcd& fb);
     void oneRDM(Wavefunction& wave, Eigen::MatrixXcd& rdmSample);
+    void oneRDM(Wavefunction& wave, std::array<Eigen::MatrixXcd, 2>& rdmSample);
     std::array<std::complex<double>, 2> hamAndOverlap(Wavefunction& wave, Hamiltonian& ham);
 };
 #endif

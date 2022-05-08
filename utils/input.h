@@ -161,6 +161,8 @@ private:
       & phaseless
       & soc
       & writeOneRDM
+      & intType
+      & scratchDir
       // Options related to SC-NEVPT(s):
       & numSCSamples
       & printSCNorms
@@ -392,6 +394,8 @@ public:
   bool phaseless;
   bool soc;
   bool writeOneRDM;
+  std::string intType;
+  std::string scratchDir;
 };
 
 /**

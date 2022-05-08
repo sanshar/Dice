@@ -39,6 +39,69 @@ void blocking(const ArrayXd& weights, const ArrayXd& energies, std::string fname
 }
 
 
+void writeOneRDM(Eigen::MatrixXd oneRDM, double cumulativeWeight) 
+{
+  std::string scratch_dir = schd.scratchDir;
+  string fname = scratch_dir + "/rdm_";
+  fname.append(to_string(commrank));
+  fname.append(".dat");
+  ofstream rdmdump(fname);
+  rdmdump << cumulativeWeight << endl;
+  for (int i = 0; i < oneRDM.rows(); i++) {
+    for (int j = 0; j < oneRDM.cols(); j++){
+      rdmdump << oneRDM(i, j) << "  ";
+    }
+    rdmdump << endl;
+  }
+  rdmdump.close();
+}
+
+
+void writeOneRDM(std::array<Eigen::MatrixXd, 2> oneRDM, double cumulativeWeight) 
+{
+  std::string scratch_dir = schd.scratchDir;
+  {
+    string fname = scratch_dir + "/rdm_up_";
+    fname.append(to_string(commrank));
+    fname.append(".dat");
+    ofstream rdmdump(fname);
+    if (rdmdump.fail()) {
+      if (commrank == 0) cout << scratch_dir + " does not exist!\n";
+      rdmdump.close();
+      exit(0);
+    }
+    rdmdump << cumulativeWeight << endl;
+    for (int i = 0; i < oneRDM[0].rows(); i++) {
+      for (int j = 0; j < oneRDM[0].cols(); j++){
+        rdmdump << oneRDM[0](i, j) << "  ";
+      }
+      rdmdump << endl;
+    }
+    rdmdump.close();
+  }
+  
+  {
+    string fname = scratch_dir + "/rdm_dn_";
+    fname.append(to_string(commrank));
+    fname.append(".dat");
+    ofstream rdmdump(fname);
+    if (rdmdump.fail()) {
+      if (commrank == 0) cout << scratch_dir + " does not exist!\n";
+      rdmdump.close();
+      exit(0);
+    }
+    rdmdump << cumulativeWeight << endl;
+    for (int i = 0; i < oneRDM[1].rows(); i++) {
+      for (int j = 0; j < oneRDM[1].cols(); j++){
+        rdmdump << oneRDM[1](i, j) << "  ";
+      }
+      rdmdump << endl;
+    }
+    rdmdump.close();
+  } 
+}
+
+
 void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWalker& walker, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
@@ -66,12 +129,12 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
     cout << "Ground state energy guess:  " << ene0 << endl << endl; 
   }
   
-  int nchol = ham.chol.size();
+  int nchol = ham.nchol;
   complex<double> delta(0., 0.);
   if (commrank == 0) cout << "Number of Cholesky vectors: " << nchol << endl;
   vector<int> ncholVec = { int(0.3 * nchol), int(0.4 * nchol), int(0.5 * nchol), int(0.6 * nchol), int(0.7 * nchol) };
   for (int i = 0; i < ncholVec.size(); i++) {
-    ham.setNchol(ncholVec[i]);
+    ham.setNcholEne(ncholVec[i]);
     auto thamOverlap = waveLeft.hamAndOverlap(ref, ham);
     complex<double> trefEnergy = thamOverlap[0] / thamOverlap[1];
     if (abs(refEnergy - trefEnergy) < schd.choleskyThreshold) {
@@ -84,7 +147,7 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
       break;
     }
   }
-  ham.setNchol(nchol);
+  ham.setNcholEne(nchol);
   
   walker.prepProp(ref, ham, dt, ene0.real());
   int nEneSteps = eneSteps.size();
@@ -170,12 +233,12 @@ void calcMixedEstimatorNoProp(Wavefunction& waveLeft, Wavefunction& waveRight, D
     cout << "Initial state energy:  " << setprecision(8) << refEnergy << endl;
   }
   
-  int nchol = ham.chol.size();
+  int nchol = ham.nchol;
   complex<double> delta(0., 0.);
   if (commrank == 0) cout << "Number of Cholesky vectors: " << nchol << endl;
   vector<int> ncholVec = { int(0.3 * nchol), int(0.4 * nchol), int(0.5 * nchol), int(0.6 * nchol), int(0.7 * nchol) };
   for (int i = 0; i < ncholVec.size(); i++) {
-    ham.setNchol(ncholVec[i]);
+    ham.setNcholEne(ncholVec[i]);
     auto thamOverlap = waveLeft.hamAndOverlap(ref, ham);
     complex<double> trefEnergy = thamOverlap[0] / thamOverlap[1];
     if (abs(refEnergy - trefEnergy) < schd.choleskyThreshold) {
@@ -188,7 +251,7 @@ void calcMixedEstimatorNoProp(Wavefunction& waveLeft, Wavefunction& waveRight, D
       break;
     }
   }
-  ham.setNchol(nchol);
+  ham.setNcholEne(nchol);
   
   //walker.prepProp(ref, ham, dt, ene0.real());
   int nEneSteps = 1;
@@ -279,12 +342,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     cout << "Initial state energy:  " << setprecision(8) << refEnergy.real() << endl;
   }
   
-  int nchol = ham.chol.size();
+  int nchol = ham.nchol;
   complex<double> delta(0., 0.);
   if (commrank == 0) cout << "Number of Cholesky vectors: " << nchol << endl;
   vector<int> ncholVec = { int(0.3 * nchol), int(0.4 * nchol), int(0.5 * nchol), int(0.6 * nchol), int(0.7 * nchol) };
   for (int i = 0; i < ncholVec.size(); i++) {
-    ham.setNchol(ncholVec[i]);
+    ham.setNcholEne(ncholVec[i]);
     std::array<complex<double>, 2> thamOverlap;
     if (schd.soc) thamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
     else thamOverlap = waveLeft.hamAndOverlap(ref, ham);
@@ -299,7 +362,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       break;
     }
   }
-  ham.setNchol(nchol);
+  ham.setNcholEne(nchol);
  
   vector<DQMCWalker> walkers;
   ArrayXd weights = ArrayXd::Zero(nwalk);
@@ -349,7 +412,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   long nLargeDeviations = 0;
   int measureCounter = 0;
   MatrixXd oneRDM = MatrixXd::Zero(norbs, norbs);
+  std::array<MatrixXd, 2> oneRDMU;
+  oneRDMU[0]= MatrixXd::Zero(norbs, norbs);
+  oneRDMU[1]= MatrixXd::Zero(norbs, norbs);
   MatrixXcd rdmSample = MatrixXcd::Zero(norbs, norbs);
+  std::array<MatrixXcd, 2> rdmSampleU;
+  rdmSampleU[0] = MatrixXcd::Zero(norbs, norbs);
+  rdmSampleU[1] = MatrixXcd::Zero(norbs, norbs);
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
@@ -388,11 +457,23 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         if (weights(w) != 0.) {
           // one rdm
           if (step * dt > 10. && step > schd.burnIter * nsteps) {
-            walkers[w].oneRDM(waveLeft, rdmSample);
-            oneRDM *= cumulativeWeight;
-            oneRDM += weights(w) * rdmSample.real();
-            cumulativeWeight += weights(w);
-            oneRDM /= cumulativeWeight;
+            if (ham.intType == "r") {
+              walkers[w].oneRDM(waveLeft, rdmSample);
+              oneRDM *= cumulativeWeight;
+              oneRDM += weights(w) * rdmSample.real();
+              cumulativeWeight += weights(w);
+              oneRDM /= cumulativeWeight;
+            }
+            else if (ham.intType == "u") {
+              walkers[w].oneRDM(waveLeft, rdmSampleU);
+              oneRDMU[0] *= cumulativeWeight;
+              oneRDMU[1] *= cumulativeWeight;
+              oneRDMU[0] += weights(w) * rdmSampleU[0].real();
+              oneRDMU[1] += weights(w) * rdmSampleU[1].real();
+              cumulativeWeight += weights(w);
+              oneRDMU[0] /= cumulativeWeight;
+              oneRDMU[1] /= cumulativeWeight;
+            }
           }
 
           // energy
@@ -547,40 +628,19 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     // periodically carry out blocking analysis and print to disk
     if (commrank == 0) {
       if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
-        blocking(totalWeights.head(measureCounter).tail(measureCounter - 40), totalEnergies.head(measureCounter).tail(measureCounter - 40));
-        // rdm
-        if (schd.writeOneRDM) {
-          string fname = "rdm_";
-          fname.append(to_string(commrank));
-          fname.append(".dat");
-          ofstream rdmdump(fname);
-          rdmdump << cumulativeWeight << endl;
-          for (int i = 0; i < oneRDM.rows(); i++) {
-            for (int j = 0; j < oneRDM.cols(); j++){
-              rdmdump << oneRDM(i, j) << "  ";
-            }
-            rdmdump << endl;
-          }
-          rdmdump.close();
-        }
+        blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)));
       }
     }
     
     if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
-      // rdm
       if (schd.writeOneRDM) {
-        string fname = "rdm_";
-        fname.append(to_string(commrank));
-        fname.append(".dat");
-        ofstream rdmdump(fname);
-        rdmdump << cumulativeWeight << endl;
-        for (int i = 0; i < oneRDM.rows(); i++) {
-          for (int j = 0; j < oneRDM.cols(); j++){
-            rdmdump << oneRDM(i, j) << "  ";
-          }
-          rdmdump << endl;
+        std::string scratch_dir = schd.scratchDir;
+        if (ham.intType == "r") {
+          writeOneRDM(oneRDM, cumulativeWeight);
         }
-        rdmdump.close();
+        else if (ham.intType == "u") {
+          writeOneRDM(oneRDMU, cumulativeWeight);
+        }
       }
     }
   }
@@ -611,18 +671,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   
   // write one rdm 
   if (schd.writeOneRDM) {
-    string fname = "rdm_";
-    fname.append(to_string(commrank));
-    fname.append(".dat");
-    ofstream rdmdump(fname);
-    rdmdump << cumulativeWeight << endl;
-    for (int i = 0; i < oneRDM.rows(); i++) {
-      for (int j = 0; j < oneRDM.cols(); j++){
-        rdmdump << oneRDM(i, j) << "  ";
-      }
-      rdmdump << endl;
+    std::string scratch_dir = schd.scratchDir;
+    if (ham.intType == "r") {
+      writeOneRDM(oneRDM, cumulativeWeight);
     }
-    rdmdump.close();
+    else if (ham.intType == "u") {
+      writeOneRDM(oneRDMU, cumulativeWeight);
+    }
   }
 };
 

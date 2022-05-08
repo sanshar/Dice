@@ -148,15 +148,16 @@ std::complex<double> Multislater::overlap(Eigen::MatrixXcd& psi)
   return this->overlap(psi2);
 };
 
+
 void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
   int nbeta = ham.nbeta;
-  int nchol = ham.chol.size();
+  int nchol = ham.nchol;
   std::array<int, 2> nelec{nalpha, nbeta};
   size_t ndets = ciCoeffs.size();
-  fb = VectorXcd::Zero(ham.chol.size());
+  fb = VectorXcd::Zero(nchol);
 
   matPair phi0T;
   phi0T[0] = MatrixXcd::Zero(nalpha, norbs);
@@ -287,21 +288,37 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
   greenMulti[1] *= (overlap0 / overlap);
   greenMulti[0] = greenMulti[0].transpose().eval();
   greenMulti[1] = greenMulti[1].transpose().eval();
-  for (int i = 0; i < ham.chol.size(); i++) 
-    fb(i) = (greenMulti[0].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum() + (greenMulti[1].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
+  if (ham.intType == "r") {
+    for (int i = 0; i < ham.nchol; i++) 
+      fb(i) = (greenMulti[0].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum() + (greenMulti[1].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
+  }
+  else if (ham.intType == "u") {
+    for (int i = 0; i < ham.nchol; i++) 
+      fb(i) = (greenMulti[0].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.cholu[i][0].block(0, 0, norbs, ncore + nact)).sum() + (greenMulti[1].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.cholu[i][1].block(0, 0, norbs, ncore + nact)).sum();
+  }
   //for (int i = 0; i < ham.chol.size(); i++) 
   //  fb(i) = (greenMulti[0].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum() + (greenMulti[1].block(0, 0, nact, norbs)).cwiseProduct(ham.chol[i].block(0, 0, nact, norbs)).sum();
     //fb(i) = (greenMulti[0]).cwiseProduct(ham.chol[i]).sum() + (greenMulti[1]).cwiseProduct(ham.chol[i]).sum();
 };
 
+
 void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, Eigen::MatrixXcd& rdmSample) 
+{ 
+  std::array<Eigen::MatrixXcd, 2> spinRdmSample;
+  oneRDM(psi, spinRdmSample);
+  rdmSample = spinRdmSample[0] + spinRdmSample[1];
+};
+
+
+void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, std::array<Eigen::MatrixXcd, 2>& rdmSample) 
 { 
   int norbs = psi[0].rows();
   int nalpha = psi[0].cols();
   int nbeta = psi[1].cols();
   std::array<int, 2> nelec{nalpha, nbeta};
   size_t ndets = ciCoeffs.size();
-  rdmSample = MatrixXcd::Zero(norbs, norbs);
+  rdmSample[0] = MatrixXcd::Zero(norbs, norbs);
+  rdmSample[1] = MatrixXcd::Zero(norbs, norbs);
 
   matPair phi0T;
   phi0T[0] = MatrixXcd::Zero(nalpha, norbs);
@@ -430,7 +447,8 @@ void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, Eigen::MatrixXcd&
   overlap *= overlap0;
   greenMulti[0] *= (overlap0 / overlap);
   greenMulti[1] *= (overlap0 / overlap);
-  rdmSample = greenMulti[0] + greenMulti[1];
+  rdmSample[0] = greenMulti[0];
+  rdmSample[1] = greenMulti[1];
 };
 
 //void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
@@ -527,18 +545,20 @@ void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, Eigen::MatrixXcd&
 
 void Multislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
 {
+  assert(ham.intType == "r");
   matPair psi2;
   psi2[0] = psi;
   psi2[1] = psi;
   this->forceBias(psi2, ham, fb);
 };
 
+
 std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
   int nbeta = ham.nbeta;
-  int nchol = ham.nchol;
+  int nchol = ham.ncholEne;
   std::array<int, 2> nelec{nalpha, nbeta};
   size_t ndets = ciCoeffs.size();
   
@@ -568,15 +588,25 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen:
   // ref contribution
   overlap += ciCoeffs[0];
   std::array<complex<double>, 2> hG;
-  hG[0] = greeno[0].cwiseProduct(ham.h1(refDet[0], Eigen::placeholders::all)).sum();
-  hG[1] = greeno[1].cwiseProduct(ham.h1(refDet[1], Eigen::placeholders::all)).sum();
+  matPair roth1;
+  if (ham.intType == "r") {
+    hG[0] = greeno[0].cwiseProduct(ham.h1(refDet[0], Eigen::placeholders::all)).sum();
+    hG[1] = greeno[1].cwiseProduct(ham.h1(refDet[1], Eigen::placeholders::all)).sum();
+  
+    // 1e intermediate
+    roth1[0] = (greeno[0] * ham.h1) * greenp[0];
+    roth1[1] = (greeno[1] * ham.h1) * greenp[1];
+  }
+  if (ham.intType == "u") {
+    hG[0] = greeno[0].cwiseProduct(ham.h1u[0](refDet[0], Eigen::placeholders::all)).sum();
+    hG[1] = greeno[1].cwiseProduct(ham.h1u[1](refDet[1], Eigen::placeholders::all)).sum();
+    
+    // 1e intermediate
+    roth1[0] = (greeno[0] * ham.h1u[0]) * greenp[0];
+    roth1[1] = (greeno[1] * ham.h1u[1]) * greenp[1];
+  }
   ene += ciCoeffs[0] * (hG[0] + hG[1]);
   
-  // 1e intermediate
-  matPair roth1;
-  roth1[0] = (greeno[0] * ham.h1) * greenp[0];
-  roth1[1] = (greeno[1] * ham.h1) * greenp[1];
-
   // G^{p}_{t} blocks
   vector<matPair> gBlocks;
   vector<std::array<complex<double>, 2>> gBlockDets;
@@ -636,13 +666,24 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen:
     std::array<complex<double>, 2> lG, l2G2;
     matPair exc;
     for (int sz = 0; sz < 2; sz++) {
-      exc[sz].noalias() = ham.chol[n](refDet[sz], Eigen::placeholders::all) * theta[sz];
-      lG[sz] = exc[sz].trace();
-      l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
-      l2G2Tot[sz] += l2G2[sz];
-      int2[sz].noalias() = (greeno[sz] * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp[sz].block(0, ncore, nact + ncore, nact);
-      int1[sz].noalias() += lG[sz] * int2[sz];
-      int1[sz].noalias() -= (greeno[sz] * ham.chol[n](Eigen::placeholders::all, refDet[sz])) * int2[sz];
+      if (ham.intType == "r") {
+        exc[sz].noalias() = ham.chol[n](refDet[sz], Eigen::placeholders::all) * theta[sz];
+        lG[sz] = exc[sz].trace();
+        l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
+        l2G2Tot[sz] += l2G2[sz];
+        int2[sz].noalias() = (greeno[sz] * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp[sz].block(0, ncore, nact + ncore, nact);
+        int1[sz].noalias() += lG[sz] * int2[sz];
+        int1[sz].noalias() -= (greeno[sz] * ham.chol[n](Eigen::placeholders::all, refDet[sz])) * int2[sz];
+      }
+      else if (ham.intType == "u") {
+        exc[sz].noalias() = ham.cholu[n][sz](refDet[sz], Eigen::placeholders::all) * theta[sz];
+        lG[sz] = exc[sz].trace();
+        l2G2[sz] = lG[sz] * lG[sz] - exc[sz].cwiseProduct(exc[sz].transpose()).sum();
+        l2G2Tot[sz] += l2G2[sz];
+        int2[sz].noalias() = (greeno[sz] * ham.cholu[n][sz].block(0, 0, norbs, nact + ncore)) * greenp[sz].block(0, ncore, nact + ncore, nact);
+        int1[sz].noalias() += lG[sz] * int2[sz];
+        int1[sz].noalias() -= (greeno[sz] * ham.cholu[n][sz](Eigen::placeholders::all, refDet[sz])) * int2[sz];
+      }
     }
 
     // ref contribution
@@ -897,10 +938,11 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(std::array<Eigen:
 
 std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd& psi, Hamiltonian& ham)
 {
+  assert(ham.intType == "r");
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
   int nbeta = ham.nbeta;
-  int nchol = ham.nchol;
+  int nchol = ham.ncholEne;
   std::array<int, 2> nelec{nalpha, nbeta};
   size_t ndets = ciCoeffs.size();
 

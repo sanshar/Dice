@@ -256,6 +256,20 @@ def calculate_ci_1rdm(norbs, state, ndets=100):
   rdm[1] /= norm_square
   return rdm
 
+def calc_uhf_integrals(umf, norb=None, nelec=None):
+  if norb is None:
+    norb = umf.mol.nao
+  if nelec is None:
+    nelec = umf.mol.nelectron
+  h1_ao = umf.get_hcore()
+  h1 = [ umf.mo_coeff[0].T.dot(h1_ao).dot(umf.mo_coeff[0]), umf.mo_coeff[1].T.dot(h1_ao).dot(umf.mo_coeff[1]) ]
+  eriUp = ao2mo.kernel(umf._eri, umf.mo_coeff[0])
+  eriDn = ao2mo.kernel(umf._eri, umf.mo_coeff[1])
+  eriUpDn = ao2mo.incore.general(umf._eri, (umf.mo_coeff[0], umf.mo_coeff[0], umf.mo_coeff[1],umf.mo_coeff[1]))
+  enuc = umf.energy_nuc()
+  ham_ints = {'enuc': enuc, 'h1': h1, 'eri': [ eriUp, eriDn, eriUpDn ] }
+  return ham_ints
+
 def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
   enuc = ham_ints['enuc']
   h1g = la.block_diag(ham_ints['h1'][0], ham_ints['h1'][1])
@@ -727,7 +741,7 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
     fh5['rotation'] = rotation.flatten()
 
 
-def write_afqmc_input(numAct = None, numCore = None, soc = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, rdm = False, fname = 'afqmc.json'):
+def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, rdm = False, scratchDir = None, fname = 'afqmc.json'):
   system = { }
   system["integrals"] = "FCIDUMP_chol"
   if numAct is not None:
@@ -736,6 +750,8 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, left = "rhf", r
     system["numCore"] = numCore
   if soc is not None:
     system["soc"] = soc
+  if intType is not None:
+    system["intType"] = intType
 
   wavefunction = { }
   wavefunction["left"] = f"{left}"
@@ -760,7 +776,9 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, left = "rhf", r
 
   printBlock = { }
   if rdm:
-    printBlock['writeOneRDM'] = True
+    printBlock["writeOneRDM"] = True
+  if scratchDir is not None:
+    printBlock["scratchDir"] = scratchDir
 
   json_input = {"system": system, "wavefunction": wavefunction, "sampling": sampling, "print": printBlock}
   json_dump = json.dumps(json_input, indent = 2)

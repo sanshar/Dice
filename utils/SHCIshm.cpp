@@ -74,6 +74,10 @@ void initSHM() {
   // used for afqmc
   cholSHMName = "chol" + to_string(static_cast<long long>(time(NULL) % 1000000));
   cholSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, cholSHMName.c_str(), boost::interprocess::read_write);
+  cholSHMNameUp = "cholUp" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  cholSegmentUp = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, cholSHMNameUp.c_str(), boost::interprocess::read_write);
+  cholSHMNameDn = "cholDn" + to_string(static_cast<long long>(time(NULL) % 1000000));
+  cholSegmentDn = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, cholSHMNameDn.c_str(), boost::interprocess::read_write);
   floatCholSHMName = "floatChol" + to_string(static_cast<long long>(time(NULL) % 1000000));
   floatCholSegment = boost::interprocess::shared_memory_object(boost::interprocess::open_or_create, floatCholSHMName.c_str(), boost::interprocess::read_write);
   rotCholSHMName = "rotChol" + to_string(static_cast<long long>(time(NULL) % 1000000));
@@ -86,6 +90,8 @@ void removeSHM(){
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shmcas.c_str());
   boost::interprocess::shared_memory_object::remove(cholSHMName.c_str());
+  boost::interprocess::shared_memory_object::remove(cholSHMNameUp.c_str());
+  boost::interprocess::shared_memory_object::remove(cholSHMNameDn.c_str());
   boost::interprocess::shared_memory_object::remove(floatCholSHMName.c_str());
   boost::interprocess::shared_memory_object::remove(rotCholSHMName.c_str());
 }

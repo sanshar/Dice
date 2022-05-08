@@ -79,4 +79,24 @@ then
     ../../clean.sh
 fi
 
+cd $here/DQMC/uhf_uhf_ui
+../../clean.sh
+printf "...running DQMC/uhf_uhf_ui\n"
+$MPICOMMAND $DQMCPATH > afqmc.out
+python2 ../../testEnergy.py 'afqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/DQMC/multislater_uhf_ui
+../../clean.sh
+printf "...running DQMC/multislater_uhf_ui\n"
+$MPICOMMAND $DQMCPATH > afqmc.out
+python2 ../../testEnergy.py 'afqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
 cd $here

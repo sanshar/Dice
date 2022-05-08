@@ -6,30 +6,41 @@ using namespace std;
 using namespace Eigen;
 
 // constructor
-Hamiltonian::Hamiltonian(string fname, bool socQ) 
+Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType) 
 {
+  intType = pintType;
+  socQ = psocQ;
   if (socQ) {
     readDQMCIntegralsSOC(fname, norbs, nelec, ecore, h1soc, h1socMod, chol);
     nalpha = 0;
     nbeta = 0;
+    nchol = chol.size();
+    ncholEne = chol.size();
   }
-  else {
-    readDQMCIntegrals(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+  else if (intType == "r") {
+    readDQMCIntegralsR(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
     nelec = nalpha + nbeta;
+    nchol = chol.size();
+    ncholEne = chol.size();
   }
-  nchol = chol.size();
+  else if (intType == "u") {
+    readDQMCIntegralsU(fname, norbs, nalpha, nbeta, ecore, h1u, h1uMod, cholu);
+    nelec = nalpha + nbeta;
+    nchol = cholu.size();
+    ncholEne = cholu.size();
+  }
   floattenCholesky();
   rotFlag = false;
 };
 
 
-void Hamiltonian::setNchol(int pnchol) 
+void Hamiltonian::setNcholEne(int pnchol) 
 {
-  nchol = pnchol;
+  ncholEne = pnchol;
 };
 
 
-// rotate cholesky
+// rotate cholesky ri
 void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, bool deleteOriginalChol) 
 {
   double* rotCholSHM;
@@ -62,26 +73,30 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<E
 };
 
 
-// rotate cholesky
+// rotate cholesky ri or ui
 void Hamiltonian::rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotChol, bool deleteOriginalChol) 
 {
   double* rotCholSHM;
   double* rotChol0;  // this zero referes to commarnk 0
   size_t rotSize0 = phiT[0].rows() * norbs; // this zero referes to spin
   size_t rotSize1 = phiT[1].rows() * norbs;
-  size_t size = chol.size() * (rotSize0 + rotSize1);
+  size_t size = nchol * (rotSize0 + rotSize1);
 
   if (commrank == 0) {
     rotChol0 = new double[size];
-    for (size_t i = 0; i < chol.size(); i++) {
-      MatrixXd rot0 = phiT[0] * chol[i];
+    for (size_t i = 0; i < nchol; i++) {
+      MatrixXd rot0;
+      if (intType == "r") rot0 = phiT[0] * chol[i];
+      else if (intType == "u") rot0 = phiT[0] * cholu[i][0];
       for (size_t nu = 0; nu < rot0.cols(); nu++)
         for (size_t mu = 0; mu < rot0.rows(); mu++)
           rotChol0[i * rotSize0 + nu * rot0.rows() + mu] = rot0(mu, nu);
-      MatrixXd rot1 = phiT[1] * chol[i];
+      MatrixXd rot1;
+      if (intType == "r") rot1 = phiT[1] * chol[i];
+      else if (intType == "u") rot1 = phiT[1] * cholu[i][1];
       for (size_t nu = 0; nu < rot1.cols(); nu++)
         for (size_t mu = 0; mu < rot1.rows(); mu++)
-          rotChol0[chol.size() * rotSize0 + i * rotSize1 + nu * rot1.rows() + mu] = rot1(mu, nu);
+          rotChol0[nchol * rotSize0 + i * rotSize1 + nu * rot1.rows() + mu] = rot1(mu, nu);
     }
   }
 
@@ -90,10 +105,10 @@ void Hamiltonian::rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::arra
   MPI_Barrier(MPI_COMM_WORLD);
   
   // create eigen matrix maps to shared memory
-  for (size_t n = 0; n < chol.size(); n++) {
+  for (size_t n = 0; n < nchol; n++) {
     Eigen::Map<MatrixXd> rotCholMat0(static_cast<double*>(rotCholSHM) + n * rotSize0, phiT[0].rows(), norbs);
     rotChol[0].push_back(rotCholMat0);
-    Eigen::Map<MatrixXd> rotCholMat1(static_cast<double*>(rotCholSHM) + chol.size() * rotSize0 +  n * rotSize1, phiT[1].rows(), norbs);
+    Eigen::Map<MatrixXd> rotCholMat1(static_cast<double*>(rotCholSHM) + nchol * rotSize0 +  n * rotSize1, phiT[1].rows(), norbs);
     rotChol[1].push_back(rotCholMat1);
   }
   
@@ -118,15 +133,21 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXcd& phiAd, std::vector<std::array
 void Hamiltonian::floattenCholesky()
 {
   size_t triSize = (norbs * (norbs + 1)) / 2;
-  size_t size = chol.size() * triSize;
+  size_t size;
+  if (intType == "r") size = nchol * triSize;
+  else if (intType == "u") size = 2 * nchol * triSize;
   float* floatChol0;
   if (commrank == 0) {
     floatChol0 = new float[size];
     size_t counter = 0;
-    for (int n = 0; n < chol.size(); n++) {
+    for (int n = 0; n < nchol; n++) {
       for (int i = 0; i < norbs; i++) {
         for (int j = 0; j <= i; j++) {
-          floatChol0[counter] = float(chol[n](i, j));
+          if (intType == "r") floatChol0[counter] = float(chol[n](i, j));
+          else if (intType == "u") {
+            floatChol0[counter] = float(cholu[n][0](i, j));
+            floatChol0[size/2 + counter] = float(cholu[n][1](i, j));
+          }
           counter++;
         }
       }

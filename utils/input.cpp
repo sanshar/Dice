@@ -59,6 +59,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
 
     // system options
     schd.integralsFile = input.get("system.integrals", "FCIDUMP");
+    schd.intType = input.get("system.intType", "r");
     schd.nciCore = input.get("system.numCore", 0);                  // TODO: rename these because active spaces are also used without ci
     schd.nciAct = input.get("system.numAct", -1);
     schd.soc = input.get("system.soc", false);
@@ -271,6 +272,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
     // dqmc
     schd.writeOneRDM = input.get("print.writeOneRDM", false);
+    schd.scratchDir = input.get("print.scratchDir", "./");
 
 
     //deprecated, or I don't know what they do

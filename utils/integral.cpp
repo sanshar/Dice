@@ -586,7 +586,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 } // end readIntegrals
 
 
-void readDQMCIntegrals(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol) {
+void readDQMCIntegralsR(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol) {
   int nelec, sz, nchol;
   hid_t file = (-1), dataset_header = (-1), dataset_energy_core = (-1);  
   herr_t status;
@@ -658,7 +658,86 @@ void readDQMCIntegrals(string fcidump, int& norbs, int& nalpha, int& nbeta, doub
 } 
 
 
-//=============================================================================
+void readDQMCIntegralsU(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, std::array<MatrixXd, 2>& h1, std::array<MatrixXd, 2>& h1Mod, vector<std::array<Eigen::Map<MatrixXd>, 2>>& chol) {
+  int nelec, sz, nchol;
+  hid_t file = (-1), dataset_header = (-1), dataset_energy_core = (-1);  
+  herr_t status;
+
+  H5E_BEGIN_TRY {
+  file = H5Fopen(fcidump.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+  } H5E_END_TRY
+  if (file < 0) {
+    if (commrank == 0) cout << "Cholesky integrals not found!" << endl;
+    exit(1);
+  }
+
+  int header[4];
+  for (int i = 0; i < 4; i++) header[i] = 0;
+  
+  H5E_BEGIN_TRY {
+    dataset_header = H5Dopen(file, "/header", H5P_DEFAULT);
+    status = H5Dread(dataset_header, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, header);
+  } H5E_END_TRY
+  if (dataset_header < 0) {
+    if (commrank == 0) cout << "Header could not be read." << endl;
+    exit(1);
+  }
+  
+  nelec = header[0]; norbs = header[1]; sz = header[2]; nchol = header[3];
+  nalpha = (nelec + sz)/2;
+  nbeta = nelec - nalpha;
+ 
+  // these shouldn't really be used anywhere in afqmc
+  Determinant::EffDetLen = (norbs) / 64 + 1;
+  Determinant::norbs = norbs;
+  Determinant::nalpha = nalpha;
+  Determinant::nbeta = nbeta;
+
+  h1[0] = MatrixXd::Zero(norbs, norbs);
+  h1[1] = MatrixXd::Zero(norbs, norbs);
+  readMat(h1[0], file, "/hcore_up"); 
+  readMat(h1[1], file, "/hcore_dn"); 
+  h1Mod[0] = MatrixXd::Zero(norbs, norbs);
+  h1Mod[1] = MatrixXd::Zero(norbs, norbs);
+  readMat(h1Mod[0], file, "/hcore_mod_up"); 
+  readMat(h1Mod[1], file, "/hcore_mod_dn"); 
+
+  // read cholesky to shared memory
+  size_t cholSize = nchol * norbs * norbs;
+  double* cholSHMUp;
+  double* cholSHMDn;
+  MPI_Barrier(MPI_COMM_WORLD);
+  readHDF5ToSHM(file, "/chol_up", cholSize, cholSHMUp, cholSHMNameUp, cholSegmentUp, cholRegionUp);
+  readHDF5ToSHM(file, "/chol_dn", cholSize, cholSHMDn, cholSHMNameDn, cholSegmentDn, cholRegionDn);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  // create eigen matrix maps to shared memory
+  for (size_t n = 0; n < nchol; n++) {
+    Eigen::Map<MatrixXd> cholMatUp(static_cast<double*>(cholSHMUp) + n * norbs * norbs, norbs, norbs);
+    Eigen::Map<MatrixXd> cholMatDn(static_cast<double*>(cholSHMDn) + n * norbs * norbs, norbs, norbs);
+    std::array<Eigen::Map<MatrixXd>, 2> cholMat = {cholMatUp, cholMatDn};
+    chol.push_back(cholMat);
+  }
+
+  coreE = 0.;
+  double energy_core[1];
+  energy_core[0] = 0.;
+  H5E_BEGIN_TRY {
+    dataset_energy_core = H5Dopen(file, "/energy_core", H5P_DEFAULT);
+    status = H5Dread(dataset_energy_core, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, energy_core);
+  } H5E_END_TRY
+  if (dataset_energy_core < 0) {
+    if (commrank == 0) cout << "Core energy could not be read, setting to zero." << endl;
+  }
+  else {
+    coreE = energy_core[0];
+    ecore = energy_core[0];
+  }
+
+  status = H5Fclose(file);
+} 
+
+
 void readDQMCIntegralsSOC(string fcidump, int& norbs, int& nelec, double& ecore, MatrixXcd& h1, MatrixXcd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol) {
   int nchol;
   hid_t file = (-1), dataset_header = (-1), dataset_energy_core = (-1);  
