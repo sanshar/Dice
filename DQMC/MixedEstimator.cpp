@@ -678,7 +678,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
     }
     samplesFile.close();
-    blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), "blocking.out");
+    blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), "blocking.tmp");
   }
   
   // write one rdm 
