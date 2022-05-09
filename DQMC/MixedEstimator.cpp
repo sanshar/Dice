@@ -318,6 +318,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     refSOC = hf.block(0, 0, 2*norbs, nelec);
     hamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
   }
+  else if (walker.szQ) {
+    MatrixXd hf = MatrixXd::Zero(norbs, norbs);
+    readMat(hf, "ghf.txt");
+    refSOC = hf.block(0, 0, norbs, nelec);
+    hamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
+  }
   else { 
     if (walker.rhfQ) { 
       MatrixXd hf = MatrixXd::Zero(norbs, norbs);
@@ -349,7 +355,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   for (int i = 0; i < ncholVec.size(); i++) {
     ham.setNcholEne(ncholVec[i]);
     std::array<complex<double>, 2> thamOverlap;
-    if (schd.soc) thamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
+    if (walker.szQ) thamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
     else thamOverlap = waveLeft.hamAndOverlap(ref, ham);
     complex<double> trefEnergy = thamOverlap[0] / thamOverlap[1];
     if (abs(refEnergy - trefEnergy) < schd.choleskyThreshold) {
@@ -369,12 +375,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   ArrayXd localEnergy = ArrayXd::Zero(nwalk);
   ArrayXd totalWeights = ArrayXd::Zero(nsweeps);
   ArrayXd totalEnergies = ArrayXd::Zero(nsweeps);
-  if (schd.soc) walker.prepProp(refSOC, ham, dt, ene0.real());
+  if (walker.szQ) walker.prepProp(refSOC, ham, dt, ene0.real());
   else walker.prepProp(ref, ham, dt, ene0.real());
   auto calcInitTime = getTime();
   for (int w = 0; w < nwalk; w++) {
     DQMCWalker walkerCopy = walker;
-    if (schd.soc) {
+    if (walker.szQ) {
       MatrixXcd rn;
       waveRight.getSample(rn);
       walkerCopy.setDet(rn);
@@ -410,12 +416,16 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double averageEnergyEql = totalEnergies(0), averageNumEql = 0., averageDenomEql = 0.;
   double eEstimate = totalEnergies(0);
   long nLargeDeviations = 0;
-  int measureCounter = 0;
-  MatrixXd oneRDM = MatrixXd::Zero(norbs, norbs);
+  int measureCounter = 1;
+  MatrixXd oneRDM;
+  if (schd.soc) oneRDM = MatrixXd::Zero(2*norbs, 2*norbs);
+  else oneRDM = MatrixXd::Zero(norbs, norbs);
   std::array<MatrixXd, 2> oneRDMU;
   oneRDMU[0]= MatrixXd::Zero(norbs, norbs);
   oneRDMU[1]= MatrixXd::Zero(norbs, norbs);
-  MatrixXcd rdmSample = MatrixXcd::Zero(norbs, norbs);
+  MatrixXcd rdmSample;
+  if (schd.soc) rdmSample = MatrixXcd::Zero(2*norbs, 2*norbs);
+  else rdmSample = MatrixXcd::Zero(norbs, norbs);
   std::array<MatrixXcd, 2> rdmSampleU;
   rdmSampleU[0] = MatrixXcd::Zero(norbs, norbs);
   rdmSampleU[1] = MatrixXcd::Zero(norbs, norbs);
@@ -457,7 +467,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         if (weights(w) != 0.) {
           // one rdm
           if (step * dt > 10. && step > schd.burnIter * nsteps) {
-            if (ham.intType == "r") {
+            if (ham.intType == "r" || ham.intType == "g") {
               walkers[w].oneRDM(waveLeft, rdmSample);
               oneRDM *= cumulativeWeight;
               oneRDM += weights(w) * rdmSample.real();
@@ -551,7 +561,8 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     if (step % nsteps == 0) {
       // serialize walkers
       int matSize;
-      if (schd.soc) matSize = 2*ham.norbs * ham.nelec;
+      if (schd.soc) matSize = 2 * ham.norbs * ham.nelec;
+      else if (walker.szQ) matSize = ham.norbs * ham.nelec;
       else matSize = ham.norbs * (ham.nalpha  + ham.nbeta);
       vector<complex<double>> serial(nwalk * matSize, complex<double>(0., 0.)), serialw(matSize, complex<double>(0., 0.)), overlaps(nwalk, complex<double>(0., 0.));
       for (int w = 0; w < walkers.size(); w++) {
@@ -635,7 +646,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
       if (schd.writeOneRDM) {
         std::string scratch_dir = schd.scratchDir;
-        if (ham.intType == "r") {
+        if (ham.intType == "r" || ham.intType == "g") {
           writeOneRDM(oneRDM, cumulativeWeight);
         }
         else if (ham.intType == "u") {
@@ -667,12 +678,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
     }
     samplesFile.close();
+    blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), "blocking.out");
   }
   
   // write one rdm 
   if (schd.writeOneRDM) {
     std::string scratch_dir = schd.scratchDir;
-    if (ham.intType == "r") {
+    if (ham.intType == "r" || ham.intType == "g") {
       writeOneRDM(oneRDM, cumulativeWeight);
     }
     else if (ham.intType == "u") {

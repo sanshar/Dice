@@ -415,6 +415,31 @@ def prepAFQMC_soc(mol, mf, soc, chol_cut=1e-5, verbose=False):
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc_soc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, filename='FCIDUMP_chol')
 
+
+# calculate and write cholesky integrals
+def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
+  norb = mol.nao
+  chol_vecs = chunked_cholesky(mol, max_error=1e-5)
+  nchol = chol_vecs.shape[0]
+  chol = np.zeros((nchol, 2*norb, 2*norb))
+  for i in range(nchol):
+    chol_i = chol_vecs[i].reshape(norb, norb)
+    chol_i = la.block_diag(chol_i, chol_i)
+    chol[i] = gmf.mo_coeff.T.dot(chol_i).dot(gmf.mo_coeff)
+  hcore = gmf.get_hcore()
+  h1e = gmf.mo_coeff.T.dot(hcore).dot(gmf.mo_coeff)
+  enuc = mol.energy_nuc()
+  nbasis = h1e.shape[-1]
+  print(f'nelec: {mol.nelec}')
+  print(f'nbasis: {nbasis}')
+  print(f'chol.shape: {chol.shape}')
+  chol = chol.reshape((-1, nbasis, nbasis))
+  v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+  h1e_mod = h1e - v0
+  chol = chol.reshape((chol.shape[0], -1))
+  write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+
+
 # calculate and write cholesky-like integrals given eri's
 def calculate_write_afqmc_uihf_integrals(ham_ints, norb, nelec, ms = 0, chol_cut = 1e-6, filename = 'FCIDUMP_chol', dm=None):
   block_eri = np.block([[ ham_ints['eri'][0], ham_ints['eri'][2] ], [ ham_ints['eri'][2].T, ham_ints['eri'][1] ]])

@@ -69,9 +69,9 @@ then
     ../../clean.sh
 fi
 
-cd $here/DQMC/ghf_soc
+cd $here/DQMC/ghf_ghf_soc
 ../../clean.sh
-printf "...running DQMC/ghf_soc\n"
+printf "...running DQMC/ghf_ghf_soc\n"
 $MPICOMMAND $DQMCPATH > afqmc.out
 python2 ../../testEnergy.py 'afqmc' $tol
 if [ $clean == 1 ]
@@ -92,6 +92,16 @@ fi
 cd $here/DQMC/multislater_uhf_ui
 ../../clean.sh
 printf "...running DQMC/multislater_uhf_ui\n"
+$MPICOMMAND $DQMCPATH > afqmc.out
+python2 ../../testEnergy.py 'afqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
+cd $here/DQMC/ghf_ghf_gi
+../../clean.sh
+printf "...running DQMC/ghf_ghf_gi\n"
 $MPICOMMAND $DQMCPATH > afqmc.out
 python2 ../../testEnergy.py 'afqmc' $tol
 if [ $clean == 1 ]

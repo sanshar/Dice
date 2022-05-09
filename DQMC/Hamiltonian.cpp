@@ -18,7 +18,7 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     ncholEne = chol.size();
   }
   else if (intType == "r") {
-    readDQMCIntegralsR(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
     nelec = nalpha + nbeta;
     nchol = chol.size();
     ncholEne = chol.size();
@@ -28,6 +28,14 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     nelec = nalpha + nbeta;
     nchol = cholu.size();
     ncholEne = cholu.size();
+  }
+  else if (intType == "g") {
+    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol, true);
+    nelec = nalpha + nbeta;
+    nalpha = 0;
+    nbeta = 0;
+    nchol = chol.size();
+    ncholEne = chol.size();
   }
   floattenCholesky();
   rotFlag = false;
@@ -40,7 +48,7 @@ void Hamiltonian::setNcholEne(int pnchol)
 };
 
 
-// rotate cholesky ri
+// rotate cholesky ri or gi
 void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, bool deleteOriginalChol) 
 {
   double* rotCholSHM;
@@ -134,7 +142,7 @@ void Hamiltonian::floattenCholesky()
 {
   size_t triSize = (norbs * (norbs + 1)) / 2;
   size_t size;
-  if (intType == "r") size = nchol * triSize;
+  if (intType == "r" || intType == "g") size = nchol * triSize;
   else if (intType == "u") size = 2 * nchol * triSize;
   float* floatChol0;
   if (commrank == 0) {
@@ -143,7 +151,7 @@ void Hamiltonian::floattenCholesky()
     for (int n = 0; n < nchol; n++) {
       for (int i = 0; i < norbs; i++) {
         for (int j = 0; j <= i; j++) {
-          if (intType == "r") floatChol0[counter] = float(chol[n](i, j));
+          if (intType == "r" || intType == "g") floatChol0[counter] = float(chol[n](i, j));
           else if (intType == "u") {
             floatChol0[counter] = float(cholu[n][0](i, j));
             floatChol0[size/2 + counter] = float(cholu[n][1](i, j));

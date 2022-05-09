@@ -35,7 +35,7 @@ class DQMCWalker {
 
     void propagate(Hamiltonian& ham);
     double propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift);
-    double propagatePhaselessR(Wavefunction& wave, Hamiltonian& ham, double eshift);
+    double propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, double eshift);
     double propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, double eshift);
 
     std::complex<double> overlap(Wavefunction& wave);

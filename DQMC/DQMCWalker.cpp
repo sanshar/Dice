@@ -189,7 +189,7 @@ void DQMCWalker::prepPropU(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ha
 };
 
 
-// for soc
+// for soc or gi
 // only works for phaseless
 // ene0 not used
 void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, double ene0)
@@ -201,21 +201,36 @@ void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, d
   // calculate rdm 
   if (commrank == 0) cout << "Using GHF RDM for background subtraction\n\n";
   MatrixXcd green = ref * ref.adjoint();
-  MatrixXcd greenTrace = green.block(0, 0, norbs, norbs) + green.block(norbs, norbs, norbs, norbs);
+  MatrixXcd greenTrace;
+  if (ham.socQ) greenTrace = green.block(0, 0, norbs, norbs) + green.block(norbs, norbs, norbs, norbs);
 
   // calculate mean field shifts
-  MatrixXcd oneBodyOperator = ham.h1socMod;
   complex<double> constant(0., 0.);
-  constant += ene0 - ham.ecore;
-  for (int i = 0; i < nfields; i++) {
-    MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
-    complex<double> mfShift = 1. * greenTrace.cwiseProduct(op).sum();
-    constant -= pow(mfShift, 2) / 2.;
-    oneBodyOperator.block(0, 0, norbs, norbs) -= mfShift * op;
-    oneBodyOperator.block(norbs, norbs, norbs, norbs) -= mfShift * op;
-    mfShifts.push_back(mfShift);
+  MatrixXcd oneBodyOperator;
+  if (ham.socQ) {
+    oneBodyOperator = ham.h1socMod;
+    constant += ene0 - ham.ecore;
+    for (int i = 0; i < nfields; i++) {
+      MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+      complex<double> mfShift = 1. * greenTrace.cwiseProduct(op).sum();
+      constant -= pow(mfShift, 2) / 2.;
+      oneBodyOperator.block(0, 0, norbs, norbs) -= mfShift * op;
+      oneBodyOperator.block(norbs, norbs, norbs, norbs) -= mfShift * op;
+      mfShifts.push_back(mfShift);
+    }
   }
-
+  else if (ham.intType == "g") {
+    oneBodyOperator = ham.h1Mod;
+    constant += ene0 - ham.ecore;
+    for (int i = 0; i < nfields; i++) {
+      MatrixXcd op = complex<double>(0., 1.) * ham.chol[i];
+      complex<double> mfShift = 1. * green.cwiseProduct(op).sum();
+      constant -= pow(mfShift, 2) / 2.;
+      oneBodyOperator -= mfShift * op;
+      mfShifts.push_back(mfShift);
+    }
+  }
+  
   propConstant[0] = constant - ene0;
   propConstant[1] = constant - ene0;
   expOneBodyOperator =  (-dt * oneBodyOperator / 2.).exp();
@@ -404,12 +419,12 @@ void applyExp(MatrixXcd& propc, MatrixXcd& det)
 
 double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift)
 {
-  if (ham.intType == "r") return propagatePhaselessR(wave, ham, eshift);
+  if (ham.intType == "r" || ham.intType == "g") return propagatePhaselessRG(wave, ham, eshift);
   else if (ham.intType == "u") return propagatePhaselessU(wave, ham, eshift);
 }
 
 
-double DQMCWalker::propagatePhaselessR(Wavefunction& wave, Hamiltonian& ham, double eshift)
+double DQMCWalker::propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, double eshift)
 {
   int norbs = ham.norbs;
   int nelec = ham.nelec;
@@ -443,6 +458,11 @@ double DQMCWalker::propagatePhaselessR(Wavefunction& wave, Hamiltonian& ham, dou
     }
     detG = expOneBodyOperator * detG;
   }
+  else if (szQ) {
+    detG = expOneBodyOperator * detG;
+    applyExp(propc, detG);
+    detG = expOneBodyOperator * detG;
+  }
   else {
     det[0] = expOneBodyOperator * det[0];
     applyExp(propc, det[0]);
@@ -462,19 +482,6 @@ double DQMCWalker::propagatePhaselessR(Wavefunction& wave, Hamiltonian& ham, dou
   complex<double> newOverlap = this->overlap(wave);
   complex<double> importanceFunction = exp(-sqrt(dt) * shift + fbTerm + dt * (eshift + propConstant[0])) * newOverlap / oldOverlap;
   double theta = std::arg( exp(-sqrt(dt) * shift) * newOverlap / oldOverlap );
-  //if (commrank == 0) {
-  ////cout << "det[0]:\n" << det[0] << endl;
-  //  cout << "forceBias:\n" << fb << endl;
-  //  cout << "\noldoverlap: " << oldOverlap << endl;
-  //  cout << "newoverlap: " << newOverlap << endl;
-  //  cout << "shift: " << shift << endl;
-  //  cout << "fbTerm: " << fbTerm << endl;
-  //  cout << "propConstant: " << propConstant[0] << endl;
-  //  cout << "eshift: " << eshift << endl;
-  //  cout << "importanceFunction: " << importanceFunction << endl;
-  //  cout << "theta: " << theta << endl << endl;
-  //}
-  //exit(0);
   double importanceFunctionPhaseless = std::abs(importanceFunction) * cos(theta);
   if (importanceFunctionPhaseless < 1.e-3 || importanceFunctionPhaseless > 100. || std::isnan(importanceFunctionPhaseless)) importanceFunctionPhaseless = 0.; 
   return importanceFunctionPhaseless;

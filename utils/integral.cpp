@@ -586,7 +586,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 } // end readIntegrals
 
 
-void readDQMCIntegralsR(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol) {
+void readDQMCIntegralsRG(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol, bool ghf) {
   int nelec, sz, nchol;
   hid_t file = (-1), dataset_header = (-1), dataset_energy_core = (-1);  
   herr_t status;
@@ -614,7 +614,7 @@ void readDQMCIntegralsR(string fcidump, int& norbs, int& nalpha, int& nbeta, dou
   nelec = header[0]; norbs = header[1]; sz = header[2]; nchol = header[3];
   nalpha = (nelec + sz)/2;
   nbeta = nelec - nalpha;
- 
+
   // these shouldn't really be used anywhere in afqmc
   Determinant::EffDetLen = (norbs) / 64 + 1;
   Determinant::norbs = norbs;

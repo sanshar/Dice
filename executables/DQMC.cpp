@@ -57,12 +57,12 @@ int main(int argc, char *argv[])
  
   Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc, schd.intType);
   if (commrank == 0) {
-    if (schd.soc) cout << "Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
+    if (schd.soc || schd.intType == "g") cout << "Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
     else cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
   }
   
   DQMCWalker walker;
-  if (schd.soc) walker = DQMCWalker(false, true, true);
+  if (schd.soc || (schd.intType == "g")) walker = DQMCWalker(false, true, true);
   else {
     if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
     if (schd.phaseless) {

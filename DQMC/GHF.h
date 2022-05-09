@@ -8,9 +8,11 @@
 // to be used with soc only
 class GHF : public Wavefunction {
   public:
-    Eigen::MatrixXcd det, detAd;
-    std::vector<std::array<Eigen::MatrixXcd, 2>> rotChol;
-    bool leftQ;
+    Eigen::MatrixXd det, detT;
+    Eigen::MatrixXcd detC, detCAd;
+    std::vector<Eigen::Map<Eigen::MatrixXd>> rotChol;
+    std::vector<std::array<Eigen::MatrixXcd, 2>> rotCholC;
+    bool leftQ, complexQ;
 
     GHF(Hamiltonian& ham, bool pleftQ, std::string fname = "ghf.txt");
     virtual void getSample(Eigen::MatrixXcd& sampleDet);
@@ -18,6 +20,7 @@ class GHF : public Wavefunction {
     virtual std::complex<double> overlap(Eigen::MatrixXcd& psi);
     //virtual void forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb);
     virtual void forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& fb);
+    virtual void oneRDM(Eigen::MatrixXcd& det, Eigen::MatrixXcd& rdmSample);
     virtual std::array<std::complex<double>, 2> hamAndOverlap(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham);
     virtual std::array<std::complex<double>, 2> hamAndOverlap(Eigen::MatrixXcd& psi, Hamiltonian& ham);
 };
