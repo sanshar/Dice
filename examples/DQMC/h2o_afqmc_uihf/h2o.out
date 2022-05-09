@@ -1,0 +1,110 @@
+converged SCF energy = -75.578154312784
+e(FCI) = -75.683787893036
+converged SCF energy = -75.5802774533512  <S^2> = 0.75528791  2S+1 = 2.0052809
+
+Preparing Dice calculation
+Starting Dice calculation
+e_dice: 0
+Finished Dice calculation
+
+e1_uhf: -117.9256110740444
+e1_fci: -117.72815573436397
+
+dipole_uhf: [-0.        -0.        -1.1030195]
+dipole_fci: [ 0.      0.     -1.0592]
+
+Preparing AFQMC calculation
+nchol: 79
+
+Starting AFQMC / UHF calculation
+reading samples from samples_uhf.dat, ignoring first 100
+mean: -75.68402141138418
+blocked statistics:
+block size    # of blocks        mean                error
+     1            900       -7.56840214e+01       3.504928e-04
+     2            450       -7.56840214e+01       4.153038e-04
+     5            180       -7.56840214e+01       4.949196e-04
+    10             90       -7.56840214e+01       5.413856e-04
+    20             45       -7.56840214e+01       5.363771e-04
+    50             18       -7.56840214e+01       5.441218e-04
+    70             12       -7.56836752e+01       5.256541e-04
+   100              9       -7.56840214e+01       5.609021e-04
+   200              4       -7.56836208e+01       2.241506e-04
+
+1e energy
+variational e1: -117.9256110740444
+mixed afqmc e1: [-117.848996]
+mixed afqmc e1 errors: [0.0023075]
+extrapolated e1: [-117.772381]
+extrapolated e1 errors: [0.004615]
+
+dipole
+variational dipole: [-0.        -0.        -1.1030195]
+mixed afqmc dipole: [ 0.0009291  0.0006563 -1.0745326]
+mixed afqmc dipole errors: [0.0016201 0.0010534 0.0006774]
+extrapolated dipole: [ 0.0018581  0.0013125 -1.0460457]
+extrapolated dipole errors: [0.0032402 0.0021069 0.0013548]
+Finished AFQMC / UHF calculation
+
+
+Starting AFQMC / HCI (10) calculation
+reading samples from samples_10.dat, ignoring first 100
+mean: -75.68378273322799
+blocked statistics:
+block size    # of blocks        mean                error
+     1            900       -7.56837827e+01       7.700994e-05
+     2            450       -7.56837827e+01       8.969555e-05
+     5            180       -7.56837827e+01       1.032328e-04
+    10             90       -7.56837827e+01       1.150153e-04
+    20             45       -7.56837827e+01       1.137156e-04
+    50             18       -7.56837827e+01       1.210868e-04
+    70             12       -7.56837626e+01       9.171435e-05
+   100              9       -7.56837827e+01       9.013205e-05
+   200              4       -7.56837384e+01       1.020930e-04
+
+1e energy
+10 dets variational e1: [-117.8955807]
+10 dets mixed afqmc e1: [-117.7765227]
+10 dets mixed afqmc e1 errors: [0.0016133]
+10 dets extrapolated e1: [-117.6574647]
+10 dets extrapolated e1 errors: [0.0032267]
+
+dipole
+10 dets variational dipole: [ 0.         0.        -1.0995797]
+10 dets mixed afqmc dipole: [ 0.0004538  0.0008822 -1.0662681]
+10 dets mixed afqmc dipole errors: [0.0023005 0.0009813 0.0006841]
+10 dets extrapolated dipole: [ 0.0009077  0.0017645 -1.0329565]
+10 dets extrapolated dipole errors: [0.004601  0.0019626 0.0013682]
+Finished AFQMC / HCI (10) calculation
+
+
+Starting AFQMC / HCI (100) calculation
+reading samples from samples_100.dat, ignoring first 100
+mean: -75.68378273322799
+blocked statistics:
+block size    # of blocks        mean                error
+     1            900       -7.56837827e+01       7.700994e-05
+     2            450       -7.56837827e+01       8.969555e-05
+     5            180       -7.56837827e+01       1.032328e-04
+    10             90       -7.56837827e+01       1.150153e-04
+    20             45       -7.56837827e+01       1.137156e-04
+    50             18       -7.56837827e+01       1.210868e-04
+    70             12       -7.56837626e+01       9.171435e-05
+   100              9       -7.56837827e+01       9.013205e-05
+   200              4       -7.56837384e+01       1.020930e-04
+
+1e energy
+100 dets variational e1: [-117.7973019]
+100 dets mixed afqmc e1: [-117.7765227]
+100 dets mixed afqmc e1 errors: [0.0016133]
+100 dets extrapolated e1: [-117.7557436]
+100 dets extrapolated e1 errors: [0.0032267]
+
+dipole
+100 dets variational dipole: [ 0.         0.        -1.0822323]
+100 dets mixed afqmc dipole: [ 0.0004538  0.0008822 -1.0662681]
+100 dets mixed afqmc dipole errors: [0.0023005 0.0009813 0.0006841]
+100 dets extrapolated dipole: [ 0.0009077  0.0017645 -1.050304 ]
+100 dets extrapolated dipole errors: [0.004601  0.0019626 0.0013682]
+Finished AFQMC / HCI (100) calculation
+

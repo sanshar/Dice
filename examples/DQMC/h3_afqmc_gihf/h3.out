@@ -1,0 +1,32 @@
+converged SCF energy = -1.35827962576415
+e(FCI) = -1.433532920388
+converged SCF energy = -1.40968016309032  <S^2> = 1.1171277  2S+1 = 2.3384847
+e1_ghf: -3.713213147348696
+e1_fci: -3.7329222224155365
+
+Preparing AFQMC calculation
+nelec: (2, 1)
+nbasis: 6
+chol.shape: (6, 6, 6)
+
+Starting AFQMC / GHF calculation
+reading samples from samples_ghf.dat, ignoring first 100
+mean: -1.4321654085617608
+blocked statistics:
+block size    # of blocks        mean                error
+     1            900       -1.43216541e+00       5.415964e-05
+     2            450       -1.43216541e+00       6.869800e-05
+     5            180       -1.43216541e+00       9.181743e-05
+    10             90       -1.43216541e+00       1.064055e-04
+    20             45       -1.43216541e+00       1.219755e-04
+    50             18       -1.43216541e+00       1.420438e-04
+    70             12       -1.43217545e+00       1.449732e-04
+   100              9       -1.43216541e+00       1.252391e-04
+   200              4       -1.43215303e+00       1.955253e-04
+
+1e energy
+variational e1: -3.713213147348696
+mixed afqmc e1: [-3.7617505]
+mixed afqmc e1 errors: [0.0007345]
+extrapolated e1: [-3.8102878]
+extrapolated e1 errors: [0.0014691]
