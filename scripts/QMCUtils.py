@@ -681,10 +681,11 @@ def calculate_observables(observables, constants = None, prefix = './'):
   for filename in os.listdir(prefix):
     if (filename.startswith(f'rdm_')):
       fcount += 1
-      with open(filename) as fh:
+      pre_filename = prefix + '/' + filename
+      with open(pre_filename) as fh:
         weights.append(float(fh.readline()))
       cols = list(range(norb))
-      df = pd.read_csv(filename, delim_whitespace=True, usecols=cols, header=None, skiprows=1)
+      df = pd.read_csv(pre_filename, delim_whitespace=True, usecols=cols, header=None, skiprows=1)
       rdm_i = df.to_numpy()
       obs_i = constants.copy()
       for n in range(nobs):
@@ -710,21 +711,22 @@ def calculate_observables_uihf(observables, constants = None, prefix = './'):
   if constants is None:
     constants = np.zeros(nobs)
   fcount = [0, 0]
-  observables_afqmc =[ [ ], [ ] ]
+  observables_afqmc = [ [ ], [ ] ]
   weights = [ [ ], [ ] ]   # weights for up and down are the same
   for (i, sz) in enumerate(['up', 'dn']):
-   for filename in os.listdir(prefix):
-     if (filename.startswith(f'rdm_{sz}')):
-       fcount[i] += 1
-       with open(filename) as fh:
-         weights[i].append(float(fh.readline()))
-       cols = list(range(norb))
-       df = pd.read_csv(filename, delim_whitespace=True, usecols=cols, header=None, skiprows=1)
-       rdm_i = df.to_numpy()
-       obs_i = constants.copy()
-       for n in range(nobs):
-         obs_i[n] += np.trace(np.dot(rdm_i, observables[n][i]))
-       observables_afqmc[i].append(obs_i)
+    for filename in os.listdir(prefix):
+      if (filename.startswith(f'rdm_{sz}')):
+        fcount[i] += 1
+        pre_filename = prefix + '/' + filename
+        with open(pre_filename) as fh:
+          weights[i].append(float(fh.readline()))
+        cols = list(range(norb))
+        df = pd.read_csv(pre_filename, delim_whitespace=True, usecols=cols, header=None, skiprows=1)
+        rdm_i = df.to_numpy()
+        obs_i = constants.copy()
+        for n in range(nobs):
+          obs_i[n] += np.trace(np.dot(rdm_i, observables[n][i]))
+        observables_afqmc[i].append(obs_i)
 
   fcount = fcount[0]
   weights = np.array(weights[0])
@@ -766,7 +768,7 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
     fh5['rotation'] = rotation.flatten()
 
 
-def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, choleskyThreshold = 2.0e-3, rdm = False, scratchDir = None, fname = 'afqmc.json'):
+def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, burnIter = None, choleskyThreshold = 2.0e-3, writeOneRDM = False, scratchDir = None, fname = 'afqmc.json'):
   system = { }
   system["integrals"] = "FCIDUMP_chol"
   if numAct is not None:
@@ -798,9 +800,11 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
   sampling["stochasticIter"] = stochasticIter
   sampling["choleskyThreshold"] = choleskyThreshold
   sampling["orthoSteps"] = orthoSteps
+  if burnIter is not None:
+    sampling["burnIter"] = burnIter
 
   printBlock = { }
-  if rdm:
+  if writeOneRDM:
     printBlock["writeOneRDM"] = True
   if scratchDir is not None:
     printBlock["scratchDir"] = scratchDir
