@@ -289,8 +289,9 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
   greenMulti[0] = greenMulti[0].transpose().eval();
   greenMulti[1] = greenMulti[1].transpose().eval();
   if (ham.intType == "r") {
+    MatrixXcd greenMultiSA = greenMulti[0].block(0, 0, norbs, ncore + nact) + greenMulti[1].block(0, 0, norbs, ncore + nact);
     for (int i = 0; i < ham.nchol; i++) 
-      fb(i) = (greenMulti[0].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum() + (greenMulti[1].block(0, 0, norbs, ncore + nact)).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
+      fb(i) = (greenMultiSA).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
   }
   else if (ham.intType == "u") {
     for (int i = 0; i < ham.nchol; i++) 
