@@ -406,6 +406,23 @@ void VHS(VectorXcf& fields, float* floatChol, MatrixXcd& propc)
   }
 }
 
+void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXf> floatCholMat, MatrixXcd& propc) 
+{
+  int norbs = propc.rows();
+  int nfields = fields.size();
+  size_t triSize = (norbs * (norbs + 1)) / 2;
+  VectorXf propr = floatCholMat * fields.real();
+  VectorXf propi = floatCholMat * fields.imag();
+  
+  for (int i = 0; i < norbs; i++) {
+    propc(i, i) = static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + i] - propi[i * (i + 1) / 2 + i]);
+    for (int j = 0; j < i; j++) {
+      propc(i, j) = static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+      propc(j, i) = static_cast<complex<double>>(complex<float>(0., 1.) * propr[i * (i + 1) / 2 + j] - propi[i * (i + 1) / 2 + j]);
+    }
+  }
+}
+
 
 void applyExp(MatrixXcd& propc, MatrixXcd& det) 
 {
@@ -443,7 +460,8 @@ double DQMCWalker::propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, do
   }
 
   MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
-  VHS(fields, ham.floatChol, propc);
+  //VHS(fields, ham.floatChol, propc);
+  VHS(fields, ham.floatCholMat[0], propc);
   propc *= sqrt(dt);
   vhsTime += getTime() - initTime;
 
@@ -510,8 +528,10 @@ double DQMCWalker::propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, dou
 
   MatrixXcd propUpc = MatrixXcd::Zero(norbs, norbs);
   MatrixXcd propDnc = MatrixXcd::Zero(norbs, norbs);
-  VHS(fields, ham.floatChol, propUpc);
-  VHS(fields, ham.floatChol + nfields * (norbs * (norbs+1)) / 2, propDnc);
+  //VHS(fields, ham.floatChol, propUpc);
+  //VHS(fields, ham.floatChol + nfields * (norbs * (norbs+1)) / 2, propDnc);
+  VHS(fields, ham.floatCholMat[0], propUpc);
+  VHS(fields, ham.floatCholMat[1], propDnc);
   propUpc *= sqrt(dt);
   propDnc *= sqrt(dt);
   vhsTime += getTime() - initTime;

@@ -13,6 +13,7 @@ class Hamiltonian {
     std::vector<Eigen::Map<Eigen::MatrixXd>> chol;
     std::vector<std::array<Eigen::Map<Eigen::MatrixXd>, 2>> cholu;
     float* floatChol;
+    std::vector<Eigen::Map<Eigen::MatrixXf>> floatCholMat;
     std::string intType;
     bool socQ;
     double ecore;

@@ -165,6 +165,17 @@ void Hamiltonian::floattenCholesky()
   MPI_Barrier(MPI_COMM_WORLD);
   SHMVecFromVecs(floatChol0, size, floatChol, floatCholSHMName, floatCholSegment, floatCholRegion); 
   MPI_Barrier(MPI_COMM_WORLD);
+    
+  if (intType == "r" || intType == "g") {
+    Eigen::Map<Eigen::MatrixXf> floatCholMatMap(static_cast<float*>(floatChol), triSize, nchol);
+    floatCholMat.push_back(floatCholMatMap);
+  }
+  else if (intType == "u") {
+    Eigen::Map<Eigen::MatrixXf> floatCholMatUp(static_cast<float*>(floatChol), triSize, nchol);
+    floatCholMat.push_back(floatCholMatUp);
+    Eigen::Map<Eigen::MatrixXf> floatCholMatDn(static_cast<float*>(floatChol) + size/2, triSize, nchol);
+    floatCholMat.push_back(floatCholMatDn);
+  }
   
   if (commrank == 0) delete [] floatChol0; 
 
