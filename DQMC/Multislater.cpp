@@ -9,7 +9,7 @@ using namespace Eigen;
 
 using matPair = std::array<MatrixXcd, 2>;
 
-Multislater::Multislater(std::string fname, int pnact, int pncore, bool prightQ) 
+Multislater::Multislater(Hamiltonian& ham, std::string fname, int pnact, int pncore, bool prightQ) 
 {
   std::array<std::vector<int>, 2> refDetVec;
   if (fname == "dets") readDeterminants(fname, refDetVec, ciExcitations, ciParity, ciCoeffs);
@@ -20,9 +20,12 @@ Multislater::Multislater(std::string fname, int pnact, int pncore, bool prightQ)
     for (int i = 0; i < refDetVec[sz].size(); i++) refDet[sz][i] = refDetVec[sz][i];
   }
 
+
   nact = pnact;
   ncore = pncore;
   rightQ = prightQ;
+  
+  if (ham.intType == "r" || ham.intType == "g") ham.blockCholesky(blockChol, ncore + nact);
 
   if (rightQ) {
     double sum = 0.;
@@ -290,8 +293,10 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
   greenMulti[1] = greenMulti[1].transpose().eval();
   if (ham.intType == "r") {
     MatrixXcd greenMultiSA = greenMulti[0].block(0, 0, norbs, ncore + nact) + greenMulti[1].block(0, 0, norbs, ncore + nact);
-    for (int i = 0; i < ham.nchol; i++) 
-      fb(i) = (greenMultiSA).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
+    Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMultiSA.data(), greenMultiSA.rows() * greenMultiSA.cols());
+    fb = greenMultiVec.transpose() * blockChol[0];
+    //for (int i = 0; i < ham.nchol; i++) 
+    //  fb(i) = (greenMultiSA).cwiseProduct(ham.chol[i].block(0, 0, norbs, ncore + nact)).sum();
   }
   else if (ham.intType == "u") {
     for (int i = 0; i < ham.nchol; i++) 

@@ -586,7 +586,7 @@ void readIntegralsHDF5AndInitializeDeterminantStaticVariables(string fcidump) {
 } // end readIntegrals
 
 
-void readDQMCIntegralsRG(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol, bool ghf) {
+void readDQMCIntegralsRG(string fcidump, int& norbs, int& nalpha, int& nbeta, double& ecore, MatrixXd& h1, MatrixXd& h1Mod, vector<Eigen::Map<MatrixXd>>& chol, vector<Eigen::Map<MatrixXd>>& cholMat, bool ghf) {
   int nelec, sz, nchol;
   hid_t file = (-1), dataset_header = (-1), dataset_energy_core = (-1);  
   herr_t status;
@@ -635,9 +635,12 @@ void readDQMCIntegralsRG(string fcidump, int& norbs, int& nalpha, int& nbeta, do
 
   // create eigen matrix maps to shared memory
   for (size_t n = 0; n < nchol; n++) {
-    Eigen::Map<MatrixXd> cholMat(static_cast<double*>(cholSHM) + n * norbs * norbs, norbs, norbs);
-    chol.push_back(cholMat);
+    Eigen::Map<MatrixXd> cholMatMap(static_cast<double*>(cholSHM) + n * norbs * norbs, norbs, norbs);
+    chol.push_back(cholMatMap);
   }
+
+  Eigen::Map<MatrixXd> cholMatMap(static_cast<double*>(cholSHM), norbs * norbs, nchol);
+  cholMat.push_back(cholMatMap);
 
   coreE = 0.;
   double energy_core[1];

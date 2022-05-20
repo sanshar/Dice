@@ -11,6 +11,7 @@ class GHF : public Wavefunction {
     Eigen::MatrixXd det, detT;
     Eigen::MatrixXcd detC, detCAd;
     std::vector<Eigen::Map<Eigen::MatrixXd>> rotChol;
+    std::vector<Eigen::Map<Eigen::MatrixXd>> rotCholMat;
     std::vector<std::array<Eigen::MatrixXcd, 2>> rotCholC;
     bool leftQ, complexQ;
 

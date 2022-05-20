@@ -9,6 +9,7 @@ class RHF : public Wavefunction {
   public:
     Eigen::MatrixXd det, detT;
     std::vector<Eigen::Map<Eigen::MatrixXd>> rotChol;
+    std::vector<Eigen::Map<Eigen::MatrixXd>> rotCholMat;
     bool leftQ;
 
     RHF(Hamiltonian& ham, bool pleftQ, std::string fname = "rhf.txt");

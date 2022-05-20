@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
   }
   else if (schd.leftWave == "multislater") {
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
-    waveLeft = new Multislater(schd.determinantFile, nact, schd.nciCore); 
+    waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
   }
   else if (schd.leftWave == "ccsd") {
     if (commrank == 0) cout << "Not supported yet\n";
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
   }
   else if (schd.rightWave == "multislater") { 
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
-    waveLeft = new Multislater(schd.determinantFile, nact, schd.nciCore, true); 
+    waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore, true); 
     walker = DQMCWalker(false);
   }
   else if (schd.rightWave == "ccsd") {

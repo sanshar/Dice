@@ -27,7 +27,7 @@ GHF::GHF(Hamiltonian& ham, bool pleftQ, std::string fname)
   leftQ = pleftQ;
   if (leftQ) {
     if (ham.socQ) ham.rotateCholesky(detCAd, rotCholC);
-    else if (ham.intType == "g") ham.rotateCholesky(detT, rotChol);
+    else if (ham.intType == "g") ham.rotateCholesky(detT, rotChol, rotCholMat);
   }
 };
 

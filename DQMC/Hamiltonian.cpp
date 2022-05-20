@@ -18,7 +18,7 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     ncholEne = chol.size();
   }
   else if (intType == "r") {
-    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
+    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol, cholMat);
     nelec = nalpha + nbeta;
     nchol = chol.size();
     ncholEne = chol.size();
@@ -30,7 +30,7 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     ncholEne = cholu.size();
   }
   else if (intType == "g") {
-    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol, true);
+    readDQMCIntegralsRG(fname, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol, cholMat, true);
     nelec = nalpha + nbeta;
     nalpha = 0;
     nbeta = 0;
@@ -49,7 +49,7 @@ void Hamiltonian::setNcholEne(int pnchol)
 
 
 // rotate cholesky ri or gi
-void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, bool deleteOriginalChol) 
+void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotCholMat, bool deleteOriginalChol) 
 {
   double* rotCholSHM;
   double* rotChol0;
@@ -72,9 +72,12 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<E
   
   // create eigen matrix maps to shared memory
   for (size_t n = 0; n < chol.size(); n++) {
-    Eigen::Map<MatrixXd> rotCholMat(static_cast<double*>(rotCholSHM) + n * rotSize, phiT.rows(), norbs);
-    rotChol.push_back(rotCholMat);
+    Eigen::Map<MatrixXd> rotCholMatMap(static_cast<double*>(rotCholSHM) + n * rotSize, phiT.rows(), norbs);
+    rotChol.push_back(rotCholMatMap);
   }
+    
+  Eigen::Map<MatrixXd> rotCholMatMap(static_cast<double*>(rotCholSHM), rotSize, nchol);
+  rotCholMat.push_back(rotCholMatMap);
   
   if (commrank == 0) delete [] rotChol0; 
   if (deleteOriginalChol) rotFlag = true;
@@ -135,6 +138,36 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXcd& phiAd, std::vector<std::array
     rotChol.push_back(rot);
   }
 };
+
+    
+// for multislater where rotation <-> block
+void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockChol, int ncol)
+{
+  double* rotCholSHM;
+  double* rotChol0;
+  size_t rotSize = ncol * norbs;
+  size_t size = chol.size() * rotSize;
+
+  if (commrank == 0) {
+    rotChol0 = new double[size];
+    for (int i = 0; i < chol.size(); i++) {
+      MatrixXd rot = chol[i].block(0, 0, norbs, ncol);
+      for (int nu = 0; nu < rot.cols(); nu++)
+        for (int mu = 0; mu < rot.rows(); mu++)
+          rotChol0[i * rotSize + nu * rot.rows() + mu] = rot(mu, nu);
+    }
+  }
+ 
+  MPI_Barrier(MPI_COMM_WORLD);
+  SHMVecFromVecs(rotChol0, size, rotCholSHM, rotCholSHMName, rotCholSegment, rotCholRegion); 
+  MPI_Barrier(MPI_COMM_WORLD);
+  
+  // create eigen matrix maps to shared memory
+  Eigen::Map<MatrixXd> blockCholMatMap(static_cast<double*>(rotCholSHM), norbs * ncol, nchol);
+  blockChol.push_back(blockCholMatMap);
+    
+  if (commrank == 0) delete [] rotChol0; 
+}
 
 
 // flatten and convert to float

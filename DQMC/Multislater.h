@@ -16,9 +16,10 @@ class Multislater : public Wavefunction {
     int nact, ncore;
     bool rightQ;
     std::vector<double> cumulativeCoeffs;
+    std::vector<Eigen::Map<Eigen::MatrixXd>> blockChol;
     std::uniform_real_distribution<double> uniform;
 
-    Multislater(std::string fname, int pnact, int pncore, bool prightQ = false);
+    Multislater(Hamiltonian& ham, std::string fname, int pnact, int pncore, bool prightQ = false);
     virtual void getSample(std::array<Eigen::MatrixXcd, 2>& sampleDet);
     virtual std::complex<double> overlap(std::array<Eigen::MatrixXcd, 2>& psi);
     virtual std::complex<double> overlap(Eigen::MatrixXcd& psi);
