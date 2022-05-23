@@ -963,6 +963,8 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   green = (theta * phi0T).transpose();
   greenp = green - MatrixXcd::Identity(norbs, norbs);
   greeno = green.block(0, 0, nalpha, norbs);
+  greeno = green(refDet[0], Eigen::placeholders::all);
+
 
   // all quantities henceforth will be calculated in "units" of overlap0 = < phi_0 | psi >
   complex<double> overlap0 = (phi0T * psi).determinant() * (phi0T * psi).determinant();
@@ -970,7 +972,7 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   // ref contribution
   overlap += ciCoeffs[0];
   complex<double> hG;
-  hG = greeno.cwiseProduct(ham.h1.block(0, 0, nalpha, norbs)).sum();
+  hG = greeno.cwiseProduct(ham.h1(refDet[0], Eigen::placeholders::all)).sum();
   ene += 2 * ciCoeffs[0] * hG;
   
   // 1e intermediate
@@ -1029,13 +1031,21 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   for (int n = 0; n < nchol; n++) {
     complex<double> lG, l2G2;
     MatrixXcd exc;
-    exc.noalias() = ham.chol[n].block(0, 0, nelec[0], norbs) * theta;
+    //exc.noalias() = ham.chol[n].block(0, 0, nelec[0], norbs) * theta;
+    //lG = exc.trace();
+    //l2G2 = lG * lG - exc.cwiseProduct(exc.transpose()).sum();
+    //l2G2Tot += l2G2;
+    //int2.noalias() = (greeno * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
+    //int1.noalias() += lG * int2;
+    //int1.noalias() -= (greeno * ham.chol[n].block(0, 0, norbs, nelec[0])) * int2;
+        
+    exc.noalias() = ham.chol[n](refDet[0], Eigen::placeholders::all) * theta;
     lG = exc.trace();
     l2G2 = lG * lG - exc.cwiseProduct(exc.transpose()).sum();
     l2G2Tot += l2G2;
     int2.noalias() = (greeno * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
     int1.noalias() += lG * int2;
-    int1.noalias() -= (greeno * ham.chol[n].block(0, 0, norbs, nelec[0])) * int2;
+    int1.noalias() -= (greeno * ham.chol[n](Eigen::placeholders::all, refDet[0])) * int2;
 
     // ref contribution
     ene += ciCoeffs[0] * (l2G2 + lG * lG);
