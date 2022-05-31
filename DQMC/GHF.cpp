@@ -67,10 +67,8 @@ void GHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& f
   }
   else {
     thetaT = (psi * (detT * psi).inverse()).transpose();
-    fb = VectorXcd::Zero(rotChol.size());
-    for (int i = 0; i < rotChol.size(); i++) {
-      fb(i) = thetaT.cwiseProduct(rotChol[i]).sum();
-    }
+    Eigen::Map<VectorXcd> thetaTFlat(thetaT.data(), thetaT.rows() * thetaT.cols());
+    fb = thetaTFlat.transpose() * rotCholMat[0];
   }
 };
  
