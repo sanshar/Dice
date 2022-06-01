@@ -46,10 +46,8 @@ void RHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eige
   thetaT[0] = (psi[0] * (detT * psi[0]).inverse()).transpose();
   thetaT[1] = (psi[1] * (detT * psi[1]).inverse()).transpose();
   MatrixXcd thetaTSA = thetaT[0] + thetaT[1];
-  fb = VectorXcd::Zero(rotChol.size());
-  for (int i = 0; i < rotChol.size(); i++) {
-    fb(i) = thetaTSA.cwiseProduct(rotChol[i]).sum();
-  }
+  Eigen::Map<VectorXcd> thetaTFlat(thetaTSA.data(), thetaTSA.rows() * thetaTSA.cols());
+  fb = thetaTFlat.transpose() * rotCholMat[0];
 };
 
 
@@ -60,10 +58,6 @@ void RHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& f
   thetaT = (psi * (detT * psi).inverse()).transpose();
   Eigen::Map<VectorXcd> thetaTFlat(thetaT.data(), thetaT.rows() * thetaT.cols());
   fb = 2. * thetaTFlat.transpose() * rotCholMat[0];
-  //fb = VectorXcd::Zero(rotChol.size());
-  //for (int i = 0; i < rotChol.size(); i++) {
-  //  fb(i) = 2. * thetaT.cwiseProduct(rotChol[i]).sum();
-  //}
 };
 
 

@@ -85,7 +85,7 @@ void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<E
 
 
 // rotate cholesky ri or ui
-void Hamiltonian::rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotChol, bool deleteOriginalChol) 
+void Hamiltonian::rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotChol, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotCholMat,bool deleteOriginalChol) 
 {
   double* rotCholSHM;
   double* rotChol0;  // this zero referes to commarnk 0
@@ -122,6 +122,11 @@ void Hamiltonian::rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::arra
     Eigen::Map<MatrixXd> rotCholMat1(static_cast<double*>(rotCholSHM) + nchol * rotSize0 +  n * rotSize1, phiT[1].rows(), norbs);
     rotChol[1].push_back(rotCholMat1);
   }
+  
+  Eigen::Map<MatrixXd> rotCholMatMap0(static_cast<double*>(rotCholSHM), rotSize0, nchol);
+  rotCholMat[0].push_back(rotCholMatMap0);
+  Eigen::Map<MatrixXd> rotCholMatMap1(static_cast<double*>(rotCholSHM) + nchol * rotSize0, rotSize1, nchol);
+  rotCholMat[1].push_back(rotCholMatMap1);
   
   if (commrank == 0) delete [] rotChol0; 
   if (deleteOriginalChol) rotFlag = true;

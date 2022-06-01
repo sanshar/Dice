@@ -16,7 +16,7 @@ UHF::UHF(Hamiltonian& ham, bool pleftQ, std::string fname)
   detT[1] = det[1].adjoint();
   leftQ = pleftQ;
   if (leftQ) {
-    ham.rotateCholesky(detT, rotChol, true);
+    ham.rotateCholesky(detT, rotChol, rotCholMat, true);
   }
 };
 
@@ -47,9 +47,9 @@ void UHF::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eige
   matPair thetaT;
   thetaT[0] = (psi[0] * (detT[0] * psi[0]).inverse()).transpose();
   thetaT[1] = (psi[1] * (detT[1] * psi[1]).inverse()).transpose();
-  fb = VectorXcd::Zero(rotChol[0].size());
-  for (int i = 0; i < rotChol[0].size(); i++) 
-    fb(i) = thetaT[0].cwiseProduct(rotChol[0][i]).sum() + thetaT[1].cwiseProduct(rotChol[1][i]).sum();
+  Eigen::Map<VectorXcd> thetaTFlat0(thetaT[0].data(), thetaT[0].rows() * thetaT[0].cols());
+  Eigen::Map<VectorXcd> thetaTFlat1(thetaT[1].data(), thetaT[1].rows() * thetaT[1].cols());
+  fb = thetaTFlat0.transpose() * rotCholMat[0][0] + thetaTFlat1.transpose() * rotCholMat[1][0];
 };
 
 
@@ -59,10 +59,9 @@ void UHF::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::VectorXcd& f
   matPair thetaT;
   thetaT[0] = (psi * (detT[0] * psi).inverse()).transpose();
   thetaT[1] = (psi * (detT[1] * psi).inverse()).transpose();
-  fb = VectorXcd::Zero(rotChol[0].size());
-  for (int i = 0; i < rotChol[0].size(); i++) {
-    fb(i) = thetaT[0].cwiseProduct(rotChol[0][i]).sum() + thetaT[1].cwiseProduct(rotChol[1][i]).sum();
-  }
+  Eigen::Map<VectorXcd> thetaTFlat0(thetaT[0].data(), thetaT[0].rows() * thetaT[0].cols());
+  Eigen::Map<VectorXcd> thetaTFlat1(thetaT[1].data(), thetaT[1].rows() * thetaT[1].cols());
+  fb = thetaTFlat0.transpose() * rotCholMat[0][0] + thetaTFlat1.transpose() * rotCholMat[1][0];
 };
 
 

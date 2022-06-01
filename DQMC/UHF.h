@@ -10,6 +10,7 @@ class UHF : public Wavefunction {
     std::array<Eigen::MatrixXd, 2> det;
     std::array<Eigen::MatrixXd, 2> detT;
     std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2> rotChol;
+    std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2> rotCholMat;
     bool leftQ;
 
     UHF(Hamiltonian& ham, bool pleftQ, std::string fname = "uhf.txt");
