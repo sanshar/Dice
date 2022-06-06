@@ -1,6 +1,6 @@
 USE_MPI = yes
 USE_INTEL = no
-ONLY_DQMC = yes
+ONLY_DQMC = no
 HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
