@@ -1,6 +1,6 @@
 USE_MPI = yes
 USE_INTEL = no
-ONLY_DQMC = no
+ONLY_DQMC = yes
 HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
@@ -63,11 +63,10 @@ else
 	ifeq ($(USE_MPI), yes) 
 		CXX = mpicxx
 		CC = mpicxx
-		LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
         ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
+           LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
 		else
-		   LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+		   LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5 
         endif
     else
 		CXX = g++
@@ -207,14 +206,12 @@ ifeq ($(COMPILE_NUMERIC), yes)
 	ALL+= bin/periodic
 endif 
 
-#all: $(ALL) #bin/VMC bin/libPeriodic.so
-#FCIQMC: bin/FCIQMC
-
-
-#all: bin/VMC
-all: bin/VMC bin/GFMC bin/FCIQMC bin/DQMC #bin/sPT  bin/GFMC
+ifeq ($(ONLY_DQMC), yes)
+  all: bin/DQMC
+else 
+  all: bin/VMC bin/GFMC bin/FCIQMC bin/DQMC #bin/sPT  bin/GFMC
+endif 
 FCIQMC: bin/FCIQMC
-#bin/GFMC bin/FCIQMC #bin/sPT  bin/GFMC
 
 bin/periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
