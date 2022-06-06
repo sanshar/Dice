@@ -429,6 +429,9 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   std::array<MatrixXcd, 2> rdmSampleU;
   rdmSampleU[0] = MatrixXcd::Zero(norbs, norbs);
   rdmSampleU[1] = MatrixXcd::Zero(norbs, norbs);
+  double weightCap = 0.;
+  if (schd.weightCap > 0) weightCap = weightCap = schd.weightCap;
+  else weightCap = std::max(100., walkers.size() / 10.);
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
@@ -437,7 +440,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     double init = getTime();
     for (int w = 0; w < walkers.size(); w++) {
       if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
-      if (weights[w] > std::max(100., walkers.size() / 10.)) {
+      if (weights[w] > weightCap) {
         weights[w] = 0.;
         nLargeDeviations++;
       }

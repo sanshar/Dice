@@ -163,6 +163,7 @@ private:
       & writeOneRDM
       & intType
       & scratchDir
+      & weightCap
       // Options related to SC-NEVPT(s):
       & numSCSamples
       & printSCNorms
@@ -396,6 +397,7 @@ public:
   bool writeOneRDM;
   std::string intType;
   std::string scratchDir;
+  double weightCap;
 };
 
 /**
