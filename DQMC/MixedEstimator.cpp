@@ -430,7 +430,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   rdmSampleU[0] = MatrixXcd::Zero(norbs, norbs);
   rdmSampleU[1] = MatrixXcd::Zero(norbs, norbs);
   double weightCap = 0.;
-  if (schd.weightCap > 0) weightCap = weightCap = schd.weightCap;
+  if (schd.weightCap > 0) weightCap = schd.weightCap;
   else weightCap = std::max(100., walkers.size() / 10.);
   for (int step = 1; step < nsweeps * nsteps; step++) {
     // average before eql
