@@ -962,7 +962,6 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   theta = psi * (phi0T * psi).inverse();
   green = (theta * phi0T).transpose();
   greenp = green - MatrixXcd::Identity(norbs, norbs);
-  greeno = green.block(0, 0, nalpha, norbs);
   greeno = green(refDet[0], Eigen::placeholders::all);
 
 
@@ -973,7 +972,7 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
   overlap += ciCoeffs[0];
   complex<double> hG;
   hG = greeno.cwiseProduct(ham.h1(refDet[0], Eigen::placeholders::all)).sum();
-  ene += 2 * ciCoeffs[0] * hG;
+  ene += 2. * ciCoeffs[0] * hG;
   
   // 1e intermediate
   MatrixXcd roth1;
@@ -1001,7 +1000,7 @@ std::array<std::complex<double>, 2> Multislater::hamAndOverlap(Eigen::MatrixXcd&
         blocks[sz] = MatrixXcd::Zero(rank, rank);
         for (int p = 0; p < rank; p++) 
           for (int t = 0; t < rank; t++) 
-            blocks[sz](p, t) = green(ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
+            blocks[sz](p, t) = greeno(ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t));
         
         dets[sz] = blocks[sz].determinant();
         oneEne[sz] = hG * dets[sz];
