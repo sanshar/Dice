@@ -360,7 +360,25 @@ int main(int argc, char* argv[]) {
       }
       fclose(f);
     
+    if (commrank == 0) {
+      auto prev_energy = 0.0;
+      std::complex<double> imag(0.0, 1.0);
+      for (int root = 0; root < schd.nroots; root++) {
+        if (abs(E0[root] - prev_energy) < 1e-6) {
+          pout << "Root " << root << " and root " << root - 1 << "are a pair of kramer doublet." << endl;
+          pout << E0[root] << " " << prev_energy << endl;
+/*
+          for (int idet = 0; idet < DetsSize; idet++) {
+            if (SHMDets[idet].Nalpha() > SHMDets[idet].Nbeta()) {
+              ci[root](idet,0) = ci[root](idet,0) * -1.0;
+            } 
+          }
+          pout << DetsSize;*/
+        }
+        prev_energy = E0[root];
 
+      }
+    }
     // #####################################################################
     // Print the 5 most important determinants and their weights
     // #####################################################################
@@ -576,24 +594,14 @@ int main(int argc, char* argv[]) {
       std::string efile;
       efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
       FILE* f = fopen(efile.c_str(), "wb");
-      CItype* cMaxSHM;
-      vector<CItype> cMax;
-      if (commrank == 0) {
-        cMax.resize(ci[0].rows(), 0);
-        for (int j = 0; j < ci[0].rows(); j++) {
-          for (int i = 0; i < ci.size(); i++) cMax[j] += pow(abs(ci[i](j, 0)), 2);
-          cMax[j] = pow(cMax[j], 0.5);
-        }
-      }
-      SHMVecFromVecs(cMax, cMaxSHM, shciDetsCI, DavidsonSegment, regionDavidson);
       for (int root = 0; root < schd.nroots; root++) {
         CItype* ciroot;
         SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
         ePT = SHCIbasics::DoPerturbativeDeterministic(
-            SHMDets, cMaxSHM, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd,
+            SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep, schd,
             coreE, nelec, root, vdVector, Psi1Norm);
         ePT += E0[root];
-        // pout << "Writing energy " << ePT << "  to file: " << efile << endl;
+        pout << "Writing energy " << ePT << "  to file: " << efile << endl;
         if (commrank == 0) fwrite(&ePT, 1, sizeof(double), f);
       }
       fclose(f);
@@ -604,22 +612,12 @@ int main(int argc, char* argv[]) {
         std::string efile;
         efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
         FILE* f = fopen(efile.c_str(), "wb");
-        CItype* cMaxSHM;
-        vector<CItype> cMax;
-        if (commrank == 0) {
-          cMax.resize(ci[0].rows(), 0);
-          for (int j = 0; j < ci[0].rows(); j++) {
-            for (int i = 0; i < ci.size(); i++) cMax[j] += pow(abs(ci[i](j, 0)), 2);
-            cMax[j] = pow(cMax[j], 0.5);
-          }
-        }
-        SHMVecFromVecs(cMax, cMaxSHM, shciDetsCI, DavidsonSegment, regionDavidson);
         for (int root = 0; root < schd.nroots; root++) {
           CItype* ciroot;
           SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
           ePT[root] = SHCIbasics::
               DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
-                  SHMDets, cMaxSHM, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
+                  SHMDets,  ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
                   schd, coreE, nelec, root);
           ePT[root] += E0[root];
           // pout << "Writing energy " << E0[root] << "  to file: " << efile <<

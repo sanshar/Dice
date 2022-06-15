@@ -54,7 +54,7 @@ using namespace Eigen;
 using namespace boost;
 using namespace SHCISortMpiUtils;
 
-double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *cmax, CItype *ci, int DetsSize, 
+double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(Determinant *Dets, CItype *ci, int DetsSize, 
           double& E0, oneInt& I1, twoInt& I2,
           twoIntHeatBathSHM& I2HB,vector<int>& irrep,
           schedule& schd, double coreE,
@@ -72,7 +72,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
   double Psi1Norm;
   double EptLarge = 0.0;
   if (schd.epsilon2 < 999)
-    EptLarge = DoPerturbativeDeterministic(Dets, cmax, ci, DetsSize, E0, I1, I2, I2HB,
+    EptLarge = DoPerturbativeDeterministic(Dets, ci, DetsSize, E0, I1, I2, I2HB,
                                            irrep, schd, coreE, nelec, root,
                                            vdVector, Psi1Norm);
 
@@ -160,7 +160,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
     for (int i = 0; i < distinctSample; i++) {
       int I = Sample1[i];
       SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
-          Dets[I], schd.epsilon2 / abs(cmax[I]), schd.epsilon2Large / abs(cmax[I]),
+          Dets[I], schd.epsilon2 / abs(ci[I]), schd.epsilon2Large / abs(ci[I]),
           wts1[i], ci[I], I1, I2, I2HB, irrep, coreE, E0, *uniqueDEH.Det,
           *uniqueDEH.Num, *uniqueDEH.Num2, *uniqueDEH.present,
           *uniqueDEH.Energy, schd, Nmc, nelec);
@@ -410,7 +410,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 #endif
 
     if (commrank == 0) {
-      double currentEN = finalE - finalELargeEps + EptLarge;
+      double currentEN = -finalE + finalELargeEps + EptLarge;
       double deviation = abs(abs(currentEN)-abs(AvgenergyEN/currentIter));
       double thresh = 2.0*pow(schd.epsilon2Large/schd.SampleN, 0.5);
       /*if (currentIter > 0 && deviation > thresh) {
@@ -419,8 +419,8 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
       }
       else { */
       currentIter++;
-      AvgenergyEN += finalE - finalELargeEps + EptLarge;
-      AvgenergyEN2 += pow(finalE - finalELargeEps + EptLarge, 2);
+      AvgenergyEN += -finalE + finalELargeEps + EptLarge;
+      AvgenergyEN2 += pow(-finalE + finalELargeEps + EptLarge, 2);
       stddev = currentIter < 5
                    ? 1e4
                    : pow((currentIter * AvgenergyEN2 - pow(AvgenergyEN, 2)) /
@@ -475,7 +475,7 @@ double SHCIbasics::DoPerturbativeStochastic2SingleListDoubleEpsilon2AllTogether(
 }
 
 double SHCIbasics::DoPerturbativeDeterministic(
-    Determinant* Dets, CItype* cmax, CItype* ci, int DetsSize, double& E0, oneInt& I1,
+    Determinant* Dets, CItype* ci, int DetsSize, double& E0, oneInt& I1,
     twoInt& I2, twoIntHeatBathSHM& I2HB, vector<int>& irrep, schedule& schd,
     double coreE, int nelec, int root, vector<MatrixXx>& vdVector,
     double& Psi1Norm, bool appendPsi1ToPsi0) {
@@ -514,7 +514,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
     for (int i = 0; i < DetsSize; i++) {
       if (i % size != rank) continue;
       SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
-          Dets[i], i, abs(schd.epsilon2 / cmax[i]), ci[i], I1, I2, I2HB, irrep,
+          Dets[i], i, schd.epsilon2 / abs(ci[i]), ci[i], I1, I2, I2HB, irrep,
           coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy,
           *uniqueDEH.var_indices_beforeMerge,
           *uniqueDEH.orbDifference_beforeMerge, schd, nelec);
@@ -524,7 +524,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
       if ((i % size != rank)) continue;
 
       SHCIgetdeterminants::getDeterminantsDeterministicPT(
-          Dets[i], abs(schd.epsilon2 / ci[i]), ci[i], 0.0, I1, I2, I2HB, irrep,
+          Dets[i], schd.epsilon2 / abs(ci[i]), ci[i], 0.0, I1, I2, I2HB, irrep,
           coreE, E0, *uniqueDEH.Det, *uniqueDEH.Num, *uniqueDEH.Energy, schd, 0,
           nelec);
       // if (i%100000 == 0 && omp_get_thread_num()==0 && commrank == 0) pout <<
@@ -660,7 +660,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
   double psi1normthrd = 0.0;
   for (size_t i = 0; i < hasHEDDets.size(); i++) {
     psi1normthrd += pow(abs(hasHEDNumerator[i] / (E0 - hasHEDEnergy[i])), 2);
-    PTEnergy += pow(abs(hasHEDNumerator[i]), 2) / (E0 - hasHEDEnergy[i]);
+    PTEnergy += norm(hasHEDNumerator[i]) / (E0 - hasHEDEnergy[i]);
   }
 
   Psi1NormProc += psi1normthrd;

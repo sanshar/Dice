@@ -150,14 +150,15 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
 
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
+  if (commrank == 0) {
   if (!readTxt) {  
+    cout << "read binary" << endl;
   string fcidump_bin = fcidump+".bin";
   auto dump2 = ifstream(fcidump_bin.c_str(), ios::out | ios::binary);
   if (!dump2.good()) {
     pout << "Integral file " << fcidump_bin << " does not exist!" << endl;
     exit(0);
   }
-  if (commrank == 0) {
     I1.store.clear();
     I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
     coreE = 0.0;
@@ -202,9 +203,8 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     coreE = coreEtmp.real();
     dump2.close();
   }
-  }
   else {
-    if (commrank == 0) {
+      cout << "read text integral " << endl;
     I1.store.clear();
     I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
     coreE = 0.0;
@@ -238,7 +238,11 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     } // while
     }
   }
+#ifndef SERIAL
+  world.barrier();
+#endif
   if (commrank == 0) {
+    cout << "close integrals" << endl;
     dump.close(); 
     I2.maxEntry = *std::max_element(&I2.store[0], &I2.store[0]+I2memory, myfn);
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;

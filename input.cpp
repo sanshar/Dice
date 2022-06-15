@@ -63,7 +63,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.singleList = true;
   schd.io = true;
   schd.nroots = 1;
-  schd.nPTiter = 500;
+  schd.nPTiter = 10000;
   schd.DoRDM = false;
   schd.DoSpinRDM = false;
   schd.quasiQ = false;

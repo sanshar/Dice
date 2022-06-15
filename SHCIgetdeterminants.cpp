@@ -92,33 +92,33 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   d.getOpenClosed(open, closed);
   //d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
-
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
+    //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    //Determinant detj = d;
+    //detj.setocc(open[a],true); detj.setocc(closed[i],false);
 
     // sgn
-    /*if (closed[i] != open[a]) {
+    /*if (closed[i]%2 != open[a]%2) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
       integral = int1(open[a], closed[i])*sgn;
     }*/
 
     // generate determinant if integral is above the criterion
-    if (std::abs(integral) > epsilon ) {
+    if (std::abs(integral) > epsilon) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
       // numerator and energy
-      numerator.push_back(integral*ci1);
-#ifndef Complex
-      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
-#else
+      auto num = (conj(integral)*ci1);
+      numerator.push_back(num);
+      //cout << open[a] << " " << closed[i] << " " << integral << " " << ci1 << " " << num << endl;
+      //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
       double E = di.Energy(int1, int2, coreE);
-#endif
       energy.push_back(E);
     }
   } // ia
@@ -134,21 +134,17 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
     size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
     size_t end = I2hb.startingIndicesIntegrals[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
     std::complex<double>* integrals = I2hb.integrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
     short* orbIndices = I2hb.pairs;
+
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
       if (std::abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       int a = orbIndices[2*index], b = orbIndices[2*index+1];
       if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
@@ -161,7 +157,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
         // numerator and energy
         numerator.push_back(integrals[index]*sgn*ci1);
-        //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        //cout << a << " " << b << " " << closed[i] << " " << closed[j] << " " << integrals[index] << " " << integrals[index]*sgn*ci1 << endl;
         double E = di.Energy(int1, int2, coreE);
         energy.push_back(E);
       }
@@ -242,7 +238,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
     //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
     //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
     if (irreps[closed[i]] != irreps[open[a]]) continue;
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    CItype integral = det.Hij_1Excite(open[a], closed[i], int1,int2);
 
     // generate determinant if integral is above the criterion
     if (abs(integral) > epsilon ) {
@@ -531,7 +527,8 @@ void SHCIgetdeterminants::getDeterminantsVariational(
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
 
     //if (closed[i]%2 != open[a]%2) {
     //  integral = int1(open[a], closed[i])*schd.socmultiplier;
@@ -977,7 +974,7 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    CItype integral = d.Hij_1Excite(open[a],closed[i],int1,int2);
 
     // sgn
     // Not sure what this part is used for, but I think relativity will not make use of the spin.
@@ -988,24 +985,21 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
     //}
 
     // generate determinant if integral is above the criterion
-    if (std::abs(integral) > epsilon ) {
+    if (std::abs(integral) > epsilon) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-
+      size_t orbDiff;
+      //integral = Hij(di, d, int1, int2, coreE, orbDiff);
       // numerator and energy
-      numerator1A.push_back(integral*ci1);
+      numerator1A.push_back(conj(integral)*ci1);
 #ifndef Complex
       numerator2A.push_back( integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - (Nmcd-1)/Nmcd*abs(ci2)/abs(ci1)) );
       //numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
 #endif
-#ifndef Complex
-      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
-#else
       double E = di.Energy(int1, int2, coreE);
-#endif
       energy.push_back(E);
 
       // ...
@@ -1021,15 +1015,10 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
     int I = closed[i], J = closed[j];
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
     size_t start = I2hb.startingIndicesIntegrals[pairIndex];
     size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
     std::complex<double>* integrals  = I2hb.integrals;
@@ -1041,9 +1030,8 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
       if (std::abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       int a = orbIndices[2*index], b = orbIndices[2*index+1];
-      if (!(d.getocc(a) || d.getocc(b))) {
+      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
@@ -1057,11 +1045,11 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
 #ifndef Complex
         numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-        numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
+        numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*(1. - (Nmcd-1)/Nmcd*abs(ci2)/abs(ci1)) );
         //numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
         //numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
-        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
+        double E = di.Energy(int1, int2, coreE);
         energy.push_back(E);
 
         // ...
