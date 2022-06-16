@@ -768,7 +768,7 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
     fh5['rotation'] = rotation.flatten()
 
 
-def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None, left = "rhf", right = "rhf", ndets = 100, excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, burnIter = None, choleskyThreshold = 2.0e-3, writeOneRDM = False, scratchDir = None, fname = 'afqmc.json'):
+def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None, left = "rhf", right = "rhf", ndets = 100, detFile = 'dets.bin', excitationLevel = None, seed = None, dt = 0.005, nsteps = 50, nwalk = 50, stochasticIter = 500, orthoSteps = 20, burnIter = None, choleskyThreshold = 2.0e-3, weightCap = None, writeOneRDM = False, scratchDir = None, fname = 'afqmc.json'):
   system = { }
   system["integrals"] = "FCIDUMP_chol"
   if numAct is not None:
@@ -784,7 +784,7 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
   wavefunction["left"] = f"{left}"
   wavefunction["right"] = f"{right}"
   if left == "multislater":
-    wavefunction["determinants"] = "dets.bin"
+    wavefunction["determinants"] = detFile
     wavefunction["ndets"] = ndets
     if excitationLevel is not None:
       wavefunction["excitationLevel"] = excitationLevel
@@ -802,6 +802,8 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
   sampling["orthoSteps"] = orthoSteps
   if burnIter is not None:
     sampling["burnIter"] = burnIter
+  if weightCap is not None:
+    sampling["weightCap"] = weightCap
 
   printBlock = { }
   if writeOneRDM:
