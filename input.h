@@ -79,6 +79,7 @@ struct schedule {
     & algorithm                               \
     & outputlevel                             \
     & printBestDeterminants                   \
+    & printAllDeterminants                    \
     & writeBestDeterminants                   \
     & extrapolate                             \
     & extrapolationFactor                     \
@@ -147,6 +148,7 @@ struct schedule {
   int algorithm;
   int outputlevel;
   int printBestDeterminants;
+  bool printAllDeterminants;
   int writeBestDeterminants;
   bool extrapolate;
   double extrapolationFactor;

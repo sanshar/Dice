@@ -425,6 +425,22 @@ int main(int argc, char* argv[]) {
   }
   
   if (commrank == 0) {
+    if (schd.printAllDeterminants) {
+      pout << "Printing all determinants"<<endl;
+      pout << format("%4s %10s  ") %("Det") %("weight"); pout << "Determinant string"<<endl;
+      for (int root=0; root<schd.nroots; root++) {
+        pout << "State :"<<root<<endl;
+        MatrixXx prevci = 1.*ci[root];
+        for (int i=0; i<static_cast<int>(DetsSize); i++) {
+          double parity = getParityForDiceToAlphaBeta(SHMDets[i]);
+#ifdef Complex
+          pout << format("%4i %18.8e  ") %(i) %(abs(prevci(i,0))); pout << SHMDets[i]<<endl;
+#else
+          pout << format("%18.8e  ") %(prevci(i,0)*parity); pout << SHMDets[i]<<endl;
+#endif
+        }
+      }
+    }
     if (schd.writeBestDeterminants > 0) {
       int num = min(schd.writeBestDeterminants, static_cast<int>(DetsSize));
       int nspatorbs = Determinant::norbs/2;
