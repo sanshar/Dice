@@ -514,6 +514,24 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
             }
       ofs.close();
     }
+    
+    if (schd.DoSpinRDM) {
+      int norbs = nSpatOrbs * 2;
+      char file[5000];
+      sprintf(file, "%s/spinRDM.%d.%d.txt", schd.prefix[0].c_str(), root,
+              root);
+      std::ofstream ofs(file, std::ios::out);
+      for (int n1 = 1; n1 < norbs; n1++)
+        for (int n2 = 0; n2 < n1; n2++)
+          for (int n3 = 1; n3 < norbs; n3++)
+            for (int n4 = 0; n4 < n3; n4++) {
+              if (fabs(twoRDM(n1 * (n1 + 1) / 2 + n2, n3 * (n3 + 1) / 2 + n4)) > 1.e-6)
+                ofs << str(boost::format("%3d %3d %3d %3d %16.14g\n") %
+                           n1 % n2 % n3 % n4 %
+                           twoRDM(n1 * (n1 + 1) / 2 + n2, n3 * (n3 + 1) / 2 + n4));
+            }
+      ofs.close();
+    }
 
     if (schd.DoSpinRDM) {
       char file[5000];
