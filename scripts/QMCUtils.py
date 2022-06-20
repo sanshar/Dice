@@ -219,7 +219,7 @@ def read_dets(fname = 'dets.bin', ndets = None):
           det[1][j] = 1
       state[tuple(map(tuple, det))] = coeff
 
-  return norbs, state
+  return norbs, state, ndetsAll
 
 # a_i^dag a_j
 def ci_parity(det, i, j):
@@ -438,6 +438,228 @@ def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
   h1e_mod = h1e - v0
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+
+def run_afqmc(mf_or_mc, vmc_root = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+  if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
+    run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+  elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
+    run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+  else:
+    raise Exception("Need either mean field or casscf object!")
+
+# performs phaseless afqmc with mf trial
+def run_afqmc_mf(mf, vmc_root = None, mo_coeff = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+  print("\nPreparing AFQMC calculation")
+  if vmc_root is None:
+    vmc_root = os.environ['VMC_ROOT']
+
+  owd = os.getcwd()
+  if run_dir is not None:
+    os.system(f"rm -rf {run_dir}; mkdir -p {run_dir};")
+    os.chdir(f'{run_dir}')
+    if scratch_dir is not None:
+      os.system(f"mkdir -p {scratch_dir};")
+
+  mol = mf.mol
+  # choose the orbital basis
+  if mo_coeff is None:
+    if isinstance(mf, scf.uhf.UHF):
+      mo_coeff = mf.mo_coeff[0]
+    elif isinstance(mf, scf.rhf.RHF):
+      mo_coeff = mf.mo_coeff
+    else:
+      raise Exception("Invalid mean field object!")
+
+  # calculate cholesky integrals
+  print("Calculating Cholesky integrals")
+  h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut)
+  nbasis = h1e.shape[-1]
+  nelec = mol.nelec
+
+  if norb_frozen > 0:
+    assert(norb_frozen*2 < sum(nelec))
+    mc = mcscf.CASSCF(mf, mol.nao-norb_frozen, mol.nelectron-2*norb_frozen)
+    nelec = mc.nelecas
+    mc.mo_coeff = mo_coeff
+    h1e, enuc = mc.get_h1eff()
+    chol = chol.reshape((-1, nbasis, nbasis))
+    chol = chol[:, mc.ncore:mc.ncore + mc.ncas, mc.ncore:mc.ncore + mc.ncas]
+
+  print("Finished calculating Cholesky integrals\n")
+
+  nbasis = h1e.shape[-1]
+  print('Size of the correlation space:')
+  print(f'Number of electrons: {nelec}')
+  print(f'Number of basis functions: {nbasis}')
+  print(f'Number of Cholesky vectors: {chol.shape[0]}\n')
+  chol = chol.reshape((-1, nbasis, nbasis))
+  v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+  h1e_mod = h1e - v0
+  chol = chol.reshape((chol.shape[0], -1))
+
+  write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+
+  # write mo coefficients
+  overlap = mf.get_ovlp(mol)
+  if isinstance(mf, (scf.uhf.UHF, scf.rohf.ROHF)):
+    hf_type = "uhf"
+    uhfCoeffs = np.empty((nbasis, 2*nbasis))
+    if isinstance(mf, scf.uhf.UHF):
+      q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[0][:, norb_frozen:]))
+      uhfCoeffs[:, :nbasis] = q
+      q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[1][:, norb_frozen:]))
+      uhfCoeffs[:, nbasis:] = q
+    else:
+      q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[:, norb_frozen:]))
+      uhfCoeffs[:, :nbasis] = q
+      uhfCoeffs[:, nbasis:] = q
+
+    writeMat(uhfCoeffs, "uhf.txt")
+
+  elif isinstance(mf, scf.rhf.RHF):
+    hf_type = "rhf"
+    q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[:, norb_frozen:]))
+    writeMat(q, "rhf.txt")
+
+  # write input
+  write_afqmc_input(seed = seed, left = hf_type, right = hf_type, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm)
+
+  # TODO: add some error handling here
+  print(f"Starting AFQMC / MF calculation", flush=True)
+  mpi_prefix = "mpirun "
+  if nproc is not None:
+    mpi_prefix += f" -np {nproc} "
+  os.system("export OMP_NUM_THREADS=1;")
+  afqmc_binary = vmc_root + "/bin/DQMC"
+  command = f"{mpi_prefix} {afqmc_binary} afqmc.json > afqmc.out"
+  os.system(command)
+  blocking_script = vmc_root + "/scripts/blocking.py"
+  command = f"python {blocking_script} samples.dat {burn_in} > blocking.out; cat blocking.out"
+  os.system(command)
+  print(f"Finished AFQMC / MF calculation\n", flush=True)
+
+  # get afqmc energy from output
+  e_afqmc = None
+  with open(f'blocking.out', 'r') as fh:
+    for line in fh:
+      if 'mean:' in line:
+        ls = line.split()
+        e_afqmc = float(ls[1])
+
+  os.chdir(owd)
+
+  return e_afqmc
+
+
+# performs phaseless afqmc with mf trial
+def run_afqmc_mc(mc, vmc_root = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+  print("\nPreparing AFQMC calculation")
+  if vmc_root is None:
+    vmc_root = os.environ['VMC_ROOT']
+
+  owd = os.getcwd()
+  if run_dir is not None:
+    os.system(f"rm -rf {run_dir}; mkdir -p {run_dir}; cp dets*.bin {run_dir}")
+    os.chdir(f'{run_dir}')
+    if scratch_dir is not None:
+      os.system(f"mkdir -p {scratch_dir}")
+
+  mol = mc.mol
+  mo_coeff = mc.mo_coeff
+
+  # calculate cholesky integrals
+  print("Calculating Cholesky integrals")
+  h1e, chol, nelec, enuc = generate_integrals(mol, mc.get_hcore(), mo_coeff, chol_cut)
+  nbasis = h1e.shape[-1]
+  nelec = mol.nelec
+
+  # norb_frozen: not correlated in afqmc, only contribute to 1-body potential
+  # norb_core: correlated in afqmc but not in trial hci state
+  norb_core = int(mc.ncore)
+
+  if norb_frozen > 0:
+    assert(norb_frozen*2 < sum(nelec))
+    mc_dummy = mcscf.CASSCF(mol, mol.nao-norb_frozen, mol.nelectron-2*norb_frozen)
+    norb_core -= norb_frozen
+    nelec = mc_dummy.nelecas
+    mc_dummy.mo_coeff = mo_coeff
+    h1e, enuc = mc_dummy.get_h1eff()
+    chol = chol.reshape((-1, nbasis, nbasis))
+    chol = chol[:, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas]
+    nbasis = h1e.shape[-1]
+
+  print("Finished calculating Cholesky integrals\n")
+
+  print('Size of the correlation space:')
+  print(f'Number of electrons: {nelec}')
+  print(f'Number of basis functions: {nbasis}')
+  print(f'Number of Cholesky vectors: {chol.shape[0]}\n')
+  chol = chol.reshape((-1, nbasis, nbasis))
+  v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+  h1e_mod = h1e - v0
+  chol = chol.reshape((chol.shape[0], -1))
+
+  write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+
+  # write mo coefficients
+  det_file = 'dets.bin'
+  if nroot > 0:
+    det_file = f'dets_{nroot}.bin'
+  norb_act, state, ndets_all = read_dets(det_file, 1)
+  up = np.argsort(-np.array(list(state.keys())[0][0])) + norb_core
+  dn = np.argsort(-np.array(list(state.keys())[0][1])) + norb_core + nbasis
+  hf_type = "rhf"
+  if (np.array_equal(up, dn - nbasis)):
+    rhfCoeffs = np.eye(nbasis)
+    writeMat(rhfCoeffs[:, np.concatenate((range(norb_core), up, range(norb_core+norb_act, nbasis))).astype(int)], "rhf.txt")
+  else:
+    hf_type = "uhf"
+    uhfCoeffs = np.hstack((np.eye(nbasis), np.eye(nbasis)))
+    writeMat(uhfCoeffs[:, np.concatenate((np.array(range(norb_core)), up, np.array(range(norb_core+norb_act, nbasis+norb_core)), dn, np.array(range(nbasis+norb_core+norb_act, 2*nbasis)))).astype(int)], "uhf.txt")
+
+  # determine ndets for doing calculations
+  ndets_list = [ ]
+  if isinstance(ndets, list):
+    ndets_list = ndets
+    for i, n in enumerate(ndets_list):
+      if n > ndets_all:
+        ndets_list.pop(i)
+  elif isinstance(ndets, int):
+    if (ndets > ndets_all):
+      ndets = ndets_all
+    ndets_list = [ ndets ]
+  else:
+    raise Exception('Provide ndets as an int or a list of ints!')
+
+  # run afqmc
+  mpi_prefix = "mpirun "
+  if nproc is not None:
+    mpi_prefix += f" -np {nproc} "
+  os.system("export OMP_NUM_THREADS=1;")
+  afqmc_binary = vmc_root + "/bin/DQMC"
+  e_afqmc = [ 0. for _ in ndets_list ]
+  for i, n in enumerate(ndets_list):
+    write_afqmc_input(seed = seed, numAct = norb_act, numCore = norb_core, left = 'multislater', right = hf_type, ndets = n, detFile = det_file, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm, fname = f"afqmc_{n}.json")
+
+    # TODO: add some error handling here
+    print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
+    command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json > afqmc_{n}.out"
+    os.system(command)
+    blocking_script = vmc_root + "/scripts/blocking.py"
+    command = f"mv samples.dat samples_{n}.dat; python {blocking_script} samples_{n}.dat {burn_in} > blocking_{n}.out; cat blocking_{n}.out"
+    os.system(command)
+    print(f"Finished AFQMC / HCI ({n} dets) calculation\n", flush=True)
+
+    # get afqmc energy from output
+    with open(f'blocking_{n}.out', 'r') as fh:
+      for line in fh:
+        if 'mean:' in line:
+          ls = line.split()
+          e_afqmc[i] = float(ls[1])
+
+  os.chdir(owd)
+
+  return e_afqmc
 
 
 # calculate and write cholesky-like integrals given eri's
@@ -810,9 +1032,12 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
     printBlock["writeOneRDM"] = True
   if scratchDir is not None:
     printBlock["scratchDir"] = scratchDir
+  elif writeOneRDM:
+    printBlock["scratchDir"] = "rdm"
 
   json_input = {"system": system, "wavefunction": wavefunction, "sampling": sampling, "print": printBlock}
   json_dump = json.dumps(json_input, indent = 2)
+  print(f"AFQMC input options:\n{json_dump}\n")
 
   with open(fname, "w") as outfile:
     outfile.write(json_dump)
