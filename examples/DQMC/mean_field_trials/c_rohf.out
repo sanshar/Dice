@@ -1,0 +1,50 @@
+converged SCF energy = -37.6768656482831
+
+Preparing AFQMC calculation
+Calculating Cholesky integrals
+Finished calculating Cholesky integrals
+
+Size of the correlation space:
+Number of electrons: (3, 1)
+Number of basis functions: 8
+Number of Cholesky vectors: 37
+
+AFQMC input options:
+{
+  "system": {
+    "integrals": "FCIDUMP_chol"
+  },
+  "wavefunction": {
+    "left": "uhf",
+    "right": "uhf"
+  },
+  "sampling": {
+    "seed": 106786,
+    "phaseless": true,
+    "dt": 0.005,
+    "nsteps": 50,
+    "nwalk": 5,
+    "stochasticIter": 1000,
+    "choleskyThreshold": 0.002,
+    "orthoSteps": 20,
+    "burnIter": 50
+  },
+  "print": {}
+}
+
+Starting AFQMC / MF calculation
+reading samples from samples.dat, ignoring first 50
+mean: -37.71177196755045
+blocked statistics:
+block size    # of blocks        mean                error
+     1            950       -3.77117720e+01       1.829516e-04
+     2            475       -3.77117720e+01       2.147246e-04
+     5            190       -3.77117720e+01       2.917209e-04
+    10             95       -3.77117720e+01       3.270483e-04
+    20             47       -3.77117139e+01       3.631569e-04
+    50             19       -3.77117720e+01       4.228732e-04
+    70             13       -3.77116898e+01       4.311003e-04
+   100              9       -3.77117137e+01       4.359191e-04
+   200              4       -3.77116973e+01       4.998261e-04
+Finished AFQMC / MF calculation
+
