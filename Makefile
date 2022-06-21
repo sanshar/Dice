@@ -22,7 +22,7 @@ ifeq ($(HAS_AVX2), yes)
 endif
 
 ifeq ($(USE_INTEL), no)
-  FLAGS += -fpermissive -w
+  FLAGS += -fpermissive -fopenmp -w
 endif
 
 GIT_HASH=`git rev-parse HEAD`
