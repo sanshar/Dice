@@ -456,11 +456,11 @@ int main(int argc, char* argv[]) {
         fout.write((char*) &num, sizeof(int));
         fout.write((char*) &nspatorbs, sizeof(int));
         MatrixXx prevci = 1. * ci[root];
+        std::vector<size_t> idx(static_cast<int>(DetsSize));
+        std::iota(idx.begin(), idx.end(), 0);
+        std::sort(idx.begin(), idx.end(), [&prevci](size_t i1, size_t i2){return abs(prevci(i1, 0)) > abs(prevci(i2, 0));});
         for (int i = 0; i < num; i++) {
-          compAbs comp;
-          int m = distance(
-              &prevci(0, 0),
-              max_element(&prevci(0, 0), &prevci(0, 0) + prevci.rows(), comp));
+          int m = idx[i];
           double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
           double wciCoeff = parity * std::real(prevci(m, 0));
           fout.write((char*) &wciCoeff, sizeof(double));
@@ -479,7 +479,6 @@ int main(int argc, char* argv[]) {
               detocc = '2';
             fout.write((char*) &detocc, sizeof(char));
           }
-          prevci(m, 0) = 0.0;
         }
         fout.close();
       }
