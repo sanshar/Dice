@@ -17,13 +17,15 @@ git_commit=`git rev-parse HEAD`
 git_branch=`git branch | grep "^\*" | sed 's/^..//'`
 export VERSION_FLAGS=-Dgit_commit="\"$(git_commit)\"" -Dgit_branch="\"$(git_branch)\""
 
-FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS)
-DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS) -DComplex
-LFLAGS = -L${BOOST}/stage/lib -lboost_serialization
+FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}/include $(VERSION_FLAGS)
+DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST}/include $(VERSION_FLAGS) -DComplex
+LFLAGS = -L${BOOST}/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
-	FLAGS += -qopenmp
-	DFLAGS += -qopenmp
+	ifeq ($(USE_OMP), yes)
+		FLAGS += -qopenmp
+		DFLAGS += -qopenmp
+	endif
 	ifeq ($(USE_MPI), yes)
 		CXX = mpiicpc
 		CC = mpiicpc
@@ -35,8 +37,10 @@ ifeq ($(USE_INTEL), yes)
 		DFLAGS += -DSERIAL
 	endif
 else
-	FLAGS += -fopenmp
-	DFLAGS += -fopenmp
+	ifeq ($(USE_OMP), yes)
+		FLAGS += -fopenmp
+		DFLAGS += -fopenmp
+	endif
 	ifeq ($(USE_MPI), yes)
 		CXX = mpicxx
 		CC = mpicxx
@@ -88,7 +92,7 @@ obj_z/%.o: %.cpp
 	$(CXX) $(DFLAGS) $(OPT) -c $< -o $@
 
 
-all: Dice ZDice2 # stats QDPTSOC GTensorFT GTensorFT2
+all: ZCDFCI # stats QDPTSOC GTensorFT GTensorFT2
 
 stats: stats.o
 	$(CXX) -O3 stats.cpp -o stats
@@ -100,6 +104,10 @@ Dice	: $(OBJ_Dice)
 	$(CXX)   $(FLAGS) $(OPT) -o  Dice $(OBJ_Dice) $(LFLAGS)
 ZDice2	: $(OBJ_ZDice2)
 	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZDice2) $(LFLAGS)
+ZSHCI	: $(OBJ_ZSHCI)
+	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZCDFCI) $(LFLAGS)
+ZCDFCI	: $(OBJ_ZCDFCI)
+	$(CXX)   $(FLAGS) $(OPT) -o  ZCDFCI $(OBJ_ZCDFCI) $(LFLAGS)
 forcyrus	: $(OBJ_forcyrus)
 	$(CXX)   $(FLAGS) $(OPT) -o  forcyrus $(OBJ_forcyrus) $(LFLAGS)
 Excitations	: $(OBJ_Excitations)

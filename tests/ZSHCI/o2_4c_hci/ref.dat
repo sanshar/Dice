@@ -1,0 +1,113 @@
+
+     ____  _
+    |  _ \(_) ___ ___
+    | | | | |/ __/ _ \
+    | |_| | | (_|  __/
+    |____/|_|\___\___|   v1.0
+
+
+**************************************************************
+Dice  Copyright (C) 2017  Sandeep Sharma
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+
+Author:       Sandeep Sharma
+Contributors: James E Smith, Adam A Holmes, Bastien Mussard
+For detailed documentation on Dice please visit
+https://sanshar.github.io/Dice/
+and our group page for up to date information on other projects
+http://www.colorado.edu/lab/sharmagroup/
+**************************************************************
+
+User:             xubo
+Date:             Wed Jan 27 02:47:42 2021
+PID:              259909
+
+Path:             ../../ZCDFCI
+Commit:           8486f75b73b261b900345f502cc75506dae52878
+Branch:           relWithBagel
+Compilation Date: Jan 26 2021 16:22:46
+
+
+**************************************************************
+INPUT FILE
+**************************************************************
+#system
+nocc 12
+0 1 2 3 4 5 6 7 8 9 10 11 
+0 1 2 3 4 5 6 7 8 9 10 12 
+0 1 2 3 4 5 6 7 8 9 11 13 
+0 1 2 3 4 5 6 7 8 9 10 13 
+nroots  1
+orbitals ../4c_integrals/FCIDUMP
+#variational
+schedule
+0 5e-4
+end
+davidsonTol 1-10
+dE 1e-10
+maxiter 8
+#pt
+nptiter 0
+
+TOT: 0.000 s. DIFF: 0.000 s. MSG: begin_integral
+TOT: 0.054 s. DIFF: 0.054 s. MSG: end_integral
+
+
+**************************************************************
+SELECTING REFERENCE DETERMINANT(S)
+**************************************************************
+2 2 2 2 2   2 0 0 0 0   0 0 0 0 0   0  Given HF Energy:     -149.4443127291
+2 2 2 2 2   a a 0 0 0   0 0 0 0 0   0  Given HF Energy:     -149.4902820864
+2 2 2 2 2   b b 0 0 0   0 0 0 0 0   0  Given HF Energy:     -149.4902820864
+2 2 2 2 2   a b 0 0 0   0 0 0 0 0   0  Given HF Energy:     -149.4705338342
+
+
+**************************************************************
+VARIATIONAL STEP  
+**************************************************************
+Iter Root       Eps1   #Var. Det.               Energy   #Davidson     Time(s)
+   0    0    5.00e-04        1642      -149.6363211349         10        0.19
+   1    0    5.00e-04       16849      -149.6540832304         13        0.80
+   2    0    5.00e-04       20126      -149.6561832063         11        1.58
+   3    0    5.00e-04       22673      -149.6566712610         10        2.39
+   4    0    5.00e-04       23251      -149.6567644414          9        3.24
+   5    0    5.00e-04       23341      -149.6567767338          8        4.06
+   6    0    5.00e-04       23357      -149.6567783327          4        4.81
+   7    0    5.00e-04       23357      -149.6567783327          1        5.54
+Performing final tight davidson with tol: 1
+   7    0    5.00e-04       23357      -149.6567783327          1        5.55
+
+Exiting variational iterations
+
+Variational calculation result
+Root             Energy     Time(s)
+   0     -149.6567783327        5.64
+
+Printing most important determinants
+ Det     weight  Determinant string
+State :   0
+   0     0.8019705583     0.0000001522 2 2 2 2 2   2 0 0 0 0   0 0 0 0 0   0 
+   1    -0.0249773336     0.5350558777 2 2 2 2 2   0 2 0 0 0   0 0 0 0 0   0 
+   2    -0.0520471782    -0.0848487788 2 2 2 2 0   2 2 0 0 0   0 0 0 0 0   0 
+   3    -0.0498685466    -0.0471196819 2 2 0 2 2   2 2 0 0 0   0 0 0 0 0   0 
+   4     0.0018989556    -0.0484638899 2 2 2 2 2   0 b 0 0 0   0 0 0 0 b   0 
+   5    -0.0155755147     0.0459318505 2 2 2 2 2   0 a 0 0 0   0 0 0 0 a   0 
+
+
+**************************************************************
+Returning without error
+**************************************************************
+
+
+Error here
+
+
+**************************************************************
+Returning without error
+**************************************************************
+
+
