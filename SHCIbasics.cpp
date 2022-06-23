@@ -30,6 +30,8 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -44,7 +46,7 @@
 #include "input.h"
 #include "integral.h"
 #include "math.h"
-
+#include "cdfci.h"
 #include "communicate.h"
 
 using namespace std;
@@ -942,7 +944,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     }
   }
 
-  for (int iter = iterstart; iter < schd.epsilon1.size(); iter++) {
+  int max_iter;
+  schd.epsilon1.size() > schd.cdfci_on ? max_iter = schd.cdfci_on : max_iter = schd.epsilon1.size();
+  for (int iter = iterstart; iter < max_iter; iter++) {
     double epsilon1 = schd.epsilon1[iter];
     StitchDEH uniqueDEH;
 
@@ -1079,6 +1083,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
 #ifndef SERIAL
     mpi::broadcast(world, DetsSize, 0);
 #endif
+
+
     //************
     if (commrank == 0 && schd.DavidsonType == DIRECT)
       printf("New size of determinant space %8i\n", DetsSize);
@@ -1199,7 +1205,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     }
 
     // the variational step has converged
-    if (abs(E0[0] - prevE0) < schd.dE || iter == schd.epsilon1.size() - 1) {
+    if (abs(E0[0] - prevE0) < schd.dE || iter == max_iter - 1) {
       pout << "Performing final tight davidson with tol: " << schd.davidsonTol
            << endl;
 
@@ -1209,7 +1215,6 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       else
         E0 = davidson(H, ci, diag, schd.nroots + 4, schd.davidsonTol, numIter,
                       false);
-
 #ifndef SERIAL
       mpi::broadcast(world, E0, 0);
 #endif

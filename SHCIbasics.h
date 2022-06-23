@@ -28,7 +28,7 @@
 #include <tuple>
 #include <vector>
 #include "global.h"
-
+#include "cdfci.h"
 using namespace std;
 using namespace Eigen;
 namespace SHCImakeHamiltonian {
