@@ -538,7 +538,7 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
   os.system(command)
 
   if (os.path.isfile('samples.dat')):
-    print("\nBlocking analysis:")
+    print("\nBlocking analysis:", flush=True)
     command = f"mv blocking.tmp blocking.out; cat blocking.out"
     os.system(command)
     print(f"Finished AFQMC / MF calculation\n", flush=True)
@@ -559,7 +559,7 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
       sig_e = np.around(e_afqmc, sig_dec)
       print(f'AFQMC energy: {sig_e:.{sig_dec}f} +/- {sig_err:.{sig_dec}f}\n')
     elif e_afqmc is not None:
-      print(f'AFQMC energy: {e_afqmc}\nCould not find a stochastic error estimate, check blocking analysis\n')
+      print(f'AFQMC energy: {e_afqmc}\nCould not find a stochastic error estimate, check blocking analysis\n', flush=True)
 
   else:
     print("\nAFQMC calculation did not finish, check the afqmc.dat file\n")
@@ -667,7 +667,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json"
     os.system(command)
     if (os.path.isfile('samples.dat')):
-      print("\nBlocking analysis:")
+      print("\nBlocking analysis:", flush=True)
       command = f"mv samples.dat samples_{n}.dat; mv afqmc.dat afqmc_{n}.dat; mv blocking.tmp blocking_{n}.out; cat blocking_{n}.out"
       os.system(command)
       print(f"Finished AFQMC / HCI ({n} dets) calculation\n", flush=True)
@@ -688,7 +688,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
         sig_e = np.around(e_afqmc[i], sig_dec)
         print(f'AFQMC energy: {sig_e:.{sig_dec}f} +/- {sig_err:.{sig_dec}f}\n')
       elif e_afqmc[i] is not None:
-        print(f'AFQMC energy: {e_afqmc[i]}\nCould not find a stochastic error estimate, check blocking analysis\n')
+        print(f'AFQMC energy: {e_afqmc[i]}\nCould not find a stochastic error estimate, check blocking analysis\n', flush=True)
     else:
       print("\nAFQMC calculation did not finish, check the afqmc.dat file\n")
       exit(1)
