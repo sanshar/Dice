@@ -439,16 +439,16 @@ def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
-def run_afqmc(mf_or_mc, vmc_root = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
   if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
-    run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+    run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
   elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
-    run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+    run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
   else:
     raise Exception("Need either mean field or casscf object!")
 
 # performs phaseless afqmc with mf trial
-def run_afqmc_mf(mf, vmc_root = None, mo_coeff = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
     vmc_root = os.environ['VMC_ROOT']
@@ -524,35 +524,54 @@ def run_afqmc_mf(mf, vmc_root = None, mo_coeff = None, norb_frozen = 0, nproc = 
   # write input
   write_afqmc_input(seed = seed, left = hf_type, right = hf_type, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm)
 
-  # TODO: add some error handling here
   print(f"Starting AFQMC / MF calculation", flush=True)
-  mpi_prefix = "mpirun "
-  if nproc is not None:
-    mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1;")
-  afqmc_binary = vmc_root + "/bin/DQMC"
-  command = f"{mpi_prefix} {afqmc_binary} afqmc.json > afqmc.out"
-  os.system(command)
-  blocking_script = vmc_root + "/scripts/blocking.py"
-  command = f"python {blocking_script} samples.dat {burn_in} > blocking.out; cat blocking.out"
-  os.system(command)
-  print(f"Finished AFQMC / MF calculation\n", flush=True)
-
-  # get afqmc energy from output
   e_afqmc = None
-  with open(f'blocking.out', 'r') as fh:
-    for line in fh:
-      if 'mean:' in line:
-        ls = line.split()
-        e_afqmc = float(ls[1])
+  err_afqmc = None
+  if mpi_prefix is None:
+    mpi_prefix = "mpirun "
+    if nproc is not None:
+      mpi_prefix += f" -np {nproc} "
+  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
+  afqmc_binary = vmc_root + "/bin/DQMC"
+
+  command = f"{mpi_prefix} {afqmc_binary} afqmc.json"
+  os.system(command)
+
+  if (os.path.isfile('samples.dat')):
+    print("\nBlocking analysis:")
+    command = f"mv blocking.tmp blocking.out; cat blocking.out"
+    os.system(command)
+    print(f"Finished AFQMC / MF calculation\n", flush=True)
+
+    # get afqmc energy from output
+    with open(f'blocking.out', 'r') as fh:
+      for line in fh:
+        if 'Mean energy:' in line:
+          ls = line.split()
+          e_afqmc = float(ls[2])
+        if 'Stochastic error estimate:' in line:
+          ls = line.split()
+          err_afqmc = float(ls[3])
+
+    if err_afqmc is not None:
+      sig_dec = int(abs(np.floor(np.log10(err_afqmc))))
+      sig_err = np.around(np.round(err_afqmc * 10**sig_dec) * 10**(-sig_dec), sig_dec)
+      sig_e = np.around(e_afqmc, sig_dec)
+      print(f'AFQMC energy: {sig_e:.{sig_dec}f} +/- {sig_err:.{sig_dec}f}\n')
+    elif e_afqmc is not None:
+      print(f'AFQMC energy: {e_afqmc}\nCould not find a stochastic error estimate, check blocking analysis\n')
+
+  else:
+    print("\nAFQMC calculation did not finish, check the afqmc.dat file\n")
+    exit(1)
 
   os.chdir(owd)
 
-  return e_afqmc
+  return e_afqmc, err_afqmc
 
 
-# performs phaseless afqmc with mf trial
-def run_afqmc_mc(mc, vmc_root = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+# performs phaseless afqmc with hci trial
+def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
     vmc_root = os.environ['VMC_ROOT']
@@ -609,7 +628,7 @@ def run_afqmc_mc(mc, vmc_root = None, norb_frozen = 0, nproc = None, chol_cut = 
   up = np.argsort(-np.array(list(state.keys())[0][0])) + norb_core
   dn = np.argsort(-np.array(list(state.keys())[0][1])) + norb_core + nbasis
   hf_type = "rhf"
-  if (np.array_equal(up, dn - nbasis)):
+  if list(state.keys())[0][0] == list(state.keys())[0][1]:
     rhfCoeffs = np.eye(nbasis)
     writeMat(rhfCoeffs[:, np.concatenate((range(norb_core), up, range(norb_core+norb_act, nbasis))).astype(int)], "rhf.txt")
   else:
@@ -620,46 +639,63 @@ def run_afqmc_mc(mc, vmc_root = None, norb_frozen = 0, nproc = None, chol_cut = 
   # determine ndets for doing calculations
   ndets_list = [ ]
   if isinstance(ndets, list):
-    ndets_list = ndets
-    for i, n in enumerate(ndets_list):
-      if n > ndets_all:
-        ndets_list.pop(i)
+    for i, n in enumerate(ndets):
+      if n < ndets_all:
+        ndets_list.append(n)
+    if len(ndets_list) == 0:
+      ndets_list = [ ndets_all ]
   elif isinstance(ndets, int):
-    if (ndets > ndets_all):
+    if ndets > ndets_all:
       ndets = ndets_all
     ndets_list = [ ndets ]
   else:
     raise Exception('Provide ndets as an int or a list of ints!')
 
   # run afqmc
-  mpi_prefix = "mpirun "
-  if nproc is not None:
-    mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1;")
+  if mpi_prefix is None:
+    mpi_prefix = "mpirun "
+    if nproc is not None:
+      mpi_prefix += f" -np {nproc} "
+  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
   afqmc_binary = vmc_root + "/bin/DQMC"
-  e_afqmc = [ 0. for _ in ndets_list ]
+  e_afqmc = [ None for _ in ndets_list ]
+  err_afqmc = [ None for _ in ndets_list ]
   for i, n in enumerate(ndets_list):
     write_afqmc_input(seed = seed, numAct = norb_act, numCore = norb_core, left = 'multislater', right = hf_type, ndets = n, detFile = det_file, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm, fname = f"afqmc_{n}.json")
 
-    # TODO: add some error handling here
     print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
-    command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json > afqmc_{n}.out"
+    command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json"
     os.system(command)
-    blocking_script = vmc_root + "/scripts/blocking.py"
-    command = f"mv samples.dat samples_{n}.dat; python {blocking_script} samples_{n}.dat {burn_in} > blocking_{n}.out; cat blocking_{n}.out"
-    os.system(command)
-    print(f"Finished AFQMC / HCI ({n} dets) calculation\n", flush=True)
+    if (os.path.isfile('samples.dat')):
+      print("\nBlocking analysis:")
+      command = f"mv samples.dat samples_{n}.dat; mv afqmc.dat afqmc_{n}.dat; mv blocking.tmp blocking_{n}.out; cat blocking_{n}.out"
+      os.system(command)
+      print(f"Finished AFQMC / HCI ({n} dets) calculation\n", flush=True)
 
-    # get afqmc energy from output
-    with open(f'blocking_{n}.out', 'r') as fh:
-      for line in fh:
-        if 'mean:' in line:
-          ls = line.split()
-          e_afqmc[i] = float(ls[1])
+      # get afqmc energy from output
+      with open(f'blocking_{n}.out', 'r') as fh:
+        for line in fh:
+          if 'Mean energy:' in line:
+            ls = line.split()
+            e_afqmc[i] = float(ls[2])
+          if 'Stochastic error estimate:' in line:
+            ls = line.split()
+            err_afqmc[i] = float(ls[3])
+
+      if err_afqmc[i] is not None:
+        sig_dec = int(abs(np.floor(np.log10(err_afqmc[i]))))
+        sig_err = np.around(np.round(err_afqmc[i] * 10**sig_dec) * 10**(-sig_dec), sig_dec)
+        sig_e = np.around(e_afqmc[i], sig_dec)
+        print(f'AFQMC energy: {sig_e:.{sig_dec}f} +/- {sig_err:.{sig_dec}f}\n')
+      elif e_afqmc[i] is not None:
+        print(f'AFQMC energy: {e_afqmc[i]}\nCould not find a stochastic error estimate, check blocking analysis\n')
+    else:
+      print("\nAFQMC calculation did not finish, check the afqmc.dat file\n")
+      exit(1)
 
   os.chdir(owd)
 
-  return e_afqmc
+  return e_afqmc, err_afqmc
 
 
 # calculate and write cholesky-like integrals given eri's
@@ -1037,7 +1073,7 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
 
   json_input = {"system": system, "wavefunction": wavefunction, "sampling": sampling, "print": printBlock}
   json_dump = json.dumps(json_input, indent = 2)
-  print(f"AFQMC input options:\n{json_dump}\n")
+  #print(f"AFQMC input options:\n{json_dump}\n")
 
   with open(fname, "w") as outfile:
     outfile.write(json_dump)

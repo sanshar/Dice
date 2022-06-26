@@ -918,8 +918,10 @@ void readDeterminantsBinary(std::string input, std::array<std::vector<int>, 2>& 
     }
   }
   if (commrank == 0) {
-    cout << "Rankwise number of excitations " << sizes.transpose() << endl;
-    cout << "Number of determinants " << numDets << endl << endl;
+    ofstream afqmcFile("afqmc.dat", ios::app);
+    afqmcFile << "# Rankwise number of excitations " << sizes.transpose() << endl;
+    afqmcFile << "# Number of determinants " << numDets << "\n#\n";
+    afqmcFile.close();
   }
 }
 

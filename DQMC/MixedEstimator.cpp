@@ -12,17 +12,22 @@ using namespace Eigen;
 using matPair = std::array<MatrixXcd, 2>;
 
 
-void blocking(const ArrayXd& weights, const ArrayXd& energies, std::string fname = "blocking.tmp") 
+std::array<double, 2> blocking(const ArrayXd& weights, const ArrayXd& energies, std::string fname = "blocking.tmp") 
 {
   int nSamples = weights.size();
   VectorXi blockSizes {{ 1, 2, 5, 10, 20, 50, 70, 100, 200, 500 }};
   ofstream blockingFile(fname);
-  blockingFile << "number of samples: " << nSamples << endl;
-  blockingFile << "block size    # of blocks        mean                error" << endl;
+  blockingFile << "Number of samples: " << nSamples << endl;
+  double prevError = 0., plateauError = -1.;
+  ArrayXd weightedEnergies = weights * energies;
+  std::array<double, 2> ene_err;
+  double meanEnergy = weightedEnergies.sum() / weights.sum();
+  ene_err[0] = meanEnergy;
+  blockingFile << "Mean energy: " << boost::format("%.8e\n") % meanEnergy; 
+  blockingFile << "Block size    # of blocks        Mean                Error" << endl;
   for (int i = 0; i < blockSizes.size(); i++) {
     if (blockSizes(i) > nSamples/2.) break;
     int nBlocks = nSamples / blockSizes(i);
-    ArrayXd weightedEnergies = weights * energies;
     ArrayXd blockedWeights = ArrayXd::Zero(nBlocks);
     ArrayXd blockedEnergies = ArrayXd::Zero(nBlocks);
     for (int j = 0; j < nBlocks; j++) { 
@@ -34,8 +39,13 @@ void blocking(const ArrayXd& weights, const ArrayXd& energies, std::string fname
     double mean = (blockedWeights * blockedEnergies).sum() / v1;
     double error = sqrt(((blockedWeights * (blockedEnergies - mean).pow(2)).sum() / (v1 - v2 / v1) / (nBlocks - 1)));
     blockingFile << boost::format("  %4d           %4d       %.8e       %.6e\n") % blockSizes(i) % nBlocks % mean % error;
+    if (error < 1.05 * prevError && plateauError < 0.) plateauError = max(error, prevError);
+    prevError = error;
   }
+  if (plateauError > 0.) blockingFile << "Stochastic error estimate: " << plateauError << endl;
   blockingFile.close();
+  ene_err[1] = plateauError;
+  return ene_err;
 }
 
 
@@ -308,6 +318,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   size_t orthoSteps = schd.orthoSteps;
   size_t nwalk = schd.nwalk;             // number of walkers per process
   double dt = schd.dt;
+  ofstream afqmcFile("afqmc.dat", ios::app);
 
   matPair ref;
   MatrixXcd refSOC;
@@ -345,12 +356,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
-    cout << "Initial state energy:  " << setprecision(8) << refEnergy.real() << endl;
+    afqmcFile << "# Initial state energy:  " << refEnergy.real() << endl;
   }
   
   int nchol = ham.nchol;
   complex<double> delta(0., 0.);
-  if (commrank == 0) cout << "Number of Cholesky vectors: " << nchol << endl;
+  if (commrank == 0) afqmcFile << "# Number of Cholesky vectors: " << nchol << endl;
   vector<int> ncholVec = { int(0.3 * nchol), int(0.4 * nchol), int(0.5 * nchol), int(0.6 * nchol), int(0.7 * nchol) };
   for (int i = 0; i < ncholVec.size(); i++) {
     ham.setNcholEne(ncholVec[i]);
@@ -362,14 +373,19 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       nchol = ncholVec[i];
       delta = refEnergy - trefEnergy;
       if (commrank == 0) {
-        cout << "Using truncated Cholesky with " << nchol << " vectors for energy calculations\n";
-        cout << "Initial state energy with truncated Cholesky:  " << trefEnergy << endl << endl;
+        afqmcFile << "# Using truncated Cholesky with " << nchol << " vectors for energy calculations\n";
+        afqmcFile << "# Initial state energy with truncated Cholesky:  " << trefEnergy << endl;
+        afqmcFile.flush();
       }
       break;
     }
   }
   ham.setNcholEne(nchol);
- 
+  if (commrank == 0) {
+    afqmcFile << "#\n";
+    afqmcFile.flush();
+  }
+
   vector<DQMCWalker> walkers;
   ArrayXd weights = ArrayXd::Zero(nwalk);
   ArrayXd localEnergy = ArrayXd::Zero(nwalk);
@@ -404,8 +420,11 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   totalEnergies(0) = weightedEnergy / totalWeights(0) + delta.real(); 
   if (commrank == 0) {
     double initializationTime = getTime() - calcInitTime;
-    cout << "  block     propTime           eshift          weight             energy          cumulative_energy          walltime\n";
-    cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e       %9s                %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
+    afqmcFile << "# block     propTime           eshift          weight             energy          cumulative_energy          walltime\n";
+    afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e       %9s                %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
+    afqmcFile.flush();
+    cout << "   Iter        Mean energy          Stochastic error       Walltime\n";
+    cout << boost::format(" %5d      %.9e      %9s                %.2e \n") % 0 % totalEnergies(0) % '-' % initializationTime; 
   }
 
   double propTime = 0., eneTime = 0.;
@@ -492,8 +511,6 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           // energy
           auto hamOverlap = walkers[w].hamAndOverlap(waveLeft, ham);
           localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() + delta.real();
-          //localEnergy(w) = (hamOverlap[0]/hamOverlap[1]).real() * std::abs(hamOverlap[1]/walkers[w].trialOverlap) + delta.real();
-          //overlapRatios(w) = std::abs(hamOverlap[1]/walkers[w].trialOverlap);
           if (std::isnan(localEnergy(w)) || std::isinf(localEnergy(w))) {
             cout << "local energy:  " << localEnergy(w) << endl;
             cout << "weight:  " << weights(w) << endl;
@@ -510,51 +527,28 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
             if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
             else localEnergy(w) = averageEnergy - sqrt(2./dt);
           }
-          //else if (step * dt < 10. && abs(localEnergy(w) - averageEnergy) > sqrt(2./dt)) {
-          //  nLargeDeviations++;
-          //  weights(w) = 0.;
-          //  localEnergy(w) = 0.;
-          //  //if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(2./dt);
-          //  //else localEnergy(w) = averageEnergy - sqrt(2./dt);
-          //}
-          //else if (step * dt >= 10. && abs(localEnergy(w) - averageEnergy) > sqrt(0.1/dt)) {
-          //  nLargeDeviations++;
-          //  weights(w) = 0.;
-          //  localEnergy(w) = 0.;
-          //  //if (localEnergy(w) > averageEnergy) localEnergy(w) = averageEnergy + sqrt(0.1/dt);
-          //  //else localEnergy(w) = averageEnergy - sqrt(0.1/dt);
-          //}
         }
         else localEnergy(w) = 0.;
       }
       eneTime += getTime() - init;
       weightedEnergy = (localEnergy * weights).sum();
-      //double ratioWeightedTotalWeight = (weights * overlapRatios).sum();
       MPI_Allreduce(MPI_IN_PLACE, &weightedEnergy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      //MPI_Allreduce(MPI_IN_PLACE, &ratioWeightedTotalWeight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       totalWeights(block) = totalWeight;
       totalEnergies(block) = weightedEnergy / totalWeight; 
-      //totalEnergies(block) = weightedEnergy / ratioWeightedTotalWeight; 
       if (commrank == 0) {
         if (step * dt < 10. || step < schd.burnIter * nsteps) {
           averageNumEql += totalEnergies(block) * totalWeights(block);
           averageDenomEql += totalWeights(block);
           averageEnergyEql = averageNumEql / averageDenomEql;
-          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e         %7s                %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
-          //averageNumEql += totalEnergies(block) * ratioWeightedTotalWeight;
-          //averageDenomEql +=  ratioWeightedTotalWeight;
-          //averageEnergyEql = averageNumEql / averageDenomEql;
-          //cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e       %7s               %.2e \n") % block % (dt * step) % eshift % ratioWeightedTotalWeight % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+          afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e         %7s                %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % '-' % (getTime() - calcInitTime); 
+          afqmcFile.flush();
         }
         else {
           averageNum += totalEnergies(block) * totalWeights(block);
           averageDenom += totalWeights(block);
           averageEnergy = averageNum / averageDenom;
-          cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e        %.9e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
-          //averageNum += totalEnergies(block) * ratioWeightedTotalWeight;
-          //averageDenom += ratioWeightedTotalWeight;
-          //averageEnergy = averageNum / averageDenom;
-          //cout << boost::format(" %5d     %.3e       %.5e     %.5e      %.6e        %.6e        %.2e \n") % block % (dt * step) % eshift % ratioWeightedTotalWeight % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
+          afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e        %.9e        %.2e \n") % block % (dt * step) % eshift % totalWeights(block) % totalEnergies(block) % averageEnergy % (getTime() - calcInitTime); 
+          afqmcFile.flush();
         }
       }
       eEstimate = 0.9 * eEstimate + 0.1 * totalEnergies(block);
@@ -642,7 +636,12 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     // periodically carry out blocking analysis and print to disk
     if (commrank == 0) {
       if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
-        blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)));
+        auto ene_err = blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)));
+        if (step % (100*nsteps) == 0) {
+          int block = step / nsteps;
+          if (ene_err[1] > 0.) cout << boost::format(" %5d      %.9e        %.9e        %.2e \n") % block % ene_err[0] % ene_err[1] % (getTime() - calcInitTime); 
+          else cout << boost::format(" %5d      %.9e      %9s                %.2e \n") % block % ene_err[0] % '-' % (getTime() - calcInitTime); 
+        }
       }
     }
     
@@ -667,15 +666,15 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       totalExpTime += walkers[w].expTime;
       totalFbTime += walkers[w].fbTime;
     }
-    cout << "\nTotal propagation time:  " << propTime << " s\n";
-    cout << "   VHS Time: " << totalVhsTime << " s\n";
-    cout << "   Matmul Time: " << totalExpTime << " s\n";
-    cout << "   Force bias Time: " << totalFbTime << " s\n";
-    cout << "Energy evaluation time:  " << eneTime << " s\n\n";
-    cout << "Number of large deviations:  " << nLargeDeviations << "\n";
-    
+    afqmcFile << "#\n# Total propagation time:  " << propTime << " s\n"; 
+    afqmcFile << "#    VHS Time: " << totalVhsTime << " s\n";
+    afqmcFile << "#    Matmul Time: " << totalExpTime << " s\n";
+    afqmcFile << "#    Force bias Time: " << totalFbTime << " s\n";
+    afqmcFile << "# Energy evaluation time:  " << eneTime << " s\n#\n";
+    afqmcFile << "# Number of large deviations:  " << nLargeDeviations << "\n";
+    afqmcFile.flush();
+
     string fname = "samples.dat";
-    //ofstream samplesFile(fname, ios::app);
     ofstream samplesFile(fname);
     for (int i = 0; i < nsweeps; i++) {
         samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
@@ -683,6 +682,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     samplesFile.close();
     if (measureCounter > 40) blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), "blocking.tmp");
   }
+  afqmcFile.close(); 
   
   // write one rdm 
   if (schd.writeOneRDM) {
@@ -694,5 +694,6 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       writeOneRDM(oneRDMU, cumulativeWeight);
     }
   }
+
 };
 

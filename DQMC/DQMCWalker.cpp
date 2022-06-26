@@ -57,7 +57,6 @@ void DQMCWalker::prepPropR(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ha
     }
   }
   else {
-    if (commrank == 0) cout << "Using HF RDM for background subtraction\n\n";
     matPair refT;
     refT[0] = ref[0].adjoint();
     refT[1] = ref[1].adjoint();
@@ -132,7 +131,6 @@ void DQMCWalker::prepPropU(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ha
     }
   }
   else {
-    if (commrank == 0) cout << "Using UHF RDM for background subtraction\n\n";
     matPair refT;
     refT[0] = ref[0].adjoint();
     refT[1] = ref[1].adjoint();
@@ -199,7 +197,6 @@ void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, d
   int nfields = ham.nchol;
 
   // calculate rdm 
-  if (commrank == 0) cout << "Using GHF RDM for background subtraction\n\n";
   MatrixXcd green = ref * ref.adjoint();
   MatrixXcd greenTrace;
   if (ham.socQ) greenTrace = green.block(0, 0, norbs, norbs) + green.block(norbs, norbs, norbs, norbs);

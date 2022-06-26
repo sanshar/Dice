@@ -1,5 +1,6 @@
 //#define EIGEN_USE_MKL_ALL
 #include <iostream>
+#include <fstream>
 #ifndef SERIAL
 #include "mpi.h"
 #include <boost/mpi/environment.hpp>
@@ -33,13 +34,19 @@ int main(int argc, char *argv[])
   bool print = true;
   initSHM();
   //license();
+ 
   if (commrank == 0 && print) {
-    std::system("echo User:; echo $USER");
-    std::system("echo Hostname:; echo $HOSTNAME");
-    std::system("echo CPU info:; lscpu | head -15");
-    std::system("echo Computation started at:; date");
-    cout << "git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << endl << endl;
-    cout << "nproc used: " << commsize << " (NB: stochasticIter below is per proc)" << endl << endl; 
+    std::system("echo '# User:' > afqmc.dat; echo $USER | sed 's/^/# /' >> afqmc.dat");
+    std::system("echo '# Hostname:' >> afqmc.dat; echo $HOSTNAME | sed 's/^/# /' >> afqmc.dat");
+    std::system("echo '# CPU info:' >> afqmc.dat; lscpu | head -15 | sed 's/^/# /' >> afqmc.dat");
+    std::system("echo '# Computation started at:' >> afqmc.dat; date | sed 's/^/# /' >> afqmc.dat");
+  }
+  
+  ofstream afqmcFile("afqmc.dat", ios::app);
+  if (commrank == 0 && print) {
+    afqmcFile << "# git commit: " << GIT_HASH << ", branch: " << GIT_BRANCH << ", compiled at: " << COMPILE_TIME << "\n#\n";
+    afqmcFile << "# nproc used: " << commsize << "\n#\n"; 
+    afqmcFile.flush();
   }
 
   string inputFile = "input.dat";
@@ -57,10 +64,12 @@ int main(int argc, char *argv[])
  
   Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc, schd.intType);
   if (commrank == 0) {
-    if (schd.soc || schd.intType == "g") cout << "Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
-    else cout << "Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
+    if (schd.soc || schd.intType == "g") afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
+    else afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
+    afqmcFile.flush();
   }
-  
+  afqmcFile.close();
+
   DQMCWalker walker;
   if (schd.soc || (schd.intType == "g")) walker = DQMCWalker(false, true, true);
   else {
