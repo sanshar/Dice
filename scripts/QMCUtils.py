@@ -4,8 +4,12 @@ import numpy as np
 import copy
 import h5py, json, csv, struct
 import pandas as pd
-from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo
+from functools import reduce
+from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo, __config__ , lib
+from pyscf.lib import logger
 from pyscf.lo import pipek, boys, edmiston, iao, ibo
+from pyscf.shciscf import shci
+from pyscf.ao2mo import _ao2mo
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
@@ -1181,3 +1185,448 @@ if __name__=="__main__":
   #fileh.write('1.   ' + bestDetStr + '\n')
   #fileh.close()
   #prepAllElectron(mol)
+  
+def writeNEVPTIntegrals(mc, E1, E2, E1eff, nfro, intfolder):
+    # Initializations
+    ncor = mc.ncore
+    nact = mc.ncas
+    norb = mc.mo_coeff.shape[1]
+    nvir = norb-ncor-nact
+    nocc = ncor+nact
+    mo   = mc.mo_coeff
+
+
+
+
+    # (Note: Integrals are in chemistry notation)
+    start = time.time()
+    print('Producing the integrals')
+    eris = _ERIS(mc, mo)
+    eris_sp={}
+
+    # h1eff
+    eris_sp['h1eff']= eris['h1eff']
+    eris_sp['h1eff'][:ncor,:ncor] += np.einsum('abcd,cd', eris['ppaa'][:ncor,:ncor,:,:], E1eff)
+    eris_sp['h1eff'][:ncor,:ncor] -= np.einsum('abcd,bd', eris['papa'][:ncor,:,:ncor,:], E1eff)*0.5
+    eris_sp['h1eff'][nocc:,nocc:] += np.einsum('abcd,cd', eris['ppaa'][nocc:,nocc:,:,:], E1eff)
+    eris_sp['h1eff'][nocc:,nocc:] -= np.einsum('abcd,bd', eris['papa'][nocc:,:,nocc:,:], E1eff)*0.5
+    np.save(intfolder+"int1eff",np.asfortranarray(eris_sp['h1eff'][nfro:,nfro:]))
+    np.save(intfolder+"f",np.asfortranarray(eris_sp['h1eff'][nfro:,nfro:])) 
+    # CVCV
+    eriscvcv = eris['cvcv']
+    if (not isinstance(eris_sp['h1eff'], type(eris['cvcv']))):
+      eriscvcv = lib.chkfile.load(eris['cvcv'].name, "eri_mo")#h5py.File(eris['cvcv'].name,'r')["eri_mo"]
+    eris_sp['cvcv'] = eriscvcv.reshape(ncor, nvir, ncor, nvir)
+    end = time.time()
+    print('......production of INT took %10.2f sec' %(end-start))
+    print('')
+
+    # energy_core
+    hcore  = mc.get_hcore()
+    dmcore = np.dot(mo[:,:ncor], mo[:,:ncor].T)*2
+    vj, vk = mc._scf.get_jk(mc.mol, dmcore)
+    energy_core = np.einsum('ij,ji', dmcore, hcore) \
+                + np.einsum('ij,ji', dmcore, vj-0.5*vk) * .5
+
+    # energyE0
+    energyE0 = 1.0*np.einsum('ij,ij',     E1, eris_sp['h1eff'][ncor:nocc,ncor:nocc])\
+             + 0.5*np.einsum('ijkl,ijkl', E2, eris['ppaa'][ncor:nocc,ncor:nocc,:,:].transpose(0,2,1,3))
+    energyE0 += energy_core
+    energyE0 += mc.mol.energy_nuc()
+
+    print("Energy_nuc  = %13.8f"%(mc.mol.energy_nuc()))
+    print("Energy_core = %13.8f"%(energy_core))
+    print("Energy      = %13.8f"%(energyE0))
+    print("")
+
+    # offdiagonal warning
+    offdiagonal = 0.0
+    for k in range(ncor):
+      for l in range(ncor):
+        if(k != l):
+          offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l] ))
+    for k in range(nocc, norb):
+      for l in range(nocc,norb):
+        if(k != l):
+          offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l] ))
+    if (abs(offdiagonal) > 1e-6):
+      print("WARNING: Have to use natural orbitals from CAASCF")
+      print("         offdiagonal elements: {:13.6f}".format(offdiagonal))
+      print("")
+
+    # Write out ingredients to intfolder
+    # 2 "C"
+    start = time.time()
+    print("Basic ingredients written to "+intfolder,nfro,ncor,nocc,norb)
+    np.save(intfolder+"W:ccae", np.asfortranarray(eris['pacv'][nfro:ncor,     :    , nfro:    ,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:eecc", np.asfortranarray(eris_sp['cvcv'][nfro: ,     :    , nfro:    ,     :    ].transpose(1,3,0,2)))
+
+    # 2 "A"
+    np.save(intfolder+"W:caac", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nfro:ncor,     :    ].transpose(0,3,1,2)))
+    np.save(intfolder+"W:ccaa", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nfro:ncor,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:aeca", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nocc:    ,     :    ].transpose(1,2,0,3)))
+    np.save(intfolder+"W:eeaa", np.asfortranarray(eris['papa'][nocc:    ,     :    , nocc:    ,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:aaaa", np.asfortranarray(eris['ppaa'][ncor:nocc, ncor:nocc,     :    ,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:eaca", np.asfortranarray(eris['ppaa'][nocc:    , nfro:ncor,     :    ,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:caca", np.asfortranarray(eris['ppaa'][nfro:ncor, nfro:ncor,     :    ,     :    ].transpose(0,2,1,3)))
+
+    # 2 "E"
+    np.save(intfolder+"W:eeca", np.asfortranarray(eris['pacv'][nocc:    ,     :    , nfro:    ,     :    ].transpose(3,0,2,1)))
+
+    end = time.time()
+    print('......savings of INGREDIENTS took %10.2f sec' %(end-start))
+    print("")
+
+    return norb, energyE0
+
+
+def write_ic_inputs(nelec, ncor, ncas, nfro, ms2, type):
+    methods = ['_CCVV', '_CCAV', '_ACVV']
+    domains = ['eecc','ccae','eeca','ccaa','eeaa','caae']
+
+    for method in methods:
+        # Prepare Input
+        f = open("%s.inp"%(type+method), 'w')
+        f.write('method %s\n'%(type+method))
+        f.write('orb-type spatial/MO\n')
+        f.write('nelec %d\n'%(nelec+(ncor-nfro)*2))
+        f.write('nact %d\n'%(nelec))
+        f.write('nactorb %d\n'%(ncas))
+        f.write('ms2 %d\n'%(ms2))
+        f.write('int1e/fock int/int1eff.npy\n')
+        if (type=='MRLCC'):
+          f.write('int1e/coreh int/int1.npy\n')
+        #f.write('E3  int/E3.npy\n')
+        #f.write('E2  int/E2.npy\n')
+        #f.write('E1  int/E1.npy\n')
+        f.write('thr-den 1.000000e-05\n')
+        f.write('thr-var 1.000000e-05\n')
+        f.write('thr-trunc 1.000000e-04\n')
+        f.close();
+    sys.stdout.flush()
+
+
+
+def _ERIS(mc, mo, method='incore'):
+    nmo = mo.shape[1]
+    ncor = mc.ncore
+    ncas = mc.ncas
+
+    if ((method == 'outcore') or
+        (mcscf.mc_ao2mo._mem_usage(ncor, ncas, nmo)[0] +
+         nmo**4*2/1e6 > mc.max_memory*.9) or
+        (mc._scf._eri is None)):
+        ppaa, papa, pacv, cvcv = \
+                trans_e1_outcore(mc, mo, max_memory=mc.max_memory,
+                                 verbose=mc.verbose)
+    else:
+        ppaa, papa, pacv, cvcv = trans_e1_incore(mc, mo)
+
+    dmcore = np.dot(mo[:,:ncor], mo[:,:ncor].T)
+    vj, vk = mc._scf.get_jk(mc.mol, dmcore)
+    vhfcore = reduce(np.dot, (mo.T, vj*2-vk, mo))
+
+    eris = {}
+    eris['vhf_c'] = vhfcore
+    eris['ppaa'] = ppaa
+    eris['papa'] = papa
+    eris['pacv'] = pacv
+    eris['cvcv'] = cvcv
+    eris['h1eff'] = reduce(np.dot, (mo.T, mc.get_hcore(), mo)) + vhfcore
+    return eris
+
+
+# see mcscf.mc_ao2mo
+def trans_e1_incore(mc, mo):
+    eri_ao = mc._scf._eri
+    ncor = mc.ncore
+    ncas = mc.ncas
+    nmo = mo.shape[1]
+    nocc = ncor + ncas
+    nav = nmo - ncor
+    eri1 = ao2mo.incore.half_e1(eri_ao, (mo[:,:nocc],mo[:,ncor:]),
+                                      compact=False)
+    load_buf = lambda r0,r1: eri1[r0*nav:r1*nav]
+    ppaa, papa, pacv, cvcv = _trans(mo, ncor, ncas, load_buf)
+    return ppaa, papa, pacv, cvcv
+
+
+def trans_e1_outcore(mc, mo, max_memory=None, ioblk_size=256, tmpdir=None,
+                     verbose=0):
+    time0 = (time.process_time(), time.time())
+    mol = mc.mol
+    log = logger.Logger(mc.stdout, verbose)
+    ncor = mc.ncore
+    ncas = mc.ncas
+    nao, nmo = mo.shape
+    nao_pair = nao*(nao+1)//2
+    nocc = ncor + ncas
+    nvir = nmo - nocc
+    nav = nmo - ncor
+
+    if tmpdir is None:
+        tmpdir = lib.param.TMPDIR
+    swapfile = tempfile.NamedTemporaryFile(dir=tmpdir)
+    ao2mo.outcore.half_e1(mol, (mo[:,:nocc],mo[:,ncor:]), swapfile.name,
+                                max_memory=max_memory, ioblk_size=ioblk_size,
+                                verbose=log, compact=False)
+
+    fswap = h5py.File(swapfile.name, 'r')
+    klaoblks = len(fswap['0'])
+    def load_buf(r0,r1):
+        if mol.verbose >= logger.DEBUG1:
+            time1[:] = logger.timer(mol, 'between load_buf',
+                                              *tuple(time1))
+        buf = np.empty(((r1-r0)*nav,nao_pair))
+        col0 = 0
+        for ic in range(klaoblks):
+            dat = fswap['0/%d'%ic]
+            col1 = col0 + dat.shape[1]
+            buf[:,col0:col1] = dat[r0*nav:r1*nav]
+            col0 = col1
+        if mol.verbose >= logger.DEBUG1:
+            time1[:] = logger.timer(mol, 'load_buf', *tuple(time1))
+        return buf
+    time0 = logger.timer(mol, 'halfe1', *time0)
+    time1 = [time.process_time(), time.time()]
+    ao_loc = np.array(mol.ao_loc_nr(), dtype=np.int32)
+    cvcvfile = tempfile.NamedTemporaryFile(dir=tmpdir)
+    with h5py.File(cvcvfile.name,"w") as f5:	#Edit JoKurian - Earlier no "w"
+        cvcv = f5.create_dataset('eri_mo', (ncor*nvir,ncor*nvir), 'f8')
+        ppaa, papa, pacv = _trans(mo, ncor, ncas, load_buf, cvcv, ao_loc)[:3]
+    time0 = logger.timer(mol, 'trans_cvcv', *time0)
+    fswap.close()
+    return ppaa, papa, pacv, cvcvfile
+
+
+def _trans(mo, ncor, ncas, fload, cvcv=None, ao_loc=None):
+    nao, nmo = mo.shape
+    nocc = ncor + ncas
+    nvir = nmo - nocc
+    nav = nmo - ncor
+
+    if cvcv is None:
+        cvcv = np.zeros((ncor*nvir,ncor*nvir))
+    pacv = np.empty((nmo,ncas,ncor*nvir))
+    aapp = np.empty((ncas,ncas,nmo*nmo))
+    papa = np.empty((nmo,ncas,nmo*ncas))
+    vcv = np.empty((nav,ncor*nvir))
+    apa = np.empty((ncas,nmo*ncas))
+    vpa = np.empty((nav,nmo*ncas))
+    app = np.empty((ncas,nmo*nmo))
+    for i in range(ncor):
+        buf = fload(i, i+1)
+        klshape = (0, ncor, nocc, nmo)
+        _ao2mo.nr_e2(buf, mo, klshape,
+                      aosym='s4', mosym='s1', out=vcv, ao_loc=ao_loc)
+        cvcv[i*nvir:(i+1)*nvir] = vcv[ncas:]
+        pacv[i] = vcv[:ncas]
+
+        klshape = (0, nmo, ncor, nocc)
+        _ao2mo.nr_e2(buf[:ncas], mo, klshape,
+                      aosym='s4', mosym='s1', out=apa, ao_loc=ao_loc)
+        papa[i] = apa
+    for i in range(ncas):
+        buf = fload(ncor+i, ncor+i+1)
+        klshape = (0, ncor, nocc, nmo)
+        _ao2mo.nr_e2(buf, mo, klshape,
+                      aosym='s4', mosym='s1', out=vcv, ao_loc=ao_loc)
+        pacv[ncor:,i] = vcv
+
+        klshape = (0, nmo, ncor, nocc)
+        _ao2mo.nr_e2(buf, mo, klshape,
+                      aosym='s4', mosym='s1', out=vpa, ao_loc=ao_loc)
+        papa[ncor:,i] = vpa
+
+        klshape = (0, nmo, 0, nmo)
+        _ao2mo.nr_e2(buf[:ncas], mo, klshape,
+                      aosym='s4', mosym='s1', out=app, ao_loc=ao_loc)
+        aapp[i] = app
+    #lib.transpose(aapp.reshape(ncas**2, -1), inplace=True)
+    ppaa = lib.transpose(aapp.reshape(ncas**2,-1))
+    return (ppaa.reshape(nmo,nmo,ncas,ncas), papa.reshape(nmo,ncas,nmo,ncas),
+            pacv.reshape(nmo,ncas,ncor,nvir), cvcv)
+
+def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
+    mol = mc.mol
+    nInner = mc.ncore + mc.ncas - nFrozen
+    inner = mc.mo_coeff[:,nFrozen:nFrozen+nInner]
+    virtual = mc.mo_coeff[:,nFrozen+nInner:]
+    mo_coeff = np.concatenate((inner, virtual), 1)
+    if orbsym is None:
+        orbsym = getattr(mo_coeff, 'orbsym', None)
+    if (nFrozen == 0):
+      t = mol.intor_symmetric('int1e_kin')
+      v = mol.intor_symmetric('int1e_nuc')
+      h1e = reduce(np.dot, (mo_coeff.T, t+v, mo_coeff))
+      nuc = mol.energy_nuc()
+    else:
+      frozen = mc.mo_coeff[:,:nFrozen]
+      core_dm = 2 * frozen.dot(frozen.T)
+      corevhf = mc.get_veff(mol, core_dm)
+      hcore = mc.get_hcore()
+      nuc = mc.energy_nuc()
+      nuc += np.einsum('ij,ji', core_dm, hcore)
+      nuc += np.einsum('ij,ji', core_dm, corevhf) * .5
+      h1e = mo_coeff.T.dot(hcore + corevhf).dot(mo_coeff)
+
+    iiii = ao2mo.outcore.general_iofree(mol, (inner,)*4)
+    iiiv = ao2mo.outcore.general_iofree(mol, (virtual, inner, inner, inner))
+    iviv = ao2mo.outcore.general_iofree(mol, (virtual, inner, virtual, inner))
+    iivv = ao2mo.outcore.general_iofree(mol, (virtual, virtual, inner, inner))
+    from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, h1e.shape[0], mol.nelectron - 2*nFrozen, nuc, mol.ms, orbsym,
+                   tol, float_format)
+
+
+def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')): 
+  fh = h5py.File(filename, 'w')
+  header = np.array([nelec, nmo, ms])
+  fh['header'] = header
+  fh['hcore'] = h1e
+  fh['iiii'] = lib.pack_tril(iiii)
+  fh['iiiv'] = iiiv.flatten()
+  fh['iviv'] = lib.pack_tril(iviv)
+  fh['iivv'] = iivv.flatten()
+  fh['energy_core'] = nuc
+  fh.close()
+
+
+def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',spinRDMfile="spatialRDM.0.0.txt",stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
+	numCore = (sum(mc.mol.nelec)-nelecAct)//2
+	getDets(fname=diceoutfile)
+	
+	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spinRDMfile) 
+	
+	print("Writing NEVPT2 input")
+#	DEFAULT_FLOAT_FORMAT = getattr(__config__, 'fcidump_float_format', ' %.16g')
+#	TOL = getattr(__config__, 'fcidump_write_tol', 1e-15)
+	
+	from_mc(mc, 'FCIDUMP.h5', nFrozen = norbFrozen)  #Uses fuctions from pyscf-tools
+	write_nevpt2_input(numAct = numAct , numCore = numCore , determinants = 'dets', integrals=integrals ,seed=seed, fname=fname, stochasticIterNorms = stochasticIterNorms, nIterFindInitDets = nIterFindInitDets , numSCSamples = numSCSamples, stochasticIterEachSC = stochasticIterEachSC, fixedResTimeNEVPT_Ene =fixedResTimeNEVPT_Ene , epsilon = epsilon, efficientNEVPT_2 = efficientNEVPT_2, determCCVV = determCCVV , SCEnergiesBurnIn = SCEnergiesBurnIn , SCNormsBurnIn = SCNormsBurnIn)
+	fileh = open("moEne.txt", 'w')
+	for i in range(mc.mol.nao - norbFrozen):
+		fileh.write('%.12e\n'%(mc.mo_energy[i + norbFrozen]))
+	fileh.close()
+	print("Running NEVPT2")
+	if vmc_root is None:
+		vmc_root = os.environ['VMC_ROOT']
+	vmc_binary=vmc_root+"/bin/VMC"
+	mpi_prefix = "mpirun "
+	if nproc is not None:
+		mpi_prefix += f" -np {nproc} "
+	os.system(f"{mpi_prefix} {vmc_binary} {fname} > {foutname}")
+	energy,error = get_nevptEnergy(fname=foutname,printNevpt2=True)
+	print(f"Total Energy (including CCAV,CCVV,ACVV) = {energy} +/- {error}")
+
+def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals="FCIDUMP.h5", seed=None, fname="nevpt2.json",stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50):
+	system = {}
+	system["integrals"] = integrals
+	system["numAct"] = numAct
+	system["numCore"] = numCore
+	
+	prints = {}
+	prints["readSCNorms"]= False
+	
+	wavefunction = {}
+	wavefunction["name"]="scpt"
+	wavefunction["overlapCutoff"]=1.0e-8
+	wavefunction["determinants"] = f"{determinants}"
+	
+	sampling = {}
+	sampling["stochasticIterNorms"] = stochasticIterNorms
+	sampling["nIterFindInitDets"] = nIterFindInitDets
+	sampling["numSCSamples"] = numSCSamples
+	sampling["stochasticIterEachSC"] = stochasticIterEachSC
+	sampling["fixedResTimeNEVPT_Ene"] = fixedResTimeNEVPT_Ene
+	sampling["epsilon"] = epsilon
+	if seed==None:
+	        sampling["seed"] = np.random.randint(1,1e6)
+	else:
+	        sampling["seed"] = seed
+	sampling["efficientNEVPT_2"] = efficientNEVPT_2
+	sampling["determCCVV"] = determCCVV
+	sampling["SCEnergiesBurnIn"] = SCEnergiesBurnIn
+	sampling["SCNormsBurnIn"] = SCNormsBurnIn
+	
+	json_input = {"system": system, "print": prints, "wavefunction": wavefunction, "sampling": sampling}
+	json_dump = json.dumps(json_input, indent = 2)
+	with open(fname, "w") as outfile:
+	        outfile.write(json_dump)
+	return
+
+def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.txt"):
+	print("Running ICPT\n")
+	intfolder = "int/"
+	os.system("mkdir -p "+intfolder)
+	dm2a = np.zeros((norbAct, norbAct, norbAct, norbAct))
+	file2pdm = fname 
+	file2pdm = file2pdm.encode()  # .encode for python3 compatibility
+	shci.r2RDM(dm2a, norbAct, file2pdm)
+	dm1 = np.einsum('ikjj->ki', dm2a)
+	dm1 /= (nelecAct - 1)
+	#dm1, dm2a = mc.fcisolver.make_rdm12(0, mc.ncas, mc.nelecas)
+	dm2 = np.einsum('ijkl->ikjl', dm2a)
+	np.save(intfolder+"E2.npy", np.asfortranarray(dm2))
+	np.save(intfolder+"E1.npy", np.asfortranarray(dm1))
+	print ("trace of 2rdm", np.einsum('ijij',dm2))
+	print ("trace of 1rdm", np.einsum('ii',dm1))
+	nfro = 0
+	E1eff = dm1 # for state average
+	writeNEVPTIntegrals(mc, dm1, dm2, E1eff, nfro, intfolder)
+	write_ic_inputs(mc.nelecas[0]+mc.nelecas[1], mc.ncore, mc.ncas, nfro, mc.nelecas[0]-mc.nelecas[1],'NEVPT2')
+	if vmc_root is None:
+    		vmc_root = os.environ['VMC_ROOT']
+	os.system("export OMP_NUM_THREADS=1")
+	icpt_binary = vmc_root + "/bin/ICPT"
+	inps = ['ACVV','CCAV','CCVV']
+	for inp in inps:
+        	command = f"{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
+        	print(command)
+        	os.system(command)
+	print("Finished running ICPT\n")	
+
+def getDets(fname="dice.out"): #To get the determinants printed to dice output and write to text file 'dets'
+    file = open(fname,'r')
+    content = (file.readlines())
+    dets = []
+    k = -1
+    for c in content:
+        if c.split(" ")[0]=="Printing" :
+            k = content.index(c)
+            break
+         
+    for c in content[(k+3):]:
+        if c.split()[0]=='Printing':
+            break
+        ch =c.split()
+        if(float(ch[0])==0):
+            continue
+        listToStr = ' '.join(map(str, ch))
+        dets.append(listToStr+'\n')
+    f = open("dets","w")
+    f.writelines(dets)
+    f.close()
+
+
+def get_nevptEnergy(fname="nevpt2.out",printNevpt2=False):
+    file = open(fname,'r')
+    filelines = file.readlines()[-10:]
+    Error = 0
+    for line in filelines:
+        if 'Energy error estimate' in line:
+            Error = float(line.split()[-1])
+            break
+    nevfile = filelines[-5:]
+    if(printNevpt2):
+        print(''.join(map(str,nevfile)))
+    nevptE = float(nevfile[-1].split()[-1])
+    icptnames = ['acvv.out','ccav.out']
+    icE = []
+    for n in icptnames:
+        file = open(n,'r')
+        e = float((file.readlines()[-1]).split()[-1])
+        icE.append(e)
+    totalE = nevptE + sum(icE)
+    return totalE,Error
+  
+
