@@ -75,5 +75,5 @@ print("Finished Dice calculation\n")
 
 
 ################################################################################
-QMCUtils.run_nevpt2(mc,nelecAct=nelecAct,numAct=norbAct,norbFrozen=norbFrozen,nproc=nproc,numSCSamples=10000,diceoutfile="dice.out",vmc_root=vmc_root)
+QMCUtils.run_nevpt2(mc,nelecAct=nelecAct,numAct=norbAct,norbFrozen=norbFrozen,nproc=nproc,numSCSamples=1000,diceoutfile="dice.out",vmc_root=vmc_root)
 
