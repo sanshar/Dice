@@ -4,8 +4,12 @@ import numpy as np
 import copy
 import h5py, json, csv, struct
 import pandas as pd
-from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo
+from functools import reduce
+from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo, __config__ , lib
+from pyscf.lib import logger
 from pyscf.lo import pipek, boys, edmiston, iao, ibo
+from pyscf.shciscf import shci
+from pyscf.ao2mo import _ao2mo
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
@@ -1181,3 +1185,190 @@ if __name__=="__main__":
   #fileh.write('1.   ' + bestDetStr + '\n')
   #fileh.close()
   #prepAllElectron(mol)
+  
+
+def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
+    mol = mc.mol
+    nInner = mc.ncore + mc.ncas - nFrozen
+    inner = mc.mo_coeff[:,nFrozen:nFrozen+nInner]
+    virtual = mc.mo_coeff[:,nFrozen+nInner:]
+    mo_coeff = np.concatenate((inner, virtual), 1)
+    if orbsym is None:
+        orbsym = getattr(mo_coeff, 'orbsym', None)
+    if (nFrozen == 0):
+      t = mol.intor_symmetric('int1e_kin')
+      v = mol.intor_symmetric('int1e_nuc')
+      h1e = reduce(np.dot, (mo_coeff.T, t+v, mo_coeff))
+      nuc = mol.energy_nuc()
+    else:
+      frozen = mc.mo_coeff[:,:nFrozen]
+      core_dm = 2 * frozen.dot(frozen.T)
+      corevhf = mc.get_veff(mol, core_dm)
+      hcore = mc.get_hcore()
+      nuc = mc.energy_nuc()
+      nuc += np.einsum('ij,ji', core_dm, hcore)
+      nuc += np.einsum('ij,ji', core_dm, corevhf) * .5
+      h1e = mo_coeff.T.dot(hcore + corevhf).dot(mo_coeff)
+
+    iiii = ao2mo.outcore.general_iofree(mol, (inner,)*4)
+    iiiv = ao2mo.outcore.general_iofree(mol, (virtual, inner, inner, inner))
+    iviv = ao2mo.outcore.general_iofree(mol, (virtual, inner, virtual, inner))
+    iivv = ao2mo.outcore.general_iofree(mol, (virtual, virtual, inner, inner))
+    from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, h1e.shape[0], mol.nelectron - 2*nFrozen, nuc, mol.ms, orbsym,
+                   tol, float_format)
+
+
+def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')): 
+  fh = h5py.File(filename, 'w')
+  header = np.array([nelec, nmo, ms])
+  fh['header'] = header
+  fh['hcore'] = h1e
+  fh['iiii'] = lib.pack_tril(iiii)
+  fh['iiiv'] = iiiv.flatten()
+  fh['iviv'] = lib.pack_tril(iviv)
+  fh['iivv'] = iivv.flatten()
+  fh['energy_core'] = nuc
+  fh.close()
+
+
+def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',spatialRDMfile="spatialRDM.0.0.txt",spinRDMfile='',stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
+	
+	numCore = (sum(mc.mol.nelec)-nelecAct - norbFrozen*2)//2
+	getDets(fname=diceoutfile)
+	
+	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile) 
+	
+	print("Writing NEVPT2 input")
+#	DEFAULT_FLOAT_FORMAT = getattr(__config__, 'fcidump_float_format', ' %.16g')
+#	TOL = getattr(__config__, 'fcidump_write_tol', 1e-15)
+	
+	from_mc(mc, 'FCIDUMP.h5', nFrozen = norbFrozen)  #Uses fuctions from pyscf-tools
+	write_nevpt2_input(numAct = numAct , numCore = numCore , determinants = 'dets', integrals=integrals ,seed=seed, fname=fname, stochasticIterNorms = stochasticIterNorms, nIterFindInitDets = nIterFindInitDets , numSCSamples = numSCSamples, stochasticIterEachSC = stochasticIterEachSC, fixedResTimeNEVPT_Ene =fixedResTimeNEVPT_Ene , epsilon = epsilon, efficientNEVPT_2 = efficientNEVPT_2, determCCVV = determCCVV , SCEnergiesBurnIn = SCEnergiesBurnIn , SCNormsBurnIn = SCNormsBurnIn)
+	fileh = open("moEne.txt", 'w')
+	for i in range(mc.mol.nao - norbFrozen):
+		fileh.write('%.12e\n'%(mc.mo_energy[i + norbFrozen]))
+	fileh.close()
+	print("Running NEVPT2")
+	if vmc_root is None:
+		vmc_root = os.environ['VMC_ROOT']
+	vmc_binary=vmc_root+"/bin/VMC"
+	mpi_prefix = "mpirun "
+	if nproc is not None:
+		mpi_prefix += f" -np {nproc} "
+	os.system(f"{mpi_prefix} {vmc_binary} {fname} > {foutname}")
+	energy,error = get_nevptEnergy(fname=foutname,printNevpt2=True)
+	print(f"Total Energy (including CCAV,CCVV,ACVV) = {energy} +/- {error}")
+
+def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals="FCIDUMP.h5", seed=None, fname="nevpt2.json",stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50):
+	system = {}
+	system["integrals"] = integrals
+	system["numAct"] = numAct
+	system["numCore"] = numCore
+	
+	prints = {}
+	prints["readSCNorms"]= False
+	
+	wavefunction = {}
+	wavefunction["name"]="scpt"
+	wavefunction["overlapCutoff"]=1.0e-8
+	wavefunction["determinants"] = f"{determinants}"
+	
+	sampling = {}
+	sampling["stochasticIterNorms"] = stochasticIterNorms
+	sampling["nIterFindInitDets"] = nIterFindInitDets
+	sampling["numSCSamples"] = numSCSamples
+	sampling["stochasticIterEachSC"] = stochasticIterEachSC
+	sampling["fixedResTimeNEVPT_Ene"] = fixedResTimeNEVPT_Ene
+	sampling["epsilon"] = epsilon
+	if seed==None:
+	        sampling["seed"] = np.random.randint(1,1e6)
+	else:
+	        sampling["seed"] = seed
+	sampling["efficientNEVPT_2"] = efficientNEVPT_2
+	sampling["determCCVV"] = determCCVV
+	sampling["SCEnergiesBurnIn"] = SCEnergiesBurnIn
+	sampling["SCNormsBurnIn"] = SCNormsBurnIn
+	
+	json_input = {"system": system, "print": prints, "wavefunction": wavefunction, "sampling": sampling}
+	json_dump = json.dumps(json_input, indent = 2)
+	with open(fname, "w") as outfile:
+	        outfile.write(json_dump)
+	return
+
+def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.txt"):
+	import NEVPT2Helper as nev
+	print("Running ICPT\n")
+	intfolder = "int/"
+	os.system("mkdir -p "+intfolder)
+	dm2a = np.zeros((norbAct, norbAct, norbAct, norbAct))
+	file2pdm = fname 
+	file2pdm = file2pdm.encode()  # .encode for python3 compatibility
+	shci.r2RDM(dm2a, norbAct, file2pdm)
+	dm1 = np.einsum('ikjj->ki', dm2a)
+	dm1 /= (nelecAct - 1)
+	#dm1, dm2a = mc.fcisolver.make_rdm12(0, mc.ncas, mc.nelecas)
+	dm2 = np.einsum('ijkl->ikjl', dm2a)
+	np.save(intfolder+"E2.npy", np.asfortranarray(dm2))
+	np.save(intfolder+"E1.npy", np.asfortranarray(dm1))
+	print ("trace of 2rdm", np.einsum('ijij',dm2))
+	print ("trace of 1rdm", np.einsum('ii',dm1))
+	nfro = 0
+	E1eff = dm1 # for state average
+	nev.writeNEVPTIntegrals(mc, dm1, dm2, E1eff, nfro, intfolder)
+	nev.write_ic_inputs(mc.nelecas[0]+mc.nelecas[1], mc.ncore, mc.ncas, nfro, mc.nelecas[0]-mc.nelecas[1],'NEVPT2')
+	if vmc_root is None:
+    		vmc_root = os.environ['VMC_ROOT']
+	os.system("export OMP_NUM_THREADS=1")
+	icpt_binary = vmc_root + "/bin/ICPT"
+	inps = ['ACVV','CCAV','CCVV']
+	for inp in inps:
+        	command = f"{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
+        	print(command)
+        	os.system(command)
+	print("Finished running ICPT\n")	
+
+def getDets(fname="dice.out"): #To get the determinants printed to dice output and write to text file 'dets'
+    file = open(fname,'r')
+    content = (file.readlines())
+    dets = []
+    k = -1
+    for c in content:
+        if c.split(" ")[0]=="Printing" :
+            k = content.index(c)
+            break
+         
+    for c in content[(k+3):]:
+        if c.split()[0]=='Printing':
+            break
+        ch =c.split()
+        if(float(ch[0])==0):
+            continue
+        listToStr = ' '.join(map(str, ch))
+        dets.append(listToStr+'\n')
+    f = open("dets","w")
+    f.writelines(dets)
+    f.close()
+
+
+def get_nevptEnergy(fname="nevpt2.out",printNevpt2=False):
+    file = open(fname,'r')
+    filelines = file.readlines()[-10:]
+    Error = 0
+    for line in filelines:
+        if 'Energy error estimate' in line:
+            Error = float(line.split()[-1])
+            break
+    nevfile = filelines[-5:]
+    if(printNevpt2):
+        print(''.join(map(str,nevfile)))
+    nevptE = float(nevfile[-1].split()[-1])
+    icptnames = ['acvv.out','ccav.out']
+    icE = []
+    for n in icptnames:
+        file = open(n,'r')
+        e = float((file.readlines()[-1]).split()[-1])
+        icE.append(e)
+    totalE = nevptE + sum(icE)
+    return totalE,Error
+  
+
