@@ -126,19 +126,19 @@ int SHCIsampledeterminants::sample_N2_withoutalias(MatrixXx& ci, double& cumulat
     double rand_no = ((double) rand() / (RAND_MAX))*cumulative;
     for (int i=0; i<ci.rows(); i++) {
       if (rand_no < abs(ci(i,0))) {
-	      std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), i);
-	      if (it == Sample1.end()) {
-	        Sample1[index] = i;
-	        newWts[index] = cumulative*ci(i,0)/ abs(ci(i,0));
-	        //newWts[index] = ci(i,0) < 0. ? -cumulative : cumulative;
-	        index++; totalSample++;
-	      }
-	      else {
-	        newWts[ distance(Sample1.begin(), it) ] += cumulative*ci(i,0)/ abs(ci(i,0));
-	        //newWts[ distance(Sample1.begin(), it) ] += ci(i,0) < 0. ? -cumulative : cumulative;
-	        totalSample++;
-	      }
-	      break;
+	std::vector<int>::iterator it = find(Sample1.begin(), Sample1.end(), i);
+	if (it == Sample1.end()) {
+	  Sample1[index] = i;
+	  newWts[index] = cumulative*ci(i,0)/ abs(ci(i,0));
+	  //newWts[index] = ci(i,0) < 0. ? -cumulative : cumulative;
+	  index++; totalSample++;
+	}
+	else {
+	  newWts[ distance(Sample1.begin(), it) ] += cumulative*ci(i,0)/ abs(ci(i,0));
+	  //newWts[ distance(Sample1.begin(), it) ] += ci(i,0) < 0. ? -cumulative : cumulative;
+	  totalSample++;
+	}
+	break;
       }
       rand_no -= abs(ci(i,0));
     }

@@ -1,42 +1,37 @@
 /*
-  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam
-  A. Holmes, 2017 Copyright (c) 2017, Sandeep Sharma
-
+  Developed by Sandeep Sharma with contributions from James E. T. Smith and Adam A. Holmes, 2017
+  Copyright (c) 2017, Sandeep Sharma
+  
   This file is part of DICE.
-
-  This program is free software: you can redistribute it and/or modify it under
-  the terms of the GNU General Public License as published by the Free Software
-  Foundation, either version 3 of the License, or (at your option) any later
-  version.
-
-  This program is distributed in the hope that it will be useful, but WITHOUT
-  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-  FOR A PARTICULAR PURPOSE.
-
+  
+  This program is free software: you can redistribute it and/or modify it under the terms
+  of the GNU General Public License as published by the Free Software Foundation, 
+  either version 3 of the License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  
   See the GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License along with
-  this program. If not, see <http://www.gnu.org/licenses/>.
+  
+  You should have received a copy of the GNU General Public License along with this program. 
+  If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef INPUT_HEADER_H
 #define INPUT_HEADER_H
-#include <boost/serialization/serialization.hpp>
-#include <list>
 #include <vector>
-
+#include <list>
+#include <boost/serialization/serialization.hpp>
 #include "Determinants.h"
-#include "OccRestrictions.h"
 
 using namespace std;
 
-enum davidsonType { DIRECT, DISK, MEMORY };
-enum rdmType { RELAXED, UNRELAXED };
+enum davidsonType {DIRECT, DISK, MEMORY};
+enum rdmType {RELAXED, UNRELAXED};
 
-struct schedule {
- private:
+struct schedule{
+private:
   friend class boost::serialization::access;
-  template <class Archive>
-  // clang-format off
+  template<class Archive>
   void serialize(Archive & ar, const unsigned int version)
   {
     ar & davidsonTol                          \
@@ -79,8 +74,6 @@ struct schedule {
     & algorithm                               \
     & outputlevel                             \
     & printBestDeterminants                   \
-    & printAllDeterminants                    \
-    & writeBestDeterminants                   \
     & extrapolate                             \
     & extrapolationFactor                     \
     & enforceSeniority                        \
@@ -95,25 +88,16 @@ struct schedule {
     & pointGroup                              \
     & spin                                    \
     & irrep                                   \
-    & searchForLowestEnergyDet                \
     & DoSpinOneRDM                            \
     & DoOneRDM                                \
     & DoThreeRDM                              \
     & DoFourRDM                               \
-<<<<<<< HEAD:SHCI/input.h
-    & restrictionsV                           \
-    & restrictionsPT                          \
-    & Bvalue                                  \
-    & Bdirection;
-=======
->>>>>>> relWithBagel:ZSHCI/input.h
     & cdfciIter                               \
     & z_threshold                             \
     & max_determinants;
   }
-  // clang-format on
 
- public:
+public:
   double davidsonTol;
   double davidsonTolLoose;
   rdmType RdmType;
@@ -155,8 +139,6 @@ struct schedule {
   int algorithm;
   int outputlevel;
   int printBestDeterminants;
-  bool printAllDeterminants;
-  int writeBestDeterminants;
   bool extrapolate;
   double extrapolationFactor;
   bool enforceSeniority;
@@ -170,24 +152,12 @@ struct schedule {
   bool doLCC;
   string pointGroup;
   int spin;
-  string irrep;
-  bool searchForLowestEnergyDet;
+  int irrep;
   bool DoSpinOneRDM;
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
-<<<<<<< HEAD:SHCI/input.h
-
-  //RAS calculations
-  vector<OccRestrictions> restrictionsV;
-  vector<OccRestrictions> restrictionsPT;
-
-  //apply external magnetic field
-  double Bvalue;  //magnitude of magnetic field
-  vector<double> Bdirection; //direction e.g. 1 0 0 mean it is along x-axis
-=======
   bool ReadTxt;
->>>>>>> relWithBagel:ZSHCI/input.h
   double z_threshold;
   int cdfci_on;
   int cdfciIter;

@@ -93,7 +93,6 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   d.getOpenClosed(open, closed);
   //d.getRepArray(detArray);
   double Energyd = d.Energy(int1, int2, coreE);
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
   initiateRestrictions(schd.restrictionsPT, closed);
 
   // mono-excited determinants
@@ -103,69 +102,56 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
     //CItype integral = d.Hij_1Excite(closed[i],open[a],int1,int2);
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-=======
-  // mono-excited determinants
-  for (int ia=0; ia<nopen*nclosed; ia++){
-    int i=ia/nopen, a=ia%nopen;
-    CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
-    //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-    //Determinant detj = d;
-    //detj.setocc(open[a],true); detj.setocc(closed[i],false);
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
 
     // sgn
-    /*if (closed[i]%2 != open[a]%2) {
+    if (closed[i]%2 != open[a]%2) {
       double sgn = 1.0;
       d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
       integral = int1(open[a], closed[i])*sgn;
-    }*/
+    }
 
     // generate determinant if integral is above the criterion
-    if (std::abs(integral) > epsilon) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
       // numerator and energy
-      auto num = (conj(integral)*ci1);
-      numerator.push_back(num);
-      //cout << open[a] << " " << closed[i] << " " << integral << " " << ci1 << " " << num << endl;
-      //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+      numerator.push_back(integral*ci1);
+#ifndef Complex
+      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
       double E = di.Energy(int1, int2, coreE);
+#endif
       energy.push_back(E);
     }
   } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (std::abs(int2.maxEntry) < epsilon) return;
+  if (fabs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon) break;
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
-=======
-      int a = orbIndices[2*index], b = orbIndices[2*index+1];
-      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
@@ -176,8 +162,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
         // numerator and energy
         numerator.push_back(integrals[index]*sgn*ci1);
-        //cout << a << " " << b << " " << closed[i] << " " << closed[j] << " " << integrals[index] << " " << integrals[index]*sgn*ci1 << endl;
-        double E = di.Energy(int1, int2, coreE);
+        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
       }
     } // heatbath integrals
@@ -255,20 +240,13 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
     if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
 
     if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-=======
-    //if (open[a]/2 > schd.nvirt+nclosed/2) continue; //dont occupy above a certain orbital
-    //if (irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-    if (irreps[closed[i]] != irreps[open[a]]) continue;
-    CItype integral = det.Hij_1Excite(open[a], closed[i], int1,int2);
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
 
     // generate determinant if integral is above the criterion
-    if (abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(det);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
@@ -276,7 +254,6 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
       // numerator and energy
       numerator.push_back(integral*ci);
       double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
-      //double E = EnergyAfterExcitation(int1, int2, coreE)
       energy.push_back(E);
 
       // ...
@@ -289,38 +266,28 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (std::abs(int2.maxEntry) < epsilon) return;
+  if (fabs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
-          // if we are going below the criterion, break
-          if (abs(integrals[index]) < epsilon) break;
+      // if we are going below the criterion, break
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
-=======
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[2*index], b = orbIndices[2*index+1];
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
       if (!(det.getocc(a) || det.getocc(b))) {
         dets.push_back(det);
         Determinant& di = *dets.rbegin();
@@ -332,8 +299,7 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTKeepRefDets(
 
         // numerator and energy
         numerator.push_back(integrals[index]*sgn*ci);
-        //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
-        double E = di.Energy(int1, int2, coreE);
+        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
 
         // ...
@@ -452,33 +418,23 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    std::complex<double>* integrals  = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon1 && std::abs(integrals[index]) < epsilon2) break;
+      if (fabs(integrals[index]) < epsilon1 && fabs(integrals[index]) < epsilon2) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
-=======
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
       if (!(det.getocc(a) || det.getocc(b))) {
         dets.push_back(det);
         Determinant& di = *dets.rbegin();
@@ -489,9 +445,9 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPTWithSOC(
         di.parity(a, b, closed[i], closed[j], sgn);
 
         // numerator and energy
-        if(std::abs(integrals[index]) > epsilon1) numerator1.push_back(integrals[index]*sgn*ci1);
+        if(fabs(integrals[index]) > epsilon1) numerator1.push_back(integrals[index]*sgn*ci1);
         else numerator1.push_back(0.0);
-        if(std::abs(integrals[index]) > epsilon2) numerator2.push_back(integrals[index]*sgn*ci2);
+        if(fabs(integrals[index]) > epsilon2) numerator2.push_back(integrals[index]*sgn*ci2);
         else numerator2.push_back(0.0);
         double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
@@ -562,89 +518,61 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
 
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
     if (! satisfiesRestrictions(schd.restrictionsV, closed[i], open[a])) continue;
 
     
-=======
-    //if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
-    if (closed[i] < schd.ncore || open[a] >= schd.ncore+schd.nact) continue;
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
     //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
 #ifndef Complex
     if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
 #endif
-    //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-    CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
+    CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
-    //if (closed[i]%2 != open[a]%2) {
-    //  integral = int1(open[a], closed[i])*schd.socmultiplier;
-    //}
-    //Have question about the SOC stuff
+    if (closed[i]%2 != open[a]%2) {
+      integral = int1(open[a], closed[i])*schd.socmultiplier;
+    }
 
     // generate determinant if integral is above the criterion
-    if (std::abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      //Determinant detcpy(d);
-      //detcpy.flipAlphaBeta();
-      //dets.push_back(detcpy);
       //if (Determinant::Trev != 0) di.makeStandard();
     }
   } // ia
 
   // bi-excitated determinants
-  if (std::abs(int2.maxEntry) < epsilon) return;
+  if (fabs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
-    //if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
-    if (I < schd.ncore || J < schd.ncore) continue;
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals  = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
-
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon) break;
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
       if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
       
       if (!(d.getocc(a) || d.getocc(b))) {
-=======
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[2*index], b = orbIndices[2*index+1];
-      //if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (a >= schd.ncore+schd.nact || b >= schd.ncore+schd.nact) continue;
-      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
-        //Determinant detcpy(d);
-        //detcpy.flipAlphaBeta();
-        //dets.push_back(detcpy);
         //if (Determinant::Trev != 0) di.makeStandard();
       }
     } // heatbath integrals
@@ -718,23 +646,18 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
     if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
     if (! satisfiesRestrictions(schd.restrictionsV, closed[i], open[a])) continue;
 
-=======
-    //if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
-    if (closed[i] < schd.ncore || open[a] >= schd.ncore+schd.nact) continue;
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
     CItype integral = I2hb.Singles(open[a], closed[i]);//Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
-    if (std::abs(integral) > epsilon)
-      //if (closed[i]%2 == open[a]%2)
-      integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
+    if (fabs(integral) > epsilon)
+      if (closed[i]%2 == open[a]%2)
+        integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
 
     // generate determinant if integral is above the criterion
     //if (fabs(integral/(E0-Energyd)) > epsilon ) {
-    if (std::abs(integral) > epsilon ) {
+    if (fabs(integral) > epsilon ) {
       Determinant di = d;
       di.setocc(open[a], true); di.setocc(closed[i],false);
 
@@ -752,9 +675,9 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
 
       if (!binary_search(SortedDets, SortedDets+SortedDetsSize, di)) dets.push_back(di);
 #ifdef Complex
-      //Determinant detcpy = di;
-      //detcpy.flipAlphaBeta();
-      //if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy)) dets.push_back(detcpy);
+      Determinant detcpy = di;
+      detcpy.flipAlphaBeta();
+      if (!binary_search(SortedDets, SortedDets+SortedDetsSize, detcpy)) dets.push_back(detcpy);
 #endif
     }
   } // ia
@@ -765,40 +688,28 @@ void SHCIgetdeterminants::getDeterminantsVariationalApprox(
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
-    //if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
-    if (closed[i] < schd.ncore || closed[j] < schd.ncore) continue;
+    if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals  = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
-    
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
+
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon) break;
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
+      int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
       if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
-=======
-      //if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (a >= schd.ncore+schd.nact || b >= schd.ncore+schd.nact) continue;
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
@@ -931,33 +842,23 @@ void SHCIgetdeterminants::getDeterminantsStochastic(
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    //int I = closed[i]/2, J = closed[j]/2;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals  = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon) break;
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
-=======
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
-      int a = orbIndices[index], b = orbIndices[index+1];
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
       if (!(d.getocc(a) || d.getocc(b))) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -1053,75 +954,68 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
     if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], open[a])) continue;
     CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
-=======
-    CItype integral = d.Hij_1Excite(open[a],closed[i],int1,int2);
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
 
     // sgn
-    // Not sure what this part is used for, but I think relativity will not make use of the spin.
-    //if (closed[i]%2 != open[a]%2) {
-    //  double sgn = 1.0;
-    //  d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
-    //  integral = int1(open[a], closed[i])*sgn;
-    //}
+    if (closed[i]%2 != open[a]%2) {
+      double sgn = 1.0;
+      d.parity(min(open[a],closed[i]), max(open[a],closed[i]),sgn);
+      integral = int1(open[a], closed[i])*sgn;
+    }
 
     // generate determinant if integral is above the criterion
-    if (std::abs(integral) > epsilon) {
+    if (fabs(integral) > epsilon ) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      size_t orbDiff;
-      //integral = Hij(di, d, int1, int2, coreE, orbDiff);
+
       // numerator and energy
-      numerator1A.push_back(conj(integral)*ci1);
+      numerator1A.push_back(integral*ci1);
 #ifndef Complex
       numerator2A.push_back( integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - (Nmcd-1)/Nmcd*abs(ci2)/abs(ci1)) );
+      numerator2A.push_back( pow( abs(integral*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
       //numerator2A.push_back( (integral*integral*ci1 *(ci1*Nmcd/(Nmcd-1)- ci2)).real() );
 #endif
+#ifndef Complex
+      double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, open[a], Energyd);
+#else
       double E = di.Energy(int1, int2, coreE);
+#endif
       energy.push_back(E);
 
       // ...
-      if (std::abs(integral) > epsilonLarge) present.push_back(true);
+      if (fabs(integral) > epsilonLarge) present.push_back(true);
       else present.push_back(false);
     }
   } // ia
 
   // bi-excitated determinants
   //#pragma omp parallel for schedule(dynamic)
-  if (std::abs(int2.maxEntry) < epsilon) return;
+  if (fabs(int2.maxEntry) < epsilon) return;
   // for all pairs of closed
   for (int ij=0; ij<nclosed*nclosed; ij++) {
     int i=ij/nclosed, j = ij%nclosed;
     if (i<=j) continue;
-    int I = closed[i], J = closed[j];
+    int I = closed[i]/2, J = closed[j]/2;
     int X = max(I, J), Y = min(I, J);
 
     int pairIndex = X*(X+1)/2+Y;
-    size_t start = I2hb.startingIndicesIntegrals[pairIndex];
-    size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
-    std::complex<double>* integrals  = I2hb.integrals;
-    short* orbIndices = I2hb.pairs;
+    size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
+    size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
+    float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
+    short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
       // if we are going below the criterion, break
-      if (std::abs(integrals[index]) < epsilon) break;
+      if (fabs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-<<<<<<< HEAD:SHCI/SHCIgetdeterminants.cpp
       int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       if (! satisfiesRestrictions(schd.restrictionsPT, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
-=======
-      int a = orbIndices[2*index], b = orbIndices[2*index+1];
-      if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
->>>>>>> relWithBagel:ZSHCI/SHCIgetdeterminants.cpp
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
         di.setocc(a, true), di.setocc(b, true), di.setocc(closed[i],false), di.setocc(closed[j], false);
@@ -1135,15 +1029,15 @@ void SHCIgetdeterminants::getDeterminantsStochastic2Epsilon(
 #ifndef Complex
         numerator2A.push_back( integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2));
 #else
-        numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*(1. - (Nmcd-1)/Nmcd*abs(ci2)/abs(ci1)) );
+        numerator2A.push_back( pow( abs(integrals[index]*1.0*ci1),2)*Nmcd/(Nmcd-1) *(1. - abs(ci2)/abs(ci1)) );
         //numerator2A.push_back( (integrals[index]*integrals[index]*ci1*(ci1*Nmcd/(Nmcd-1)- ci2)).real());
 #endif
         //numerator2A.push_back( fabs(integrals[index]*integrals[index]*ci1*(ci1*Nmc/(Nmc-1)- ci2)));
-        double E = di.Energy(int1, int2, coreE);
+        double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
         energy.push_back(E);
 
         // ...
-        if (std::abs(integrals[index]) > epsilonLarge) present.push_back(true);
+        if (fabs(integrals[index]) > epsilonLarge) present.push_back(true);
         else present.push_back(false);
       }
     } // heatbath integrals

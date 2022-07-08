@@ -28,8 +28,7 @@
 #include <list>
 #include <set>
 #include <tuple>
-#include <thread>
-#include <chrono>
+
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -61,8 +60,7 @@
 #include "symmetry.h"
 MatrixXd symmetry::product_table;
 #include <algorithm>
-#include <boost/bind.hpp>
-#include "cdfci.h"
+
 // Initialize
 using namespace Eigen;
 using namespace boost;
@@ -129,7 +127,7 @@ void license(char* argv[]) {
   printf("Commit:           %s\n", git_commit);
   printf("Branch:           %s\n", git_branch);
   printf("Compilation Date: %s %s\n", __DATE__, __TIME__);
-  //printf("Cores:            %s\n","TODO");
+  // printf("Cores:            %s\n","TODO");
 }
 
 // Read Input
@@ -215,6 +213,18 @@ int main(int argc, char* argv[]) {
     pout << "The number of electrons given in the FCIDUMP should be";
     pout << " equal to the nocc given in the shci input file." << endl;
     exit(0);
+  }
+
+  // LCC
+  if (schd.doLCC) {
+    // no nact was given in the input file
+    if (schd.nact == 1000000)
+      schd.nact = norbs - schd.ncore;
+    else if (schd.nact + schd.ncore > norbs) {
+      pout << "core + active orbitals = " << schd.nact + schd.ncore;
+      pout << " greater than orbitals " << norbs << endl;
+      exit(0);
+    }
   }
 
   // Setup the lexical table for the determinants
@@ -393,23 +403,11 @@ int main(int argc, char* argv[]) {
   pout << "**************************************************************"
        << endl;
 
-  vector<double> E0;
-  if (schd.cdfci_on == 0 && schd.restart) {
-    cdfci::sequential_solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
-    exit(0);
-  }
-  E0 = SHCIbasics::DoVariational(
+  vector<double> E0 = SHCIbasics::DoVariational(
       ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
-
-  cout << Dets.size() << endl;
-
-  if (schd.cdfci_on > 0 && schd.cdfci_on < schd.epsilon1.size()) {
-    cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
-  }
-
 #ifndef SERIAL
   mpi::broadcast(world, DetsSize, 0);
 #endif
@@ -673,7 +671,19 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
     // SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
     return 0;
 #endif
-  }  else if (!schd.stochastic && schd.nblocks == 1) {
+  } else if (schd.doLCC) {
+    log_pt(schd);
+#ifndef Complex
+    for (int root = 0; root < schd.nroots; root++) {
+      CItype* ciroot;
+      SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
+      LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
+                 schd, coreE, nelec, root);
+    }
+#else
+    pout << " Not for Complex" << endl;
+#endif
+  } else if (!schd.stochastic && schd.nblocks == 1) {
     log_pt(schd);
     double ePT = 0.0;
     std::string efile;
@@ -845,8 +855,9 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
         schd.fullrestart = false;
         schd.DoRDM = false;
         E0 = SHCIbasics::DoVariational(ci, Dets, schd, I2, I2HBSHM, irrep, I1,
-                                       coreE, nelec, schd.DoRDM);
+                                       coreE, nelec, false);
         var[iter + 1] = E0[0];
+
         DetsSize = Dets.size();
 #ifndef SERIAL
         mpi::broadcast(world, DetsSize, 0);

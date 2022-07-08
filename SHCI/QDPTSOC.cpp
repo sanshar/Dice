@@ -151,9 +151,9 @@ int main(int argc, char* argv[]) {
       ci.clear();
       ci.resize(bkpci.size()+Localci.size(), MatrixXd::Zero(Localci[0].rows()+bkpci[0].rows(),1));
       for (int j=0; j<bkpci.size(); j++)
-	      ci[j].block(0,0,bkpci[0].rows(),1) = 1.*bkpci[j];
+	ci[j].block(0,0,bkpci[0].rows(),1) = 1.*bkpci[j];
       for (int j=0; j<Localci.size(); j++) {
-	      ci[j+bkpci.size()].block(bkpci[0].rows(),0,Localci[0].rows(),1) = 1.*Localci[j];
+	ci[j+bkpci.size()].block(bkpci[0].rows(),0,Localci[0].rows(),1) = 1.*Localci[j];
       }
     }
     Dets.insert(Dets.end(), LocalDets.begin(), LocalDets.end());
@@ -178,13 +178,15 @@ int main(int argc, char* argv[]) {
 
     for (int i=0; i<Dets.size(); i++) { //loop over all determinants
       for (int j=0; j<norbs/2 ; j++) {  //loop over spatial orbitals
-	      if (Dets[i].getocc(2*j+1) &&!Dets[i].getocc(2*j)) {//if beta-filled and alpha-empty
-	        Determinant d = Dets[i];
-	        d.setocc(2*j+1, false); //empty the beta
-	        d.setocc(2*j  , true);  //fill up the alpha
+	if (Dets[i].getocc(2*j+1) &&
+	    !Dets[i].getocc(2*j  )   ) {//if beta-filled and alpha-empty
 
-	        SplusDets[d].push_back(i);
-	      }//if
+	  Determinant d = Dets[i];
+	  d.setocc(2*j+1, false); //empty the beta
+	  d.setocc(2*j  , true);  //fill up the alpha
+
+	  SplusDets[d].push_back(i);
+	}//if
       }// j (orbitals)
     }//i dets
 
@@ -200,13 +202,15 @@ int main(int argc, char* argv[]) {
 
     for (int i=0; i<ci[0].rows(); i++) { //loop over all determinants
       for (int j=0; j<norbs/2 ; j++) {  //loop over spatial orbitals
-	      if (Dets[i].getocc(2*j) && !Dets[i].getocc(2*j+1)) {//if beta-filled and alpha-empty
-	        Determinant d = Dets[i];
-	        d.setocc(2*j, false); //empty the beta
-	        d.setocc(2*j+1, true);  //fill up the alpha
+	if (Dets[i].getocc(2*j) &&
+	    !Dets[i].getocc(2*j+1  )   ) {//if beta-filled and alpha-empty
 
-	        SminusDets[d].push_back(i);
-	      }//if
+	  Determinant d = Dets[i];
+	  d.setocc(2*j, false); //empty the beta
+	  d.setocc(2*j+1, true);  //fill up the alpha
+
+	  SminusDets[d].push_back(i);
+	}//if
       }// j (orbitals)
     }//i dets
 
@@ -238,8 +242,8 @@ int main(int argc, char* argv[]) {
     for (int i=0; i<ci[0].rows(); i++) {
       int M = Dets[i].Nalpha() - Dets[i].Nbeta();
       if (M != Sz) {
-	      cout << "Sz is not the same for all determinants."<<endl;
-	      exit(0);
+	cout << "Sz is not the same for all determinants."<<endl;
+	exit(0);
       }
       SpinSquare[j] += ci[j](i,0)*ci[j](i,0)*M*0.5*(M*0.5+1);
     }
@@ -255,13 +259,13 @@ int main(int argc, char* argv[]) {
       //sum up all the contributions toward determinant it->first
       //\sum_j S+c_j|Dj>  -> sum_j c_j |it->first>
       for (int i=0; i<connections.size(); i++) {
-	      int I = connections[i];
-	      afterSplus += ci[k](I,0);
+	int I = connections[i];
+	afterSplus += ci[k](I,0);
       }
 
       for (int j=0; j<connections.size(); j++) {
-	      int J = connections[j];
-	      SpinSquare[k] += ci[k](J,0)*afterSplus;
+	int J = connections[j];
+	SpinSquare[k] += ci[k](J,0)*afterSplus;
       }
 
     }
@@ -275,7 +279,8 @@ int main(int argc, char* argv[]) {
     int s = static_cast<int>( (-1.0 + pow(1+4*SpinSquare[j], 0.5)) + 0.5); //2S
     Spin[j] = s;
     hsubspaceSize += s+1; //2s+1
-    if (j != 0) rowIndex[j] = rowIndex[j-1]+Spin[j-1]+1;
+    if (j != 0)
+      rowIndex[j] = rowIndex[j-1]+Spin[j-1]+1;
   }
 
   cout << str(boost::format("PERFORMING QDPTSOC with %s roots\n")%ci.size());
@@ -309,14 +314,14 @@ int main(int argc, char* argv[]) {
   Hsubspace *= 219470.;
 
   //print out the hsoc matrix
-  cout << endl << "SOC Matrix " << endl;
-  cout << Hsubspace << endl << endl << endl;
+  cout <<endl<< "SOC Matrix "<<endl;
+  cout << Hsubspace<<endl<<endl<<endl;
 
   //print out the eigenvalues
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Hsubspace);
   if (eigensolver.info() != Success) abort();
   for (int i=0; i<Hsubspace.rows(); i++)
-    cout << "Root: " << i << " -> Energy: " << eigensolver.eigenvalues()[i] << endl;
+    cout << "Root: "<<i<<" -> Energy: "<<eigensolver.eigenvalues()[i]<<endl;
 
 
 
@@ -366,47 +371,48 @@ int main(int argc, char* argv[]) {
       LplusSInt.store.resize(norbs*norbs, 0.0);
       LplusSInt.norbs = norbs;
       for (int i=0; i<L[a].store.size(); i++)
-	      LplusSInt.store[i] = 1.*L[a].store[i]+1.*S[a].store[i];
+	LplusSInt.store[i] = 1.*L[a].store[i]+1.*S[a].store[i];
 
       //updateSOCconnections does not update the diagonal elements
       //these have to be done separately
       for (int i=0; i<Dets.size(); i++) {
-	      connections[i].push_back(i);
-	      CItype energy = 0.0;
-	      for (int j=0; j<norbs; j++)
-	        if (Dets[i].getocc(j))
-	          energy += LplusSInt(j,j);
-	      Helements[i].push_back(energy);
+	connections[i].push_back(i);
+	CItype energy = 0.0;
+	for (int j=0; j<norbs; j++)
+	  if (Dets[i].getocc(j)) {
+	    energy += LplusSInt(j,j);
+	  }
+	Helements[i].push_back(energy);
       }
       SHCImakeHamiltonian::updateSOCconnections(Dets, 0, connections, orbDifference, Helements, norbs, LplusSInt, nelec);
       Hmult2 H(connections, Helements);
       for (int j=0; j<ci.size(); j++) {//bra
-	      for (int i=j; i<ci.size(); i++) {//ket
-	        for (int sz2=-Spin[j]; sz2<=Spin[j]; sz2+=2) {//bra Sz
-	          for (int sz1=-Spin[i]; sz1<=Spin[i]; sz1+=2) {//ket	Sz
-	            MatrixXx c2extended = MatrixXx::Zero(Dets.size(), 1);  //bra
-	            MatrixXx c1extended = MatrixXx::Zero(Dets.size(), 1);  //ket
-	            MatrixXx Hc1 = MatrixXx::Zero(Dets.size(), 1);
+	for (int i=j; i<ci.size(); i++) {//ket
+	  for (int sz2=-Spin[j]; sz2<=Spin[j]; sz2+=2) {//bra Sz
+	    for (int sz1=-Spin[i]; sz1<=Spin[i]; sz1+=2) {//ket	Sz
+	      MatrixXx c2extended = MatrixXx::Zero(Dets.size(), 1);  //bra
+	      MatrixXx c1extended = MatrixXx::Zero(Dets.size(), 1);  //ket
+	      MatrixXx Hc1 = MatrixXx::Zero(Dets.size(), 1);
 
-	            //bra
-	            if (sz2==-Spin[j])
-		            SOChelper::getSminus(ci[j], c2extended, Dets, beginS0, beginSp, beginSm, norbs);
-	            else
-		            c2extended.block(0,0,ci[j].rows(),1) = 1.*ci[j];
+	      //bra
+	      if (sz2==-Spin[j])
+		SOChelper::getSminus(ci[j], c2extended, Dets, beginS0, beginSp, beginSm, norbs);
+	      else
+		c2extended.block(0,0,ci[j].rows(),1) = 1.*ci[j];
 
-	            //ket
-	            if (sz1==-Spin[i])
-		            SOChelper::getSminus(ci[i], c1extended, Dets, beginS0, beginSp, beginSm, norbs);
-	            else
-		            c1extended.block(0,0,ci[i].rows(),1) = 1.*ci[i];
+	      //ket
+	      if (sz1==-Spin[i])
+		SOChelper::getSminus(ci[i], c1extended, Dets, beginS0, beginSp, beginSm, norbs);
+	      else
+		c1extended.block(0,0,ci[i].rows(),1) = 1.*ci[i];
 
-	            H(c1extended, Hc1);
-	            LplusS[a](rowIndex[j]+ (-sz2+Spin[j])/2, rowIndex[i] + (-sz1+Spin[i])/2) = (c2extended.adjoint()*Hc1)(0,0);
-	            LplusS[a](rowIndex[i]+ (-sz1+Spin[i])/2, rowIndex[j] + (-sz2+Spin[j])/2) = (Hc1.adjoint()*c2extended)(0,0);
+	      H(c1extended, Hc1);
+	      LplusS[a](rowIndex[j]+ (-sz2+Spin[j])/2, rowIndex[i] + (-sz1+Spin[i])/2) = (c2extended.adjoint()*Hc1)(0,0);
+	      LplusS[a](rowIndex[i]+ (-sz1+Spin[i])/2, rowIndex[j] + (-sz2+Spin[j])/2) = (Hc1.adjoint()*c2extended)(0,0);
 
-	          }
-	        }
-	      }
+	    }
+	  }
+	}
       }
     }
     //cout << LplusS[0]<<endl;
@@ -418,7 +424,7 @@ int main(int argc, char* argv[]) {
 
     for (int i=0; i<3; i++)
       for (int j=0; j<3; j++)
-	      Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
+	Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
 
     //cout << Gtensor<<endl;
     SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);

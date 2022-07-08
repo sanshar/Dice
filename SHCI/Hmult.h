@@ -29,14 +29,13 @@
 #include "global.h"
 #include "Determinants.h"
 #include <algorithm>
-#include <chrono>
 #include "SHCISortMpiUtils.h"
-#include "SHCImake4cHamiltonian.h"
+#include "SHCImakeHamiltonian.h"
 
 using namespace Eigen;
 using namespace std;
 using namespace SHCISortMpiUtils;
-using namespace SHCImake4cHamiltonian;
+using namespace SHCImakeHamiltonian;
 
 std::complex<double> sumComplex(const std::complex<double>& a, const std::complex<double>& b) ;
 
@@ -45,115 +44,114 @@ namespace SHCISortMpiUtils{
 };
 
 struct Hmult2 {
-  SparseHam &sparseHam;
+  SparseHam& sparseHam;
 
   Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
 
-  //=============================================================================
+//=============================================================================
   void operator()(CItype *x, CItype *y) {
-    //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
     /*!
     Calculate y = H.x from the sparse Hamiltonian
+
     :Inputs:
+
         CItype *x:
             The vector to multiply by H
         CItype *y:
             The vector H.x (output)
     */
-    //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 #ifndef SERIAL
     boost::mpi::communicator world;
 #endif
     int size = commsize, rank = commrank;
 
-    int numDets = sparseHam.connections.size(),
-        localDets = sparseHam.connections.size();
+    int numDets = sparseHam.connections.size(), localDets = sparseHam.connections.size();
 #ifndef SERIAL
     MPI_Allreduce(&localDets, &numDets, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
-    // TODO
-    auto start = std::chrono::system_clock::now();
+    if (numDets > 100000000) { // more than 10 million
 
-    vector<CItype> ytemp(numDets, 0);
-    int i, j;
-#pragma omp declare reduction(vec_CItype_plus : std::vector<CItype> : \
-                              std::transform(omp_out.begin(), omp_out.end(), omp_in.begin(), omp_out.begin(), std::plus<CItype>())) \
-                    initializer(omp_priv = omp_orig)
-
-#pragma omp parallel for private(i, j) reduction(vec_CItype_plus : ytemp)
-    for (i = 0; i < sparseHam.connections.size(); i++) {
-      for (j = 0; j < sparseHam.connections[i].size(); j++) {
-        CItype hij = sparseHam.Helements[i][j];
-        int J = sparseHam.connections[i][j];
-        int I = i * size + rank;
-
-	      ytemp[I] += hij * x[J];
-#ifdef Complex
-        if (J != I) ytemp[J] += std::conj(hij) * x[I];
-#else 
-        if (J != I) ytemp[J] += hij * x[I];
-#endif
-      }
-    }
-    if (rank == 0) {
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end - start;
-    }
-    /*start = std::chrono::system_clock::now();
-    ytemp = vector<CItype>(numDets, 0);
-    for (int i = 0; i < sparseHam.connections.size(); i++) {
-      for (int j = 0; j < sparseHam.connections[i].size(); j++) {
-        CItype hij = sparseHam.Helements[i][j];
-        int J = sparseHam.connections[i][j];
-        int I = i * size + rank;
-
-	ytemp[I] += hij * x[J];
-
-        if (J != I) {
-          ytemp[J] += hij * x[i * size + rank];
+      for (int i=0; i<sparseHam.connections.size(); i++) {
+        for (int j=0; j<sparseHam.connections[i].size(); j++) {
+          CItype hij = sparseHam.Helements[i][j];
+          int J = sparseHam.connections[i][j];
+          y[i*size+rank] += hij*x[J];
         }
       }
-    }
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end - start;
-      pout << "Time cost of Hmult on single thread " << elapsed_seconds.count() << endl;*/
-// Reduce result vector y (if using distributed memory)
+
+      for (int r=0; r<localsize; r++) {
+#ifndef SERIAL
+        MPI_Barrier(MPI_COMM_WORLD);
+#endif
+        if (localrank == r) {
+          for (int i=0; i<sparseHam.connections.size(); i++) {
+            for (int j=1; j<sparseHam.connections[i].size(); j++) {
+              CItype hij = sparseHam.Helements[i][j];
+              int J = sparseHam.connections[i][j];
+#ifdef Complex
+              y[J] += std::conj(hij)*x[i*size+rank];
+#else
+              y[J] += hij*x[i*size+rank];
+#endif
+            }
+          }
+        }
+      }
+#ifndef SERIAL
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+    } else { // less than 10 million
+      vector<CItype> ytemp(numDets, 0);
+
+      for (int i=0; i<sparseHam.connections.size(); i++) {
+        for (int j=0; j<sparseHam.connections[i].size(); j++) {
+          CItype hij = sparseHam.Helements[i][j];
+          int J = sparseHam.connections[i][j];
+          ytemp[i*size+rank] += hij*x[J];
+          if (J != i*size+rank)
+#ifdef Complex
+            ytemp[J] += std::conj(hij)*x[i*size+rank];
+#else
+            ytemp[J] += hij*x[i*size+rank];
+#endif
+        }
+      }
+
+
 #ifndef SERIAL
 #ifndef Complex
-    if (localrank == 0) {
-      MPI_Reduce(MPI_IN_PLACE, &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
-                 localcomm);
-      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
-    } else {
-      MPI_Reduce(&ytemp[0], &ytemp[0], numDets, MPI_DOUBLE, MPI_SUM, 0,
-                 localcomm);
-    }
+      if (localrank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
+        for (int j=0; j<numDets; j++)
+          y[j] = ytemp[j];
+      } else {
+        MPI_Reduce(&ytemp[0], &ytemp[0],  numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
+      }
 #else
-    if (localrank == 0) {
-      MPI_Reduce(MPI_IN_PLACE, &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
-                 localcomm);
-      for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
-    } else {
-      MPI_Reduce(&ytemp[0], &ytemp[0], 2 * numDets, MPI_DOUBLE, MPI_SUM, 0,
-                 localcomm);
-    }
+      if (localrank == 0) {
+        MPI_Reduce(MPI_IN_PLACE, &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
+        for (int j=0; j<numDets; j++)
+          y[j] = ytemp[j];
+      } else {
+        MPI_Reduce(&ytemp[0], &ytemp[0],  2*numDets, MPI_DOUBLE, MPI_SUM, 0, localcomm);
+      }
 #endif
-    MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(MPI_COMM_WORLD);
 #else
-    for (int j = 0; j < numDets; j++) y[j] = ytemp[j];
+      for (int j=0; j<numDets; j++)
+	y[j] = ytemp[j];
 #endif
-    // TODO
-    if (rank == 0) {
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> elapsed_seconds = end - start;
-    }
-  }  // operator
+
+    } // ndets
+  } // operator
 };
 
-/*struct HmultDirect {
-  int*          &AlphaMajorToBetaLen; 
+struct HmultDirect {
+  int*          &AlphaMajorToBetaLen;
   vector<int* > &AlphaMajorToBeta   ;
   vector<int* > &AlphaMajorToDet    ;
   int*          &BetaMajorToAlphaLen;
@@ -254,8 +252,7 @@ struct Hmult2 {
       if (k%(nprocs) != proc) continue;
       CItype hij = Dets[k].Energy(I1, I2, coreE);
       size_t orbDiff;
-      
-      /*if (Determinant::Trev != 0) 
+      if (Determinant::Trev != 0)
         updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
       y[k] += hij*x[k];
     }
@@ -314,7 +311,7 @@ struct Hmult2 {
             if (itb != &AlphaMajorToBeta[Asingle][AlphaToBetaLen] && *itb == Bsingle)
               SearchStartIndex = itb - &AlphaMajorToBeta[Asingle][0];
             */
-            /*int index=SearchStartIndex;
+            int index=SearchStartIndex;
             for (; index <AlphaToBetaLen && AlphaMajorToBeta[Asingle][index] < Bsingle; index++) {}
 
             SearchStartIndex = index;
@@ -382,6 +379,6 @@ struct Hmult2 {
       } // ii
     } // i
   }; // end operator
-};*/
+};
 
 #endif

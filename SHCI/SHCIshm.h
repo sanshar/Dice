@@ -23,10 +23,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "global.h"
-#include "communicate.h"
-#include <iostream>
 using namespace Eigen;
-using namespace std;
 
 void initSHM();
 
@@ -47,14 +44,17 @@ void SHMVecFromVecs(std::vector<T>& vec, T* &SHMvec, std::string& SHMname,
 #ifndef SERIAL
   MPI_Bcast(&totalMemory, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #endif
+  
   SHMsegment.truncate(totalMemory);
   SHMregion = boost::interprocess::mapped_region{SHMsegment, boost::interprocess::read_write};
   if (localrank == 0)
     memset(SHMregion.get_address(), 0., totalMemory);
   SHMvec = (T*)(SHMregion.get_address());
+  
 #ifndef SERIAL
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+  
   if (comm_rank == 0) {
     for (size_t i=0; i<vec.size(); i++) 
       SHMvec[i] = vec[i];

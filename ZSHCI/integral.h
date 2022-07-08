@@ -31,7 +31,7 @@
 
 using namespace std;
 using namespace Eigen;
-class schedule;
+
 
 
 //bool myfn(double i, double j);
@@ -175,7 +175,7 @@ class twoIntHeatBathSHM {
 
 
 #ifdef Complex
-void readSOCIntegrals(oneInt& I1soc, int norbs, string fileprefix, schedule& schd);
+void readSOCIntegrals(oneInt& I1soc, int norbs, string fileprefix);
 
 void readGTensorIntegrals(vector<oneInt>& I1soc, int norbs, string fileprefix);
 #endif

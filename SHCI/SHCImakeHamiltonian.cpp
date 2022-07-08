@@ -579,22 +579,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-<<<<<<< HEAD:SHCI/SHCImakeHamiltonian.cpp
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
           if (DoRDM) {
             orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 orbDiff);
-=======
-          if (abs(hij) > -1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
->>>>>>> relWithBagel:ZSHCI/SHCImakeHamiltonian.cpp
           }
         }
       }
@@ -629,22 +619,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
             CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                              I1, I2, coreE, orbDiff);
             fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-<<<<<<< HEAD:SHCI/SHCImakeHamiltonian.cpp
             connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 std::abs(DetJ) - 1);
             Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
             if (DoRDM) {
               orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                   orbDiff);
-=======
-            if (abs(hij) > -1.e-10) {
-              connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  std::abs(DetJ) - 1);
-              Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-              if (DoRDM)
-                orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                    orbDiff);
->>>>>>> relWithBagel:ZSHCI/SHCImakeHamiltonian.cpp
             }
           }  //*itb == Bsingle
         }    // k 0->SinglesFromBeta
@@ -670,10 +650,6 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-<<<<<<< HEAD:SHCI/SHCImakeHamiltonian.cpp
-=======
-          if (abs(hij) < -1.e-10) continue;
->>>>>>> relWithBagel:ZSHCI/SHCImakeHamiltonian.cpp
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
@@ -699,22 +675,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-<<<<<<< HEAD:SHCI/SHCImakeHamiltonian.cpp
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
           if (DoRDM) {
             orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 orbDiff);
-=======
-          if (abs(hij) > -1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
->>>>>>> relWithBagel:ZSHCI/SHCImakeHamiltonian.cpp
           }
         }
       }
@@ -734,22 +700,12 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
           CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
                            I1, I2, coreE, orbDiff);
           fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
-<<<<<<< HEAD:SHCI/SHCImakeHamiltonian.cpp
           connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
               std::abs(DetJ) - 1);
           Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
           if (DoRDM) {
             orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
                 orbDiff);
-=======
-          if (abs(hij) > -1.e-10) {
-            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                std::abs(DetJ) - 1);
-            Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
-            if (DoRDM)
-              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
-                  orbDiff);
->>>>>>> relWithBagel:ZSHCI/SHCImakeHamiltonian.cpp
           }
         }
       }
@@ -988,7 +944,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
   size_t Norbs = norbs;
 
   int nprocs = commsize, proc = commrank;
-  std::map<Determinant, int> SortedDetsMap;
+  map<Determinant, int> SortedDetsMap;
   for (int i = 0; i < DetsSize; i++) {
     SortedDetsMap[Dets[i]] = i;
   }
@@ -1009,7 +965,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
       int i = ia / nopen, a = ia % nopen;
 
       CItype integral = int1(open[a], closed[i]);
-      if (abs(integral) < -1.e-8) continue;
+      if (abs(integral) < 1.e-8) continue;
 
       Determinant di = d;
       if (open[a] % 2 == closed[i] % 2 && !includeSz) continue;
@@ -1019,7 +975,7 @@ void SHCImakeHamiltonian::updateSOCconnections(
       double sgn = 1.0;
       d.parity(min(open[a], closed[i]), max(open[a], closed[i]), sgn);
 
-      std::map<Determinant, int>::iterator it = SortedDetsMap.find(di);
+      map<Determinant, int>::iterator it = SortedDetsMap.find(di);
       if (it != SortedDetsMap.end()) {
         int y = it->second;
         if (y < x) {

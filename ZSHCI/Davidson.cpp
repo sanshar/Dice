@@ -261,8 +261,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       }
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
-        pout << "Eigenvalue solver unsuccessful."<<endl;
-        pout << hsubspace<<endl;
+        cout << "Eigenvalue solver unsuccessful."<<endl;
+        cout << hsubspace<<endl;
         abort();
       }
 
@@ -303,15 +303,9 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         //return eroots;
       }
 
-<<<<<<< HEAD:SHCI/Davidson.cpp
-      if (error < tol || numIter >800*x0.size()) {
-        if (numIter >2000*x0.size()) {
-          pout << str(boost::format("Davidson calculation did not converge for root %3d, #iter %5d\n") % (convergedRoot+1) % (numIter) );
-=======
       if (error < tol || numIter >400*x0.size()) {
         if (numIter >400*x0.size()) {
           cout << "Davidson calculation Didnt converge"<<endl;
->>>>>>> relWithBagel:ZSHCI/Davidson.cpp
           exit(0);
           continueOrReturn = 2;
           //return eroots;
@@ -509,8 +503,8 @@ vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& di
       }
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
-        pout << "Eigenvalue solver unsuccessful."<<endl;
-        pout << hsubspace<<endl;
+        cout << "Eigenvalue solver unsuccessful."<<endl;
+        cout << hsubspace<<endl;
         abort();
       }
 
@@ -553,7 +547,7 @@ vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& di
 
       if (error < tol || numIter >400*x0.size()) {
         if (numIter >400*x0.size()) {
-          pout << str(boost::format("Davidson calculation did not converge for root %3d, #iter %5d\n") % (convergedRoot+1) % (numIter) );
+          cout << "Davidson calculation Didnt converge"<<endl;
           exit(0);
           continueOrReturn = 2;
           //return eroots;

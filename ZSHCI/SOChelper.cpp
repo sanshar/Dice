@@ -49,15 +49,9 @@ void SOChelper::calculateSpinRDM(vector<MatrixXx>& spinRDM, MatrixXx& ci1, Matri
 {
   size_t Norbs = norbs;
 
-<<<<<<< HEAD:SHCI/SOChelper.cpp
-  map<Determinant, int> SortedDets;
-  for (int i=0; i<Detssize; i++) {
-=======
   std::map<Determinant, int> SortedDets;
   for (int i=0; i<Detssize; i++)
->>>>>>> relWithBagel:ZSHCI/SOChelper.cpp
     SortedDets[Dets1[i]] = i;
-  }
 
 
   vector<int> closed(nelec,0);
@@ -118,17 +112,17 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
   if (abs(E0[0] - E0[1])*219470. > 10.0) {
     cout <<"Energy difference between kramer's pair greater than 10."<<endl;
     cout << "Quitting the g-tensor calcualtion"<<endl;
-    //exit(0);
+    exit(0);
   }
 
   //initialize L and S integrals
-  vector<oneInt> L(3), S(3);
+  vector<oneInt> L(3), LplusS(3);
   for (int i=0; i<3; i++) {
     L[i].store.resize(norbs*norbs, 0.0);
     L[i].norbs = norbs;
 
-    S[i].store.resize(norbs*norbs, 0.0);
-    S[i].norbs = norbs;
+    LplusS[i].store.resize(norbs*norbs, 0.0);
+    LplusS[i].norbs = norbs;
   }
 
   //read L integrals
@@ -141,105 +135,47 @@ void SOChelper::doGTensor(vector<MatrixXx>& ci, Determinant* Dets, vector<double
   //generate S integrals
   double ge = 2.002319304;
   for (int a=1; a<norbs/2+1; a++) {
-    S[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
-    S[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
+    LplusS[0](2*(a-1), 2*(a-1)+1) += ge/2.;  //alpha beta
+    LplusS[0](2*(a-1)+1, 2*(a-1)) += ge/2.;  //beta alpha
 
-    S[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
-    S[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
+    LplusS[1](2*(a-1), 2*(a-1)+1) += std::complex<double>(0, -ge/2.);  //alpha beta
+    LplusS[1](2*(a-1)+1, 2*(a-1)) += std::complex<double>(0,  ge/2.);  //beta alpha
 
-    S[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
-    S[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
+    LplusS[2](2*(a-1), 2*(a-1)) +=  ge/2.;  //alpha alpha
+    LplusS[2](2*(a-1)+1, 2*(a-1)+1) += -ge/2.;  //beta beta
   }
 
+  for (int a=0; a<3; a++)
+    for (int i=0; i<norbs; i++)
+      for (int j=0; j<norbs; j++)
+	LplusS[a](i,j) += L[a](i,j);
 
   //The  La+ge Sa matrices where a is x,y,z
-  vector<MatrixXx> IntermediateS = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
-  vector<MatrixXx> IntermediateL = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
+  vector<MatrixXx> Intermediate = vector<MatrixXx>(3, MatrixXx::Zero(2,2));
 
   //calcualte S+L
   for (int a=0; a<3; a++) {
     for (int i=0; i<norbs; i++)
       for (int j=0; j<norbs; j++) {
-	IntermediateL[a](0,0) += (L[a](i,j))*spinRDM[0](i,j);
-	IntermediateL[a](1,1) += (L[a](i,j))*spinRDM[1](i,j);
-	IntermediateL[a](0,1) += (L[a](i,j))*spinRDM[2](i,j);
+	Intermediate[a](0,0) += (LplusS[a](i,j))*spinRDM[0](i,j);
+	Intermediate[a](1,1) += (LplusS[a](i,j))*spinRDM[1](i,j);
+	Intermediate[a](0,1) += (LplusS[a](i,j))*spinRDM[2](i,j);
       }
-    IntermediateL[a](1,0) = conj(IntermediateL[a](0,1));
-  }
-  
-  //calcualte S+L
-  for (int a=0; a<3; a++) {
-    for (int i=0; i<norbs; i++)
-      for (int j=0; j<norbs; j++) {
-	IntermediateS[a](0,0) += (S[a](i,j))*spinRDM[0](i,j);
-	IntermediateS[a](1,1) += (S[a](i,j))*spinRDM[1](i,j);
-	IntermediateS[a](0,1) += (S[a](i,j))*spinRDM[2](i,j);
-      }
-    IntermediateS[a](1,0) = conj(IntermediateS[a](0,1));
+    Intermediate[a](1,0) = conj(Intermediate[a](0,1));
+
+    SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[a]);
+    if (eigensolver.info() != Success) abort();
   }
 
-  //cout << spinRDM[2]<<endl;
-  vector<MatrixXx> Intermediate =  vector<MatrixXx>(3, MatrixXx::Zero(2,2));
-  Intermediate[0] = IntermediateS[0] + IntermediateL[0];
-  Intermediate[1] = IntermediateS[1] + IntermediateL[1];
-  Intermediate[2] = IntermediateS[2] + IntermediateL[2];
-
-  /*
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[0]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[1]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(Intermediate[2]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-
-  cout << "Sxyz"<<endl;
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateS[0]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateS[1]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateS[2]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-
-  cout << "Lxyz"<<endl;
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateL[0]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateL[1]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-  {
-    SelfAdjointEigenSolver<MatrixXx> eigensolver(IntermediateL[2]);
-    cout << eigensolver.eigenvalues()<<endl<<endl;
-  }
-
-  cout << IntermediateL[0]<<endl<<endl;
-  cout << IntermediateS[0]<<endl<<endl;
-  cout << Intermediate[0]<<endl<<endl;
-  */
   MatrixXx Gtensor = MatrixXx::Zero(3,3);
 
   for (int i=0; i<3; i++)
     for (int j=0; j<3; j++)
-      Gtensor(i,j) += 2.*(Intermediate[i]*Intermediate[j]).trace().real();
-  //cout << Gtensor<<endl;
+      Gtensor(i,j) += 2.*(Intermediate[i].adjoint()*Intermediate[j]).trace();
+
+
   SelfAdjointEigenSolver<MatrixXx> eigensolver(Gtensor);
   if (eigensolver.info() != Success) abort();
-  pout << endl<<"Gtensor eigenvectors"<<endl;
-  cout << eigensolver.eigenvectors()<<endl;
   pout <<endl<< "Gtensor eigenvalues"<<endl;
   pout << str(boost::format("g1= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[0],0.5) % ((-ge+pow(eigensolver.eigenvalues()[0],0.5))*1.e6) );
   pout << str(boost::format("g2= %9.6f,  shift: %6.0f\n")%pow(eigensolver.eigenvalues()[1],0.5) % ((-ge+pow(eigensolver.eigenvalues()[1],0.5))*1.e6) );

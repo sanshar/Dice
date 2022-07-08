@@ -181,10 +181,9 @@ void LCC::doLCC(
                    getproc, getproc, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
           uniqueDEH.MergeSortAndRemoveDuplicates();
         }
-      } 
-      else if ( rank%ipow(2, level+1) == 0 && rank + ipow(2, level) >= size)
+      } else if ( rank%ipow(2, level+1) == 0 && rank + ipow(2, level) >= size) {
         continue ;
-      else if ( rank%ipow(2, level) == 0) {
+      } else if ( rank%ipow(2, level) == 0) {
         int toproc = rank-ipow(2,level);
         int proc = commrank;
         long numDets = uniqueDEH.Det->size();

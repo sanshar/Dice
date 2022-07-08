@@ -103,19 +103,19 @@ void MakeCumulativeArray(std::vector<int>& orbs, int OrbI, int OrbJ, int OrbA, t
 
 
 void getOneExcitation(closed, open, I2, I1, norbs){
-  nclosed = size(closed)[1]
+    nclosed = size(closed)[1]
 
-  pgen = 1.0
-  //pic i randomly and update pgen
+    pgen = 1.0
+    //pic i randomly and update pgen
 
-  i, pgen = StatsBase.sample(closed,1)[1], pgen/nclosed
+    i, pgen = StatsBase.sample(closed,1)[1], pgen/nclosed
 
-  //make the cumulative list for a (i|a) and pick  a
-  aints, awts, cumA = MakeCumulativeArray(open, i, I1, mod(i,2))
-  a = StatsBase.sample(aints, StatsBase.WeightVec(awts))[1]
-  pgen *= awts[locate(a,aints)]/cumA
+    //make the cumulative list for a (i|a) and pick  a
+    aints, awts, cumA = MakeCumulativeArray(open, i, I1, mod(i,2))
+    a = StatsBase.sample(aints, StatsBase.WeightVec(awts))[1]
+    pgen *= awts[locate(a,aints)]/cumA
 
-  return i,a,pgen
+    return i,a,pgen
 }
 
 

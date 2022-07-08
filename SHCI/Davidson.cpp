@@ -18,7 +18,6 @@
 */
 #include "Davidson.h"
 #include "Hmult.h"
-#include "HmultDirect.h"
 #include <Eigen/Dense>
 #include <iostream>
 #include <iostream>
@@ -303,15 +302,9 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         //return eroots;
       }
 
-<<<<<<< HEAD:SHCI/Davidson.cpp
       if (error < tol || numIter >800*x0.size()) {
         if (numIter >2000*x0.size()) {
           pout << str(boost::format("Davidson calculation did not converge for root %3d, #iter %5d\n") % (convergedRoot+1) % (numIter) );
-=======
-      if (error < tol || numIter >400*x0.size()) {
-        if (numIter >400*x0.size()) {
-          cout << "Davidson calculation Didnt converge"<<endl;
->>>>>>> relWithBagel:ZSHCI/Davidson.cpp
           exit(0);
           continueOrReturn = 2;
           //return eroots;
@@ -357,7 +350,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 //=============================================================================
-vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
     /*!
     Davidson, implemented very similarly to as implementeded in Block
@@ -403,7 +396,7 @@ vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& di
   int niter;
   //if some vector has zero norm then randomise it
   if (commrank == 0) {
-    for (int i=0; i<nroots; i++) {
+    for (int i=0; i<nroots; i++)  {
       b.col(i) = 1.*x0[i];
       if (x0[i].norm() < 1.e-10) {
         b.col(i).setRandom();
@@ -464,7 +457,7 @@ vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& di
 #endif
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-      H(bcol, sigmacol);
+      Hdirect(bcol, sigmacol);
       sigmaSize++;
 
 #ifndef SERIAL
@@ -676,7 +669,7 @@ double LinearSolver(Hmult2& H, double E0, MatrixXx& x0, MatrixXx& b, vector<CIty
 
     double rsnew = r.squaredNorm();
     CItype ept = -(x0.adjoint()*r + x0.adjoint()*b)(0,0);
-    if (print == true)
+    if (false)
       pout <<"#"<< iter<<" "<<ept<<"  "<<rsnew<<std::endl;
     if (r.norm() < tol || iter > 100) {
       p.setZero(p.rows(),1);

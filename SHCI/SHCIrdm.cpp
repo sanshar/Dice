@@ -19,20 +19,6 @@
   this program. If not, see <http://www.gnu.org/licenses/>.
 */
 #include "SHCIrdm.h"
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
-=======
-#include "Davidson.h"
-#include "Determinants.h"
-#include "Hmult.h"
-#include "SHCISortMpiUtils.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
-#include "SHCIsampledeterminants.h"
-#include "boost/format.hpp"
-#include "input.h"
-#include "integral.h"
-#include "math.h"
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
 #include <algorithm>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -42,7 +28,6 @@
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/vector.hpp>
 #include <fstream>
-#include <iomanip>
 #include <map>
 #include <tuple>
 #include <vector>
@@ -366,43 +351,6 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
 }
-//=============================================================================
-void SHCIrdm::save1RDM_bin(schedule &schd, MatrixXx &oneRDM, int root) {
-  int norbs = oneRDM.rows();
-  if (commrank == 0) {
-    for (int i = 0; i < oneRDM.rows(); i++)
-      for (int j = 0; j < oneRDM.rows(); j++) {
-        if (std::abs(oneRDM(i, j)) < 1.0e-6)
-          oneRDM(i, j) = (0.0, 0.0);
-      }
-    char file[5000];
-    sprintf(file, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, root);
-    std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);
-    out.write((char *)(&norbs), sizeof(int));
-    out.write((char *)oneRDM.data(), norbs * norbs * sizeof(complex<double>));
-    out.close();
-  }
-  return;
-}
-
-//=============================================================================
-void SHCIrdm::saveRDM_bin(schedule &schd, MatrixXx &twoRDM, int root) {
-  int norbs = pow(twoRDM.rows(), 0.5);
-  if (commrank == 0) {
-    for (int i = 0; i < twoRDM.rows(); i++)
-      for (int j = 0; j < twoRDM.rows(); j++) {
-        if (std::abs(twoRDM(i, j)) < 1.0e-6)
-          twoRDM(i, j) = (0.0, 0.0);
-      }
-    char file[5000];
-    sprintf(file, "%s/Dice_%d_%d.rdm2", schd.prefix[0].c_str(), root, root);
-    std::ofstream out(file, std::ios::out | std::ios::binary | std::ios::trunc);
-    out.write((char *)(&norbs), sizeof(int));
-    out.write((char *)twoRDM.data(), pow(norbs, 4) * sizeof(complex<double>));
-    out.close();
-  }
-  return;
-}
 
 //=============================================================================
 void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
@@ -435,21 +383,14 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
 
     for (int n1 = 0; n1 < nSpatOrbs; n1++) {
       for (int n2 = 0; n2 < nSpatOrbs; n2++) {
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
         if (fabs(s1RDM(n1, n2)) > 1.e-15) {
           ofs << str(boost::format("%3d   %3d   %16.12g\n") % n1 % n2 %
                      s1RDM(n1, n2));
-=======
-        if (fabs(s1RDM(n1, n2)) > 1.e-6) {
-          ofs << str(boost::format("%3d   %3d   %10.8g %10.8g\n") % n1 % n2 %
-                     s1RDM(n1, n2).real() % s1RDM(n1, n2).imag());
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
         }
       }
     }
     ofs.close();
 
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
     if (schd.DoSpinOneRDM) {
       char file2[5000];
       sprintf(file2, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root,
@@ -463,18 +404,6 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
             ofs2 << str(boost::format("%3d   %3d   %10.8g\n") % n1 % n2 %
                         oneRDM(n1, n2));
           }
-=======
-    char file2[5000];
-    sprintf(file2, "%s/Dice_%d_%d.rdm1", schd.prefix[0].c_str(), root, root);
-    std::ofstream ofs2(file2, std::ios::out);
-
-    for (int n1 = 0; n1 < norbs; n1++) {
-      for (int n2 = 0; n2 < norbs; n2++) {
-        if (abs(oneRDM(n1, n2)) > 1.e-10) {
-          ofs2 << str(boost::format("%3d   %3d   %18.10d %18.10d\n") %
-                      (n1 + 1) % (n2 + 1) % oneRDM(n1, n2).real() %
-                      oneRDM(n1, n2).imag());
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
         }
       }
       ofs2.close();
@@ -512,8 +441,9 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       boost::archive::binary_iarchive load(ifs);
       load >> twoRDM;
       // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-    } else
-      twoRDM.setZero(norbs * norbs, norbs * norbs);
+    } else {
+      twoRDM.setZero(norbs * (norbs + 1) / 2, norbs * (norbs + 1) / 2);
+    }
   }
 
   if (commrank == 0) {
@@ -603,6 +533,15 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       ofs.close();
     }
 
+    if (schd.DoSpinRDM) {
+      char file[5000];
+      sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
+      std::ofstream ofs(file, std::ios::binary);
+      boost::archive::binary_oarchive save(ofs);
+      save << twoRDM;
+      // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+    }
+
     {
       char file[5000];
       sprintf(file, "%s/%d-spatialRDM.bkp", schd.prefix[0].c_str(), root);
@@ -612,39 +551,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
       // ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
     }
 
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
   }  // end commrank
-=======
-    if (schd.DoSpinRDM) {
-      int nSpinOrbs = pow(s2RDM.rows(), 0.5) * 2;
-      char file[5000];
-      sprintf(file, "%s/Dice_%d_%d.rdm2", schd.prefix[0].c_str(), root, root);
-      std::ofstream ofs(file, std::ios::out);
-
-      for (int n1 = 0; n1 < nSpinOrbs; n1++)
-        for (int n2 = 0; n2 < nSpinOrbs; n2++)
-          for (int n3 = 0; n3 < nSpinOrbs; n3++)
-            for (int n4 = 0; n4 < nSpinOrbs; n4++) {
-              complex<double> rdmValue =
-                  twoRDM(n1 * nSpinOrbs + n2, n3 * nSpinOrbs + n4);
-              if (abs(rdmValue) > 1.e-10)
-                ofs << str(
-                    boost::format("%3d   %3d   %3d   %3d   %18.10d %18.10d\n") %
-                    (n1 + 1) % (n2 + 1) % (n3 + 1) % (n4 + 1) %
-                    rdmValue.real() % rdmValue.imag());
-            }
-      ofs.close();
-      {
-        char file[5000];
-        sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
-        std::ofstream ofs(file, std::ios::binary);
-        boost::archive::binary_oarchive save(ofs);
-        save << twoRDM;
-        // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
-      }
-    }
-  } // end commrank
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
 }
 
 void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
@@ -836,16 +743,16 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
         int orb1 = closed[n1], orb2 = closed[n2];
         if (schd.DoSpinRDM)
 #ifdef Complex
-        // twoRDM(orb1*norbs + orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
-        // twoRDM(orb1*norbs+orb2, orb1*norbs+orb2) += conj(coeff)*coeff;
+          twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
+              conj(coeff) * coeff;
 #else
           twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
               coeff * coeff;
 #endif
 
 #ifdef Complex
-          populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff) * coeff,
-                             nSpatOrbs);
+        populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, conj(coeff) * coeff,
+                           nSpatOrbs);
 #else
         populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, coeff * coeff,
                            nSpatOrbs);
@@ -936,16 +843,6 @@ void SHCIrdm::UpdateRDMResponsePerturbativeDeterministic(
 }
 
 //=============================================================================
-void SHCIrdm::populateSpinRDM(int &i, int &j, int &k, int &l,
-                              MatrixXx &RDM, CItype value,
-                              int norbs) {
-  RDM(i * norbs + j, k * norbs + l) += value;
-  RDM(j * norbs + i, k * norbs + l) += -value;
-  RDM(i * norbs + j, l * norbs + k) += -value;
-  RDM(j * norbs + i, l * norbs + k) += value;
-}
-
-//=============================================================================
 void SHCIrdm::populateSpatialRDM(int &i, int &j, int &k, int &l,
                                  MatrixXx &s2RDM, CItype value,
                                  int &nSpatOrbs) {
@@ -981,7 +878,7 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
           Pointer to determinants in wavefunction.
       int DetsSize:
           Number of determinants in wavefunction.
-      CItype *cibra:
+      CItype *cibr:
           Pointer to the ci coefficients for the bra.
       CItype *ciket:
           Pointer to the ci coefficients for the ket.
@@ -1001,20 +898,17 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
   size_t norbs = Dets[0].norbs;
   int nSpatOrbs = norbs / 2;
 
-  cout << s2RDM.rows()<<"  "<<s2RDM.cols()<<"  "<<root<<endl;
-  cout << twoRDM.rows()<<"  "<<twoRDM.cols()<<"  "<<root<<endl;
-  cout << norbs <<endl;
   for (int i = 0; i < DetsSize; i++) {
     if (i % commsize != commrank) continue;
 
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
     Dets[i].getOpenClosed(open, closed);
+
     //<Di| Gamma |Di>
-    for (int n1 = 0; n1 < nelec; n1++) {
+    for (int n1 = 0; n1 < nelec; n1++)
       for (int n2 = 0; n2 < n1; n2++) {
         int orb1 = closed[n1], orb2 = closed[n2];
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
         if (schd.DoSpinRDM)
           twoRDM(orb1 * (orb1 + 1) / 2 + orb2, orb1 * (orb1 + 1) / 2 + orb2) +=
               localConj::conj(cibra[i]) * ciket[i];
@@ -1039,36 +933,14 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
           if (!((closed[n1] > c0 && closed[n1] > d0) ||
                 (closed[n1] < c0 && closed[n1] < d0)))
             sgn *= -1.;
-=======
-        if (schd.DoSpinRDM) {
-          populateSpinRDM(orb1, orb2, orb1, orb2, twoRDM, localConj::conj(cibra[i])*ciket[i], norbs);
-          //twoRDM(orb1*norbs + orb2, orb1*norbs+orb2) += localConj::conj(cibra[i])*ciket[i];
-          //twoRDM(orb2*norbs + orb1, orb2*norbs+orb1) += localConj::conj(cibra[i])*ciket[i];
-        }
-        populateSpatialRDM(orb1, orb2, orb1, orb2, s2RDM, localConj::conj(cibra[i])*ciket[i], nSpatOrbs);
-      }
-    }
-
-    for (int j=1; j<connections[i/commsize].size(); j++) {
-      if (i == connections[i/commsize][j]) continue;
-      int d0=orbDifference[i/commsize][j]%norbs, c0=(orbDifference[i/commsize][j]/norbs)%norbs ;
-      if (orbDifference[i/commsize][j]/norbs/norbs == 0) { //only single excitation
-        for (int n1=0;n1<nelec; n1++) {
-          double sgn = 1.0;
-          int a=max(closed[n1],c0), b=min(closed[n1],c0), I=max(closed[n1],d0), J=min(closed[n1],d0);
-          if (closed[n1] == d0) continue;
-          if (closed[n1] == c0) continue;
-          Dets[i].parity(min(d0,c0), max(d0,c0),sgn);
-          if (!((closed[n1] > c0 && closed[n1] > d0) || (closed[n1] < c0 && closed[n1] < d0))) sgn *=-1.;
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
           if (schd.DoSpinRDM) {
-            CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-            populateSpinRDM(I, J, a, b, twoRDM, tmp, norbs);
-            populateSpinRDM(a, b, I, J, twoRDM,  localConj::conj(tmp), norbs);
-            //twoRDM(a*norbs+b, I*norbs+J) += (tmp);
-            //twoRDM(I*norbs+J, a*norbs+b) += localConj::conj(tmp);
+            twoRDM(a * (a + 1) / 2 + b, I * (I + 1) / 2 + J) +=
+                sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
+                ciket[i];
+            twoRDM(I * (I + 1) / 2 + J, a * (a + 1) / 2 + b) +=
+                sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
+                cibra[i];
           }
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
           populateSpatialRDM(
               a, b, I, J, s2RDM,
               sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
@@ -1085,24 +957,17 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
         int d1 = (orbDifference[i / commsize][j] / norbs / norbs) % norbs;
         int c1 =
             (orbDifference[i / commsize][j] / norbs / norbs / norbs) % norbs;
-=======
-          populateSpatialRDM(a, b, I, J, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-          populateSpatialRDM(I, J, a, b, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-        }
-      }
-      else {
-        int d1=(orbDifference[i/commsize][j]/norbs/norbs)%norbs, c1=(orbDifference[i/commsize][j]/norbs/norbs/norbs)%norbs ;
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
         double sgn = 1.0;
-        Dets[i].parity(d1,d0,c1,c0,sgn);
+
+        Dets[i].parity(d1, d0, c1, c0, sgn);
         if (schd.DoSpinRDM) {
-          CItype tmp = sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i];
-          populateSpinRDM(d1, d0, c1, c0, twoRDM, tmp, norbs);
-          populateSpinRDM(c1, c0, d1, d0, twoRDM, localConj::conj(tmp), norbs);
-          //twoRDM(c1*norbs+c0, d1*norbs+d0) += tmp;
-          //twoRDM(d1*norbs+d0, c1*norbs+c0) += localConj::conj(tmp);
+          twoRDM(c1 * (c1 + 1) / 2 + c0, d1 * (d1 + 1) / 2 + d0) +=
+              sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
+              ciket[i];
+          twoRDM(d1 * (d1 + 1) / 2 + d0, c1 * (c1 + 1) / 2 + c0) +=
+              sgn * localConj::conj(ciket[connections[i / commsize][j]]) *
+              cibra[i];
         }
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
         populateSpatialRDM(
             c1, c0, d1, d0, s2RDM,
             sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
@@ -1118,18 +983,10 @@ void SHCIrdm::EvaluateRDM(vector<vector<int>> &connections, Determinant *Dets,
     }  // end j
   }    // end i
 
-=======
-        //populateSpatialRDM(c1, c0, d1, d0, s2RDM, sgn*localConj::conj(cibra[connections[i/commsize][j]])*ciket[i], nSpatOrbs);
-        //populateSpatialRDM(d1, d0, c1, c0, s2RDM, sgn*localConj::conj(ciket[connections[i/commsize][j]])*cibra[i], nSpatOrbs);
-      }
-    }
-  }
-  
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
 #ifndef SERIAL
   if (schd.DoSpinRDM)
     MPI_Allreduce(MPI_IN_PLACE, &twoRDM(0, 0), twoRDM.rows() * twoRDM.cols(),
-                  MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &s2RDM(0, 0), s2RDM.rows() * s2RDM.cols(),
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
@@ -1186,12 +1043,14 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
     vector<int> closed(nelec, 0);
     vector<int> open(norbs - nelec, 0);
     Dets[i].getOpenClosed(open, closed);
+
     //<Di| Gamma |Di>
     for (int n1 = 0; n1 < nelec; n1++) {
       int orb1 = closed[n1];
       oneRDM(orb1, orb1) += localConj::conj(cibra[i]) * ciket[i];
       s1RDM(orb1 / 2, orb1 / 2) += localConj::conj(cibra[i]) * ciket[i];
     }
+
     for (int j = 1; j < connections[i / commsize].size(); j++) {
       int d0 = orbDifference[i / commsize][j] % norbs,
           c0 = (orbDifference[i / commsize][j] / norbs) % norbs;
@@ -1199,10 +1058,13 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
           0) {  // only single excitation
         double sgn = 1.0;
         Dets[i].parity(min(c0, d0), max(c0, d0), sgn);
-        CItype val = sgn * (cibra[connections[i / commsize][j]]) *
-                     localConj::conj(ciket[i]);
-        oneRDM(c0, d0) += (val);
-        oneRDM(d0, c0) += localConj::conj(val);
+
+        oneRDM(c0, d0) += sgn *
+                          localConj::conj(cibra[connections[i / commsize][j]]) *
+                          ciket[i];
+        oneRDM(d0, c0) += sgn *
+                          localConj::conj(cibra[connections[i / commsize][j]]) *
+                          ciket[i];
 
         s1RDM(c0 / 2, d0 / 2) +=
             sgn * localConj::conj(cibra[connections[i / commsize][j]]) *
@@ -1216,11 +1078,7 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
 
 #ifndef SERIAL
   MPI_Allreduce(MPI_IN_PLACE, &oneRDM(0, 0), oneRDM.rows() * oneRDM.cols(),
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-=======
-                MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
   MPI_Allreduce(MPI_IN_PLACE, &s1RDM(0, 0), s1RDM.rows() * s1RDM.cols(),
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif
@@ -1259,7 +1117,7 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
       twoInt& I2:
          Two body integrals.
       double coreE:
-          Core energy
+          Core energy.
       MatrixXx& twoRDM:
           Spin 2RDM.
 
@@ -1270,12 +1128,10 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
   double energy = coreE;
   double onebody = 0.0;
   double twobody = 0.0;
-  double onsite = 0.0;
   // if (commrank == 0)  cout << "Core energy= " << energy << endl;
 
   MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
 #pragma omp parallel for schedule(dynamic)
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
       for (int r = 0; r < norbs; r++) {
@@ -1287,24 +1143,18 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
         oneRDM(p, q) += sgn *
                         twoRDM(P * (P + 1) / 2 + R1, Q * (Q + 1) / 2 + R2) /
                         (nelec - 1.);
-=======
-  for (int p=0; p<norbs; p++)
-    for (int q=0; q<norbs; q++)
-      for (int r=0; r<norbs; r++) {
-        oneRDM(p,q) += twoRDM(p*norbs+r,q*norbs+r)/(nelec-1.);
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
       }
+
 #pragma omp parallel for reduction(+ : onebody)
   for (int p = 0; p < norbs; p++)
-    for (int q = 0; q < norbs; q++) {
+    for (int q = 0; q < norbs; q++)
 #ifdef Complex
       onebody += (I1(p, q) * oneRDM(p, q)).real();
 #else
       onebody += I1(p, q) * oneRDM(p, q);
 #endif
-    }
+
 #pragma omp parallel for reduction(+ : twobody)
-<<<<<<< HEAD:SHCI/SHCIrdm.cpp
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
       for (int r = 0; r < norbs; r++)
@@ -1326,17 +1176,7 @@ double SHCIrdm::ComputeEnergyFromSpinRDM(int norbs, int nelec, oneInt &I1,
                      twoRDM(P * (P + 1) / 2 + Q, R * (R + 1) / 2 + S) *
                      I2(p, r, q, s);  // 2-body term
 #endif
-=======
-  for (int p=0; p<norbs; p++){
-    for (int q=0; q<norbs; q++){
-      for (int r=0; r<norbs; r++){
-        for (int s=0; s<norbs; s++){
-          twobody += (0.5 * twoRDM(p*norbs+q, r*norbs+s) * I2(p,r,q,s)).real();
->>>>>>> relWithBagel:ZSHCI/SHCIrdm.cpp
         }
-      }
-    }
-  }
 
   energy += onebody + twobody;
   pout << format("E(one-body) from 2RDM: %18.10f") % (onebody) << endl;

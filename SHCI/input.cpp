@@ -48,7 +48,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   vector<double> sweep_epsilon;
   int nocc = -1;
 
-  schd.thresh_hij = 1e-10;
   schd.davidsonTol = 5.e-5;
   schd.davidsonTolLoose = 5.e-5;
   schd.RdmType = RELAXED;
@@ -69,7 +68,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.singleList = true;
   schd.io = true;
   schd.nroots = 1;
-  schd.nPTiter = 10000;
+  schd.nPTiter = 1000000;
   schd.DoRDM = false;
   schd.DoSpinRDM = false;
   schd.quasiQ = false;
@@ -110,34 +109,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   schd.DoOneRDM = false;
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
-  
-  schd.cdfciIter = 0;
-  schd.cdfci_on = 1000;
-  schd.report_interval = 1000;
-  schd.z_threshold = 0.0;
-  schd.max_determinants = 10000000;
-  schd.sampleNewDets = false;
-  schd.precondition = false;
-  schd.cdfciTol = 1e-12;
 
-<<<<<<< HEAD:SHCI/input.cpp
   schd.Bvalue = 0;
   schd.Bdirection.resize(0);
   
   while (dump.good()) {
-=======
-  schd.ReadTxt = false;
-
-  schd.cdfciIter = 0;
-  schd.report_interval = 1000;
-  schd.z_threshold = 0.0;
-  schd.max_determinants = 10000000;
-  schd.sampleNewDets = false;
-  schd.precondition = false;
-  
-  while (dump.good()) {
-
->>>>>>> relWithBagel:ZSHCI/input.cpp
     std::string Line;
     std::getline(dump, Line);
     trim(Line);
@@ -273,7 +249,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.quasiQEpsilon = atof(tok[1].c_str());
     } else if (boost::iequals(ArgName, "nblocks"))
       schd.nblocks = atof(tok[1].c_str());
-<<<<<<< HEAD:SHCI/input.cpp
     else if (boost::iequals(ArgName, "restrict")) {
       int minElec = atoi(tok[1].c_str());
       int maxElec = atoi(tok[2].c_str());
@@ -315,12 +290,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       }
       schd.restrictionsV.push_back(OccRestrictions(minElec, maxElec, orbs));
     }
-    else if (boost::iequals(ArgName, "cdfciTol"))
-      schd.cdfciTol = atof(tok[1].c_str());
-=======
-    else if (boost::iequals(ArgName, "thresh_hij"))
-      schd.thresh_hij = atof(tok[1].c_str());
->>>>>>> relWithBagel:ZSHCI/input.cpp
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))
@@ -343,30 +312,20 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.eps = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "prefix"))
       schd.prefix.push_back(tok[1]);
-<<<<<<< HEAD:SHCI/input.cpp
     else if (boost::iequals(ArgName, "pointGroup"))
-=======
-    else if (boost::iequals(ArgName, "pointGroup") )
->>>>>>> relWithBagel:ZSHCI/input.cpp
       schd.pointGroup = tok[1];
     else if (boost::iequals(ArgName, "spin"))
       schd.spin = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "irrep"))
-<<<<<<< HEAD:SHCI/input.cpp
       schd.irrep = tok[1];
     else if (boost::iequals(ArgName, "searchForLowestEnergyDet"))
       schd.searchForLowestEnergyDet = true;
-=======
-      schd.irrep = atoi(tok[1].c_str());
->>>>>>> relWithBagel:ZSHCI/input.cpp
     else if (boost::iequals(ArgName, "DoOneRDM"))
       schd.DoOneRDM = true;
     else if (boost::iequals(ArgName, "DoThreeRDM"))
       schd.DoThreeRDM = true;
     else if (boost::iequals(ArgName, "DoFourRDM"))
       schd.DoFourRDM = true;
-    else if (boost::iequals(ArgName, "readText"))
-      schd.ReadTxt = true;
     else if (boost::iequals(ArgName, "schedule")) {
       std::getline(dump, Line);
       cout << Line << endl;
@@ -381,31 +340,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
         cout << Line << endl;
         boost::split(schd_tok, Line, is_any_of(" \t"), token_compress_on);
       }
-    } 
-    else if (boost::iequals(ArgName, "maxiter"))
+    } else if (boost::iequals(ArgName, "maxiter"))
       maxiter = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "cdfciIter"))
-      schd.cdfciIter = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "cdfciOn"))
-      schd.cdfci_on = atoi(tok[1].c_str());
-<<<<<<< HEAD:SHCI/input.cpp
-=======
-    else if (boost::iequals(ArgName, "cdfciTol"))
-      schd.cdfciTol = atof(tok[1].c_str());
->>>>>>> relWithBagel:ZSHCI/input.cpp
-    else if (boost::iequals(ArgName, "reportInterval"))
-      schd.report_interval = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "z_threshold"))
-      schd.z_threshold = atof(tok[1].c_str());
-    else if (boost::iequals(ArgName, "cdfciSample"))
-      schd.sampleNewDets = true;
-<<<<<<< HEAD:SHCI/input.cpp
-=======
-    else if (boost::iequals(ArgName, "cdfci_precondition"))
-      schd.precondition = true;
-    else if (boost::iequals(ArgName, "max_determinants"))
-      schd.max_determinants = atoi(tok[1].c_str());
->>>>>>> relWithBagel:ZSHCI/input.cpp
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
@@ -420,16 +356,11 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
     cout << "nocc keyword has to be included." << endl;
     exit(0);
   }
-<<<<<<< HEAD:SHCI/input.cpp
 #ifndef Complex
   if (schd.DavidsonType == DIRECT) schd.davidsonTolLoose = 3.e-2;
 #else
   schd.davidsonTolLoose = 1.e-5;
 #endif
-=======
-  //if (schd.DavidsonType == DIRECT)
-  //  schd.davidsonTolLoose = 3.e-2;
->>>>>>> relWithBagel:ZSHCI/input.cpp
 
   for (int i = 1; i < sweep_iter.size(); i++)
     for (int j = sweep_iter[i - 1]; j < sweep_iter[i]; j++)

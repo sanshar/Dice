@@ -34,8 +34,7 @@ using namespace Eigen;
 class schedule;
 
 
-//bool myfn(double i, double j);
-bool myfn(CItype i, CItype j);
+bool myfn(double i, double j);
 
 
 
@@ -57,7 +56,7 @@ class oneInt {
     //I explicitly store all elements of the matrix
     //so for normal operator if i and j dont have the same spin
     //then it will just return zero. If we have SOC and
-    //i and j have different spin then it can be a complex number.
+    // i and j have different spin then it can be a complex number.
     inline CItype& operator()(int i, int j) { return store.at(i*norbs+j); }
 };
 
@@ -77,23 +76,28 @@ class twoInt {
       }
 
   public:
-    //double* store;
-    CItype* store;
-    //double maxEntry;
-    CItype maxEntry;
-    Matrix<CItype, Dynamic, Dynamic> Direct, Exchange;
-    //double zero ;
-    CItype zero;
+    double* store;
+    double maxEntry;
+    MatrixXd Direct, Exchange;
+    double zero ;
     size_t norbs;
     bool ksym;
     twoInt() :zero(0.0),maxEntry(100.) {}
-    //inline double& operator()(int i, int j, int k, int l) {
-    inline CItype& operator()(int i, int j, int k, int l) {
-      //For test run, I will store the two integral using <ij|kl> = <ji|lk>
-      //The any complex conjugated relate stuff will not be incorporated for now
-      int IJ = i*norbs+j, KL = k*norbs+l;
-      int A = max(IJ, KL), B = min(IJ, KL);
-      return store[A*(A+1)/2+B];
+    inline double& operator()(int i, int j, int k, int l) {
+      zero = 0.0;
+      if (!((i%2 == j%2) && (k%2 == l%2))) return zero;
+      int I=i/2;int J=j/2;int K=k/2;int L=l/2;
+
+      if(!ksym) {
+        int IJ = max(I,J)*(max(I,J)+1)/2 + min(I,J);
+        int KL = max(K,L)*(max(K,L)+1)/2 + min(K,L);
+        int A = max(IJ,KL), B = min(IJ,KL);
+        return store[A*(A+1)/2+B];
+      } else {
+        int IJ = I*norbs+J, KL = K*norbs+L;
+        int A = max(IJ,KL), B = min(IJ,KL);
+        return store[A*(A+1)/2+B];
+      }
     }
 };
 
@@ -107,10 +111,8 @@ class twoIntHeatBath {
     //if the integrals are for the same spin you have to separately store (ia|jb) and (ib|ja)
     //for opposite spin you just have to store for a>b because the integral is (ia|jb) - (ib|ja)
     //now this class is made by just considering integrals that are smaller than threshhold
-    //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > sameSpin;
-    //To work with relativistic, we don't have spins, thus, I rename it to integral
-    std::map<std::pair<short,short>, std::multimap<complex<double>, std::pair<short,short>, compAbs > > integral;
-    //std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
+    std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > sameSpin;
+    std::map<std::pair<short,short>, std::multimap<float, std::pair<short,short>, compAbs > > oppositeSpin;
     MatrixXd Singles;
 
     double epsilon;
@@ -121,49 +123,44 @@ class twoIntHeatBath {
     //typically these can be all orbitals of the problem or just the active space ones
     //ab will typically contain all orbitals(norbs)
     void constructClass(std::vector<int>& orbs, twoInt& I2, oneInt& I1, int norbs) {
-      for (int i=0; i<orbs.size(); i++) {
+      for (int i=0; i<orbs.size(); i++)
         for (int j=0;j<=i;j++) {
           std::pair<short,short> IJ=make_pair(i,j);
           //sameSpin[IJ]=std::map<double, std::pair<int,int> >();
           //oppositeSpin[IJ]=std::map<double, std::pair<int,int> >();
-          for (int a=0; a<norbs; a++) {
-            for (int b=0; b<a; b++) {
-              if (abs(I2(i,a,j,b)-I2(i,b,j,a))>epsilon) {
-                integral[IJ].insert(pair<complex<double>, std::pair<short,short>>(I2(i,a,j,b)-I2(i,b,j,a), make_pair(a,b)));
+          for (int a=0; a<norbs; a++)
+            for (int b=0; b<norbs; b++) {
+              //opposite spin
+              if (fabs(I2(2*i, 2*a, 2*j, 2*b)) > epsilon)
+                oppositeSpin[IJ].insert(pair<float, std::pair<short,short> >(I2(2*i, 2*a, 2*j, 2*b), make_pair(a,b)));
+              //samespin
+              if (a>=b && fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a)) > epsilon) {
+                sameSpin[IJ].insert(pair<float, std::pair<short,short> >( I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a), make_pair(a,b)));
+                //sameSpin[IJ][fabs(I2(2*i,2*a,2*j,2*b) - I2(2*i,2*b,2*j,2*a))] = make_pair<int,int>(a,b);
               }
-            }
           }
-        }
       } // ij
- 
-      //Singles = MatrixXd::Zero(2*norbs, 2*norbs);
-      Singles = MatrixXd::Zero(norbs, norbs);
-      //for (int i=0; i<2*norbs; i++)
-      for (int i=0; i<norbs; i++)
-        //for (int a=0; a<2*norbs; a++) {
-        for (int a=0; a<norbs; a++) {
-          Singles(i,a) = abs(I1(i,a));
-          //for (int j=0; j<2*norbs; j++) {
-          for (int j=0; j<norbs; j++) {
-            //if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
-            if (abs(Singles(i,a)) < abs(I2(i,a,j,j) - I2(i,j,j,a)))
-              Singles(i,a) = abs(I2(i,a,j,j) - I2(i,j,j,a));
+
+      Singles = MatrixXd::Zero(2*norbs, 2*norbs);
+      for (int i=0; i<2*norbs; i++)
+        for (int a=0; a<2*norbs; a++) {
+          Singles(i,a) = std::abs(I1(i,a));
+          for (int j=0; j<2*norbs; j++) {
+            if (fabs(Singles(i,a)) < fabs(I2(i,a,j,j) - I2(i, j, j, a)))
+              Singles(i,a) = std::abs(I2(i,a,j,j) - I2(i, j, j, a));
           }
-      } 
+      }
     } // end constructClass
 };
 
 class twoIntHeatBathSHM {
   public:
-    //float* sameSpinIntegrals;
-    //float* oppositeSpinIntegrals;
-    //size_t* startingIndicesSameSpin;
-    //size_t* startingIndicesOppositeSpin;
-    //short* sameSpinPairs;
-    //short* oppositeSpinPairs;
-    std::complex<double>* integrals;
-    size_t* startingIndicesIntegrals;
-    short* pairs;
+    float* sameSpinIntegrals;
+    float* oppositeSpinIntegrals;
+    size_t* startingIndicesSameSpin;
+    size_t* startingIndicesOppositeSpin;
+    short* sameSpinPairs;
+    short* oppositeSpinPairs;
     double* singleExcitation;
     MatrixXd Singles;
 
@@ -186,6 +183,6 @@ void readIntegrals(
         string fcidump,
         twoInt& I2, oneInt& I1,
         int& nelec, int& norbs, double& coreE,
-        std::vector<int>& irrep, bool readTxt=false);
+        std::vector<int>& irrep);
 
 #endif

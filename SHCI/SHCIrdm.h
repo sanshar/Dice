@@ -53,8 +53,6 @@ void makeRDM(int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
 
 void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root);
 void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
-void save1RDM_bin(schedule& schd, MatrixXx& oneRDM, int root);
-void saveRDM_bin(schedule& schd, MatrixXx& twoRDM, int root);
 void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
               size_t norbs);
@@ -85,9 +83,6 @@ void UpdateRDMPerturbativeDeterministic(
     std::vector<SHCISortMpiUtils::StitchDEH>& uniqueDEH, int root,
     MatrixXx& s2RDM, MatrixXx& twoRDM);
 
-void populateSpinRDM(int &i, int &j, int &k, int &l,
-                     MatrixXx &RDM, CItype value,
-                     int norbs);
 void populateSpatialRDM(int& i, int& j, int& k, int& l, MatrixXx& s2RDM,
                         CItype value, int& nSpatOrbs);
 

@@ -100,16 +100,10 @@ struct schedule {
     & DoOneRDM                                \
     & DoThreeRDM                              \
     & DoFourRDM                               \
-<<<<<<< HEAD:SHCI/input.h
     & restrictionsV                           \
     & restrictionsPT                          \
     & Bvalue                                  \
     & Bdirection;
-=======
->>>>>>> relWithBagel:ZSHCI/input.h
-    & cdfciIter                               \
-    & z_threshold                             \
-    & max_determinants;
   }
   // clang-format on
 
@@ -120,7 +114,6 @@ struct schedule {
   davidsonType DavidsonType;
   double epsilon2;
   double epsilon2Large;
-  double thresh_hij;
   int SampleN;
   std::vector<double> epsilon1;
   bool onlyperturbative;
@@ -176,7 +169,6 @@ struct schedule {
   bool DoOneRDM;
   bool DoThreeRDM;
   bool DoFourRDM;
-<<<<<<< HEAD:SHCI/input.h
 
   //RAS calculations
   vector<OccRestrictions> restrictionsV;
@@ -185,17 +177,6 @@ struct schedule {
   //apply external magnetic field
   double Bvalue;  //magnitude of magnetic field
   vector<double> Bdirection; //direction e.g. 1 0 0 mean it is along x-axis
-=======
-  bool ReadTxt;
->>>>>>> relWithBagel:ZSHCI/input.h
-  double z_threshold;
-  int cdfci_on;
-  int cdfciIter;
-  int report_interval;
-  int max_determinants;
-  bool sampleNewDets;
-  bool precondition;
-  double cdfciTol;
 };
 
 #endif
