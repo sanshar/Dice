@@ -1,0 +1,22 @@
+{
+  "wavefunction":
+  {
+    "name": "cpsslater",
+    "hfType": "ghf",
+    "correlators":
+    { 
+      "2": "correlators.txt"
+    }
+  },
+  "sampling":
+  {
+    "deterministic": true,
+    "stochasticIter": 10000,
+    "epsilon": 1.0e-8,
+    "seed": 5
+  },
+  "optimizer":
+  {
+    "maxIter": 10
+  }
+}

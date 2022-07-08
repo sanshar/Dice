@@ -1,0 +1,43 @@
+{
+  "wavefunction":
+  {
+    "name": "jastrowslater",
+    "determinants": "bestDet", 
+    "hfType": "ghf",
+    "complex": true
+  },
+  "sampling":
+  {
+    "tau": "0.001",
+    "seed": "100",
+    "epsilon": 1.0e-8,
+    "stochasticIter": "1000"
+  },
+  "FCIQMC":
+  {
+    "maxIter": 3000,
+    "shiftDamping": "0.1",
+    "initialShift": "0.0",
+    "initialPop": "5000.0",
+    "initialNDets": 5000,
+    "targetPop": "10000.0",
+    "mainMemoryFac": "10.0",
+    "spawnMemoryFac": "10.0",
+    "initiator": "false",
+    "heatBath": "false",
+    "useTrial": "true",
+    "trialWFEstimator": "true",
+    "importanceSampling": "true",
+    "trialInit": "true",
+    "semiStoch": "true",
+    "printAnnihilStats": false
+  },
+  "optimizer":
+  {
+    "method": "amsgrad",
+    "maxIter": 50,
+    "stepsize": 0.01,
+    "decay1": 0.1,
+    "decay2": 0.01
+  }
+}

@@ -1,0 +1,56 @@
+converged SCF energy = -108.954209876457
+CASSCF energy = -109.093151107257
+CASCI E = -109.093151107257  E(CI) = -32.1270084417824  S^2 = 0.0000000
+
+Preparing AFQMC calculation
+Calculating Cholesky integrals
+Finished calculating Cholesky integrals
+
+Size of the correlation space:
+Number of electrons: (5, 5)
+Number of basis functions: 26
+Number of Cholesky vectors: 168
+
+AFQMC input options:
+{
+  "system": {
+    "integrals": "FCIDUMP_chol",
+    "numAct": 8,
+    "numCore": 0
+  },
+  "wavefunction": {
+    "left": "multislater",
+    "right": "rhf",
+    "determinants": "dets.bin",
+    "ndets": 100
+  },
+  "sampling": {
+    "seed": 316733,
+    "phaseless": true,
+    "dt": 0.005,
+    "nsteps": 50,
+    "nwalk": 5,
+    "stochasticIter": 1000,
+    "choleskyThreshold": 0.002,
+    "orthoSteps": 20,
+    "burnIter": 50
+  },
+  "print": {}
+}
+
+Starting AFQMC / HCI (100 dets) calculation
+reading samples from samples_100.dat, ignoring first 50
+mean: -109.2673935373998
+blocked statistics:
+block size    # of blocks        mean                error
+     1            950       -1.09267394e+02       3.028273e-04
+     2            475       -1.09267394e+02       3.669828e-04
+     5            190       -1.09267394e+02       4.351088e-04
+    10             95       -1.09267394e+02       4.568797e-04
+    20             47       -1.09267345e+02       4.921200e-04
+    50             19       -1.09267394e+02       4.053481e-04
+    70             13       -1.09267506e+02       3.769180e-04
+   100              9       -1.09267533e+02       3.712759e-04
+   200              4       -1.09267638e+02       4.377878e-04
+Finished AFQMC / HCI (100 dets) calculation
+

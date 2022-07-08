@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "VMC",
+            "type": "shell",
+            "command": "clang",
+            "args": [
+                "-std=c++11",
+                "-g",
+                "-O3",
+                "-I/Users/sandeepsharma/Academics/Programs/Eigen/",
+                "-I/opt/local/include",
+                "-I/opt/local/include/openmpi-mp/",
+                "*.cpp"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+}

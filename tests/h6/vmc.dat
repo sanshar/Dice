@@ -1,0 +1,14 @@
+correlator 2 twosite.txt
+maxIter 10
+stochasticIter 10000
+
+deterministic
+#restart
+seed 5
+
+integralsamplesize 10
+epsilon 1.e-6
+screentol 1.e-6
+PTlambda 0.5
+#doubleexcitationprobability 0
+determinants determinants

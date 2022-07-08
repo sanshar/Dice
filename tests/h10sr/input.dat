@@ -1,0 +1,23 @@
+#system
+nocc 10
+0 2 4 6 8 1 3 5 7 9 
+end
+nroots 1
+#variational
+schedule 
+0	10
+end
+davidsonTol 5e-05
+dE 1e-08
+maxiter 6
+#pt
+nPTiter 0
+epsilon2 1e-07
+epsilon2Large 1000
+targetError 0.0001
+sampleN 200
+#misc
+noio 
+prefix /rc_scratch/ilsa8974/129876/node0
+DoRDM
+

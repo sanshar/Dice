@@ -1,0 +1,243 @@
+#INFO: **** input file is /projects/joku8258/QMC/VMC/examples/NEVPT2/N2/n2nevpt.py ****
+import numpy as np
+import math
+from pyscf import gto, scf, ao2mo, mcscf, tools
+from pyscf.shciscf import shci
+import os
+import QMCUtils 
+import json
+
+
+nproc = 4
+dice_binary = "/projects/joku8258/software/Dice/Dice"
+vmc_root = "/projects/joku8258/QMC/VMC/"
+
+
+# make your molecule here
+r = 2.5 * 0.529177
+atomstring = "N 0 0 0; N 0 0 %g"%(r)
+mol = gto.M(
+    atom = atomstring,
+    basis = 'augccpvdz',
+    verbose=4,
+    symmetry=0,
+    spin = 0)
+
+mf = scf.RHF(mol)
+mf.chkfile = 'N2_HF.chk'
+mf.kernel()
+
+norbAct = 8
+nelecAct = 10
+norbFrozen = 0
+#norbCore = int((sum(mol.nelec)-(nelecAct))/2)
+
+########### CASSCF calculation ##################
+mc = shci.SHCISCF(mf, norbAct, nelecAct)
+mc.chkfile = 'N2_SHCISCF.chk'
+mc.fcisolver.sweep_iter = [0]
+mc.fcisolver.sweep_epsilon = [0]
+mc.fcisolver.nPTiter = 0
+mc.max_cycle_macro = 30
+mc.fcisolver.nPTiter = 0  # Turns off PT calculation, i.e. no PTRDM.
+mc.kernel()
+
+##########################################################
+
+############# Dice Calculation ###########################
+print("\nPreparing Dice calculation")
+# dummy shciscf object for specifying options
+mch = shci.SHCISCF(mf,norbAct, nelecAct)
+mch.mo_coeff = mc.mo_coeff
+mch.fcisolver.sweep_iter = [ 0 ]
+mch.fcisolver.sweep_epsilon = [ 0.0 ]
+mch.fcisolver.davidsonTol = 5.e-5
+mch.fcisolver.dE = 1.e-8
+mch.fcisolver.maxIter = 20
+mch.fcisolver.nPTiter = 0
+mch.fcisolver.targetError= 1e-5
+
+mc.fcisolver.DoRDM = False
+mch.fcisolver.scratchDirectory = "./"
+shci.dryrun(mch, mch.mo_coeff)
+#exit(0)
+command = "mv input.dat dice.dat"
+os.system(command)
+with open("dice.dat", "a") as fh:
+	fh.write("DoRDM\nDoSpinRDM\n printalldeterminants")	# These keywords should be included
+fh.close()
+
+
+# run dice calculation
+print("Starting Dice calculation")
+command = f"mpirun -np {nproc} {dice_binary} dice.dat > dice.out; rm -f *.bkp shci.e"
+os.system(command)
+print("Finished Dice calculation\n")
+
+
+################################################################################
+QMCUtils.run_nevpt2(mc,nelecAct=nelecAct,numAct=norbAct,norbFrozen=norbFrozen,nproc=nproc,numSCSamples=10000,diceoutfile="dice.out",vmc_root=vmc_root)
+
+#INFO: ******************** input file end ********************
+
+
+System: uname_result(system='Linux', node='shas0137', release='3.10.0-957.21.3.el7.x86_64', version='#1 SMP Fri Jun 14 02:54:29 EDT 2019', machine='x86_64')  Threads 1
+Python 3.9.7 (default, Sep 16 2021, 13:09:58) 
+[GCC 7.5.0]
+numpy 1.20.3  scipy 1.7.1
+Date: Mon Jun 27 16:38:30 2022
+PySCF version 2.0.1
+PySCF path  /projects/joku8258/anaconda3/lib/python3.9/site-packages/pyscf
+
+[CONFIG] conf_file None
+[INPUT] verbose = 4
+[INPUT] num. atoms = 2
+[INPUT] num. electrons = 14
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 0
+[INPUT] symmetry 0 subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 N      0.000000000000   0.000000000000   0.000000000000 AA    0.000000000000   0.000000000000   0.000000000000 Bohr
+[INPUT]  2 N      0.000000000000   0.000000000000   1.322940000000 AA    0.000000000000   0.000000000000   2.499994279232 Bohr
+
+nuclear repulsion = 19.6000448509229
+number of shells = 16
+number of NR pGTOs = 70
+number of NR cGTOs = 46
+basis = augccpvdz
+ecp = {}
+CPU time:         1.08
+
+
+******** <class 'pyscf.scf.hf.RHF'> ********
+method = RHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-09
+SCF conv_tol_grad = None
+SCF max_cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = N2_HF.chk
+max_memory 4000 MB (current use 107 MB)
+Set gradient conv threshold to 3.16228e-05
+init E= -108.35463290919
+  HOMO = -0.346564097196321  LUMO = -0.0132869969214249
+cycle= 1 E= -108.801400408851  delta_E= -0.447  |g|= 0.349  |ddm|= 1.55
+  HOMO = -0.599791382708991  LUMO = -0.00763857846489713
+cycle= 2 E= -108.832326239905  delta_E= -0.0309  |g|= 0.0953  |ddm|= 0.347
+  HOMO = -0.533945296333987  LUMO = 0.0510405778783122
+cycle= 3 E= -108.834686441284  delta_E= -0.00236  |g|= 0.0186  |ddm|= 0.0908
+  HOMO = -0.536345080300462  LUMO = 0.0503787958557216
+cycle= 4 E= -108.834854757424  delta_E= -0.000168  |g|= 0.0014  |ddm|= 0.0476
+  HOMO = -0.536028671757581  LUMO = 0.0506699001710081
+cycle= 5 E= -108.834855478143  delta_E= -7.21e-07  |g|= 0.000165  |ddm|= 0.0025
+  HOMO = -0.536069606225889  LUMO = 0.0506295930216009
+cycle= 6 E= -108.834855493966  delta_E= -1.58e-08  |g|= 2.47e-05  |ddm|= 0.000377
+  HOMO = -0.536062091429877  LUMO = 0.0506369865689538
+cycle= 7 E= -108.834855494362  delta_E= -3.96e-10  |g|= 3.93e-06  |ddm|= 7.55e-05
+  HOMO = -0.53606210047702  LUMO = 0.0506367019237579
+Extra cycle  E= -108.834855494369  delta_E= -6.82e-12  |g|= 1.14e-06  |ddm|= 1.07e-05
+converged SCF energy = -108.834855494369
+
+******** <class 'pyscf.mcscf.mc1step.CASSCF'> ********
+CAS (5e+5e, 8o), ncore = 2, nvir = 36
+max_cycle_macro = 30
+max_cycle_micro = 4
+conv_tol = 1e-07
+conv_tol_grad = None
+orbital rotation max_stepsize = 0.02
+augmented hessian ah_max_cycle = 30
+augmented hessian ah_conv_tol = 1e-12
+augmented hessian ah_linear dependence = 1e-14
+augmented hessian ah_level shift = 1e-08
+augmented hessian ah_start_tol = 2.5
+augmented hessian ah_start_cycle = 3
+augmented hessian ah_grad_trust_region = 3
+kf_trust_region = 3
+kf_interval = 4
+ci_response_space = 4
+ci_grad_trust_region = 3
+with_dep4 0
+natorb = False
+canonicalization = True
+sorting_mo_energy = False
+ao2mo_level = 2
+chkfile = N2_SHCISCF.chk
+max_memory 4000 MB (current use 123 MB)
+internal_rotation = False
+
+******** SHCI flags ********
+executable             = /projects/joku8258/software/Dice/Dice
+mpiprefix              = 
+scratchDirectory       = /scratch/summit/joku8258/cbd/100427
+integralFile           = ./FCIDUMP
+configFile             = ./input.dat
+outputFile             = ./output.dat
+maxIter                = 6
+sweep_iter             = [    0]
+sweep_epsilon          = [    0]
+nPTiter                = 0
+Stochastic             = True
+restart                = False
+fullrestart            = False
+num_thrds              = 1
+memory                 = None
+
+CASCI E = -108.920393628375  S^2 = 0.0000000
+Set conv_tol_grad to 0.000316228
+macro iter 1 (21 JK  4 micro), CASSCF E = -108.978904929499  dE = -0.058511301  S^2 = 0.0000000
+               |grad[o]|=0.0945  |grad[c]|= None  |ddm|=0.0973
+macro iter 2 (21 JK  4 micro), CASSCF E = -109.00121105122  dE = -0.022306122  S^2 = 0.0000000
+               |grad[o]|=0.0432  |grad[c]|= None  |ddm|=0.0169
+macro iter 3 (21 JK  4 micro), CASSCF E = -109.026460662411  dE = -0.025249611  S^2 = 0.0000000
+               |grad[o]|=0.0429  |grad[c]|= None  |ddm|=0.0187
+macro iter 4 (21 JK  4 micro), CASSCF E = -109.041009501573  dE = -0.014548839  S^2 = 0.0000000
+               |grad[o]|=0.0349  |grad[c]|= None  |ddm|=0.012
+macro iter 5 (12 JK  3 micro), CASSCF E = -109.041897431783  dE = -0.00088793021  S^2 = 0.0000000
+               |grad[o]|=0.00981  |grad[c]|= None  |ddm|=0.00426
+macro iter 6 (3 JK  1 micro), CASSCF E = -109.041897434448  dE = -2.6647911e-09  S^2 = 0.0000000
+               |grad[o]|=5.3e-05  |grad[c]|= None  |ddm|=    0
+1-step CASSCF converged in 6 macro (99 JK 20 micro) steps
+CASSCF canonicalization
+Density matrix diagonal elements [1.98533203 1.98747287 1.97106423 1.88956427 1.88956427 0.11785693
+ 0.11785693 0.04128862]
+CASSCF energy = -109.041897434448
+CASCI E = -109.041897434448  E(CI) = -29.6112856486435  S^2 = 0.0000000
+
+Preparing Dice calculation
+Starting Dice calculation
+Finished Dice calculation
+
+Running ICPT
+
+trace of 2rdm 90.0000011138618
+trace of 1rdm 10.000000123762423
+Producing the integrals
+......production of INT took       0.04 sec
+
+Energy_nuc  =   19.60004485
+Energy_core =  -99.03065664
+Energy      = -109.04189780
+
+Basic ingredients written to int/ 0 2 10 46
+......savings of INGREDIENTS took       0.12 sec
+
+/projects/joku8258/QMC/VMC//bin/ICPT NEVPT2_ACVV.inp > acvv.out
+/projects/joku8258/QMC/VMC//bin/ICPT NEVPT2_CCAV.inp > ccav.out
+/projects/joku8258/QMC/VMC//bin/ICPT NEVPT2_CCVV.inp > ccvv.out
+Finished running ICPT
+
+Writing NEVPT2 input
+Running NEVPT2
+CAS energy: -109.0418982
+SC-NEVPT2(s) second-order energy: -0.158348223
+Total SC-NEVPT(s) energy: -109.2002464
+SC-NEVPT2(s) second-order energy with CCVV:  -0.1587368301
+Total SC-NEVPT2(s) energy with CCVV:  -109.200635
+
+Total Energy (including CCAV,CCVV,ACVV) = -109.20241518038844 +/- 0.00073812465083

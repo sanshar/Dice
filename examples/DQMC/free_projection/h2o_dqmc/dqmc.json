@@ -1,0 +1,23 @@
+{
+  "system":
+  {
+    "integrals": "FCIDUMP_chol"
+  },
+  "wavefunction":
+  {
+    "right": "rhf",
+    "left": "rhf"
+  },
+  "sampling":
+  {
+    "seed": 875831,
+    "dt": 0.05,
+    "nsteps": 60,
+    "eneSteps": [ 20, 40, 50, 60 ],
+    "errorTargets": [ 0.8e-3, 0.8e-3, 0.8e-3, 0.8e-3 ],
+    "choleskyThreshold": 1.0e-3,
+    "orthoSteps": 5,
+    "ene0Guess": -76.24315561717044,
+    "stochasticIter": 100000
+  }
+}

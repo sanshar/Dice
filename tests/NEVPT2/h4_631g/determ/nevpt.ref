@@ -1,0 +1,22 @@
+{
+    "wavefunction": {
+        "name": "scpt",
+        "numAct": "4",
+        "determinants": "dets",
+        "detsInCAS": "false"
+    },
+    "sampling": {
+        "deterministic": "true",
+        "stochasticIter": "100",
+        "seed": "1399246",
+        "epsilon": "1.0e-8"
+    }
+}
+
+Starting heat bath construction
+Heat bath construction done
+Reading active space determinants
+Finished reading determinants, hash table bucket count: 64
+ref energy   -2.20576004604
+waveEne  -2.21108267336
+nevpt2 energy  -2.21230862834

@@ -1,0 +1,21 @@
+{
+  "wavefunction":
+  {
+    "name": "cpsslater",
+    "correlators":
+    {
+      "2": "correlators.txt"
+    }
+  },
+  "sampling":
+  {
+    "stochasticIter": 10000,
+    "seed": 5,
+    "epsilon": 1.0e-5
+  },
+  "optimizer":
+  {
+    "dohessian": true,
+    "maxIter": 5
+  }
+}

@@ -1,0 +1,72 @@
+RHF calculation:
+converged SCF energy = -5.20347011861978
+
+UHF calculation:
+converged SCF energy = -5.2313651870856  <S^2> = 0.97568559  2S+1 = 2.2142137
+
+Preparing AFQMC calculation
+Calculating Cholesky integrals
+Finished calculating Cholesky integrals
+
+Size of the correlation space:
+Number of electrons: (5, 5)
+Number of basis functions: 10
+Number of Cholesky vectors: 27
+
+Starting AFQMC / MF calculation
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol"
+    },
+    "wavefunction": {
+        "left": "uhf",
+        "right": "uhf"
+    },
+    "sampling": {
+        "seed": "563090",
+        "phaseless": "true",
+        "dt": "0.005",
+        "nsteps": "50",
+        "nwalk": "5",
+        "stochasticIter": "1000",
+        "choleskyThreshold": "0.002",
+        "orthoSteps": "20",
+        "burnIter": "100"
+    },
+    "print": ""
+}
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -5.231365148e+00              -                6.28e-04 
+   200      -5.391578470e+00        2.204375349e-03        2.35e+00 
+   300      -5.390231330e+00        1.368977649e-03        3.55e+00 
+   400      -5.390591400e+00        1.037360275e-03        4.79e+00 
+   500      -5.389698294e+00        9.919405721e-04        5.93e+00 
+   600      -5.389863582e+00        9.191047360e-04        7.11e+00 
+   700      -5.389694559e+00        8.172553622e-04        8.28e+00 
+   800      -5.389937708e+00        7.682916022e-04        9.45e+00 
+   900      -5.389778593e+00        7.310586713e-04        1.07e+01 
+
+Total calculation time:  12.0555 s
+
+Blocking analysis:
+Number of samples: 900
+Mean energy: -5.39040737e+00
+Block size    # of blocks        Mean                Error
+     1            900       -5.39040737e+00       3.173477e-04
+     2            450       -5.39040737e+00       4.162205e-04
+     5            180       -5.39040737e+00       5.684872e-04
+    10             90       -5.39040737e+00       6.802822e-04
+    20             45       -5.39040737e+00       7.126842e-04
+    50             18       -5.39040737e+00       6.758486e-04
+    70             12       -5.39013568e+00       7.204369e-04
+   100              9       -5.39040737e+00       8.406494e-04
+   200              4       -5.38978597e+00       2.707449e-04
+Stochastic error estimate: 0.000712684
+Finished AFQMC / MF calculation
+
+AFQMC energy: -5.3904 +/- 0.0007
+

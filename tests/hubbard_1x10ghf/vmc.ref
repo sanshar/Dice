@@ -1,0 +1,36 @@
+User:
+anma2640
+Hostname:
+bhpc-c7-u7-17.rc.int.colorado.edu
+CPU info:
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                36
+On-line CPU(s) list:   0-35
+Thread(s) per core:    1
+Core(s) per socket:    18
+Socket(s):             2
+NUMA node(s):          2
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 85
+Model name:            Intel(R) Xeon(R) Gold 6150 CPU @ 2.70GHz
+Stepping:              4
+CPU MHz:               2700.000
+Computation started at:
+Thu Apr 28 19:13:56 MDT 2022
+git commit: c1a3d91df16f55e12200e7e5a77addb61cd13ec8, branch: master, compiled at: Thu Apr 28 16:22:29 MDT 2022
+
+nproc used: 4 (NB: stochasticIter below is per proc)
+
+    0    -5.05093443 (2.42e-02)     0.76125836      9.0      10000  0.059995     0.00     0.36
+    1    -5.13545482 (2.30e-02)     0.88338014      8.5      10000  0.065285    42.35     0.69
+    2    -5.14873199 (2.20e-02)     0.72088019      8.7      10000  0.068470    30.82     1.00
+    3    -5.18442503 (1.99e-02)     0.58396030      7.5      10000  0.071511    18.04     1.30
+    4    -5.23026305 (2.23e-02)     0.62962270      9.8      10000  0.072935    17.66     1.61
+    5    -5.24564052 (2.09e-02)     0.59266932      9.2      10000  0.074506    12.57     1.93
+    6    -5.25662291 (2.00e-02)     0.64963844      9.1      10000  0.075584    14.06     2.24
+    7    -5.34158451 (1.88e-02)     0.68896869      8.4      10000  0.075297    15.36     2.54
+    8    -5.40339721 (1.76e-02)     0.47490649      8.9      10000  0.074936     8.85     2.88
+    9    -5.42482593 (1.82e-02)     0.86583380      8.9      10000  0.075487    14.87     3.18

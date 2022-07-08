@@ -1,0 +1,29 @@
+{
+  "wavefunction":
+  {
+    "name": "scci",
+    "numAct": 8,
+    "overlapCutoff": 1.0e-8,
+    "determinants": "dets"
+  },
+  "sampling":
+  {
+    "stochasticIter": 2000,
+    "epsilon": 1.0e-8,
+    "seed": 13290
+  },
+  "optimizer":
+  {
+    "restart": false,
+    "diagMethod": "davidson",
+    "method": "amsgrad",
+    "maxIter": 30,
+    "stepsize": 0.1,
+    "decay1": 0.5,
+    "decay2": 1
+  },
+  "print":
+  {
+    "vrs": true
+  }
+}

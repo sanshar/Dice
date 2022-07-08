@@ -1,0 +1,19 @@
+{
+  "system":
+  {
+    "numAct": 4
+  },
+  "wavefunction":
+  {
+    "name": "scpt",
+    "determinants": "dets",
+    "detsInCAS": "false"
+  },
+  "sampling":
+  {
+    "deterministic": "true",
+    "stochasticIter": "100",
+    "seed": "1399246",
+    "epsilon": "1.0e-8"
+  }
+}

@@ -1,0 +1,6 @@
+converged SCF energy = -5.20347011861978
+converged SCF energy = -5.23136518708559  <S^2> = 0.97568559  2S+1 = 2.2142137
+Preparing AFQMC calculation
+nelec: (5, 5)
+nbasis: 10
+chol.shape: (27, 100)

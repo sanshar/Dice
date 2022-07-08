@@ -1,0 +1,22 @@
+{
+  "system":
+  {
+    "numAct": 8,
+    "numCore": 2
+  },
+  "wavefunction":
+  {
+    "name": "scpt",
+    "overlapCutoff": 1.0e-8,
+    "determinants": "dets"
+  },
+  "sampling":
+  {
+    "stochasticIterNorms": 160,
+    "nIterFindInitDets": 10,
+    "epsilon": 1.0e-8,
+    "seed": 59801,
+    "NEVPT_readE": true,
+    "determCCVV": true
+  }
+}

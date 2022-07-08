@@ -1,0 +1,23 @@
+{
+  "hamiltonian": "hubbard",
+  "wavefunction":
+  {
+    "name": "cpsslater",
+    "hfType": "uhf",
+    "correlators":
+    {
+      "5": "correlators.txt"
+    }
+  },
+  "sampling":
+  {
+    "stochasticIter": 2000,
+    "epsilon": 1.0e-4,
+    "seed": 5,
+    "nwalk": 500,
+    "tau": 0.1,
+    "ngeneration": 50,
+    "fn_factor": 1.0,
+    "maxIter": 51
+  }
+}

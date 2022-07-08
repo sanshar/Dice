@@ -1,0 +1,15 @@
+{
+  "sampling": {
+      "tau": "0.001",
+      "maxIter": "15000",
+      "seed": "300",
+      "shiftDamping": "0.01",
+      "initialShift": "0.0",
+      "initialPop": "500.0",
+      "targetPop": "10000.0",
+      "mainMemoryFac": "10.0",
+      "spawnMemoryFac": "10.0",
+      "initiator": "true",
+      "heatBath": "true"
+  }
+}

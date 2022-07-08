@@ -1,0 +1,6 @@
+converged SCF energy = -1.34301548720602
+e(FCI) = -1.433532920388
+converged SCF energy = -1.40968016309032  <S^2> = 1.1171277  2S+1 = 2.3384847
+nelec: (2, 1)
+nbasis: 6
+chol.shape: (6, 6, 6)
