@@ -439,11 +439,11 @@ def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
-def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None, use_eri = False):
   if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
     return run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
   elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
-    return run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+    return run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir, use_eri = use_eri)
   else:
     raise Exception("Need either mean field or casscf object!")
 
@@ -571,7 +571,7 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
 
 
 # performs phaseless afqmc with hci trial
-def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None, use_eri = False):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
     vmc_root = os.environ['VMC_ROOT']
@@ -589,6 +589,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
   # calculate cholesky integrals
   print("Calculating Cholesky integrals")
   h1e, chol, nelec, enuc = generate_integrals(mol, mc.get_hcore(), mo_coeff, chol_cut)
+
   nbasis = h1e.shape[-1]
   nelec = mol.nelec
 
@@ -606,6 +607,20 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     chol = chol.reshape((-1, nbasis, nbasis))
     chol = chol[:, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas]
     nbasis = h1e.shape[-1]
+
+  if use_eri: # generate cholesky in mo basis
+    nelec = mc.nelecas
+    h1e, enuc = mc.get_h1eff()
+    eri = ao2mo.restore(4, mc.get_h2eff(mo_coeff), mc.ncas)
+    chol0 = modified_cholesky(eri, chol_cut)
+    nchol = chol0.shape[0]
+    chol = np.zeros((nchol, mc.ncas, mc.ncas))
+    for i in range(nchol):
+      for m in range(mc.ncas):
+        for n in range(m+1):
+          triind = m*(m+1)//2 + n
+          chol[i, m, n] = chol0[i, triind]
+          chol[i, n, m] = chol0[i, triind]
 
   print("Finished calculating Cholesky integrals\n")
 
@@ -639,11 +654,16 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
   # determine ndets for doing calculations
   ndets_list = [ ]
   if isinstance(ndets, list):
+    flag = False
     for i, n in enumerate(ndets):
       if n < ndets_all:
         ndets_list.append(n)
+      else:
+        flag = True
     if len(ndets_list) == 0:
       ndets_list = [ ndets_all ]
+    elif flag == True:
+      ndets_list.append(ndets_all)
   elif isinstance(ndets, int):
     if ndets > ndets_all:
       ndets = ndets_all
