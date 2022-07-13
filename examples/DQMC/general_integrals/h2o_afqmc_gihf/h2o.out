@@ -1,0 +1,212 @@
+converged SCF energy = -75.3636674091929
+e(FCI) = -75.405135594741
+converged SCF energy = -75.3656842354072  <S^2> = 0.75530764  2S+1 = 2.0053006
+GHF wavefunction is stable in the internal stability analysis
+converged SCF energy = -75.3656842354079  <S^2> = 0.75530763  2S+1 = 2.0053006
+GHF wavefunction is stable in the internal stability analysis
+
+Starting Dice calculation
+Finished Dice calculation
+
+e1_ghf: -117.26818706097845
+e1_fci: -117.09616221087823
+
+Preparing AFQMC calculation
+nelec: (5, 4)
+nbasis: 14
+chol.shape: (25, 14, 14)
+
+Starting AFQMC / HCI (1) calculation
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol",
+        "intType": "g"
+    },
+    "wavefunction": {
+        "left": "multislater",
+        "right": "ghf",
+        "determinants": "dets.bin",
+        "ndets": "1"
+    },
+    "sampling": {
+        "seed": "16835",
+        "phaseless": "true",
+        "dt": "0.005",
+        "nsteps": "50",
+        "nwalk": "5",
+        "stochasticIter": "1000",
+        "choleskyThreshold": "0.001",
+        "orthoSteps": "20",
+        "burnIter": "100"
+    },
+    "print": {
+        "writeOneRDM": "true",
+        "scratchDir": "rdm_1"
+    }
+}
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -7.536568339e+01              -                1.20e-02 
+   200      -7.540548656e+01        8.227486349e-04        6.19e+00 
+   300      -7.540552002e+01        4.406503740e-04        1.12e+01 
+   400      -7.540601818e+01        4.123803904e-04        1.51e+01 
+   500      -7.540562878e+01        8.024583632e-04        1.87e+01 
+   600      -7.540543023e+01        5.517524348e-04        2.21e+01 
+   700      -7.540521085e+01        5.127801093e-04        2.56e+01 
+   800      -7.540527425e+01        4.424668932e-04        2.89e+01 
+   900      -7.540530970e+01        4.051167938e-04        3.41e+01 
+
+Total calculation time:  39.5381 s
+Number of samples: 900
+Mean energy: -7.54052206e+01
+Block size    # of blocks        Mean                Error
+     1            900       -7.54052206e+01       1.507051e-04
+     2            450       -7.54052206e+01       1.861614e-04
+     5            180       -7.54052206e+01       2.379316e-04
+    10             90       -7.54052206e+01       2.613759e-04
+    20             45       -7.54052206e+01       2.813464e-04
+    50             18       -7.54052206e+01       3.499089e-04
+    70             12       -7.54053086e+01       3.710350e-04
+   100              9       -7.54052206e+01       3.322958e-04
+   200              4       -7.54053170e+01       3.631539e-04
+Stochastic error estimate: 0.000371035
+
+1e energy
+1 dets variational e1: [-117.2681871]
+1 dets mixed afqmc e1: [-117.1762338]
+1 dets mixed afqmc e1 errors: [0.0018552]
+1 dets extrapolated e1: [-117.0842806]
+1 dets extrapolated e1 errors: [0.0037104]
+
+Starting AFQMC / HCI (10) calculation
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol",
+        "intType": "g"
+    },
+    "wavefunction": {
+        "left": "multislater",
+        "right": "ghf",
+        "determinants": "dets.bin",
+        "ndets": "10"
+    },
+    "sampling": {
+        "seed": "16835",
+        "phaseless": "true",
+        "dt": "0.005",
+        "nsteps": "50",
+        "nwalk": "5",
+        "stochasticIter": "1000",
+        "choleskyThreshold": "0.001",
+        "orthoSteps": "20",
+        "burnIter": "100"
+    },
+    "print": {
+        "writeOneRDM": "true",
+        "scratchDir": "rdm_10"
+    }
+}
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -7.539202313e+01              -                3.93e-01 
+   200      -7.540541309e+01              -                8.26e+00 
+   300      -7.540524064e+01        1.751463912e-04        1.36e+01 
+   400      -7.540540344e+01        1.476449237e-04        1.97e+01 
+   500      -7.540531150e+01        2.074093054e-04        2.49e+01 
+   600      -7.540530690e+01        1.171331849e-04        2.97e+01 
+   700      -7.540526335e+01        1.021863521e-04        3.53e+01 
+   800      -7.540527523e+01        9.367165386e-05        4.05e+01 
+   900      -7.540527550e+01        8.211526698e-05        4.46e+01 
+
+Total calculation time:  50.2851 s
+Number of samples: 900
+Mean energy: -7.54052703e+01
+Block size    # of blocks        Mean                Error
+     1            900       -7.54052703e+01       4.384153e-05
+     2            450       -7.54052703e+01       5.377919e-05
+     5            180       -7.54052703e+01       6.582106e-05
+    10             90       -7.54052703e+01       7.333884e-05
+    20             45       -7.54052703e+01       8.073958e-05
+    50             18       -7.54052703e+01       8.652794e-05
+    70             12       -7.54053116e+01       1.051233e-04
+   100              9       -7.54052703e+01       7.739522e-05
+   200              4       -7.54052756e+01       5.071547e-05
+Stochastic error estimate: 0.000105123
+
+1e energy
+10 dets variational e1: [-117.2193355]
+10 dets mixed afqmc e1: [-117.1468223]
+10 dets mixed afqmc e1 errors: [0.0018989]
+10 dets extrapolated e1: [-117.074309]
+10 dets extrapolated e1 errors: [0.0037978]
+
+Starting AFQMC / HCI (100) calculation
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol",
+        "intType": "g"
+    },
+    "wavefunction": {
+        "left": "multislater",
+        "right": "ghf",
+        "determinants": "dets.bin",
+        "ndets": "100"
+    },
+    "sampling": {
+        "seed": "16835",
+        "phaseless": "true",
+        "dt": "0.005",
+        "nsteps": "50",
+        "nwalk": "5",
+        "stochasticIter": "1000",
+        "choleskyThreshold": "0.001",
+        "orthoSteps": "20",
+        "burnIter": "100"
+    },
+    "print": {
+        "writeOneRDM": "true",
+        "scratchDir": "rdm_100"
+    }
+}
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -7.540513491e+01              -                2.16e-01 
+   200      -7.540510772e+01        1.186274481e-05        1.80e+01 
+   300      -7.540511194e+01        6.556162921e-06        2.80e+01 
+   400      -7.540511374e+01        6.172192555e-06        3.85e+01 
+   500      -7.540511120e+01        5.172029697e-06        5.00e+01 
+   600      -7.540511046e+01        5.187388468e-06        6.03e+01 
+   700      -7.540511250e+01        4.493430681e-06        6.90e+01 
+   800      -7.540511170e+01        3.985095328e-06        7.75e+01 
+   900      -7.540510860e+01        4.127176168e-06        8.57e+01 
+
+Total calculation time:  94.8226 s
+Number of samples: 900
+Mean energy: -7.54051068e+01
+Block size    # of blocks        Mean                Error
+     1            900       -7.54051068e+01       1.506805e-06
+     2            450       -7.54051068e+01       1.970785e-06
+     5            180       -7.54051068e+01       2.689611e-06
+    10             90       -7.54051068e+01       3.202720e-06
+    20             45       -7.54051068e+01       3.558393e-06
+    50             18       -7.54051068e+01       4.104295e-06
+    70             12       -7.54051087e+01       3.541731e-06
+   100              9       -7.54051068e+01       4.186289e-06
+   200              4       -7.54051087e+01       4.603205e-06
+Stochastic error estimate: 4.10429e-06
+
+1e energy
+100 dets variational e1: [-117.0961584]
+100 dets mixed afqmc e1: [-117.0909346]
+100 dets mixed afqmc e1 errors: [0.0016951]
+100 dets extrapolated e1: [-117.0857108]
+100 dets extrapolated e1 errors: [0.0033902]

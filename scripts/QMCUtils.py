@@ -221,6 +221,32 @@ def read_dets(fname = 'dets.bin', ndets = None):
 
   return norbs, state, ndetsAll
 
+
+# reading dets from dice
+def read_dets_ghf(fname = 'dets.bin', ndets = None):
+  state = { }
+  norbs = 0
+  with open(fname, 'rb') as f:
+    ndetsAll = struct.unpack('i', f.read(4))[0]
+    norbs = struct.unpack('i', f.read(4))[0]
+    if ndets is None:
+      ndets = ndetsAll
+    for i in range(ndets):
+      coeff = struct.unpack('d', f.read(8))[0]
+      det = [ 0 for i in range(norbs) ]
+      for j in range(norbs//2):
+        occ = struct.unpack('c', f.read(1))[0]
+        if (occ == b'a'):
+          det[2*j] = 1
+        elif (occ == b'b'):
+          det[2*j+1] = 1
+        elif (occ == b'2'):
+          det[2*j] = 1
+          det[2*j+1] = 1
+      state[tuple(det)] = coeff
+
+  return norbs, state, ndetsAll
+
 # a_i^dag a_j
 def ci_parity(det, i, j):
   assert(det[i] == 0 and det[j] == 1)
@@ -254,6 +280,31 @@ def calculate_ci_1rdm(norbs, state, ndets=100):
 
   rdm[0] /= norm_square
   rdm[1] /= norm_square
+  return rdm
+
+def calculate_ci_1rdm_ghf(norbs, state, ndets=100):
+  norm_square = 0.
+  counter = 0
+  rdm = np.zeros((norbs, norbs))
+  for det, coeff in state.items():
+    counter += 1
+    norm_square += coeff * coeff
+    det_list = list(det)
+    occ = [ i for i, x in enumerate(det_list) if x == 1 ]
+    empty = [ i for i, x in enumerate(det_list) if x == 0 ]
+    for j in occ:
+      rdm[j, j] += coeff * coeff
+      for i in empty:
+        new_det = copy.deepcopy(det_list)
+        new_det[i] = 1
+        new_det[j] = 0
+        new_det = tuple(new_det)
+        if new_det in state:
+          rdm[i, j] += ci_parity(det_list, i, j) * state[new_det] * coeff
+    if counter == ndets:
+      break
+
+  rdm /= norm_square
   return rdm
 
 def calc_uhf_integrals(umf, norb=None, nelec=None):
@@ -326,6 +377,49 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
 
   return
 
+def calc_write_hci_ghf_integrals(gmf, tol = 1.e-10, filename='FCIDUMP'):
+  norb = gmf.mol.nao
+  enuc = gmf.energy_nuc()
+  h1_ao = gmf.get_hcore()
+  h1 = gmf.mo_coeff.T.dot(h1_ao).dot(gmf.mo_coeff)
+  erir_ao = ao2mo.restore(1, gmf._eri, norb)
+  erig_ao = np.zeros((2*norb, 2*norb, 2*norb, 2*norb))
+  for i in range(2*norb):
+    for j in range(2*norb):
+      for k in range(2*norb):
+        for l in range(2*norb):
+          if (i - norb + 0.5) * (j - norb + 0.5) > 0 and (k - norb + 0.5) * (l - norb + 0.5) > 0:
+            erig_ao[i, j, k, l] = erir_ao[i % norb, j % norb, k % norb, l % norb]
+
+  erig = ao2mo.incore.general(erig_ao, (gmf.mo_coeff, gmf.mo_coeff, gmf.mo_coeff, gmf.mo_coeff))
+  float_format = '(%16.12e, %16.12e)'
+  nsorb = 2*norb
+  with open(filename, 'w') as fout:
+    # header
+    fout.write(' &FCI NORB=%4d,NELEC=%2d,MS2=%d,\n' % (nsorb, gmf.mol.nelectron, 0))
+    fout.write('  ORBSYM=%s\n' % ('1,' * nsorb))
+    fout.write('  ISYM=0,\n')
+    fout.write(' &END\n')
+
+    # eri
+    output_format = float_format + ' %4d %4d %4d %4d\n'
+    for i in range(nsorb):
+      for j in range(nsorb):
+        for k in range(nsorb):
+          for l in range(nsorb):
+            if abs(erig[i, j, k, l]) > tol:
+              fout.write(output_format % (erig[i, j, k, l], 0., i+1, j+1, k+1, l+1))
+
+    # h1
+    output_format = float_format + ' %4d %4d  0  0\n'
+    for i in range(nsorb):
+      for j in range(nsorb):
+        if abs(h1[i, j]) > tol:
+          fout.write(output_format % (h1[i, j], 0., i+1, j+1))
+
+    # enuc
+    output_format = float_format + '  0  0  0  0\n'
+    fout.write(output_format % (enuc, 0.0))
 
 # afqmc
 
@@ -417,7 +511,8 @@ def prepAFQMC_soc(mol, mf, soc, chol_cut=1e-5, verbose=False):
 
 
 # calculate and write cholesky integrals
-def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
+def prepAFQMC_gihf(gmf, chol_cut=1e-5):
+  mol = gmf.mol
   norb = mol.nao
   chol_vecs = chunked_cholesky(mol, max_error=1e-5)
   nchol = chol_vecs.shape[0]
