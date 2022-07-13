@@ -109,4 +109,14 @@ then
     ../../clean.sh
 fi
 
+cd $here/DQMC/multislater_ghf_gi
+../../clean.sh
+printf "...running DQMC/multislater_ghf_gi\n"
+$MPICOMMAND $DQMCPATH > afqmc.out
+python2 ../../testEnergy.py 'afqmc' $tol
+if [ $clean == 1 ]
+then
+    ../../clean.sh
+fi
+
 cd $here

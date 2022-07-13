@@ -357,6 +357,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   else ene0 = schd.ene0Guess;
   if (commrank == 0) {
     afqmcFile << "# Initial state energy:  " << refEnergy.real() << endl;
+    afqmcFile.flush();
   }
   
   int nchol = ham.nchol;

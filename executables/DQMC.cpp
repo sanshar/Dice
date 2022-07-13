@@ -16,6 +16,7 @@
 #include "UHF.h"
 #include "GHF.h"
 #include "KSGHF.h"
+#include "GHFMultislater.h"
 #include "Multislater.h"
 #include "CCSD.h"
 #include "UCCSD.h"
@@ -109,7 +110,8 @@ int main(int argc, char *argv[])
   }
   else if (schd.leftWave == "multislater") {
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
-    waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
+    if ((schd.intType == "g") || schd.soc) waveLeft = new GHFMultislater(ham, schd.determinantFile, nact, schd.nciCore); 
+    else waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
   }
   else if (schd.leftWave == "ccsd") {
     if (commrank == 0) cout << "Not supported yet\n";

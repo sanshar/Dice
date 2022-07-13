@@ -1,0 +1,50 @@
+converged SCF energy = -1.35827962575832
+converged SCF energy = -1.40238781184004  <S^2> = 1.2326729  2S+1 = 2.4353011
+GHF wavefunction has an internal instability
+converged SCF energy = -1.4096801630892  <S^2> = 1.1171267  2S+1 = 2.3384839
+GHF wavefunction is stable in the internal stability analysis
+
+Starting Dice calculation
+Finished Dice calculation
+
+Preparing AFQMC calculation
+nelec: (2, 1)
+nbasis: 6
+chol.shape: (6, 6, 6)
+
+Starting AFQMC / HCI (5) calculation
+**************************************************************
+Input file  :
+**************************************************************
+{
+    "system": {
+        "integrals": "FCIDUMP_chol",
+        "intType": "g"
+    },
+    "wavefunction": {
+        "left": "multislater",
+        "right": "ghf",
+        "determinants": "dets.bin",
+        "ndets": "5"
+    },
+    "sampling": {
+        "seed": "16835",
+        "phaseless": "true",
+        "dt": "0.005",
+        "nsteps": "50",
+        "nwalk": "20",
+        "stochasticIter": "50",
+        "choleskyThreshold": "0.001",
+        "orthoSteps": "20",
+        "burnIter": "50"
+    },
+    "print": ""
+}
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -1.433532924e+00              -                2.47e-03 
+
+Total calculation time:  0.91083 s
+Number of samples: 0
+Mean energy: -nan
+Block size    # of blocks        Mean                Error

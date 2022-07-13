@@ -175,6 +175,7 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/GHF.o \
 	obj/KSGHF.o \
 	obj/Multislater.o \
+	obj/GHFMultislater.o \
 	obj/CCSD.o \
 	obj/UCCSD.o \
 	obj/sJastrow.o \
