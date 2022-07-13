@@ -53,7 +53,7 @@ command = "mv input.dat dice.dat"
 os.system(command)
 with open("dice.dat", "a") as fh:
   fh.write("readText\n")
-  fh.write("writebestdeterminants 10000\n")
+  fh.write("writebestdeterminantsUHF 10000\n")
 
 # constructing and writing ghf integrals from uhf
 ham_ints = QMCUtils.calc_uhf_integrals(umf)
