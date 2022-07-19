@@ -381,6 +381,57 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
 
   return
 
+def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
+  enuc = ham_ints['enuc']
+  h1g = ham_ints['h1']
+  erig = ham_ints['eri']
+  # arrange orbitals ababab...
+
+  float_format = '(%16.12e, %16.12e)'
+
+  with open(filename, 'w') as fout:
+    # header
+    fout.write(' &FCI NORB=%4d,NELEC=%2d,MS2=%d,\n' % (norb, nelec, 0))
+    fout.write('  ORBSYM=%s\n' % ('1,' * norb))
+    fout.write('  ISYM=0,\n')
+    fout.write(' &END\n')
+
+    # eri
+    if len(erig.shape) == 2:
+      output_format = float_format + ' %4d %4d %4d %4d\n'
+      ij = 0
+      for i in range(norb):
+        for j in range(0, i+1):
+          kl = 0
+          for k in range(norb):
+            for l in range(0, k+1):
+              if abs(erig[ij][kl]) > tol:
+                fout.write(output_format % (erig[ij][kl], 0., i+1, j+1, k+1, l+1))
+                if i != j:
+                  fout.write(output_format % (erig[ij][kl], 0., j+1, i+1, k+1, l+1))
+                  if l != k:
+                    fout.write(output_format % (erig[ij][kl], 0., j+1, i+1, l+1, k+1))
+                if l != k:
+                  fout.write(output_format % (erig[ij][kl], 0., i+1, j+1, l+1, k+1))
+              kl += 1
+          ij += 1 
+    else:
+      raise NotImplementedError("Only 4-fold symmetry in eri is supported!")
+     
+
+    # h1
+    output_format = float_format + ' %4d %4d  0  0\n'
+    for i in range(norb):
+      for j in range(norb):
+        if abs(h1g[i,j]) > tol:
+          fout.write(output_format % (h1g[i,j], 0., i+1, j+1))
+
+    # enuc
+    output_format = float_format + '  0  0  0  0\n'
+    fout.write(output_format % (enuc, 0.0))
+
+  return
+
 def calc_write_hci_ghf_integrals(gmf, tol = 1.e-10, filename='FCIDUMP'):
   norb = gmf.mol.nao
   enuc = gmf.energy_nuc()
