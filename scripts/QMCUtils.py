@@ -382,10 +382,22 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
   return
 
 def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
+  """
+  Args:
+    ham_ints: dict. 
+      Contains: 'enuc': float. Nuclear energy.
+                'h1': np.ndarray, shape [norb, norb]
+                'eri': np.ndarray, shape [norb*(norb+1)/2, norb*(norb+1)/2], with 4-fold 
+                       symmetry. Other permuation symmetries like 8 or 1 are also allowd.
+    norb: int. Number of generalized orbital. It equals to (number of spatial orbital)*2.
+    nelec: int. Number of electrons.
+    tol: float. Under which the integrals are ignored in the FCIDUMP file.
+    filename: string. Default to 'FCIDUMP'.
+  """
   enuc = ham_ints['enuc']
   h1g = ham_ints['h1']
   erig = ham_ints['eri']
-  # arrange orbitals ababab...
+  erig = ao2mo.restore(1, erig, norb)
 
   float_format = '(%16.12e, %16.12e)'
 
@@ -397,28 +409,13 @@ def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDU
     fout.write(' &END\n')
 
     # eri
-    if len(erig.shape) == 2:
-      output_format = float_format + ' %4d %4d %4d %4d\n'
-      ij = 0
-      for i in range(norb):
-        for j in range(0, i+1):
-          kl = 0
-          for k in range(norb):
-            for l in range(0, k+1):
-              if abs(erig[ij][kl]) > tol:
-                fout.write(output_format % (erig[ij][kl], 0., i+1, j+1, k+1, l+1))
-                if i != j:
-                  fout.write(output_format % (erig[ij][kl], 0., j+1, i+1, k+1, l+1))
-                  if l != k:
-                    fout.write(output_format % (erig[ij][kl], 0., j+1, i+1, l+1, k+1))
-                if l != k:
-                  fout.write(output_format % (erig[ij][kl], 0., i+1, j+1, l+1, k+1))
-              kl += 1
-          ij += 1 
-    else:
-      raise NotImplementedError("Only 4-fold symmetry in eri is supported!")
-     
-
+    output_format = float_format + ' %4d %4d %4d %4d\n'
+    for i in range(norb):
+      for j in range(norb):
+        for k in range(norb):
+          for l in range(norb):
+            if abs(erig[i,j,k,l]) > tol:
+              fout.write(output_format % (erig[i,j,k,l], 0., i+1, j+1, k+1, l+1))
     # h1
     output_format = float_format + ' %4d %4d  0  0\n'
     for i in range(norb):
