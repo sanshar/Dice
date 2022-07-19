@@ -81,8 +81,10 @@ print("Preparing AFQMC calculation")
 QMCUtils.prepAFQMC_gihf(gmf)
 
 # write hf wave function coefficients
-ghf_coeffs = np.eye(2*norb)
-QMCUtils.writeMat(ghf_coeffs, "ghf.txt")
+norb_act, state, ndets_all = QMCUtils.read_dets_ghf('dets.bin', 1)
+occ_first = np.argsort(-np.array(list(state.keys())[0]))
+ghfCoeffs = np.eye(2*norb)
+QMCUtils.writeMat(ghfCoeffs[:, occ_first.astype(int)], "ghf.txt")
 
 # write afqmc input and perform calculation
 afqmc_binary = vmc_root + "/bin/DQMC"
