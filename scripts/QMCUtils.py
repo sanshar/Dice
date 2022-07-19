@@ -381,6 +381,54 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
 
   return
 
+def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
+  """
+  Args:
+    ham_ints: dict. 
+      Contains: 'enuc': float. Nuclear energy.
+                'h1': np.ndarray, shape [norb, norb]
+                'eri': np.ndarray, shape [norb*(norb+1)/2, norb*(norb+1)/2], with 4-fold 
+                       symmetry. Other permuation symmetries like 8 or 1 are also allowd.
+    norb: int. Number of generalized orbital. It equals to (number of spatial orbital)*2.
+    nelec: int. Number of electrons.
+    tol: float. Under which the integrals are ignored in the FCIDUMP file.
+    filename: string. Default to 'FCIDUMP'.
+  """
+  enuc = ham_ints['enuc']
+  h1g = ham_ints['h1']
+  erig = ham_ints['eri']
+  erig = ao2mo.restore(1, erig, norb)
+
+  float_format = '(%16.12e, %16.12e)'
+
+  with open(filename, 'w') as fout:
+    # header
+    fout.write(' &FCI NORB=%4d,NELEC=%2d,MS2=%d,\n' % (norb, nelec, 0))
+    fout.write('  ORBSYM=%s\n' % ('1,' * norb))
+    fout.write('  ISYM=0,\n')
+    fout.write(' &END\n')
+
+    # eri
+    output_format = float_format + ' %4d %4d %4d %4d\n'
+    for i in range(norb):
+      for j in range(norb):
+        for k in range(norb):
+          for l in range(norb):
+            if abs(erig[i,j,k,l]) > tol:
+              fout.write(output_format % (erig[i,j,k,l], 0., i+1, j+1, k+1, l+1))
+    # h1
+    output_format = float_format + ' %4d %4d  0  0\n'
+    for i in range(norb):
+      for j in range(norb):
+        if abs(h1g[i,j]) > tol:
+          fout.write(output_format % (h1g[i,j], 0., i+1, j+1))
+
+    # enuc
+    output_format = float_format + '  0  0  0  0\n'
+    fout.write(output_format % (enuc, 0.0))
+
+  return
+
 def calc_write_hci_ghf_integrals(gmf, tol = 1.e-10, filename='FCIDUMP'):
   norb = gmf.mol.nao
   enuc = gmf.energy_nuc()
