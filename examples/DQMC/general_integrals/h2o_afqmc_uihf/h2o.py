@@ -133,7 +133,7 @@ QMCUtils.writeMat(uhfCoeffs, "uhf.txt")
 afqmc_binary = vmc_root + "/bin/DQMC"
 blocking_script = vmc_root + "/scripts/blocking.py"
 
-os.system("export OMP_NUM_THREADS=1; rm samples.dat rdm_*.dat -f")
+os.system("rm samples.dat rdm_*.dat -f")
 
 
 # uhf trial
@@ -143,6 +143,7 @@ burnIter = 100
 QMCUtils.write_afqmc_input(intType="u", seed=16835, left="uhf", right="uhf", nwalk=25, stochasticIter=1000, burnIter=burnIter, choleskyThreshold=2.e-3, writeOneRDM=True, scratchDir=scratchDir, fname=f"afqmc_uhf.json")
 print(f"\nStarting AFQMC / UHF calculation", flush=True)
 command = f'''
+              export OMP_NUM_THREADS=1;
               mpirun -np {nproc} {afqmc_binary} afqmc_uhf.json > afqmc_uhf.out;
               mv samples.dat samples_uhf.dat
               python {blocking_script} samples_uhf.dat {burnIter} > blocking_uhf.out;
@@ -176,6 +177,7 @@ for ndets in [ 10, 100 ]:
   QMCUtils.write_afqmc_input(intType="u", seed=16835, left="multislater", right="uhf", nwalk=25, stochasticIter=1000, burnIter=100, choleskyThreshold=2.e-3, writeOneRDM=True, scratchDir=scratchDir, fname=f"afqmc_{ndets}.json")
   print(f"\nStarting AFQMC / HCI ({ndets}) calculation", flush=True)
   command = f'''
+                export OMP_NUM_THREADS=1;
                 mpirun -np {nproc} {afqmc_binary} afqmc_{ndets}.json > afqmc_{ndets}.out;
                 mv samples.dat samples_{ndets}.dat
                 python {blocking_script} samples_{ndets}.dat {burnIter} > blocking_{ndets}.out;

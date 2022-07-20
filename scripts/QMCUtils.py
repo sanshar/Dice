@@ -6,10 +6,8 @@ import h5py, json, csv, struct
 import pandas as pd
 from functools import reduce
 from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo, __config__ , lib
-from pyscf.lib import logger
 from pyscf.lo import pipek, boys, edmiston, iao, ibo
 from pyscf.shciscf import shci
-from pyscf.ao2mo import _ao2mo
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
@@ -384,10 +382,10 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
 def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
   """
   Args:
-    ham_ints: dict. 
+    ham_ints: dict.
       Contains: 'enuc': float. Nuclear energy.
                 'h1': np.ndarray, shape [norb, norb]
-                'eri': np.ndarray, shape [norb*(norb+1)/2, norb*(norb+1)/2], with 4-fold 
+                'eri': np.ndarray, shape [norb*(norb+1)/2, norb*(norb+1)/2], with 4-fold
                        symmetry. Other permuation symmetries like 8 or 1 are also allowd.
     norb: int. Number of generalized orbital. It equals to (number of spatial orbital)*2.
     nelec: int. Number of electrons.
@@ -678,10 +676,10 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
     mpi_prefix = "mpirun "
     if nproc is not None:
       mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
+  os.system("rm -f samples.dat")
   afqmc_binary = vmc_root + "/bin/DQMC"
 
-  command = f"{mpi_prefix} {afqmc_binary} afqmc.json"
+  command = f"export OMP_NUM_THREADS=1; {mpi_prefix} {afqmc_binary} afqmc.json"
   os.system(command)
 
   if (os.path.isfile('samples.dat')):
@@ -823,7 +821,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     mpi_prefix = "mpirun "
     if nproc is not None:
       mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
+  os.system("rm -f samples.dat")
   afqmc_binary = vmc_root + "/bin/DQMC"
   e_afqmc = [ None for _ in ndets_list ]
   err_afqmc = [ None for _ in ndets_list ]
@@ -831,7 +829,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     write_afqmc_input(seed = seed, numAct = norb_act, numCore = norb_core, left = 'multislater', right = hf_type, ndets = n, detFile = det_file, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm, fname = f"afqmc_{n}.json")
 
     print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
-    command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json"
+    command = f"export OMP_NUM_THREADS=1; {mpi_prefix} {afqmc_binary} afqmc_{n}.json"
     os.system(command)
     if (os.path.isfile('samples.dat')):
       print("\nBlocking analysis:", flush=True)
@@ -1348,7 +1346,7 @@ if __name__=="__main__":
   #fileh.write('1.   ' + bestDetStr + '\n')
   #fileh.close()
   #prepAllElectron(mol)
-  
+
 
 def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
     mol = mc.mol
@@ -1381,7 +1379,7 @@ def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidum
                    tol, float_format)
 
 
-def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')): 
+def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
   fh = h5py.File(filename, 'w')
   header = np.array([nelec, nmo, ms])
   fh['header'] = header
@@ -1395,16 +1393,16 @@ def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=
 
 
 def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',spatialRDMfile="spatialRDM.0.0.txt",spinRDMfile='',stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
-	
+
 	numCore = (sum(mc.mol.nelec)-nelecAct - norbFrozen*2)//2
 	getDets(fname=diceoutfile)
-	
-	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile) 
-	
+
+	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile)
+
 	print("Writing NEVPT2 input")
 #	DEFAULT_FLOAT_FORMAT = getattr(__config__, 'fcidump_float_format', ' %.16g')
 #	TOL = getattr(__config__, 'fcidump_write_tol', 1e-15)
-	
+
 	from_mc(mc, 'FCIDUMP.h5', nFrozen = norbFrozen)  #Uses fuctions from pyscf-tools
 	write_nevpt2_input(numAct = numAct , numCore = numCore , determinants = 'dets', integrals=integrals ,seed=seed, fname=fname, stochasticIterNorms = stochasticIterNorms, nIterFindInitDets = nIterFindInitDets , numSCSamples = numSCSamples, stochasticIterEachSC = stochasticIterEachSC, fixedResTimeNEVPT_Ene =fixedResTimeNEVPT_Ene , epsilon = epsilon, efficientNEVPT_2 = efficientNEVPT_2, determCCVV = determCCVV , SCEnergiesBurnIn = SCEnergiesBurnIn , SCNormsBurnIn = SCNormsBurnIn)
 	fileh = open("moEne.txt", 'w')
@@ -1427,15 +1425,15 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	system["integrals"] = integrals
 	system["numAct"] = numAct
 	system["numCore"] = numCore
-	
+
 	prints = {}
 	prints["readSCNorms"]= False
-	
+
 	wavefunction = {}
 	wavefunction["name"]="scpt"
 	wavefunction["overlapCutoff"]=1.0e-8
 	wavefunction["determinants"] = f"{determinants}"
-	
+
 	sampling = {}
 	sampling["stochasticIterNorms"] = stochasticIterNorms
 	sampling["nIterFindInitDets"] = nIterFindInitDets
@@ -1451,7 +1449,7 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	sampling["determCCVV"] = determCCVV
 	sampling["SCEnergiesBurnIn"] = SCEnergiesBurnIn
 	sampling["SCNormsBurnIn"] = SCNormsBurnIn
-	
+
 	json_input = {"system": system, "print": prints, "wavefunction": wavefunction, "sampling": sampling}
 	json_dump = json.dumps(json_input, indent = 2)
 	with open(fname, "w") as outfile:
@@ -1464,7 +1462,7 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
 	intfolder = "int/"
 	os.system("mkdir -p "+intfolder)
 	dm2a = np.zeros((norbAct, norbAct, norbAct, norbAct))
-	file2pdm = fname 
+	file2pdm = fname
 	file2pdm = file2pdm.encode()  # .encode for python3 compatibility
 	shci.r2RDM(dm2a, norbAct, file2pdm)
 	dm1 = np.einsum('ikjj->ki', dm2a)
@@ -1488,7 +1486,7 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
         	command = f"{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
         	print(command)
         	os.system(command)
-	print("Finished running ICPT\n")	
+	print("Finished running ICPT\n")
 
 def getDets(fname="dice.out"): #To get the determinants printed to dice output and write to text file 'dets'
     file = open(fname,'r')
@@ -1499,7 +1497,7 @@ def getDets(fname="dice.out"): #To get the determinants printed to dice output a
         if c.split(" ")[0]=="Printing" :
             k = content.index(c)
             break
-         
+
     for c in content[(k+3):]:
         if c.split()[0]=='Printing':
             break
@@ -1533,5 +1531,5 @@ def get_nevptEnergy(fname="nevpt2.out",printNevpt2=False):
         icE.append(e)
     totalE = nevptE + sum(icE)
     return totalE,Error
-  
+
 

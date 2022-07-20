@@ -69,7 +69,7 @@ QMCUtils.writeMat(ghf_coeffs, "ghf.txt")
 afqmc_binary = vmc_root + "/bin/DQMC"
 blocking_script = vmc_root + "/scripts/blocking.py"
 
-os.system("export OMP_NUM_THREADS=1; rm samples.dat rdm_*.dat -f")
+os.system("rm samples.dat rdm_*.dat -f")
 
 # ghf trial
 scratchDir = "rdm_ghf"
@@ -78,6 +78,7 @@ burnIter = 100
 QMCUtils.write_afqmc_input(intType="g", seed=16835, left="ghf", right="ghf", nwalk=25, stochasticIter=1000, burnIter=burnIter, choleskyThreshold=2.e-3, writeOneRDM=True, scratchDir=scratchDir, fname=f"afqmc_ghf.json")
 print(f"\nStarting AFQMC / GHF calculation", flush=True)
 command = f'''
+              export OMP_NUM_THREADS=1;
               mpirun -np {nproc} {afqmc_binary} afqmc_ghf.json > afqmc_ghf.out;
               mv samples.dat samples_ghf.dat
               python {blocking_script} samples_ghf.dat {burnIter} > blocking_ghf.out;

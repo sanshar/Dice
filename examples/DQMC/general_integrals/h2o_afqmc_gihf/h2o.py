@@ -89,7 +89,7 @@ QMCUtils.writeMat(ghfCoeffs[:, occ_first.astype(int)], "ghf.txt")
 # write afqmc input and perform calculation
 afqmc_binary = vmc_root + "/bin/DQMC"
 
-os.system("export OMP_NUM_THREADS=1; rm samples.dat rdm_*.dat -f")
+os.system("rm samples.dat rdm_*.dat -f")
 
 # hci trial
 for ndets in [ 1, 10, 100 ]:
@@ -98,6 +98,7 @@ for ndets in [ 1, 10, 100 ]:
   QMCUtils.write_afqmc_input(intType="g", seed=16835, left="multislater", right="ghf", ndets=ndets, nwalk=5, stochasticIter=1000, burnIter=100, choleskyThreshold=1.e-3, writeOneRDM=True, scratchDir=scratchDir, fname=f"afqmc_{ndets}.json")
   print(f"\nStarting AFQMC / HCI ({ndets}) calculation", flush=True)
   command = f'''
+                export OMP_NUM_THREADS=1;
                 mpirun {afqmc_binary} afqmc_{ndets}.json;
                 mv samples.dat samples_{ndets}.dat;
                 mv blocking.tmp blocking_{ndets}.out;
