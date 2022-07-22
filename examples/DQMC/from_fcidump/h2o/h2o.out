@@ -1,0 +1,48 @@
+Calculating Cholesky integrals
+Parsing FCIDUMP
+Finished calculating Cholesky integrals
+
+Size of the correlation space:
+Number of basis functions: 12
+Number of Cholesky vectors: 68
+
+Starting AFQMC / MF calculation
+reading samples from samples_afqmc.dat, ignoring first 50
+mean: -76.11248169940791
+blocked statistics:
+block size    # of blocks        mean                error
+     1            950       -7.61124817e+01       2.823965e-03
+     2            475       -7.61124817e+01       3.220777e-03
+     5            190       -7.61124817e+01       3.900021e-03
+    10             95       -7.61124817e+01       3.979136e-03
+    20             47       -7.61126339e+01       4.214000e-03
+    50             19       -7.61124817e+01       4.716198e-03
+    70             13       -7.61134968e+01       5.205396e-03
+   100              9       -7.61137012e+01       5.034299e-03
+   200              4       -7.61130236e+01       8.797320e-03
+Finished AFQMC / MF calculation
+Running Dice
+Finished Dice calculation
+Calculating Cholesky integrals
+Parsing FCIDUMP
+Finished calculating Cholesky integrals
+
+Size of the correlation space:
+Number of basis functions: 12
+Number of Cholesky vectors: 68
+
+Starting AFQMC / HCI calculation
+reading samples from samples_multislater.dat, ignoring first 50
+mean: -76.11887434956294
+blocked statistics:
+block size    # of blocks        mean                error
+     1            950       -7.61188743e+01       4.324738e-04
+     2            475       -7.61188743e+01       5.015318e-04
+     5            190       -7.61188743e+01       5.815944e-04
+    10             95       -7.61188743e+01       6.017773e-04
+    20             47       -7.61189057e+01       6.120225e-04
+    50             19       -7.61188743e+01       6.379588e-04
+    70             13       -7.61189972e+01       5.947854e-04
+   100              9       -7.61190657e+01       6.613499e-04
+   200              4       -7.61186334e+01       7.636611e-04
+Finished AFQMC / HCI calculation

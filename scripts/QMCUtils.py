@@ -1379,7 +1379,7 @@ def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidum
                    tol, float_format)
 
 
-def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
+def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')): 
   fh = h5py.File(filename, 'w')
   header = np.array([nelec, nmo, ms])
   fh['header'] = header
@@ -1392,23 +1392,26 @@ def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=
   fh.close()
 
 
-def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',spatialRDMfile="spatialRDM.0.0.txt",spinRDMfile='',stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
-
+def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',nroot=0,spatialRDMfile=None,spinRDMfile=None,stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
+	
 	numCore = (sum(mc.mol.nelec)-nelecAct - norbFrozen*2)//2
-	getDets(fname=diceoutfile)
-
-	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile)
-
+	getDets(fname=diceoutfile,nroot=nroot)
+	if(spatialRDMfile==None):
+		spatialRDMfile=f"spatialRDM.{nroot}.{nroot}.txt"	
+	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile) 
+	
 	print("Writing NEVPT2 input")
 #	DEFAULT_FLOAT_FORMAT = getattr(__config__, 'fcidump_float_format', ' %.16g')
 #	TOL = getattr(__config__, 'fcidump_write_tol', 1e-15)
-
+	
 	from_mc(mc, 'FCIDUMP.h5', nFrozen = norbFrozen)  #Uses fuctions from pyscf-tools
 	write_nevpt2_input(numAct = numAct , numCore = numCore , determinants = 'dets', integrals=integrals ,seed=seed, fname=fname, stochasticIterNorms = stochasticIterNorms, nIterFindInitDets = nIterFindInitDets , numSCSamples = numSCSamples, stochasticIterEachSC = stochasticIterEachSC, fixedResTimeNEVPT_Ene =fixedResTimeNEVPT_Ene , epsilon = epsilon, efficientNEVPT_2 = efficientNEVPT_2, determCCVV = determCCVV , SCEnergiesBurnIn = SCEnergiesBurnIn , SCNormsBurnIn = SCNormsBurnIn)
 	fileh = open("moEne.txt", 'w')
 	for i in range(mc.mol.nao - norbFrozen):
 		fileh.write('%.12e\n'%(mc.mo_energy[i + norbFrozen]))
 	fileh.close()
+	if (spinRDMfile==None and nroot>0):
+		os.system(f"mv spinRDM.0.0.txt spinRDM0;mv spinRDM.{nroot}.{nroot}.txt spinRDM.0.0.txt")
 	print("Running NEVPT2")
 	if vmc_root is None:
 		vmc_root = os.environ['VMC_ROOT']
@@ -1425,15 +1428,15 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	system["integrals"] = integrals
 	system["numAct"] = numAct
 	system["numCore"] = numCore
-
+	
 	prints = {}
 	prints["readSCNorms"]= False
-
+	
 	wavefunction = {}
 	wavefunction["name"]="scpt"
 	wavefunction["overlapCutoff"]=1.0e-8
 	wavefunction["determinants"] = f"{determinants}"
-
+	
 	sampling = {}
 	sampling["stochasticIterNorms"] = stochasticIterNorms
 	sampling["nIterFindInitDets"] = nIterFindInitDets
@@ -1449,7 +1452,7 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	sampling["determCCVV"] = determCCVV
 	sampling["SCEnergiesBurnIn"] = SCEnergiesBurnIn
 	sampling["SCNormsBurnIn"] = SCNormsBurnIn
-
+	
 	json_input = {"system": system, "print": prints, "wavefunction": wavefunction, "sampling": sampling}
 	json_dump = json.dumps(json_input, indent = 2)
 	with open(fname, "w") as outfile:
@@ -1462,7 +1465,7 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
 	intfolder = "int/"
 	os.system("mkdir -p "+intfolder)
 	dm2a = np.zeros((norbAct, norbAct, norbAct, norbAct))
-	file2pdm = fname
+	file2pdm = fname 
 	file2pdm = file2pdm.encode()  # .encode for python3 compatibility
 	shci.r2RDM(dm2a, norbAct, file2pdm)
 	dm1 = np.einsum('ikjj->ki', dm2a)
@@ -1479,27 +1482,29 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
 	nev.write_ic_inputs(mc.nelecas[0]+mc.nelecas[1], mc.ncore, mc.ncas, nfro, mc.nelecas[0]-mc.nelecas[1],'NEVPT2')
 	if vmc_root is None:
     		vmc_root = os.environ['VMC_ROOT']
-	os.system("export OMP_NUM_THREADS=1")
 	icpt_binary = vmc_root + "/bin/ICPT"
 	inps = ['ACVV','CCAV','CCVV']
 	for inp in inps:
-        	command = f"{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
+        	command = f"export OMP_NUM_THREADS=1;{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
         	print(command)
         	os.system(command)
-	print("Finished running ICPT\n")
+	print("Finished running ICPT\n")	
 
-def getDets(fname="dice.out"): #To get the determinants printed to dice output and write to text file 'dets'
+def getDets(fname="dice.out",nroot=0): #To get the determinants printed to dice output and write to text file 'dets'
     file = open(fname,'r')
     content = (file.readlines())
+    # content = [c.split() for c in content]
     dets = []
     k = -1
+    # return content
     for c in content:
-        if c.split(" ")[0]=="Printing" :
+        if (c.split(" ")[0]=="State" and c.split()[1]==f':{nroot}'):
             k = content.index(c)
+            # return k
             break
 
-    for c in content[(k+3):]:
-        if c.split()[0]=='Printing':
+    for c in content[(k+1):]:
+        if (c.split()[0]=='Printing' or c.split()[0]=='State'):
             break
         ch =c.split()
         if(float(ch[0])==0):
