@@ -8,7 +8,6 @@ import QMCUtils
 
 # these need to be provided
 dice_binary = "/projects/anma2640/newDice/Dice/Dice"
-vmc_root = "/projects/anma2640/VMC/master/VMC"
 
 # build your molecule
 r = 1.085
@@ -49,4 +48,4 @@ with open("input.dat", "a") as fh:
 command = f"mv input.dat dice.dat; mpirun {dice_binary} dice.dat > dice_b2u.out; rm -f shci.e"
 os.system(command)
 
-QMCUtils.run_afqmc(mc, vmc_root = vmc_root, norb_frozen = norb_frozen)
+QMCUtils.run_afqmc(mc, norb_frozen = norb_frozen)

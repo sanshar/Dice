@@ -596,7 +596,10 @@ def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, nde
 def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
-    vmc_root = os.environ['VMC_ROOT']
+    path = os.path.abspath(__file__)
+    dir_path = os.path.dirname(path)
+    vmc_root = dir_path + '/../'
+    #vmc_root = os.environ['VMC_ROOT']
 
   owd = os.getcwd()
   if run_dir is not None:
@@ -719,7 +722,10 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
 def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None, use_eri = False):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
-    vmc_root = os.environ['VMC_ROOT']
+    path = os.path.abspath(__file__)
+    dir_path = os.path.dirname(path)
+    vmc_root = dir_path + '/../'
+    #vmc_root = os.environ['VMC_ROOT']
 
   owd = os.getcwd()
   if run_dir is not None:
