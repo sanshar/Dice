@@ -55,8 +55,10 @@ void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXcd &inverse
   Eigen::Map<Eigen::VectorXi> ColDes(&des[0], ndes);
 
   Eigen::MatrixXcd newCol, oldCol;
-  igl::slice(Hforbs, RowVec, ColCre, newCol);
-  igl::slice(Hforbs, RowVec, ColDes, oldCol);
+  newCol = Hforbs(RowVec, ColCre);
+  oldCol = Hforbs(RowVec, ColDes);
+  //igl::slice(Hforbs, RowVec, ColCre, newCol);
+  //igl::slice(Hforbs, RowVec, ColDes, oldCol);
   newCol = newCol - oldCol;
 
   Eigen::MatrixXcd vT = Eigen::MatrixXcd::Zero(ncre, ColIn.size());
@@ -86,7 +88,8 @@ void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXcd &inverse
   {
     Eigen::MatrixXcd originalOrbs;
     Eigen::Map<Eigen::VectorXi> Col(&ColIn[0], ColIn.size());
-    igl::slice(Hforbs, RowVec, Col, originalOrbs);
+    //igl::slice(Hforbs, RowVec, Col, originalOrbs);
+    originalOrbs = Hforbs(RowVec, Col);
     Eigen::MatrixXcd newOrbs = originalOrbs + newCol * vT;
     inverseOutWrong = newOrbs.inverse();
     detValueOut = newOrbs.determinant();
@@ -97,7 +100,8 @@ void calculateInverseDeterminantWithColumnChange(const Eigen::MatrixXcd &inverse
   std::iota(order.begin(), order.end(), 0);
   std::sort(order.begin(), order.end(), [&ccopy](size_t i1, size_t i2) { return ccopy[i1] < ccopy[i2]; });
   Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
-  igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
+  //igl::slice(inverseOutWrong, orderVec, 1, inverseOut);
+  inverseOut = inverseOutWrong(orderVec, Eigen::placeholders::all); 
 }
 
 /**
@@ -133,8 +137,10 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXcd &inverseIn,
   Eigen::Map<Eigen::VectorXi> RowDes(&des[0], ndes);
 
   Eigen::MatrixXcd newRow, oldRow;
-  igl::slice(Hforbs, RowCre, ColVec, newRow);
-  igl::slice(Hforbs, RowDes, ColVec, oldRow);
+  //igl::slice(Hforbs, RowCre, ColVec, newRow);
+  //igl::slice(Hforbs, RowDes, ColVec, oldRow);
+  newRow = Hforbs(RowCre, ColVec);
+  oldRow = Hforbs(RowDes, ColVec);
   newRow = newRow - oldRow;
 
   Eigen::MatrixXcd U = Eigen::MatrixXd::Zero(ColVec.rows(), ncre);
@@ -163,7 +169,8 @@ void calculateInverseDeterminantWithRowChange(const Eigen::MatrixXcd &inverseIn,
   {
     Eigen::MatrixXcd originalOrbs;
     Eigen::Map<Eigen::VectorXi> Row(&RowIn[0], RowIn.size());
-    igl::slice(Hforbs, Row, ColVec, originalOrbs);
+    //igl::slice(Hforbs, Row, ColVec, originalOrbs);
+    originalOrbs = Hforbs(Row, ColVec);
     Eigen::MatrixXcd newOrbs = originalOrbs + U * newRow;
     inverseOutWrong = newOrbs.inverse();
     detValueOut = newOrbs.determinant();

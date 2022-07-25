@@ -27,8 +27,6 @@
 #endif
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-#include "igl/slice.h"
-#include "igl/slice_into.h"
 
 #include "Determinants.h"
 #include "MultiSlater.h"

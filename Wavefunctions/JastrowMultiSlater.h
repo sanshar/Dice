@@ -23,7 +23,6 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <unordered_set>
-#include "igl/slice.h"
 #include <unsupported/Eigen/CXX11/Tensor>
 #include "JastrowMultiSlaterWalker.h"
 

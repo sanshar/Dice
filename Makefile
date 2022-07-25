@@ -9,12 +9,11 @@ EIGEN=./eigen/
 
 COMPILE_NUMERIC = no
 SPARSEHASH=/projects/anma2640/sparsehash/src/
-LIBIGL=/projects/sash2458/apps/libigl/include/
 
 ifeq ($(ONLY_DQMC), yes)
   FLAGS = -std=c++14 -O3 -g -w -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
 else 
-  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${LIBIGL} -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
 endif
 
 ifeq ($(HAS_AVX2), yes)

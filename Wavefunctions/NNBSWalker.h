@@ -23,7 +23,6 @@
 #include "Determinants.h"
 #include "global.h"
 #include "fnn.h"
-#include "igl/slice.h"
 
 
 using namespace Eigen;
@@ -65,7 +64,7 @@ public:
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
     VectorXi occColumns = VectorXi::LinSpaced(nelec, 0, nelec - 1);
-    igl::slice(moCoeffs, occRows, occColumns, occSlice);
+    occSlice = moCoeffs(occRows, occColumns);
   };
  
   NNBSWalker(MatrixXd& moCoeffs) 
@@ -143,7 +142,7 @@ public:
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
     VectorXi occColumns = VectorXi::LinSpaced(nelec, 0, nelec - 1);
-    igl::slice(moCoeffs, occRows, occColumns, occSlice);
+    occSlice = moCoeffs(occRows, occColumns);
   };
   
   // this is used for storing bestDet
@@ -177,7 +176,7 @@ public:
     closedOrbs.insert(closedOrbs.end(), closedBeta.begin(), closedBeta.end());
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
     VectorXi occColumns = VectorXi::LinSpaced(nelec, 0, nelec - 1);
-    igl::slice(moCoeffs, occRows, occColumns, occSlice);
+    occSlice = moCoeffs(occRows, occColumns);
   }
  
   //to be defined for metropolis

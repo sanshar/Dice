@@ -1049,12 +1049,11 @@ class SCCI
       }
     }
     Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-    VectorXd largeNorms;
-    igl::slice(ovlpDiag, largeNormSlice, largeNorms);
+    VectorXd largeNorms = ovlpDiag(largeNormSlice);
     largeNormInv.resize(coeffs.size());
     largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
     //largeNormInv.diagonal() = largeNorms.cwiseInverse();
-    igl::slice(hamDiag, largeNormSlice, largeHamDiag);
+    largeHamDiag = hamDiag(largeNormSlice);
     largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
     largeHamDiag = (largeNormInv.diagonal().cwiseProduct(largeHamDiag)); 
     for (int i = 0; i < sampleIndices.size(); i++) {
@@ -1065,8 +1064,7 @@ class SCCI
       else {
         largeSampleTimes.push_back(sampleTimes[i]);
         largeSampleIndices.push_back(sampleIndices[i]);
-        VectorXd largeHamSample;  
-        igl::slice(hamSamples[i], largeNormSlice, largeHamSample);
+        VectorXd largeHamSample = hamSamples[i](largeNormSlice).cast<double>();  
         hamSamples[i].resize(0);
         largeHamSamples.push_back(largeHamSample);
       }
