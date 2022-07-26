@@ -7,13 +7,16 @@ BOOST=${BOOST_ROOT}
 HDF5=${CURC_HDF5_ROOT}
 EIGEN=./eigen/
 
+INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
+LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
+
 COMPILE_NUMERIC = no
-SPARSEHASH=/projects/anma2640/sparsehash/src/
+#SPARSEHASH=/projects/anma2640/sparsehash/src/
 
 ifeq ($(ONLY_DQMC), yes)
   FLAGS = -std=c++14 -O3 -g -w -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
 else 
-  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I${SPARSEHASH} -I/opt/local/include/openmpi-mp/
+  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I/opt/local/include/openmpi-mp/ -I.
 endif
 
 ifeq ($(HAS_AVX2), yes)
