@@ -1167,6 +1167,8 @@ double SCPT<Wfn>::doNEVPT2_CT(Walker& walk) {
 
     if (schd.printVars) cout << endl << "ci coeffs\n" << coeffs << endl; 
   }
+  MPI_Barrier(MPI_COMM_WORLD);
+  return ene2;
 }
 
 // Output the header for the "norms" file, which will output the norms of
@@ -1962,10 +1964,10 @@ double SCPT<Wfn>::doNEVPT2_CT_Efficient(Walker& walk) {
           cout << "Total SC-NEVPT2(s) energy with CCVV:  " << energyCAS_Tot + ene2 + energy_ccvv << endl;
         }
       }
-
     }
-
   } // If sampling the energy
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
 }
 
 template<typename Wfn>
@@ -2895,6 +2897,7 @@ double SCPT<Wfn>::compareStochPerturberEnergy(Walker& walk, int orb1, int orb2, 
   double perturberEnergy = hamTot / normTot;
   cout << "Exact perturber energy, E_l^k: " << setprecision(12) << perturberEnergy << endl;
 
+  MPI_Barrier(MPI_COMM_WORLD);
   // Now generate stochastic samples
   FILE * pt2_out;
   string pt2OutName = "stoch_samples_";
@@ -2929,7 +2932,7 @@ double SCPT<Wfn>::compareStochPerturberEnergy(Walker& walk, int orb1, int orb2, 
   }
 
   fclose(pt2_out);
-
+  return 0;
 }
 
 template<typename Wfn>
@@ -3062,6 +3065,8 @@ double SCPT<Wfn>::doNEVPT2_Deterministic(Walker& walk) {
     cout << "waveEne  " << waveEne << endl;
     cout << "nevpt2 energy  " << ene(0) + ene2 << endl;
   }
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
 }
 
 template<typename Wfn>
@@ -3390,5 +3395,6 @@ void initNEVPT_Wrapper()
       wave.doNEVPT2_CT(walk);
     }
   }
-
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
 }
