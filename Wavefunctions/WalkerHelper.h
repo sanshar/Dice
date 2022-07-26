@@ -21,8 +21,6 @@
 
 #include <unordered_set>
 #include "Determinants.h"
-#include "igl/slice.h"
-#include "igl/slice_into.h"
 #include "ShermanMorrisonWoodbury.h"
 #include "Slater.h"
 #include "MultiSlater.h"
@@ -88,8 +86,7 @@ class WalkerHelper<Slater>
   {
     Map<VectorXi> rowOpen(&openOrbs[sz][0], openOrbs[sz].size());
     rTable[detIndex][sz] = MatrixXcd::Zero(openOrbs[sz].size(), closedOrbs[sz].size()); 
-    MatrixXcd HfopenTheta;
-    igl::slice(w.getHforbs(sz), rowOpen, colClosed, HfopenTheta);
+    MatrixXcd HfopenTheta = w.getHforbs(sz)(rowOpen, colClosed);
     rTable[detIndex][sz] = HfopenTheta * inv;
   }
 
@@ -117,8 +114,7 @@ class WalkerHelper<Slater>
     for (int sz = 0; sz < 2; sz++) {
       Eigen::Map<VectorXi> rowClosed(&closedOrbs[sz][0], closedOrbs[sz].size());
       Eigen::Map<VectorXi> colClosed(&closedOrbsRef[sz][0], closedOrbsRef[sz].size());
-      MatrixXcd theta;
-      igl::slice(w.getHforbs(sz), rowClosed, colClosed, theta); 
+      MatrixXcd theta = w.getHforbs(sz)(rowClosed, colClosed);
       Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv[sz] = lua.inverse();
@@ -149,11 +145,10 @@ class WalkerHelper<Slater>
   void makeTableGhf(const Slater &w, const Eigen::Map<VectorXi>& colTheta)
   {
     rTable[0][0] = MatrixXcd::Zero(openOrbs[0].size() + openOrbs[1].size(), closedOrbs[0].size() + closedOrbs[1].size()); 
-    MatrixXcd ghfOpen;
     vector<int> rowVec;
     concatenateGhf(openOrbs[0], openOrbs[1], rowVec);
     Eigen::Map<VectorXi> rowOpen(&rowVec[0], rowVec.size());
-    igl::slice(w.getHforbs(), rowOpen, colTheta, ghfOpen);
+    MatrixXcd ghfOpen = w.getHforbs()(rowOpen, colTheta);
     rTable[0][0] = ghfOpen * thetaInv[0];
     rTable[0][1] = rTable[0][0];
   }
@@ -167,8 +162,7 @@ class WalkerHelper<Slater>
     concatenateGhf(closedOrbsRef[0], closedOrbsRef[1], workingVec1);
     Eigen::Map<VectorXi> colTheta(&workingVec1[0], workingVec1.size());
   
-    MatrixXcd theta;
-    igl::slice(w.getHforbs(), rowTheta, colTheta, theta); 
+    MatrixXcd theta = w.getHforbs()(rowTheta, colTheta);
     Eigen::FullPivLU<MatrixXcd> lua(theta);
     if (lua.isInvertible()) {
       thetaInv[0] = lua.inverse();
@@ -280,11 +274,10 @@ class WalkerHelper<MultiSlater>
     int norbs = Determinant::norbs;
   
     // inverse and refDet
-    MatrixXcd a;
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
     auto refCopy = w.ref;
     Eigen::Map<VectorXi> occColumns(&refCopy[0], refCopy.size());
-    igl::slice(w.getHforbs(), occRows, occColumns, a); 
+    MatrixXcd a = w.getHforbs()(occRows, occColumns);
     Eigen::FullPivLU<MatrixXcd> lua(a);
     if (lua.isInvertible()) {
       t = lua.inverse();
@@ -311,11 +304,9 @@ class WalkerHelper<MultiSlater>
     auto openCopy = w.open;
     Eigen::Map<VectorXi> openColumns(&openCopy[0], openCopy.size());
     Eigen::Map<VectorXi> openRows(&openOrbs[0], openOrbs.size());
-    //igl::slice(w.getHforbs(), all, occColumns, r);
-    //igl::slice(w.getHforbs(), occRows, all, c);
-    igl::slice(w.getHforbs(), openRows, occColumns, r);
-    igl::slice(w.getHforbs(), occRows, openColumns, c);
-    igl::slice(w.getHforbs(), openRows, openColumns, b);
+    r = w.getHforbs()(openRows, occColumns);
+    c = w.getHforbs()(occRows, openColumns);
+    b = w.getHforbs()(openRows, openColumns);
     rt = r * t;
     tc = t * c;
     rtc_b = rt * c - b;
@@ -330,8 +321,7 @@ class WalkerHelper<MultiSlater>
     totalComplexOverlap = w.ciCoeffs[0] * refOverlap;
     for (int i = 1; i < w.numDets; i++) {
       if (w.ciExcitations[i][0].size() == 4) {
-        Matrix4cd sliceMat;
-        igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
+        Matrix4cd sliceMat = tc(w.ciExcitations[i][0], w.ciExcitations[i][1]);
         tcSlice.push_back(sliceMat);
         complex<double> ratio = sliceMat.determinant() * complex<double>(w.ciParity[i]);
         ciOverlapRatios.push_back(ratio);
@@ -340,8 +330,7 @@ class WalkerHelper<MultiSlater>
         totalComplexOverlap += w.ciCoeffs[i] * ratio * refOverlap;
       }
       else {
-        MatrixXcd sliceMat;
-        igl::slice(tc, w.ciExcitations[i][0], w.ciExcitations[i][1], sliceMat);
+        MatrixXcd sliceMat = tc(w.ciExcitations[i][0], w.ciExcitations[i][1]);
         complex<double> ratio = calcDet(sliceMat) * complex<double>(w.ciParity[i]);
         ciOverlapRatios.push_back(ratio);
         ciOverlaps.push_back((ratio * refOverlap).real());
@@ -379,9 +368,9 @@ class WalkerHelper<MultiSlater>
     Eigen::Map<VectorXi> occRows(&closedOrbs[0], closedOrbs.size());
     Eigen::Map<VectorXi> openRows(&openOrbs[0], openOrbs.size());
     //VectorXi all = VectorXi::LinSpaced(2*norbs, 0, 2*norbs - 1);
-    igl::slice(w.getHforbs(), openRows, occColumns, r);
-    igl::slice(w.getHforbs(), occRows, openColumns, c);
-    igl::slice(w.getHforbs(), openRows, openColumns, b);
+    r = w.getHforbs()(openRows, occColumns);
+    c = w.getHforbs()(occRows, openColumns);
+    b = w.getHforbs()(openRows, openColumns);
     rt = r * t;
     tc = t * c;
     rtc_b = rt * c - b;
@@ -404,7 +393,6 @@ class WalkerHelper<MultiSlater>
 - tc(w.ciExcitations[j][0][0], w.ciExcitations[j][1][1]) * tc(w.ciExcitations[j][0][1], w.ciExcitations[j][1][0]);
       
       else if (rank == 3) {
-        //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
         Matrix3cd tcSlice;
         for  (int mu = 0; mu < 3; mu++) 
           for (int nu = 0; nu < 3; nu++) 
@@ -414,7 +402,6 @@ class WalkerHelper<MultiSlater>
       }
       
       else if (rank == 4) {
-        //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
         for  (int mu = 0; mu < 4; mu++) 
           for (int nu = 0; nu < 4; nu++) 
             tcSlice[count4](mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
@@ -425,7 +412,6 @@ class WalkerHelper<MultiSlater>
       
       else {
         MatrixXcd sliceMat = MatrixXcd::Zero(rank, rank);
-        //igl::slice(tc, w.ciExcitations[j][0], w.ciExcitations[j][1], sliceMat);
         for (int mu = 0; mu < rank; mu++) 
           for (int nu = 0; nu < rank; nu++) 
             sliceMat(mu, nu) = tc(w.ciExcitations[j][0][mu], w.ciExcitations[j][1][nu]);
@@ -649,19 +635,16 @@ class WalkerHelper<AGP>
     {
       Map<VectorXi> rowOpen(&openOrbs[0][0], openOrbs[0].size());
       Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-      MatrixXcd openThetaAlpha; 
-      igl::slice(w.getPairMat(), rowOpen, colClosed, openThetaAlpha);
+      MatrixXcd openThetaAlpha = w.getPairMat()(rowOpen, colClosed); 
       rTable[0] = openThetaAlpha * thetaInv; 
       
       Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
       Map<VectorXi> colOpen(&openOrbs[1][0], openOrbs[1].size());
-      MatrixXcd openThetaBeta; 
-      igl::slice(w.getPairMat(), rowClosed, colOpen, openThetaBeta);
+      MatrixXcd openThetaBeta = w.getPairMat()(rowClosed, colOpen); 
       MatrixXcd betaTableTranspose = thetaInv * openThetaBeta; 
       rTable[1] = betaTableTranspose.transpose(); 
     
-      MatrixXcd openTheta;
-      igl::slice(w.getPairMat(), rowOpen, colOpen, openTheta);
+      MatrixXcd openTheta = w.getPairMat()(rowOpen, colOpen);
       MatrixXcd rtc = rTable[0] * openThetaBeta;
       rTable[2] = openTheta - rtc;
     }
@@ -670,8 +653,7 @@ class WalkerHelper<AGP>
     {
       Eigen::Map<VectorXi> rowClosed(&closedOrbs[0][0], closedOrbs[0].size());
       Eigen::Map<VectorXi> colClosed(&closedOrbs[1][0], closedOrbs[1].size());
-      MatrixXcd theta;
-      igl::slice(w.getPairMat(), rowClosed, colClosed, theta); 
+      MatrixXcd theta = w.getPairMat()(rowClosed, colClosed);
       Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv = lua.inverse();
@@ -758,7 +740,7 @@ class WalkerHelper<Pfaffian>
       Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
-      igl::slice(w.getPairMat(), open, closed, fMat);
+      fMat = w.getPairMat()(open, closed);
       rTable[0] = fMat * thetaInv;
       rTable[1] = - rTable[0] * fMat.transpose();
 
@@ -786,8 +768,7 @@ class WalkerHelper<Pfaffian>
       Map<VectorXi> closedBeta(&closedOrbs[1][0], closedOrbs[1].size());
       VectorXi closed(nclosed);
       closed << closedAlpha, (closedBeta.array() + norbs).matrix();
-      MatrixXcd theta;
-      igl::slice(w.getPairMat(), closed, closed, theta); 
+      MatrixXcd theta = w.getPairMat()(closed, closed);
       Eigen::FullPivLU<MatrixXcd> lua(theta);
       if (lua.isInvertible()) {
         thetaInv = lua.inverse();
@@ -822,8 +803,7 @@ class WalkerHelper<Pfaffian>
       bMat(tableIndexi, 1) = 1;
       VectorXi colSlice(1);
       colSlice[0] = i + sz * norbs;
-      MatrixXcd thetaSlice;
-      igl::slice(w.getPairMat(), closed, colSlice, thetaSlice);
+      MatrixXcd thetaSlice = w.getPairMat()(closed, colSlice);
       //bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexi * nopen + tableIndexa, nclosed, 1) - thetaSlice;
       bMat.block(0, 0, nclosed, 1) = - fMat.transpose().block(0, tableIndexa, nclosed, 1) - thetaSlice;
       MatrixXcd invOld = thetaInv;
@@ -836,7 +816,7 @@ class WalkerHelper<Pfaffian>
       std::iota(order.begin(), order.end(), 0);
       std::sort(order.begin(), order.end(), [&rcopy](size_t i1, size_t i2) { return rcopy[i1] < rcopy[i2]; });
       Eigen::Map<Eigen::VectorXi> orderVec(&order[0], order.size());
-      igl::slice(shuffledThetaInv, orderVec, orderVec, thetaInv);
+      thetaInv = shuffledThetaInv(orderVec, orderVec);
       
       //thetaPfaff = thetaPfaff * rTable[0](tableIndexi * nopen + tableIndexa, tableIndexi);
       complex<double> pfaffRatio = fMat.row(tableIndexa) * invOld.col(tableIndexi);

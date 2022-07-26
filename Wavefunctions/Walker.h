@@ -22,8 +22,6 @@
 #include "Determinants.h"
 #include "WalkerHelper.h"
 #include <array>
-#include "igl/slice.h"
-#include "igl/slice_into.h"
 #include "Slater.h"
 #include "MultiSlater.h"
 #include "AGP.h"
@@ -254,8 +252,7 @@ struct Walker<Corr, Slater> {
       }
     }
 
-    MatrixXcd detSlice = MatrixXcd::Zero(numExc,numExc);
-    igl::slice(refHelper.rTable[0][0], tableIndicesRow, tableIndicesCol, detSlice);
+    MatrixXcd detSlice = refHelper.rTable[0][0](tableIndicesRow, tableIndicesCol);
     complex<double> det(0.,0.);
     if (detSlice.rows() == 1) det = detSlice(0, 0);
     else if (detSlice.rows() == 2) det = detSlice(0, 0) * detSlice(1, 1) - detSlice(0, 1) * detSlice(1, 0);
@@ -697,8 +694,7 @@ struct Walker<Corr, MultiSlater> {
     // make rt slice once, does not change with ci dets
     VectorXi mCre(2); mCre << tableIndexa, tableIndexb; 
     VectorXi mDes(2); mDes << tableIndexi, tableIndexj;
-    MatrixXcd rtSlice;
-    igl::slice(refHelper.rt, mCre, mDes, rtSlice);
+    MatrixXcd rtSlice = refHelper.rt(mCre, mDes);
     // calculating < m | psi > 
     //double overlap = ref.ciCoeffs[0] * (rtSlice.determinant() * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
     double overlap = ref.ciCoeffs[0] * (calcDet(rtSlice) * refHelper.refOverlap).real(); // c_0 Re < m | phi_0 >
@@ -741,9 +737,9 @@ struct Walker<Corr, MultiSlater> {
       }
       else {// bigger cases
         MatrixXcd rtc_bSlice, tSlice, tcSlice;
-        igl::slice(refHelper.rtc_b, mCre, ref.ciExcitations[k][1], rtc_bSlice);
-        igl::slice(refHelper.t, ref.ciExcitations[k][0], mDes, tSlice);
-        igl::slice(refHelper.tc, ref.ciExcitations[k][0], ref.ciExcitations[k][1], tcSlice);
+        rtc_bSlice = refHelper.rtc_b(mCre, ref.ciExcitations[k][1]);
+        tSlice = refHelper.t(ref.ciExcitations[k][0], mDes);
+        tcSlice = refHelper.tc(ref.ciExcitations[k][0], ref.ciExcitations[k][1]);
         MatrixXcd sliceMat = MatrixXcd::Zero(2 + ref.ciExcitations[k][0].size(), 2 + ref.ciExcitations[k][1].size());
         sliceMat.block(0, 0, 2, 2) = rtSlice;
         sliceMat.block(0, 2, 2, ref.ciExcitations[k][0].size()) = rtc_bSlice;

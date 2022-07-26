@@ -4,9 +4,6 @@ from pyscf import gto, scf
 import QMCUtils
 import numpy
 
-# this needs to be provided
-vmc_root = "/projects/anma2640/VMC/master/VMC"
-
 # mean field calculation
 r = 0.9578
 theta = 104.5078 * numpy.pi / 180.
@@ -16,5 +13,5 @@ mf = scf.RHF(mol)
 mf.kernel()
 
 # afqmc calculation
-QMCUtils.run_afqmc(mf, vmc_root = vmc_root, norb_frozen = 1)
+QMCUtils.run_afqmc(mf, norb_frozen = 1)
 

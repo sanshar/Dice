@@ -59,7 +59,7 @@
 #include "SCCI.h"
 #include "SCPT.h"
 #include "MRCI.h"
-#include "EOM.h"
+//#include "EOM.h"
 #include "runVMC.h"
 
 using namespace Eigen;
@@ -318,34 +318,34 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "eom") {
-    EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
-    //cout << "detetrministic\n\n";
-    if (schd.deterministic) wave.optimizeWaveDeterministic(walk); 
-    else {
-      wave.initWalker(walk);
-      wave.optimizeWaveCT(walk); 
-    }
-    //wave.calcPolDeterministic(walk); 
-    //wave.calcPolCT(walk); 
-    //wave.initWalker(walk);
-    //runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "pol") {
-    EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
-    //cout << "detetrministic\n\n";
-    //wave.optimizeWaveDeterministic(walk); 
-    //cout << "stochastic\n\n";
-    //wave.optimizeWaveCT(walk); 
-    if (schd.deterministic) wave.calcPolDeterministic(walk); 
-    else {
-      wave.initWalker(walk);
-      wave.calcPolCT(walk); 
-    }
-    //wave.initWalker(walk);
-    //runVMC(wave, walk);
-  }
+  //else if (schd.wavefunctionType == "eom") {
+  //  EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+  //  //cout << "detetrministic\n\n";
+  //  if (schd.deterministic) wave.optimizeWaveDeterministic(walk); 
+  //  else {
+  //    wave.initWalker(walk);
+  //    wave.optimizeWaveCT(walk); 
+  //  }
+  //  //wave.calcPolDeterministic(walk); 
+  //  //wave.calcPolCT(walk); 
+  //  //wave.initWalker(walk);
+  //  //runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "pol") {
+  //  EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
+  //  //cout << "detetrministic\n\n";
+  //  //wave.optimizeWaveDeterministic(walk); 
+  //  //cout << "stochastic\n\n";
+  //  //wave.optimizeWaveCT(walk); 
+  //  if (schd.deterministic) wave.calcPolDeterministic(walk); 
+  //  else {
+  //    wave.initWalker(walk);
+  //    wave.calcPolCT(walk); 
+  //  }
+  //  //wave.initWalker(walk);
+  //  //runVMC(wave, walk);
+  //}
   
   else if (schd.wavefunctionType == "scpt") {
     initNEVPT_Wrapper();

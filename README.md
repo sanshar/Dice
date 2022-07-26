@@ -30,9 +30,8 @@ Tests can be run using the runDQMC.sh script in the "tests" directory. Examples 
 
 Other parts of the code have the following additional dependencies:
 
-1. Libigl
-2. Sparsehash
-3. More Boost libraries (program_options, system, filesystem) 
+1. Sparsehash
+2. More Boost libraries (program_options, system, filesystem) 
 
 Everything on the master branch can be compiled with
 ```

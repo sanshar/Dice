@@ -6,10 +6,8 @@ import h5py, json, csv, struct
 import pandas as pd
 from functools import reduce
 from pyscf import gto, scf, ao2mo, mcscf, tools, fci, mp, lo, __config__ , lib
-from pyscf.lib import logger
 from pyscf.lo import pipek, boys, edmiston, iao, ibo
 from pyscf.shciscf import shci
-from pyscf.ao2mo import _ao2mo
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 import scipy.linalg as la
@@ -225,6 +223,32 @@ def read_dets(fname = 'dets.bin', ndets = None):
 
   return norbs, state, ndetsAll
 
+
+# reading dets from dice
+def read_dets_ghf(fname = 'dets.bin', ndets = None):
+  state = { }
+  norbs = 0
+  with open(fname, 'rb') as f:
+    ndetsAll = struct.unpack('i', f.read(4))[0]
+    norbs = struct.unpack('i', f.read(4))[0]
+    if ndets is None:
+      ndets = ndetsAll
+    for i in range(ndets):
+      coeff = struct.unpack('d', f.read(8))[0]
+      det = [ 0 for i in range(norbs) ]
+      for j in range(norbs//2):
+        occ = struct.unpack('c', f.read(1))[0]
+        if (occ == b'a'):
+          det[2*j] = 1
+        elif (occ == b'b'):
+          det[2*j+1] = 1
+        elif (occ == b'2'):
+          det[2*j] = 1
+          det[2*j+1] = 1
+      state[tuple(det)] = coeff
+
+  return norbs, state, ndetsAll
+
 # a_i^dag a_j
 def ci_parity(det, i, j):
   assert(det[i] == 0 and det[j] == 1)
@@ -258,6 +282,31 @@ def calculate_ci_1rdm(norbs, state, ndets=100):
 
   rdm[0] /= norm_square
   rdm[1] /= norm_square
+  return rdm
+
+def calculate_ci_1rdm_ghf(norbs, state, ndets=100):
+  norm_square = 0.
+  counter = 0
+  rdm = np.zeros((norbs, norbs))
+  for det, coeff in state.items():
+    counter += 1
+    norm_square += coeff * coeff
+    det_list = list(det)
+    occ = [ i for i, x in enumerate(det_list) if x == 1 ]
+    empty = [ i for i, x in enumerate(det_list) if x == 0 ]
+    for j in occ:
+      rdm[j, j] += coeff * coeff
+      for i in empty:
+        new_det = copy.deepcopy(det_list)
+        new_det[i] = 1
+        new_det[j] = 0
+        new_det = tuple(new_det)
+        if new_det in state:
+          rdm[i, j] += ci_parity(det_list, i, j) * state[new_det] * coeff
+    if counter == ndets:
+      break
+
+  rdm /= norm_square
   return rdm
 
 def calc_uhf_integrals(umf, norb=None, nelec=None):
@@ -330,6 +379,97 @@ def write_hci_ghf_uhf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='F
 
   return
 
+def write_hci_ghf_integrals(ham_ints, norb, nelec, tol = 1.e-10, filename='FCIDUMP'):
+  """
+  Args:
+    ham_ints: dict.
+      Contains: 'enuc': float. Nuclear energy.
+                'h1': np.ndarray, shape [norb, norb]
+                'eri': np.ndarray, shape [norb*(norb+1)/2, norb*(norb+1)/2], with 4-fold
+                       symmetry. Other permuation symmetries like 8 or 1 are also allowd.
+    norb: int. Number of generalized orbital. It equals to (number of spatial orbital)*2.
+    nelec: int. Number of electrons.
+    tol: float. Under which the integrals are ignored in the FCIDUMP file.
+    filename: string. Default to 'FCIDUMP'.
+  """
+  enuc = ham_ints['enuc']
+  h1g = ham_ints['h1']
+  erig = ham_ints['eri']
+  erig = ao2mo.restore(1, erig, norb)
+
+  float_format = '(%16.12e, %16.12e)'
+
+  with open(filename, 'w') as fout:
+    # header
+    fout.write(' &FCI NORB=%4d,NELEC=%2d,MS2=%d,\n' % (norb, nelec, 0))
+    fout.write('  ORBSYM=%s\n' % ('1,' * norb))
+    fout.write('  ISYM=0,\n')
+    fout.write(' &END\n')
+
+    # eri
+    output_format = float_format + ' %4d %4d %4d %4d\n'
+    for i in range(norb):
+      for j in range(norb):
+        for k in range(norb):
+          for l in range(norb):
+            if abs(erig[i,j,k,l]) > tol:
+              fout.write(output_format % (erig[i,j,k,l], 0., i+1, j+1, k+1, l+1))
+    # h1
+    output_format = float_format + ' %4d %4d  0  0\n'
+    for i in range(norb):
+      for j in range(norb):
+        if abs(h1g[i,j]) > tol:
+          fout.write(output_format % (h1g[i,j], 0., i+1, j+1))
+
+    # enuc
+    output_format = float_format + '  0  0  0  0\n'
+    fout.write(output_format % (enuc, 0.0))
+
+  return
+
+def calc_write_hci_ghf_integrals(gmf, tol = 1.e-10, filename='FCIDUMP'):
+  norb = gmf.mol.nao
+  enuc = gmf.energy_nuc()
+  h1_ao = gmf.get_hcore()
+  h1 = gmf.mo_coeff.T.dot(h1_ao).dot(gmf.mo_coeff)
+  erir_ao = ao2mo.restore(1, gmf._eri, norb)
+  erig_ao = np.zeros((2*norb, 2*norb, 2*norb, 2*norb))
+  for i in range(2*norb):
+    for j in range(2*norb):
+      for k in range(2*norb):
+        for l in range(2*norb):
+          if (i - norb + 0.5) * (j - norb + 0.5) > 0 and (k - norb + 0.5) * (l - norb + 0.5) > 0:
+            erig_ao[i, j, k, l] = erir_ao[i % norb, j % norb, k % norb, l % norb]
+
+  erig = ao2mo.incore.general(erig_ao, (gmf.mo_coeff, gmf.mo_coeff, gmf.mo_coeff, gmf.mo_coeff))
+  float_format = '(%16.12e, %16.12e)'
+  nsorb = 2*norb
+  with open(filename, 'w') as fout:
+    # header
+    fout.write(' &FCI NORB=%4d,NELEC=%2d,MS2=%d,\n' % (nsorb, gmf.mol.nelectron, 0))
+    fout.write('  ORBSYM=%s\n' % ('1,' * nsorb))
+    fout.write('  ISYM=0,\n')
+    fout.write(' &END\n')
+
+    # eri
+    output_format = float_format + ' %4d %4d %4d %4d\n'
+    for i in range(nsorb):
+      for j in range(nsorb):
+        for k in range(nsorb):
+          for l in range(nsorb):
+            if abs(erig[i, j, k, l]) > tol:
+              fout.write(output_format % (erig[i, j, k, l], 0., i+1, j+1, k+1, l+1))
+
+    # h1
+    output_format = float_format + ' %4d %4d  0  0\n'
+    for i in range(nsorb):
+      for j in range(nsorb):
+        if abs(h1[i, j]) > tol:
+          fout.write(output_format % (h1[i, j], 0., i+1, j+1))
+
+    # enuc
+    output_format = float_format + '  0  0  0  0\n'
+    fout.write(output_format % (enuc, 0.0))
 
 # afqmc
 
@@ -421,7 +561,8 @@ def prepAFQMC_soc(mol, mf, soc, chol_cut=1e-5, verbose=False):
 
 
 # calculate and write cholesky integrals
-def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
+def prepAFQMC_gihf(gmf, chol_cut=1e-5):
+  mol = gmf.mol
   norb = mol.nao
   chol_vecs = chunked_cholesky(mol, max_error=1e-5)
   nchol = chol_vecs.shape[0]
@@ -443,11 +584,11 @@ def prepAFQMC_gihf(mol, gmf, chol_cut=1e-5):
   chol = chol.reshape((chol.shape[0], -1))
   write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
-def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, ndets = 100, nroot = 0, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None, use_eri = False):
   if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
-    run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+    return run_afqmc_mf(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, mo_coeff = mo_coeff, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
   elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
-    run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir)
+    return run_afqmc_mc(mf_or_mc, vmc_root = vmc_root, mpi_prefix = mpi_prefix, ndets = ndets, nroot = nroot, norb_frozen = norb_frozen, nproc = nproc, chol_cut = chol_cut, seed = seed, dt = dt, steps_per_block = steps_per_block, nwalk_per_proc = nwalk_per_proc, nblocks = nblocks, ortho_steps = ortho_steps, burn_in = burn_in, cholesky_threshold = cholesky_threshold, weight_cap = weight_cap, write_one_rdm = write_one_rdm, run_dir = run_dir, scratch_dir = scratch_dir, use_eri = use_eri)
   else:
     raise Exception("Need either mean field or casscf object!")
 
@@ -455,7 +596,10 @@ def run_afqmc(mf_or_mc, vmc_root = None, mpi_prefix = None, mo_coeff = None, nde
 def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
-    vmc_root = os.environ['VMC_ROOT']
+    path = os.path.abspath(__file__)
+    dir_path = os.path.dirname(path)
+    vmc_root = dir_path + '/../'
+    #vmc_root = os.environ['VMC_ROOT']
 
   owd = os.getcwd()
   if run_dir is not None:
@@ -535,10 +679,10 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
     mpi_prefix = "mpirun "
     if nproc is not None:
       mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
+  os.system("rm -f samples.dat")
   afqmc_binary = vmc_root + "/bin/DQMC"
 
-  command = f"{mpi_prefix} {afqmc_binary} afqmc.json"
+  command = f"export OMP_NUM_THREADS=1; {mpi_prefix} {afqmc_binary} afqmc.json"
   os.system(command)
 
   if (os.path.isfile('samples.dat')):
@@ -575,10 +719,13 @@ def run_afqmc_mf(mf, vmc_root = None, mpi_prefix = None, mo_coeff = None, norb_f
 
 
 # performs phaseless afqmc with hci trial
-def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None):
+def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc = None, chol_cut = 1e-5, ndets = 100, nroot = 0, seed = None, dt = 0.005, steps_per_block = 50, nwalk_per_proc = 5, nblocks = 1000, ortho_steps = 20, burn_in = 50, cholesky_threshold = 2.0e-3, weight_cap = None, write_one_rdm = False, run_dir = None, scratch_dir = None, use_eri = False):
   print("\nPreparing AFQMC calculation")
   if vmc_root is None:
-    vmc_root = os.environ['VMC_ROOT']
+    path = os.path.abspath(__file__)
+    dir_path = os.path.dirname(path)
+    vmc_root = dir_path + '/../'
+    #vmc_root = os.environ['VMC_ROOT']
 
   owd = os.getcwd()
   if run_dir is not None:
@@ -593,6 +740,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
   # calculate cholesky integrals
   print("Calculating Cholesky integrals")
   h1e, chol, nelec, enuc = generate_integrals(mol, mc.get_hcore(), mo_coeff, chol_cut)
+
   nbasis = h1e.shape[-1]
   nelec = mol.nelec
 
@@ -610,6 +758,20 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     chol = chol.reshape((-1, nbasis, nbasis))
     chol = chol[:, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas]
     nbasis = h1e.shape[-1]
+
+  if use_eri: # generate cholesky in mo basis
+    nelec = mc.nelecas
+    h1e, enuc = mc.get_h1eff()
+    eri = ao2mo.restore(4, mc.get_h2eff(mo_coeff), mc.ncas)
+    chol0 = modified_cholesky(eri, chol_cut)
+    nchol = chol0.shape[0]
+    chol = np.zeros((nchol, mc.ncas, mc.ncas))
+    for i in range(nchol):
+      for m in range(mc.ncas):
+        for n in range(m+1):
+          triind = m*(m+1)//2 + n
+          chol[i, m, n] = chol0[i, triind]
+          chol[i, n, m] = chol0[i, triind]
 
   print("Finished calculating Cholesky integrals\n")
 
@@ -643,11 +805,16 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
   # determine ndets for doing calculations
   ndets_list = [ ]
   if isinstance(ndets, list):
+    flag = False
     for i, n in enumerate(ndets):
       if n < ndets_all:
         ndets_list.append(n)
+      else:
+        flag = True
     if len(ndets_list) == 0:
       ndets_list = [ ndets_all ]
+    elif flag == True:
+      ndets_list.append(ndets_all)
   elif isinstance(ndets, int):
     if ndets > ndets_all:
       ndets = ndets_all
@@ -660,7 +827,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     mpi_prefix = "mpirun "
     if nproc is not None:
       mpi_prefix += f" -np {nproc} "
-  os.system("export OMP_NUM_THREADS=1; rm -f samples.dat")
+  os.system("rm -f samples.dat")
   afqmc_binary = vmc_root + "/bin/DQMC"
   e_afqmc = [ None for _ in ndets_list ]
   err_afqmc = [ None for _ in ndets_list ]
@@ -668,7 +835,7 @@ def run_afqmc_mc(mc, vmc_root = None, mpi_prefix = None, norb_frozen = 0, nproc 
     write_afqmc_input(seed = seed, numAct = norb_act, numCore = norb_core, left = 'multislater', right = hf_type, ndets = n, detFile = det_file, dt = dt, nsteps = steps_per_block, nwalk = nwalk_per_proc, stochasticIter = nblocks, orthoSteps = ortho_steps, burnIter = burn_in, choleskyThreshold = cholesky_threshold, weightCap = weight_cap, writeOneRDM = write_one_rdm, fname = f"afqmc_{n}.json")
 
     print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
-    command = f"{mpi_prefix} {afqmc_binary} afqmc_{n}.json"
+    command = f"export OMP_NUM_THREADS=1; {mpi_prefix} {afqmc_binary} afqmc_{n}.json"
     os.system(command)
     if (os.path.isfile('samples.dat')):
       print("\nBlocking analysis:", flush=True)
@@ -1185,7 +1352,7 @@ if __name__=="__main__":
   #fileh.write('1.   ' + bestDetStr + '\n')
   #fileh.close()
   #prepAllElectron(mol)
-  
+
 
 def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
     mol = mc.mol
@@ -1231,11 +1398,12 @@ def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=
   fh.close()
 
 
-def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',spatialRDMfile="spatialRDM.0.0.txt",spinRDMfile='',stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
+def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',nroot=0,spatialRDMfile=None,spinRDMfile=None,stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
 	
 	numCore = (sum(mc.mol.nelec)-nelecAct - norbFrozen*2)//2
-	getDets(fname=diceoutfile)
-	
+	getDets(fname=diceoutfile,nroot=nroot)
+	if(spatialRDMfile==None):
+		spatialRDMfile=f"spatialRDM.{nroot}.{nroot}.txt"	
 	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile) 
 	
 	print("Writing NEVPT2 input")
@@ -1248,6 +1416,8 @@ def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.
 	for i in range(mc.mol.nao - norbFrozen):
 		fileh.write('%.12e\n'%(mc.mo_energy[i + norbFrozen]))
 	fileh.close()
+	if (spinRDMfile==None and nroot>0):
+		os.system(f"mv spinRDM.0.0.txt spinRDM0;mv spinRDM.{nroot}.{nroot}.txt spinRDM.0.0.txt")
 	print("Running NEVPT2")
 	if vmc_root is None:
 		vmc_root = os.environ['VMC_ROOT']
@@ -1318,27 +1488,29 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
 	nev.write_ic_inputs(mc.nelecas[0]+mc.nelecas[1], mc.ncore, mc.ncas, nfro, mc.nelecas[0]-mc.nelecas[1],'NEVPT2')
 	if vmc_root is None:
     		vmc_root = os.environ['VMC_ROOT']
-	os.system("export OMP_NUM_THREADS=1")
 	icpt_binary = vmc_root + "/bin/ICPT"
 	inps = ['ACVV','CCAV','CCVV']
 	for inp in inps:
-        	command = f"{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
+        	command = f"export OMP_NUM_THREADS=1;{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
         	print(command)
         	os.system(command)
 	print("Finished running ICPT\n")	
 
-def getDets(fname="dice.out"): #To get the determinants printed to dice output and write to text file 'dets'
+def getDets(fname="dice.out",nroot=0): #To get the determinants printed to dice output and write to text file 'dets'
     file = open(fname,'r')
     content = (file.readlines())
+    # content = [c.split() for c in content]
     dets = []
     k = -1
+    # return content
     for c in content:
-        if c.split(" ")[0]=="Printing" :
+        if (c.split(" ")[0]=="State" and c.split()[1]==f':{nroot}'):
             k = content.index(c)
+            # return k
             break
-         
-    for c in content[(k+3):]:
-        if c.split()[0]=='Printing':
+
+    for c in content[(k+1):]:
+        if (c.split()[0]=='Printing' or c.split()[0]=='State'):
             break
         ch =c.split()
         if(float(ch[0])==0):
@@ -1370,5 +1542,5 @@ def get_nevptEnergy(fname="nevpt2.out",printNevpt2=False):
         icE.append(e)
     totalE = nevptE + sum(icE)
     return totalE,Error
-  
+
 

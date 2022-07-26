@@ -1,0 +1,24 @@
+{
+  "system": {
+    "integrals": "FCIDUMP_chol",
+    "intType": "g"
+  },
+  "wavefunction": {
+    "left": "multislater",
+    "right": "ghf",
+    "determinants": "dets.bin",
+    "ndets": 5
+  },
+  "sampling": {
+    "seed": 16835,
+    "phaseless": true,
+    "dt": 0.005,
+    "nsteps": 50,
+    "nwalk": 20,
+    "stochasticIter": 50,
+    "choleskyThreshold": 0.001,
+    "orthoSteps": 20,
+    "burnIter": 50
+  },
+  "print": {}
+}

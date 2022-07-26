@@ -666,15 +666,13 @@ class EOM
         }
       }
       Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-      VectorXd largeNorms;
-      igl::slice(norms, largeNormSlice, largeNorms);
+      VectorXd largeNorms = norms(largeNormSlice);
       cout << "largeNorms size  " << largeNorms.size() << endl;
       DiagonalMatrix<double, Dynamic> largeNormInv;
       largeNormInv.resize(largeNorms.size());
       largeNormInv.diagonal() = largeNorms.cwiseSqrt().cwiseInverse();
       //largeNormInv.diagonal() = largeNorms.cwiseInverse();
-      MatrixXd largeBasis;
-      igl::slice(ovlpDiag.eigenvectors().real(), VectorXi::LinSpaced(coeffs.size()-1, 0, coeffs.size()-2), largeNormSlice, largeBasis);
+      MatrixXd largeBasis = ovlpDiag.eigenvectors().real()(VectorXi::LinSpaced(coeffs.size()-1, 0, coeffs.size()-2), largeNormSlice);
       MatrixXd basisChange = largeBasis * largeNormInv;
       MatrixXd largeHam = basisChange.transpose() * projHam * basisChange;
       EigenSolver<MatrixXd> hamDiag(largeHam);

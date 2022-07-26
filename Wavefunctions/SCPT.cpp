@@ -19,8 +19,6 @@
 
 #include "SCPT.h"
 #include "SelectedCI.h"
-#include "igl/slice.h"
-#include "igl/slice_into.h"
 
 class oneInt;
 class twoInt;
@@ -1141,10 +1139,8 @@ double SCPT<Wfn>::doNEVPT2_CT(Walker& walk) {
     }
   }
   Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-  VectorXd largeNorms;
-  igl::slice(norm, largeNormSlice, largeNorms);
-  VectorXd largeHam;
-  igl::slice(ham, largeNormSlice, largeHam);
+  VectorXd largeNorms = norm(largeNormSlice);
+  VectorXd largeHam = ham(largeNormSlice);
   VectorXd ene = (largeHam.array() / largeNorms.array()).matrix();
   double ene2 = 0.;
   coeffs.setZero();
@@ -3053,10 +3049,8 @@ double SCPT<Wfn>::doNEVPT2_Deterministic(Walker& walk) {
   }
 
   Map<VectorXi> largeNormSlice(&largeNormIndices[0], largeNormIndices.size());
-  VectorXd largeNorms;
-  igl::slice(norm, largeNormSlice, largeNorms);
-  VectorXd largeHam;
-  igl::slice(ham, largeNormSlice, largeHam);
+  VectorXd largeNorms = norm(largeNormSlice);
+  VectorXd largeHam = ham(largeNormSlice);
   VectorXd ene = (largeHam.array() / largeNorms.array()).matrix();
   double ene2 = 0.;
   for (int i = 1; i < largeNorms.size(); i++) {
