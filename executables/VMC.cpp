@@ -44,21 +44,21 @@
 #include "SHCIshm.h"
 #include "math.h"
 #include "Profile.h"
-#include "CIWavefunction.h"
+//#include "CIWavefunction.h"
 #include "CorrelatedWavefunction.h"
 #include "JastrowMultiSlater.h"
 #include "ResonatingWavefunction.h"
-#include "ResonatingTRWavefunction.h"
+//#include "ResonatingTRWavefunction.h"
 #include "TRWavefunction.h"
-#include "PermutedWavefunction.h"
-#include "PermutedTRWavefunction.h"
+//#include "PermutedWavefunction.h"
+//#include "PermutedTRWavefunction.h"
 #include "NNBS.h"
 #include "SelectedCI.h"
 #include "SimpleWalker.h"
-#include "Lanczos.h"
+//#include "Lanczos.h"
 #include "SCCI.h"
 #include "SCPT.h"
-#include "MRCI.h"
+//#include "MRCI.h"
 //#include "EOM.h"
 #include "runVMC.h"
 
@@ -97,7 +97,6 @@ int main(int argc, char *argv[])
   readIntegralsAndInitializeDeterminantStaticVariables(schd.integralsFile);
   if (schd.numActive == -1) schd.numActive = Determinant::norbs;
 
-  //calculate the hessian/gradient
   if (schd.wavefunctionType == "cpsslater") {
     CorrelatedWavefunction<CPS, Slater> wave; Walker<CPS, Slater> walk;
     runVMC(wave, walk);
@@ -144,31 +143,30 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "resonatingtrwavefunction") {
-    ResonatingTRWavefunction wave; ResonatingTRWalker walk;
-    runVMC(wave, walk);
-  }
+  //else if (schd.wavefunctionType == "resonatingtrwavefunction") {
+  //  ResonatingTRWavefunction wave; ResonatingTRWalker walk;
+  //  runVMC(wave, walk);
+  //}
   
   else if (schd.wavefunctionType == "trwavefunction") {
     TRWavefunction wave; TRWalker walk;
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "permutedwavefunction") {
-    PermutedWavefunction wave; PermutedWalker walk;
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "permutedtrwavefunction") {
-    PermutedTRWavefunction wave; PermutedTRWalker walk;
-    runVMC(wave, walk);
-  }
+  //else if (schd.wavefunctionType == "permutedwavefunction") {
+  //  PermutedWavefunction wave; PermutedWalker walk;
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "permutedtrwavefunction") {
+  //  PermutedTRWavefunction wave; PermutedTRWalker walk;
+  //  runVMC(wave, walk);
+  //}
   
   else if (schd.wavefunctionType == "nnbs") {
     NNBS wave; NNBSWalker walk;
     runVMC(wave, walk);
   }
-  
   
   else if (schd.wavefunctionType == "jastrowagp") {
     CorrelatedWavefunction<Jastrow, AGP> wave; Walker<Jastrow, AGP> walk;
@@ -197,104 +195,104 @@ int main(int argc, char *argv[])
     runVMC(wave, walk);
   }
   
-  else if (schd.wavefunctionType == "cicpsslater") {
-    CIWavefunction<CorrelatedWavefunction<CPS, Slater>, Walker<CPS, Slater>, SpinFreeOperator> wave; Walker<CPS, Slater> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
+  //else if (schd.wavefunctionType == "cicpsslater") {
+  //  CIWavefunction<CorrelatedWavefunction<CPS, Slater>, Walker<CPS, Slater>, SpinFreeOperator> wave; Walker<CPS, Slater> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "cicpsagp") {
+  //  CIWavefunction<CorrelatedWavefunction<CPS, AGP>, Walker<CPS, AGP>, SpinFreeOperator> wave; Walker<CPS, AGP> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "cicpspfaffian") {
+  //  CIWavefunction<CorrelatedWavefunction<CPS, Pfaffian>, Walker<CPS, Pfaffian>, SpinFreeOperator> wave; Walker<CPS, Pfaffian> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "cijastrowslater") {
+  //  //CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, SpinFreeOperator> wave; Walker<Jastrow, Slater> walk;
+  //  CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, Operator> wave; Walker<Jastrow, Slater> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "cijastrowagp") {
+  //  CIWavefunction<CorrelatedWavefunction<Jastrow, AGP>, Walker<Jastrow, AGP>, SpinFreeOperator> wave; Walker<Jastrow, AGP> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //
+  //else if (schd.wavefunctionType == "cijastrowpfaffian") {
+  //  CIWavefunction<CorrelatedWavefunction<Jastrow, Pfaffian>, Walker<Jastrow, Pfaffian>, SpinFreeOperator> wave; Walker<Jastrow, Pfaffian> walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
+  //  
+  //else if (schd.wavefunctionType == "sci") {
+  //  CIWavefunction<SelectedCI, SimpleWalker, Operator> wave; SimpleWalker walk;
+  //  wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
+  //  runVMC(wave, walk);
+  //}
   
-  else if (schd.wavefunctionType == "cicpsagp") {
-    CIWavefunction<CorrelatedWavefunction<CPS, AGP>, Walker<CPS, AGP>, SpinFreeOperator> wave; Walker<CPS, AGP> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "cicpspfaffian") {
-    CIWavefunction<CorrelatedWavefunction<CPS, Pfaffian>, Walker<CPS, Pfaffian>, SpinFreeOperator> wave; Walker<CPS, Pfaffian> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "cijastrowslater") {
-    //CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, SpinFreeOperator> wave; Walker<Jastrow, Slater> walk;
-    CIWavefunction<CorrelatedWavefunction<Jastrow, Slater>, Walker<Jastrow, Slater>, Operator> wave; Walker<Jastrow, Slater> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "cijastrowagp") {
-    CIWavefunction<CorrelatedWavefunction<Jastrow, AGP>, Walker<Jastrow, AGP>, SpinFreeOperator> wave; Walker<Jastrow, AGP> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "cijastrowpfaffian") {
-    CIWavefunction<CorrelatedWavefunction<Jastrow, Pfaffian>, Walker<Jastrow, Pfaffian>, SpinFreeOperator> wave; Walker<Jastrow, Pfaffian> walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "sci") {
-    CIWavefunction<SelectedCI, SimpleWalker, Operator> wave; SimpleWalker walk;
-    wave.appendSinglesToOpList(0.0); wave.appendScreenedDoublesToOpList(0.0);
-    runVMC(wave, walk);
-  }
-  
-  else if (schd.wavefunctionType == "lanczoscpslater") {
-    Lanczos<CorrelatedWavefunction<CPS, Slater>> wave; Walker<CPS, Slater> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczoscpsagp") {
-    Lanczos<CorrelatedWavefunction<CPS, AGP>> wave; Walker<CPS, AGP> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczoscpspfaffian") {
-    Lanczos<CorrelatedWavefunction<CPS, Pfaffian>> wave; Walker<CPS, Pfaffian> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczosjastrowslater") {
-    Lanczos<CorrelatedWavefunction<Jastrow, Slater>> wave; Walker<Jastrow, Slater> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk, schd.alpha);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczospermutedtrwavefunction") {
-    Lanczos<PermutedTRWavefunction> wave; PermutedTRWalker walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk, schd.alpha);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczosjastrowagp") {
-    Lanczos<CorrelatedWavefunction<Jastrow, AGP>> wave; Walker<Jastrow, AGP> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczosjastrowpfaffian") {
-    Lanczos<CorrelatedWavefunction<Jastrow, Pfaffian>> wave; Walker<Jastrow, Pfaffian> walk;
-    wave.initWalker(walk);
-    wave.optimizeWave(walk);
-    wave.writeWave();
-  }
-  
-  else if (schd.wavefunctionType == "lanczossci") {
-    Lanczos<SelectedCI> wave; SimpleWalker walk;
-    wave.initWalker(walk);
-    double alpha = wave.optimizeWave(walk, schd.alpha);
-    wave.writeWave();
-  }
+  //else if (schd.wavefunctionType == "lanczoscpslater") {
+  //  Lanczos<CorrelatedWavefunction<CPS, Slater>> wave; Walker<CPS, Slater> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczoscpsagp") {
+  //  Lanczos<CorrelatedWavefunction<CPS, AGP>> wave; Walker<CPS, AGP> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczoscpspfaffian") {
+  //  Lanczos<CorrelatedWavefunction<CPS, Pfaffian>> wave; Walker<CPS, Pfaffian> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczosjastrowslater") {
+  //  Lanczos<CorrelatedWavefunction<Jastrow, Slater>> wave; Walker<Jastrow, Slater> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk, schd.alpha);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczospermutedtrwavefunction") {
+  //  Lanczos<PermutedTRWavefunction> wave; PermutedTRWalker walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk, schd.alpha);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczosjastrowagp") {
+  //  Lanczos<CorrelatedWavefunction<Jastrow, AGP>> wave; Walker<Jastrow, AGP> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczosjastrowpfaffian") {
+  //  Lanczos<CorrelatedWavefunction<Jastrow, Pfaffian>> wave; Walker<Jastrow, Pfaffian> walk;
+  //  wave.initWalker(walk);
+  //  wave.optimizeWave(walk);
+  //  wave.writeWave();
+  //}
+  //
+  //else if (schd.wavefunctionType == "lanczossci") {
+  //  Lanczos<SelectedCI> wave; SimpleWalker walk;
+  //  wave.initWalker(walk);
+  //  double alpha = wave.optimizeWave(walk, schd.alpha);
+  //  wave.writeWave();
+  //}
   
   else if (schd.wavefunctionType == "scci") {
     schd.usingFOIS = true;
@@ -311,12 +309,12 @@ int main(int argc, char *argv[])
     wave.writeWave();
   }
   
-  else if (schd.wavefunctionType == "MRCI") {
-    schd.usingFOIS = true;
-    MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
-    //wave.initWalker(walk);
-    runVMC(wave, walk);
-  }
+  //else if (schd.wavefunctionType == "MRCI") {
+  //  schd.usingFOIS = true;
+  //  MRCI<Jastrow, Slater> wave; MRCIWalker<Jastrow, Slater> walk;
+  //  //wave.initWalker(walk);
+  //  runVMC(wave, walk);
+  //}
   
   //else if (schd.wavefunctionType == "eom") {
   //  EOM<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;

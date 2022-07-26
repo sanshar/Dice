@@ -47,9 +47,9 @@ cd $here/hubbard_1x14
 printf "...running hubbard_1x14\n"
 $MPICOMMAND $VMCPATH > vmc.out
 python2 ../testEnergy.py 'vmc' $tol
-printf "...running hubbard_1x14 ci\n"
-$MPICOMMAND $CIPATH > ci.out
-python2 ../testEnergy.py 'ci' $tol
+#printf "...running hubbard_1x14 ci\n"
+#$MPICOMMAND $CIPATH > ci.out
+#python2 ../testEnergy.py 'ci' $tol
 if [ $clean == 1 ]
 then    
     ../clean.sh
