@@ -28,7 +28,8 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include "SimpleWalker.h"
-#include <google/dense_hash_map>
+//#include <google/dense_hash_map>
+#include "SHCI/robin_hood.h"
 //#include <sparsehash/dense_hash_map>
 
 
@@ -46,7 +47,8 @@ class SelectedCI
   using CorrType = Determinant;
   using ReferenceType = Determinant;
   
-  google::dense_hash_map<shortSimpleDet, double, boost::hash<shortSimpleDet> > DetsMap;
+  //google::dense_hash_map<shortSimpleDet, double, boost::hash<shortSimpleDet> > DetsMap;
+  robin_hood::unordered_map<shortSimpleDet, double, boost::hash<shortSimpleDet>> DetsMap;
   //unordered_map<Determinant, double, boost::hash<Determinant> > DetsMap;
   Determinant bestDeterminant;
 
