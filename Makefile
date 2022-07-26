@@ -310,13 +310,13 @@ VMC2	: $(OBJ_VMC)
 	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
 
 Dice	: $(OBJ_Dice)
-	$(CXX)   $(FLAGS) $(OPT) -o  Dice $(OBJ_Dice) $(LFLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/Dice $(OBJ_Dice) $(LFLAGS)
 
 ZDice2	: $(OBJ_ZDice2)
-	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZDice2) $(LFLAGS)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS)
 
-RELSHCI	: $(OBJ_ZSHCI)
-	$(CXX)   $(FLAGS) $(OPT) -o  RELSHCI $(OBJ_ZSHCI) $(LFLAGS)
+ZSHCI	: $(OBJ_ZSHCI)
+	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZSHCI $(OBJ_ZSHCI) $(LFLAGS)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1
