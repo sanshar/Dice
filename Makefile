@@ -184,6 +184,67 @@ OBJ_DQMC = obj/staticVariables.o \
 #obj/DQMCSampling.o \
 #obj/DQMCUtils.o \
 
+OBJ_Dice = \
+	obj/SHCI/SHCI.o \
+	obj/SHCI/SHCIbasics.o \
+	obj/SHCI/Determinants.o \
+	obj/SHCI/integral.o \
+	obj/SHCI/input.o \
+	obj/SHCI/Davidson.o \
+	obj/SHCI/SHCIgetdeterminants.o \
+	obj/SHCI/SHCIsampledeterminants.o \
+	obj/SHCI/SHCIrdm.o \
+	obj/SHCI/SHCISortMpiUtils.o \
+	obj/SHCI/SHCImakeHamiltonian.o \
+	obj/SHCI/SHCIshm.o \
+	obj/SHCI/LCC.o \
+	obj/SHCI/symmetry.o \
+	obj/SHCI/OccRestrictions.o \
+
+OBJ_ZDice2 = \
+	obj_z/SHCI/SHCI.o \
+	obj_z/SHCI/SHCIbasics.o \
+	obj_z/SHCI/Determinants.o \
+	obj_z/SHCI/integral.o \
+	obj_z/SHCI/input.o \
+	obj_z/SHCI/Davidson.o \
+	obj_z/SHCI/SOChelper.o \
+	obj_z/SHCI/new_anglib.o \
+	obj_z/SHCI/SHCIgetdeterminants.o \
+	obj_z/SHCI/SHCIsampledeterminants.o \
+	obj_z/SHCI/SHCIrdm.o \
+	obj_z/SHCI/SHCISortMpiUtils.o \
+	obj_z/SHCI/SHCImakeHamiltonian.o \
+	obj_z/SHCI/SHCIshm.o \
+	obj_z/SHCI/LCC.o \
+	obj_z/SHCI/symmetry.o \
+	obj/SHCI/OccRestrictions.o
+
+OBJ_ZSHCI = \
+	obj_z/ZSHCI/SHCI.o \
+	obj_z/ZSHCI/SHCIbasics.o \
+	obj_z/ZSHCI/Determinants.o \
+	obj_z/ZSHCI/integral.o \
+	obj_z/ZSHCI/input.o \
+	obj_z/ZSHCI/Davidson.o \
+	obj_z/ZSHCI/SOChelper.o \
+	obj_z/ZSHCI/new_anglib.o \
+	obj_z/ZSHCI/SHCIgetdeterminants.o \
+	obj_z/ZSHCI/SHCIsampledeterminants.o \
+	obj_z/ZSHCI/SHCIrdm.o \
+	obj_z/ZSHCI/SHCISortMpiUtils.o \
+	obj_z/ZSHCI/SHCImake4cHamiltonian.o \
+	obj_z/ZSHCI/SHCIshm.o \
+	obj_z/ZSHCI/LCC.o \
+	obj_z/ZSHCI/symmetry.o \
+	obj_z/ZSHCI/cdfci.o
+
+obj/SHCI/%.o: SHCI/%.cpp
+	$(CXX) $(FLAGS) $(OPT) $(VERSION_FLAGS) -c $< -o $@
+obj_z/SHCI/%.o: SHCI/%.cpp
+	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
+obj_z/ZSHCI/%.o: ZSHCI/%.cpp
+	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: Wavefunctions/%.cpp  
@@ -247,6 +308,15 @@ bin/CI	: $(OBJ_CI)
 
 VMC2	: $(OBJ_VMC) 
 	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
+
+Dice	: $(OBJ_Dice)
+	$(CXX)   $(FLAGS) $(OPT) -o  Dice $(OBJ_Dice) $(LFLAGS)
+
+ZDice2	: $(OBJ_ZDice2)
+	$(CXX)   $(FLAGS) $(OPT) -o  ZDice2 $(OBJ_ZDice2) $(LFLAGS)
+
+RELSHCI	: $(OBJ_ZSHCI)
+	$(CXX)   $(FLAGS) $(OPT) -o  RELSHCI $(OBJ_ZSHCI) $(LFLAGS)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1

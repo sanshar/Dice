@@ -125,8 +125,8 @@ void license(char* argv[]) {
   printf("PID:              %d\n",getpid());
   pout << endl;
   printf("Path:             %s\n",argv[0]);
-  printf("Commit:           %s\n",git_commit);
-  printf("Branch:           %s\n",git_branch);
+  printf("Commit:           %s\n",GIT_HASH);
+  printf("Branch:           %s\n",GIT_BRANCH);
   printf("Compilation Date: %s %s\n",__DATE__,__TIME__);
   //printf("Cores:            %s\n","TODO");
 }
