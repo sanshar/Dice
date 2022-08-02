@@ -1,0 +1,14 @@
+converged SCF energy = -3.12554254433242
+fci_ene: -3.2387516889717585
+converged SCF energy = -3.12554254433242  <S^2> = 6.6613381e-16  2S+1 = 1
+GHF wavefunction has an internal instability
+converged SCF energy = -3.13336887471272  <S^2> = 0.48492877  2S+1 = 1.7145597
+GHF wavefunction is stable in the internal stability analysis
+
+dm1_det_tr: 6.000001
+dm2_det_tr: 15.000005
+
+
+dm1_stoc_tr: 5.927869
+dm2_stoc_tr: 14.7945487
+

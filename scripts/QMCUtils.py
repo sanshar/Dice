@@ -1251,6 +1251,49 @@ def write_afqmc_input(numAct = None, numCore = None, soc = None, intType = None,
   return
 
 
+def write_vmc_input(wavefunction_name = "jastrowslater", determinants = None, hfType = "ghf", complexQ = True, seed = None, deterministic = False, stochasticIter = 10000, burnIter = 10, epsilon = 1.e-6, method = "amsgrad", maxIter = 200, stepsize = 0.01, decay1 = 0.1, decay2 = 0.01, writeOneRDM = False, writeTwoRDM = False, scratchDir = None, fname = 'vmc.json'):
+  wavefunction = { }
+  wavefunction["name"] = wavefunction_name
+  wavefunction["hfType"] = hfType
+  if complexQ:
+    wavefunction["complex"] = True
+  if determinants is not None:
+    wavefunction["determinants"] = determinants
+
+  sampling = { }
+  sampling["epsilon"] = epsilon
+  if deterministic:
+    sampling["deterministic"] = True
+  else:
+    if seed is None:
+      seed = np.random.randint(1, 1e6)
+    sampling["seed"] = seed
+    sampling["stochasticIter"] = stochasticIter
+    sampling["burnIter"] = burnIter
+
+  optimizer = { }
+  optimizer["method"] = f"{method}"
+  optimizer["maxIter"] = maxIter
+  optimizer["stepsize"] = stepsize
+  optimizer["decay1"] = decay1
+  optimizer["decay2"] = decay2
+
+  printBlock = { }
+  if writeOneRDM:
+    printBlock["writeOneRDM"] = True
+  if writeTwoRDM:
+    printBlock["writeTwoRDM"] = True
+  if scratchDir is not None:
+    printBlock["scratchDir"] = scratchDir
+
+  json_input = {"wavefunction": wavefunction, "sampling": sampling, "optimizer": optimizer, "print": printBlock}
+  json_dump = json.dumps(json_input, indent = 2)
+
+  with open(fname, "w") as outfile:
+    outfile.write(json_dump)
+  return
+
+
 # lattice models
 
 # for tilted hubbard model
@@ -1305,54 +1348,8 @@ def findNeighbors(site, size):
         neighbors.append(findSiteAtRowNCol(row, col + 1, size))
     return neighbors
 
-if __name__=="__main__":
-  # make your molecule here
-  atomstring = '''
-  C  0.000517 0.000000  0.000299
-  C  0.000517 0.000000  1.394692
-  C  1.208097 0.000000  2.091889
-  C  2.415677 0.000000  1.394692
-  C  2.415677 0.000000  0.000299
-  C  1.208097 0.000000 -0.696898
-  H -0.939430 0.000000 -0.542380
-  H -0.939430 0.000000  1.937371
-  H  1.208097 0.000000  3.177246
-  H  3.355625 0.000000  1.937371
-  H  3.355625 0.000000 -0.542380
-  H  1.208097 0.000000 -1.782255
-  '''
-  mol = gto.M(
-      atom = atomstring,
-      unit = 'angstrom',
-      basis = 'sto-6g',
-      verbose = 4,
-      symmetry= 0,
-      spin = 0)
 
-  # valence only example
-  # alternating spins on neighboring atoms
-  occ = []
-  configC = [[0,4,0], [0,0,4]] # no double occ, 4 up or 4 dn
-  configH = [[0,1,0], [0,0,1]] # no double occ, 1 up or 1 dn
-  for i in range(6):
-    occ.append(configC[i%2])
-  for i in range(6):
-    occ.append(configH[(i+1)%2])
-  prepValence(mol, 6, 30, occ, loc="ibo")
-
-  # all electron example
-  #configC = ["2 a a a a ", "2 b b b b "]
-  #configH = ["a ", "b "]
-  #bestDetStr = ""
-  #for i in range(6):
-  #  bestDetStr += configC[i%2]
-  #for i in range(6):
-  #  bestDetStr += configH[(i+1)%2]
-  #fileh = open("bestDet", 'w')
-  #fileh.write('1.   ' + bestDetStr + '\n')
-  #fileh.close()
-  #prepAllElectron(mol)
-
+# nevpt
 
 def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
     mol = mc.mol
@@ -1385,7 +1382,7 @@ def from_mc(mc, filename, nFrozen=0, orbsym=None,tol=getattr(__config__, 'fcidum
                    tol, float_format)
 
 
-def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')): 
+def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=0, ms=0, orbsym=None,tol=getattr(__config__, 'fcidump_write_tol', 1e-15), float_format=getattr(__config__, 'fcidump_float_format', ' %.16g')):
   fh = h5py.File(filename, 'w')
   header = np.array([nelec, nmo, ms])
   fh['header'] = header
@@ -1399,17 +1396,17 @@ def from_integrals_nevpt(filename, h1e, iiii, iiiv, iviv, iivv, nmo, nelec, nuc=
 
 
 def run_nevpt2(mc,nelecAct=None,numAct=None,norbFrozen=None, integrals="FCIDUMP.h5",nproc=None, seed=None, fname="nevpt2.json",foutname='nevpt2.out',nroot=0,spatialRDMfile=None,spinRDMfile=None,stochasticIterNorms= 1000,nIterFindInitDets= 100,numSCSamples= 10000,stochasticIterEachSC= 100,fixedResTimeNEVPT_Ene= False,epsilon= 1.0e-8,efficientNEVPT_2= True,determCCVV= True,SCEnergiesBurnIn= 50,SCNormsBurnIn= 50,vmc_root=None, diceoutfile="dice.out"):
-	
+
 	numCore = (sum(mc.mol.nelec)-nelecAct - norbFrozen*2)//2
 	getDets(fname=diceoutfile,nroot=nroot)
 	if(spatialRDMfile==None):
-		spatialRDMfile=f"spatialRDM.{nroot}.{nroot}.txt"	
-	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile) 
-	
+		spatialRDMfile=f"spatialRDM.{nroot}.{nroot}.txt"
+	run_ICPT(mc,nelecAct=nelecAct,norbAct=numAct,vmc_root=vmc_root,fname=spatialRDMfile)
+
 	print("Writing NEVPT2 input")
 #	DEFAULT_FLOAT_FORMAT = getattr(__config__, 'fcidump_float_format', ' %.16g')
 #	TOL = getattr(__config__, 'fcidump_write_tol', 1e-15)
-	
+
 	from_mc(mc, 'FCIDUMP.h5', nFrozen = norbFrozen)  #Uses fuctions from pyscf-tools
 	write_nevpt2_input(numAct = numAct , numCore = numCore , determinants = 'dets', integrals=integrals ,seed=seed, fname=fname, stochasticIterNorms = stochasticIterNorms, nIterFindInitDets = nIterFindInitDets , numSCSamples = numSCSamples, stochasticIterEachSC = stochasticIterEachSC, fixedResTimeNEVPT_Ene =fixedResTimeNEVPT_Ene , epsilon = epsilon, efficientNEVPT_2 = efficientNEVPT_2, determCCVV = determCCVV , SCEnergiesBurnIn = SCEnergiesBurnIn , SCNormsBurnIn = SCNormsBurnIn)
 	fileh = open("moEne.txt", 'w')
@@ -1434,15 +1431,15 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	system["integrals"] = integrals
 	system["numAct"] = numAct
 	system["numCore"] = numCore
-	
+
 	prints = {}
 	prints["readSCNorms"]= False
-	
+
 	wavefunction = {}
 	wavefunction["name"]="scpt"
 	wavefunction["overlapCutoff"]=1.0e-8
 	wavefunction["determinants"] = f"{determinants}"
-	
+
 	sampling = {}
 	sampling["stochasticIterNorms"] = stochasticIterNorms
 	sampling["nIterFindInitDets"] = nIterFindInitDets
@@ -1458,7 +1455,7 @@ def write_nevpt2_input(numAct=None, numCore=None, determinants="dets", integrals
 	sampling["determCCVV"] = determCCVV
 	sampling["SCEnergiesBurnIn"] = SCEnergiesBurnIn
 	sampling["SCNormsBurnIn"] = SCNormsBurnIn
-	
+
 	json_input = {"system": system, "print": prints, "wavefunction": wavefunction, "sampling": sampling}
 	json_dump = json.dumps(json_input, indent = 2)
 	with open(fname, "w") as outfile:
@@ -1471,7 +1468,7 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
 	intfolder = "int/"
 	os.system("mkdir -p "+intfolder)
 	dm2a = np.zeros((norbAct, norbAct, norbAct, norbAct))
-	file2pdm = fname 
+	file2pdm = fname
 	file2pdm = file2pdm.encode()  # .encode for python3 compatibility
 	shci.r2RDM(dm2a, norbAct, file2pdm)
 	dm1 = np.einsum('ikjj->ki', dm2a)
@@ -1494,7 +1491,7 @@ def run_ICPT(mc,nelecAct=None,norbAct=None,vmc_root=None,fname="spatialRDM.0.0.t
         	command = f"export OMP_NUM_THREADS=1;{icpt_binary} NEVPT2_{inp}.inp > {inp.lower()}.out"
         	print(command)
         	os.system(command)
-	print("Finished running ICPT\n")	
+	print("Finished running ICPT\n")
 
 def getDets(fname="dice.out",nroot=0): #To get the determinants printed to dice output and write to text file 'dets'
     file = open(fname,'r')
@@ -1544,3 +1541,50 @@ def get_nevptEnergy(fname="nevpt2.out",printNevpt2=False):
     return totalE,Error
 
 
+if __name__=="__main__":
+  # make your molecule here
+  atomstring = '''
+  C  0.000517 0.000000  0.000299
+  C  0.000517 0.000000  1.394692
+  C  1.208097 0.000000  2.091889
+  C  2.415677 0.000000  1.394692
+  C  2.415677 0.000000  0.000299
+  C  1.208097 0.000000 -0.696898
+  H -0.939430 0.000000 -0.542380
+  H -0.939430 0.000000  1.937371
+  H  1.208097 0.000000  3.177246
+  H  3.355625 0.000000  1.937371
+  H  3.355625 0.000000 -0.542380
+  H  1.208097 0.000000 -1.782255
+  '''
+  mol = gto.M(
+      atom = atomstring,
+      unit = 'angstrom',
+      basis = 'sto-6g',
+      verbose = 4,
+      symmetry= 0,
+      spin = 0)
+
+  # valence only example
+  # alternating spins on neighboring atoms
+  occ = []
+  configC = [[0,4,0], [0,0,4]] # no double occ, 4 up or 4 dn
+  configH = [[0,1,0], [0,0,1]] # no double occ, 1 up or 1 dn
+  for i in range(6):
+    occ.append(configC[i%2])
+  for i in range(6):
+    occ.append(configH[(i+1)%2])
+  prepValence(mol, 6, 30, occ, loc="ibo")
+
+  # all electron example
+  #configC = ["2 a a a a ", "2 b b b b "]
+  #configH = ["a ", "b "]
+  #bestDetStr = ""
+  #for i in range(6):
+  #  bestDetStr += configC[i%2]
+  #for i in range(6):
+  #  bestDetStr += configH[(i+1)%2]
+  #fileh = open("bestDet", 'w')
+  #fileh.write('1.   ' + bestDetStr + '\n')
+  #fileh.close()
+  #prepAllElectron(mol)
