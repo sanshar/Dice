@@ -98,6 +98,132 @@ template<typename Wfn, typename Walker> void getOneRdmDeterministic(Wfn &w, Walk
   oneRdm = oneRdm / Overlap;
 }
 
+// writes spin one-rdm
+template<typename Wfn, typename Walker> void writeOneRdmDeterministic(Wfn &w, Walker& walk)
+{
+  int norbs = Determinant::norbs;
+  int nSpinOrbs = 2*norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  vector<Determinant> allDets;
+  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+
+  double Overlap = 0;
+  MatrixXd oneRdm = MatrixXd::Constant(nSpinOrbs, nSpinOrbs, 0.); 
+  MatrixXd localOneRdm = MatrixXd::Constant(nSpinOrbs, nSpinOrbs, 0.); 
+
+  for (int i = commrank; i < allDets.size(); i += commsize) {
+    w.initWalker(walk, allDets[i]);
+    localOneRdm.setZero();
+    vector<int> open;
+    vector<int> closed;
+    allDets[i].getOpenClosed(open, closed);
+    for (int p = 0; p < closed.size(); p++) {
+      localOneRdm(closed[p], closed[p]) = 1.;
+      for (int q = 0; q < open.size(); q++) {
+        if (closed[p]%2 == open[q]%2) localOneRdm(closed[p], open[q]) = w.getOverlapFactor(closed[p], open[q], walk, 0);
+      }
+    }
+    double ovlp = w.Overlap(walk);
+    Overlap += ovlp * ovlp;
+    oneRdm += ovlp * ovlp * localOneRdm;
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, oneRdm.data(), nSpinOrbs*nSpinOrbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  oneRdm = oneRdm / Overlap;
+  if (commrank == 0) {
+    string scratch_dir = schd.scratchDir;
+    string fname = scratch_dir + "/oneRDM.dat";
+    ofstream rdmFile(fname);
+    rdmFile << oneRdm << endl;
+    rdmFile.close();
+  }
+  return;
+}
+
+// writes spin two-rdm
+template<typename Wfn, typename Walker> void writeTwoRdmDeterministic(Wfn &w, Walker& walk)
+{
+  int norbs = Determinant::norbs;
+  int nSpinOrbs = 2*norbs;
+  int npairs = (nSpinOrbs * (nSpinOrbs - 1)) / 2;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  vector<Determinant> allDets;
+  generateAllDeterminants(allDets, norbs, nalpha, nbeta);
+
+  double Overlap = 0;
+  MatrixXd twoRdm = MatrixXd::Constant(npairs, npairs, 0.); 
+  MatrixXd localTwoRdm = MatrixXd::Constant(npairs, npairs, 0.); 
+
+  for (int i = commrank; i < allDets.size(); i += commsize) {
+    w.initWalker(walk, allDets[i]);
+    localTwoRdm.setZero();
+    vector<int> open;
+    vector<int> closed;
+    allDets[i].getOpenClosed(open, closed);
+    for (int p = 0; p < closed.size(); p++) {
+      int pc = closed[p];
+      for (int q = 0; q < p; q++) {
+        int qc = closed[q];
+        int pq = (pc * (pc-1))/2 + qc;
+        localTwoRdm(pq, pq) = 1.;
+        for (int r = 0; r < open.size(); r++) {
+          int ro = open[r];
+          // q = s
+          if (ro > qc && pc%2 == ro%2) {
+            int rq = (ro * (ro-1))/2 + qc;
+            localTwoRdm(pq, rq) = w.getOverlapFactor(pc, ro, walk, 0);
+          }
+          // p = r
+          if (ro < pc && qc%2 == ro%2) { // s -> r
+            int pr = (pc * (pc-1))/2 + ro;
+            localTwoRdm(pq, pr) = w.getOverlapFactor(qc, ro, walk, 0);
+          }
+          // p = s
+          if (ro > pc && qc%2 == ro%2) {
+            int rp = (ro * (ro-1))/2 + pc;
+            localTwoRdm(pq, rp) = -w.getOverlapFactor(qc, ro, walk, 0);
+          }
+          // q = r
+          if (ro < qc && pc%2 == ro%2) { // s -> r
+            int qr = (qc * (qc-1))/2 + ro;
+            localTwoRdm(pq, qr) = -w.getOverlapFactor(pc, ro, walk, 0);
+          }
+          for (int s = 0; s < r; s++) {
+            int so = open[s];
+            int rs = (ro * (ro-1))/2 + so;
+            if (pc%2 == ro%2 && qc%2 == so%2) localTwoRdm(pq, rs) = w.getOverlapFactor(pc, qc, ro, so, walk, 0);
+            else if (pc%2 == so%2 && qc%2 == ro%2) localTwoRdm(pq, rs) = -w.getOverlapFactor(pc, qc, so, ro, walk, 0);
+          }
+        }
+      }
+    }
+    double ovlp = w.Overlap(walk);
+    Overlap += ovlp * ovlp;
+    twoRdm += ovlp * ovlp * localTwoRdm;
+  }
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &(Overlap), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, twoRdm.data(), npairs*npairs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  twoRdm = twoRdm / Overlap;
+  if (commrank == 0) {
+    string scratch_dir = schd.scratchDir;
+    string fname = scratch_dir + "/twoRDM.dat";
+    ofstream rdmFile(fname);
+    rdmFile << twoRdm << endl;
+    rdmFile.close();
+  }
+  return;
+}
+
 template<typename Wfn, typename Walker> void getDensityCorrelationsDeterministic(Wfn &w, Walker& walk, MatrixXd &corr)
 {
   int norbs = Determinant::norbs;
@@ -358,6 +484,7 @@ void getStochasticGradientMetricContinuousTime(Wfn &w, Walker& walk, double &Ene
   CTMC.FinishBestDet();
 }
 
+
 template<typename Wfn, typename Walker> 
 void getStochasticOneRdmContinuousTime(Wfn &w, Walker &walk, MatrixXd &oneRdm, bool sz, int niter)
 {
@@ -436,6 +563,246 @@ void getStochasticOneRdmContinuousTime(Wfn &w, Walker &walk, MatrixXd &oneRdm, b
     boost::archive::binary_oarchive save(ofs);
     save << bestDet;
   }
+}
+
+  
+template<typename Wfn, typename Walker> 
+void writeStochasticOneRdmContinuousTime(Wfn &w, Walker &walk, int niter)
+{
+  int norbs = Determinant::norbs;
+  int nSpinOrbs = 2*norbs;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
+
+  workingArray work;
+  int iter = 0;
+  double ovlp = 0.;
+
+  MatrixXd oneRdm = MatrixXd::Constant(nSpinOrbs, nSpinOrbs, 0.); 
+  MatrixXd localOneRdm = MatrixXd::Constant(nSpinOrbs, nSpinOrbs, 0.); 
+  double bestOvlp = 0.;
+
+  double cumdeltaT = 0., cumdeltaT2 = 0.;
+  w.initWalker(walk);
+  Determinant bestDet = walk.d;
+
+  while (iter < niter) {
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);  
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);  
+    double cumovlpRatio = 0;
+    for (int i = 0; i < work.nExcitations; i++) {
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      cumovlpRatio += abs(w.getOverlapFactor(I, J, A, B, walk, false));
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
+    double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations), nextDetRandom) - work.ovlpRatio.begin();
+    cumdeltaT += deltaT;
+    double ratio = deltaT / cumdeltaT;
+   
+    if (iter > schd.burnIter) { 
+      localOneRdm.setZero();
+      vector<int> open;
+      vector<int> closed;
+      walk.d.getOpenClosed(open, closed);
+      for (int p = 0; p < closed.size(); p++) {
+        localOneRdm(closed[p], closed[p]) = 1.;
+        for (int q = 0; q < open.size(); q++) {
+          if (closed[p]%2 == open[q]%2) localOneRdm(closed[p], open[q]) = w.getOverlapFactor(closed[p], open[q], walk, 0);
+        }
+      }
+      oneRdm += deltaT * (localOneRdm - oneRdm) / (cumdeltaT);
+    }
+    
+    iter++;
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    double ovlp = w.Overlap(walk);
+    if (abs(ovlp) > bestOvlp)
+    {
+      bestOvlp = abs(ovlp);
+      bestDet = walk.getDet();
+    }
+  }
+
+  double weight = cumdeltaT;
+  double weight2 = cumdeltaT * cumdeltaT;
+  MatrixXd wOneRdm = weight * oneRdm;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &weight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &weight2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, wOneRdm.data(), nSpinOrbs*nSpinOrbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  MatrixXd meanOneRdm = wOneRdm / weight; 
+  MatrixXd wOneRdm2 = cumdeltaT * (oneRdm - meanOneRdm).array().square();
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, wOneRdm2.data(), nSpinOrbs*nSpinOrbs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  MatrixXd errOneRdm = (wOneRdm2 / (weight - weight2 / weight) / (commsize - 1)).array().sqrt();
+
+  if (commrank == 0) {
+    string scratch_dir = schd.scratchDir;
+    string fname = scratch_dir + "/oneRDM.dat";
+    ofstream rdmFile(fname);
+    rdmFile << meanOneRdm << endl;
+    rdmFile.close();
+    fname = scratch_dir + "/oneRDMErr.dat";
+    ofstream errRdmFile(fname);
+    errRdmFile << errOneRdm << endl;
+    errRdmFile.close();
+    
+    char file[5000];
+    sprintf(file, "BestDeterminant.txt");
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << bestDet;
+  }
+  return;
+}
+
+  
+template<typename Wfn, typename Walker> 
+void writeStochasticTwoRdmContinuousTime(Wfn &w, Walker &walk, int niter)
+{
+  int norbs = Determinant::norbs;
+  int nSpinOrbs = 2*norbs;
+  int npairs = (nSpinOrbs * (nSpinOrbs - 1)) / 2;
+  int nalpha = Determinant::nalpha;
+  int nbeta = Determinant::nbeta;
+
+  auto random = std::bind(std::uniform_real_distribution<double>(0, 1),
+                          std::ref(generator));
+
+  workingArray work;
+  int iter = 0;
+  double ovlp = 0.;
+
+  MatrixXd twoRdm = MatrixXd::Constant(npairs, npairs, 0.); 
+  MatrixXd localTwoRdm = MatrixXd::Constant(npairs, npairs, 0.); 
+  double bestOvlp = 0.;
+
+  double cumdeltaT = 0., cumdeltaT2 = 0.;
+  w.initWalker(walk);
+  Determinant bestDet = walk.d;
+
+  while (iter < niter) {
+    work.setCounterToZero();
+    generateAllScreenedSingleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);  
+    generateAllScreenedDoubleExcitation(walk.d, schd.epsilon, schd.screen,
+                                        work, false);  
+    double cumovlpRatio = 0;
+    for (int i = 0; i < work.nExcitations; i++) {
+      int ex1 = work.excitation1[i], ex2 = work.excitation2[i];
+      double tia = work.HijElement[i];
+      int I = ex1 / 2 / norbs, A = ex1 - 2 * norbs * I;
+      int J = ex2 / 2 / norbs, B = ex2 - 2 * norbs * J;
+      cumovlpRatio += abs(w.getOverlapFactor(I, J, A, B, walk, false));
+      work.ovlpRatio[i] = cumovlpRatio;
+    }
+    double deltaT = 1.0 / (cumovlpRatio);
+    double nextDetRandom = random() * cumovlpRatio;
+    int nextDet = std::lower_bound(work.ovlpRatio.begin(), (work.ovlpRatio.begin() + work.nExcitations), nextDetRandom) - work.ovlpRatio.begin();
+    cumdeltaT += deltaT;
+    double ratio = deltaT / cumdeltaT;
+   
+    if (iter > schd.burnIter) { 
+      localTwoRdm.setZero();
+      vector<int> open;
+      vector<int> closed;
+      walk.d.getOpenClosed(open, closed);
+      for (int p = 0; p < closed.size(); p++) {
+        int pc = closed[p];
+        for (int q = 0; q < p; q++) {
+          int qc = closed[q];
+          int pq = (pc * (pc-1))/2 + qc;
+          localTwoRdm(pq, pq) = 1.;
+          for (int r = 0; r < open.size(); r++) {
+            int ro = open[r];
+            // q = s
+            if (ro > qc && pc%2 == ro%2) {
+              int rq = (ro * (ro-1))/2 + qc;
+              localTwoRdm(pq, rq) = w.getOverlapFactor(pc, ro, walk, 0);
+            }
+            // p = r
+            if (ro < pc && qc%2 == ro%2) { // s -> r
+              int pr = (pc * (pc-1))/2 + ro;
+              localTwoRdm(pq, pr) = w.getOverlapFactor(qc, ro, walk, 0);
+            }
+            // p = s
+            if (ro > pc && qc%2 == ro%2) {
+              int rp = (ro * (ro-1))/2 + pc;
+              localTwoRdm(pq, rp) = -w.getOverlapFactor(qc, ro, walk, 0);
+            }
+            // q = r
+            if (ro < qc && pc%2 == ro%2) { // s -> r
+              int qr = (qc * (qc-1))/2 + ro;
+              localTwoRdm(pq, qr) = -w.getOverlapFactor(pc, ro, walk, 0);
+            }
+            for (int s = 0; s < r; s++) {
+              int so = open[s];
+              int rs = (ro * (ro-1))/2 + so;
+              if (pc%2 == ro%2 && qc%2 == so%2) localTwoRdm(pq, rs) = w.getOverlapFactor(pc, qc, ro, so, walk, 0);
+              else if (pc%2 == so%2 && qc%2 == ro%2) localTwoRdm(pq, rs) = -w.getOverlapFactor(pc, qc, so, ro, walk, 0);
+            }
+          }
+        }
+      }
+      twoRdm += deltaT * (localTwoRdm - twoRdm) / (cumdeltaT);
+    }
+    
+    iter++;
+    walk.updateWalker(w.getRef(), w.getCorr(), work.excitation1[nextDet], work.excitation2[nextDet]);
+    double ovlp = w.Overlap(walk);
+    if (abs(ovlp) > bestOvlp)
+    {
+      bestOvlp = abs(ovlp);
+      bestDet = walk.getDet();
+    }
+  }
+
+  double weight = cumdeltaT;
+  double weight2 = cumdeltaT * cumdeltaT;
+  MatrixXd wTwoRdm = weight * twoRdm;
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, &weight, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &weight2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, wTwoRdm.data(), npairs*npairs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  MatrixXd meanTwoRdm = wTwoRdm / weight; 
+  MatrixXd wTwoRdm2 = cumdeltaT * (twoRdm - meanTwoRdm).array().square();
+#ifndef SERIAL
+  MPI_Allreduce(MPI_IN_PLACE, wTwoRdm2.data(), npairs*npairs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  MatrixXd errTwoRdm = (wTwoRdm2 / (weight - weight2 / weight) / (commsize - 1)).array().sqrt();
+
+  if (commrank == 0) {
+    string scratch_dir = schd.scratchDir;
+    string fname = scratch_dir + "/twoRDM.dat";
+    ofstream rdmFile(fname);
+    rdmFile << meanTwoRdm << endl;
+    rdmFile.close();
+    fname = scratch_dir + "/twoRDMErr.dat";
+    ofstream errRdmFile(fname);
+    errRdmFile << errTwoRdm << endl;
+    errRdmFile.close();
+    
+    char file[5000];
+    sprintf(file, "BestDeterminant.txt");
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << bestDet;
+  }
+  return;
 }
 
 template<typename Wfn, typename Walker> 

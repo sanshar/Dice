@@ -161,6 +161,7 @@ private:
       & phaseless
       & soc
       & writeOneRDM
+      & writeTwoRDM
       & intType
       & scratchDir
       & weightCap
@@ -395,6 +396,7 @@ public:
   bool phaseless;
   bool soc;
   bool writeOneRDM;
+  bool writeTwoRDM;
   std::string intType;
   std::string scratchDir;
   double weightCap;

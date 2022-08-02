@@ -115,6 +115,10 @@ int main(int argc, char *argv[])
   else if (schd.wavefunctionType == "jastrowslater") {
     CorrelatedWavefunction<Jastrow, Slater> wave; Walker<Jastrow, Slater> walk;
     runVMC(wave, walk);
+    if (schd.deterministic && schd.writeOneRDM) writeOneRdmDeterministic(wave, walk);
+    else if (schd.writeOneRDM) writeStochasticOneRdmContinuousTime(wave, walk, schd.stochasticIter);
+    if (schd.deterministic && schd.writeTwoRDM) writeTwoRdmDeterministic(wave, walk);
+    else if (schd.writeTwoRDM) writeStochasticTwoRdmContinuousTime(wave, walk, schd.stochasticIter);
     if (schd.printJastrow && commrank==0) wave.printCorrToFile();
   }
   

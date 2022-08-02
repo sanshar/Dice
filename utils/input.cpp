@@ -272,7 +272,8 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.printSCEnergies = input.get("print.SCEnergies", false);
     schd.nWalkSCEnergies = input.get("print.nWalkSCEnergies", 1);
     // dqmc
-    schd.writeOneRDM = input.get("print.writeOneRDM", false);
+    schd.writeOneRDM = input.get("print.writeOneRDM", false); // also used in vmc
+    schd.writeTwoRDM = input.get("print.writeTwoRDM", false); // used in vmc
     schd.scratchDir = input.get("print.scratchDir", "./");
 
 
