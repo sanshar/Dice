@@ -28,12 +28,7 @@ Tests can be run using the runDQMC.sh script in the "tests" directory. Examples 
 
 ## Compiling other parts of the code
 
-Other parts of the code have the following additional dependencies:
-
-1. Sparsehash
-2. More Boost libraries (program_options, system, filesystem) 
-
-Everything on the master branch can be compiled with
+Other parts of the code require more Boost libraries (program_options, system, filesystem). Everything on the master branch can be compiled with
 ```
 make -j
 ```
