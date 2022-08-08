@@ -338,10 +338,11 @@ int main(int argc, char* argv[]) {
     vector<double> E0;
     if (schd.cdfci_on == 0 && schd.restart) {
       cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
-      exit(0);
     }
-    E0 = SHCIbasics::DoVariational(
+    else {
+      E0 = SHCIbasics::DoVariational(
         ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+    }
     Determinant* SHMDets;
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     int DetsSize = Dets.size();

@@ -1289,6 +1289,14 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
    }
    cout << endl;
   }*/
+
+  ci.resize(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
+  for (int i = 0; i < x_vector.size(); i++) {
+    int iroot = i % nroots;
+    int i_idx = i / nroots;
+    ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
+  }
+
   coreE = coreEbkp;
   return;
 }
@@ -1557,7 +1565,6 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
         cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
         
-        double residual_sum = 0.0;
         if (residual < schd.cdfciTol) {
           break;
         }
@@ -1565,6 +1572,14 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
       }
     }
   }
+
+  ci.resize(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
+  for (int i = 0; i < x_vector.size(); i++) {
+    int iroot = i % nroots;
+    int i_idx = i / nroots;
+    ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
+  }
+
   coreE = coreEbkp;
   return;
 }
