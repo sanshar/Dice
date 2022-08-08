@@ -1058,7 +1058,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     }
   }
 
-  ci.resize(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
+  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
   for (int i = 0; i < x_vector.size(); i++) {
     int iroot = i % nroots;
     int i_idx = i / nroots;
