@@ -37,7 +37,16 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     nchol = chol.size();
     ncholEne = chol.size();
   }
-  floattenCholesky();
+  else if (intType == "gz") {
+    readDQMCIntegralsGZ(fname, norbs, nelec, ecore, h1soc, h1socMod, cholZ, cholMatZ);
+  }
+
+  if (intType == "gz") {
+    floattenCholeskyZ();
+  }
+  else {
+    floattenCholesky();
+  }
   rotFlag = false;
 };
 
@@ -174,6 +183,29 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockC
   if (commrank == 0) delete [] rotChol0; 
 }
 
+// flatten and convert complex cholesky to complex<float>
+void Hamiltonian::floattenCholeskyZ() {
+  size_t triSize = (norbs * (norbs + 1)) / 2;
+  size_t size = nchol * triSize;
+  vector<complex<float>> floatChol0;
+  if (commrank == 0) {
+    floatChol0 = vector<complex<float>>(size, complex<float>(0.0, 0.0));
+    size_t counter = 0;
+    for (int n = 0; n < nchol; n++) {
+      for (int i = 0; i < norbs; i++) {
+        for (int j = 0; j <= i; j++) {
+          floatChol0[counter] = complex<float>(chol[n](i, j));
+          counter++;
+        }
+      }
+    }
+  }
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  SHMVecFromVecs(floatChol0, size, floatChol, floatCholSHMName, floatCholSegment, floatCholRegion);
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
+}
 
 // flatten and convert to float
 void Hamiltonian::floattenCholesky()
