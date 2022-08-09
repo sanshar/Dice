@@ -15,8 +15,10 @@
 #include "RHF.h"
 #include "UHF.h"
 #include "GHF.h"
+#include "GZHF.h"
 #include "KSGHF.h"
 #include "GHFMultislater.h"
+#include "GZHFMultislater.h"
 #include "Multislater.h"
 #include "CCSD.h"
 #include "UCCSD.h"
@@ -65,8 +67,10 @@ int main(int argc, char *argv[])
  
   Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc, schd.intType);
   if (commrank == 0) {
-    if (schd.soc || schd.intType == "g") afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
-    else afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
+    if (schd.soc || schd.intType == "g" || schd.intType == "gz'") 
+      afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
+    else 
+      afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
     afqmcFile.flush();
   }
   afqmcFile.close();
@@ -100,7 +104,10 @@ int main(int argc, char *argv[])
     waveLeft = new UHF(ham, true); 
   }
   else if (schd.leftWave == "ghf") {
-    waveLeft = new GHF(ham, true); 
+    if (schd.intType == "gz")
+      waveLeft = new GZHF(ham, true);
+    else
+      waveLeft = new GHF(ham, true); 
   }
   else if (schd.leftWave == "ksghf") {
     if (schd.optimizeOrbs)
@@ -110,8 +117,12 @@ int main(int argc, char *argv[])
   }
   else if (schd.leftWave == "multislater") {
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
-    if ((schd.intType == "g") || schd.soc) waveLeft = new GHFMultislater(ham, schd.determinantFile, nact, schd.nciCore); 
-    else waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
+    if ((schd.intType == "g") || schd.soc) 
+      waveLeft = new GHFMultislater(ham, schd.determinantFile, nact, schd.nciCore);
+    elif (schd.intType == "gz")
+      waveLeft = new GZHFMultislater(ham, schd.determinantFile, nact, schd.nciCore); 
+    else 
+      waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
   }
   else if (schd.leftWave == "ccsd") {
     if (commrank == 0) cout << "Not supported yet\n";
@@ -153,7 +164,10 @@ int main(int argc, char *argv[])
     else walker = DQMCWalker(false);
   }
   else if (schd.rightWave == "ghf") {
-    waveRight = new GHF(ham, false); 
+    if (schd.intType == "gz")
+      waveRight = new GZHF(ham, false);
+    else
+      waveRight = new GHF(ham, false); 
   }
   else if (schd.rightWave == "ksghf") {
     if (commrank == 0) cout << "Not supported yet\n";
