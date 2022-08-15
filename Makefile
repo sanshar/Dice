@@ -1,5 +1,5 @@
 USE_MPI = yes
-USE_INTEL = no
+USE_INTEL = yes
 ONLY_DQMC = no
 HAS_AVX2 = yes
 
@@ -19,12 +19,16 @@ else
   FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I/opt/local/include/openmpi-mp/ -I.
 endif
 
+FLAGS_HCI = -std=c++14 -O3 -g -w -I${EIGEN} -I${BOOST} -I${BOOST}/include
+
 ifeq ($(HAS_AVX2), yes)
   FLAGS += -march=core-avx2
+  FLAGS_HCI += -march=core-avx2
 endif
 
 ifeq ($(USE_INTEL), no)
-  FLAGS += -fpermissive -fopenmp -w
+  FLAGS += -fpermissive -fopenmp
+  FLAGS_HCI += -fpermissive -fopenmp
 endif
 
 GIT_HASH=`git rev-parse HEAD`
@@ -36,47 +40,51 @@ INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
 LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
 
 ifeq ($(USE_INTEL), yes) 
-    LANG=en_US.utf8
-    LC_ALL=en_US.utf8
-	FLAGS += -qopenmp
-	DFLAGS += -qopenmp
-	ifeq ($(USE_MPI), yes) 
-		CXX = mpiicpc #-mkl
-		CC = mpiicpc
-        ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
-		else
-		   LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
-		endif
-		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
-		#CXX = mpicxx
-		#CC = mpicc
-		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi  -lboost_program_options -lboost_system -lboost_filesystem -lrt -L${HDF5}/lib -lhdf5
-	else
-		CXX = icpc
-		CC = icpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization-mt
-		FLAGS += -DSERIAL
-		DFLAGS += -DSERIAL
-	endif
-else
-	FLAGS += -openmp
-	DFLAGS += -openmp
-	ifeq ($(USE_MPI), yes) 
-		CXX = mpicxx
-		CC = mpicxx
-        ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
-		else
-		   LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5 
-        endif
+  LANG=en_US.utf8
+  LC_ALL=en_US.utf8
+  FLAGS += -qopenmp
+  FLAGS_HCI += -qopenmp
+  ifeq ($(USE_MPI), yes) 
+    CXX = mpiicpc #-mkl
+    CC = mpiicpc
+    ifeq ($(ONLY_DQMC), yes)
+      LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi
     else
-		CXX = g++
-		CC = g++
-		LFLAGS = -L/opt/local/lib -lboost_serialization-mt
-		FLAGS += -DSERIAL
-		DFLAGS += -DSERIAL
-	endif
+      LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+    endif
+    LFLAGS_HCI = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi
+	#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
+	#CXX = mpicxx
+	#CC = mpicc
+	#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi  -lboost_program_options -lboost_system -lboost_filesystem -lrt -L${HDF5}/lib -lhdf5
+  else
+    CXX = icpc
+    CC = icpc
+    LFLAGS = -L${BOOST}/stage/lib -lboost_serialization-mt
+    FLAGS += -DSERIAL
+    FLAGS_HCI += -DSERIAL
+    LFAGS_HCI = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization
+  endif
+else
+  FLAGS += -openmp
+  DFLAGS += -openmp
+  ifeq ($(USE_MPI), yes) 
+    CXX = mpicxx
+    CC = mpicxx
+    ifeq ($(ONLY_DQMC), yes)
+      LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
+    else
+      LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5 
+    endif
+    LFLAGS_HCI = -lrt -L${BOOST}/lib -L${BOOST}/stage/lib -lboost_serialization -lboost_mpi
+  else
+    CXX = g++
+    CC = g++
+    LFLAGS = -L/opt/local/lib -lboost_serialization-mt
+    FLAGS += -DSERIAL
+    LFLAGS_HCI = -lrt -L${BOOST}/lib -L${BOOST}/stage/lib -lboost_serialization
+    FLAGS_HCI += -DSERIAL
+  endif
 endif
 
 # Host specific configurations.
@@ -107,9 +115,9 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/SimpleWalker.o \
 	obj/ShermanMorrisonWoodbury.o\
 	obj/excitationOperators.o\
-    obj/statistics.o \
-    obj/sr.o \
-    obj/evaluateE.o 
+	obj/statistics.o \
+	obj/sr.o \
+	obj/evaluateE.o 
 
 OBJ_ICPT= obj/PerturberDependentCode.o \
 	obj/BlockContract.o \
@@ -158,9 +166,9 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/SimpleWalker.o \
 	obj/ShermanMorrisonWoodbury.o \
 	obj/excitationOperators.o \
-    obj/statistics.o \
-    obj/sr.o \
-    obj/evaluateE.o
+	obj/statistics.o \
+	obj/sr.o \
+	obj/evaluateE.o
 
 OBJ_DQMC = obj/staticVariables.o \
 	obj/input.o \
@@ -203,6 +211,7 @@ OBJ_Dice = \
 	obj/SHCI/LCC.o \
 	obj/SHCI/symmetry.o \
 	obj/SHCI/OccRestrictions.o \
+	obj/SHCI/cdfci.o
 
 OBJ_ZDice2 = \
 	obj_z/SHCI/SHCI.o \
@@ -243,11 +252,11 @@ OBJ_ZSHCI = \
 	obj_z/ZSHCI/cdfci.o
 
 obj/SHCI/%.o: SHCI/%.cpp
-	$(CXX) $(FLAGS) $(OPT) $(VERSION_FLAGS) -c $< -o $@
+	$(CXX) $(FLAGS_HCI) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj_z/SHCI/%.o: SHCI/%.cpp
-	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
+	$(CXX) $(FLAGS_HCI) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj_z/ZSHCI/%.o: ZSHCI/%.cpp
-	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
+	$(CXX) $(FLAGS_HCI) -DComplex -DBOOST_BIND_NO_PLACEHOLDERS $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: %.cpp  
 	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
 obj/%.o: Wavefunctions/%.cpp  
@@ -267,7 +276,7 @@ obj/%.o: ICPT/StackArray/%.cpp
 
 ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
 ifeq ($(COMPILE_NUMERIC), yes)
-	ALL+= bin/periodic
+  ALL+= bin/periodic
 endif 
 
 ifeq ($(ONLY_DQMC), yes)
@@ -275,6 +284,7 @@ ifeq ($(ONLY_DQMC), yes)
 else 
   all: bin/VMC bin/GFMC bin/FCIQMC bin/DQMC #bin/sPT  bin/GFMC
 endif 
+
 FCIQMC: bin/FCIQMC
 
 bin/periodic: 
@@ -313,13 +323,13 @@ VMC2	: $(OBJ_VMC)
 	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
 
 Dice	: $(OBJ_Dice)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/Dice $(OBJ_Dice) $(LFLAGS)
+	$(CXX)   $(FLAGS_HCI) $(OPT) -o  bin/Dice $(OBJ_Dice) $(LFLAGS_HCI) -I./SHCI
 
 ZDice2	: $(OBJ_ZDice2)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS)
+	$(CXX)   $(FLAGS_HCI) $(OPT) -o  bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS_HCI) -I./SHCI -DComplex
 
 ZSHCI	: $(OBJ_ZSHCI)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZSHCI $(OBJ_ZSHCI) $(LFLAGS)
+	$(CXX)   $(FLAGS_HCI) $(OPT) -o  bin/ZSHCI $(OBJ_ZSHCI) $(LFLAGS_HCI) -I./ZSHCI -DComplex -DBOOST_BIND_NO_PLACEHOLDERS
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1
