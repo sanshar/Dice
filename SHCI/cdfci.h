@@ -12,7 +12,7 @@
 #include "robin_hood.h"
 #include "input.h"
 
-#define float128 __float128
+#define float128 double 
 
 using namespace std;
 using namespace Eigen;

@@ -53,6 +53,7 @@
 #include <cstdlib>
 #include <numeric>
 
+#include "cdfci.h"
 #include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"

@@ -17,6 +17,7 @@
 #include "integral.h"
 #include "math.h"
 #include "communicate.h"
+#include "OccRestrictions.h"
 #include <boost/format.hpp>
 #include <Eigen/Core>
 #include <algorithm>
@@ -82,7 +83,7 @@ void cdfci::getDeterminantsVariational(
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
-  initiateRestrictions(schd, closed);
+  initiateRestrictions(schd.restrictionsV, closed);
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
@@ -138,7 +139,7 @@ void cdfci::getDeterminantsVariational(
       //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
+      if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
@@ -258,16 +259,16 @@ double cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<doub
   const double pi = atan(1.0) * 4;
 
   if (d >= 0) {
-    auto qrtd = sqrt(d);
+    auto qrtd = std::sqrt(d);
     rt = cbrt(-q2 + qrtd) + cbrt(-q2 - qrtd);
   }
   else {
-    auto qrtd = sqrt(-d);
+    auto qrtd = std::sqrt(-d);
     if (q2 >= 0) {
-      rt = 2 * sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
+      rt = 2 * std::sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
     }
     else {
-      rt = 2 * sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
+      rt = 2 * std::sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
     }
   }
   dx = rt - x;
