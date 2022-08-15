@@ -26,7 +26,7 @@ using namespace boost;
 using namespace cdfci;
 using StitchDEH = SHCISortMpiUtils::StitchDEH;
 using cdfci::value_type;
-typedef unordered_map<Determinant, array<dcomplex, 2>> hash_det;
+typedef unordered_map<Determinant, std::array<dcomplex, 2>> hash_det;
 
 void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,

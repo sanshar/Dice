@@ -37,8 +37,8 @@ struct std::hash<Determinant> {
 
 namespace cdfci {
   // currently assumes real ci vector
-  using value_type = std::pair<Determinant, array<double, 2>>;
-  using hash_det = robin_hood::unordered_flat_map<Determinant, array<double, 2>, std::hash<Determinant>, std::equal_to<Determinant>>;
+  using value_type = std::pair<Determinant, std::array<double, 2>>;
+  using hash_det = robin_hood::unordered_flat_map<Determinant, std::array<double, 2>, std::hash<Determinant>, std::equal_to<Determinant>>;
   using DetToIndex = robin_hood::unordered_node_map<Determinant, int, std::hash<Determinant>, std::equal_to<Determinant>>;
   // retain the same function call as DoVariational in SHCIbasics.
   // use hash map for determinants internally

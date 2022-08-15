@@ -28,7 +28,7 @@ using namespace Eigen;
 using namespace boost;
 using StitchDEH = SHCISortMpiUtils::StitchDEH;
 using cdfci::value_type;
-typedef unordered_map<Determinant, array<CItype, 2>> hash_det;
+typedef unordered_map<Determinant, std::array<CItype, 2>> hash_det;
 
 void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
@@ -470,7 +470,7 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
         civec = 1.0;
         //std::cout << civec << " " << norm << std::endl;
       }
-      array<double, 2> zero_out = {0.0,0.0};
+      std::array<double, 2> zero_out = {0.0,0.0};
       wavefunction[SortedDetsvec[i]] = zero_out;
       //cdfci::getDeterminantsVariational(SortedDetsvec[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], wavefunction, new_dets, schd, 0, nelec);
     }
@@ -1261,8 +1261,8 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           double curr_energy = ene[iroot].first/ene[iroot].second;
           double prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
           cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_energy+coreEbkp << setw(20) <<std::setprecision  (14) << prev_energy+coreEbkp;
-          cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
-          cout << std::setw(12) << std::setprecision(4) << scientific << residual[iroot] << defaultfloat << endl;
+          cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << std::defaultfloat;
+          cout << std::setw(12) << std::setprecision(4) << scientific << residual[iroot] << std::defaultfloat << endl;
           cout << endl;
         }
         double residual_sum = 0.0;
