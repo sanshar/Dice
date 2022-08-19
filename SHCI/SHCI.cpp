@@ -52,8 +52,9 @@
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
-
+#ifndef Complex
 #include "cdfci.h"
+#endif
 #include "LCC.h"
 #include "SHCIshm.h"
 #include "SOChelper.h"
@@ -405,6 +406,7 @@ int main(int argc, char* argv[]) {
        << endl;
 
   vector<double> E0;
+#ifndef Complex
   if (schd.cdfci_on == 0 && schd.restart) {
       cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
       exit(0);
@@ -413,6 +415,10 @@ int main(int argc, char* argv[]) {
     E0 = SHCIbasics::DoVariational(
         ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
   }
+#else
+    E0 = SHCIbasics::DoVariational(
+        ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+#endif
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
