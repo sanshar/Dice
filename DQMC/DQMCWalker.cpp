@@ -227,6 +227,17 @@ void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, d
       mfShifts.push_back(mfShift);
     }
   }
+  else if (ham.intType == "gz") {
+    oneBodyOperator = ham.h1socMod;
+    constant += ene0 - ham.ecore;
+    for (int i = 0; i < nfields; i++) {
+      MatrixXcd op = complex<double>(0., 1.) * ham.cholZ[i];
+      complex<double> mfShift = 1. * green.cwiseProduct(op).sum();
+      constant -= pow(mfShift, 2) / 2.;
+      oneBodyOperator -= mfShift * op;
+      mfShifts.push_back(mfShift);
+    }
+  }
   
   propConstant[0] = constant - ene0;
   propConstant[1] = constant - ene0;
@@ -420,6 +431,20 @@ void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXf> floatCholMat, MatrixXcd&
   }
 }
 
+void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXcf> floatCholmat, MatrixXcd& propc) {
+  int norbs = propc.rows();
+  int nfields = fields.size();
+  size_t triSize = (norbs * (norbs + 1)) / 2;
+
+  VectorXcf prop_cf = complex<float>(0., 1.) * floatCholMat * fields;
+  for (int i = 0; i < norbs; i++) {
+    propc(i, i) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + i]);
+    for (int j = 0; j < i; j++) {
+      propc(i, j) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + j]);
+      propc(j, i) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + j]);
+    }
+  }
+}
 
 void applyExp(MatrixXcd& propc, MatrixXcd& det) 
 {
@@ -430,13 +455,15 @@ void applyExp(MatrixXcd& propc, MatrixXcd& det)
   }
 }
 
-
-double DQMCWalker::propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift)
-{
-  if (ham.intType == "r" || ham.intType == "g") return propagatePhaselessRG(wave, ham, eshift);
-  else if (ham.intType == "u") return propagatePhaselessU(wave, ham, eshift);
+double DQMCWalker::propagatePhaseless(Wavefunction &wave, Hamiltonian &ham,
+                                      double eshift) {
+  if (ham.intType == "r" || ham.intType == "g")
+    return propagatePhaselessRG(wave, ham, eshift);
+  else if (ham.intType == "u")
+    return propagatePhaselessU(wave, ham, eshift);
+  else if (ham.intType == "gz")
+    return propagatePhaselessGZ(wave, ham, eshift);
 }
-
 
 double DQMCWalker::propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, double eshift)
 {
@@ -553,6 +580,47 @@ double DQMCWalker::propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, dou
   return importanceFunctionPhaseless;
 };
 
+double DQMCWalker::propagatePhaselessGZ(Wavefunction& wave, Hamiltonian& ham, double eshift)
+{
+  int norbs = ham.norbs;
+  int nelec = ham.nelec;
+  int nfields = ham.nchol; 
+  VectorXcd fb(nfields); fb.setZero();
+  this->forceBias(wave, ham, fb);
+  complex<double> shift(0., 0.), fbTerm(0., 0.);
+  VectorXcf fields(nfields); fields.setZero();
+  auto initTime = getTime();
+  for (int n = 0; n < nfields; n++) {
+    double field_n = normal(generator);
+    complex<double> fieldShift = -sqrt(dt) * (complex<double>(0., 1.) * fb(n) - mfShifts[n]);
+    fields(n) = complex<float>(field_n - fieldShift);
+    shift += (field_n - fieldShift) * mfShifts[n];
+    fbTerm += (field_n * fieldShift - fieldShift * fieldShift / 2.);
+  }
+
+  MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
+  //VHS(fields, ham.floatChol, propc);
+  VHS(fields, ham.floatCholMatZ[0], propc);
+  propc *= sqrt(dt);
+  vhsTime += getTime() - initTime;
+
+  initTime = getTime();
+  
+  detG = expOneBodyOperator * detG;
+  applyExp(propc, detG);
+  detG = expOneBodyOperator * detG;
+
+  expTime += getTime() - initTime;
+
+  // phaseless
+  complex<double> oldOverlap = trialOverlap;
+  complex<double> newOverlap = this->overlap(wave);
+  complex<double> importanceFunction = exp(-sqrt(dt) * shift + fbTerm + dt * (eshift + propConstant[0])) * newOverlap / oldOverlap;
+  double theta = std::arg( exp(-sqrt(dt) * shift) * newOverlap / oldOverlap );
+  double importanceFunctionPhaseless = std::abs(importanceFunction) * cos(theta);
+  if (importanceFunctionPhaseless < 1.e-3 || importanceFunctionPhaseless > 100. || std::isnan(importanceFunctionPhaseless)) importanceFunctionPhaseless = 0.; 
+  return importanceFunctionPhaseless;
+};
 
 // orthoFac not considered
 // only used in phaseless

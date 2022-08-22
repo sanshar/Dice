@@ -37,7 +37,16 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
     nchol = chol.size();
     ncholEne = chol.size();
   }
-  floattenCholesky();
+  else if (intType == "gz") {
+    readDQMCIntegralsGZ(fname, norbs, nelec, ecore, h1soc, h1socMod, cholZ, cholMatZ);
+  }
+
+  if (intType == "gz") {
+    floattenCholeskyZ();
+  }
+  else {
+    floattenCholesky();
+  }
   rotFlag = false;
 };
 
@@ -47,6 +56,51 @@ void Hamiltonian::setNcholEne(int pnchol)
   ncholEne = pnchol;
 };
 
+// rotate cholesky for complex integral with complex coefficients.
+void Hamiltonian::rotateCholesky(
+    Eigen::MatrixXcd &phiT, std::vector<Eigen::Map<Eigen::MatrixXcd>> &rotChol,
+    std::vector<Eigen::Map<Eigen::MatrixXcd>> &rotCholMat,
+    bool deleteOriginalChol) {
+  complex<double> *rotCholSHM;
+  vector<complex<double>> rotChol0;
+  size_t rotSize = phiT.rows() * norbs;
+  size_t size = chol.size() * rotSize;
+
+  if (commrank == 0) {
+    rotChol0 = vector<complex<double>>(size, complex<double>(0.0, 0.0));
+    for (int i = 0; i < cholZ.size(); i++) {
+      MatrixXcd rot = phiT * cholZ[i];
+      for (int nu = 0; nu < rot.cols(); nu++) {
+        for (int mu = 0; mu < rot.rows(); mu++) {
+          rotChol0[i * rotSize + nu * rot.rows() + mu] = rot(mu, nu);
+        }
+      }
+    }
+  }
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  SHMVecFromVecs(rotChol0, size, rotCholSHM, rotCholSHMName, rotCholSegment,
+                 rotCholRegion);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  // create eigen matrix maps to shared memory
+  for (size_t n = 0; n < chol.size(); n++) {
+    Eigen::Map<MatrixXcd> rotCholMatMap(
+        static_cast<complex<double> *>(rotCholSHM) + n * rotSize, phiT.rows(),
+        norbs);
+    rotChol.push_back(rotCholMatMap);
+  }
+
+  Eigen::Map<MatrixXcd> rotCholMatMap(
+      static_cast<complex<double> *>(rotCholSHM), rotSize, nchol);
+  rotCholMat.push_back(rotCholMatMap);
+
+  if (commrank == 0)
+    delete[] rotChol0;
+  if (deleteOriginalChol) {
+    rotFlag = true;
+  }
+}
 
 // rotate cholesky ri or gi
 void Hamiltonian::rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotCholMat, bool deleteOriginalChol) 
@@ -174,6 +228,60 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockC
   if (commrank == 0) delete [] rotChol0; 
 }
 
+// for multislater where rotation <-> block
+void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXcd>>& blockChol, int ncol)
+{
+  complex<double>* rotCholSHM;
+  complex<double>* rotChol0;
+  size_t rotSize = ncol * norbs;
+  size_t size = chol.size() * rotSize;
+
+  if (commrank == 0) {
+    rotChol0 = new double[size];
+    for (int i = 0; i < chol.size(); i++) {
+      MatrixXcd rot = chol[i].block(0, 0, norbs, ncol);
+      for (int nu = 0; nu < rot.cols(); nu++)
+        for (int mu = 0; mu < rot.rows(); mu++)
+          rotChol0[i * rotSize + nu * rot.rows() + mu] = rot(mu, nu);
+    }
+  }
+ 
+  MPI_Barrier(MPI_COMM_WORLD);
+  SHMVecFromVecs(rotChol0, size, rotCholSHM, rotCholSHMName, rotCholSegment, rotCholRegion); 
+  MPI_Barrier(MPI_COMM_WORLD);
+  
+  // create eigen matrix maps to shared memory
+  Eigen::Map<MatrixXd> blockCholMatMap(static_cast<double*>(rotCholSHM), norbs * ncol, nchol);
+  blockChol.push_back(blockCholMatMap);
+    
+  if (commrank == 0) delete [] rotChol0; 
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
+}
+
+// flatten and convert complex cholesky to complex<float>
+void Hamiltonian::floattenCholeskyZ() {
+  size_t triSize = (norbs * (norbs + 1)) / 2;
+  size_t size = nchol * triSize;
+  vector<complex<float>> floatChol0;
+  if (commrank == 0) {
+    floatChol0 = vector<complex<float>>(size, complex<float>(0.0, 0.0));
+    size_t counter = 0;
+    for (int n = 0; n < nchol; n++) {
+      for (int i = 0; i < norbs; i++) {
+        for (int j = 0; j <= i; j++) {
+          floatChol0[counter] = complex<float>(chol[n](i, j));
+          counter++;
+        }
+      }
+    }
+  }
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  SHMVecFromVecs(floatChol0, size, floatChol, floatCholSHMName, floatCholSegment, floatCholRegion);
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
+}
 
 // flatten and convert to float
 void Hamiltonian::floattenCholesky()
