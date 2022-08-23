@@ -37,6 +37,7 @@ class DQMCWalker {
     double propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift);
     double propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, double eshift);
     double propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, double eshift);
+    double propagatePhaselessGZ(Wavefunction& wave, Hamiltonian& ham, double eshift);
 
     std::complex<double> overlap(Wavefunction& wave);
     void forceBias(Wavefunction& wave, Hamiltonian& ham, Eigen::VectorXcd& fb);

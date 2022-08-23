@@ -1,4 +1,4 @@
-USE_INTEL = no 
+USE_INTEL = yes
 HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
@@ -146,9 +146,11 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/RHF.o \
 	obj/UHF.o \
 	obj/GHF.o \
+	obj/GZHF.o \
 	obj/KSGHF.o \
 	obj/Multislater.o \
 	obj/GHFMultislater.o \
+	obj/GZHFMultislater.o \
 	obj/CCSD.o \
 	obj/UCCSD.o \
 	obj/sJastrow.o \

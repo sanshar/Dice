@@ -17,39 +17,39 @@ GZHF::GZHF(Hamiltonian &ham, bool pleftQ, std::string fname) {
   ham.rotateCholesky(detCAd, rotChol, rotCholMat);
 };
 
-void GHF::getSample(Eigen::MatrixXcd &sampleDet) { sampleDet = detC; };
+void GZHF::getSample(Eigen::MatrixXcd &sampleDet) { sampleDet = detC; };
 
-std::complex<double> GHF::overlap(std::array<Eigen::MatrixXcd, 2> &psi) {
+std::complex<double> GZHF::overlap(std::array<Eigen::MatrixXcd, 2> &psi) {
   return std::complex<double>();
 };
 
-std::complex<double> GHF::overlap(Eigen::MatrixXcd &psi) {
+std::complex<double> GZHF::overlap(Eigen::MatrixXcd &psi) {
   complex<double> overlap;
   overlap = (detCAd * psi).determinant();
   return overlap;
 };
 
-void GHF::forceBias(Eigen::MatrixXcd &psi, Hamiltonian &ham,
+void GZHF::forceBias(Eigen::MatrixXcd &psi, Hamiltonian &ham,
                     Eigen::VectorXcd &fb) {
   int norbs = ham.norbs, nelec = ham.nelec;
   MatrixXcd thetaT;
 
-  thetaT = (psi * (detT * psi).inverse()).transpose();
+  thetaT = (psi * (detCAd * psi).inverse()).transpose();
   Eigen::Map<VectorXcd> thetaTFlat(thetaT.data(),
                                    thetaT.rows() * thetaT.cols());
   fb = thetaTFlat.transpose() * rotCholMat[0];
 };
 
-void GHF::oneRDM(Eigen::MatrixXcd &psi, Eigen::MatrixXcd &rdmSample) {
+void GZHF::oneRDM(Eigen::MatrixXcd &psi, Eigen::MatrixXcd &rdmSample) {
   rdmSample = (psi * (detCAd * psi).inverse() * detCAd).transpose();
 }
 
 std::array<std::complex<double>, 2>
-GHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2> &psi, Hamiltonian &ham) {
+GZHF::hamAndOverlap(std::array<Eigen::MatrixXcd, 2> &psi, Hamiltonian &ham) {
   return std::array<std::complex<double>, 2>();
 };
 
-std::array<std::complex<double>, 2> GHF::hamAndOverlap(Eigen::MatrixXcd &psi,
+std::array<std::complex<double>, 2> GZHF::hamAndOverlap(Eigen::MatrixXcd &psi,
                                                        Hamiltonian &ham) {
   complex<double> overlap, ene;
   MatrixXcd overlapMat = detCAd * psi;

@@ -436,7 +436,7 @@ void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXcf> floatCholmat, MatrixXcd
   int nfields = fields.size();
   size_t triSize = (norbs * (norbs + 1)) / 2;
 
-  VectorXcf prop_cf = complex<float>(0., 1.) * floatCholMat * fields;
+  VectorXcf prop_cf = complex<float>(0., 1.) * floatCholmat * fields;
   for (int i = 0; i < norbs; i++) {
     propc(i, i) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + i]);
     for (int j = 0; j < i; j++) {

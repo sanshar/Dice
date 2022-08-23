@@ -333,12 +333,13 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     if (schd.intType == "gz") {
       MatrixXcd hf = MatrixXcd::Zero(norbs, norbs);
       readMat(hf, "ghf.txt");
+      refSOC = hf.block(0, 0, norbs, nelec);
     }
     else {
       MatrixXd hf = MatrixXd::Zero(norbs, norbs);
       readMat(hf, "ghf.txt");
+      refSOC = hf.block(0, 0, norbs, nelec);
     }
-    refSOC = hf.block(0, 0, norbs, nelec);
     hamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
   }
   else { 

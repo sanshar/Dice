@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
     if ((schd.intType == "g") || schd.soc) 
       waveLeft = new GHFMultislater(ham, schd.determinantFile, nact, schd.nciCore);
-    elif (schd.intType == "gz")
+    else if (schd.intType == "gz")
       waveLeft = new GZHFMultislater(ham, schd.determinantFile, nact, schd.nciCore); 
     else 
       waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 

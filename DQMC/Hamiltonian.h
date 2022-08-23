@@ -17,7 +17,7 @@ class Hamiltonian {
     std::vector<Eigen::Map<Eigen::MatrixXcd>> cholMatZ;
     float* floatChol;
     std::vector<Eigen::Map<Eigen::MatrixXf>> floatCholMat;
-    complex<float>* floatCholZ;
+    std::complex<float>* floatCholZ;
     std::vector<Eigen::Map<Eigen::MatrixXcf>> floatCholMatZ;
     std::string intType;
     bool socQ;
@@ -34,12 +34,19 @@ class Hamiltonian {
     void rotateCholesky(Eigen::MatrixXd& phiT, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotChol, std::vector<Eigen::Map<Eigen::MatrixXd>>& rotCholMat, bool deleteOriginalChol=false);
     void rotateCholesky(std::array<Eigen::MatrixXd, 2>& phiT, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotChol, std::array<std::vector<Eigen::Map<Eigen::MatrixXd>>, 2>& rotCholMat, bool deleteOriginalChol=false);
     void rotateCholesky(Eigen::MatrixXcd& phiAd, std::vector<std::array<Eigen::MatrixXcd, 2>>& rotChol);
-    
+    void rotateCholesky(
+        Eigen::MatrixXcd &phiT, std::vector<Eigen::Map<Eigen::MatrixXcd>> &rotChol,
+        std::vector<Eigen::Map<Eigen::MatrixXcd>> &rotCholMat,
+        bool deleteOriginalChol = false);
     // block cholesky
     // for multislater where rotation <-> block
-    void blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockChol, int ncol);
+    void blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>> &blockChol, int ncol);
+
+    void blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXcd>>& blockChol, int ncol);
 
     // flatten and convert to float
     void floattenCholesky();
+
+    void floattenCholeskyZ();
 };
 #endif

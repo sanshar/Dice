@@ -40,7 +40,7 @@ void GZHFMultislater::getSample(Eigen::MatrixXcd& sampleDet)
 };
 
 
-std::complex<double> GHFMultislater::overlap(Eigen::MatrixXcd& psi)
+std::complex<double> GZHFMultislater::overlap(Eigen::MatrixXcd& psi)
 {
   int norbs = psi.rows();
   int nelec = refDet.size();
@@ -350,7 +350,7 @@ void GZHFMultislater::oneRDM(Eigen::MatrixXcd& psi, Eigen::MatrixXcd& rdmSample)
   overlap *= overlap0;
   greenMulti *= (overlap0 / overlap);
   rdmSample = greenMulti;
-};
+}
 
 //void GHFMultislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& ham, Eigen::VectorXcd& fb)
 //{
@@ -444,7 +444,7 @@ void GZHFMultislater::oneRDM(Eigen::MatrixXcd& psi, Eigen::MatrixXcd& rdmSample)
 //};
 
 
-std::array<std::complex<double>, 2> GHFMultislater::hamAndOverlap(Eigen::MatrixXcd& psi, Hamiltonian& ham)
+std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::MatrixXcd& psi, Hamiltonian& ham)
 {
   int norbs = ham.norbs;
   int nelec = refDet.size();
