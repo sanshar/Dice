@@ -789,7 +789,7 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   readMat(h1Mod, file, "/hcore_mod");
 
   // read cholesky to shared memory
-  unsigned int cholSize = nchol * norbs * norbs * 4;
+  unsigned int cholsize = nchol * norbs * norbs * 4;
   complex<double> *cholSHM;
   MPI_Barrier(MPI_COMM_WORLD);
   // TODO read HDF5 to SHM function implemented here.
@@ -799,7 +799,7 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   memset(mat_imag, 0, cholsize * sizeof(double));
 
   hid_t dataset = (-1);
-  herr_t status;
+  //herr_t status;
   H5E_BEGIN_TRY {
     dataset = H5Dopen(file, "/chol_real", H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
@@ -830,7 +830,7 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   delete[] mat_real;
   delete[] mat_imag;
 
-  SHMVecFromVecs(chol_vec, cholSHM, cholSHMName, cholSegment, cholRegion)
+  SHMVecFromVecs(chol_vec, cholSHM, cholSHMName, cholSegment, cholRegion);
 
       MPI_Barrier(MPI_COMM_WORLD);
 
@@ -844,7 +844,8 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   }
 
   coreE = 0.;
-  double energy_core[1] energy_core[0] = 0.;
+  double energy_core[1];
+  energy_core[0] = 0.;
   H5E_BEGIN_TRY {
     dataset_energy_core = H5Dopen(file, "/energy_core", H5P_DEFAULT);
     status = H5Dread(dataset_energy_core, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
