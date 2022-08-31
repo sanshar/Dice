@@ -80,7 +80,7 @@ void license() {
 }
 
 CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
-        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) ; 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w, int type) ; 
 
 //CItype calcFirstGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
 //        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, std::vector<Determinant>& DetsPert, std::vector<CItype>& ciPert, double E0, CItype w) ; 
@@ -94,6 +94,7 @@ class schedule{
 public:
   bool exact, all; // all: evaluate all matrix elements
   int i, j; // i and j in G(i, j, w)
+  int type; // ip: -1, ea: +1; pol (not implemented): 0
   double w1, w2, eta, dw; // w1, w2: endpoints of the interval, eta: imaginary shift, dw: spacing
   
   // default constructor
@@ -101,6 +102,7 @@ public:
   {
       exact = false;
       all = false;
+      type = -1;
       i = 0; j = 0;
       w1 = -2.; w2 = 2.; eta = 0.01; dw = 0.02;
   }
@@ -136,6 +138,10 @@ public:
       }
       else if (boost::iequals(ArgName, "dw")){
         dw = std::atof(tok[1].c_str());
+      }
+      else if (boost::iequals(ArgName, "type")){
+        if (tok[1] == "ip") type = -1;
+        else if (tok[1] == "ea") type = 1;
       }
     }
   }
@@ -202,82 +208,102 @@ int main(int argc, char* argv[]) {
   double t1 = 0., t2 = 0., t3 = 0.;
   
   if (schd.exact) { 
-    // read dets and ci coeffs of the variational result psiNm1
-    char fileNm1 [5000];
-    sprintf(fileNm1, "%d-variationalNm1.bkp" , 0);
-    std::ifstream ifsNm1(fileNm1, std::ios::binary);
-    boost::archive::binary_iarchive load(ifsNm1);
-    // DetsNm1v has deteminants in the n-1 electron variational wf, ciNm1 has the corresponding coeffs
-    int iterNm1; std::vector<Determinant> DetsNm1v; std::vector<MatrixXd> ciNm1; std::vector<double> ENm1;
-    load >> iter >> DetsNm1v;
-    load >> ciNm1;
-    load >> ENm1;
-    ifsNm1.close();
-   
-    // sorting dets
-    std::vector<Determinant> sortedDetsNm1v;
-    std::vector<size_t> idx(DetsNm1v.size());
-    if (commrank == 0) {
-      std::iota(idx.begin(), idx.end(), 0);
-      std::sort(idx.begin(), idx.end(), [&DetsNm1v](size_t i1, size_t i2){return DetsNm1v[i1] < DetsNm1v[i2];});
-      // now 'sorting' DetsNm1v
-      for(int i = 0; i < DetsNm1v.size(); i++) sortedDetsNm1v.push_back(DetsNm1v[idx[i]]); 
-    }
-    DetsNm1v.clear();
-
-#ifndef SERIAL
-  mpi::broadcast(world, idx, 0);
-#endif
-
-    // put dets in shared memory
-    Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
-    int DetsSize = Dets.size(), DetsNm1vSize = sortedDetsNm1v.size();
-    SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
-    Dets.clear();
-    SHMVecFromVecs(sortedDetsNm1v, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
-    sortedDetsNm1v.clear();
-    SHMVecFromMatrix(ci, SHMci, shcicMax, cMaxSegment, regioncMax);
-    //ci.clear(); // need to fix this
-  
-#ifndef SERIAL
-  mpi::broadcast(world, DetsNm1vSize, 0);
-#endif
-
-    // calculate greens function
-    pout << "w               g" << schd.i << schd.j << endl; 
-    for(int i = 0; i < (schd.w2 - schd.w1)/schd.dw; i++){
-        std::complex<double> w (schd.w1 + schd.dw*i, schd.eta);
-        CItype g_ij = calcGreensFunctionExact(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
-        t3 = MPI_Wtime();
-        pout << w << "   " << g_ij << endl;
-    } 
+//  exact ea gf to be defined
+//    // read dets and ci coeffs of the variational result psiNm1
+//    char fileNm1 [5000];
+//    sprintf(fileNm1, "%d-variationalNm1.bkp" , 0);
+//    std::ifstream ifsNm1(fileNm1, std::ios::binary);
+//    boost::archive::binary_iarchive load(ifsNm1);
+//    // DetsNm1v has deteminants in the n-1 electron variational wf, ciNm1 has the corresponding coeffs
+//    int iterNm1; std::vector<Determinant> DetsNm1v; std::vector<MatrixXd> ciNm1; std::vector<double> ENm1;
+//    load >> iter >> DetsNm1v;
+//    load >> ciNm1;
+//    load >> ENm1;
+//    ifsNm1.close();
+//   
+//    // sorting dets
+//    std::vector<Determinant> sortedDetsNm1v;
+//    std::vector<size_t> idx(DetsNm1v.size());
+//    if (commrank == 0) {
+//      std::iota(idx.begin(), idx.end(), 0);
+//      std::sort(idx.begin(), idx.end(), [&DetsNm1v](size_t i1, size_t i2){return DetsNm1v[i1] < DetsNm1v[i2];});
+//      // now 'sorting' DetsNm1v
+//      for(int i = 0; i < DetsNm1v.size(); i++) sortedDetsNm1v.push_back(DetsNm1v[idx[i]]); 
+//    }
+//    DetsNm1v.clear();
+//
+//#ifndef SERIAL
+//  mpi::broadcast(world, idx, 0);
+//#endif
+//
+//    // put dets in shared memory
+//    Determinant* SHMDets, *SHMDetsNm1; CItype *SHMci;
+//    int DetsSize = Dets.size(), DetsNm1vSize = sortedDetsNm1v.size();
+//    SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
+//    Dets.clear();
+//    SHMVecFromVecs(sortedDetsNm1v, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
+//    sortedDetsNm1v.clear();
+//    SHMVecFromMatrix(ci, SHMci, shcicMax, cMaxSegment, regioncMax);
+//    //ci.clear(); // need to fix this
+//  
+//#ifndef SERIAL
+//  mpi::broadcast(world, DetsNm1vSize, 0);
+//#endif
+//
+//    // calculate greens function
+//    pout << "w               g" << schd.i << schd.j << endl; 
+//    for(int i = 0; i < (schd.w2 - schd.w1)/schd.dw; i++){
+//        std::complex<double> w (schd.w1 + schd.dw*i, schd.eta);
+//        CItype g_ij = calcGreensFunctionExact(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1vSize, ciNm1, idx, E0[0], ENm1, w);
+//        t3 = MPI_Wtime();
+//        pout << w << "   " << g_ij << endl;
+//    } 
   }
   else { // not exact
-    // to store dets in psi0 less one electron, to construct H0 on the N-1 electron space 
+    // to store dets in the response space, to construct H0 in the response space 
     // calc only on root
-    std::vector<Determinant> DetsNm1; 
+    std::vector<Determinant> DetsResponse; 
     std::vector<Determinant> SortedDetsvec; // dets in psi0 sorted 
  
     if (commrank == 0) {
-      // fill up DetsNm1
-      for(int k = 0; k < Dets.size(); k++) {
-        // get the occupied orbs in Dets[k]
-        std::vector<int> closed(64*DetLen);
-        int nclosed = Dets[k].getClosed(closed);
-        
-        // remove electrons from occupied orbs
-        for(int l = 0; l < nclosed; l++){
-          if (closed[l] % 2 == schd.i % 2) {
-            Dets[k].setocc(closed[l], false);
-            DetsNm1.push_back(Dets[k]);
-            Dets[k].setocc(closed[l], true);
+      // fill up DetsResponse
+      if (schd.type == -1) {
+        for(int k = 0; k < Dets.size(); k++) {
+          // get the occupied orbs in Dets[k]
+          std::vector<int> closed(64*DetLen);
+          int nclosed = Dets[k].getClosed(closed);
+          
+          // remove electrons from occupied orbs
+          for(int l = 0; l < nclosed; l++){
+            if (closed[l] % 2 == schd.i % 2) {
+              Dets[k].setocc(closed[l], false);
+              DetsResponse.push_back(Dets[k]);
+              Dets[k].setocc(closed[l], true);
+            }
           }
         }
       }
+      else if (schd.type == 1) {
+        for(int k = 0; k < Dets.size(); k++) {
+          // get the occupied orbs in Dets[k]
+          std::vector<int> open(64*DetLen);
+          int nopen = Dets[k].getOpen(open);
+          
+          // add electrons to empty orbs
+          for(int l = 0; l < nopen; l++){
+            if (open[l] % 2 == schd.i % 2) {
+              Dets[k].setocc(open[l], true);
+              DetsResponse.push_back(Dets[k]);
+              Dets[k].setocc(open[l], false);
+            }
+          }
+        }
+      
+      }
       
       // remove duplicates
-      std::sort(DetsNm1.begin(), DetsNm1.end());
-      SHCISortMpiUtils::RemoveDuplicates(DetsNm1);
+      std::sort(DetsResponse.begin(), DetsResponse.end());
+      SHCISortMpiUtils::RemoveDuplicates(DetsResponse);
       for (int i = 0; i < Dets.size(); i++) SortedDetsvec.push_back(Dets[i]);
       std::sort(SortedDetsvec.begin(), SortedDetsvec.end());
     }
@@ -287,34 +313,34 @@ int main(int argc, char* argv[]) {
 #endif
   
     // put dets in shared memory
-    Determinant* SHMDets, *SHMDetsNm1, *SHMSortedDets; CItype *SHMci; // don't need non-sorted shared dets, delete later
-    int DetsSize = Dets.size(), DetsNm1Size = DetsNm1.size();
+    Determinant* SHMDets, *SHMDetsResponse, *SHMSortedDets; CItype *SHMci; // don't need non-sorted shared dets, delete later
+    int DetsSize = Dets.size(), DetsResponseSize = DetsResponse.size();
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     Dets.clear();
     SHMVecFromVecs(SortedDetsvec, SHMSortedDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
     SortedDetsvec.clear();
-    SHMVecFromVecs(DetsNm1, SHMDetsNm1, shciDetsNm1, DetsNm1Segment, regionDetsNm1);
-    DetsNm1.clear();
+    SHMVecFromVecs(DetsResponse, SHMDetsResponse, shciDetsResponse, DetsResponseSegment, regionDetsResponse);
+    DetsResponse.clear();
     SHMVecFromMatrix(ci, SHMci, shcicMax, cMaxSegment, regioncMax);
     //ci.clear(); need to fix this
-    pout << "# Size of the N electron space: " << DetsSize << endl;
-    pout << "# Size of the N-1 electron space: " << DetsNm1Size << endl;
+    pout << "# Size of the original electron space: " << DetsSize << endl;
+    pout << "# Size of the response space: " << DetsResponseSize << endl;
 
 #ifndef SERIAL
-    mpi::broadcast(world, DetsNm1Size, 0);
+    mpi::broadcast(world, DetsResponseSize, 0);
 #endif
 
-    // make H0 in the DetsNm1 space
+    // make H0 in the response space
     SHCImakeHamiltonian::HamHelpers2 helper2;
     SHCImakeHamiltonian::SparseHam sparseHam;
     int Norbs = 2.*I2.Direct.rows();
     
     if (commrank == 0) {
-      helper2.PopulateHelpers(SHMDetsNm1, DetsNm1Size, 0);
+      helper2.PopulateHelpers(SHMDetsResponse, DetsResponseSize, 0);
     }	
     helper2.MakeSHMHelpers();
     t1 = MPI_Wtime();
-    sparseHam.makeFromHelper(helper2, SHMDetsNm1, 0, DetsNm1Size, Norbs, I1, I2, coreE, false);
+    sparseHam.makeFromHelper(helper2, SHMDetsResponse, 0, DetsResponseSize, Norbs, I1, I2, coreE, false);
     Hmult2 H(sparseHam);
     t2 = MPI_Wtime();
 
@@ -535,30 +561,37 @@ int main(int argc, char* argv[]) {
     pout << "# Using eta: " << schd.eta << endl << "#\n"; 
     pout << "#     w                            G" << endl; 
     int npoints = (schd.w2 - schd.w1) / schd.dw;
-    std::vector<double> peaks;
-    int prevSlope = 1;
+    std::vector<double> local_minima, local_maxima;
+    int prevSlope = 0;
     double prevVal = 0.;
     for (int i = 0; i < npoints; i++) {
       std::complex<double> w (schd.w1 + schd.dw*i, schd.eta);
-      CItype g_ij = calcZerothGreensFunction(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, E0[0], w);
+      CItype g_ij = calcZerothGreensFunction(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsResponse, DetsResponseSize, H, E0[0], w, schd.type);
       //CItype g_ij1 = calcFirstGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, hasHEDDets, hasHEDNumerator, E0[0], w);
       //t3 = MPI_Wtime();
       //pout << w << "  " << g_ij << "  " << g_ij1 << "  " << " " << g_ij-((0,1.0)*g_ij1) << endl;
       pout << format(" % .3e       ( % .8e, % .8e )  \n") % w.real() % g_ij.real() % g_ij.imag(); 
       
       // check for a peak
-      if (i != 0 && i != npoints-1) {
-        int newSlope = -g_ij.imag() > prevVal ? 1 : -1;
-        if (newSlope == -1 && prevSlope == 1) peaks.push_back(w.real() - schd.dw);
+      if (i > 0) {
+        int newSlope = g_ij.imag() > prevVal ? 1 : -1;
+        if (i > 1) {
+          if (newSlope == 1 && prevSlope == -1) local_minima.push_back(w.real() - schd.dw);
+          else if (newSlope == -1 && prevSlope == 1) local_maxima.push_back(w.real() - schd.dw);
+        }
         prevSlope = newSlope;
       }
-      prevVal = -g_ij.imag(); 
+      prevVal = g_ij.imag(); 
     }
   
-    pout << "# Nummber of peaks: " << peaks.size() <<  endl;
-    if (commrank == 0 && peaks.size() > 0) {
-      pout << "# Peaks:  ";
-      for (int i = 0; i < peaks.size(); i++) printf("% 0.5e,  ", peaks[i]);
+    if (commrank == 0 && local_minima.size() > 0) {
+      pout << "# Local minima:  ";
+      for (int i = 0; i < local_minima.size(); i++) printf("% 0.5e   ", local_minima[i]);
+      pout << endl;
+    }
+    if (commrank == 0 && local_maxima.size() > 0) {
+      pout << "# Local maxima:  ";
+      for (int i = 0; i < local_maxima.size(); i++) printf("% 0.5e   ", local_maxima[i]);
       pout << endl;
     }
     //pout << "t_makefromhelpers " << t2 - t1 << endl;
@@ -571,27 +604,30 @@ int main(int argc, char* argv[]) {
 }
 
 // variational calculation
-// to calculate G^0_ij(w) = -< psi0 | a_i^(dag) 1/(H0-E0-w) a_j | psi0 >
+// to calculate G^{0-}_ij(w) = < psi0 | a_i^(dag) 1/(H0-E0+w) a_j | psi0 > or  G^{0+}_ij(w) = - < psi0 | a_i^(dag) 1/(H0-E0-w) a_j | psi0 >
 // w is a complex number
 // psi0 is the variational ground state, a_i, a_j are annihilation operators 
 // H0 is the Hamiltonian and E0 is the N electron variational ground state energy 
 // Dets has dets in psi0, ci has the corresponding coeffs
-// DetsNm1 dets in psi0 less one electron, HNm1 is H0 on the N-1 electron space
-CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w) 
+// DetsResponse dets in the response space, HResponse is H0 in the response space
+CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsResponse, int DetsResponseSize, Hmult2& HResponse, double E0, CItype w, int type) 
 {
 #ifndef SERIAL
   boost::mpi::communicator world;
 #endif
 
-  // to store ci coeffs in a_j | psi0 >, corresponding to dets in DetsNm1
-  MatrixXx ciNm1 = MatrixXx::Zero(DetsNm1Size, 1);  
+  // to store ci coeffs in a_j | psi0 > or a_j^(dag) | psi0 >, corresponding to dets in DetsResponse
+  MatrixXx ciResponse = MatrixXx::Zero(DetsResponseSize, 1);  
   
-  // calc a_j | psi0 >
+  // calc a_j | psi0 > or a_j^(dag) | psi0 >
   // doing this on all procs
   int nelec = Dets[0].Noccupied();
   Determinant detTemp;
   for (int k = 0; k < DetsSize; k++) {
-    if (Dets[k].getocc(j)) {
+    bool validDet = false;
+    if (type == -1 && Dets[k].getocc(j)) validDet = true;
+    else if (type == 1 && !Dets[k].getocc(j)) validDet = true;
+    if (validDet) {
       detTemp = Dets[k];
       
       // parity : can be made faster if this becomes slow
@@ -600,9 +636,10 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
       int nelecBefore = std::lower_bound(closed.begin(), closed.begin() + nelec, j) - closed.begin(); 
       double parity = nelecBefore % 2 == 0 ? 1. : -1.;
 
-      detTemp.setocc(j, false); // annihilated Det[k]
-      int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); // binary search for detTemp in DetsNm1
-      ciNm1(n) = parity * ci[k];
+      if (type == -1) detTemp.setocc(j, false); // annihilated e from Det[k]
+      else if (type == 1) detTemp.setocc(j, true); // added e to Det[k]
+      int n = std::distance(DetsResponse, std::lower_bound(DetsResponse, DetsResponse+DetsResponseSize, detTemp)); // binary search for detTemp in DetsResponse
+      ciResponse(n) = parity * ci[k];
     }
   }
     
@@ -616,11 +653,12 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
   //for(int k=0; k< DetsNm1Size; k++) HamiltonianNm1diag(k,k) = HamiltonianNm1(k,k)-E0-w;
   //x0 = HamiltonianNm1diag.colPivHouseholderQr().solve(ciNm1);
 
-  // solve for x0 = 1/H0-E0-w a_j | psi0 >
+  // solve for x0 = 1/H0-E0+w a_j | psi0 > or x0 = 1/H0-E0-w a_j^(dag) | psi0 >
   // doing cg 
-  MatrixXx x0 = MatrixXx::Zero(DetsNm1Size, 1);
+  MatrixXx x0 = MatrixXx::Zero(DetsResponseSize, 1);
   vector<CItype*> proj;
-  LinearSolver(HNm1, E0+w, x0, ciNm1, proj, 1.e-5, false);
+  if (type == -1) LinearSolver(HResponse, E0-w, x0, ciResponse, proj, 1.e-5, false);
+  else if (type == 1) LinearSolver(HResponse, E0+w, x0, ciResponse, proj, 1.e-5, false);
   
   //testing
   //pout << " x0     x01    DetsNm1" << endl;
@@ -632,7 +670,10 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
   CItype overlap = 0.0;
   if (commrank == 0) {
     for (int k = 0; k < DetsSize; k++) {
-      if (Dets[k].getocc(i)) {
+      bool validDet = false;
+      if (type == -1 && Dets[k].getocc(i)) validDet = true;
+      else if (type == 1 && !Dets[k].getocc(i)) validDet = true;
+      if (validDet) {
         detTemp = Dets[k];
 
         // parity : can be made faster if this becomes slow
@@ -641,8 +682,9 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
         int nelecBefore = std::lower_bound(closed.begin(), closed.begin() + nelec, i) - closed.begin(); 
         double parity = nelecBefore % 2 == 0 ? 1. : -1.;
         
-        detTemp.setocc(i, false); // annihilated Det[k]
-        int n = std::distance(DetsNm1, std::lower_bound(DetsNm1, DetsNm1+DetsNm1Size, detTemp)); // binary search for detTemp in DetsNm1
+        if (type == -1) detTemp.setocc(i, false); // annihilated e from Det[k]
+        else if (type == 1) detTemp.setocc(i, true); // added e to Det[k]
+        int n = std::distance(DetsResponse, std::lower_bound(DetsResponse, DetsResponse+DetsResponseSize, detTemp)); // binary search for detTemp in DetsResponse
         overlap += parity * ci[k] * x0(n);
       }
     }
@@ -652,7 +694,8 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
   mpi::broadcast(world, overlap, 0);
 #endif
     
-  return -overlap;
+  if (type == -1) return overlap;
+  else if (type == 1) return -overlap;
 }
 
 // uses spectrum of the N-1 electron ham

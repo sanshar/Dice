@@ -513,6 +513,16 @@ class Determinant {
     return cindex;
   }
   
+  
+  // calculates integer array containing the open orbital indices
+  int getOpen(vector<int>& open) const {
+    int oindex = 0;
+    for (int i = 0; i < norbs; i++) {
+      if (!getocc(i)) {open.at(oindex) = i; oindex++;}
+    }
+    return oindex;
+  }
+  
   //returns integer array containing the closed and open orbital indices
   int getOpenClosed(int* open, int* closed) const {
     int oindex = 0, cindex = 0;

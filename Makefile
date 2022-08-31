@@ -3,18 +3,19 @@
 ##########################
 
 USE_MPI = yes
-USE_INTEL = yes
+USE_INTEL = no
 USING_OSX = no
-EIGEN=/projects/anma2640/eigen-eigen-5a0156e40feb
-BOOST=/projects/anma2640/boost_1_66_0
+
+BOOST=${BOOST_ROOT}
+EIGEN=/projects/anma2640/eigen-3.4.0/
 
 git_commit=`git rev-parse HEAD`
 git_branch=`git branch | grep "^\*" | sed 's/^..//'`
 export VERSION_FLAGS=-Dgit_commit="\"$(git_commit)\"" -Dgit_branch="\"$(git_branch)\""
 
-FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS)
-DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} $(VERSION_FLAGS) -DComplex -DGreen
-LFLAGS = -L${BOOST}/stage/lib -lboost_serialization
+FLAGS  = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} -I${BOOST}/include $(VERSION_FLAGS)
+DFLAGS = -std=c++11 -g -w -O3 -I${EIGEN} -I${BOOST} -I${BOOST}/include $(VERSION_FLAGS) -DComplex -DGreen
+LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization
 
 ifeq ($(USE_INTEL), yes)
 	FLAGS += -qopenmp
