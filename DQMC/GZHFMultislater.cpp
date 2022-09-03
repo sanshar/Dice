@@ -20,7 +20,7 @@ GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact,
   nact = pnact;
   ncore = pncore;
   rightQ = prightQ;
-  
+
   ham.blockCholesky(blockChol, ncore + nact);
 
   if (rightQ) {
@@ -469,12 +469,12 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
   // ref contribution
   overlap += ciCoeffs[0];
   complex<double> hG;
-  hG = greeno.cwiseProduct(ham.h1(refDet, Eigen::placeholders::all)).sum();
+  hG = greeno.cwiseProduct(ham.h1soc(refDet, Eigen::placeholders::all)).sum();
   ene += ciCoeffs[0] * hG;
-  
+
   // 1e intermediate
   MatrixXcd roth1;
-  roth1 = (greeno * ham.h1) * greenp;
+  roth1 = (greeno * ham.h1soc) * greenp;
 
   // G^{p}_{t} blocks
   vector<MatrixXcd> gBlocks;
@@ -515,7 +515,7 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
     gBlocks.push_back(blocks);
     gBlockDets.push_back(dets);
   }
-  
+
   // 2e intermediates
   MatrixXcd int1, int2;
   int1 = 0. * greeno.block(0, 0, nelec, nact);
@@ -533,13 +533,13 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
     //int1.noalias() += lG * int2;
     //int1.noalias() -= (greeno * ham.chol[n].block(0, 0, norbs, nelec[0])) * int2;
         
-    exc.noalias() = ham.chol[n](refDet, Eigen::placeholders::all) * theta;
+    exc.noalias() = ham.cholZ[n](refDet, Eigen::placeholders::all) * theta;
     lG = exc.trace();
     l2G2 = lG * lG - exc.cwiseProduct(exc.transpose()).sum();
     l2G2Tot += l2G2;
-    int2.noalias() = (greeno * ham.chol[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
+    int2.noalias() = (greeno * ham.cholZ[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
     int1.noalias() += lG * int2;
-    int1.noalias() -= (greeno * ham.chol[n](Eigen::placeholders::all, refDet)) * int2;
+    int1.noalias() -= (greeno * ham.cholZ[n](Eigen::placeholders::all, refDet)) * int2;
 
     // ref contribution
     ene += ciCoeffs[0] * l2G2 / 2.;

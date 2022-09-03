@@ -39,6 +39,8 @@ Hamiltonian::Hamiltonian(string fname, bool psocQ, std::string pintType)
   }
   else if (intType == "gz") {
     readDQMCIntegralsGZ(fname, norbs, nelec, ecore, h1soc, h1socMod, cholZ, cholMatZ);
+    nchol = cholZ.size();
+    ncholEne = cholZ.size();
   }
 
   if (intType == "gz") {
@@ -100,6 +102,7 @@ void Hamiltonian::rotateCholesky(
   if (deleteOriginalChol) {
     rotFlag = true;
   }
+  return;
 }
 
 // rotate cholesky ri or gi
@@ -234,18 +237,18 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXcd>>& block
   complex<double>* rotCholSHM;
   complex<double>* rotChol0;
   size_t rotSize = ncol * norbs;
-  size_t size = chol.size() * rotSize;
+  size_t size = cholZ.size() * rotSize;
 
   if (commrank == 0) {
     rotChol0 = new complex<double>[size];
-    for (int i = 0; i < chol.size(); i++) {
-      MatrixXcd rot = chol[i].block(0, 0, norbs, ncol);
+    for (int i = 0; i < cholZ.size(); i++) {
+      MatrixXcd rot = cholZ[i].block(0, 0, norbs, ncol);
       for (int nu = 0; nu < rot.cols(); nu++)
         for (int mu = 0; mu < rot.rows(); mu++)
           rotChol0[i * rotSize + nu * rot.rows() + mu] = rot(mu, nu);
     }
   }
- 
+
   MPI_Barrier(MPI_COMM_WORLD);
   SHMVecFromVecs(rotChol0, size, rotCholSHM, rotCholSHMName, rotCholSegment, rotCholRegion); 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -270,7 +273,7 @@ void Hamiltonian::floattenCholeskyZ() {
     for (int n = 0; n < nchol; n++) {
       for (int i = 0; i < norbs; i++) {
         for (int j = 0; j <= i; j++) {
-          floatChol0[counter] = complex<float>(chol[n](i, j));
+          floatChol0[counter] = complex<float>(cholZ[n](i, j));
           counter++;
         }
       }
@@ -279,6 +282,8 @@ void Hamiltonian::floattenCholeskyZ() {
 
   MPI_Barrier(MPI_COMM_WORLD);
   SHMVecFromVecs(floatChol0, size, floatCholZ, floatCholSHMName, floatCholSegment, floatCholRegion);
+  Eigen::Map<Eigen::MatrixXcf> floatCholMatMap(static_cast<complex<float>*>(floatCholZ), triSize, nchol);
+  floatCholMatZ.push_back(floatCholMatMap);
   if (commrank == 0) delete [] floatChol0; 
   MPI_Barrier(MPI_COMM_WORLD);
   return;

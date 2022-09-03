@@ -777,19 +777,18 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   nelec = header[0];
   norbs = header[1];
   nchol = header[2];
-
   Determinant::EffDetLen = (norbs) / 64 + 1;
   Determinant::norbs = norbs;
   Determinant::nalpha = 0;
   Determinant::nbeta = 0;
 
-  h1 = MatrixXcd::Zero(2 * norbs, 2 * norbs);
+  h1 = MatrixXcd::Zero(norbs, norbs);
   readMat(h1, file, "/hcore");
-  h1Mod = MatrixXcd::Zero(2 * norbs, 2 * norbs);
+  h1Mod = MatrixXcd::Zero(norbs, norbs);
   readMat(h1Mod, file, "/hcore_mod");
 
   // read cholesky to shared memory
-  unsigned int cholsize = nchol * norbs * norbs * 4;
+  unsigned int cholsize = nchol * norbs * norbs;
   complex<double> *cholSHM;
   MPI_Barrier(MPI_COMM_WORLD);
   // TODO read HDF5 to SHM function implemented here.
@@ -837,8 +836,8 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   // create eigen matrix maps to shared memory
   for (int n = 0; n < nchol; n++) {
     Eigen::Map<MatrixXcd> cholMatMap(static_cast<complex<double> *>(cholSHM) +
-                                      n * norbs * norbs * 4,
-                                  2 * norbs, 2 * norbs);
+                                      n * norbs * norbs ,
+                                     norbs, norbs);
     chol.push_back(cholMatMap);
     cholMat.push_back(cholMatMap);
   }

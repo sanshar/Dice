@@ -14,7 +14,9 @@ GZHF::GZHF(Hamiltonian &ham, bool pleftQ, std::string fname) {
   detC = hf.block(0, 0, norbs, nelec);
   detCAd = detC.adjoint();
   leftQ = pleftQ;
-  ham.rotateCholesky(detCAd, rotChol, rotCholMat);
+  if (leftQ) {
+    ham.rotateCholesky(detCAd, rotChol, rotCholMat);
+  }
 };
 
 void GZHF::getSample(Eigen::MatrixXcd &sampleDet) { sampleDet = detC; };

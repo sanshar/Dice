@@ -64,10 +64,9 @@ int main(int argc, char *argv[])
   //int norbs, nalpha, nbeta;
   //double ecore;
   //readIntegralsCholeskyAndInitializeDeterminantStaticVariables(schd.integralsFile, norbs, nalpha, nbeta, ecore, h1, h1Mod, chol);
- 
   Hamiltonian ham = Hamiltonian(schd.integralsFile, schd.soc, schd.intType);
   if (commrank == 0) {
-    if (schd.soc || schd.intType == "g" || schd.intType == "gz'") 
+    if (schd.soc || schd.intType == "g" || schd.intType == "gz") 
       afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nelec:  " << ham.nelec << endl;
     else 
       afqmcFile << "# Number of orbitals:  " << ham.norbs << ", nalpha:  " << ham.nalpha << ", nbeta:  " << ham.nbeta << endl;
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
   afqmcFile.close();
 
   DQMCWalker walker;
-  if (schd.soc || (schd.intType == "g")) walker = DQMCWalker(false, true, true);
+  if (schd.soc || (schd.intType == "g") || (schd.intType == "gz")) walker = DQMCWalker(false, true, true);
   else {
     if (ham.nalpha != ham.nbeta) walker = DQMCWalker(false);
     if (schd.phaseless) {
@@ -104,8 +103,9 @@ int main(int argc, char *argv[])
     waveLeft = new UHF(ham, true); 
   }
   else if (schd.leftWave == "ghf") {
-    if (schd.intType == "gz")
+    if (schd.intType == "gz") {
       waveLeft = new GZHF(ham, true);
+    }
     else
       waveLeft = new GHF(ham, true); 
   }
@@ -119,8 +119,9 @@ int main(int argc, char *argv[])
     int nact = (schd.nciAct < 0) ? ham.norbs : schd.nciAct;
     if ((schd.intType == "g") || schd.soc) 
       waveLeft = new GHFMultislater(ham, schd.determinantFile, nact, schd.nciCore);
-    else if (schd.intType == "gz")
-      waveLeft = new GZHFMultislater(ham, schd.determinantFile, nact, schd.nciCore); 
+    else if (schd.intType == "gz") {
+      waveLeft = new GZHFMultislater(ham, schd.determinantFile, nact, schd.nciCore);  
+    }
     else 
       waveLeft = new Multislater(ham, schd.determinantFile, nact, schd.nciCore); 
   }
@@ -164,8 +165,9 @@ int main(int argc, char *argv[])
     else walker = DQMCWalker(false);
   }
   else if (schd.rightWave == "ghf") {
-    if (schd.intType == "gz")
+    if (schd.intType == "gz") {
       waveRight = new GZHF(ham, false);
+    }
     else
       waveRight = new GHF(ham, false); 
   }
@@ -195,7 +197,9 @@ int main(int argc, char *argv[])
 
   if (schd.phaseless) {
     Wavefunction *waveGuide;
-    waveGuide = new RHF(ham, false); 
+    if (schd.intType != "gz") {
+      waveGuide = new RHF(ham, false);
+    }
     calcMixedEstimatorLongProp(*waveLeft, *waveRight, *waveGuide, walker, ham);
   }
   else {
