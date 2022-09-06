@@ -1,90 +1,62 @@
-USE_MPI = yes
-USE_INTEL = no
-ONLY_DQMC = no
+USE_INTEL = no 
 HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
-HDF5=${CURC_HDF5_ROOT}
 EIGEN=./eigen/
+HDF5=${CURC_HDF5_ROOT}
+MKL=${MKLROOT}
 
-INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
-LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
+INCLUDE_MKL = -I$(MKL)/include
+LIB_MKL = -L$(MKL)/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
+
+INCLUDE_BOOST = -I$(BOOST)/include -I$(BOOST)
+LIB_BOOST = -L$(BOOST)/lib -L$(BOOST)/stage/lib
+
+INCLUDE_HDF5 = -I$(HDF5)/include
+LIB_HDF5 = -L$(HDF5)/lib -lhdf5
 
 COMPILE_NUMERIC = no
-#SPARSEHASH=/projects/anma2640/sparsehash/src/
 
-ifeq ($(ONLY_DQMC), yes)
-  FLAGS = -std=c++14 -O3 -g -w -I./VMC -I./utils -I./Wavefunctions -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include 
-else 
-  FLAGS = -std=c++14 -O3 -g -w -I./FCIQMC -I./VMC -I./utils -I./Wavefunctions -I./ICPT -I./ICPT/StackArray/ -I${EIGEN} -I${BOOST} -I${BOOST}/include -I${HDF5}/include -I/opt/local/include/openmpi-mp/ -I.
-endif
-
+FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5)
+LFLAGS_BASE = $(LIB_BOOST)
 ifeq ($(HAS_AVX2), yes)
-  FLAGS += -march=core-avx2
+	FLAGS_BASE += -march=core-avx2
 endif
 
-ifeq ($(USE_INTEL), no)
-  FLAGS += -fpermissive -fopenmp -w
-endif
-
-GIT_HASH=`git rev-parse HEAD`
-COMPILE_TIME=`date`
-GIT_BRANCH=`git branch | grep "^\*" | sed s/^..//`
-VERSION_FLAGS=-DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" -DGIT_BRANCH="\"$(GIT_BRANCH)\""
-
-INCLUDE_MKL=-I/curc/sw/intel/16.0.3/mkl/include
-LIB_MKL = -L/curc/sw/intel/16.0.3/mkl/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
-
-ifeq ($(USE_INTEL), yes) 
-    LANG=en_US.utf8
-    LC_ALL=en_US.utf8
-	FLAGS += -qopenmp
-	DFLAGS += -qopenmp
-	ifeq ($(USE_MPI), yes) 
-		CXX = mpiicpc #-mkl
-		CC = mpiicpc
-        ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
-		else
-		   LFLAGS = -L${BOOST}/stage/lib -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
-		endif
-		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5
-		#CXX = mpicxx
-		#CC = mpicc
-		#LFLAGS = -L${BOOST}/lib -lboost_serialization -lboost_mpi  -lboost_program_options -lboost_system -lboost_filesystem -lrt -L${HDF5}/lib -lhdf5
-	else
-		CXX = icpc
-		CC = icpc
-		LFLAGS = -L${BOOST}/stage/lib -lboost_serialization-mt
-		FLAGS += -DSERIAL
-		DFLAGS += -DSERIAL
-	endif
+ifeq ($(USE_INTEL), yes)
+	LANG = en_US.utf8
+	LC_ALL = en_US.utf8
+	FLAGS_BASE += -qopenmp
+	CXX = mpiicpc
 else
-	FLAGS += -openmp
-	DFLAGS += -openmp
-	ifeq ($(USE_MPI), yes) 
-		CXX = mpicxx
-		CC = mpicxx
-        ifeq ($(ONLY_DQMC), yes)
-           LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -L${HDF5}/lib -lhdf5
-		else
-		   LFLAGS = -lrt -L${BOOST}/lib -lboost_serialization -lboost_mpi -lboost_program_options -lboost_system -lboost_filesystem -L${HDF5}/lib -lhdf5 
-        endif
-    else
-		CXX = g++
-		CC = g++
-		LFLAGS = -L/opt/local/lib -lboost_serialization-mt
-		FLAGS += -DSERIAL
-		DFLAGS += -DSERIAL
-	endif
+	FLAGS_BASE += -fopenmp -fpermissive
+	LFLAGS_BASE += -lrt
+	CXX = mpicxx
 endif
+
+FLAGS_SHCI = $(FLAGS_BASE) -I./SHCI
+FLAGS_ZDICE = $(FLAGS_BASE) -I./SHCI -DComplex
+FLAGS_ZSHCI = $(FLAGS_BASE) -I./ZSHCI -DComplex  -DBOOST_BIND_NO_PLACEHOLDERS 
+FLAGS_QMC = $(FLAGS_BASE) -I./VMC -I./utils -I./Wavefunctions  -I./FCIQMC 
+FLAGS_ICPT = $(FLAGS_QMC) $(INCLUDE_MKL) -I./ICPT -I./ICPT/StackArray
+
+LFLAGS_SHCI = $(LFLAGS_BASE) -lboost_mpi -lboost_serialization
+LFLAGS_ZDICE = $(LFLAGS_SHCI)
+LFLAGS_ZSHCI = $(LFLAGS_SHCI)
+LFLAGS_QMC = $(LFLAGS_SHCI) $(LIB_HDF5) -lboost_program_options -lboost_system -lboost_filesystem
+LFLAGS_ICPT = $(LFLAGS_QMC) $(LIB_MKL)
+
+GIT_HASH = `git rev-parse HEAD`
+COMPILE_TIME = `date`
+GIT_BRANCH = `git branch | grep "^\*" | sed s/^..//`
+VERSION_FLAGS = -DGIT_HASH="\"$(GIT_HASH)\"" -DCOMPILE_TIME="\"$(COMPILE_TIME)\"" \
+	-DGIT_BRANCH="\"$(GIT_BRANCH)\""
 
 # Host specific configurations.
 HOSTNAME := $(shell hostname)
 ifneq ($(filter dft node%, $(HOSTNAME)),)
 include dft.mk
 endif
-
 
 OBJ_VMC = obj/staticVariables.o \
 	obj/input.o \
@@ -107,9 +79,9 @@ OBJ_VMC = obj/staticVariables.o \
 	obj/SimpleWalker.o \
 	obj/ShermanMorrisonWoodbury.o\
 	obj/excitationOperators.o\
-    obj/statistics.o \
-    obj/sr.o \
-    obj/evaluateE.o 
+	obj/statistics.o \
+	obj/sr.o \
+	obj/evaluateE.o 
 
 OBJ_ICPT= obj/PerturberDependentCode.o \
 	obj/BlockContract.o \
@@ -139,7 +111,6 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/sr.o \
 	obj/Correlator.o
 
-
 OBJ_FCIQMC = obj/staticVariables.o \
 	obj/input.o \
 	obj/integral.o\
@@ -158,9 +129,9 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/SimpleWalker.o \
 	obj/ShermanMorrisonWoodbury.o \
 	obj/excitationOperators.o \
-    obj/statistics.o \
-    obj/sr.o \
-    obj/evaluateE.o
+	obj/statistics.o \
+	obj/sr.o \
+	obj/evaluateE.o
 
 OBJ_DQMC = obj/staticVariables.o \
 	obj/input.o \
@@ -184,9 +155,6 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/MixedEstimator.o \
 	obj/ProjectedMF.o
 
-#obj/DQMCSampling.o \
-#obj/DQMCUtils.o \
-
 OBJ_Dice = \
 	obj/SHCI/SHCI.o \
 	obj/SHCI/SHCIbasics.o \
@@ -203,6 +171,7 @@ OBJ_Dice = \
 	obj/SHCI/LCC.o \
 	obj/SHCI/symmetry.o \
 	obj/SHCI/OccRestrictions.o \
+	obj/SHCI/cdfci.o
 
 OBJ_ZDice2 = \
 	obj_z/SHCI/SHCI.o \
@@ -243,83 +212,68 @@ OBJ_ZSHCI = \
 	obj_z/ZSHCI/cdfci.o
 
 obj/SHCI/%.o: SHCI/%.cpp
-	$(CXX) $(FLAGS) $(OPT) $(VERSION_FLAGS) -c $< -o $@
+	$(CXX) $(FLAGS_SHCI) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj_z/SHCI/%.o: SHCI/%.cpp
-	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
+	$(CXX) $(FLAGS_ZDICE) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj_z/ZSHCI/%.o: ZSHCI/%.cpp
-	$(CXX) $(FLAGS) -DComplex $(OPT) $(VERSION_FLAGS) -c $< -o $@
-obj/%.o: %.cpp  
-	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_ZSHCI) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: Wavefunctions/%.cpp  
-	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) $(OPT) -c $< -o $@
 obj/%.o: utils/%.cpp  
-	$(CXX) $(FLAGS) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) $(OPT) -c $< -o $@
 obj/%.o: VMC/%.cpp  
-	$(CXX) $(FLAGS) -I./VMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c $< -o $@
 obj/%.o: DQMC/%.cpp  
-	$(CXX) $(FLAGS) -I./DQMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c $< -o $@
 obj/%.o: FCIQMC/%.cpp  
-	$(CXX) $(FLAGS) -I./FCIQMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c $< -o $@
 obj/%.o: ICPT/%.cpp  
-	$(CXX) $(FLAGS) $(INCLUDE_MKL) -I./ICPT/TensorExpressions/ $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_ICPT) -I./ICPT/TensorExpressions/ $(OPT) -c $< -o $@
 obj/%.o: ICPT/StackArray/%.cpp  
-	$(CXX) $(FLAGS) $(INCLUDE_MKL) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_ICPT) $(OPT) -c $< -o $@
 
-ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
-ifeq ($(COMPILE_NUMERIC), yes)
-	ALL+= bin/periodic
-endif 
+# not sure about the status of periodic
+#ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
+#ifeq ($(COMPILE_NUMERIC), yes)
+#  ALL+= bin/periodic
+#endif 
 
-ifeq ($(ONLY_DQMC), yes)
-  all: bin/DQMC
-else 
-  all: bin/VMC bin/GFMC bin/FCIQMC bin/DQMC #bin/sPT  bin/GFMC
-endif 
-FCIQMC: bin/FCIQMC
+all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
 
-bin/periodic: 
+periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
 
 bin/libPeriodic.so: bin/libPeriodic.so
 	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
-bin/GFMC	: $(OBJ_GFMC) executables/GFMC.cpp
-	$(CXX)   $(FLAGS) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS) $(VERSION_FLAGS)
+GFMC: $(OBJ_GFMC) executables/GFMC.cpp
+	$(CXX) $(FLAGS_QMC) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
+	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-bin/ICPT	: $(OBJ_ICPT) executables/ICPT.cpp
-	$(CXX)   $(FLAGS) $(INCLUDE_MKL)  $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/ICPT $(OBJ_ICPT) obj/ICPT.o $(LFLAGS) $(LIB_MKL) $(VERSION_FLAGS)
+ICPT: $(OBJ_ICPT) executables/ICPT.cpp
+	$(CXX) $(FLAGS_ICPT) $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
+	$(CXX) $(FLAGS_ICPT) $(OPT) -o bin/ICPT $(OBJ_ICPT) obj/ICPT.o $(LFLAGS_ICPT) $(VERSION_FLAGS)
 
-bin/VMC	: $(OBJ_VMC) executables/VMC.cpp
-	$(CXX)   $(FLAGS) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS) $(VERSION_FLAGS)
+VMC: $(OBJ_VMC) executables/VMC.cpp
+	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
+	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-bin/FCIQMC	: $(OBJ_FCIQMC) executables/FCIQMC.cpp
-	$(CXX)   $(FLAGS) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS) $(VERSION_FLAGS)
+FCIQMC: $(OBJ_FCIQMC) executables/FCIQMC.cpp
+	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
+	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-bin/DQMC	: $(OBJ_DQMC) executables/DQMC.cpp
-	$(CXX)   $(FLAGS) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS) $(VERSION_FLAGS)
-
-bin/sPT	: $(OBJ_sPT) 
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/sPT $(OBJ_sPT) $(LFLAGS)
-
-bin/CI	: $(OBJ_CI) 
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/CI $(OBJ_CI) $(LFLAGS)
-
-VMC2	: $(OBJ_VMC) 
-	$(CXX)   $(FLAGS) $(OPT) -o  VMC2 $(OBJ_VMC) $(LFLAGS)
+DQMC: $(OBJ_DQMC) executables/DQMC.cpp
+	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
+	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
 Dice	: $(OBJ_Dice)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/Dice $(OBJ_Dice) $(LFLAGS)
+	$(CXX) $(FLAGS_SHCI) $(OPT) -o bin/Dice $(OBJ_Dice) $(LFLAGS_SHCI) -I./SHCI
 
 ZDice2	: $(OBJ_ZDice2)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS)
+	$(CXX) $(FLAGS_ZDICE) $(OPT) -o bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS_ZDICE) -I./SHCI -DComplex
 
 ZSHCI	: $(OBJ_ZSHCI)
-	$(CXX)   $(FLAGS) $(OPT) -o  bin/ZSHCI $(OBJ_ZSHCI) $(LFLAGS)
+	$(CXX) $(FLAGS_ZSHCI) $(OPT) -o bin/ZSHCI $(OBJ_ZSHCI) $(LFLAGS_ZSHCI)
 
 clean :
 	find . -name "*.o"|xargs rm 2>/dev/null;rm -f bin/* >/dev/null 2>&1

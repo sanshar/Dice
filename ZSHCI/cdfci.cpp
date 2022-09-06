@@ -26,7 +26,7 @@ using namespace boost;
 using namespace cdfci;
 using StitchDEH = SHCISortMpiUtils::StitchDEH;
 using cdfci::value_type;
-typedef unordered_map<Determinant, array<dcomplex, 2>> hash_det;
+typedef unordered_map<Determinant, std::array<dcomplex, 2>> hash_det;
 
 void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
@@ -1057,6 +1057,14 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
       }
     }
   }
+
+  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
+  for (int i = 0; i < x_vector.size(); i++) {
+    int iroot = i % nroots;
+    int i_idx = i / nroots;
+    ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
+  }
+
   coreE = coreEbkp;
   return;
 }

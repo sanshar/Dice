@@ -5,7 +5,7 @@ printf "\n\nRunning Tests for SHCI/SHCISCF\n"
 printf "======================================================\n"
 
 MPICOMMAND="mpirun -np 4"
-HCIPATH="../../Dice"
+HCIPATH="../../../bin/Dice"
 here=`pwd`
 
 ## Clean up

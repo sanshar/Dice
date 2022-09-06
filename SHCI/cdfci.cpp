@@ -17,6 +17,7 @@
 #include "integral.h"
 #include "math.h"
 #include "communicate.h"
+#include "OccRestrictions.h"
 #include <boost/format.hpp>
 #include <Eigen/Core>
 #include <algorithm>
@@ -27,7 +28,7 @@ using namespace Eigen;
 using namespace boost;
 using StitchDEH = SHCISortMpiUtils::StitchDEH;
 using cdfci::value_type;
-typedef unordered_map<Determinant, array<CItype, 2>> hash_det;
+typedef unordered_map<Determinant, std::array<CItype, 2>> hash_det;
 
 void cdfci::getDeterminantsVariational(
         Determinant& d, double epsilon, CItype ci1, CItype ci2,
@@ -82,7 +83,7 @@ void cdfci::getDeterminantsVariational(
   d.getOpenClosed(open, closed);
   int unpairedElecs = schd.enforceSeniority ?  d.numUnpairedElectrons() : 0;
 
-  initiateRestrictions(schd, closed);
+  initiateRestrictions(schd.restrictionsV, closed);
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
 
@@ -138,7 +139,7 @@ void cdfci::getDeterminantsVariational(
       //double E = EnergyAfterExcitation(closed, nclosed, int1, int2, coreE, i, a, j, b, Energyd);
       //if (abs(integrals[index]/(E0-Energyd)) <epsilon) continue;
       if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
-      if (! satisfiesRestrictions(schd, closed[i], closed[j], a, b)) continue;
+      if (! satisfiesRestrictions(schd.restrictionsV, closed[i], closed[j], a, b)) continue;
       if (!(d.getocc(a) || d.getocc(b))) {
         Determinant di = d;
         di.setocc(a, true); di.setocc(b, true);di.setocc(closed[i],false); di.setocc(closed[j], false);
@@ -258,16 +259,16 @@ double cdfci::CoordinateUpdate(value_type& det_picked, hash_det & wfn, pair<doub
   const double pi = atan(1.0) * 4;
 
   if (d >= 0) {
-    auto qrtd = sqrt(d);
+    auto qrtd = std::sqrt(d);
     rt = cbrt(-q2 + qrtd) + cbrt(-q2 - qrtd);
   }
   else {
-    auto qrtd = sqrt(-d);
+    auto qrtd = std::sqrt(-d);
     if (q2 >= 0) {
-      rt = 2 * sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
+      rt = 2 * std::sqrt(-p3) * cos((atan2(-qrtd, -q2) - 2*pi)/3.0);      
     }
     else {
-      rt = 2 * sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
+      rt = 2 * std::sqrt(-p3) * cos(atan2(qrtd, -q2)/3.0);
     }
   }
   dx = rt - x;
@@ -469,7 +470,7 @@ vector<double> cdfci::DoVariational(vector<MatrixXx>& ci, vector<Determinant> & 
         civec = 1.0;
         //std::cout << civec << " " << norm << std::endl;
       }
-      array<double, 2> zero_out = {0.0,0.0};
+      std::array<double, 2> zero_out = {0.0,0.0};
       wavefunction[SortedDetsvec[i]] = zero_out;
       //cdfci::getDeterminantsVariational(SortedDetsvec[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], wavefunction, new_dets, schd, 0, nelec);
     }
@@ -1260,8 +1261,8 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           double curr_energy = ene[iroot].first/ene[iroot].second;
           double prev_energy = prev_ene[iroot].first/prev_ene[iroot].second;
           cout << setw(10) << iter * thread_num << setw(20) <<std::setprecision(14) << curr_energy+coreEbkp << setw(20) <<std::setprecision  (14) << prev_energy+coreEbkp;
-          cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
-          cout << std::setw(12) << std::setprecision(4) << scientific << residual[iroot] << defaultfloat << endl;
+          cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << std::defaultfloat;
+          cout << std::setw(12) << std::setprecision(4) << scientific << residual[iroot] << std::defaultfloat << endl;
           cout << endl;
         }
         double residual_sum = 0.0;
@@ -1289,6 +1290,14 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
    }
    cout << endl;
   }*/
+
+  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
+  for (int i = 0; i < x_vector.size(); i++) {
+    int iroot = i % nroots;
+    int i_idx = i / nroots;
+    ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
+  }
+
   coreE = coreEbkp;
   return;
 }
@@ -1557,7 +1566,6 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         cout << std::setw(12) << std::setprecision(4) << scientific << getTime()-start_time << defaultfloat;
         cout << std::setw(12) << std::setprecision(4) << scientific << residual << defaultfloat << endl;
         
-        double residual_sum = 0.0;
         if (residual < schd.cdfciTol) {
           break;
         }
@@ -1565,6 +1573,14 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
       }
     }
   }
+
+  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
+  for (int i = 0; i < x_vector.size(); i++) {
+    int iroot = i % nroots;
+    int i_idx = i / nroots;
+    ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
+  }
+
   coreE = coreEbkp;
   return;
 }

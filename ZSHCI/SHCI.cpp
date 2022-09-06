@@ -338,10 +338,11 @@ int main(int argc, char* argv[]) {
     vector<double> E0;
     if (schd.cdfci_on == 0 && schd.restart) {
       cdfci::solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
-      exit(0);
     }
-    E0 = SHCIbasics::DoVariational(
+    else {
+      E0 = SHCIbasics::DoVariational(
         ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
+    }
     Determinant* SHMDets;
     SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
     int DetsSize = Dets.size();
@@ -379,6 +380,95 @@ int main(int argc, char* argv[]) {
 
       }
     }
+
+        // this function is only used for uhf-like dets, orbitals are ordered abab...
+    if (commrank == 0) {
+      if (schd.writeBestDeterminantsUHF > 0) {
+        int num = min(schd.writeBestDeterminants, static_cast<int>(DetsSize));
+        int nspatorbs = Determinant::norbs/2;
+        for (int root = 0; root < schd.nroots; root++) {
+          string fname;
+          if (root == 0) fname = "dets.bin";
+          else {
+            fname = "dets_";
+            fname.append(to_string(root));
+            fname.append(".bin");
+          }
+          ofstream fout = ofstream(fname, ios::binary);
+          fout.write((char*) &num, sizeof(int));
+          fout.write((char*) &nspatorbs, sizeof(int));
+          MatrixXx prevci = 1. * ci[root];
+          std::vector<size_t> idx(static_cast<int>(DetsSize));
+          std::iota(idx.begin(), idx.end(), 0);
+          std::sort(idx.begin(), idx.end(), [&prevci](size_t i1, size_t i2){return abs(prevci(i1, 0)) > abs(prevci(i2, 0));});
+          for (int i = 0; i < num; i++) {
+            int m = idx[i];
+            double parity = getParityForDiceToAlphaBeta(SHMDets[m]);
+            double wciCoeff = parity * std::real(prevci(m, 0));
+            fout.write((char*) &wciCoeff, sizeof(double));
+            Determinant wdet = SHMDets[m];
+            char det[norbs];
+            wdet.getRepArray(det);
+            for (int i = 0; i < nspatorbs; i++) {
+              char detocc;
+              if (det[2 * i] == false && det[2 * i + 1] == false)
+                detocc = '0';
+              else if (det[2 * i] == true && det[2 * i + 1] == false)
+                detocc = 'a';
+              else if (det[2 * i] == false && det[2 * i + 1] == true)
+                detocc = 'b';
+              else if (det[2 * i] == true && det[2 * i + 1] == true)
+                detocc = '2';
+              fout.write((char*) &detocc, sizeof(char));
+            }
+          }
+          fout.close();
+        }
+      }
+      if (schd.writeBestDeterminants > 0) {
+        int num = min(schd.writeBestDeterminants, static_cast<int>(DetsSize));
+        int nspatorbs = Determinant::norbs/2;
+        int nspinorbs = Determinant::norbs;
+        for (int root = 0; root < schd.nroots; root++) {
+          string fname;
+          if (root == 0) fname = "dets.bin";
+          else {
+            fname = "dets_";
+            fname.append(to_string(root));
+            fname.append(".bin");
+          }
+          ofstream fout = ofstream(fname, ios::binary);
+          fout.write((char*) &num, sizeof(int));
+          fout.write((char*) &nspinorbs, sizeof(int));
+          MatrixXx prevci = 1. * ci[root];
+          std::vector<size_t> idx(static_cast<int>(DetsSize));
+          std::iota(idx.begin(), idx.end(), 0);
+          std::sort(idx.begin(), idx.end(), [&prevci](size_t i1, size_t i2){return abs(prevci(i1, 0)) > abs(prevci(i2, 0));});
+          for (int i = 0; i < num; i++) {
+            int m = idx[i];
+            double wciCoeff = std::real(prevci(m, 0));
+            fout.write((char*) &wciCoeff, sizeof(double));
+            Determinant wdet = SHMDets[m];
+            char det[norbs];
+            wdet.getRepArray(det);
+            for (int i = 0; i < nspatorbs; i++) {
+              char detocc;
+              if (det[2 * i] == false && det[2 * i + 1] == false)
+                detocc = '0';
+              else if (det[2 * i] == true && det[2 * i + 1] == false)
+                detocc = 'a';
+              else if (det[2 * i] == false && det[2 * i + 1] == true)
+                detocc = 'b';
+              else if (det[2 * i] == true && det[2 * i + 1] == true)
+                detocc = '2';
+              fout.write((char*) &detocc, sizeof(char));
+            }
+          }
+          fout.close();
+        }
+      }
+    }
+    
     // #####################################################################
     // Print the 5 most important determinants and their weights
     // #####################################################################
