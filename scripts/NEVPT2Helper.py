@@ -69,11 +69,11 @@ def writeNEVPTIntegrals(mc, E1, E2, E1eff, nfro, intfolder):
     eris_sp['h1eff'][nocc:,nocc:] += np.einsum('abcd,cd', eris['ppaa'][nocc:,nocc:,:,:], E1eff)
     eris_sp['h1eff'][nocc:,nocc:] -= np.einsum('abcd,bd', eris['papa'][nocc:,:,nocc:,:], E1eff)*0.5
     np.save(intfolder+"int1eff",np.asfortranarray(eris_sp['h1eff'][nfro:,nfro:]))
-    np.save(intfolder+"f",np.asfortranarray(eris_sp['h1eff'][nfro:,nfro:])) 
+    np.save(intfolder+"f",np.asfortranarray(eris_sp['h1eff'][nfro:,nfro:]))
     # CVCV
     eriscvcv = eris['cvcv']
     if (not isinstance(eris_sp['h1eff'], type(eris['cvcv']))):
-      eriscvcv = lib.chkfile.load(eris['cvcv'].name, "eri_mo")#h5py.File(eris['cvcv'].name,'r')["eri_mo"]
+        eriscvcv = lib.chkfile.load(eris['cvcv'].name, "eri_mo")#h5py.File(eris['cvcv'].name,'r')["eri_mo"]
     eris_sp['cvcv'] = eriscvcv.reshape(ncor, nvir, ncor, nvir)
     end = time.time()
     print('......production of INT took %10.2f sec' %(end-start))
@@ -100,36 +100,36 @@ def writeNEVPTIntegrals(mc, E1, E2, E1eff, nfro, intfolder):
     # offdiagonal warning
     offdiagonal = 0.0
     for k in range(ncor):
-      for l in range(ncor):
-        if(k != l):
-          offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l] ))
+        for l in range(ncor):
+            if(k != l):
+                offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l]))
     for k in range(nocc, norb):
-      for l in range(nocc,norb):
-        if(k != l):
-          offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l] ))
+        for l in range(nocc,norb):
+            if(k != l):
+                offdiagonal = max(abs(offdiagonal), abs(eris_sp['h1eff'][k,l]))
     if (abs(offdiagonal) > 1e-6):
-      print("WARNING: Have to use natural orbitals from CAASCF")
-      print("         offdiagonal elements: {:13.6f}".format(offdiagonal))
-      print("")
+        print("WARNING: Have to use natural orbitals from CAASCF")
+        print("         offdiagonal elements: {:13.6f}".format(offdiagonal))
+        print("")
 
     # Write out ingredients to intfolder
     # 2 "C"
     start = time.time()
     print("Basic ingredients written to "+intfolder,nfro,ncor,nocc,norb)
-    np.save(intfolder+"W:ccae", np.asfortranarray(eris['pacv'][nfro:ncor,     :    , nfro:    ,     :    ].transpose(0,2,1,3)))
-    np.save(intfolder+"W:eecc", np.asfortranarray(eris_sp['cvcv'][nfro: ,     :    , nfro:    ,     :    ].transpose(1,3,0,2)))
+    np.save(intfolder+"W:ccae", np.asfortranarray(eris['pacv'][nfro:ncor, :, nfro:, :].transpose(0,2,1,3)))
+    np.save(intfolder+"W:eecc", np.asfortranarray(eris_sp['cvcv'][nfro:, :, nfro:, :].transpose(1,3,0,2)))
 
     # 2 "A"
-    np.save(intfolder+"W:caac", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nfro:ncor,     :    ].transpose(0,3,1,2)))
-    np.save(intfolder+"W:ccaa", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nfro:ncor,     :    ].transpose(0,2,1,3)))
-    np.save(intfolder+"W:aeca", np.asfortranarray(eris['papa'][nfro:ncor,     :    , nocc:    ,     :    ].transpose(1,2,0,3)))
-    np.save(intfolder+"W:eeaa", np.asfortranarray(eris['papa'][nocc:    ,     :    , nocc:    ,     :    ].transpose(0,2,1,3)))
-    np.save(intfolder+"W:aaaa", np.asfortranarray(eris['ppaa'][ncor:nocc, ncor:nocc,     :    ,     :    ].transpose(0,2,1,3)))
-    np.save(intfolder+"W:eaca", np.asfortranarray(eris['ppaa'][nocc:    , nfro:ncor,     :    ,     :    ].transpose(0,2,1,3)))
-    np.save(intfolder+"W:caca", np.asfortranarray(eris['ppaa'][nfro:ncor, nfro:ncor,     :    ,     :    ].transpose(0,2,1,3)))
+    np.save(intfolder+"W:caac", np.asfortranarray(eris['papa'][nfro:ncor, :, nfro:ncor,:].transpose(0,3,1,2)))
+    np.save(intfolder+"W:ccaa", np.asfortranarray(eris['papa'][nfro:ncor, :, nfro:ncor,:].transpose(0,2,1,3)))
+    np.save(intfolder+"W:aeca", np.asfortranarray(eris['papa'][nfro:ncor, :, nocc:, :].transpose(1,2,0,3)))
+    np.save(intfolder+"W:eeaa", np.asfortranarray(eris['papa'][nocc:, :, nocc:, :].transpose(0,2,1,3)))
+    np.save(intfolder+"W:aaaa", np.asfortranarray(eris['ppaa'][ncor:nocc, ncor:nocc, :, :].transpose(0,2,1,3)))
+    np.save(intfolder+"W:eaca", np.asfortranarray(eris['ppaa'][nocc:, nfro:ncor, :, :].transpose(0,2,1,3)))
+    np.save(intfolder+"W:caca", np.asfortranarray(eris['ppaa'][nfro:ncor, nfro:ncor, :, :].transpose(0,2,1,3)))
 
     # 2 "E"
-    np.save(intfolder+"W:eeca", np.asfortranarray(eris['pacv'][nocc:    ,     :    , nfro:    ,     :    ].transpose(3,0,2,1)))
+    np.save(intfolder+"W:eeca", np.asfortranarray(eris['pacv'][nocc:, :, nfro:, :].transpose(3,0,2,1)))
 
     end = time.time()
     print('......savings of INGREDIENTS took %10.2f sec' %(end-start))
@@ -140,7 +140,7 @@ def writeNEVPTIntegrals(mc, E1, E2, E1eff, nfro, intfolder):
 
 def write_ic_inputs(nelec, ncor, ncas, nfro, ms2, type):
     methods = ['_CCVV', '_CCAV', '_ACVV']
-    domains = ['eecc','ccae','eeca','ccaa','eeaa','caae']
+    #domains = ['eecc','ccae','eeca','ccaa','eeaa','caae']
 
     for method in methods:
         # Prepare Input
@@ -153,14 +153,14 @@ def write_ic_inputs(nelec, ncor, ncas, nfro, ms2, type):
         f.write('ms2 %d\n'%(ms2))
         f.write('int1e/fock int/int1eff.npy\n')
         if (type=='MRLCC'):
-          f.write('int1e/coreh int/int1.npy\n')
+            f.write('int1e/coreh int/int1.npy\n')
         #f.write('E3  int/E3.npy\n')
         #f.write('E2  int/E2.npy\n')
         #f.write('E1  int/E1.npy\n')
         f.write('thr-den 1.000000e-05\n')
         f.write('thr-var 1.000000e-05\n')
         f.write('thr-trunc 1.000000e-04\n')
-        f.close();
+        f.close()
     sys.stdout.flush()
 
 

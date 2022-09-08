@@ -16,7 +16,7 @@ def extract_data():
     # Count the number of files to read
     n = 0
     for data_file in os.listdir('.'):
-        if data_file.startswith('pt2_energies') and not 'avg' in data_file:
+        if data_file.startswith('pt2_energies') and 'avg' not in data_file:
             n += 1
 
     for i in range(n):

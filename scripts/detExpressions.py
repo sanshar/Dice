@@ -34,7 +34,8 @@ def column_mat_det(nc):
 def laplace_det(nc):
     print('{} column{}'.format(nc, 's' if nc > 1 else ''))
     for mu in range(nc):
-        tc = [ [ f'walk.walker.refHelper.tc(ref.ciExcitations[i][0][{p}], ref.ciExcitations[i][1][{t}])' for t in range(nc) ] for p in range(nc) ]
+        tc = [[f'walk.walker.refHelper.tc(ref.ciExcitations[i][0][{p}], ref.ciExcitations[i][1][{t}])'
+               for t in range(nc)] for p in range(nc)]
         tc[mu] = [ f's(ref.ciExcitations[i][0][{mu}], ref.ciExcitations[i][1][{t}])' for t in range(nc) ]
         detExpression(tc)
     print('\n')
@@ -44,7 +45,8 @@ def row1_mat_det(nc):
     rt = [ 'rtSlice' ]
     rtc = [ f'refHelper.rtc_b(mCre[0], ref.ciExcitations[j][1][{t}])' for t in range(nc) ]
     t = [ f'refHelper.t(ref.ciExcitations[j][0][{p}], mDes[0])' for p in range(nc)]
-    tc = [ [ f'refHelper.tc(ref.ciExcitations[j][0][{p}], ref.ciExcitations[j][1][{t}])' for t in range(nc) ] for p in range(nc) ]
+    tc = [[ f'refHelper.tc(ref.ciExcitations[j][0][{p}], ref.ciExcitations[j][1][{t}])'
+           for t in range(nc) ] for p in range(nc)]
     m = [ rt + rtc ] + [ [t[i]] + tc[i] for i in range(nc) ]
     detExpression(m)
     print('\n')
@@ -54,7 +56,8 @@ def row2_mat_det(nc):
     rt = [ [ f'rtSlice({a}, {i})' for i in range(2) ] for a in range(2) ]
     rtc = [ [ f'refHelper.rtc_b(mCre[{a}], ref.ciExcitations[k][1][{t}])' for t in range(nc) ] for a in range(2) ]
     t = [ [ f'refHelper.t(ref.ciExcitations[k][0][{p}], mDes[{i}])' for i in range(2) ] for p in range(nc) ]
-    tc = [ [ f'refHelper.tc(ref.ciExcitations[k][0][{p}], ref.ciExcitations[k][1][{t}])' for t in range(nc) ] for p in range(nc) ]
+    tc = [ [ f'refHelper.tc(ref.ciExcitations[k][0][{p}], ref.ciExcitations[k][1][{t}])'
+             for t in range(nc) ] for p in range(nc) ]
     m = [ rt[i] + rtc[i] for i in range(2) ] + [ t[i] + tc[i] for i in range(nc) ]
     detExpression(m)
     print('\n')
