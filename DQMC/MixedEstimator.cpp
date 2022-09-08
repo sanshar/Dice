@@ -497,7 +497,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
         if (weights(w) != 0.) {
           // one rdm
           if (step * dt > 10. && step > schd.burnIter * nsteps) {
-            if (ham.intType == "r" || ham.intType == "g") {
+            if (ham.intType == "r" || ham.intType == "g" || ham.intType == "gz") {
               walkers[w].oneRDM(waveLeft, rdmSample);
               oneRDM *= cumulativeWeight;
               oneRDM += weights(w) * rdmSample.real();
@@ -656,7 +656,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
       if (schd.writeOneRDM) {
         std::string scratch_dir = schd.scratchDir;
-        if (ham.intType == "r" || ham.intType == "g") {
+        if (ham.intType == "r" || ham.intType == "g" || ham.intType == "gz") {
           writeOneRDM(oneRDM, cumulativeWeight);
         }
         else if (ham.intType == "u") {
