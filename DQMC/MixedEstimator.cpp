@@ -685,7 +685,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     string fname = "samples.dat";
     ofstream samplesFile(fname);
     for (int i = 0; i < nsweeps; i++) {
-        samplesFile << boost::format("%.7e      %.10e \n") % totalWeights(i) % totalEnergies(i);
+        samplesFile << boost::format("%.15e      %.15e \n") % totalWeights(i) % totalEnergies(i);
     }
     samplesFile.close();
     if (measureCounter > 40) blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), "blocking.tmp");
