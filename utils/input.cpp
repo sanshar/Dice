@@ -681,6 +681,120 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<i
   }
 }
 
+void readDeterminantsGZHFBinary(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<complex<double>>& ciCoeffs)
+{
+  int norbs = Determinant::norbs;
+  int nact = norbs;
+  if (schd.nciAct > 0) nact = schd.nciAct;
+  int ncore = 0;
+  if (schd.nciCore > 0) ncore = schd.nciCore;
+  int ndetsDice = 0, norbsDice = 0;
+  ifstream dump(input, ios::binary);
+  dump.read((char*) &ndetsDice, sizeof(int));
+  dump.read((char*) &norbsDice, sizeof(int));
+  bool isFirst = true;
+  Determinant refDet;
+  for (int i = 0; i < ncore; i++) {
+    refDet.setoccA(2*i, true);
+    ref.push_back(2*i);
+    ref.push_back(2*i+1);
+  }
+  VectorXi sizes = VectorXi::Zero(10);
+  int numDets = 0;
+  std::vector<int> open;
+
+  // processing two ghf orbitals at a time because det is set up for spin orbitals
+  for (int n = 0; n < ndetsDice; n++) {
+    if (isFirst) {// first det is ref
+      isFirst = false;
+      complex<double> ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(complex<double>));
+      ciCoeffs.push_back(conj(ciCoeff));
+      ciParity.push_back(1.);
+      std::array<VectorXi, 2> empty;
+      ciExcitations.push_back(empty);
+      for (int i = ncore; i < ncore + norbsDice/2; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          refDet.setoccA(2*i, true);
+          refDet.setoccA(2*i+1, true);
+          ref.push_back(2*i);
+          ref.push_back(2*i+1);
+        }
+        else if (detocc == 'a') {
+          refDet.setoccA(2*i, true);
+          ref.push_back(2*i);
+          open.push_back(2*i+1);
+        }
+        else if (detocc == 'b') {
+          refDet.setoccA(2*i+1, true);
+          ref.push_back(2*i+1);
+          open.push_back(2*i);
+        }
+        else if (detocc == '0') {
+          open.push_back(2*i);
+          open.push_back(2*i+1);
+        }
+      }
+      numDets++;
+      sizes(0) = 1;
+    }
+    else {
+      complex<double> ciCoeff;
+      dump.read((char*) &ciCoeff, sizeof(complex<double>));
+      vector<int> des, cre;
+      for (int i = ncore; i < ncore + norbsDice/2; i++) {
+        char detocc;
+        dump.read((char*) &detocc, sizeof(char));
+        if (detocc == '2') {
+          if (!refDet.getoccA(2*i)) cre.push_back(2*i);
+          if (!refDet.getoccA(2*i+1)) cre.push_back(2*i+1);
+        }
+        else if (detocc == 'a') {
+          if (!refDet.getoccA(2*i)) cre.push_back(2*i);
+          if (refDet.getoccA(2*i+1)) des.push_back(2*i+1);
+        }
+        else if (detocc == 'b') {
+          if (refDet.getoccA(2*i)) des.push_back(2*i);
+          if (!refDet.getoccA(2*i+1)) cre.push_back(2*i+1);
+        }
+        else if (detocc == '0') {
+          if (refDet.getoccA(2*i)) des.push_back(2*i);
+          if (refDet.getoccA(2*i+1)) des.push_back(2*i+1);
+        }
+      }
+
+      std::array<VectorXi, 2> excitations;
+      excitations[0] = VectorXi::Zero(cre.size());
+      excitations[1] = VectorXi::Zero(des.size());
+      for (int i = 0; i < cre.size(); i++) {
+        //des[i] = std::search_n(ref.begin(), ref.end(), 1, desA[i]) - ref.begin();
+        //cre[i] = std::search_n(open.begin(), open.end(), 1, creA[i]) - open.begin();
+        excitations[0](i) = std::search_n(ref.begin(), ref.end(), 1, des[i]) - ref.begin();
+        //excitationsA[1](i) = std::search_n(open[0].begin(), open[0].end(), 1, creA[i]) - open[0].begin();
+        //excitationsA[0](i) = desA[i];
+        excitations[1](i) = cre[i];
+      }
+      
+      if (cre.size() > schd.excitationLevel) continue;
+      if (abs(ciCoeff) < schd.ciThreshold || numDets == schd.ndets) break;
+      numDets++;
+      ciCoeffs.push_back(ciCoeff);
+      cout << ciCoeff << endl;
+      ciParity.push_back(refDet.parityA(cre, des));
+      ciExcitations.push_back(excitations);
+      if (cre.size() < 10) sizes(cre.size())++;
+    }
+  }
+  if (commrank == 0) {
+    ofstream afqmcFile("afqmc.dat", ios::app);
+    afqmcFile << "# Rankwise number of excitations " << sizes.transpose() << endl;
+    afqmcFile << "# Number of determinants " << numDets << "\n#\n";
+    afqmcFile.close();
+  }
+}
 
 void readDeterminants(std::string input, std::array<std::vector<int>, 2>& ref, std::array<std::vector<std::array<Eigen::VectorXi, 2>>, 2>& ciExcitations,
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs)

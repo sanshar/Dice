@@ -11,7 +11,7 @@ public:
   Eigen::VectorXi refDet;
   std::vector<std::array<Eigen::VectorXi, 2>> ciExcitations;
   std::vector<double> ciParity;
-  std::vector<double> ciCoeffs;
+  std::vector<std::complex<double>> ciCoeffs;
   int nact, ncore;
   bool rightQ;
   std::vector<double> cumulativeCoeffs;

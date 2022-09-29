@@ -12,7 +12,7 @@ using matPair = std::array<MatrixXcd, 2>;
 GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact, int pncore, bool prightQ) 
 {
   std::vector<int> refDetVec;
-  readDeterminantsGHFBinary(fname, refDetVec, ciExcitations, ciParity, ciCoeffs);
+  readDeterminantsGZHFBinary(fname, refDetVec, ciExcitations, ciParity, ciCoeffs);
   
   refDet = VectorXi::Zero(refDetVec.size());
   for (int i = 0; i < refDetVec.size(); i++) refDet[i] = refDetVec[i];

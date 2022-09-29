@@ -238,9 +238,14 @@ void DQMCWalker::prepProp(Eigen::MatrixXcd& ref, Hamiltonian& ham, double pdt, d
       mfShifts.push_back(mfShift);
     }
   }
-  
-  propConstant[0] = constant - ene0;
-  propConstant[1] = constant - ene0;
+  if (phaselessQ) {
+    propConstant[0] = constant - ene0;
+    propConstant[1] = constant - ene0;
+  }
+  else {
+    propConstant[0] = constant / (1. * ham.nelec);
+    propConstant[1] = constant / (1. * ham.nelec);
+  }
   expOneBodyOperator =  (-dt * oneBodyOperator / 2.).exp();
 };
 
@@ -378,6 +383,7 @@ void DQMCWalker::propagate(Hamiltonian& ham)
 
   if (rhfQ) det[1] = det[0];
   else {
+    cout << oneBodyOperator << endl;
     det[1] = expOneBodyOperator * det[1];
     temp = det[1];
     for (int i = 1; i < 10; i++) {
@@ -387,6 +393,36 @@ void DQMCWalker::propagate(Hamiltonian& ham)
     det[1] = exp(-sqrt(dt) * shift) * exp(propConstant[1] * dt / 2.) * expOneBodyOperator * det[1];
   }
 };
+
+void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXcf> floatCholmat, MatrixXcd& propc);
+
+void DQMCWalker::propagateGZ(Hamiltonian& ham)
+{
+  int norbs = ham.norbs;
+  int nelec = ham.nelec;
+  int nfields = ham.nchol;
+
+  complex<double> shift(0.0, 0.0);
+  VectorXcf fields(nfields); fields.setZero();
+  MatrixXcd propc = MatrixXcd::Zero(norbs, norbs);
+  for (int n = 0; n < nfields; n++) {
+    double field_n = normal(generator);
+    fields(n) = field_n;
+    shift += field_n * mfShifts[n];
+  }
+
+  VHS(fields, ham.floatCholMatZ[0], propc);
+
+  detG = expOneBodyOperator * detG;
+  MatrixXcd temp = detG;
+  for (int i = 1; i < 10; i++) {
+    temp = propc * temp / i;
+    detG += temp;
+  }
+  detG = exp(-sqrt(dt) * shift) * exp(propConstant[0] * dt / 2.) * expOneBodyOperator * detG;
+
+  return;
+}
 
 
 void VHS(VectorXcf& fields, float* floatChol, MatrixXcd& propc) 
@@ -436,12 +472,14 @@ void VHS(VectorXcf& fields, Eigen::Map<Eigen::MatrixXcf> floatCholmat, MatrixXcd
   int nfields = fields.size();
   size_t triSize = (norbs * (norbs + 1)) / 2;
 
-  VectorXcf prop_cf = complex<float>(0., 1.) * floatCholmat * fields;
+  VectorXcf prop_cf = floatCholmat * fields;
+  VectorXcf prop_cf_u = complex<float>(0.0, 1.0) * prop_cf.conjugate();
+  prop_cf = complex<float>(0.0, 1.0) * prop_cf;
   for (int i = 0; i < norbs; i++) {
     propc(i, i) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + i]);
     for (int j = 0; j < i; j++) {
       propc(i, j) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + j]);
-      propc(j, i) = static_cast<complex<double>>(prop_cf[i * (i + 1) / 2 + j]);
+      propc(j, i) = static_cast<complex<double>>(prop_cf_u[i * (i + 1) / 2 + j]);
     }
   }
 }
@@ -450,7 +488,7 @@ void applyExp(MatrixXcd& propc, MatrixXcd& det)
 {
   MatrixXcd temp = det;
   for (int i = 1; i < 6; i++) {
-    temp = propc * temp / i;
+    temp = propc * temp / complex<double>(i, 0);
     det += temp;
   }
 }
