@@ -782,7 +782,6 @@ void readDeterminantsGZHFBinary(std::string input, std::vector<int>& ref, std::v
       if (abs(ciCoeff) < schd.ciThreshold || numDets == schd.ndets) break;
       numDets++;
       ciCoeffs.push_back(ciCoeff);
-      cout << ciCoeff << endl;
       ciParity.push_back(refDet.parityA(cre, des));
       ciExcitations.push_back(excitations);
       if (cre.size() < 10) sizes(cre.size())++;
