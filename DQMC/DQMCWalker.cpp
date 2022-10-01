@@ -383,7 +383,6 @@ void DQMCWalker::propagate(Hamiltonian& ham)
 
   if (rhfQ) det[1] = det[0];
   else {
-    cout << oneBodyOperator << endl;
     det[1] = expOneBodyOperator * det[1];
     temp = det[1];
     for (int i = 1; i < 10; i++) {
