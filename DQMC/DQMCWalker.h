@@ -34,6 +34,7 @@ class DQMCWalker {
     void orthogonalize();
 
     void propagate(Hamiltonian& ham);
+    void propagateGZ(Hamiltonian& ham);
     double propagatePhaseless(Wavefunction& wave, Hamiltonian& ham, double eshift);
     double propagatePhaselessRG(Wavefunction& wave, Hamiltonian& ham, double eshift);
     double propagatePhaselessU(Wavefunction& wave, Hamiltonian& ham, double eshift);

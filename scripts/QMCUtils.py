@@ -683,7 +683,7 @@ def prepAFQMC_gzhf(gmf, chol_cut=1e-5):
     print(f'nbasis: {nbasis}')
     print(f'chol.shape: {chol.shape}')
     chol = chol.reshape((-1, nbasis, nbasis))
-    v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+    v0 = 0.5 * np.einsum('nik,nkj->ij', chol, chol, optimize='optimal')
     h1e_mod = h1e - v0
     chol = chol.reshape((chol.shape[0], -1))
     write_dqmc_gzhf(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, filename='FCIDUMP_chol')
@@ -1373,7 +1373,7 @@ def write_dqmc_gzhf(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_
         fh5['hcore_mod_imag'] = hcore_mod.imag.flatten()
         fh5['chol_real'] = chol.real.flatten()
         print(chol.shape)
-        fh5['chol_imag'] = chol.imag.flatten()
+        fh5['chol_imag'] = -1. * chol.imag.flatten()
         fh5['energy_core'] = enuc
 
 

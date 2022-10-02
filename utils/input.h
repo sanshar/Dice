@@ -482,7 +482,8 @@ void readDeterminantsGHF(std::string input, std::vector<int>& ref, std::vector<i
 void readDeterminantsGHFBinary(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
         std::vector<double>& ciParity, std::vector<double>& ciCoeffs);
 
-
+void readDeterminantsGZHFBinary(std::string input, std::vector<int>& ref, std::vector<std::array<Eigen::VectorXi, 2>>& ciExcitations,
+        std::vector<double>& ciParity, std::vector<std::complex<double>>& ciCoeffs);
 // for dqmc
 // reads determinants from Dice, uses uhf dets
 // the reference determinant, assumed to be the first in the file, is read in as a list of integers

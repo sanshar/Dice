@@ -117,19 +117,30 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
   int norbs = ham.norbs;
   int nalpha = ham.nalpha;
   int nbeta = ham.nbeta;
+  int nelec = ham.nelec;
   size_t nsweeps = schd.stochasticIter;
   size_t nsteps = schd.nsteps;
   size_t orthoSteps = schd.orthoSteps;
   double dt = schd.dt;
   vector<int> eneSteps = schd.eneSteps;
 
-  MatrixXd hf = MatrixXd::Zero(norbs, norbs);
-  readMat(hf, "rhf.txt");
   matPair ref;
-  ref[0] = hf.block(0, 0, norbs, nalpha);
-  ref[1] = hf.block(0, 0, norbs, nbeta);
+  MatrixXcd refSOC;
+  std::array<std::complex<double>, 2> hamOverlap;
+  if (schd.intType == "gz") {
+    MatrixXcd hf = MatrixXcd::Zero(norbs, norbs);
+    readMat(hf, "ghf.txt");
+    refSOC = hf.block(0, 0, norbs, nelec);
+    hamOverlap = waveLeft.hamAndOverlap(refSOC, ham);
+  }
+  else {
+    MatrixXd hf = MatrixXd::Zero(norbs, norbs);
+    readMat(hf, "rhf.txt");
+    ref[0] = hf.block(0, 0, norbs, nalpha);
+    ref[1] = hf.block(0, 0, norbs, nbeta);
+    hamOverlap = waveLeft.hamAndOverlap(ref, ham);
+  }
   
-  auto hamOverlap = waveLeft.hamAndOverlap(ref, ham);
   complex<double> refEnergy = hamOverlap[0] / hamOverlap[1];
   complex<double> ene0;
   if (schd.ene0Guess == 1.e10) ene0 = refEnergy;
@@ -159,7 +170,12 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
   }
   ham.setNcholEne(nchol);
   
-  walker.prepProp(ref, ham, dt, ene0.real());
+  if (schd.intType == "gz") {
+    walker.prepProp(refSOC, ham, dt, ene0.real());
+  }
+  else {
+    walker.prepProp(ref, ham, dt, ene0.real());
+  }
   int nEneSteps = eneSteps.size();
   DQMCStatistics stats(nEneSteps);
   auto iterTime = getTime();
@@ -179,10 +195,18 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
       stats.gatherAndPrintStatistics(iTime, delta);
     }
     
-    matPair rn;
-    waveRight.getSample(rn);
+    if (schd.intType == "gz") {
+      MatrixXcd detG;
+      waveRight.getSample(detG);
+      walker.setDet(detG);
+    }
+    else {
+      matPair rn;
+      waveRight.getSample(rn);
 
-    walker.setDet(rn);
+      walker.setDet(rn);
+    }
+    
 
     // prop sampling
     int eneStepCounter = 0;
@@ -191,7 +215,12 @@ void calcMixedEstimator(Wavefunction& waveLeft, Wavefunction& waveRight, DQMCWal
     for (int n = 0; n < nsteps; n++) {
       // prop
       double init = getTime();
-      walker.propagate(ham);
+      if(schd.intType == "gz") {
+        walker.propagateGZ(ham);
+      }
+      else {
+        walker.propagate(ham);
+      }
       propTime += getTime() - init;
       
       // orthogonalize for stability

@@ -66,7 +66,7 @@ void Hamiltonian::rotateCholesky(
   complex<double> *rotCholSHM;
   complex<double> *rotChol0;
   size_t rotSize = phiT.rows() * norbs;
-  size_t size = chol.size() * rotSize;
+  size_t size = cholZ.size() * rotSize;
 
   if (commrank == 0) {
     rotChol0 = new complex<double>[size];
@@ -86,7 +86,7 @@ void Hamiltonian::rotateCholesky(
   MPI_Barrier(MPI_COMM_WORLD);
 
   // create eigen matrix maps to shared memory
-  for (size_t n = 0; n < chol.size(); n++) {
+  for (size_t n = 0; n < cholZ.size(); n++) {
     Eigen::Map<MatrixXcd> rotCholMatMap(
         static_cast<complex<double> *>(rotCholSHM) + n * rotSize, phiT.rows(),
         norbs);
