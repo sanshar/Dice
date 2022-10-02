@@ -6,7 +6,7 @@ printf "======================================================\n"
 MPICOMMAND="mpirun -np 4"
 DQMCPATH="../../../bin/DQMC afqmc.json"
 here=`pwd`
-tol=1.0e-7
+tol=1.0e-6
 clean=1
 
 cd $here/DQMC/rhf_rhf
