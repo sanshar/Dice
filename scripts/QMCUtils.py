@@ -1408,7 +1408,6 @@ def calculate_observables(observables, constants=None, prefix='./'):
     v1 = weights.sum()
     v2 = (weights**2).sum()
     for n in range(nobs):
-        print(weights.shape, observables_afqmc.shape)
         obsMean[n] = np.multiply(weights, observables_afqmc[:, n]).sum() / v1
         obsError[n] = (np.multiply(weights, (observables_afqmc[:, n] - obsMean[n])**2).sum() / (v1 - v2 / v1) /
                        (fcount - 1))**0.5
