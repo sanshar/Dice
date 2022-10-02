@@ -1676,8 +1676,67 @@ def findNeighbors(site, size):
     return neighbors
 
 
-# nevpt
+def model_geom_tpa(n = 1, b1 = 1.45, b2 = 1.34, bh = 1.08):
+  t = 2*np.pi/3
 
+  if n%2 == 0:
+    # vector displacements on one side
+    c0 = np.array([b1/2, 0., 0.])
+    cs = np.array([b1, 0., 0.])
+    cd = np.array([b2/2, b2*3**0.5/2, 0.])
+    ch = np.array([bh/2, -bh*3**0.5/2, 0.])
+    cht = np.array([bh, 0., 0.])
+
+    atomString = f'C {c0[0]} {c0[1]} {c0[2]};\nC {-c0[0]} {-c0[1]} {-c0[2]};\n'
+    currentC = c0
+    for i in range(n-1):
+        if i%2 == 0:
+            newC = currentC + cd
+            newH = currentC + ch
+        else:
+            newC = currentC + cs
+            newH = currentC - ch
+        atomString += f'C {newC[0]} {newC[1]} {newC[2]};\nC {-newC[0]} {-newC[1]} {-newC[2]};\n'
+        atomString += f'H {newH[0]} {newH[1]} {newH[2]};\nH {-newH[0]} {-newH[1]} {-newH[2]};\n'
+        currentC = newC
+
+    # terminal h's
+    th1 = currentC + cht
+    th2 = currentC - ch
+    atomString += f'H {th1[0]} {th1[1]} {th1[2]};\nH {-th1[0]} {-th1[1]} {-th1[2]};\n'
+    atomString += f'H {th2[0]} {th2[1]} {th2[2]};\nH {-th2[0]} {-th2[1]} {-th2[2]};\n'
+
+  else:
+    # vector displacements on one side
+    c0 = np.array([b2/2, 0., 0.])
+    cd = np.array([b2, 0., 0.])
+    cs = np.array([b1/2, b1*3**0.5/2, 0.])
+    ch = np.array([bh/2, -bh*3**0.5/2, 0.])
+    cht = np.array([bh/2, bh*3**0.5/2, 0.])
+
+    atomString = f'C {c0[0]} {c0[1]} {c0[2]};\nC {-c0[0]} {-c0[1]} {-c0[2]};\n'
+    currentC = c0
+    for i in range(n-1):
+        if i%2 == 0:
+            newC = currentC + cs
+            newH = currentC + ch
+        else:
+            newC = currentC + cd
+            newH = currentC - ch
+        atomString += f'C {newC[0]} {newC[1]} {newC[2]};\nC {-newC[0]} {-newC[1]} {-newC[2]};\n'
+        atomString += f'H {newH[0]} {newH[1]} {newH[2]};\nH {-newH[0]} {-newH[1]} {-newH[2]};\n'
+        currentC = newC
+
+    # terminal h's
+    th1 = currentC + cht
+    th2 = currentC + ch
+    atomString += f'H {th1[0]} {th1[1]} {th1[2]};\nH {-th1[0]} {-th1[1]} {-th1[2]};\n'
+    atomString += f'H {th2[0]} {th2[1]} {th2[2]};\nH {-th2[0]} {-th2[1]} {-th2[2]};\n'
+
+  return atomString
+
+
+# nevpt
 
 def from_mc(mc,
             filename,
