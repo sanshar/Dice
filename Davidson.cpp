@@ -893,7 +893,7 @@ double LinearSolver(Hmult2& H, MatrixXx& diag, CItype E0, MatrixXx& x0, MatrixXx
       p.setZero(p.rows(), 1); 
       //H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
       //p -=b; //not sure what this is for
-      pout << iter << endl;
+      //pout << iter << endl;
       return abs(ept);
     }
     
