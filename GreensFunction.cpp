@@ -80,7 +80,7 @@ void license() {
 }
 
 CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
-        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w, int type) ; 
+        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, double E0, CItype w, twoInt& I2, oneInt& I1, double coreE, int type) ; 
 
 //CItype calcFirstGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, 
 //        Determinant* DetsNm1, int DetsNm1Size, Hmult2& HNm1, std::vector<Determinant>& DetsPert, std::vector<CItype>& ciPert, double E0, CItype w) ; 
@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
   }
 
   // read the hamiltonian (integrals, orbital irreps, num-electron etc.)
-  twoInt I2; oneInt I1; int nelec; int norbs; double coreE=0.0, eps;
+  twoInt I2; oneInt I1; int nelec; int norbs; double coreE = 0.0, eps;
   std::vector<int> irrep;
   readIntegrals("FCIDUMP", I2, I1, nelec, norbs, coreE, irrep);
   pout << "# Number of electrons: " << nelec << ", number of orbitals: " << norbs << endl; 
@@ -566,7 +566,7 @@ int main(int argc, char* argv[]) {
     double prevVal = 0.;
     for (int i = 0; i < npoints; i++) {
       std::complex<double> w (schd.w1 + schd.dw*i, schd.eta);
-      CItype g_ij = calcZerothGreensFunction(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsResponse, DetsResponseSize, H, E0[0], w, schd.type);
+      CItype g_ij = calcZerothGreensFunction(schd.i, schd.j, SHMDets, SHMci, DetsSize, SHMDetsResponse, DetsResponseSize, H, E0[0], w, I2, I1, coreE, schd.type);
       //CItype g_ij1 = calcFirstGreensFunction(schd.ij[0], schd.ij[1], SHMDets, SHMci, DetsSize, SHMDetsNm1, DetsNm1Size, H, hasHEDDets, hasHEDNumerator, E0[0], w);
       //t3 = MPI_Wtime();
       //pout << w << "  " << g_ij << "  " << g_ij1 << "  " << " " << g_ij-((0,1.0)*g_ij1) << endl;
@@ -610,7 +610,7 @@ int main(int argc, char* argv[]) {
 // H0 is the Hamiltonian and E0 is the N electron variational ground state energy 
 // Dets has dets in psi0, ci has the corresponding coeffs
 // DetsResponse dets in the response space, HResponse is H0 in the response space
-CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsResponse, int DetsResponseSize, Hmult2& HResponse, double E0, CItype w, int type) 
+CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int DetsSize, Determinant* DetsResponse, int DetsResponseSize, Hmult2& HResponse, double E0, CItype w, twoInt& I2, oneInt& I1, double coreE, int type) 
 {
 #ifndef SERIAL
   boost::mpi::communicator world;
@@ -618,7 +618,7 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
 
   // to store ci coeffs in a_j | psi0 > or a_j^(dag) | psi0 >, corresponding to dets in DetsResponse
   MatrixXx ciResponse = MatrixXx::Zero(DetsResponseSize, 1);  
-  
+
   // calc a_j | psi0 > or a_j^(dag) | psi0 >
   // doing this on all procs
   int nelec = Dets[0].Noccupied();
@@ -642,7 +642,14 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
       ciResponse(n) = parity * ci[k];
     }
   }
-    
+  
+  // preconditioner
+  MatrixXx diag = MatrixXx::Zero(DetsResponseSize, 1);
+  for (int k = 0; k < DetsResponseSize; k++) {
+    if (type == -1) {double detEne = DetsResponse[k].Energy(I1, I2, coreE); diag(k, 0) = (detEne - E0 + conj(w)) * (detEne - E0 + w);} // annihilated e from Det[k]
+    else if (type == 1) {double detEne = DetsResponse[k].Energy(I1, I2, coreE); diag(k, 0) = (detEne - E0 - conj(w)) * (detEne - E0 - w);} // added e to Det[k]
+  }
+
 #ifndef SERIAL
   world.barrier();
 #endif
@@ -657,14 +664,10 @@ CItype calcZerothGreensFunction(int i, int j, Determinant* Dets, CItype* ci, int
   // doing cg 
   MatrixXx x0 = MatrixXx::Zero(DetsResponseSize, 1);
   vector<CItype*> proj;
-  if (type == -1) LinearSolver(HResponse, E0-w, x0, ciResponse, proj, 1.e-5, false);
-  else if (type == 1) LinearSolver(HResponse, E0+w, x0, ciResponse, proj, 1.e-5, false);
-  
-  //testing
-  //pout << " x0     x01    DetsNm1" << endl;
-  //for(int k=0; k<DetsNm1Size; k++){
-  //    pout << x0(k) << "  " << x01(k) << "   " << DetsNm1[k] << endl;
-  //}
+  if (type == -1) LinearSolver(HResponse, diag, E0-w, x0, ciResponse, proj, 1.e-5, false);
+  else if (type == 1) LinearSolver(HResponse, diag, E0+w, x0, ciResponse, proj, 1.e-5, false);
+  //if (type == -1) LinearSolver(HResponse, E0-w, x0, ciResponse, proj, 1.e-5, false);
+  //else if (type == 1) LinearSolver(HResponse, E0+w, x0, ciResponse, proj, 1.e-5, false);
   
   //calc < psi0 | a_i^(dag) x0
   CItype overlap = 0.0;

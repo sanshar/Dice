@@ -106,6 +106,31 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 } // end precondition
 
 
+//=============================================================================
+void precondition(MatrixXx& r, MatrixXx& diag) {
+//-----------------------------------------------------------------------------
+    /*!
+    Properly precondition the matrix "r"
+
+    :Inputs:
+
+        MatrixXx& r:
+            Input/Ouput matrix to be preconditionned (output)
+        MatrixXx& diag:
+            Diagonal vector
+        double& e:
+            Threshold and shift
+    */
+//-----------------------------------------------------------------------------
+  for (int i = 0; i < r.rows(); i++) {
+    if (abs(diag(i, 0)) > 1e-12)
+      r(i, 0) = r(i, 0) / diag(i, 0);
+    else
+      r(i, 0) = r(i, 0) / (diag(i, 0) + 1.e-12);
+  }
+} // end precondition
+
+
 
 //=============================================================================
 vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
@@ -761,6 +786,7 @@ double LinearSolver(Hmult2& H, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CIty
       p.setZero(p.rows(),1); 
       //H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
       //p -=b; //not sure what this is for
+      pout << iter << endl;
       return abs(ept);
     }
 
@@ -802,3 +828,84 @@ double LinearSolver(MatrixXx& H, CItype E0, MatrixXx& x0, MatrixXx& b, double to
 }
 
 
+//=============================================================================
+double LinearSolver(Hmult2& H, MatrixXx& diag, CItype E0, MatrixXx& x0, MatrixXx& b, vector<CItype*>& proj, double tol, bool print) {
+//-----------------------------------------------------------------------------
+    /*!
+    (H0-E0)*x0 = b   and proj is used to keep the solution orthogonal to projc
+    if E0 is real, solve using CG
+    else solve (H0-E0)^{\dagger}(H0-E0)*x0 = (H0-E0)^{\dagger}*b using CG 
+
+    :Inputs:
+
+        Hmult2& H:
+            The matrix H0
+        double E0:
+            The energy E0
+        MatrixXx& x0:
+            The unknown vector x0 (output)
+        MatrixXx& b:
+            The right vector b
+        vector<CItype*>& proj:
+            Projector to keep the solution orthogonal
+        double tol:
+            Tolerance
+        bool print:
+            Triggers printing out of messages
+    */
+//-----------------------------------------------------------------------------
+  //calculate bNew = (H0-E0)^{\dagger}*b
+  MatrixXx bNew = 0. * b;
+  H(&b(0, 0), &bNew(0, 0));
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &bNew(0, 0), bNew.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+  bNew = bNew - conj(E0) * b;
+  x0.setZero(bNew.rows(), 1);
+  MatrixXx r = 1. * bNew, z = 1. * bNew;
+  precondition(z, diag);
+  MatrixXx p = z;
+  CItype rzold = (r.adjoint() * z)(0, 0);
+  if (fabs(r.norm()) < tol) return 0.0;
+
+  int iter = 0;
+  while (true) {
+    //calculating (H0^2 + |E|^2 - (E+E*)H0)*p
+    MatrixXx Ap = 0. * p, AAp = 0. * p;
+    H(&p(0, 0), &Ap(0, 0)); ///REPLACE THIS WITH SOMETHING
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &Ap(0, 0), Ap.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    H(&Ap(0, 0), &AAp(0, 0)); ///REPLACE THIS WITH SOMETHING
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &AAp(0, 0), AAp.rows(), MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_WORLD);
+#endif
+    
+    AAp = AAp + conj(E0) * E0 * p - (E0 + conj(E0)) * Ap; //AAp=(H0^2 + |E|^2 - (E+E*)H0)*p
+    CItype alpha = rzold / (p.adjoint() * AAp)(0,0);
+    x0 += alpha * p;
+    r -= alpha * AAp;
+
+    CItype ept = -(x0.adjoint() * r + x0.adjoint() * bNew)(0,0);
+    
+
+    if (r.norm() < tol) {//removed constraint on # of iterations
+      p.setZero(p.rows(), 1); 
+      //H(&x0(0,0), &p(0,0)); ///REPLACE THIS WITH SOMETHING
+      //p -=b; //not sure what this is for
+      pout << iter << endl;
+      return abs(ept);
+    }
+    
+    z = r;
+    precondition(z, diag);
+    CItype rznew = (r.adjoint() * z)(0, 0);
+    if (print)
+      pout << "#" << iter << " " << ept << "  " << rznew << std::endl;
+
+    p = z + (rznew / rzold) * p;
+    rzold = rznew;
+    iter++;
+  }
+
+}
