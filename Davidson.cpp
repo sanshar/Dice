@@ -854,6 +854,7 @@ double LinearSolver(Hmult2& H, MatrixXx& diag, CItype E0, MatrixXx& x0, MatrixXx
             Triggers printing out of messages
     */
 //-----------------------------------------------------------------------------
+#ifdef Complex
   //calculate bNew = (H0-E0)^{\dagger}*b
   MatrixXx bNew = 0. * b;
   H(&b(0, 0), &bNew(0, 0));
@@ -907,5 +908,5 @@ double LinearSolver(Hmult2& H, MatrixXx& diag, CItype E0, MatrixXx& x0, MatrixXx
     rzold = rznew;
     iter++;
   }
-
+#endif
 }
