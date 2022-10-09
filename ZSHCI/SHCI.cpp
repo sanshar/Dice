@@ -446,8 +446,9 @@ int main(int argc, char* argv[]) {
           std::sort(idx.begin(), idx.end(), [&prevci](size_t i1, size_t i2){return abs(prevci(i1, 0)) > abs(prevci(i2, 0));});
           for (int i = 0; i < num; i++) {
             int m = idx[i];
-            double wciCoeff = std::real(prevci(m, 0));
-            fout.write((char*) &wciCoeff, sizeof(double));
+            //double wciCoeff = std::real(prevci(m, 0));
+            //fout.write((char*) &wciCoeff, sizeof(double));
+            fout.write((char*) &prevci(m, 0), sizeof(complex<double>));
             Determinant wdet = SHMDets[m];
             char det[norbs];
             wdet.getRepArray(det);
