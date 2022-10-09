@@ -17,8 +17,8 @@ GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact,
   refDet = VectorXi::Zero(refDetVec.size());
   for (int i = 0; i < refDetVec.size(); i++) refDet[i] = refDetVec[i];
 
-  nact = pnact;
-  ncore = pncore;
+  nact = 2 * pnact;
+  ncore = 2 * pncore;
   rightQ = prightQ;
 
   ham.blockCholesky(blockChol, ncore + nact);
@@ -226,7 +226,8 @@ void GZHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::
   overlap *= overlap0;
   greenMulti *= (overlap0 / overlap);
   greenMulti = greenMulti.transpose().eval();
-  Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMulti.data(), greenMulti.rows() * greenMulti.cols());
+  MatrixXcd greenMultiActive = greenMulti.block(0, 0, norbs, ncore + nact);
+  Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMultiActive.data(), greenMultiActive.rows() * greenMultiActive.cols());
   fb = greenMultiVec.transpose() * blockChol[0];
 };
 

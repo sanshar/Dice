@@ -17,8 +17,8 @@ GHFMultislater::GHFMultislater(Hamiltonian& ham, std::string fname, int pnact, i
   refDet = VectorXi::Zero(refDetVec.size());
   for (int i = 0; i < refDetVec.size(); i++) refDet[i] = refDetVec[i];
 
-  nact = pnact;
-  ncore = pncore;
+  nact = 2 * pnact;
+  ncore = 2 * pncore;
   rightQ = prightQ;
   
   if (ham.intType == "g") ham.blockCholesky(blockChol, ncore + nact);
@@ -113,7 +113,6 @@ void GHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::V
   int nchol = ham.nchol;
   size_t ndets = ciCoeffs.size();
   fb = VectorXcd::Zero(nchol);
-
   MatrixXcd phi0T;
   phi0T = MatrixXcd::Zero(nelec, norbs);
   for (int i = 0; i < nelec; i++) phi0T(i, refDet[i]) = 1.;
@@ -226,7 +225,8 @@ void GHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::V
   overlap *= overlap0;
   greenMulti *= (overlap0 / overlap);
   greenMulti = greenMulti.transpose().eval();
-  Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMulti.data(), greenMulti.rows() * greenMulti.cols());
+  MatrixXcd greenMultiActive = greenMulti.block(0, 0, norbs, ncore + nact);
+  Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMultiActive.data(), greenMultiActive.rows() * greenMultiActive.cols());
   fb = greenMultiVec.transpose() * blockChol[0];
 };
 
@@ -450,7 +450,6 @@ std::array<std::complex<double>, 2> GHFMultislater::hamAndOverlap(Eigen::MatrixX
   int nelec = refDet.size();
   int nchol = ham.ncholEne;
   size_t ndets = ciCoeffs.size();
-
   MatrixXcd phi0T;
   phi0T = MatrixXcd::Zero(nelec, norbs);
   for (int i = 0; i < nelec; i++) phi0T(i, refDet[i]) = 1.;
