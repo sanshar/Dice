@@ -8,7 +8,7 @@ os.environ['JAX_PLATFORM_NAME'] = 'cpu'
 #os.environ['JAX_DISABLE_JIT'] = 'True'
 import jax.numpy as jnp
 import jax.scipy as jsp
-from jax import lax, jit, vmap, random, vjp, checkpoint
+from jax import lax, jit, custom_jvp, vmap, random, vjp, checkpoint
 from mpi4py import MPI
 
 from functools import partial
@@ -58,6 +58,92 @@ def blocking_analysis(weights, energies, neql, printQ=False):
   return meanEnergy, plateauError
 
 
+@custom_jvp
+def _eigh(a):
+    w, v = jnp.linalg.eigh(a)
+    return w, v
+
+@_eigh.defjvp
+def _eigh_jvp(primals, tangents):
+    a = primals[0]
+    at = tangents[0]
+    w, v = primal_out = _eigh(*primals)
+
+    deg_thresh = 1.e-5
+    eji = w[..., np.newaxis, :] - w[..., np.newaxis]
+    #idx = abs(eji) < deg_thresh
+    #eji = eji.at[idx].set(1.e200)
+    eji = jnp.where(eji == 0., 1., eji)
+    eji = jnp.where(abs(eji) < deg_thresh, 1.e200, eji)
+    #eji = eji.at[jnp.diag_indices_from(eji)].set(1.)
+    #eji = eji.at[idx].set(1.e200)
+    #eji = eji.at[np.diag_indices_from(eji)].set(1.)
+    eye_n = jnp.eye(a.shape[-1])
+    Fmat = jnp.reciprocal(eji) - eye_n
+    dw, dv = _eigh_jvp_jitted_nob(v, Fmat, at)
+    return primal_out, (dw,dv)
+
+@jit
+def _eigh_jvp_jitted_nob(v, Fmat, at):
+    vt_at_v = jnp.dot(v.conj().T, jnp.dot(at, v))
+    dw = jnp.diag(vt_at_v)
+    dv = jnp.dot(v, jnp.multiply(Fmat, vt_at_v))
+    return dw, dv
+
+
+#@checkpoint
+@jit
+def _hf(h1, h2, nelec_proxy):
+  h1 = (h1 + h1.T) / 2.
+  #print(f'h1:\n{h1}\n')
+  #print(f'h2:\n{h2}\n')
+  nelec = nelec_proxy.shape[0]
+  def scanned_fun(carry, x):
+    dm = carry
+    #vj = jnp.einsum('ijkl,ji->kl', h2, dm)
+    #vk = jnp.einsum('ijkl,jk->il', h2, dm)
+    f = jnp.einsum('gij,ik->gjk', h2, dm)
+    c = vmap(jnp.trace)(f)
+    vj = jnp.einsum('g,gij->ij', c, h2)
+    vk = jnp.einsum('glj,gjk->lk', f, h2)
+    #print(f'dm:\n{dm}')
+    #print(f'f:\n{f}')
+    #print(f'c:\n{c}')
+    #print(f'vj:\n{vj}')
+    #print(f'vk:\n{vk}')
+    vhf = vj - 0.5 * vk
+    fock = h1 + vhf
+    #print(f'fock:\n{fock}')
+    #mo_energy, mo_coeff = jnp.linalg.eigh(fock)
+    mo_energy, mo_coeff = _eigh(fock)
+    #print(f'mo_coeff:\n{mo_coeff}')
+    #exit()
+    idx = jnp.argmax(abs(mo_coeff.real), axis=0)
+    mo_coeff = jnp.where(mo_coeff[idx, jnp.arange(len(mo_energy))].real < 0, -mo_coeff, mo_coeff)
+    #mo_coeff[:, mo_coeff[idx, jnp.arange(len(mo_energy))].real < 0] *= -1
+    e_idx = jnp.argsort(mo_energy)
+    e_sort = mo_energy[e_idx]
+    nmo = mo_energy.size
+    mo_occ = jnp.zeros(nmo)
+    nocc = nelec // 2
+    #mo_occ.at[e_idx[:nocc]].set(2)
+    #mo_occ = jnp.where(e_idx[:nocc], 2, 0)
+    mo_occ = mo_occ.at[e_idx[:nocc]].set(2)
+    #mo_occ[e_idx[:nocc]] = 2
+    mocc = mo_coeff[:, jnp.nonzero(mo_occ, size=nocc)[0]]
+    #mocc = mo_coeff[:, mo_occ > 0]
+    dm = (mocc * mo_occ[jnp.nonzero(mo_occ, size=nocc)[0]]).dot(mocc.T)
+    #dm = (mocc * mo_occ[mo_occ > 0]).dot(mocc.T)
+    return dm, mo_coeff
+
+  norb = h1.shape[0]
+  dm0 = 2 * jnp.eye(norb, nelec//2).dot(jnp.eye(norb, nelec//2).T)
+  _, mo_coeff = lax.scan(scanned_fun, dm0, None, length=30)
+
+  return mo_coeff[-1]
+  #return mo_coeff[-1][2, 0]
+
+#@checkpoint
 @jit
 def calc_overlap(walker):
   return jnp.linalg.det(walker[:walker.shape[1], :])**2
@@ -65,6 +151,7 @@ def calc_overlap(walker):
 calc_overlap_vmap = vmap(calc_overlap)
 
 
+#@checkpoint
 @jit
 def calc_green(walker):
   return (walker.dot(jnp.linalg.inv(walker[:walker.shape[1], :]))).T
@@ -72,6 +159,7 @@ def calc_green(walker):
 calc_green_vmap = vmap(calc_green)
 
 
+#@checkpoint
 @jit
 def calc_force_bias(walker, rot_chol):
   green_walker = calc_green(walker)
@@ -81,6 +169,7 @@ def calc_force_bias(walker, rot_chol):
 calc_force_bias_vmap = vmap(calc_force_bias, in_axes = (0, None))
 
 
+#@checkpoint
 @jit
 def calc_energy(h0, rot_h1, rot_chol, walker):
   ene0 = h0
@@ -96,6 +185,7 @@ calc_energy_vmap = vmap(calc_energy, in_axes = (None, None, None, 0))
 
 
 # defining this separately because calculating vhs for a batch seems to be faster
+#@checkpoint
 @jit
 def apply_propagator(exp_h1, vhs_i, walker_i):
   walker_i = exp_h1.dot(walker_i)
@@ -107,6 +197,7 @@ def apply_propagator(exp_h1, vhs_i, walker_i):
   walker_i = exp_h1.dot(walker_i)
   return walker_i
 
+#@checkpoint
 @jit
 def apply_propagator_vmap(exp_h1, chol, dt, walkers, fields):
   vhs = 1.j * jnp.sqrt(dt) * fields.dot(chol).reshape(walkers.shape[0], walkers.shape[1], walkers.shape[1])
@@ -114,16 +205,38 @@ def apply_propagator_vmap(exp_h1, chol, dt, walkers, fields):
 
 
 # one block of phaseless propagation consisting of nsteps steps followed by energy evaluation
-def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields_np, zeta_sr):
+def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy):
+#def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr):
+  h1 = (h1 + h1.T) / 2.
+
+  nelec_proxy = jnp.zeros((walkers.shape[2]*2))
+  mo_coeff = _hf(h1, chol.reshape(-1, h1.shape[0], h1.shape[0]), nelec_proxy)
+  #print(mo_coeff)
+  #exit()
+
+  h1 = mo_coeff.T.dot(h1).dot(mo_coeff)
+  chol = jnp.einsum('gij,jp->gip', chol.reshape(-1, h1.shape[0], h1.shape[0]), mo_coeff)
+  chol = jnp.einsum('qi,gip->gqp', mo_coeff.T, chol).reshape(-1, h1.shape[0] * h1.shape[0])
+  #nb = C.shape[-1]
+  #for i, cv in enumerate(eri):
+  #    half = np.dot(cv.reshape(nb, nb), C)
+  #    eri[i] = np.dot(C.conj().T, half).ravel()
+
+  #mf_shifts = 2.j * np.array([ np.sum(np.diag(chol_i)[:nelec]) for chol_i in chol])
+  #h0_prop = - h0 - np.sum(mf_shifts**2) / 2.
   v0 = 0.5 * jnp.einsum('gik,gjk->ij', chol.reshape(-1, h1.shape[0], h1.shape[0]), chol.reshape(-1, h1.shape[0], h1.shape[0]), optimize='optimal')
   h1_mod = h1 - v0
   h1_mod = h1_mod - jnp.real(1.j * jnp.einsum('g,gik->ik', mf_shifts, chol.reshape(-1, h1.shape[0], h1.shape[0])))
   exp_h1 = jsp.linalg.expm(-dt * h1_mod / 2.)
   rot_h1 = h1[:walkers.shape[2], :].copy()
+  rot_chol = chol.reshape(-1, h1.shape[0], h1.shape[0])[:, :walkers.shape[2], :].copy()
+
+  nclub = nclub_proxy.shape[0]
+  nsteps = nsteps_proxy.shape[0]
 
   # carry : [ walkers, weights, overlaps, e_shift ]
   #key = random.PRNGKey(seed)
-  @checkpoint
+  #@checkpoint
   def scanned_fun(carry, x):
     #carry[3], subkey = random.split(carry[3])
     #key, subkey = random.split(key)
@@ -135,9 +248,9 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
     shifted_fields = fields - field_shifts
     shift_term = jnp.sum(shifted_fields * mf_shifts, axis=1)
     fb_term = jnp.sum(fields * field_shifts - field_shifts * field_shifts / 2., axis=1)
-    carry[0] = qr_vmap(carry[0])
+    #carry[0] = qr_vmap(carry[0])
     #carry[0] = normalize_vmap(carry[0])
-    carry[2] = calc_overlap_vmap(carry[0])
+    #carry[2] = calc_overlap_vmap(carry[0])
     carry[0] = apply_propagator_vmap(exp_h1, chol, dt, carry[0], shifted_fields)
 
     overlaps_new = calc_overlap_vmap(carry[0])
@@ -160,41 +273,45 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
   #overlaps = calc_overlap_vmap(walkers)
   #[ walkers, weights, overlaps, _ ], _ = lax.scan(scanned_fun, [ walkers, weights, overlaps, e_estimate ], fields_np)
 
-  # carry : [ walkers, weights, overlaps, e_shift, block_energy ]
+  # carry : [ walkers, weights, overlaps, e_shift, key ]
+  @checkpoint
   def outer_scanned_fun(carry, x):
-    carry[:4], _ = lax.scan(scanned_fun, carry[:4], x[0])
-    carry[2] = calc_overlap_vmap(carry[0])
+    carry[4], subkey = random.split(carry[4])
+    fields = random.normal(subkey, shape=(nsteps, carry[0].shape[0], chol.shape[0]))
+    carry[:4], _ = lax.scan(scanned_fun, carry[:4], fields)
+    #carry, _ = lax.scan(scanned_fun, carry, x[0])
+    carry[0] = qr_vmap(carry[0])
     energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, carry[0]))
     energy_samples = jnp.where(jnp.abs(energy_samples - carry[3]) > jnp.sqrt(2./dt), carry[3], energy_samples)
-    block_energy = jnp.sum(energy_samples * carry[1]) / jnp.sum(carry[1])
-    carry[4] = block_energy
+    block_weight = jnp.sum(carry[1])
+    block_energy = jnp.sum(energy_samples * carry[1]) / block_weight
     carry[3] = 0.9 * carry[3] + 0.1 * block_energy
-    carry[0], carry[1] = stochastic_reconfiguration(carry[0], carry[1], x[1])
-    return carry, x
+    carry[4], subkey = random.split(carry[4])
+    zeta = random.uniform(subkey)
+    carry[0], carry[1] = stochastic_reconfiguration(carry[0], carry[1], zeta)
+    carry[2] = calc_overlap_vmap(carry[0])
+    return carry, (block_energy, block_weight)
 
-  block_energy = 0
+  #key, subkey = random.split(key)
+  #fields = random.normal(subkey, shape=(nclub, nsteps, walkers.shape[0], chol.shape[0]))
+  #key, subkey = random.split(key)
+  #zeta_sr = random.uniform(subkey, shape=(nclub,))
   overlaps = calc_overlap_vmap(walkers)
-  [ walkers, weights, overlaps, e_shift, block_energy ], _ = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate, block_energy ], (fields_np, zeta_sr))
-  #block_energy = 0
-  #for i in range(fields_np.shape[0]):
-  #  #walkers = qr_vmap(walkers)
-  #  overlaps = calc_overlap_vmap(walkers)
-  #  [ walkers, weights, overlaps, _ ], _ = lax.scan(scanned_fun, [ walkers, weights, overlaps, e_estimate ], fields_np[i])
-  #  energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, walkers))
-  #  energy_samples = jnp.where(jnp.abs(energy_samples - e_estimate) > jnp.sqrt(2./dt), e_estimate, energy_samples)
-  #  block_energy = jnp.sum(energy_samples * weights) / jnp.sum(weights)
-  #  e_estimate = 0.9 * e_estimate + 0.1 * block_energy
-  #  walkers, weights = stochastic_reconfiguration(walkers, weights, zeta_sr[i])
+  #key = random.PRNGKey(seed)
+  [ walkers, weights, overlaps, e_shift, key ], (block_energy, block_weight) = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate, key ], None, length=nclub)
+  #[ walkers, weights, overlaps, e_shift ], (block_energy, block_weight) = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate ], (fields, zeta_sr))
 
-  #energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, walkers))
-  #energy_samples = jnp.where(jnp.abs(energy_samples - e_estimate) > jnp.sqrt(2./dt), e_estimate, energy_samples)
-  #block_energy = jnp.sum(energy_samples * weights) / jnp.sum(weights)
-  return block_energy, (walkers, weights)
+  #print(block_energy)
+  #exit()
+  #return block_energy[-1], (walkers, weights)
+  return jnp.sum(block_energy[40:] * block_weight[40:]) / jnp.sum(block_weight[40:]), (walkers, weights, key)
 
+#propagate_phaseless_jit = jit(propagate_phaseless, static_argnums=(11,))
 propagate_phaseless_jit = jit(propagate_phaseless)
 
 
 # called once after each block
+#@checkpoint
 def qr_vmap(walkers):
   walkers, _ = vmap(jnp.linalg.qr)(walkers)
   return walkers
@@ -224,6 +341,7 @@ def stochastic_reconfiguration_np(walkers, weights, zeta):
   return jnp.array(walkers_new), jnp.array(weights_new)
 
 
+#@checkpoint
 @jit
 def stochastic_reconfiguration(walkers, weights, zeta):
   nwalkers = walkers.shape[0]
@@ -304,7 +422,8 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, neql=50, seed=
   e_estimate = jnp.array(global_block_energies[0])
   total_block_energy_n = np.zeros(1, dtype='float32')
   total_block_weight_n = np.zeros(1, dtype='float32')
-  rng = Generator(MT19937(seed + rank))
+  #rng = Generator(MT19937(seed + rank))
+  key = random.PRNGKey(seed+rank)
   hf_rdm = 2 * np.eye(norb, nelec).dot(np.eye(norb, nelec).T)
 
   comm.Barrier()
@@ -315,16 +434,28 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, neql=50, seed=
     print(f" {n:5d}      {global_block_energies[0]:.9e}                -              {init_time:.2e} ")
   comm.Barrier()
 
+  local_large_deviations = np.array(0)
+
   for n in range(1, nblocks):
-    fields_np = rng.standard_normal(size=(nclub, nsteps, walkers.shape[0], chol.shape[0]))
-    zeta_sr = rng.uniform(size=(nclub,))
+    #key, subkey = random.split(key)
+    #fields = random.normal(subkey, shape=(nclub, nsteps, walkers.shape[0], chol.shape[0]))
+    #key, subkey = random.split(key)
+    #zeta_sr = random.uniform(subkey, shape=(nclub,))
+    #fields = rng.standard_normal(size=(nclub, nsteps, walkers.shape[0], chol.shape[0]))
+    #zeta_sr = rng.uniform(size=(nclub,))
+    # doing this because of static_argnums not playing nice with vjp
+    nsteps_proxy = jnp.zeros((nsteps))
+    nclub_proxy = jnp.zeros((nclub))
     if rdmQ:
-      block_energy_n, block_vjp, (walkers, weights) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields_np, zeta_sr, has_aux=True)
+      block_energy_n, block_vjp, (walkers, weights, key) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy, has_aux=True)
+      #block_energy_n, block_vjp, (walkers, weights) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr, has_aux=True)
       local_block_rdm1[n] = np.array(block_vjp(1.)[2])
-      if np.isnan(np.sum(local_block_rdm1[n])) or np.linalg.norm(local_block_rdm1[n] - hf_rdm) > 1.e4:
-        local_block_rdm1[n] = np.zeros((norb, norb))
+      if np.isnan(np.sum(local_block_rdm1[n])) or np.linalg.norm(local_block_rdm1[n] - hf_rdm) > 1.e1 * norb**2  or abs(np.trace(local_block_rdm1[n]) - 2*nelec) > 1.e-3:
+        local_block_rdm1[n] = hf_rdm
+        local_large_deviations += 1
     else:
-      block_energy_n, (walkers, weights) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields_np, zeta_sr)
+      block_energy_n, (walkers, weights, key) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy)
+      #block_energy_n, (walkers, weights) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr)
     local_block_weights[n] = jnp.sum(weights)
     block_energy_n = np.array([block_energy_n], dtype='float32')
     block_weight_n = np.array([jnp.sum(weights)], dtype='float32')
@@ -339,12 +470,13 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, neql=50, seed=
     global_block_weights[n] = block_weight_n
     global_block_energies[n] = block_energy_n
     walkers = qr_vmap(walkers)
-    zeta = rng.uniform()
+    #zeta = rng.uniform()
+    key, subkey = random.split(key)
+    zeta = random.uniform(subkey)
     walkers, weights = stochastic_reconfiguration_mpi(walkers, weights, zeta)
-    #walkers, weights = stochastic_reconfiguration_np(walkers, weights, zeta)
-    e_estimate = 0.9 * e_estimate + 0.1 * global_block_energies[n];
+    e_estimate = 0.9 * e_estimate + 0.1 * global_block_energies[n]
 
-    if n > neql and n%(nblocks//10) == 0:
+    if n > neql and n%(max(nblocks//10, 1)) == 0:
       comm.Barrier()
       if rank == 0:
         e_afqmc, energy_error = blocking_analysis(global_block_weights[:n], global_block_energies[:n], neql=neql)
@@ -359,9 +491,11 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, neql=50, seed=
     local_weighted_rdm1 = np.array(np.einsum('bij,b->ij', local_block_rdm1[neql:], local_block_weights[neql:]), dtype='float32')
     global_weighted_rdm1 = 0. * local_weighted_rdm1
     global_total_weight = np.zeros(1, dtype='float32')
+    global_large_deviations = np.array(0)
     local_total_weight = np.array([np.sum(local_block_weights[neql:])], dtype='float32')
     comm.Reduce([local_weighted_rdm1, MPI.FLOAT], [global_weighted_rdm1, MPI.FLOAT], op=MPI.SUM, root=0)
     comm.Reduce([local_total_weight, MPI.FLOAT], [global_total_weight, MPI.FLOAT], op=MPI.SUM, root=0)
+    comm.Reduce([local_large_deviations, MPI.INT], [global_large_deviations, MPI.INT], op=MPI.SUM, root=0)
     comm.Barrier()
     with open(f'rdm_{rank}.dat', "w") as fh:
       fh.write(f'{local_total_weight[0]}\n')
@@ -370,6 +504,7 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, neql=50, seed=
       rdm1 = global_weighted_rdm1 / global_total_weight
       np.savetxt('rdm1_afqmc.txt', rdm1)
       print(f'\nrdm1_tr: {np.trace(rdm1)}', flush=True)
+      print(f'\nNumber of large deviations: {global_large_deviations}', flush=True)
 
   comm.Barrier()
   if rank == 0:

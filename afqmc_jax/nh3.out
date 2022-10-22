@@ -1,0 +1,45 @@
+converged SCF energy = -56.1451872095896
+E(CCSD) = -56.28217721908278  E_corr = -0.1369900094931631
+CCSD(T) correction = -0.00181517342000204
+CCSD(T) energy -56.28399239250278
+orbital unrelaxed cc dipole: [-2.53275051e-15 -3.49244611e-15  9.91042676e-01]
+Calculating Cholesky integrals
+Finished calculating Cholesky integrals
+
+Number of cores: 36
+
+   Iter        Mean energy          Stochastic error       Walltime
+     0      -5.614517212e+01                -              1.10e+00 
+     2      -5.628506088e+01                -              1.19e+02 
+     3      -5.628475788e+01                -              1.76e+02 
+     4      -5.628453866e+01                -              2.46e+02 
+
+rdm1_tr: 10.0
+
+Number of large deviations: 0
+
+Mean energy: -5.62844823e+01
+Block size    # of blocks        Mean                Error
+     1              4       -5.62844823e+01       2.382923e-04
+AFQMC energy: -56.284482347950906
+Could not find a stochastic error estimate, check blocking analysis
+
+ph_afqmc_jax walltime: 246.2148241996765
+1e_ph: [-98.22833416]
+1e_ph error: [0.00112333]
+dipole_ph: [ 1.21420234e-03 -3.96465682e-04  9.87850722e-01]
+dipole_ph error: [0.00125074 0.00093601 0.00121179]
+
+Orbital relaxed cc dipoles:
+E(CCSD) = -56.28215889932692  E_corr = -0.1369895356034863
+CCSD(T) correction = -0.00181511986790218
+CCSD(T) energy -56.28397401919482
+E(CCSD) = -56.28219553914693  E_corr = -0.1369904830728841
+CCSD(T) correction = -0.00181522696909392
+CCSD(T) energy -56.284010766116026
+emf_m: -56.14519759851221, emf_p: -56.145176821285276
+dip_mf: 1.0388613468137464
+eccsd_m: -56.282187134115695, eccsd_p: -56.28216730435816
+dip_ccsd: 0.9914878766892342
+eccsdpt_m: -56.284002253983594, eccsd_p: -56.283982531327254
+dip_ccsdpt: 0.9861328170046589

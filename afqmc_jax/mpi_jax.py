@@ -16,22 +16,16 @@ with h5py.File('FCIDUMP_chol', 'r') as fh5:
 norb = nmo
 nelec = nelec // 2
 
-#dt = 0.01
-#nwalkers = 100
-#nsteps = 800
-#nblocks = 500
-#seed = np.random.randint(1, 1e6)
-
 dt = 0.01
-nwalkers = 100
+nwalkers = 50
 nsteps = 50
-nblocks = 400
+nblocks = 5
 seed = np.random.randint(1, 1e6)
 
 import time
 init = time.time()
 comm.Barrier()
-ph_afqmc.run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, seed=seed, neql=10, rdmQ=True, nclub=15)
+ph_afqmc.run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, nblocks, seed=seed, neql=1, rdmQ=True, nclub=200)
 comm.Barrier()
 end = time.time()
 if rank == 0:
