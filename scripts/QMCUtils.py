@@ -317,6 +317,34 @@ def read_dets_ghf(fname='dets.bin', ndets=None):
     return norbs, state, ndetsAll
 
 
+# reading dets from dice
+def read_dets_gzhf(fname='dets.bin', ndets=None):
+    state = {}
+    norbs = 0
+    with open(fname, 'rb') as f:
+        ndetsAll = struct.unpack('i', f.read(4))[0]
+        norbs = struct.unpack('i', f.read(4))[0]
+        if ndets is None:
+            ndets = ndetsAll
+        for i in range(ndets):
+            coeff_re = struct.unpack('d', f.read(8))[0]
+            coeff_im = struct.unpack('d', f.read(8))[0]
+            coeff = coeff_re + 1.j * coeff_im
+            det = [0 for i in range(norbs)]
+            for j in range(norbs // 2):
+                occ = struct.unpack('c', f.read(1))[0]
+                if (occ == b'a'):
+                    det[2 * j] = 1
+                elif (occ == b'b'):
+                    det[2 * j + 1] = 1
+                elif (occ == b'2'):
+                    det[2 * j] = 1
+                    det[2 * j + 1] = 1
+            state[tuple(det)] = coeff
+
+    return norbs, state, ndetsAll
+
+
 # a_i^dag a_j
 def ci_parity(det, i, j):
     assert (det[i] == 0 and det[j] == 1)
