@@ -1329,7 +1329,7 @@ def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
 
 
 # write cholesky integrals
-def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0, filename='FCIDUMP_chol'):
+def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0, filename='FCIDUMP_chol', mo_coeffs = None):
     assert len(chol.shape) == 2
     with h5py.File(filename, 'w') as fh5:
         fh5['header'] = np.array([nelec, nmo, ms, chol.shape[0]])
@@ -1337,6 +1337,9 @@ def write_dqmc(hcore, hcore_mod, chol, nelec, nmo, enuc, ms=0, filename='FCIDUMP
         fh5['hcore_mod'] = hcore_mod.flatten()
         fh5['chol'] = chol.flatten()
         fh5['energy_core'] = enuc
+        if mo_coeffs is not None:
+          fh5['mo_coeffs_up'] = mo_coeffs[0]
+          fh5['mo_coeffs_dn'] = mo_coeffs[1]
 
 
 def write_dqmc_soc(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_chol'):
