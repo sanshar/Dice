@@ -763,7 +763,8 @@ def run_afqmc(mf_or_mc,
               write_one_rdm=False,
               run_dir=None,
               scratch_dir=None,
-              use_eri=False):
+              use_eri=False,
+              dry_run=False):
     if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
         return run_afqmc_mf(mf_or_mc,
                             vmc_root=vmc_root,
@@ -783,7 +784,8 @@ def run_afqmc(mf_or_mc,
                             weight_cap=weight_cap,
                             write_one_rdm=write_one_rdm,
                             run_dir=run_dir,
-                            scratch_dir=scratch_dir)
+                            scratch_dir=scratch_dir,
+                            dry_run=dry_run)
     elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
         return run_afqmc_mc(mf_or_mc,
                             vmc_root=vmc_root,
@@ -805,7 +807,8 @@ def run_afqmc(mf_or_mc,
                             write_one_rdm=write_one_rdm,
                             run_dir=run_dir,
                             scratch_dir=scratch_dir,
-                            use_eri=use_eri)
+                            use_eri=use_eri,
+                            dry_run=dry_run)
     else:
         raise Exception("Need either mean field or casscf object!")
 
@@ -829,7 +832,8 @@ def run_afqmc_mf(mf,
                  weight_cap=None,
                  write_one_rdm=False,
                  run_dir=None,
-                 scratch_dir=None):
+                 scratch_dir=None,
+                 dry_run=False):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -919,6 +923,9 @@ def run_afqmc_mf(mf,
                       weightCap=weight_cap,
                       writeOneRDM=write_one_rdm)
 
+    if dry_run:
+      return None, None
+
     print("Starting AFQMC / MF calculation", flush=True)
     e_afqmc = None
     err_afqmc = None
@@ -987,7 +994,8 @@ def run_afqmc_mc(mc,
                  write_one_rdm=False,
                  run_dir=None,
                  scratch_dir=None,
-                 use_eri=False):
+                 use_eri=False,
+                 dry_run=False):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -1095,6 +1103,9 @@ def run_afqmc_mc(mc,
         ndets_list = [ndets]
     else:
         raise Exception('Provide ndets as an int or a list of ints!')
+
+    if dry_run:
+      return None, None
 
     # run afqmc
     if mpi_prefix is None:
@@ -1229,7 +1240,9 @@ def generate_integrals(mol, hcore, X, chol_cut=1e-5, verbose=False):
         print(" # Orthogonalising Cholesky vectors.")
     start = time.time()
     # Step 2.a Orthogonalise Cholesky vectors.
-    if (len(X.shape) == 2):
+    if (len(X.shape) == 2 and X.shape[0] != X.shape[1]):
+        chol_vecs = ao2mo_chol_copy(chol_vecs, X)
+    elif (len(X.shape) == 2):
         ao2mo_chol(chol_vecs, X)
     elif (len(X.shape) == 3):
         ao2mo_chol(chol_vecs, X[0])
@@ -1246,6 +1259,16 @@ def ao2mo_chol(eri, C):
     for i, cv in enumerate(eri):
         half = np.dot(cv.reshape(nb, nb), C)
         eri[i] = np.dot(C.conj().T, half).ravel()
+
+
+def ao2mo_chol_copy(eri, C):
+    nb = C.shape[0]
+    nmo = C.shape[1]
+    eri_copy = np.zeros((eri.shape[0], nmo*nmo))
+    for i, cv in enumerate(eri):
+        half = np.dot(cv.reshape(nb, nb), C)
+        eri_copy[i] = np.dot(C.conj().T, half).ravel()
+    return eri_copy
 
 
 def chunked_cholesky(mol, max_error=1e-6, verbose=False, cmax=10):
