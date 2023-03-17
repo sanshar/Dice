@@ -1,6 +1,7 @@
 #include "Hamiltonian.h"
 #include "integral.h"
 #include "SHCIshm.h"
+#include <chrono>
 
 using namespace std;
 using namespace Eigen;
@@ -231,7 +232,7 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockC
   if (commrank == 0) delete [] rotChol0; 
 }
 
-// for multislater where rotation <-> block
+// for multislater where rotation <-> block, complex integrals.
 void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXcd>>& blockChol, int ncol)
 {
   complex<double>* rotCholSHM;
@@ -243,9 +244,14 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXcd>>& block
     rotChol0 = new complex<double>[size];
     for (int i = 0; i < cholZ.size(); i++) {
       MatrixXcd rot = cholZ[i].block(0, 0, norbs, ncol);
-      for (int nu = 0; nu < rot.cols(); nu++)
-        for (int mu = 0; mu < rot.rows(); mu++)
-          rotChol0[i * rotSize + nu * rot.rows() + mu] = rot(mu, nu);
+      if (cholZ.size() <= 2) {
+        for (int j=0; j < rot.size(); j++) cout << rot.data()[j] << endl;
+      }
+      for (int nu = 0; nu < rot.cols(); nu++) {
+        for (int mu = 0; mu < rot.rows(); mu++) {
+          rotChol0[i * rotSize + nu * rot.rows() + mu] = conj(rot(mu, nu));
+        }
+      }
     }
   }
 
