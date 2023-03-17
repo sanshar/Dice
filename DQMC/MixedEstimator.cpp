@@ -347,6 +347,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   size_t orthoSteps = schd.orthoSteps;
   size_t nwalk = schd.nwalk;             // number of walkers per process
   double dt = schd.dt;
+  double errorTarget = schd.phaselessErrorTarget;
   ofstream afqmcFile("afqmc.dat", ios::app);
 
   matPair ref;
@@ -494,6 +495,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
 
     // propagate
     double init = getTime();
+    cout << setprecision(12);
     for (int w = 0; w < walkers.size(); w++) {
       if (weights[w] > 1.e-8) weights[w] *= walkers[w].propagatePhaseless(waveLeft, ham, eshift);
       if (weights[w] > weightCap) {
@@ -671,15 +673,21 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     }
 
     // periodically carry out blocking analysis and print to disk
-    if (commrank == 0) {
-      if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
+    if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {
+      if (commrank == 0) {
         auto ene_err = blocking(totalWeights.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)), totalEnergies.head(measureCounter).tail(measureCounter - max(40, schd.burnIter)));
+        if (ene_err[1] > 0. && ene_err[1] < errorTarget && step > nsteps * (schd.burnIter + 100)) {
+            step = nsteps * nsweeps + 1; // set step to end the simulation if error is below target
+        }
         if (step % (100*nsteps) == 0) {
           int block = step / nsteps;
           if (ene_err[1] > 0.) cout << boost::format(" %5d      %.9e        %.9e        %.2e \n") % block % ene_err[0] % ene_err[1] % (getTime() - calcInitTime); 
           else cout << boost::format(" %5d      %.9e      %9s                %.2e \n") % block % ene_err[0] % '-' % (getTime() - calcInitTime); 
         }
       }
+
+      MPI_Bcast(&step, 1, MPI_INT, 0, MPI_COMM_WORLD); // broadcast step so that all threads are properly ended;
+
     }
     
     if (step > max(40, schd.burnIter)*nsteps && step % (20*nsteps) == 0) {

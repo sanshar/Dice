@@ -66,6 +66,10 @@ void readInput(string inputFile, schedule& schd, bool print) {
     
     //minimal checking for correctness
     //wavefunction
+    schd.slowMultislater = input.get("wavefunction.slowMultislater", false);
+    schd.slowOverlap = input.get("wavefunction.slowOverlap", false);
+    schd.slowForceBias = input.get("wavefunction.slowForceBias", false);
+    schd.slowLocalEnergy = input.get("wavefunction.slowLocalEnergy", false);
     schd.wavefunctionType = algorithm::to_lower_copy(input.get("wavefunction.name", "jastrowslater"));
     
     //correlatedwavefunction options
@@ -186,6 +190,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     schd.ndets = input.get("wavefunction.ndets", 1e6);
     schd.phaseless = input.get("sampling.phaseless", false);
     schd.weightCap = input.get("sampling.weightCap", -1.);
+    schd.phaselessErrorTarget = input.get("sampling.phaselessErrorTarget", 0.0);
 
     // GFMC
     schd.maxIter = input.get("sampling.maxIter", 50); //note: parameter repeated in optimizer for vmc
@@ -781,7 +786,7 @@ void readDeterminantsGZHFBinary(std::string input, std::vector<int>& ref, std::v
       if (cre.size() > schd.excitationLevel) continue;
       if (abs(ciCoeff) < schd.ciThreshold || numDets == schd.ndets) break;
       numDets++;
-      ciCoeffs.push_back(ciCoeff);
+      ciCoeffs.push_back(conj(ciCoeff));
       ciParity.push_back(refDet.parityA(cre, des));
       ciExcitations.push_back(excitations);
       if (cre.size() < 10) sizes(cre.size())++;
