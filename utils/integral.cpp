@@ -790,8 +790,10 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
   // read cholesky to shared memory
   unsigned int cholsize = nchol * norbs * norbs;
   complex<double> *cholSHM;
+  vector<complex<double>> chol_vec;
   MPI_Barrier(MPI_COMM_WORLD);
   // TODO read HDF5 to SHM function implemented here.
+  if (commrank == 0) {
   double *mat_real = new double[cholsize];
   double *mat_imag = new double[cholsize];
   memset(mat_real, 0, cholsize * sizeof(double));
@@ -822,16 +824,16 @@ void readDQMCIntegralsGZ(string fcidump, int &norbs, int &nelec, double &ecore,
     exit(1);
   }
 
-  vector<complex<double>> chol_vec(cholsize, complex<double>(0., 0.));
+  chol_vec.resize(cholsize);
   for (int i = 0; i < cholsize; i++) {
     chol_vec[i] = complex<double>(mat_real[i], mat_imag[i]);
   }
   delete[] mat_real;
   delete[] mat_imag;
-
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
   SHMVecFromVecs(chol_vec, cholSHM, cholSHMName, cholSegment, cholRegion);
-
-      MPI_Barrier(MPI_COMM_WORLD);
+  chol_vec.clear();
 
   // create eigen matrix maps to shared memory
   for (int n = 0; n < nchol; n++) {
