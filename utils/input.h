@@ -196,6 +196,11 @@ private:
       & resTimeNEVPT_Norm
       & ngrid
       & printFrequency
+      & slowMultislater
+      & slowOverlap
+      & slowLocalEnergy
+      & slowForceBias
+      & phaselessErrorTarget
       & sampleDeterminants;
   }
 public:
@@ -400,6 +405,11 @@ public:
   std::string intType;
   std::string scratchDir;
   double weightCap;
+  bool slowMultislater;
+  bool slowOverlap;
+  bool slowLocalEnergy;
+  bool slowForceBias;
+  double phaselessErrorTarget;
 };
 
 /**

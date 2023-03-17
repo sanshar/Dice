@@ -9,7 +9,8 @@ using namespace Eigen;
 
 using matPair = std::array<MatrixXcd, 2>;
 
-GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact, int pncore, bool prightQ) 
+GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact, int pncore, bool prightQ, bool pslowQ, bool pslowOverlapQ,
+bool pslowForceBiasQ, bool pslowLocalEnergyQ) 
 {
   std::vector<int> refDetVec;
   readDeterminantsGZHFBinary(fname, refDetVec, ciExcitations, ciParity, ciCoeffs);
@@ -20,7 +21,10 @@ GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact,
   nact = 2 * pnact;
   ncore = 2 * pncore;
   rightQ = prightQ;
-
+  slowQ = pslowQ;
+  slowOverlapQ = pslowOverlapQ;
+  slowForceBiasQ = pslowForceBiasQ;
+  slowLocalEnergyQ = pslowLocalEnergyQ;
   ham.blockCholesky(blockChol, ncore + nact);
 
   if (rightQ) {
@@ -30,6 +34,24 @@ GZHFMultislater::GZHFMultislater(Hamiltonian& ham, std::string fname, int pnact,
       cumulativeCoeffs.push_back(sum);
     }
     uniform = uniform_real_distribution<double> (0., 1.);
+  }
+
+  if (slowQ) {
+    cout << "Using slow GZHFMultislater" << endl;
+    for (auto iter = ciExcitations.begin(); iter != ciExcitations.end(); iter++) {
+      int i = iter - ciExcitations.begin();
+      cout << "ith determinant " << i<< endl;
+      cout << ciCoeffs[i] << endl;
+      cout << "annihilation " << iter->at(0).transpose() << endl;
+      cout << "creation " << iter->at(1).transpose() << endl;
+      auto newDet = refDet;
+      for (int j = 0; j < ciExcitations[i][0].size(); j++) {
+        newDet(ciExcitations[i][0][j]) = ciExcitations[i][1][j];
+      }
+      // std::sort(newDet.data(), newDet.data() + newDet.size());
+      dets.push_back(newDet);
+      cout << newDet.transpose() << endl;
+    }
   }
 };
 
@@ -50,6 +72,17 @@ std::complex<double> GZHFMultislater::overlap(Eigen::MatrixXcd& psi)
   for (int i = 0; i < nelec; i++) phi0T(i, refDet[i]) = 1.;
 
   complex<double> overlap(0., 0.);
+  if (slowOverlapQ) {
+    
+    for (int i = 0; i < ndets; i++) {
+      MatrixXcd phiT = MatrixXcd::Zero(nelec, norbs);
+      for (int j = 0; j < nelec; j++) phiT(j, dets[i][j]) = 1.;
+      MatrixXcd phi = phiT.transpose();
+      overlap += conj(ciCoeffs[i]) * ciParity[i] * (phiT*psi).determinant();
+    }
+  }
+  else
+  {
   MatrixXcd theta, green, greenp;
   theta = psi * (phi0T * psi).inverse();
   green = (theta * phi0T).transpose();
@@ -61,7 +94,7 @@ std::complex<double> GZHFMultislater::overlap(Eigen::MatrixXcd& psi)
   complex<double> overlap0 = (phi0T * psi).determinant();
  
   // ref contribution
-  overlap += ciCoeffs[0];
+  overlap += conj(ciCoeffs[0]);
 
   // iterate over excitations
   for (int i = 1; i < ndets; i++) {
@@ -99,9 +132,10 @@ std::complex<double> GZHFMultislater::overlap(Eigen::MatrixXcd& psi)
       dets = temp.determinant();
     }
 
-    overlap += ciCoeffs[i] * ciParity[i] * dets;
+    overlap += conj(ciCoeffs[i]) * ciParity[i] * dets;
   }
   overlap *= overlap0;
+  }
   return overlap;
 };
 
@@ -114,12 +148,60 @@ void GZHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::
   size_t ndets = ciCoeffs.size();
   fb = VectorXcd::Zero(nchol);
 
+  if (slowForceBiasQ) {
+    MatrixXcd greenMulti = MatrixXcd::Zero(norbs, ncore+nact);
+    complex<double> overlap(0.0, 0.0);
+    for (int i = 0; i < ndets; i++) {
+      MatrixXcd phiT = MatrixXcd::Zero(nelec, norbs);
+      for (int j = 0; j < nelec; j++) phiT(j, dets[i][j]) = 1.;
+      MatrixXcd phi = phiT.transpose();
+      MatrixXcd theta, green;
+      auto test = phiT*psi;
+      if (abs(test.determinant()) > 1e-100){
+
+      theta = psi * (phiT * psi).inverse();
+      green = (theta * phiT).transpose().eval();
+      //green = (theta * phiT).transpose().eval();
+      //cout << theta << endl;
+      auto factor = (phiT*psi).determinant();
+      if (slowQ) {
+      overlap += conj(ciCoeffs[i]) * ciParity[i] * factor;
+      }
+      else {
+        overlap += ciCoeffs[i] * ciParity[i] * factor;
+      }
+      //if (slowLocalEnergyQ) {
+        green = factor * conj(ciCoeffs[i]) * ciParity[i] * green;
+      //}
+      /*else {
+        green = factor * ciCoeffs[i] * ciParity[i] * green;
+      }*/
+
+      //cout << "psi" << psi.cols() << " " << psi.rows() << endl;
+      //cout << "theta" << theta.cols() << " " << theta.rows() << endl;
+      //cout << "green" << green.cols() << " " << green.rows() << endl;
+      //cout << "overlap" << overlap << endl;
+
+      MatrixXcd greenActive = green.block(0, 0, norbs, ncore + nact);
+      Eigen::Map<VectorXcd> greenActiveFlat(greenActive.data(),
+                                       greenActive.rows() * greenActive.cols());
+      fb += greenActiveFlat.transpose() * blockChol[0].conjugate();
+      }
+    }
+    //greenMulti /= overlap;
+    //cout << greenMulti << endl;
+    fb /= overlap;
+
+  }
+  else
+  {
   MatrixXcd phi0T;
   phi0T = MatrixXcd::Zero(nelec, norbs);
   for (int i = 0; i < nelec; i++) phi0T(i, refDet[i]) = 1.;
 
   MatrixXcd theta, green, greenp, greeno;
-  theta = psi * (psi(refDet, Eigen::placeholders::all)).inverse();
+  //theta = psi * (psi(refDet, Eigen::placeholders::all)).inverse();
+  theta = psi * (phi0T * psi).inverse();
   green = (theta * phi0T).transpose();
   greenp = green - MatrixXcd::Identity(norbs, norbs);
   greeno = green(refDet, Eigen::placeholders::all);
@@ -127,7 +209,7 @@ void GZHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::
   // most quantities henceforth will be calculated in "units" of overlap0 = < phi_0 | psi >
   complex<double> overlap0 = (psi(refDet, Eigen::placeholders::all)).determinant();
   complex<double> overlap(0., 0.);
-  overlap += ciCoeffs[0];
+  overlap += conj(ciCoeffs[0]);
   MatrixXcd intermediate, greenMulti;
   intermediate = MatrixXcd::Zero(norbs, nelec);
 
@@ -213,12 +295,12 @@ void GZHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::
       }
       temp = cofactors;
     }
-
-    overlap += ciCoeffs[i] * ciParity[i] * dets;
+    //cout << "fb temp " << temp << endl;
+    overlap += conj(ciCoeffs[i]) * ciParity[i] * dets;
     if (rank > 0) {
       for (int p = 0; p < rank; p++) 
         for (int t = 0; t < rank; t++)
-          intermediate(ciExcitations[i][1](t), ciExcitations[i][0](p)) += ciCoeffs[i] * ciParity[i] * temp(p, t);
+          intermediate(ciExcitations[i][1](t), ciExcitations[i][0](p)) += conj(ciCoeffs[i]) * ciParity[i] * temp(p, t);
     }
   }
   
@@ -229,6 +311,7 @@ void GZHFMultislater::forceBias(Eigen::MatrixXcd& psi, Hamiltonian& ham, Eigen::
   MatrixXcd greenMultiActive = greenMulti.block(0, 0, norbs, ncore + nact);
   Eigen::Map<Eigen::VectorXcd> greenMultiVec(greenMultiActive.data(), greenMultiActive.rows() * greenMultiActive.cols());
   fb = greenMultiVec.transpose() * blockChol[0];
+  }
 };
 
 
@@ -451,7 +534,49 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
   int nelec = refDet.size();
   int nchol = ham.ncholEne;
   size_t ndets = ciCoeffs.size();
+  std::array<complex<double>, 2> hamOverlap;
+  bool thisSlowEnergy = slowLocalEnergyQ;
+  if (abs((psi(refDet, Eigen::placeholders::all)).determinant()-1.0) < 1e-10) thisSlowEnergy = false;
+  if (thisSlowEnergy)
+  {
+    complex<double> overlap(0.0, 0.0);
+    complex<double> ene(0.0, 0.0);
+    for (int i = 0; i < ndets; i++) {
+      MatrixXcd phiT = MatrixXcd::Zero(nelec, norbs);
+      for (int j = 0; j < nelec; j++) phiT(j, dets[i][j]) = 1.0;
+      MatrixXcd overlapMat = phiT * psi;
+      
+      auto detOverlap = overlapMat.determinant();
+      
+      auto detEne = complex<double>(0.0, 0.0);
+      MatrixXcd theta = psi * overlapMat.inverse();
+      MatrixXcd green = (theta * phiT).transpose();
 
+      // one body part
+      detEne += green.cwiseProduct(ham.h1soc).sum();
+      // two body part
+      int norbs = ham.norbs, nelec = ham.nelec;
+      for (int i = 0; i < ham.ncholEne; i++) {
+        MatrixXcd f = MatrixXcd::Zero(nelec, nelec);
+        f.noalias() = phiT*ham.cholZ[i]*theta;
+        complex<double> c = f.trace();
+        detEne += (c * c - f.cwiseProduct(f.transpose()).sum()) * 0.5;
+      }
+      auto e1 = green.cwiseProduct(ham.h1soc).sum();
+      auto e2 = detEne - e1;
+      cout << " deti "  << i << "e1: " << e1*detOverlap << endl << "detOverlap " << detOverlap << endl;
+      cout << "oneEne " << e1*conj(ciCoeffs[i])*detOverlap << endl;
+      //cout << "e2: " << e2 << endl;
+      ene += conj(ciCoeffs[i]) * ciParity[i] * detOverlap * detEne;
+      overlap += conj(ciCoeffs[i]) * ciParity[i] * detOverlap;
+    }
+    cout << "overlap " << overlap << endl;
+    ene += overlap * ham.ecore;
+    hamOverlap[0] = ene;
+    hamOverlap[1] = overlap;
+  }
+  else
+  {
   MatrixXcd phi0T;
   phi0T = MatrixXcd::Zero(nelec, norbs);
   for (int i = 0; i < nelec; i++) phi0T(i, refDet[i]) = 1.;
@@ -468,14 +593,14 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
   complex<double> overlap0 = (phi0T * psi).determinant();
  
   // ref contribution
-  overlap += ciCoeffs[0];
+  overlap += conj(ciCoeffs[0]);
   complex<double> hG;
   hG = greeno.cwiseProduct(ham.h1soc(refDet, Eigen::placeholders::all)).sum();
-  ene += ciCoeffs[0] * hG;
+  ene += conj(ciCoeffs[0]) * hG;
 
   // 1e intermediate
   MatrixXcd roth1;
-  roth1 = (greeno * ham.h1soc) * greenp;
+  roth1 = (greeno * ham.h1soc.conjugate()) * greenp;
 
   // G^{p}_{t} blocks
   vector<MatrixXcd> gBlocks;
@@ -511,8 +636,12 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
       }
     }
 
-    overlap += ciCoeffs[i] * ciParity[i] * dets;
-    ene += ciCoeffs[i] * ciParity[i] * oneEne;
+    overlap += conj(ciCoeffs[i]) * ciParity[i] * dets;
+    ene += conj(ciCoeffs[i]) * ciParity[i] * oneEne;
+    /*cout << dets << endl;
+    cout << "ciCoeffs" << ciCoeffs[i] << endl;
+    cout << "deti " << i << " " << "oneEne" << oneEne*overlap0 << "\n detOverlap " << dets*overlap0  << endl;
+    cout << "oneEne " << oneEne  << oneEne * ciCoeffs[i] << " " << oneEne * conj(ciCoeffs[i]) << endl;*/
     gBlocks.push_back(blocks);
     gBlockDets.push_back(dets);
   }
@@ -538,12 +667,12 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
     lG = exc.trace();
     l2G2 = lG * lG - exc.cwiseProduct(exc.transpose()).sum();
     l2G2Tot += l2G2;
-    int2.noalias() = (greeno * ham.cholZ[n].block(0, 0, norbs, nact + ncore)) * greenp.block(0, ncore, nact + ncore, nact);
+    int2.noalias() = (greeno * ham.cholZ[n].block(0, 0, norbs, nact + ncore).conjugate()) * greenp.block(0, ncore, nact + ncore, nact);
     int1.noalias() += lG * int2;
-    int1.noalias() -= (greeno * ham.cholZ[n](Eigen::placeholders::all, refDet)) * int2;
+    int1.noalias() -= (greeno * ham.cholZ[n](Eigen::placeholders::all, refDet).conjugate()) * int2;
 
     // ref contribution
-    ene += ciCoeffs[0] * l2G2 / 2.;
+    ene += conj(ciCoeffs[0]) * l2G2 / 2.;
     
     // iterate over excitations
     for (int i = 1; i < ndets; i++) {
@@ -703,8 +832,7 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
         }
       } 
 
-      ene += ciParity[i] * ciCoeffs[i] * twoEne / 2.;
-    
+      ene += ciParity[i] * conj(ciCoeffs[i]) * twoEne / 2.;
     } // dets
   } // chol
     
@@ -774,15 +902,14 @@ std::array<std::complex<double>, 2> GZHFMultislater::hamAndOverlap(Eigen::Matrix
       }
     } 
 
-    ene += ciParity[i] * ciCoeffs[i] * twoEne / 2.;
-  
+    ene += ciParity[i] * conj(ciCoeffs[i]) * twoEne / 2.;
   } // dets
 
   overlap *= overlap0;
   ene *= overlap0;
   ene += ham.ecore * overlap;
-  std::array<complex<double>, 2> hamOverlap;
   hamOverlap[0] = ene;
   hamOverlap[1] = overlap;
+  }
   return hamOverlap;
 };
