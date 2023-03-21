@@ -18,6 +18,8 @@ from pyscf.shciscf import shci
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 
+from functools import partial
+print = partial(print, flush=True)
 
 def doRHF(mol):
     mf = scf.RHF(mol)
@@ -764,7 +766,8 @@ def run_afqmc(mf_or_mc,
               run_dir=None,
               scratch_dir=None,
               use_eri=False,
-              dry_run=False):
+              dry_run=False,
+              integrals=None):
     if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
         return run_afqmc_mf(mf_or_mc,
                             vmc_root=vmc_root,
@@ -785,7 +788,8 @@ def run_afqmc(mf_or_mc,
                             write_one_rdm=write_one_rdm,
                             run_dir=run_dir,
                             scratch_dir=scratch_dir,
-                            dry_run=dry_run)
+                            dry_run=dry_run,
+                            integrals=integrals)
     elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
         return run_afqmc_mc(mf_or_mc,
                             vmc_root=vmc_root,
@@ -808,7 +812,8 @@ def run_afqmc(mf_or_mc,
                             run_dir=run_dir,
                             scratch_dir=scratch_dir,
                             use_eri=use_eri,
-                            dry_run=dry_run)
+                            dry_run=dry_run,
+                            integrals=integrals)
     else:
         raise Exception("Need either mean field or casscf object!")
 
@@ -833,7 +838,8 @@ def run_afqmc_mf(mf,
                  write_one_rdm=False,
                  run_dir=None,
                  scratch_dir=None,
-                 dry_run=False):
+                 dry_run=False,
+                 integrals=None):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -845,8 +851,8 @@ def run_afqmc_mf(mf,
     if run_dir is not None:
         os.system(f"rm -rf {run_dir}; mkdir -p {run_dir};")
         os.chdir(f'{run_dir}')
-        if scratch_dir is not None:
-            os.system(f"mkdir -p {scratch_dir};")
+    if scratch_dir is not None:
+        os.system(f"mkdir -p {scratch_dir};")
 
     mol = mf.mol
     # choose the orbital basis
@@ -860,18 +866,38 @@ def run_afqmc_mf(mf,
 
     # calculate cholesky integrals
     print("Calculating Cholesky integrals")
-    h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut)
-    nbasis = h1e.shape[-1]
-    nelec = mol.nelec
+    h1e, chol, nelec, enuc, nbasis, nchol = [ None ] * 6
+    if integrals is not None:
+      enuc = integrals['h0']
+      h1e = integrals['h1']
+      eri = integrals['h2']
+      nelec = mol.nelec
+      nbasis = h1e.shape[-1]
+      norb = nbasis
+      eri = ao2mo.restore(4, eri, norb)
+      chol0 = modified_cholesky(eri, chol_cut)
+      nchol = chol0.shape[0]
+      chol = np.zeros((nchol, norb, norb))
+      for i in range(nchol):
+          for m in range(norb):
+              for n in range(m + 1):
+                  triind = m * (m + 1) // 2 + n
+                  chol[i, m, n] = chol0[i, triind]
+                  chol[i, n, m] = chol0[i, triind]
 
-    if norb_frozen > 0:
-        assert (norb_frozen * 2 < sum(nelec))
-        mc = mcscf.CASSCF(mf, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
-        nelec = mc.nelecas
-        mc.mo_coeff = mo_coeff
-        h1e, enuc = mc.get_h1eff()
-        chol = chol.reshape((-1, nbasis, nbasis))
-        chol = chol[:, mc.ncore:mc.ncore + mc.ncas, mc.ncore:mc.ncore + mc.ncas]
+    else:
+      h1e, chol, nelec, enuc = generate_integrals(mol, mf.get_hcore(), mo_coeff, chol_cut)
+      nbasis = h1e.shape[-1]
+      nelec = mol.nelec
+
+      if norb_frozen > 0:
+          assert (norb_frozen * 2 < sum(nelec))
+          mc = mcscf.CASSCF(mf, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
+          nelec = mc.nelecas
+          mc.mo_coeff = mo_coeff
+          h1e, enuc = mc.get_h1eff()
+          chol = chol.reshape((-1, nbasis, nbasis))
+          chol = chol[:, mc.ncore:mc.ncore + mc.ncas, mc.ncore:mc.ncore + mc.ncas]
 
     print("Finished calculating Cholesky integrals\n")
 
@@ -885,9 +911,8 @@ def run_afqmc_mf(mf,
     h1e_mod = h1e - v0
     chol = chol.reshape((chol.shape[0], -1))
 
-    write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
-
     # write mo coefficients
+    trial_coeffs = np.empty((2, nbasis, nbasis))
     overlap = mf.get_ovlp(mol)
     if isinstance(mf, (scf.uhf.UHF, scf.rohf.ROHF)):
         hf_type = "uhf"
@@ -902,12 +927,18 @@ def run_afqmc_mf(mf,
             uhfCoeffs[:, :nbasis] = q
             uhfCoeffs[:, nbasis:] = q
 
+        trial_coeffs[0] = uhfCoeffs[:, :nbasis]
+        trial_coeffs[1] = uhfCoeffs[:, nbasis:]
         writeMat(uhfCoeffs, "uhf.txt")
 
     elif isinstance(mf, scf.rhf.RHF):
         hf_type = "rhf"
         q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[:, norb_frozen:]))
+        trial_coeffs[0] = q
+        trial_coeffs[1] = q
         writeMat(q, "rhf.txt")
+
+    write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol', mo_coeffs = trial_coeffs)
 
     # write input
     write_afqmc_input(seed=seed,
@@ -921,7 +952,8 @@ def run_afqmc_mf(mf,
                       burnIter=burn_in,
                       choleskyThreshold=cholesky_threshold,
                       weightCap=weight_cap,
-                      writeOneRDM=write_one_rdm)
+                      writeOneRDM=write_one_rdm,
+                      scratchDir=scratch_dir)
 
     if dry_run:
       return None, None
@@ -995,7 +1027,8 @@ def run_afqmc_mc(mc,
                  run_dir=None,
                  scratch_dir=None,
                  use_eri=False,
-                 dry_run=False):
+                 dry_run=False,
+                 integrals=None):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -1007,47 +1040,68 @@ def run_afqmc_mc(mc,
     if run_dir is not None:
         os.system(f"rm -rf {run_dir}; mkdir -p {run_dir}; cp dets*.bin {run_dir}")
         os.chdir(f'{run_dir}')
-        if scratch_dir is not None:
-            os.system(f"mkdir -p {scratch_dir}")
+    if scratch_dir is not None:
+        os.system(f"mkdir -p {scratch_dir}")
 
     mol = mc.mol
     mo_coeff = mc.mo_coeff
 
     # calculate cholesky integrals
     print("Calculating Cholesky integrals")
-    h1e, chol, nelec, enuc = generate_integrals(mol, mc.get_hcore(), mo_coeff, chol_cut)
+    h1e, chol, nelec, enuc, nbasis, nchol, norb_core = [ None ] * 7
+    if integrals is not None:
+      enuc = integrals['h0']
+      h1e = integrals['h1']
+      eri = integrals['h2']
+      nelec = mol.nelec
+      nbasis = h1e.shape[-1]
+      norb = nbasis
+      norb_core = 0
+      eri = ao2mo.restore(4, eri, norb)
+      chol0 = modified_cholesky(eri, chol_cut)
+      nchol = chol0.shape[0]
+      chol = np.zeros((nchol, norb, norb))
+      for i in range(nchol):
+          for m in range(norb):
+              for n in range(m + 1):
+                  triind = m * (m + 1) // 2 + n
+                  chol[i, m, n] = chol0[i, triind]
+                  chol[i, n, m] = chol0[i, triind]
 
-    nbasis = h1e.shape[-1]
-    nelec = mol.nelec
+    else:
+      h1e, chol, nelec, enuc = generate_integrals(mol, mc.get_hcore(), mo_coeff, chol_cut)
 
-    # norb_frozen: not correlated in afqmc, only contribute to 1-body potential
-    # norb_core: correlated in afqmc but not in trial hci state
-    norb_core = int(mc.ncore)
+      nbasis = h1e.shape[-1]
+      nelec = mol.nelec
 
-    if norb_frozen > 0:
-        assert (norb_frozen * 2 < sum(nelec))
-        mc_dummy = mcscf.CASSCF(mol, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
-        norb_core -= norb_frozen
-        nelec = mc_dummy.nelecas
-        mc_dummy.mo_coeff = mo_coeff
-        h1e, enuc = mc_dummy.get_h1eff()
-        chol = chol.reshape((-1, nbasis, nbasis))
-        chol = chol[:, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas]
-        nbasis = h1e.shape[-1]
+      # norb_frozen: not correlated in afqmc, only contribute to 1-body potential
+      # norb_core: correlated in afqmc but not in trial hci state
+      norb_core = int(mc.ncore)
 
-    if use_eri:  # generate cholesky in mo basis
-        nelec = mc.nelecas
-        h1e, enuc = mc.get_h1eff()
-        eri = ao2mo.restore(4, mc.get_h2eff(mo_coeff), mc.ncas)
-        chol0 = modified_cholesky(eri, chol_cut)
-        nchol = chol0.shape[0]
-        chol = np.zeros((nchol, mc.ncas, mc.ncas))
-        for i in range(nchol):
-            for m in range(mc.ncas):
-                for n in range(m + 1):
-                    triind = m * (m + 1) // 2 + n
-                    chol[i, m, n] = chol0[i, triind]
-                    chol[i, n, m] = chol0[i, triind]
+      if norb_frozen > 0:
+          assert (norb_frozen * 2 < sum(nelec))
+          mc_dummy = mcscf.CASSCF(mol, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
+          norb_core -= norb_frozen
+          nelec = mc_dummy.nelecas
+          mc_dummy.mo_coeff = mo_coeff
+          h1e, enuc = mc_dummy.get_h1eff()
+          chol = chol.reshape((-1, nbasis, nbasis))
+          chol = chol[:, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas, mc_dummy.ncore:mc_dummy.ncore + mc_dummy.ncas]
+          nbasis = h1e.shape[-1]
+
+      if use_eri:  # generate cholesky in mo basis
+          nelec = mc.nelecas
+          h1e, enuc = mc.get_h1eff()
+          eri = ao2mo.restore(4, mc.get_h2eff(mo_coeff), mc.ncas)
+          chol0 = modified_cholesky(eri, chol_cut)
+          nchol = chol0.shape[0]
+          chol = np.zeros((nchol, mc.ncas, mc.ncas))
+          for i in range(nchol):
+              for m in range(mc.ncas):
+                  for n in range(m + 1):
+                      triind = m * (m + 1) // 2 + n
+                      chol[i, m, n] = chol0[i, triind]
+                      chol[i, n, m] = chol0[i, triind]
 
     print("Finished calculating Cholesky integrals\n")
 
@@ -1133,6 +1187,7 @@ def run_afqmc_mc(mc,
                           choleskyThreshold=cholesky_threshold,
                           weightCap=weight_cap,
                           writeOneRDM=write_one_rdm,
+                          scratchDir=scratch_dir,
                           fname=f"afqmc_{n}.json")
 
         print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
