@@ -295,11 +295,12 @@ def read_dets(fname='dets.bin', ndets=None):
 
 # reading dets from dice
 def read_dets_ghf(fname='dets.bin', ndets=None):
+    print('read dets ghf')
     state = {}
     norbs = 0
     with open(fname, 'rb') as f:
-        ndetsAll = struct.unpack('i', f.read(4))[0]
-        norbs = struct.unpack('i', f.read(4))[0]
+        ndetsAll = struct.unpack('i', f.read(8))[0]
+        norbs = struct.unpack('i', f.read(8))[0]
         if ndets is None:
             ndets = ndetsAll
         for i in range(ndets):
@@ -307,6 +308,7 @@ def read_dets_ghf(fname='dets.bin', ndets=None):
             det = [0 for i in range(norbs)]
             for j in range(norbs // 2):
                 occ = struct.unpack('c', f.read(1))[0]
+                print(occ)
                 if (occ == b'a'):
                     det[2 * j] = 1
                 elif (occ == b'b'):
@@ -717,6 +719,7 @@ def prepAFQMC_gzhf(gmf, chol_cut=1e-5):
     h1e_mod = h1e - v0
     chol = chol.reshape((chol.shape[0], -1))
     write_dqmc_gzhf(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, filename='FCIDUMP_chol')
+    return h1e, h1e_mod, chol
 
 
 # calculate and write cholesky integrals
@@ -738,10 +741,11 @@ def prepAFQMC_gihf(gmf, chol_cut=1e-5):
     print(f'nbasis: {nbasis}')
     print(f'chol.shape: {chol.shape}')
     chol = chol.reshape((-1, nbasis, nbasis))
-    v0 = 0.5 * np.einsum('nik,njk->ij', chol, chol, optimize='optimal')
+    v0 = 0.5 * np.einsum('nik,nkj->ij', chol, chol, optimize='optimal')
     h1e_mod = h1e - v0
     chol = chol.reshape((chol.shape[0], -1))
     write_dqmc(h1e, h1e_mod, chol, sum(mol.nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+    return h1e, h1e_mod, chol
 
 
 def run_afqmc(mf_or_mc,
@@ -1483,6 +1487,7 @@ def write_dqmc_gzhf(hcore, hcore_mod, chol, nelec, nmo, enuc, filename='FCIDUMP_
         fh5['chol_real'] = chol.real.flatten()
         print(chol.shape)
         fh5['chol_imag'] = -1. * chol.imag.flatten()
+        #fh5['chol_imag'] = chol.imag.flatten()
         fh5['energy_core'] = enuc
 
 
@@ -1590,7 +1595,8 @@ def write_uccsd(singles, doubles, rotation=None, filename='uccsd.h5'):
         fh5['rotation'] = rotation.flatten()
 
 
-def write_afqmc_input(numAct=None,
+def write_afqmc_input(integral='FCIDUMP_chol',
+                      numAct=None,
                       numCore=None,
                       soc=None,
                       intType=None,
@@ -1610,9 +1616,10 @@ def write_afqmc_input(numAct=None,
                       weightCap=None,
                       writeOneRDM=False,
                       scratchDir=None,
+                      phaselessErrorTarget=None,
                       fname='afqmc.json'):
     system = {}
-    system["integrals"] = "FCIDUMP_chol"
+    system["integrals"] = integral
     if numAct is not None:
         system["numAct"] = numAct
     if numCore is not None:
@@ -1636,6 +1643,8 @@ def write_afqmc_input(numAct=None,
         seed = np.random.randint(1, 1e6)
     sampling["seed"] = seed
     sampling["phaseless"] = True
+    if phaselessErrorTarget is not None:
+        sampling["phaselessErrorTarget"] = phaselessErrorTarget
     sampling["dt"] = dt
     sampling["nsteps"] = nsteps
     sampling["nwalk"] = nwalk
