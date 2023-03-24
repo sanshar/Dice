@@ -1341,8 +1341,12 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
   const double zero = 0.0;
 
   for (int i = 0; i < dets_size; i++) {
-    auto civec = ci[0](i, 0);
-    cdfci::getDeterminantsVariational(dets[i], epsilon1/abs(civec), civec, zero, I1, I2, I2HB, irrep, coreE, E0[0], det_to_index, schd, 0, nelec);
+    double cmax = 0.0;
+    for(int iroot = 0; iroot < ci.size(); iroot++) {
+      cmax += ci[iroot](i,0) * ci[iroot](i,0);
+    }
+    cmax = sqrt(cmax);
+    cdfci::getDeterminantsVariational(dets[i], epsilon1/cmax, cmax, zero, I1, I2, I2HB, irrep, coreE, E0[0], det_to_index, schd, 0, nelec);
     if (i%10000 == 0) {
       cout << "curr iter " << i << " dets size " << det_to_index.size() << endl;
     }
@@ -1384,9 +1388,10 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
   }
   cout << "start to optimize" << endl;
 
-    auto prev_ene = ene;
-    start_time = getTime();
-    for (int iroot=0; iroot < nroots; iroot++) {
+  auto prev_ene = ene;
+  start_time = getTime();
+  for (int iroot=0; iroot < nroots; iroot++) {
+  cout << iroot << endl;
     for (int iter = 1; iter*thread_num <= num_iter; iter++) {
       
       // initialize dx on each thread
@@ -1395,9 +1400,10 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         vector<vector<double>> z;
         size_t orbDiff;
         for (int thread = 0; thread < thread_num; thread++) {
-          auto x_first = x_vector.begin() + nroots*this_det_idx[thread];
+          auto idx = this_det_idx[thread];
+          auto x_first = x_vector.begin() + nroots*idx;
           auto x_last = x_first + nroots;
-          auto z_first = z_vector.begin() + nroots*this_det_idx[thread];
+          auto z_first = z_vector.begin() + nroots*idx;
           auto z_last = z_first + nroots;
           x.push_back(vector<double>(x_first, x_last));
           z.push_back(vector<double>(z_first, z_last));
@@ -1416,7 +1422,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
           x_vector[idx] += dx;
           z_vector[idx] += hij * dx;
           xx[iroot][iroot] += dx*dx+2*dx*x;
-          for (int jroot=0; jroot<iroot; jroot++) {
+          for (int jroot=0; jroot<nroots; jroot++) {
             auto dij = x_vector[i*nroots+jroot] * dx;
             xx[jroot][iroot] += dij;
             xx[iroot][jroot] += dij;
@@ -1469,7 +1475,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         vector<int> closed(nelec, 0);
         vector<int> open(nopen, 0);
         deti.getOpenClosed(open, closed);
-        const double xx = ene[iroot].second;
+        const double xx_iroot = ene[iroot].second;
         double max_abs_grad = 0.0;
         int selected_det = det_idx;
         int i_idx = det_idx * nroots+iroot;
@@ -1499,7 +1505,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
               z_vector[j_idx] += dz;
               norm += 2.*x*dz;
               if (j_idx % thread_num == thread_id) {
-                auto abs_grad = abs(x*xx+z_vector[j_idx]);
+                auto abs_grad = abs(x*xx_iroot+z_vector[j_idx]);
                 if (abs_grad > max_abs_grad) {
                   max_abs_grad = abs_grad;
                   selected_det = iter->second;
@@ -1539,7 +1545,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
               z_vector[j_idx] += dz;
               norm += 2.*x*dz;
               if (j_idx % thread_num == thread_id) {
-                auto abs_grad = abs(x*xx+z_vector[j_idx]);
+                auto abs_grad = abs(x*xx_iroot+z_vector[j_idx]);
                 if (abs_grad > max_abs_grad) {
                   max_abs_grad = abs_grad;
                   selected_det = iter->second;
@@ -1550,7 +1556,7 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
         }
         this_det_idx[thread_id] = selected_det;
         if (iter % 10 == 0) {
-          this_det_idx[thread_id] = (iter/10*thread_num)%dets_size;
+          this_det_idx[thread_id] = (iter/10*thread_num+thread_id)%dets_size;
         }
         //CoordinatePickGcdGradOmp(column, x_vector, z_vector, ene, thread_num, thread_id);
         #pragma omp atomic
@@ -1574,12 +1580,16 @@ void cdfci::sequential_solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatB
     }
   }
 
-  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
+  ci = vector<MatrixXx>(schd.nroots, MatrixXx::Zero(dets.size(), 1));
   for (int i = 0; i < x_vector.size(); i++) {
     int iroot = i % nroots;
     int i_idx = i / nroots;
     ci[iroot](i_idx, 0) = x_vector[i] / sqrt(ene[iroot].second);
   }
+
+  for (int i = 0; i < nroots; i++) {
+    E0[i] = ene[i].first/ene[i].second+coreEbkp;
+  } 
 
   coreE = coreEbkp;
   return;
