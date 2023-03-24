@@ -759,7 +759,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     pout << "Load converged: " << converged << endl;
   }
 
-  int start_index = 0;//ci[0].rows();
+  int start_index = ci[0].rows();
   int dets_size = dets.size();
 
   for (int i = 0; i < dets_size; i++) {
@@ -787,14 +787,17 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     dets[it.second] = it.first;
   }
   dets_size = dets.size();
+  cout << " " << dets_size << " dets size " << endl;
   cout << "build det to index" << endl;
   for (int i = 0; i < dets_size; i++) {
     det_to_index[dets[i]] = i;
-    if (i % 10000 == 0) {
+    if (i % 1000000 == 0) {
       cout << i << "dets constructed" << endl;
     }
   }
   cout << det_to_index.size() << " determinants optimized by cdfci" << endl;
+
+  cout << "starts to precondition" << endl;
   // ene stores the rayleigh quotient quantities.
   int nroots = schd.nroots;
   vector<pair<double, double>> ene(nroots, make_pair(0.0, 0.0));
@@ -808,6 +811,8 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
 
   for (int iroot = 0; iroot<nroots; iroot++) 
     xx_re[iroot][iroot] = ene[iroot].second;
+
+  cout << "precondition costs: " << getTime()-start_time << "\n"; 
   cout << get_energy(ene[0]) + coreEbkp << endl;
   auto num_iter = schd.cdfciIter;
   vector<int> this_det_idx(thread_num, 0);
@@ -862,7 +867,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           // update x^\dagger_i x_j matrix.
           // first index be the conjugate one.
           xx_re[iroot][iroot] += norm(dx);
-          for (int jroot = iroot; jroot < nroots; jroot++) {
+          for (int jroot = 0; jroot < nroots; jroot++) {
             //<x_i^\dagger| x_j>
             dcomplex dij = conj(dx) * x[thread][jroot];
             double dij_re = dij.real();
@@ -936,7 +941,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
         auto det_energy = deti.Energy(I1, I2, coreE);
         auto dz = dx * det_energy;
         auto x = x_vector[i_idx];
-        double screen = 1e-10 / (abs(x) / xx_re[iroot][iroot]);
+        double screen = 1e-10; // / (abs(x) / xx_re[iroot][iroot]);
         double xz = 0.0;
 
         for (int ia = 0; ia < nopen * nclosed; ia++) {
@@ -960,7 +965,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
             if (j_idx % thread_num == thread_id) {
               auto grad_real = z_vec_re[j_idx] + x.real() * xx;
               auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
-              for(int jroot=0; jroot<iroot; jroot++) {
+              /*for(int jroot=0; jroot<iroot; jroot++) {
                   auto xj_jroot = x_vector[detj_idx*nroots+jroot];
                   auto xj_jroot_re = xj_jroot.real();
                   auto xj_jroot_im = xj_jroot.imag();
@@ -968,7 +973,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                              + xj_jroot_im*xx_im[iroot][jroot];
                   grad_imag += xj_jroot_im*xx_re[iroot][jroot]
                              - xj_jroot_re*xx_im[iroot][jroot];
-              }
+              }*/
               auto abs_grad = abs(grad_real + grad_imag);
               if (abs_grad > max_abs_grad) {
                 max_abs_grad = abs_grad;
@@ -1015,7 +1020,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                 if (j_idx % thread_num == thread_id) {
                   auto grad_real = z_vec_re[j_idx] + x.real() * xx;
                   auto grad_imag = z_vec_im[j_idx] + x.imag() * xx;
-                  for(int jroot=0; jroot<iroot; jroot++) {
+                  /*for(int jroot=0; jroot<iroot; jroot++) {
                       auto xj_jroot = x_vector[detj_idx*nroots+jroot];
                       auto xj_jroot_re = xj_jroot.real();
                       auto xj_jroot_im = xj_jroot.imag();
@@ -1023,7 +1028,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
                                  + xj_jroot_im*xx_im[iroot][jroot];
                       grad_imag += xj_jroot_im*xx_re[iroot][jroot]
                                  - xj_jroot_re*xx_im[iroot][jroot];
-                  } 
+                  }*/ 
                   auto abs_grad = abs(grad_real + grad_imag);
                   if (abs_grad > max_abs_grad) {
                     max_abs_grad = abs_grad;
@@ -1058,7 +1063,7 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
     }
   }
 
-  ci.resize(schd.nroots, MatrixXx::Zero(dets.size(), 1));
+  ci = vector<MatrixXx>(nroots, MatrixXx::Zero(dets_size, 1)); // I don't know why the resize was not working.
   for (int i = 0; i < x_vector.size(); i++) {
     int iroot = i % nroots;
     int i_idx = i / nroots;
@@ -1066,5 +1071,9 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   }
 
   coreE = coreEbkp;
+  for (int i = 0; i < nroots; i++) {
+    E0[i] = ene[i].first/ene[i].second+coreEbkp;
+  } 
+
   return;
 }
