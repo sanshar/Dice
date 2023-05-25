@@ -1040,8 +1040,9 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
           }
         }
         this_det_idx[thread_id] = selected_det;
-        if (iter % 10 == 0) {
-          this_det_idx[thread_id] = (int(iter/10)*thread_num+thread_id)%dets_size;
+        int search_depth = schd.writeBestDeterminants;
+        if (iter % search_depth == 0) {
+          this_det_idx[thread_id] = (int(iter/search_depth)*thread_num+thread_id)%dets_size;
         }
         #pragma omp atomic
         ene[iroot].first += xz;
@@ -1073,7 +1074,19 @@ void cdfci::solve(schedule& schd, oneInt& I1, twoInt& I2, twoIntHeatBathSHM& I2H
   coreE = coreEbkp;
   for (int i = 0; i < nroots; i++) {
     E0[i] = ene[i].first/ene[i].second+coreEbkp;
-  } 
+  }
+
+  if (schd.io)  {
+    char file[5000];
+    sprintf(file, "%s/%d-variational.bkp", schd.prefix[0].c_str(), commrank);
+    std::ofstream ofs(file, std::ios::binary);
+    boost::archive::binary_oarchive save(ofs);
+    save << iter << dets;
+    save << ci;
+    save << E0;
+    save << converged;
+    ofs.close();
+  }
 
   return;
 }

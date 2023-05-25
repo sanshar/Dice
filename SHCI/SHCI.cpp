@@ -408,7 +408,7 @@ int main(int argc, char* argv[]) {
   vector<double> E0;
 #ifndef Complex
   if (schd.cdfci_on == 0 && schd.restart) {
-      cdfci::sequential_solve(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
+      cdfci::sequential_solve_omp(schd, I1, I2, I2HBSHM, irrep, coreE, E0, ci, Dets);
   }
   else {
     E0 = SHCIbasics::DoVariational(
