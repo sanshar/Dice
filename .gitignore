@@ -49,6 +49,7 @@ benchmark/*/output.dat
 benchmark/*/benchmark_raw.out
 benchmark/*/benchmark.out
 .vscode
+.vscode/*
 *slurm-*.out
 run_all.sh
 pyscf.out
