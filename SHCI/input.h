@@ -104,6 +104,7 @@ struct schedule {
     & restrictionsPT                          \
     & Bvalue                                  \
     & Bdirection                              \
+    & cdfci_on                                \
     & cdfciIter                               \
     & z_threshold                             \
     & max_determinants;
