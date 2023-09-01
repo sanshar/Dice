@@ -208,9 +208,9 @@ void Hamiltonian::blockCholesky(std::vector<Eigen::Map<Eigen::MatrixXd>>& blockC
 {
   double* rotCholSHM;
   double* rotChol0;
-  size_t rotSize = ncol * norbs;
-  size_t size = chol.size() * rotSize;
-
+  size_t rotSize = static_cast<size_t>(ncol) * static_cast<size_t>(norbs);
+  size_t size = static_cast<size_t>(chol.size()) * rotSize;
+  
   if (commrank == 0) {
     rotChol0 = new double[size];
     for (int i = 0; i < chol.size(); i++) {
@@ -298,9 +298,9 @@ void Hamiltonian::floattenCholeskyZ() {
 // flatten and convert to float
 void Hamiltonian::floattenCholesky()
 {
-  size_t triSize = (norbs * (norbs + 1)) / 2;
+  size_t triSize = (static_cast<size_t>(norbs) * (static_cast<size_t>(norbs) + 1)) / 2;
   size_t size;
-  if (intType == "r" || intType == "g") size = nchol * triSize;
+  if (intType == "r" || intType == "g") size = static_cast<size_t>(nchol) * triSize;
   else if (intType == "u") size = 2 * nchol * triSize;
   float* floatChol0;
   if (commrank == 0) {

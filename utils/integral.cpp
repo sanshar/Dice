@@ -627,7 +627,7 @@ void readDQMCIntegralsRG(string fcidump, int& norbs, int& nalpha, int& nbeta, do
   readMat(h1Mod, file, "/hcore_mod"); 
 
   // read cholesky to shared memory
-  size_t cholSize = nchol * norbs * norbs;
+  size_t cholSize = static_cast<size_t>(nchol) * static_cast<size_t>(norbs) * static_cast<size_t>(norbs);
   double* cholSHM;
   MPI_Barrier(MPI_COMM_WORLD);
   readHDF5ToSHM(file, "/chol", cholSize, cholSHM, cholSHMName, cholSegment, cholRegion);
