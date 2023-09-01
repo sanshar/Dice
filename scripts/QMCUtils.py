@@ -1084,7 +1084,7 @@ def run_afqmc_mc(mc,
 
       if norb_frozen > 0:
           assert (norb_frozen * 2 < sum(nelec))
-          mc_dummy = mcscf.CASSCF(mol, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
+          mc_dummy = mcscf.CASSCF(mc._scf, mol.nao - norb_frozen, mol.nelectron - 2 * norb_frozen)
           norb_core -= norb_frozen
           nelec = mc_dummy.nelecas
           mc_dummy.mo_coeff = mo_coeff
