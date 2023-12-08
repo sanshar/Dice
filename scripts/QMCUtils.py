@@ -14,7 +14,7 @@ import pandas as pd
 import scipy.linalg as la
 from pyscf import __config__, ao2mo, fci, gto, lib, lo, mcscf, mp, scf, tools
 from pyscf.lo import boys, edmiston, iao, ibo, pipek
-from pyscf.shciscf import shci
+
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
 
@@ -2043,6 +2043,7 @@ def write_nevpt2_input(numAct=None,
 
 def run_ICPT(mc, nelecAct=None, norbAct=None, vmc_root=None, fname="spatialRDM.0.0.txt"):
     import NEVPT2Helper as nev
+    from pyscf.shciscf import shci
     print("Running ICPT\n")
     intfolder = "int/"
     os.system("mkdir -p " + intfolder)
