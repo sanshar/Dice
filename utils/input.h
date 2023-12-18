@@ -45,6 +45,7 @@ private:
     ar & restart & deterministic
       & tol & correlatorFiles
       & fullRestart
+      & dqmcRestart
       & wavefunctionType
       & integralsFile
       & ghfDets
@@ -162,6 +163,7 @@ private:
       & soc
       & writeOneRDM
       & writeTwoRDM
+      & writeWalkers
       & intType
       & scratchDir
       & weightCap
@@ -207,6 +209,7 @@ public:
 //General options
   bool restart;                          //option to restart calculation
   bool fullRestart;                          //option to restart calculation
+  bool dqmcRestart;                          //option to restart dqmc calculation
   bool deterministic;                    //Performs a deterministic calculation   
   int printLevel;                        // How much stuff to print
   bool expCorrelator;                    // exponential correlator parameters, to enforce positivity
@@ -402,6 +405,7 @@ public:
   bool soc;
   bool writeOneRDM;
   bool writeTwoRDM;
+  bool writeWalkers;
   std::string intType;
   std::string scratchDir;
   double weightCap;

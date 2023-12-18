@@ -243,6 +243,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     else if (method == "lm") schd.method = linearmethod;
     schd.restart = input.get("optimizer.restart", false);
     schd.fullRestart = input.get("optimizer.fullRestart", false);
+    schd.dqmcRestart = input.get("sampling.restart", false);
     child = input.get_child_optional("sampling.maxIter"); //to ensure maxiter is not reassigned
     if (!child) schd.maxIter = input.get("optimizer.maxIter", 50);
     schd.avgIter = input.get("optimizer.avgIter", 0);
@@ -279,6 +280,7 @@ void readInput(string inputFile, schedule& schd, bool print) {
     // dqmc
     schd.writeOneRDM = input.get("print.writeOneRDM", false); // also used in vmc
     schd.writeTwoRDM = input.get("print.writeTwoRDM", false); // used in vmc
+    schd.writeWalkers = input.get("print.writeWalkers", false);
     schd.scratchDir = input.get("print.scratchDir", "./");
 
 
