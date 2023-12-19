@@ -3,7 +3,7 @@ HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
 EIGEN=./eigen/
-HDF5=${CURC_HDF5_ROOT}
+HDF5=${HDF5_ROOT}
 MKL=${MKLROOT}
 
 INCLUDE_MKL = -I$(MKL)/include
@@ -17,7 +17,7 @@ LIB_HDF5 = -L$(HDF5)/lib -lhdf5
 
 COMPILE_NUMERIC = no
 
-FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5)
+FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5) -DBOOST_BIND_NO_PLACEHOLDERS
 LFLAGS_BASE = $(LIB_BOOST)
 ifeq ($(HAS_AVX2), yes)
 	FLAGS_BASE += -march=core-avx2
@@ -36,7 +36,7 @@ endif
 
 FLAGS_SHCI = $(FLAGS_BASE) -I./SHCI
 FLAGS_ZDICE = $(FLAGS_BASE) -I./SHCI -DComplex
-FLAGS_ZSHCI = $(FLAGS_BASE) -I./ZSHCI -DComplex  -DBOOST_BIND_NO_PLACEHOLDERS 
+FLAGS_ZSHCI = $(FLAGS_BASE) -I./ZSHCI -DComplex
 FLAGS_QMC = $(FLAGS_BASE) -I./VMC -I./utils -I./Wavefunctions  -I./FCIQMC 
 FLAGS_ICPT = $(FLAGS_QMC) $(INCLUDE_MKL) -I./ICPT -I./ICPT/StackArray
 
@@ -240,7 +240,8 @@ obj/%.o: ICPT/StackArray/%.cpp
 #  ALL+= bin/periodic
 #endif 
 
-all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
+# all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
+all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI
 
 periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
