@@ -1,4 +1,5 @@
 #include <iomanip>
+#include <bitset>
 #include "Determinants.h"
 #include "evaluateE.h"
 #include "global.h"
