@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <vector>
+#include <bitset>
 #include <boost/serialization/serialization.hpp>
 #include <Eigen/Dense>
 #include "global.h"
