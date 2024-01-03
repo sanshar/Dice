@@ -113,6 +113,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.sampleNewDets = false;
   schd.precondition = false;
   
+  schd.jz = -1000; // if jz is -1000 indicating no jz symmetry.
+
   while (dump.good()) {
 
     std::string Line;
@@ -331,6 +333,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.precondition = true;
     else if (boost::iequals(ArgName, "max_determinants"))
       schd.max_determinants = atoi(tok[1].c_str());
+    else if (boost::iequals(ArgName, "double_group"))
+      schd.double_group = tok[1];
+    else if (boost::iequals(ArgName, "jz"))
+      schd.jz = atoi(tok[1].c_str()); 
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);

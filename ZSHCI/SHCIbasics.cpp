@@ -1027,17 +1027,9 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 
     for (int i = 0; i < SortedDetsSize; i++) {
       if (i % (commsize) != commrank) continue;
-#ifndef Complex
-      SHCIgetdeterminants::getDeterminantsVariationalApprox(
-          SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,
-          I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec, SortedDets,
-          SortedDetsSize);
-
-#else
       SHCIgetdeterminants::getDeterminantsVariational(
           SHMDets[i], epsilon1 / abs(cMaxSHM[i]), cMaxSHM[i], zero, I1, I2,
           I2HB, irrep, coreE, E0[0], *uniqueDEH.Det, schd, 0, nelec);
-#endif
     }
 
     if (Determinant::Trev != 0) {

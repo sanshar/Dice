@@ -96,7 +96,9 @@ private:
     & DoFourRDM                               \
     & cdfciIter                               \
     & z_threshold                             \
-    & max_determinants;
+    & max_determinants                        \
+    & double_group                            \
+    & jz;                      
   }
 
 public:
@@ -170,6 +172,8 @@ public:
   bool sampleNewDets;
   bool precondition;
   double cdfciTol;
+  string double_group;
+  int jz;
 };
 
 #endif

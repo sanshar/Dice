@@ -95,6 +95,10 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
+    
+    if (irreps[i]-irreps[a] != 0)
+      continue;
+    
     CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
     //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     //Determinant detj = d;
@@ -138,6 +142,8 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
     size_t end = I2hb.startingIndicesIntegrals[pairIndex+1];
     std::complex<double>* integrals = I2hb.integrals;
     short* orbIndices = I2hb.pairs;
+    
+    int irrep_ij = irreps[I] + irreps[J];
 
     // for all HCI integrals
     for (size_t index=start; index<end; index++) {
@@ -146,6 +152,10 @@ void SHCIgetdeterminants::getDeterminantsDeterministicPT(
 
       // otherwise: generate the determinant corresponding to the current excitation
       int a = orbIndices[2*index], b = orbIndices[2*index+1];
+
+      if (irreps[a]+irreps[b]-irrep_ij != 0)
+        continue;
+
       if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
@@ -521,29 +531,15 @@ void SHCIgetdeterminants::getDeterminantsVariational(
   // mono-excited determinants
   for (int ia=0; ia<nopen*nclosed; ia++){
     int i=ia/nopen, a=ia%nopen;
-    //if (closed[i]/2 < schd.ncore || open[a]/2 >= schd.ncore+schd.nact) continue;
+    if (irreps[closed[i]]-irreps[open[a]] != 0) continue;
     if (closed[i] < schd.ncore || open[a] >= schd.ncore+schd.nact) continue;
-    //if we are doing SOC calculation then breaking spin and point group symmetry is allowed
-#ifndef Complex
-    if (closed[i]%2 != open[a]%2 || irreps[closed[i]/2] != irreps[open[a]/2]) continue;
-#endif
-    //CItype integral = Hij_1Excite(open[a],closed[i],int1,int2, &closed[0], nclosed);
     CItype integral = d.Hij_1Excite(open[a], closed[i], int1,int2);
-
-    //if (closed[i]%2 != open[a]%2) {
-    //  integral = int1(open[a], closed[i])*schd.socmultiplier;
-    //}
-    //Have question about the SOC stuff
 
     // generate determinant if integral is above the criterion
     if (std::abs(integral) > epsilon ) {
       dets.push_back(d);
       Determinant& di = *dets.rbegin();
       di.setocc(open[a], true); di.setocc(closed[i],false);
-      //Determinant detcpy(d);
-      //detcpy.flipAlphaBeta();
-      //dets.push_back(detcpy);
-      //if (Determinant::Trev != 0) di.makeStandard();
     }
   } // ia
 
@@ -560,11 +556,9 @@ void SHCIgetdeterminants::getDeterminantsVariational(
     //if (closed[i]/2 < schd.ncore || closed[j]/2 < schd.ncore) continue;
     if (I < schd.ncore || J < schd.ncore) continue;
 
+    int irreps_ij = irreps[I] + irreps[J];
+
     int pairIndex = X*(X+1)/2+Y;
-    //size_t start = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex]   : I2hb.startingIndicesOppositeSpin[pairIndex];
-    //size_t end   = closed[i]%2==closed[j]%2 ? I2hb.startingIndicesSameSpin[pairIndex+1] : I2hb.startingIndicesOppositeSpin[pairIndex+1];
-    //float* integrals  = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinIntegrals : I2hb.oppositeSpinIntegrals;
-    //short* orbIndices = closed[i]%2==closed[j]%2 ?  I2hb.sameSpinPairs     : I2hb.oppositeSpinPairs;
     size_t start = I2hb.startingIndicesIntegrals[pairIndex];
     size_t end   = I2hb.startingIndicesIntegrals[pairIndex+1];
     std::complex<double>* integrals  = I2hb.integrals;
@@ -577,10 +571,9 @@ void SHCIgetdeterminants::getDeterminantsVariational(
       if (std::abs(integrals[index]) < epsilon) break;
 
       // otherwise: generate the determinant corresponding to the current excitation
-      //int a = 2* orbIndices[2*index] + closed[i]%2, b= 2*orbIndices[2*index+1]+closed[j]%2;
       int a = orbIndices[2*index], b = orbIndices[2*index+1];
-      //if (a/2 >= schd.ncore+schd.nact || b/2 >= schd.ncore+schd.nact) continue;
       if (a >= schd.ncore+schd.nact || b >= schd.ncore+schd.nact) continue;
+      if (irreps[a]+irreps[b]-irreps_ij != 0) continue;
       if (!(d.getocc(a) || d.getocc(b)) && a!=b) {
         dets.push_back(d);
         Determinant& di = *dets.rbegin();
