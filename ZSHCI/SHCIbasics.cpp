@@ -1157,7 +1157,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
 #endif
 
     //************
-    if (commrank == 0 && (schd.DavidsonType == DIRECT || schd.outputlevel == -1))
+    if (commrank == 0 && (schd.DavidsonType == DIRECT || schd.outputlevel == 1))
       printf("New size of determinant space %8i\n", DetsSize);
 
     //*************
@@ -1172,7 +1172,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
                                schd.DoRDM || schd.DoOneRDM);
     }
     //************
-    if (commrank == 0 & schd.outputlevel == -1) {
+    if (commrank == 0 & schd.outputlevel == 1) {
       print_memory_utility(schd, sparseHam, helper2, DetsSize);
     }
     //we update the sharedvectors after Hamiltonian is formed because needed the dets size from previous iterations
