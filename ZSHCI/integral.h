@@ -91,8 +91,8 @@ class twoInt {
     inline CItype& operator()(int i, int j, int k, int l) {
       //For test run, I will store the two integral using <ij|kl> = <ji|lk>
       //The any complex conjugated relate stuff will not be incorporated for now
-      int IJ = i*norbs+j, KL = k*norbs+l;
-      int A = max(IJ, KL), B = min(IJ, KL);
+      size_t IJ = i*norbs+j, KL = k*norbs+l;
+      size_t A = max(IJ, KL), B = min(IJ, KL);
       return store[A*(A+1)/2+B];
     }
 };
