@@ -22,6 +22,7 @@
 #include <list>
 #include <boost/serialization/serialization.hpp>
 #include "Determinants.h"
+#include "OccRestrictions.h"
 
 using namespace std;
 
@@ -98,6 +99,8 @@ private:
     & z_threshold                             \
     & max_determinants                        \
     & double_group                            \
+    & restrictionsV                           \
+    & restrictionsPT                          \
     & jz;                      
   }
 
@@ -173,6 +176,9 @@ public:
   bool precondition;
   double cdfciTol;
   string double_group;
+  //RAS calculations
+  vector<OccRestrictions> restrictionsV; 
+  vector<OccRestrictions> restrictionsPT;
   int jz;
 };
 

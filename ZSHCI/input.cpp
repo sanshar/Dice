@@ -61,7 +61,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.excitation = 1000;
   schd.nvirt = 1e6;
   schd.singleList = true;
-  schd.io = true;
+  schd.io = false;
   schd.nroots = 1;
   schd.nPTiter = 10000;
   schd.DoRDM = false;
@@ -114,7 +114,6 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.precondition = false;
   
   schd.jz = -1000; // if jz is -1000 indicating no jz symmetry.
-
   while (dump.good()) {
 
     std::string Line;
@@ -166,8 +165,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.nact = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "ncore"))
       schd.ncore = atoi(tok[1].c_str());
-    else if (boost::iequals(ArgName, "noio"))
-      schd.io=false;
+    //else if (boost::iequals(ArgName, "noio"))
+    //  schd.io=false;
+    else if (boost::iequals(ArgName, "io"))
+      schd.io=true;
     else if (boost::iequals(ArgName, "dolcc"))
       schd.doLCC=true;
     else if (boost::iequals(ArgName, "io"))
@@ -337,6 +338,37 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.double_group = tok[1];
     else if (boost::iequals(ArgName, "jz"))
       schd.jz = atoi(tok[1].c_str()); 
+    else if (boost::iequals(ArgName, "restrict")) {
+      int minElec = atoi(tok[1].c_str());
+      int maxElec = atoi(tok[2].c_str());
+      cout << minElec << " " << maxElec << endl;
+      std::vector<int> orbs;
+      for (int i = 3; i < tok.size(); i++) {
+        orbs.push_back(atoi(tok[i].c_str()));
+      }
+      schd.restrictionsV.push_back(OccRestrictions(minElec, maxElec, orbs));
+      schd.restrictionsPT.push_back(OccRestrictions(minElec, maxElec, orbs));
+    }
+    else if (boost::iequals(ArgName, "restrictV")) {
+      int minElec = atoi(tok[1].c_str());
+      int maxElec = atoi(tok[2].c_str());
+      cout << minElec << " " << maxElec << endl;
+      std::vector<int> orbs;
+      for (int i = 3; i < tok.size(); i++) {
+        orbs.push_back(atoi(tok[i].c_str()));
+      }
+      schd.restrictionsV.push_back(OccRestrictions(minElec, maxElec, orbs));
+    }
+    else if (boost::iequals(ArgName, "restrictPT")) {
+      int minElec = atoi(tok[1].c_str());
+      int maxElec = atoi(tok[2].c_str());
+      cout << minElec << " " << maxElec << endl;
+      std::vector<int> orbs;
+      for (int i = 3; i < tok.size(); i++) {
+        orbs.push_back(atoi(tok[i].c_str()));
+      }
+      schd.restrictionsPT.push_back(OccRestrictions(minElec, maxElec, orbs));
+    }
     else {
       cout << "cannot read option " << ArgName << endl;
       exit(0);
