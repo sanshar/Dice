@@ -211,6 +211,7 @@ OBJ_ZSHCI = \
 	obj_z/ZSHCI/SHCIshm.o \
 	obj_z/ZSHCI/LCC.o \
 	obj_z/ZSHCI/symmetry.o \
+	obj_z/ZSHCI/OccRestrictions.o \
 	obj_z/ZSHCI/cdfci.o
 
 obj/SHCI/%.o: SHCI/%.cpp
