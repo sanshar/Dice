@@ -1,15 +1,15 @@
-USE_INTEL = yes
+USE_INTEL = no
 HAS_AVX2 = yes
 
 BOOST=${BOOST_ROOT}
 EIGEN=./eigen/
-HDF5=${HDF5_ROOT}
+HDF5=/home/sandeep/apps/hdf5/
 MKL=${MKLROOT}
 
 INCLUDE_MKL = -I$(MKL)/include
-LIB_MKL = -L$(MKL)/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
+LIB_MKL = -lblas -llapack #-L$(MKL)/lib/intel64/ -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core
 
-INCLUDE_BOOST = -I$(BOOST)/include -I$(BOOST)
+INCLUDE_BOOST = -I$(BOOST)/include #-I$(BOOST)
 LIB_BOOST = -L$(BOOST)/lib -L$(BOOST)/stage/lib
 
 INCLUDE_HDF5 = -I$(HDF5)/include
@@ -17,7 +17,7 @@ LIB_HDF5 = -L$(HDF5)/lib -lhdf5
 
 COMPILE_NUMERIC = no
 
-FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5) -DBOOST_BIND_NO_PLACEHOLDERS
+FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5) #-DBOOST_BIND_NO_PLACEHOLDERS
 LFLAGS_BASE = $(LIB_BOOST)
 ifeq ($(HAS_AVX2), yes)
 	FLAGS_BASE += -march=core-avx2
@@ -220,19 +220,19 @@ obj_z/SHCI/%.o: SHCI/%.cpp
 obj_z/ZSHCI/%.o: ZSHCI/%.cpp
 	$(CXX) $(FLAGS_ZSHCI) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: Wavefunctions/%.cpp  
-	$(CXX) $(FLAGS_QMC) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: utils/%.cpp  
-	$(CXX) $(FLAGS_QMC) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: VMC/%.cpp  
-	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: DQMC/%.cpp  
-	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: FCIQMC/%.cpp  
-	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: ICPT/%.cpp  
-	$(CXX) $(FLAGS_ICPT) -I./ICPT/TensorExpressions/ $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_ICPT) -I./ICPT/TensorExpressions/ $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: ICPT/StackArray/%.cpp  
-	$(CXX) $(FLAGS_ICPT) $(OPT) -c $< -o $@
+	$(CXX) $(FLAGS_ICPT) $(OPT) $(VERSION_FLAGS) -c $< -o $@
 
 # not sure about the status of periodic
 #ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
@@ -241,7 +241,11 @@ obj/%.o: ICPT/StackArray/%.cpp
 #endif 
 
 # all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
-all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI
+all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI alllibs 
+
+alllibs:
+	gcc -O3 -fPIC -fopenmp -shared lib/icmpspt.c -o lib/libicmpspt.so
+	gcc -O3 -fPIC -fopenmp -shared lib/shcitools.c -o lib/libSHCITools.so
 
 periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
@@ -250,23 +254,23 @@ bin/libPeriodic.so: bin/libPeriodic.so
 	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
 GFMC: $(OBJ_GFMC) executables/GFMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
+#	$(CXX) $(FLAGS_QMC) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
 	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
 ICPT: $(OBJ_ICPT) executables/ICPT.cpp
-	$(CXX) $(FLAGS_ICPT) $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
+#	$(CXX) $(FLAGS_ICPT) $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
 	$(CXX) $(FLAGS_ICPT) $(OPT) -o bin/ICPT $(OBJ_ICPT) obj/ICPT.o $(LFLAGS_ICPT) $(VERSION_FLAGS)
 
 VMC: $(OBJ_VMC) executables/VMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
+#	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
 	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
 FCIQMC: $(OBJ_FCIQMC) executables/FCIQMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
+#	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
 	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
 DQMC: $(OBJ_DQMC) executables/DQMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
+#	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
 	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
 
 Dice	: $(OBJ_Dice)
