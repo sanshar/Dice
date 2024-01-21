@@ -7,8 +7,8 @@ Copyright (c) 2016, Sandeep Sharma
 #include "BlockContract.h"
 #include "CxDefs.h"
 #include "icpt.h"
-#include "mkl.h"
-#include "mkl_cblas.h"
+//#include "mkl.h"
+//#include "mkl_cblas.h"
 using ct::TArray;
 using ct::FMemoryStack;
 using boost::format;
@@ -25,7 +25,7 @@ int main(int argc, char const *argv[])
    //   - something to split up tensors (H) and combine them (RDM)
    //     regarding universal indices
 
-  mkl_set_num_threads(numthrds);
+  //mkl_set_num_threads(numthrds);
 
    FJobContext
       Job;
