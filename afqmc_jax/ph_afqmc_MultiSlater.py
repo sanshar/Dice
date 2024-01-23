@@ -5,7 +5,7 @@ from numpy.random import Generator, MT19937, PCG64
 import scipy as sp
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1'
 os.environ['JAX_PLATFORM_NAME'] = 'cpu'
-#os.environ['JAX_ENABLE_X64'] = 'True'
+os.environ['JAX_ENABLE_X64'] = 'True'
 #os.environ['JAX_DISABLE_JIT'] = 'True'
 import jax.numpy as jnp
 import jax.scipy as jsp
@@ -170,47 +170,52 @@ def overlap_with_rot_SD(x_gamma, walker, rot_chol):
     return calc_overlap(walker2)
 
 @jit
-def force_bias_AD_SD(x_gamma, walker, rot_chol):
-    val, grad = vjp(overlap_with_rot_SD, x_gamma, walker, rot_chol)
+def force_bias_AD_SD(walker, rot_chol):
+    val, grad = vjp(overlap_with_rot_SD, jnp.zeros((rot_chol.shape[0],))+0.j, walker, rot_chol)
     return 2.*grad(1.+0.j)[0]/val
 
-force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (None, 0, None))
+force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (0, None))
 
+
+@jit
+def overlap_with_singleRot(x, rot_h1, walker):
+    walker2 = walker[:walker.shape[1],:] + (x)*rot_h1.dot(walker)
+    return jnp.linalg.det(walker2)*jnp.linalg.det(walker[:walker.shape[1],:])
 
 @jit 
 def overlap_with_doubleRot(x1, x2, chol_i, walker):
+    #ovlp = calc_overlap(walker)
+
     ##alpha-alpha + beta-beta
-    walker2 = walker[:walker.shape[1],:] + (x2*chol_i+x1*chol_i).dot(walker)
-    ovlp1 = jnp.linalg.det(walker2[:walker2.shape[1],:])*jnp.linalg.det(walker[:walker.shape[1],:])/calc_overlap(walker)
+    walker2 = walker[:walker.shape[1],:] + (x1+x2)*chol_i.dot(walker)
+    ovlp1 = jnp.linalg.det(walker2)*jnp.linalg.det(walker[:walker.shape[1],:])#/ovlp
     
     ##alpha - beta
-    walker2 = walker[:walker.shape[1],:]+x1*chol_i.dot(walker)
-    walker3 = walker[:walker.shape[1],:]+x2*chol_i.dot(walker)
-    ovlp2 = jnp.linalg.det(walker2[:walker2.shape[1],:]) * jnp.linalg.det(walker3[:walker3.shape[1],:])/calc_overlap(walker)
+    walker2 = walker[:walker.shape[1],:] + x1*chol_i.dot(walker)
+    walker3 = walker[:walker.shape[1],:] + x2*chol_i.dot(walker)
+    ovlp2 = jnp.linalg.det(walker2[:walker2.shape[1],:]) * jnp.linalg.det(walker3[:walker3.shape[1],:])#/ovlp
     
     return ovlp1+ovlp2
 
+
 @jit 
-def calc_energy_AD_SD(walker, rot_chol):
+def calc_energy_AD_SD(h0, rot_h1, rot_chol, walker):
     x1, x2 = 0., 0.
 
+    ##ONE BODY TERM
+    f1 = lambda a : overlap_with_singleRot(a, rot_h1, walker)
+    val, dx1 = jvp(f1, [x1], [1.])
 
     vmap_fun = vmap(overlap_with_doubleRot, in_axes = (None, None, 0, None))
-    f1 = lambda x : vmap_fun(x, x2, rot_chol, walker)
-    f2 = lambda x : vmap_fun(x1, x, rot_chol, walker)
-    
+ 
     f12 = lambda a, b : vmap_fun(a, b, rot_chol, walker)
 
     f1p2 = lambda b : jvp(f12, [x1, b], [1., 0.])[1]
     val, dx = jvp(f1p2, [x2], [1.])
-    #val1, dx1 = jvp(f1, [x1], [1.])
-    #val2, dx2 = jvp(f2, [x2], [1.])
-    #val1, dx1 = jvp(vmap_fun, (x1, x2, chol, walker), (1., 0., 0.*chol, 0.*walker))
-    #val2, dx2 = jvp(vmap_fun, (x1, x2, chol, walker), (0., 1., 0.*chol, 0.*walker))
 
-    return jnp.sum(dx)
+    return (2.*dx1+jnp.sum(dx))/calc_overlap(walker) + h0
     
-calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (0, None))
+calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (None, None, None, 0))
 
 #@checkpoint
 @jit
@@ -219,8 +224,8 @@ def calc_force_bias(walker, rot_chol):
   fb = 2. * jnp.einsum('gij,ij->g', rot_chol, green_walker, optimize='optimal')
   return fb
 
-calc_force_bias_vmap = vmap(calc_force_bias, in_axes = (0, None))
-
+#calc_force_bias_vmap = vmap(calc_force_bias, in_axes = (0, None))
+calc_force_bias_vmap = force_bias_AD_SD_vmap
 
 #@checkpoint
 @jit
@@ -234,8 +239,8 @@ def calc_energy(h0, rot_h1, rot_chol, walker):
   ene2 = 2. * jnp.sum(c * c) - exc
   return ene2 + ene1 + ene0
 
-calc_energy_vmap = vmap(calc_energy, in_axes = (None, None, None, 0))
-
+#calc_energy_vmap = vmap(calc_energy, in_axes = (None, None, None, 0))
+calc_energy_vmap = calc_energy_AD_SD_vmap
 
 # defining this separately because calculating vhs for a batch seems to be faster
 #@checkpoint
@@ -355,36 +360,47 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
   #[ walkers, weights, overlaps, e_shift ], (block_energy, block_weight) = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate ], (fields, zeta_sr))
 
 
+  '''
   ##CHECK FORCE BIAS WITH AD
   x = (0+0.j)*jnp.zeros((rot_chol.shape[0],))
   t0 = time.time()
-  force_bias = calc_force_bias_vmap(walkers, rot_chol)
+  force_bias = np.asarray(calc_force_bias_vmap(walkers, rot_chol))
   print("fb conv: ", time.time()-t0)
 
-  force_bias2 = force_bias_AD_SD_vmap(x, walkers, rot_chol)
+  t0 = time.time()
+  force_bias2 = np.asarray(force_bias_AD_SD_vmap(walkers, rot_chol))
   print("fb grad: ", time.time()-t0)
-  print(jnp.linalg.norm(force_bias - force_bias2))
+  print(np.linalg.norm(force_bias - force_bias2))
 
 
   ##CHECK LOCAL ENERGY WITH AD
   t0 = time.time()
-  energies = calc_energy_vmap(0.*h0, 0.*rot_h1, rot_chol, walkers)
+  energies = np.asarray(calc_energy_vmap(h0, rot_h1, rot_chol, walkers))
   print("energy conv: ", time.time()-t0)
 
   nao = h1.shape[0]
-  energies2 = calc_energy_AD_SD_vmap(walkers, rot_chol)
+  #rot_chol_ad = vmap(jsp.linalg.expm, in_axes=(0))(chol.reshape(-1,nao,nao))
+  t0 = time.time()
+  #energies2 = calc_energy_AD_SD(walkers[0], rot_chol, chol.reshape(-1,nao,nao))
+  energies1 = np.asarray(calc_energy_AD_SD_vmap(h0, rot_h1, rot_chol, walkers))
   print("energy grad: ", time.time()-t0)
-  print(jnp.linalg.norm(energies - energies2))
-  
+  print(np.max(abs(energies - energies1)))
+
   import pdb
   pdb.set_trace()
+  #t0 = time.time()
+  #energies2 = calc_energy_AD_SD_vmap(walkers, rot_chol)
+  #print("energy grad: ", time.time()-t0)
+  #print(jnp.max(abs(energies - energies2)))
+  '''
+
   #print(block_energy)
   #exit()
   #return block_energy[-1], (walkers, weights)
   return jnp.sum(block_energy[40:] * block_weight[40:]) / jnp.sum(block_weight[40:]), (walkers, weights, key)
 
 #propagate_phaseless_jit = jit(propagate_phaseless, static_argnums=(11,))
-propagate_phaseless_jit = propagate_phaseless #jit(propagate_phaseless)
+propagate_phaseless_jit = jit(propagate_phaseless)
 
 
 # called once after each block
