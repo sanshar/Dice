@@ -180,22 +180,14 @@ force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (0, None))
 @jit
 def overlap_with_singleRot(x, rot_h1, walker):
     walker2 = walker[:walker.shape[1],:] + (x)*rot_h1.dot(walker)
-    return jnp.linalg.det(walker2)*jnp.linalg.det(walker[:walker.shape[1],:])
+    return calc_overlap(walker2)
 
 @jit 
 def overlap_with_doubleRot(x1, x2, chol_i, walker):
     #ovlp = calc_overlap(walker)
 
-    ##alpha-alpha + beta-beta
     walker2 = walker[:walker.shape[1],:] + (x1+x2)*chol_i.dot(walker)
-    ovlp1 = jnp.linalg.det(walker2)*jnp.linalg.det(walker[:walker.shape[1],:])#/ovlp
-    
-    ##alpha - beta
-    walker2 = walker[:walker.shape[1],:] + x1*chol_i.dot(walker)
-    walker3 = walker[:walker.shape[1],:] + x2*chol_i.dot(walker)
-    ovlp2 = jnp.linalg.det(walker2[:walker2.shape[1],:]) * jnp.linalg.det(walker3[:walker3.shape[1],:])#/ovlp
-    
-    return ovlp1+ovlp2
+    return calc_overlap(walker2)
 
 
 @jit 
@@ -213,7 +205,7 @@ def calc_energy_AD_SD(h0, rot_h1, rot_chol, walker):
     f1p2 = lambda b : jvp(f12, [x1, b], [1., 0.])[1]
     val, dx = jvp(f1p2, [x2], [1.])
 
-    return (2.*dx1+jnp.sum(dx))/calc_overlap(walker) + h0
+    return (dx1+jnp.sum(dx)/2.)/calc_overlap(walker) + h0 ##why factor of 1./2. in 2-electron
     
 calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (None, None, None, 0))
 
