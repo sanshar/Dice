@@ -292,6 +292,73 @@ def read_dets(fname='dets.bin', ndets=None):
 
     return norbs, state, ndetsAll
 
+def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
+    norbs, state, ndetsAll = read_dets()
+
+    if ndets is None:
+        ndets = ndetsAll
+
+    dets = list(state.keys())[:ndets]
+    Acre, Ades, Bcre, Bdes, coeff = {}, {}, {}, {}, {}
+    d0 = dets[0]
+    d0a, d0b = np.asarray(d0[0]), np.asarray(d0[1])
+    for d in dets:
+        dia, dib = np.asarray(d[0]), np.asarray(d[1])
+        nex = ( np.sum(abs(dia - d0a))//2,  np.sum(abs(dib - d0b))//2 )
+        if (nex[0] + nex[1] > maxExcitation):
+            continue
+        coeff[nex] = coeff.get(nex, []) + [state[d]]
+        if (nex[0] > 0 and nex[1] > 0):
+            Acre[nex], Ades[nex], Bcre[nex],Bdes[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)], Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
+        elif (nex[0] > 0 and nex[1] == 0):
+            Acre[nex], Ades[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)]
+        elif (nex[0] == 0 and nex[1] > 0):
+            Bcre[nex],Bdes[nex] = Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
+
+    coeff[(0,0)] = np.asarray(coeff[(0,0)]).reshape(-1,)
+    ##fill up the arrays up to maxExcitations
+    for i in range(1,maxExcitation+1):
+        ##singe alpha excitation
+        if ((i,0) in Ades):
+            Ades[(i,0)] = np.asarray(Ades[(i,0)]).reshape(-1,i) + numCore
+            Acre[(i,0)] = np.asarray(Acre[(i,0)]).reshape(-1,i) + numCore
+            coeff[(i,0)] = np.asarray(coeff[(i,0)]).reshape(-1,) 
+        else:
+            Ades[(i,0)] = np.zeros((1,i))
+            Acre[(i,0)] = np.zeros((1,i))
+            coeff[(i,0)] = np.zeros((1,))
+
+        ##singe beta excitation
+        if ((0,i) in Bdes):
+            Bdes[(0,i)] = np.asarray(Bdes[(0,i)]).reshape(-1,i)+ numCore
+            Bcre[(0,i)] = np.asarray(Bcre[(0,i)]).reshape(-1,i)+ numCore
+            coeff[(0,i)] = np.asarray(coeff[(0,i)]).reshape(-1,)
+        else:
+            Bdes[(0,i)] = np.zeros((1,i))
+            Bcre[(0,i)] = np.zeros((1,i))
+            coeff[(0,i)] = np.zeros((1,))
+
+        #alpha-beta
+        if (i != 0):
+            for j in range(1,maxExcitation+1):
+                if (i+j > maxExcitation):
+                    continue
+                if ((i,j) in Ades):
+                    Ades[(i,j)] = np.asarray(Ades[(i,j)]).reshape(-1,i)+ numCore
+                    Acre[(i,j)] = np.asarray(Acre[(i,j)]).reshape(-1,i)+ numCore
+                    Bdes[(i,j)] = np.asarray(Bdes[(i,j)]).reshape(-1,j)+ numCore
+                    Bcre[(i,j)] = np.asarray(Bcre[(i,j)]).reshape(-1,j)+ numCore
+                    coeff[(i,j)] = np.asarray(coeff[(i,j)]).reshape(-1,)
+                else:
+                    Ades[(i,j)] = np.zeros((1,j))
+                    Acre[(i,j)] = np.zeros((1,j))
+                    Bdes[(i,j)] = np.zeros((1,j))
+                    Bcre[(i,j)] = np.zeros((1,j))
+                    coeff[(i,j)] = np.zeros((1,))
+    
+           
+    return Acre, Ades, Bcre, Bdes, coeff
+
 
 # reading dets from dice
 def read_dets_ghf(fname='dets.bin', ndets=None):
@@ -2043,7 +2110,7 @@ def write_nevpt2_input(numAct=None,
 
 def run_ICPT(mc, nelecAct=None, norbAct=None, vmc_root=None, fname="spatialRDM.0.0.txt"):
     import NEVPT2Helper as nev
-    from pyscf.shciscf import shci
+    import shci
     print("Running ICPT\n")
     intfolder = "int/"
     os.system("mkdir -p " + intfolder)

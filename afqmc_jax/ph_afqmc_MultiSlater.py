@@ -5,7 +5,7 @@ from numpy.random import Generator, MT19937, PCG64
 import scipy as sp
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1'
 os.environ['JAX_PLATFORM_NAME'] = 'cpu'
-os.environ['JAX_ENABLE_X64'] = 'True'
+#os.environ['JAX_ENABLE_X64'] = 'True'
 #os.environ['JAX_DISABLE_JIT'] = 'True'
 import jax.numpy as jnp
 import jax.scipy as jsp
@@ -18,6 +18,7 @@ print = partial(print, flush=True)
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
+MAX_EXCITATION = 3
 
 if rank == 0:
   print(f'Number of cores: {size}\n', flush=True)
@@ -144,12 +145,62 @@ def _hf(h1, h2, nelec_proxy):
   return mo_coeff[-1]
   #return mo_coeff[-1][2, 0]
 
+@jit
+def det2x2(A):
+    return A[0,0] * A[1,1] - A[0,1] * A[1,0]
+
+@jit
+def det3x3(a):
+  return (a[ 0, 0] * a[ 1, 1] * a[ 2, 2] +
+          a[ 0, 1] * a[ 1, 2] * a[ 2, 0] +
+          a[ 0, 2] * a[ 1, 0] * a[ 2, 1] -
+          a[ 0, 2] * a[ 1, 1] * a[ 2, 0] -
+          a[ 0, 0] * a[ 1, 2] * a[ 2, 1] -
+          a[ 0, 1] * a[ 1, 0] * a[ 2, 2])
+    
+@jit
+def det(A):
+    if (A.shape[0] == 2):
+        return det2x2(A)
+    elif (A.shape[0] == 3):
+        return det3x3(A)
+    else:
+        return jnp.linalg.det(A)
+
+@jit
+def ovlp_nA_0B_or_0A_nB(GF, Acre, Ades):
+    return det(GF[jnp.ix_(Acre, Ades)]) 
+
+@jit
+def ovlp_nA_mB(GF, Acre, Ades, Bcre, Bdes):
+    return det(GF[jnp.ix_(Acre, Ades)]) * det(GF[jnp.ix_(Bcre, Bdes)])
+
 #@checkpoint
 @jit
-def calc_overlap(walker):
-  return jnp.linalg.det(walker[:walker.shape[1], :])**2
+def calc_overlap(walker, excitations):
+  Acre, Ades, Bcre, Bdes, coeff = excitations[0], excitations[1], excitations[2], excitations[3], excitations[4]
+  GF = calc_green(walker)
 
-calc_overlap_vmap = vmap(calc_overlap)
+  ovlp0 = jnp.linalg.det(walker[:walker.shape[1], :])**2
+
+
+  ovlp = coeff[(0,0)]
+
+
+  for i in range(1,MAX_EXCITATION+1):
+      #vals = vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[(i,0)], Ades[(i,0)])
+      ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[(i,0)], Ades[(i,0)]).dot(coeff[(i,0)]) 
+      ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Bcre[(0,i)], Bdes[(0,i)]).dot(coeff[(0,i)]) 
+
+      for j in range(1, MAX_EXCITATION+1):
+        if (i+j <= MAX_EXCITATION):
+          ovlp += vmap(ovlp_nA_mB, in_axes=(None, 0, 0, 0, 0))(GF, Acre[(i,j)], Ades[(i,j)], Bcre[(i,j)], Bdes[(i,j)]).dot(coeff[(i,j)]) 
+
+
+
+  return (ovlp * ovlp0)[0] #jnp.linalg.det(walker[:walker.shape[1], :])**2
+
+calc_overlap_vmap = vmap(calc_overlap, in_axes=(0, None))
 
 
 #@checkpoint
@@ -162,52 +213,52 @@ calc_green_vmap = vmap(calc_green)
 
 
 @jit
-def overlap_with_rot_SD(x_gamma, walker, rot_chol):
+def overlap_with_rot_SD(x_gamma, walker, rot_chol, excitations):
     Onebody = jnp.einsum('gij,g->ij', rot_chol, x_gamma)
     #walker2 = jsp.linalg.expm(Onebody).dot(walker)
     walker2 = walker[:walker.shape[1],:] + Onebody.dot(walker)
-    return jnp.linalg.det(walker2)
-    return calc_overlap(walker2)
+    #return jnp.linalg.det(walker2)
+    return calc_overlap(walker2, excitations)
 
 @jit
-def force_bias_AD_SD(walker, rot_chol):
-    val, grad = vjp(overlap_with_rot_SD, jnp.zeros((rot_chol.shape[0],))+0.j, walker, rot_chol)
-    return 2.*grad(1.+0.j)[0]/val
+def force_bias_AD_SD(walker, rot_chol, excitations):
+    val, grad = vjp(overlap_with_rot_SD, jnp.zeros((rot_chol.shape[0],))+0.j, walker, rot_chol, excitations)
+    return grad(1.+0.j)[0]/val
 
-force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (0, None))
+force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (0, None, None))
 
 
 @jit
-def overlap_with_singleRot(x, rot_h1, walker):
+def overlap_with_singleRot(x, rot_h1, walker, excitations):
     walker2 = walker[:walker.shape[1],:] + (x)*rot_h1.dot(walker)
-    return calc_overlap(walker2)
+    return calc_overlap(walker2, excitations)
 
 @jit 
-def overlap_with_doubleRot(x1, x2, chol_i, walker):
+def overlap_with_doubleRot(x1, x2, chol_i, walker, excitations):
     #ovlp = calc_overlap(walker)
 
     walker2 = walker[:walker.shape[1],:] + (x1+x2)*chol_i.dot(walker)
-    return calc_overlap(walker2)
+    return calc_overlap(walker2, excitations)
 
 
 @jit 
-def calc_energy_AD_SD(h0, rot_h1, rot_chol, walker):
+def calc_energy_AD_SD(h0, rot_h1, rot_chol, walker, excitations):
     x1, x2 = 0., 0.
 
     ##ONE BODY TERM
-    f1 = lambda a : overlap_with_singleRot(a, rot_h1, walker)
-    val, dx1 = jvp(f1, [x1], [1.])
+    f1 = lambda a : overlap_with_singleRot(a, rot_h1, walker, excitations)
+    val1, dx1 = jvp(f1, [x1], [1.])
 
-    vmap_fun = vmap(overlap_with_doubleRot, in_axes = (None, None, 0, None))
+    vmap_fun = vmap(overlap_with_doubleRot, in_axes = (None, None, 0, None, None))
  
-    f12 = lambda a, b : vmap_fun(a, b, rot_chol, walker)
+    f12 = lambda a, b : vmap_fun(a, b, rot_chol, walker, excitations)
 
     f1p2 = lambda b : jvp(f12, [x1, b], [1., 0.])[1]
-    val, dx = jvp(f1p2, [x2], [1.])
+    val2, dx = jvp(f1p2, [x2], [1.])
 
-    return (dx1+jnp.sum(dx)/2.)/calc_overlap(walker) + h0 ##why factor of 1./2. in 2-electron
+    return (dx1+jnp.sum(dx)/2.)/val1 + h0 ##why factor of 1./2. in 2-electron
     
-calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (None, None, None, 0))
+calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (None, None, None, 0, None))
 
 #@checkpoint
 @jit
@@ -255,7 +306,7 @@ def apply_propagator_vmap(exp_h1, chol, dt, walkers, fields):
 
 
 # one block of phaseless propagation consisting of nsteps steps followed by energy evaluation
-def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy):
+def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, excitations, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy):
 #def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr):
   h1 = (h1 + h1.T) / 2.
 
@@ -293,7 +344,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
     #fields = random.normal(subkey, shape=(carry[0].shape[0], chol.shape[0]))
     #fields = random.normal(x, shape=(carry[0].shape[0], chol.shape[0]))
     fields = jnp.array(x)
-    force_bias = calc_force_bias_vmap(carry[0], rot_chol)
+    force_bias = calc_force_bias_vmap(carry[0], rot_chol, excitations)
     field_shifts = -jnp.sqrt(dt) * (1.j * force_bias - mf_shifts)
     shifted_fields = fields - field_shifts
     shift_term = jnp.sum(shifted_fields * mf_shifts, axis=1)
@@ -303,7 +354,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
     #carry[2] = calc_overlap_vmap(carry[0])
     carry[0] = apply_propagator_vmap(exp_h1, chol, dt, carry[0], shifted_fields)
 
-    overlaps_new = calc_overlap_vmap(carry[0])
+    overlaps_new = calc_overlap_vmap(carry[0], excitations)
     imp_fun = jnp.exp(-jnp.sqrt(dt) * shift_term + fb_term + dt * (carry[3] + h0_prop)) * overlaps_new / carry[2]
     theta = jnp.angle(jnp.exp(-jnp.sqrt(dt) * shift_term) * overlaps_new / carry[2])
     imp_fun_phaseless = jnp.abs(imp_fun) * jnp.cos(theta)
@@ -331,7 +382,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
     carry[:4], _ = lax.scan(scanned_fun, carry[:4], fields)
     #carry, _ = lax.scan(scanned_fun, carry, x[0])
     carry[0] = qr_vmap(carry[0])
-    energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, carry[0]))
+    energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, carry[0], excitations))
     energy_samples = jnp.where(jnp.abs(energy_samples - carry[3]) > jnp.sqrt(2./dt), carry[3], energy_samples)
     block_weight = jnp.sum(carry[1])
     block_energy = jnp.sum(energy_samples * carry[1]) / block_weight
@@ -339,14 +390,14 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
     carry[4], subkey = random.split(carry[4])
     zeta = random.uniform(subkey)
     carry[0], carry[1] = stochastic_reconfiguration(carry[0], carry[1], zeta)
-    carry[2] = calc_overlap_vmap(carry[0])
+    carry[2] = calc_overlap_vmap(carry[0], excitations)
     return carry, (block_energy, block_weight)
 
   #key, subkey = random.split(key)
   #fields = random.normal(subkey, shape=(nclub, nsteps, walkers.shape[0], chol.shape[0]))
   #key, subkey = random.split(key)
   #zeta_sr = random.uniform(subkey, shape=(nclub,))
-  overlaps = calc_overlap_vmap(walkers)
+  overlaps = calc_overlap_vmap(walkers, excitations)
   #key = random.PRNGKey(seed)
   [ walkers, weights, overlaps, e_shift, key ], (block_energy, block_weight) = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate, key ], None, length=nclub)
   #[ walkers, weights, overlaps, e_shift ], (block_energy, block_weight) = lax.scan(outer_scanned_fun, [ walkers, weights, overlaps, e_estimate ], (fields, zeta_sr))
@@ -389,7 +440,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
   #print(block_energy)
   #exit()
   #return block_energy[-1], (walkers, weights)
-  return jnp.sum(block_energy[40:] * block_weight[40:]) / jnp.sum(block_weight[40:]), (walkers, weights, key)
+  return jnp.sum(block_energy * block_weight) / jnp.sum(block_weight), (walkers, weights, key)
 
 #propagate_phaseless_jit = jit(propagate_phaseless, static_argnums=(11,))
 propagate_phaseless_jit = jit(propagate_phaseless)
@@ -502,7 +553,7 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, excitations, nblocks, n
   global_block_energies = np.zeros(nblocks)
   local_block_rdm1 = np.zeros((nblocks, norb, norb))
   walkers = jnp.stack([jnp.eye(norb, nelec) + 0.j for _ in range(nwalkers)])
-  energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, walkers))
+  energy_samples = jnp.real(calc_energy_vmap(h0, rot_h1, rot_chol, walkers, excitations))
   global_block_energies[0] = jnp.sum(energy_samples) / nwalkers   # assuming identical walkers
   e_estimate = jnp.array(global_block_energies[0])
   total_block_energy_n = np.zeros(1, dtype='float32')
@@ -532,14 +583,14 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, excitations, nblocks, n
     nsteps_proxy = jnp.zeros((nsteps))
     nclub_proxy = jnp.zeros((nclub))
     if rdmQ:
-      block_energy_n, block_vjp, (walkers, weights, key) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy, has_aux=True)
+      block_energy_n, block_vjp, (walkers, weights, key) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, excitations, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy, has_aux=True)
       #block_energy_n, block_vjp, (walkers, weights) = vjp(propagate_phaseless_jit, h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr, has_aux=True)
       local_block_rdm1[n] = np.array(block_vjp(1.)[2])
       if np.isnan(np.sum(local_block_rdm1[n])) or np.linalg.norm(local_block_rdm1[n] - hf_rdm) > 1.e1 * norb**2  or abs(np.trace(local_block_rdm1[n]) - 2*nelec) > 1.e-3:
         local_block_rdm1[n] = hf_rdm
         local_large_deviations += 1
     else:
-      block_energy_n, (walkers, weights, key) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy)
+      block_energy_n, (walkers, weights, key) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, excitations, dt, walkers, weights, e_estimate, mf_shifts, key, nsteps_proxy, nclub_proxy)
       #block_energy_n, (walkers, weights) = propagate_phaseless_jit(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e_estimate, mf_shifts, fields, zeta_sr)
     local_block_weights[n] = jnp.sum(weights)
     block_energy_n = np.array([block_energy_n], dtype='float32')

@@ -304,7 +304,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, dt, walkers, weights, e
   #print(block_energy)
   #exit()
   #return block_energy[-1], (walkers, weights)
-  return jnp.sum(block_energy[40:] * block_weight[40:]) / jnp.sum(block_weight[40:]), (walkers, weights, key)
+  return jnp.sum(block_energy * block_weight) / jnp.sum(block_weight), (walkers, weights, key)
 
 #propagate_phaseless_jit = jit(propagate_phaseless, static_argnums=(11,))
 propagate_phaseless_jit = jit(propagate_phaseless)
