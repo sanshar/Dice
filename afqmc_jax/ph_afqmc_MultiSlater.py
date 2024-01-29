@@ -5,7 +5,7 @@ from numpy.random import Generator, MT19937, PCG64
 import scipy as sp
 os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1'
 os.environ['JAX_PLATFORM_NAME'] = 'cpu'
-#os.environ['JAX_ENABLE_X64'] = 'True'
+os.environ['JAX_ENABLE_X64'] = 'True'
 #os.environ['JAX_DISABLE_JIT'] = 'True'
 import jax.numpy as jnp
 import jax.scipy as jsp
@@ -213,16 +213,16 @@ calc_green_vmap = vmap(calc_green)
 
 
 @jit
-def overlap_with_rot_SD(x_gamma, walker, rot_chol, excitations):
-    Onebody = jnp.einsum('gij,g->ij', rot_chol, x_gamma)
+def overlap_with_rot_SD(x_gamma, walker, chol, excitations):
+    Onebody = jnp.einsum('gij,g->ij', chol, x_gamma)
     #walker2 = jsp.linalg.expm(Onebody).dot(walker)
-    walker2 = walker[:walker.shape[1],:] + Onebody.dot(walker)
+    walker2 = walker + Onebody.dot(walker)
     #return jnp.linalg.det(walker2)
     return calc_overlap(walker2, excitations)
 
 @jit
-def force_bias_AD_SD(walker, rot_chol, excitations):
-    val, grad = vjp(overlap_with_rot_SD, jnp.zeros((rot_chol.shape[0],))+0.j, walker, rot_chol, excitations)
+def force_bias_AD_SD(walker, chol, excitations):
+    val, grad = vjp(overlap_with_rot_SD, jnp.zeros((chol.shape[0],))+0.j, walker, chol, excitations)
     return grad(1.+0.j)[0]/val
 
 force_bias_AD_SD_vmap = vmap(force_bias_AD_SD, in_axes = (0, None, None))
@@ -352,7 +352,7 @@ def propagate_phaseless(h0_prop, h0, h1, chol, rot_chol, excitations, dt, walker
     #fields = random.normal(subkey, shape=(carry[0].shape[0], chol.shape[0]))
     #fields = random.normal(x, shape=(carry[0].shape[0], chol.shape[0]))
     fields = jnp.array(x)
-    force_bias = calc_force_bias_vmap(carry[0], rot_chol, excitations)
+    force_bias = calc_force_bias_vmap(carry[0], chol.reshape(-1, nao, nao), excitations)
     field_shifts = -jnp.sqrt(dt) * (1.j * force_bias - mf_shifts)
     shifted_fields = fields - field_shifts
     shift_term = jnp.sum(shifted_fields * mf_shifts, axis=1)
