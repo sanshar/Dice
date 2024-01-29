@@ -324,8 +324,8 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
             Acre[(i,0)] = np.asarray(Acre[(i,0)]).reshape(-1,i) + numCore
             coeff[(i,0)] = np.asarray(coeff[(i,0)]).reshape(-1,) 
         else:
-            Ades[(i,0)] = np.zeros((1,i))
-            Acre[(i,0)] = np.zeros((1,i))
+            Ades[(i,0)] = np.zeros((1,i), dtype=int)
+            Acre[(i,0)] = np.zeros((1,i), dtype=int)
             coeff[(i,0)] = np.zeros((1,))
 
         ##singe beta excitation
@@ -334,8 +334,8 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
             Bcre[(0,i)] = np.asarray(Bcre[(0,i)]).reshape(-1,i)+ numCore
             coeff[(0,i)] = np.asarray(coeff[(0,i)]).reshape(-1,)
         else:
-            Bdes[(0,i)] = np.zeros((1,i))
-            Bcre[(0,i)] = np.zeros((1,i))
+            Bdes[(0,i)] = np.zeros((1,i), dtype=int)
+            Bcre[(0,i)] = np.zeros((1,i), dtype=int)
             coeff[(0,i)] = np.zeros((1,))
 
         #alpha-beta
@@ -350,10 +350,10 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
                     Bcre[(i,j)] = np.asarray(Bcre[(i,j)]).reshape(-1,j)+ numCore
                     coeff[(i,j)] = np.asarray(coeff[(i,j)]).reshape(-1,)
                 else:
-                    Ades[(i,j)] = np.zeros((1,j))
-                    Acre[(i,j)] = np.zeros((1,j))
-                    Bdes[(i,j)] = np.zeros((1,j))
-                    Bcre[(i,j)] = np.zeros((1,j))
+                    Ades[(i,j)] = np.zeros((1,j), dtype=int)
+                    Acre[(i,j)] = np.zeros((1,j), dtype=int)
+                    Bdes[(i,j)] = np.zeros((1,j), dtype=int)
+                    Bcre[(i,j)] = np.zeros((1,j), dtype=int)
                     coeff[(i,j)] = np.zeros((1,))
     
            
