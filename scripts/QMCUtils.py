@@ -292,6 +292,20 @@ def read_dets(fname='dets.bin', ndets=None):
 
     return norbs, state, ndetsAll
 
+def parity(d0, cre, des):
+    d = 1.*d0
+    parity = 1.
+
+    C = np.asarray(cre).flatten()
+    D = np.asarray(des).flatten()
+    for i in range(C.shape[0]):
+        I, A = min(D[i], C[i]), max(D[i], C[i])
+        parity *= (1. - 2.* ((np.sum(d[I+1:A]))%2))
+        d[C[i]] = 0
+        d[D[i]] = 1
+    return parity
+
+
 def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
     norbs, state, ndetsAll = read_dets()
 
@@ -310,10 +324,15 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
         coeff[nex] = coeff.get(nex, []) + [state[d]]
         if (nex[0] > 0 and nex[1] > 0):
             Acre[nex], Ades[nex], Bcre[nex],Bdes[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)], Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
+            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1]) * parity(d0b, Bcre[nex][-1], Bdes[nex][-1]) 
+            
         elif (nex[0] > 0 and nex[1] == 0):
             Acre[nex], Ades[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)]
+            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1]) 
+
         elif (nex[0] == 0 and nex[1] > 0):
             Bcre[nex],Bdes[nex] = Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
+            coeff[nex][-1] *= parity(d0b, Bcre[nex][-1], Bdes[nex][-1]) 
 
     coeff[(0,0)] = np.asarray(coeff[(0,0)]).reshape(-1,)
     ##fill up the arrays up to maxExcitations
@@ -341,8 +360,6 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
         #alpha-beta
         if (i != 0):
             for j in range(1,maxExcitation+1):
-                if (i+j > maxExcitation):
-                    continue
                 if ((i,j) in Ades):
                     Ades[(i,j)] = np.asarray(Ades[(i,j)]).reshape(-1,i)+ numCore
                     Acre[(i,j)] = np.asarray(Acre[(i,j)]).reshape(-1,i)+ numCore

@@ -3,14 +3,16 @@ import os, time
 import numpy as np
 from numpy.random import Generator, MT19937, PCG64
 import scipy as sp
-os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1'
-os.environ['JAX_PLATFORM_NAME'] = 'cpu'
-os.environ['JAX_ENABLE_X64'] = 'True'
+#os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=1 --xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1'
+#os.environ['JAX_PLATFORM_NAME'] = 'cpu'
+#os.environ['JAX_ENABLE_X64'] = 'True'
 #os.environ['JAX_DISABLE_JIT'] = 'True'
 import jax.numpy as jnp
 import jax.scipy as jsp
-from jax import lax, jit, custom_jvp, vmap, random, vjp, checkpoint, grad, jvp
+from jax import lax, jit, custom_jvp, vmap, random, vjp, checkpoint, grad, jvp, config
 from mpi4py import MPI
+
+config.update("jax_enable_x64", True)
 
 from functools import partial
 print = partial(print, flush=True)
@@ -160,11 +162,11 @@ def det3x3(a):
     
 @jit
 def det(A):
-    if (A.shape[0] == 2):
-        return det2x2(A)
-    elif (A.shape[0] == 3):
-        return det3x3(A)
-    else:
+    # if (A.shape[0] == 2):
+    #     return det2x2(A)
+    # elif (A.shape[0] == 3):
+    #     return det3x3(A)
+    # else:
         return jnp.linalg.det(A)
 
 @jit
@@ -246,8 +248,9 @@ def overlap_with_doubleRot(x, chol_i, walker, excitations):
     return calc_overlap(walker2, excitations)
 
 
+##THE AD GIVES NAN FOR 2-BODY OPERATORS SOMETIMES SO CURRENTLY FD IS PREFERRED
 @jit 
-def calc_energy_AD_SD(h0, h1, chol, walker, excitations):
+def calc_energy_AD(h0, h1, chol, walker, excitations):
     x = 0.
 
     v0 = -0.5 * jnp.einsum("gik,gjk->ij",chol,chol,optimize="optimal")
@@ -264,10 +267,30 @@ def calc_energy_AD_SD(h0, h1, chol, walker, excitations):
     val, dx = jvp(f1p2, [x], [1.])
 
     return (dx1+jnp.sum(dx)/2.)/val1 + h0 ##why factor of 1./2. in 2-electron
-    
-calc_energy_AD_SD_vmap = vmap(calc_energy_AD_SD, in_axes = (None, None, None, 0, None))
+calc_energy_AD_vmap = vmap(calc_energy_AD, in_axes = (None, None, None, 0, None))
 
-#@checkpoint
+
+@jit 
+def calc_energy_FD(h0, h1, chol, walker, excitations):
+    x = 0.
+
+    v0 = -0.5 * jnp.einsum("gik,gjk->ij",chol,chol,optimize="optimal")
+
+    ##ONE BODY TERM
+    f1 = lambda a : overlap_with_singleRot(a, h1+v0, walker, excitations)
+    val1, dx1 = jvp(f1, [x], [1.])
+
+    vmap_fun = vmap(overlap_with_doubleRot, in_axes = (None, 0, None, None))
+ 
+    eps, zero = 1.e-4, 0.
+    dx = (vmap_fun(eps, chol, walker, excitations) -2.*vmap_fun(zero, chol, walker, excitations) + vmap_fun(-1.*eps, chol, walker, excitations))/eps/eps
+
+    return (dx1+jnp.sum(dx)/2.)/val1 + h0 ##why factor of 1./2. in 2-electron
+calc_energy_FD_vmap = vmap(calc_energy_FD, in_axes = (None, None, None, 0, None))
+    
+
+
+
 @jit
 def calc_force_bias(walker, rot_chol):
   green_walker = calc_green(walker)
@@ -290,7 +313,8 @@ def calc_energy(h0, rot_h1, rot_chol, walker):
   return ene2 + ene1 + ene0
 
 #calc_energy_vmap = vmap(calc_energy, in_axes = (None, None, None, 0))
-calc_energy_vmap = calc_energy_AD_SD_vmap
+#calc_energy_vmap = calc_energy_AD_vmap
+calc_energy_vmap = calc_energy_FD_vmap
 
 # defining this separately because calculating vhs for a batch seems to be faster
 #@checkpoint
