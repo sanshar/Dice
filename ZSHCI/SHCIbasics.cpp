@@ -1131,12 +1131,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           }
         }
         SelfAdjointEigenSolver<MatrixXx> solver(trial);
+	pout << "eigenvalues" << solver.eigenvalues() << endl;
         //solver.compute();
         MatrixXx eigVec = solver.eigenvectors();
         for (int i = 0; i < ci.size(); i++) {
           ci[i].resize(schd.nroots,1);
           for (int j=0; j < schd.nroots; j++)
-            ci[i](j,0) = eigVec(i,j);
+            ci[i](j,0) = eigVec(j,i);
         }
       }
 
