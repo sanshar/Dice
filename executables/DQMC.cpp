@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
   //license();
  
   if (commrank == 0 && print) {
-    std::system("echo '# User:' > afqmc.dat; echo $USER | sed 's/^/# /' >> afqmc.dat");
+    std::system("echo '# User:' >> afqmc.dat; echo $USER | sed 's/^/# /' >> afqmc.dat");
     std::system("echo '# Hostname:' >> afqmc.dat; echo $HOSTNAME | sed 's/^/# /' >> afqmc.dat");
     std::system("echo '# CPU info:' >> afqmc.dat; lscpu | head -15 | sed 's/^/# /' >> afqmc.dat");
     std::system("echo '# Computation started at:' >> afqmc.dat; date | sed 's/^/# /' >> afqmc.dat");

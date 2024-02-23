@@ -323,16 +323,16 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
             continue
         coeff[nex] = coeff.get(nex, []) + [state[d]]
         if (nex[0] > 0 and nex[1] > 0):
-            Acre[nex], Ades[nex], Bcre[nex],Bdes[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)], Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
-            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1]) * parity(d0b, Bcre[nex][-1], Bdes[nex][-1]) 
-            
+            Acre[nex], Ades[nex], Bcre[nex],Bdes[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)], Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)]
+            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1]) * parity(d0b, Bcre[nex][-1], Bdes[nex][-1])
+
         elif (nex[0] > 0 and nex[1] == 0):
             Acre[nex], Ades[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)]
-            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1]) 
+            coeff[nex][-1] *= parity(d0a, Acre[nex][-1], Ades[nex][-1])
 
         elif (nex[0] == 0 and nex[1] > 0):
-            Bcre[nex],Bdes[nex] = Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
-            coeff[nex][-1] *= parity(d0b, Bcre[nex][-1], Bdes[nex][-1]) 
+            Bcre[nex],Bdes[nex] = Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)]
+            coeff[nex][-1] *= parity(d0b, Bcre[nex][-1], Bdes[nex][-1])
 
     coeff[(0,0)] = np.asarray(coeff[(0,0)]).reshape(-1,)
     ##fill up the arrays up to maxExcitations
@@ -341,7 +341,7 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
         if ((i,0) in Ades):
             Ades[(i,0)] = np.asarray(Ades[(i,0)]).reshape(-1,i) + numCore
             Acre[(i,0)] = np.asarray(Acre[(i,0)]).reshape(-1,i) + numCore
-            coeff[(i,0)] = np.asarray(coeff[(i,0)]).reshape(-1,) 
+            coeff[(i,0)] = np.asarray(coeff[(i,0)]).reshape(-1,)
         else:
             Ades[(i,0)] = np.zeros((1,i), dtype=int)
             Acre[(i,0)] = np.zeros((1,i), dtype=int)
@@ -372,8 +372,8 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
                     Bdes[(i,j)] = np.zeros((1,j), dtype=int)
                     Bcre[(i,j)] = np.zeros((1,j), dtype=int)
                     coeff[(i,j)] = np.zeros((1,))
-    
-           
+
+
     return Acre, Ades, Bcre, Bdes, coeff
 
 
@@ -855,7 +855,8 @@ def run_afqmc(mf_or_mc,
               scratch_dir=None,
               use_eri=False,
               dry_run=False,
-              integrals=None):
+              integrals=None,
+              restart=False):
     if isinstance(mf_or_mc, (scf.rhf.RHF, scf.uhf.UHF)):
         return run_afqmc_mf(mf_or_mc,
                             vmc_root=vmc_root,
@@ -877,7 +878,8 @@ def run_afqmc(mf_or_mc,
                             run_dir=run_dir,
                             scratch_dir=scratch_dir,
                             dry_run=dry_run,
-                            integrals=integrals)
+                            integrals=integrals,
+                            restart=restart)
     elif isinstance(mf_or_mc, mcscf.mc1step.CASSCF):
         return run_afqmc_mc(mf_or_mc,
                             vmc_root=vmc_root,
@@ -901,7 +903,8 @@ def run_afqmc(mf_or_mc,
                             scratch_dir=scratch_dir,
                             use_eri=use_eri,
                             dry_run=dry_run,
-                            integrals=integrals)
+                            integrals=integrals,
+                            restart=restart)
     else:
         raise Exception("Need either mean field or casscf object!")
 
@@ -927,7 +930,8 @@ def run_afqmc_mf(mf,
                  run_dir=None,
                  scratch_dir=None,
                  dry_run=False,
-                 integrals=None):
+                 integrals=None,
+                 restart=False):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -1017,16 +1021,19 @@ def run_afqmc_mf(mf,
 
         trial_coeffs[0] = uhfCoeffs[:, :nbasis]
         trial_coeffs[1] = uhfCoeffs[:, nbasis:]
-        writeMat(uhfCoeffs, "uhf.txt")
+        if not restart:
+            writeMat(uhfCoeffs, "uhf.txt")
 
     elif isinstance(mf, scf.rhf.RHF):
         hf_type = "rhf"
         q, r = np.linalg.qr(mo_coeff[:, norb_frozen:].T.dot(overlap).dot(mf.mo_coeff[:, norb_frozen:]))
         trial_coeffs[0] = q
         trial_coeffs[1] = q
-        writeMat(q, "rhf.txt")
+        if not restart:
+            writeMat(q, "rhf.txt")
 
-    write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol', mo_coeffs = trial_coeffs)
+    if not restart:
+        write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol', mo_coeffs = trial_coeffs)
 
     # write input
     write_afqmc_input(seed=seed,
@@ -1041,7 +1048,8 @@ def run_afqmc_mf(mf,
                       choleskyThreshold=cholesky_threshold,
                       weightCap=weight_cap,
                       writeOneRDM=write_one_rdm,
-                      scratchDir=scratch_dir)
+                      scratchDir=scratch_dir,
+                      restart=restart)
 
     if dry_run:
       return None, None
@@ -1116,7 +1124,8 @@ def run_afqmc_mc(mc,
                  scratch_dir=None,
                  use_eri=False,
                  dry_run=False,
-                 integrals=None):
+                 integrals=None,
+                 restart=False):
     print("\nPreparing AFQMC calculation")
     if vmc_root is None:
         path = os.path.abspath(__file__)
@@ -1202,7 +1211,8 @@ def run_afqmc_mc(mc,
     h1e_mod = h1e - v0
     chol = chol.reshape((chol.shape[0], -1))
 
-    write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
+    if not restart:
+        write_dqmc(h1e, h1e_mod, chol, sum(nelec), nbasis, enuc, ms=mol.spin, filename='FCIDUMP_chol')
 
     # write mo coefficients
     det_file = 'dets.bin'
@@ -1214,13 +1224,15 @@ def run_afqmc_mc(mc,
     hf_type = "rhf"
     if list(state.keys())[0][0] == list(state.keys())[0][1]:
         rhfCoeffs = np.eye(nbasis)
-        writeMat(rhfCoeffs[:,
+        if not restart:
+            writeMat(rhfCoeffs[:,
                            np.concatenate((range(norb_core), up, range(norb_core + norb_act, nbasis))).astype(int)],
                  "rhf.txt")
     else:
         hf_type = "uhf"
         uhfCoeffs = np.hstack((np.eye(nbasis), np.eye(nbasis)))
-        writeMat(
+        if not restart:
+            writeMat(
             uhfCoeffs[:,
                       np.concatenate(
                           (np.array(range(norb_core)), up, np.array(range(norb_core + norb_act, nbasis + norb_core)),
@@ -1276,15 +1288,21 @@ def run_afqmc_mc(mc,
                           weightCap=weight_cap,
                           writeOneRDM=write_one_rdm,
                           scratchDir=scratch_dir,
-                          fname=f"afqmc_{n}.json")
+                          fname=f"afqmc_{n}.json",
+                          restart=restart)
 
         print(f"Starting AFQMC / HCI ({n} dets) calculation", flush=True)
         command = f"export OMP_NUM_THREADS=1; {mpi_prefix} {afqmc_binary} afqmc_{n}.json"
         os.system(command)
         if (os.path.isfile('samples.dat')):
             print("\nBlocking analysis:", flush=True)
-            command = f"mv samples.dat samples_{n}.dat; mv afqmc.dat afqmc_{n}.dat; mv blocking.tmp blocking_{n}.out; "\
-                      f"cat blocking_{n}.out"
+            command = f'''
+                        mv samples.dat samples_{n}.dat;
+                        echo afqmc.dat >> afqmc_{n}.dat;
+                        rm afqmc.dat -f;
+                        mv blocking.tmp blocking_{n}.out;
+                        cat blocking_{n}.out
+                        '''
             os.system(command)
             print(f"Finished AFQMC / HCI ({n} dets) calculation\n", flush=True)
 
@@ -1701,7 +1719,8 @@ def write_afqmc_input(integral='FCIDUMP_chol',
                       writeOneRDM=False,
                       scratchDir=None,
                       phaselessErrorTarget=None,
-                      fname='afqmc.json'):
+                      fname='afqmc.json',
+                      restart=False):
     system = {}
     system["integrals"] = integral
     if numAct is not None:
@@ -1729,6 +1748,8 @@ def write_afqmc_input(integral='FCIDUMP_chol',
     sampling["phaseless"] = True
     if phaselessErrorTarget is not None:
         sampling["phaselessErrorTarget"] = phaselessErrorTarget
+    if restart is True:
+        sampling["restart"] = True
     sampling["dt"] = dt
     sampling["nsteps"] = nsteps
     sampling["nwalk"] = nwalk

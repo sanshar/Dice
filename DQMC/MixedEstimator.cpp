@@ -457,7 +457,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double weightedEnergy = localEnergy.sum();
   MPI_Allreduce(MPI_IN_PLACE, &weightedEnergy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   totalEnergies(0) = weightedEnergy / totalWeights(0) + delta.real(); 
-  if (commrank == 0) {
+  if (commrank == 0 && !schd.dqmcRestart) {
     double initializationTime = getTime() - calcInitTime;
     afqmcFile << "# block     propTime           eshift          weight             energy          cumulative_energy          walltime\n";
     afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e       %9s                %.2e \n") % 0 % 0. % totalEnergies(0) % totalWeights(0) % totalEnergies(0) % '-' % initializationTime; 
@@ -490,29 +490,38 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
   double weightCap = 0.;
   if (schd.weightCap > 0) weightCap = schd.weightCap;
   else weightCap = std::max(100., walkers.size() / 10.);
-
+  
+  int read_sweeps = 0;
+  int start_step = 1;
+  int end_step = nsweeps * nsteps;
   // read restart information
   if (schd.dqmcRestart) {
     int nchol;
-    int read_sweeps;
     vector<complex<double>> saved_walkers;
     vector<complex<double>> saved_overlaps;
     vector<double> saved_weights;
     vector<double> saved_energies;
     double totalCumulativeWeight;
+    int n_saved = 0;
     if (commrank == 0) {
       H5Easy::File chkfile("afqmc.h5", H5Easy::File::ReadOnly);
-      measureCounter = H5Easy::load<int>(chkfile, "block");
+      measureCounter = H5Easy::load<int>(chkfile, "block") + 1;
       nchol = H5Easy::load<int>(chkfile, "nchol");
       saved_walkers = H5Easy::load<std::vector<complex<double>>>(chkfile, "walkers");
       saved_overlaps = H5Easy::load<std::vector<complex<double>>>(chkfile, "overlaps");
       saved_weights = H5Easy::load<std::vector<double>>(chkfile, "weights");
       saved_energies = H5Easy::load<std::vector<double>>(chkfile, "energies");
+      n_saved = saved_weights.size();
       totalCumulativeWeight = H5Easy::load<double>(chkfile, "totalWeights");
       eshift = H5Easy::load<double>(chkfile, "eshift");
       eEstimate = H5Easy::load<double>(chkfile, "eEstimate");
-      read_sweeps = saved_weights.size();
-      cout << saved_walkers.size() << " " << saved_overlaps.size() << " " << saved_weights.size() << endl;
+      read_sweeps = H5Easy::load<int>(chkfile, "step") / nsteps + 1;
+      cout << "# Restarting calculation from block " << measureCounter << endl; 
+      afqmcFile << "# Restarting calculation from block " << measureCounter << endl; 
+      afqmcFile.flush();
+      afqmcFile << "# block     propTime           eshift          weight             energy          cumulative_energy          walltime\n";
+      afqmcFile.flush();
+      cout << "   Iter        Mean energy          Stochastic error       Walltime\n";
     }
     MPI_Barrier(MPI_COMM_WORLD);
     int matSize;
@@ -520,56 +529,66 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
     else if (walker.szQ) matSize = ham.norbs * ham.nelec;
     else matSize = ham.norbs * (ham.nalpha  + ham.nbeta);
     vector<complex<double>> serial(nwalk * matSize, complex<double>(0., 0.)), serialw(matSize, complex<double>(0., 0.)), overlaps(nwalk, complex<double>(0., 0.));
+    
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Bcast(&read_sweeps, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&n_saved, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&eshift, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&eEstimate, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast(&totalCumulativeWeight, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&measureCounter, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    saved_walkers.resize(nwalk*matSize);
-    saved_overlaps.resize(nwalk);
-    saved_weights.resize(read_sweeps);
-    saved_energies.resize(read_sweeps);
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (commrank != 0) {
+      saved_energies = vector<double>(n_saved, 0.);
+      saved_weights = vector<double>(n_saved, 0.);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    
     MPI_Bcast(saved_energies.data(),
-              read_sweeps,
+              saved_energies.size(),
               MPI_DOUBLE,
               0,
               MPI_COMM_WORLD);
-    MPI_Bcast(saved_walkers.data(), nwalk * matSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Bcast(saved_overlaps.data(), nwalk, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
-    MPI_Bcast(saved_weights.data(), read_sweeps, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
+    MPI_Bcast(saved_weights.data(),
+              saved_weights.size(),
+              MPI_DOUBLE,
+              0,
+              MPI_COMM_WORLD);
+    MPI_Scatter(saved_walkers.data(), nwalk * matSize, MPI_DOUBLE_COMPLEX, serial.data(), nwalk * matSize, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Scatter(saved_overlaps.data(), nwalk, MPI_DOUBLE_COMPLEX, overlaps.data(), nwalk, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&totalCumulativeWeight, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    
     // deserialize
     for (int w = 0; w < walkers.size(); w++) {
-      for (int i = 0; i < matSize; i++) {serialw[i] = saved_walkers[w * matSize + i];
-      cout << serialw[i] << endl;}
+      for (int i = 0; i < matSize; i++) {serialw[i] = serial[w * matSize + i];}
       walkers[w].setDet(serialw, overlaps[w]);
       weights[w] = totalCumulativeWeight / commsize / nwalk;
-      cout << walkers[w].trialOverlap << endl;
       walkers[w].overlap(waveLeft);
     }
-
-    for (int i = 0; i < read_sweeps; i++) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    for (int i = 0; i < n_saved; i++) {
       totalEnergies(i) = saved_energies[i];
       totalWeights(i) = saved_weights[i];
       if (i < schd.burnIter) {
         averageNumEql += totalEnergies(i)*totalWeights(i);
         averageDenomEql += totalWeights(i);
         averageEnergyEql = averageNumEql / averageDenomEql;
-        afqmcFile << boost::format(" %5d     %.3e       %.5s     %.5e      %.9e         %7s         %.2e \n") % i % 0.0 % '-' % totalWeights(i) % totalEnergies(i) % '-' % (getTime()-calcInitTime); 
-        afqmcFile.flush();
       }
       else {
         averageNum += totalEnergies(i)*totalWeights(i);
         averageDenom += totalWeights(i);
         averageEnergy = averageNum / averageDenom;
-        afqmcFile << boost::format(" %5d     %.3e       %.5s     %.5e      %.9e        %.9e        %.2e \n") % i % 0.0 % '-' % totalWeights(i) % totalEnergies(i) % averageEnergy % (getTime() - calcInitTime); 
-        afqmcFile.flush();
       }
     }
+
     totalWeight = totalCumulativeWeight / commsize;
+    start_step = read_sweeps * nsteps + 1;
+    end_step = nsweeps * nsteps + 1;
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  for (int step = 1+nsteps*(measureCounter-1); step < (nsweeps-1) * nsteps+1; step++) {
+  for (int step = start_step; step < end_step; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
 
@@ -601,6 +620,7 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
       measureCounter++;
       localEnergy.setZero();
       int block = step / nsteps;
+      if (schd.dqmcRestart) block--;
       init = getTime();
       //ArrayXd overlapRatios = ArrayXd::Zero(walkers.size());
       for (int w = 0; w < walkers.size(); w++) {
@@ -724,17 +744,16 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           newOverlapsGather[w] = overlapsGather[index];
         }
         int block = step / nsteps;
-        if (block % 100 == 0) {
+        if ((block + 1) % 50 == 0) {
           H5Easy::File chkfile("afqmc.h5", H5Easy::File::Overwrite);
-          if (schd.writeWalkers) {
-            H5Easy::dump(chkfile, "overlaps", newOverlapsGather, H5Easy::DumpMode::Overwrite);
-            H5Easy::dump(chkfile, "walkers", newSerialGather, H5Easy::DumpMode::Overwrite);
-            H5Easy::dump(chkfile, "totalWeights", totalCumulativeWeight, H5Easy::DumpMode::Overwrite);
-          }
+          H5Easy::dump(chkfile, "overlaps", newOverlapsGather, H5Easy::DumpMode::Overwrite);
+          H5Easy::dump(chkfile, "walkers", newSerialGather, H5Easy::DumpMode::Overwrite);
+          H5Easy::dump(chkfile, "totalWeights", totalCumulativeWeight, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "weights", totalWeights, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "energies", totalEnergies, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "nchol", nchol, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "block", block, H5Easy::DumpMode::Overwrite);
+          H5Easy::dump(chkfile, "step", step, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "averageEnergy", block, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "eEstimate", eEstimate, H5Easy::DumpMode::Overwrite);
           H5Easy::dump(chkfile, "eshift", eshift, H5Easy::DumpMode::Overwrite);
