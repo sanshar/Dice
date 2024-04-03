@@ -42,7 +42,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
   cout << "**************************************************************"
        << endl;
 
-  ifstream dump(input.c_str());
+  ifstream ifs(input.c_str());
+  std::stringstream dump;
+  dump << ifs.rdbuf();
+
   int maxiter = -1;
   vector<int> sweep_iter;
   vector<double> sweep_epsilon;
@@ -121,6 +124,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
 
   schd.Bvalue = 0;
   schd.Bdirection.resize(0);
+  
   
   while (dump.good()) {
     std::string Line;

@@ -13,6 +13,7 @@ from jax import lax, jit, custom_jvp, vmap, random, vjp, checkpoint, grad, jvp, 
 from mpi4py import MPI
 
 config.update("jax_enable_x64", True)
+#config.update("jax_disable_jit", True)
 
 from functools import partial
 print = partial(print, flush=True)
@@ -20,8 +21,9 @@ print = partial(print, flush=True)
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
-MAX_EXCITATION = 3
-
+excitationlistA = ((2, 0), (1,0))
+excitationlistB = ((0, 2), (0, 1))
+excitationlist  = ((1, 1), (2, 2), (3, 1), (1, 3), (2, 1), (1, 2), (3, 3), (3, 2), (2, 3))
 if rank == 0:
   print(f'Number of cores: {size}\n', flush=True)
 
@@ -188,17 +190,23 @@ def calc_overlap(walker, excitations):
 
   ovlp = coeff[(0,0)]
 
+  for ex in excitationlistA:
+    ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[ex], Ades[ex]).dot(coeff[ex])
 
-  for i in range(1,MAX_EXCITATION+1):
-      #vals = vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[(i,0)], Ades[(i,0)])
-      ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[(i,0)], Ades[(i,0)]).dot(coeff[(i,0)]) 
-      ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Bcre[(0,i)], Bdes[(0,i)]).dot(coeff[(0,i)]) 
+  for ex in excitationlistB:
+    ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Bcre[ex], Bdes[ex]).dot(coeff[ex]) 
 
-      for j in range(1, MAX_EXCITATION+1):
-        if (i+j <= MAX_EXCITATION):
-          ovlp += vmap(ovlp_nA_mB, in_axes=(None, 0, 0, 0, 0))(GF, Acre[(i,j)], Ades[(i,j)], Bcre[(i,j)], Bdes[(i,j)]).dot(coeff[(i,j)]) 
+  for ex in excitationlist:
+    ovlp += vmap(ovlp_nA_mB, in_axes=(None, 0, 0, 0, 0))(GF, Acre[ex], Ades[ex], Bcre[ex], Bdes[ex]).dot(coeff[ex]) 
 
-
+  # exs = list(coeff.keys())
+  # for ex in exs[1:]:
+  #   if (ex[1] == 0):
+  #     ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Acre[ex], Ades[ex]).dot(coeff[ex]) 
+  #   elif (ex[0] == 0):
+  #     ovlp += vmap(ovlp_nA_0B_or_0A_nB, in_axes=(None, 0, 0))(GF, Bcre[ex], Bdes[ex]).dot(coeff[ex]) 
+  #   else:
+  #     ovlp += vmap(ovlp_nA_mB, in_axes=(None, 0, 0, 0, 0))(GF, Acre[ex], Ades[ex], Bcre[ex], Bdes[ex]).dot(coeff[ex]) 
 
   return (ovlp * ovlp0)[0] #jnp.linalg.det(walker[:walker.shape[1], :])**2
 
@@ -313,8 +321,8 @@ def calc_energy(h0, rot_h1, rot_chol, walker):
   return ene2 + ene1 + ene0
 
 #calc_energy_vmap = vmap(calc_energy, in_axes = (None, None, None, 0))
-#calc_energy_vmap = calc_energy_AD_vmap
-calc_energy_vmap = calc_energy_FD_vmap
+calc_energy_vmap = calc_energy_AD_vmap
+#calc_energy_vmap = calc_energy_FD_vmap
 
 # defining this separately because calculating vhs for a batch seems to be faster
 #@checkpoint
@@ -586,6 +594,7 @@ def run_afqmc(h0, h1, chol, nelec, dt, nwalkers, nsteps, excitations, nblocks, n
   local_block_rdm1 = np.zeros((nblocks, norb, norb))
   walkers = jnp.stack([jnp.eye(norb, nelec) + 0.j for _ in range(nwalkers)])
 
+  print( calc_overlap(walkers[0], excitations) )
   energy_samples = jnp.real(calc_energy_vmap(h0, h1, chol.reshape(-1,norb,norb), walkers, excitations))
   global_block_energies[0] = jnp.sum(energy_samples) / nwalkers   # assuming identical walkers
   e_estimate = jnp.array(global_block_energies[0])

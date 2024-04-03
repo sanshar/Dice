@@ -306,7 +306,7 @@ def parity(d0, cre, des):
     return parity
 
 
-def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
+def getExcitation(numCore, fname='dets.bin', ndets=None):
     norbs, state, ndetsAll = read_dets()
 
     if ndets is None:
@@ -319,8 +319,7 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
     for d in dets:
         dia, dib = np.asarray(d[0]), np.asarray(d[1])
         nex = ( np.sum(abs(dia - d0a))//2,  np.sum(abs(dib - d0b))//2 )
-        if (nex[0] + nex[1] > maxExcitation):
-            continue
+
         coeff[nex] = coeff.get(nex, []) + [state[d]]
         if (nex[0] > 0 and nex[1] > 0):
             Acre[nex], Ades[nex], Bcre[nex],Bdes[nex] = Acre.get(nex, []) + [np.nonzero( (d0a-dia)>0)], Ades.get(nex, [])+[np.nonzero( (d0a-dia)<0)], Bcre.get(nex, []) + [np.nonzero( (d0b-dib)>0)], Bdes.get(nex, [])+[np.nonzero( (d0b-dib)<0)] 
@@ -335,45 +334,57 @@ def getExcitation(numCore, fname='dets.bin', ndets=None, maxExcitation=4):
             coeff[nex][-1] *= parity(d0b, Bcre[nex][-1], Bdes[nex][-1]) 
 
     coeff[(0,0)] = np.asarray(coeff[(0,0)]).reshape(-1,)
-    ##fill up the arrays up to maxExcitations
-    for i in range(1,maxExcitation+1):
+    excitationlistA, excitationlistB, excitationlist = [],[],[]
+
+    exs = list(coeff.keys())
+    for ex in exs:
+        if (ex == (0,0)):
+            continue
+
         ##singe alpha excitation
-        if ((i,0) in Ades):
-            Ades[(i,0)] = np.asarray(Ades[(i,0)]).reshape(-1,i) + numCore
-            Acre[(i,0)] = np.asarray(Acre[(i,0)]).reshape(-1,i) + numCore
-            coeff[(i,0)] = np.asarray(coeff[(i,0)]).reshape(-1,) 
-        else:
-            Ades[(i,0)] = np.zeros((1,i), dtype=int)
-            Acre[(i,0)] = np.zeros((1,i), dtype=int)
-            coeff[(i,0)] = np.zeros((1,))
+        if (ex[1] == 0):
+            i = ex[0]
+            Ades[ex] = np.asarray(Ades[ex]).reshape(-1,i) + numCore
+            Acre[ex] = np.asarray(Acre[ex]).reshape(-1,i) + numCore
+            coeff[ex] = np.asarray(coeff[ex]).reshape(-1,) 
+            excitationlistA.append(ex)
+        # else:
+        #     Ades[(i,0)] = np.zeros((1,i), dtype=int)
+        #     Acre[(i,0)] = np.zeros((1,i), dtype=int)
+        #     coeff[(i,0)] = np.zeros((1,))
 
         ##singe beta excitation
-        if ((0,i) in Bdes):
-            Bdes[(0,i)] = np.asarray(Bdes[(0,i)]).reshape(-1,i)+ numCore
-            Bcre[(0,i)] = np.asarray(Bcre[(0,i)]).reshape(-1,i)+ numCore
-            coeff[(0,i)] = np.asarray(coeff[(0,i)]).reshape(-1,)
-        else:
-            Bdes[(0,i)] = np.zeros((1,i), dtype=int)
-            Bcre[(0,i)] = np.zeros((1,i), dtype=int)
-            coeff[(0,i)] = np.zeros((1,))
+        elif (ex[0] == 0):
+            i = ex[1]
+            Bdes[ex] = np.asarray(Bdes[ex]).reshape(-1,i)+ numCore
+            Bcre[ex] = np.asarray(Bcre[ex]).reshape(-1,i)+ numCore
+            coeff[ex] = np.asarray(coeff[ex]).reshape(-1,)
+            excitationlistB.append(ex)
+        # else:
+        #     Bdes[(0,i)] = np.zeros((1,i), dtype=int)
+        #     Bcre[(0,i)] = np.zeros((1,i), dtype=int)
+        #     coeff[(0,i)] = np.zeros((1,))
 
         #alpha-beta
-        if (i != 0):
-            for j in range(1,maxExcitation+1):
-                if ((i,j) in Ades):
-                    Ades[(i,j)] = np.asarray(Ades[(i,j)]).reshape(-1,i)+ numCore
-                    Acre[(i,j)] = np.asarray(Acre[(i,j)]).reshape(-1,i)+ numCore
-                    Bdes[(i,j)] = np.asarray(Bdes[(i,j)]).reshape(-1,j)+ numCore
-                    Bcre[(i,j)] = np.asarray(Bcre[(i,j)]).reshape(-1,j)+ numCore
-                    coeff[(i,j)] = np.asarray(coeff[(i,j)]).reshape(-1,)
-                else:
-                    Ades[(i,j)] = np.zeros((1,j), dtype=int)
-                    Acre[(i,j)] = np.zeros((1,j), dtype=int)
-                    Bdes[(i,j)] = np.zeros((1,j), dtype=int)
-                    Bcre[(i,j)] = np.zeros((1,j), dtype=int)
-                    coeff[(i,j)] = np.zeros((1,))
+        else:
+            i,j = ex[0], ex[1]
+            Ades[ex] = np.asarray(Ades[ex]).reshape(-1,i)+ numCore
+            Acre[ex] = np.asarray(Acre[ex]).reshape(-1,i)+ numCore
+            Bdes[ex] = np.asarray(Bdes[ex]).reshape(-1,j)+ numCore
+            Bcre[ex] = np.asarray(Bcre[ex]).reshape(-1,j)+ numCore
+            coeff[ex] = np.asarray(coeff[ex]).reshape(-1,)
+            excitationlist.append(ex)
+
+                # else:
+                #     Ades[(i,j)] = np.zeros((1,j), dtype=int)
+                #     Acre[(i,j)] = np.zeros((1,j), dtype=int)
+                #     Bdes[(i,j)] = np.zeros((1,j), dtype=int)
+                #     Bcre[(i,j)] = np.zeros((1,j), dtype=int)
+                #     coeff[(i,j)] = np.zeros((1,))
     
-           
+    print(excitationlistA)
+    print(excitationlistB)
+    print(excitationlist)
     return Acre, Ades, Bcre, Bdes, coeff
 
 

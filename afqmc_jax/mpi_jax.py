@@ -15,7 +15,7 @@ with h5py.File('FCIDUMP_chol', 'r') as fh5:
 
 with open('afqmc.json') as fjson:
   d = json.load(fjson)
-print("INPUT FIKLE:")
+print("INPUT FILE:")
 print(json.dumps(d, indent=2))
 
   
@@ -23,11 +23,12 @@ numCore = d['system'].get('numCore',0)
 
 if d['wavefunction']['left'] == 'multislater':
   Acre, Ades, Bcre, Bdes, coeff = \
-    QMCUtils.getExcitation(numCore, d['wavefunction']['determinants'], d['wavefunction']['ndets'], \
-      maxExcitation=ph_afqmc_MultiSlater.MAX_EXCITATION)
+    QMCUtils.getExcitation(numCore, d['wavefunction']['determinants'], d['wavefunction']['ndets'])
 
+ndets = np.sum(np.asarray([c.shape[0] for c in coeff.values()]))
+print("Num determinants: ", ndets)
 excitations = [ Acre, Ades, Bcre, Bdes, coeff]
-  
+
 norb = nmo
 nelec = nelec // 2
 

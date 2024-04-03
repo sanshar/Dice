@@ -287,6 +287,8 @@ int main(int argc, char* argv[]) {
   pout << "**************************************************************\n";
 
   // Make HF determinant
+  int lowestEnergyDet = 0;
+  double lowestEnergy = 1.e12;
   vector<Determinant> Dets(HFoccupied.size());
   for (int d = 0; d < HFoccupied.size(); d++) {
     for (int i = 0; i < HFoccupied[d].size(); i++) {
@@ -305,8 +307,13 @@ int main(int argc, char* argv[]) {
         exit(0);
       }
     }
+    double E = Dets.at(d).Energy(I1, I2, coreE);
     pout << Dets[d] << " Given Ref. Energy:    "
-         << format("%18.10f") % (Dets.at(d).Energy(I1, I2, coreE)) << endl;
+         << format("%18.10f") % (E) << endl;
+    if (E < lowestEnergy) {
+      lowestEnergy = E;
+      lowestEnergyDet = d;
+    }
   }
 
   if (schd.searchForLowestEnergyDet) {
@@ -387,6 +394,7 @@ int main(int argc, char* argv[]) {
 
   if (commrank == 0) {
     for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 1.0;
+    ci[0](lowestEnergyDet,0) += Dets.size();
     ci[0] = ci[0] / ci[0].norm();
   }
 
