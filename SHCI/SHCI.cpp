@@ -286,20 +286,23 @@ int main(int argc, char* argv[]) {
   pout << "SELECTING REFERENCE DETERMINANT(S)\n";
   pout << "**************************************************************\n";
 
+  cout << commrank<<"  "<<commsize<<endl;
   // Make HF determinant
-  int lowestEnergyDet = 0;
-  double lowestEnergy = 1.e12;
+  vector<int> lowestEnergyDet(0, commsize);
+  vector<double> lowestEnergy(1.e12, commsize);
   vector<Determinant> Dets(HFoccupied.size());
-  for (int d = 0; d < HFoccupied.size(); d++) {
+
+  for (int d = commrank; d < HFoccupied.size(); d+=commsize) {
     for (int i = 0; i < HFoccupied[d].size(); i++) {
-      if (Dets[d].getocc(HFoccupied[d][i])) {
-        pout << "orbital " << HFoccupied[d][i]
-             << " appears twice in input determinant number " << d << endl;
-        exit(0);
-      }
+      //if (Dets[d].getocc(HFoccupied[d][i])) {
+      //  pout << "orbital " << HFoccupied[d][i]
+      //       << " appears twice in input determinant number " << d << endl;
+      //  exit(0);
+      //}
       Dets[d].setocc(HFoccupied[d][i], true);
     }
     if (Determinant::Trev != 0) Dets[d].makeStandard();
+    /*
     for (int i = 0; i < d; i++) {
       if (Dets[d] == Dets[i]) {
         pout << "Determinant " << Dets[d]
@@ -307,12 +310,26 @@ int main(int argc, char* argv[]) {
         exit(0);
       }
     }
+    */
     double E = Dets.at(d).Energy(I1, I2, coreE);
     pout << Dets[d] << " Given Ref. Energy:    "
          << format("%18.10f") % (E) << endl;
-    if (E < lowestEnergy) {
-      lowestEnergy = E;
-      lowestEnergyDet = d;
+    if (E < lowestEnergy[commrank]) {
+      lowestEnergy[commrank] = E;
+      lowestEnergyDet[commrank] = d;
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &lowestEnergy.front(), commsize, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &lowestEnergyDet.front(), commsize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  //MPI_Allreduce(world, &lowestEnergy.front(), commsize, std::plus<double>());
+  //MPI_Allreduce(world, &lowestEnergyDet.front(), commsize, std::plus<int>());
+
+  double lowE = lowestEnergy[0];
+  int lowEIdx = 0;
+  for (int i=1; i<lowestEnergy.size(); i++) {
+    if (lowestEnergy[i] < lowE) {
+      lowE = lowestEnergy[i];
+      lowEIdx = i;
     }
   }
 
@@ -393,8 +410,8 @@ int main(int argc, char* argv[]) {
   schd.HF = Dets[0];
 
   if (commrank == 0) {
-    for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 1.0;
-    ci[0](lowestEnergyDet,0) += Dets.size();
+    for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 2.*(rand() % 2) - 1.;
+    ci[0](lowEIdx,0) = Dets.size();
     ci[0] = ci[0] / ci[0].norm();
   }
 
