@@ -286,10 +286,10 @@ int main(int argc, char* argv[]) {
   pout << "SELECTING REFERENCE DETERMINANT(S)\n";
   pout << "**************************************************************\n";
 
-  cout << commrank<<"  "<<commsize<<endl;
   // Make HF determinant
-  vector<int> lowestEnergyDet(0, commsize);
-  vector<double> lowestEnergy(1.e12, commsize);
+  vector<int> lowestEnergyDet(commsize, 0);
+  vector<double> lowestEnergy(commsize, 0.);
+  lowestEnergy[commrank] = 1.e12;
   vector<Determinant> Dets(HFoccupied.size());
 
   for (int d = commrank; d < HFoccupied.size(); d+=commsize) {
@@ -312,13 +312,16 @@ int main(int argc, char* argv[]) {
     }
     */
     double E = Dets.at(d).Energy(I1, I2, coreE);
-    pout << Dets[d] << " Given Ref. Energy:    "
-         << format("%18.10f") % (E) << endl;
+    //pout << Dets[d] << " Given Ref. Energy:    "
+    //     << format("%18.10f") % (E) << endl;
     if (E < lowestEnergy[commrank]) {
       lowestEnergy[commrank] = E;
       lowestEnergyDet[commrank] = d;
     }
   }
+
+  MPI_Allreduce(MPI_IN_PLACE, ((double*)&Dets.front()), Dets.size()*DetLen, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
   MPI_Allreduce(MPI_IN_PLACE, &lowestEnergy.front(), commsize, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(MPI_IN_PLACE, &lowestEnergyDet.front(), commsize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   //MPI_Allreduce(world, &lowestEnergy.front(), commsize, std::plus<double>());
