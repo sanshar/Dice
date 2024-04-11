@@ -29,7 +29,7 @@
 #endif
 
 typedef unsigned short ushort;
-const int DetLen = 6;
+const int DetLen = 2;
 extern double startofCalc;
 double getTime();
 

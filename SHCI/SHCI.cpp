@@ -287,12 +287,11 @@ int main(int argc, char* argv[]) {
   pout << "**************************************************************\n";
 
   // Make HF determinant
-  vector<int> lowestEnergyDet(commsize, 0);
-  vector<double> lowestEnergy(commsize, 0.);
-  lowestEnergy[commrank] = 1.e12;
+  int lowestEnergyDet = 0;
+  double lowestEnergy = 1.e12;
   vector<Determinant> Dets(HFoccupied.size());
 
-  for (int d = commrank; d < HFoccupied.size(); d+=commsize) {
+  for (int d = 0; d < HFoccupied.size(); d++) {
     for (int i = 0; i < HFoccupied[d].size(); i++) {
       //if (Dets[d].getocc(HFoccupied[d][i])) {
       //  pout << "orbital " << HFoccupied[d][i]
@@ -314,19 +313,20 @@ int main(int argc, char* argv[]) {
     double E = Dets.at(d).Energy(I1, I2, coreE);
     //pout << Dets[d] << " Given Ref. Energy:    "
     //     << format("%18.10f") % (E) << endl;
-    if (E < lowestEnergy[commrank]) {
-      lowestEnergy[commrank] = E;
-      lowestEnergyDet[commrank] = d;
+    if (E < lowestEnergy) {
+      lowestEnergy = E;
+      lowestEnergyDet = d;
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, ((double*)&Dets.front()), Dets.size()*DetLen, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  //MPI_Allreduce(MPI_IN_PLACE, ((double*)&Dets.front()), Dets.size()*DetLen, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  MPI_Allreduce(MPI_IN_PLACE, &lowestEnergy.front(), commsize, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &lowestEnergyDet.front(), commsize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  //MPI_Allreduce(MPI_IN_PLACE, &lowestEnergy.front(), commsize, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  //MPI_Allreduce(MPI_IN_PLACE, &lowestEnergyDet.front(), commsize, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   //MPI_Allreduce(world, &lowestEnergy.front(), commsize, std::plus<double>());
   //MPI_Allreduce(world, &lowestEnergyDet.front(), commsize, std::plus<int>());
-
+  /*
+  cout << "mpi reduce done"<<endl;
   double lowE = lowestEnergy[0];
   int lowEIdx = 0;
   for (int i=1; i<lowestEnergy.size(); i++) {
@@ -335,6 +335,7 @@ int main(int argc, char* argv[]) {
       lowEIdx = i;
     }
   }
+  */
 
   if (schd.searchForLowestEnergyDet) {
     // Set up the symmetry class
@@ -414,7 +415,7 @@ int main(int argc, char* argv[]) {
 
   if (commrank == 0) {
     for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 2.*(rand() % 2) - 1.;
-    ci[0](lowEIdx,0) = Dets.size();
+    ci[0](lowestEnergyDet,0) = Dets.size();
     ci[0] = ci[0] / ci[0].norm();
   }
 
