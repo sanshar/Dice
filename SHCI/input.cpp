@@ -130,7 +130,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
     std::string Line;
     std::getline(dump, Line);
     trim(Line);
-    cout << Line << endl;
+    //cout << Line << endl;
 
     vector<string> tok;
     boost::split(tok, Line, is_any_of(", \t\n"), token_compress_on);
@@ -162,9 +162,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
 
         for (int i = 0; i < tok.size(); i++) {
           occupied[index][i] = atoi(tok[i].c_str());
-          cout << occupied[index][i] << " ";
+          //cout << occupied[index][i] << " ";
         }
-        cout << endl;
+        //cout << endl;
         std::getline(dump, Line);
         trim(Line);
         boost::split(tok, Line, is_any_of(", \t"), token_compress_on);
