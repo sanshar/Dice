@@ -318,7 +318,7 @@ int main(int argc, char* argv[]) {
       lowestEnergyDet = d;
     }
   }
-
+  HFoccupied.clear();
   //MPI_Allreduce(MPI_IN_PLACE, ((double*)&Dets.front()), Dets.size()*DetLen, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   //MPI_Allreduce(MPI_IN_PLACE, &lowestEnergy.front(), commsize, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
