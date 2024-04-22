@@ -271,11 +271,6 @@ int main(int argc, char* argv[]) {
   boost::interprocess::shared_memory_object::remove(shciint2.c_str());
   boost::interprocess::shared_memory_object::remove(shciint2shm.c_str());
 
-  // Have the dets, ci coefficient and diagnoal on all processors
-  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(), 1));
-  vector<MatrixXx> vdVector(schd.nroots);  // these vectors are used to
-                                           // calculate the response equations
-  double Psi1Norm = 0.0;
 
   // #####################################################################
   // Reference determinant
@@ -286,38 +281,106 @@ int main(int argc, char* argv[]) {
   pout << "SELECTING REFERENCE DETERMINANT(S)\n";
   pout << "**************************************************************\n";
 
-  // Make HF determinant
+
   int lowestEnergyDet = 0;
   double lowestEnergy = 1.e12;
-  vector<Determinant> Dets(HFoccupied.size());
+  vector<Determinant> Dets;
 
-  for (int d = 0; d < HFoccupied.size(); d++) {
-    for (int i = 0; i < HFoccupied[d].size(); i++) {
-      //if (Dets[d].getocc(HFoccupied[d][i])) {
-      //  pout << "orbital " << HFoccupied[d][i]
-      //       << " appears twice in input determinant number " << d << endl;
-      //  exit(0);
-      //}
-      Dets[d].setocc(HFoccupied[d][i], true);
-    }
-    if (Determinant::Trev != 0) Dets[d].makeStandard();
-    /*
-    for (int i = 0; i < d; i++) {
-      if (Dets[d] == Dets[i]) {
-        pout << "Determinant " << Dets[d]
-             << " appears twice in the input determinant list." << endl;
+  /**READING THE ALPHA STRING FROM THE BINARY FILE*/
+  if (true) {
+    std::ifstream input( "AlphaDets.bin", std::ios::binary );
+    // copies all data into buffer
+    std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
+    int nAlphaDets = static_cast<int>(buffer.size()/5);
+    cout << nAlphaDets <<endl;
+    int nalpha = nelec/2; 
+    vector<vector<int>> occAlpha(nAlphaDets, vector<int>(nalpha,-1)); 
+
+    for (int i=0; i<nAlphaDets; i++) {
+
+      int occindex = 0;
+      for (int c=0; c<5; c++) {
+        unsigned char a = buffer[5*i+(4-c)];
+        //cout << ((int)(a))<<endl;
+        for (int b=0; b<8; b++) {
+          //cout << ((a>>b & 1) != 0)<<" ";
+          if ((a>>b & 1) != 0) {
+            occAlpha[i][occindex] = c*8+b;
+            occindex++;
+          }
+        }
+        //cout << endl;
+      }
+
+      if (occindex != nalpha) {
+        cout << "not enough 1 bits "<<nalpha<<"  "<<occindex<<endl;
         exit(0);
       }
+
     }
-    */
-    double E = Dets.at(d).Energy(I1, I2, coreE);
-    //pout << Dets[d] << " Given Ref. Energy:    "
-    //     << format("%18.10f") % (E) << endl;
-    if (E < lowestEnergy) {
-      lowestEnergy = E;
-      lowestEnergyDet = d;
+
+    // Make HF determinant
+    Dets.resize(nAlphaDets*nAlphaDets);
+    for (int i=0; i<nAlphaDets; i++) {
+      for (int j=0; j<nAlphaDets; j++) {
+        Determinant& d = Dets[i*nAlphaDets+j];
+        for (int a=0; a<nalpha; a++) 
+          d.setocc(occAlpha[i][a]*2, true);
+        for (int a=0; a<nalpha; a++) 
+          d.setocc(occAlpha[j][a]*2+1, true);
+
+
+        double E = d.Energy(I1, I2, coreE);
+        //pout << d << " Given Ref. Energy:    "
+        //     << format("%18.10f") % (E) << endl;
+        if (E < lowestEnergy) {
+          lowestEnergy = E;
+          lowestEnergyDet = i*nAlphaDets+j;
+        }
+      }
     }
+
   }
+  else {
+    Dets.resize(HFoccupied.size());
+    for (int d = 0; d < HFoccupied.size(); d++) {
+      for (int i = 0; i < HFoccupied[d].size(); i++) {
+        //if (Dets[d].getocc(HFoccupied[d][i])) {
+        //  pout << "orbital " << HFoccupied[d][i]
+        //       << " appears twice in input determinant number " << d << endl;
+        //  exit(0);
+        //}
+        Dets[d].setocc(HFoccupied[d][i], true);
+      }
+      if (Determinant::Trev != 0) Dets[d].makeStandard();
+
+      /*      
+      for (int i = 0; i < d; i++) {
+        if (Dets[d] == Dets[i]) {
+          pout << "Determinant " << Dets[d]
+              << " appears twice in the input determinant list." << endl;
+          exit(0);
+        }
+      }
+      */
+      double E = Dets.at(d).Energy(I1, I2, coreE);
+      //pout << Dets[d] << " Given Ref. Energy:    "
+      //     << format("%18.10f") % (E) << endl;
+      if (E < lowestEnergy) {
+        lowestEnergy = E;
+        lowestEnergyDet = d;
+      }
+    }
+
+  }
+
+  HFoccupied.resize(1);
+  
+  // Have the dets, ci coefficient and diagnoal on all processors
+  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(Dets.size(), 1));
+  vector<MatrixXx> vdVector(schd.nroots);  // these vectors are used to
+                                           // calculate the response equations
+  double Psi1Norm = 0.0;
 
   //MPI_Allreduce(MPI_IN_PLACE, ((double*)&Dets.front()), Dets.size()*DetLen, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -337,81 +400,8 @@ int main(int argc, char* argv[]) {
   }
   */
 
-  if (schd.searchForLowestEnergyDet) {
-    // Set up the symmetry class
-    symmetry molSym(schd.pointGroup, irrep, schd.irrep);
 
-    // Check the users specified determinants. If they use multiple spins and/or
-    // irreps, ignore the give targetIrrep and just use the give determinants.
-    molSym.checkTargetStates(Dets, schd.spin);
-
-    if (schd.pointGroup != "dooh" && schd.pointGroup != "coov" &&
-        molSym.init_success) {
-      vector<Determinant> tempDets(Dets);
-
-      bool spin_specified = true;
-      if (schd.spin == -1) {  // Set spin if none specified by user
-        spin_specified = false;
-        schd.spin = Dets[0].Nalpha() - Dets[0].Nbeta();
-        pout << "No spin specified, using spin from first reference "
-                "determinant. "
-                "Setting target spin to "
-             << schd.spin << endl;
-      }
-      for (int d = 0; d < HFoccupied.size(); d++) {
-        // Guess the lowest energy det with given symmetry from one body
-        // integrals.
-        molSym.estimateLowestEnergyDet(schd.spin, I1, irrep, HFoccupied.at(d),
-                                       tempDets.at(d));
-        // Generate list of connected determinants to guess determinant.
-        SHCIgetdeterminants::getDeterminantsVariational(
-            tempDets.at(d), 0.00001, 1, 0.0, I1, I2, I2HBSHM, irrep, coreE, 0,
-            tempDets, schd, 0, nelec);
-
-        // If spin is specified we assume the user wants a particular
-        // determinant even if it's higher in energy than the HF so we keep it.
-        // If the user didn't specify then we keep the lowest energy determinant
-        // Check all connected and find lowest energy.
-        int spin_HF = Dets[d].Nalpha() - Dets[d].Nbeta();
-        if (spin_specified && spin_HF != schd.spin) {
-          Dets.at(d) = tempDets.at(d);
-        }
-
-        // Same for irrep
-        if (molSym.targetIrrep != molSym.getDetSymmetry(Dets[d])) {
-          Dets.at(d) = tempDets.at(d);
-          pout << "WARNING: Given determinants have different irrep than the "
-                  "target irrep\n\tspecified. Using the specified irrep."
-               << endl;
-        }
-
-        for (int cd = 0; cd < tempDets.size(); cd++) {
-          if (tempDets.at(d).connected(tempDets.at(cd))) {
-            bool correct_spin = abs(tempDets.at(cd).Nalpha() -
-                                    tempDets.at(cd).Nbeta()) == schd.spin;
-            if (correct_spin) {
-              bool lower_energy = Dets.at(d).Energy(I1, I2, coreE) >
-                                  tempDets.at(cd).Energy(I1, I2, coreE);
-              bool correct_irrep =
-                  molSym.getDetSymmetry(tempDets.at(cd)) == molSym.targetIrrep;
-              if (lower_energy && correct_irrep) {
-                Dets.at(d) = tempDets.at(cd);
-              }
-            }
-          }
-        }  // end cd
-        pout << Dets[d] << " Starting Det. Energy: "
-             << format("%18.10f") % (Dets[d].Energy(I1, I2, coreE)) << endl;
-      }  // end d
-
-    } else {
-      pout << "\nWARNING: Skipping Ref. Determinant Search for pointgroup "
-           << schd.pointGroup << "\nUsing given determinants as reference"
-           << endl;
-    }  // End if (Search for Ref. Det)
-  }    // end searchForLowestEnergyDet
-
-  schd.HF = Dets[0];
+  schd.HF = Dets[lowestEnergyDet];
 
   if (commrank == 0) {
     for (int j = 0; j < ci[0].rows(); j++) ci[0](j, 0) = 2.*(rand() % 2) - 1.;
