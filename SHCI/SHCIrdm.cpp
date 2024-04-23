@@ -1230,11 +1230,18 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt &I1,
       onebody += I1(2 * p, 2 * q) * oneRDM(p, q);
 #endif
 
+  SelfAdjointEigenSolver<MatrixXx> eigensolver(twoRDM);
+  if (eigensolver.info() != Success) {
+    pout << "Eigenvalue solver unsuccessful."<<endl;
+    abort();
+  }
+  cout<< eigensolver.eigenvalues()<<endl;
+
 #pragma omp parallel for reduction(+ : twobody)
   for (int p = 0; p < norbs; p++)
     for (int q = 0; q < norbs; q++)
       for (int r = 0; r < norbs; r++)
-        for (int s = 0; s < norbs; s++)
+        for (int s = 0; s < norbs; s++) {
 #ifdef Complex
           twobody += (0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                       I2(2 * p, 2 * r, 2 * q, 2 * s))
@@ -1243,7 +1250,7 @@ double SHCIrdm::ComputeEnergyFromSpatialRDM(int norbs, int nelec, oneInt &I1,
           twobody += 0.5 * twoRDM(p * norbs + q, r * norbs + s) *
                      I2(2 * p, 2 * r, 2 * q, 2 * s);  // 2-body term
 #endif
-
+        }
   energy += onebody + twobody;
   pout << format("E(one-body) from 2RDM: %18.10f") % (onebody) << endl;
   pout << format("E(two-body) from 2RDM: %18.10f") % (twobody) << endl;
