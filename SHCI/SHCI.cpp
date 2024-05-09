@@ -426,6 +426,82 @@ int main(int argc, char* argv[]) {
     E0 = SHCIbasics::DoVariational(
         ci, Dets, schd, I2, I2HBSHM, irrep, I1, coreE, nelec, schd.DoRDM);
 #endif
+  cout << Dets.size()<<"  "<<endl;
+  int nocc = nelec/2;
+  int nvirt = norbs - nocc;
+  int noccPair = nocc*(nocc+1)/2, nvirtPair = nvirt*(nvirt+1)/2;
+  //cout << nocc<<"  "<<nvirt<<"  "<<noccPair<<"  "<<nvirtPair<<endl;
+
+  MatrixXd AB(nocc*nocc, nvirt*nvirt);
+  MatrixXd AA(noccPair, nvirtPair);
+  MatrixXd BB(noccPair, nvirtPair);
+  
+  char det[norbs];
+  for (int i=0; i<Dets.size(); i++) {
+    Dets[i].getRepArray(det);
+
+    int occval1=-1, occval2 = -1;
+    for (int j=0; j<nocc; j++) {
+      if (det[2 * j] == false && det[2 * j + 1] == false) {
+        occval1 = 2*j; 
+        occval2 = 2*j+1;
+      }
+      else if (det[2 * j] == false && det[2 * j + 1] == true) {
+        if (occval1 != -1) occval2 = 2*j;
+        else occval1 = 2*j;
+      }
+      else if (det[2 * j] == true && det[2 * j + 1] == false) {
+        if (occval1 != -1) occval2 = 2*j+1;
+        else occval1 = 2*j+1;
+      }
+    }
+
+    int virtval1=-1, virtval2 = -1;
+    for (int j=nocc; j<norbs; j++) {
+      if (det[2 * j] == true && det[2 * j + 1] == true) {
+        virtval1 = 2*(j-nocc); 
+        virtval2 = 2*(j-nocc)+1;
+      }
+      else if (det[2 * j] == true && det[2 * j + 1] == false) {
+        if (virtval1 != -1) virtval2 = 2*(j-nocc);
+        else virtval1 = 2*(j-nocc);
+      }
+      else if (det[2 * j] == false && det[2 * j + 1] == true) {
+        if (virtval1 != -1) virtval2 = 2*(j-nocc)+1;
+        else virtval1 = 2*(j-nocc)+1;
+      }
+    }
+
+    if (occval1 != -1 && occval2 != -1 && virtval1 != -1 && virtval2 != -1) {
+      if (occval1%2 == 0 && occval2%2 == 0) {
+        int I = max(occval1, occval2)/2, J = min(occval1, occval2)/2;
+        int A = max(virtval1, virtval2)/2, B = min(virtval1, virtval2)/2;
+        //cout <<I<<"  "<<J<<"  "<<A<<"  "<<B<<"  "<<"  "<<"  "<<Dets[i]<<endl;
+        AA(I*(I+1)/2+J, A*(A+1)/2+B) = ci[0](i);
+      }
+
+      else if (occval1%2 == 1 && occval2%2 == 1) {
+        int I = max(occval1, occval2)/2, J = min(occval1, occval2)/2;
+        int A = max(virtval1, virtval2)/2, B = min(virtval1, virtval2)/2;
+        //cout <<I<<"  "<<J<<"  "<<A<<"  "<<B<<"  "<<"  "<<"  "<<Dets[i]<<endl;
+        BB(I*(I+1)/2+J, A*(A+1)/2+B) = ci[0](i);
+      }
+
+      else {
+        int I = (occval1%2 == 0) ? occval1/2 : occval2/2;  //I is even 
+        int J = (occval1%2 == 0) ? occval2/2 : occval1/2;  //J is odd
+        int A = (virtval1%2 == 0) ? virtval1/2 : virtval2/2;  //A is even 
+        int B = (virtval1%2 == 0) ? virtval2/2 : virtval1/2;  //B is odd
+        //cout <<I<<"  "<<J<<"  "<<A<<"  "<<B<<"  "<<"  "<<"  "<<Dets[i]<<endl;
+        AB(I*nocc+J, A*nvirt+B) = ci[0](i);
+      }
+
+      //cout << occval1<<"  "<<occval2<<"  "<<virtval1<<"  "<<virtval2<<"  "<<Dets[i]<<"  "<<ci[0](i)<<endl;
+    }
+
+
+  }
+
   Determinant* SHMDets;
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   int DetsSize = Dets.size();
