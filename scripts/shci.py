@@ -44,7 +44,7 @@ ndpointer = numpy.ctypeslib.ndpointer
 try:
     import os
     cwd = os.path.dirname(os.path.realpath(__file__))
-    SHCIEXE = cwd+'/../bin/SHCI'
+    SHCIEXE = cwd+'/../bin/Dice'
     ZSHCIEXE = cwd+'/../bin/ZDice2'
     SHCISCRATCHDIR = os.path.join(os.environ['TMPDIR'], str(os.getpid()))
     SHCIRUNTIMEDIR = '.'
