@@ -62,6 +62,7 @@ struct schedule {
     & nroots                                  \
     & nPTiter                                 \
     & DoRDM                                   \
+    & DoTransitionRDM                         \
     & DoSpinRDM                               \
     & quasiQ                                  \
     & quasiQEpsilon                           \
@@ -135,6 +136,7 @@ struct schedule {
   int nroots;
   int nPTiter;
   bool DoRDM;
+  bool DoTransitionRDM;
   bool DoSpinRDM;
   bool quasiQ;
   double quasiQEpsilon;

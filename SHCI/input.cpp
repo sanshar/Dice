@@ -248,6 +248,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.DoOneRDM = true;
     else if (boost::iequals(ArgName, "DoSpinOneRDM"))
       schd.DoSpinOneRDM = true;
+    else if (boost::iequals(ArgName, "TransitionRDM"))
+      schd.DoTransitionRDM = true;
     else if (boost::iequals(ArgName, "Treversal")) {
       schd.Trev = atoi(tok[1].c_str());
       if (!(schd.Trev == 0 || schd.Trev == 1 || schd.Trev == -1)) {

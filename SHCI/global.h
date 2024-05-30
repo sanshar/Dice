@@ -57,6 +57,10 @@ extern boost::interprocess::shared_memory_object DetsCISegment;
 extern boost::interprocess::mapped_region regionDetsCI;
 extern std::string shciDetsCI;
 
+extern boost::interprocess::shared_memory_object DetsCISegment2;
+extern boost::interprocess::mapped_region regionDetsCI2;
+extern std::string shciDetsCI2;
+
 extern boost::interprocess::shared_memory_object SortedDetsSegment;
 extern boost::interprocess::mapped_region regionSortedDets;
 extern std::string shciSortedDets;

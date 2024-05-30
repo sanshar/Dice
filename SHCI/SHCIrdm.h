@@ -52,7 +52,7 @@ void makeRDM(int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
              CItype* cibra, CItype* ciket, MatrixXx& s2RDM);
 
 void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root);
-void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
+void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root1, int root2);
 void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
               size_t norbs);

@@ -555,7 +555,7 @@ int main(int argc, char* argv[]) {
   // #####################################################################
   // RDMs
   // #####################################################################
-  if (schd.doSOC || schd.DoOneRDM || schd.DoThreeRDM || schd.DoFourRDM) {
+  if (schd.doSOC || schd.DoOneRDM || schd.DoThreeRDM || schd.DoFourRDM || schd.DoTransitionRDM) {
     pout << endl;
     pout << endl;
     pout << "**************************************************************"
@@ -797,7 +797,7 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
       MatrixXx s2RDMdisk, twoRDMdisk;
       SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
-      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0, 0);
     }
 
     // pout << " response ";

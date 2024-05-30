@@ -476,7 +476,7 @@ void SHCIrdm::load3RDM(schedule &schd, MatrixXx &s3RDM, int root) {
 
 //=============================================================================
 void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
-                      int root) {
+                      int root1, int root2) {
   /*!
   Saves the spatial 2RDM and the spinRDM (if the DoSpinRDM keyword was used).
   The spatial RDM is saves as "%s/spatialRDM.%d.%d.txt" where %s is the user
@@ -498,8 +498,8 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
   if (commrank == 0) {
     {
       char file[5000];
-      sprintf(file, "%s/spatialRDM.%d.%d.txt", schd.prefix[0].c_str(), root,
-              root);
+      sprintf(file, "%s/spatialRDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
+              root2);
       std::ofstream ofs(file, std::ios::out);
       ofs << nSpatOrbs << endl;
       for (int n1 = 0; n1 < nSpatOrbs; n1++)
@@ -518,8 +518,8 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
     if (schd.DoSpinRDM) {
       int norbs = nSpatOrbs * 2;
       char file[5000];
-      sprintf(file, "%s/spinRDM.%d.%d.txt", schd.prefix[0].c_str(), root,
-              root);
+      sprintf(file, "%s/spinRDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
+              root2);
       std::ofstream ofs(file, std::ios::out);
       for (int n1 = 1; n1 < norbs; n1++)
         for (int n2 = 0; n2 < n1; n2++)
@@ -535,7 +535,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 
     if (schd.DoSpinRDM) {
       char file[5000];
-      sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
+      sprintf(file, "%s/%d-%d-spinRDM.bkp", schd.prefix[0].c_str(), root1, root2);
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << twoRDM;
@@ -544,7 +544,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 
     {
       char file[5000];
-      sprintf(file, "%s/%d-spatialRDM.bkp", schd.prefix[0].c_str(), root);
+      sprintf(file, "%s/%d-%d-spatialRDM.bkp", schd.prefix[0].c_str(), root1, root2);
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << s2RDM;
