@@ -44,7 +44,7 @@ ndpointer = numpy.ctypeslib.ndpointer
 try:
     import os
     cwd = os.path.dirname(os.path.realpath(__file__))
-    SHCIEXE = cwd+'/../bin/SHCI'
+    SHCIEXE = cwd+'/../bin/Dice'
     ZSHCIEXE = cwd+'/../bin/ZDice2'
     SHCISCRATCHDIR = os.path.join(os.environ['TMPDIR'], str(os.getpid()))
     SHCIRUNTIMEDIR = '.'
@@ -1081,7 +1081,7 @@ def writeSHCIConfFile(SHCI, nelec, Restart):
     if (SHCI.DoRDM):
         f.write('DoRDM\n')
     if (SHCI.nroots > 1 and (SHCI.DoRDM or SHCI.DoTRDM)):
-        f.write('DoTRDM\n')
+        f.write('TransitionRDM\n')
     for line in SHCI.extraline:
         f.write('%s\n' % line)
 

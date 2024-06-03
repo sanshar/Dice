@@ -1245,7 +1245,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
           SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
                                   SHMci, SHMci, sparseHam.orbDifference, nelec,
                                   schd, i, oneRDM, s1RDM);
-          SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
+          SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i, i);
         }
       }
 
@@ -1300,7 +1300,15 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
                 SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize,
                                     SHMci, SHMci_j, sparseHam.orbDifference, nelec,
                                     schd, i, twoRDM, s2RDM);
-                // if (schd.outputlevel>0)
+
+                MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+                MatrixXx s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
+                SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
+                                        SHMci, SHMci_j, sparseHam.orbDifference, nelec,
+                                        schd, i, oneRDM, s1RDM);
+                SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i, j);
+
+                          // if (schd.outputlevel>0)
                 SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2,
                                                     coreEbkp, s2RDM);
                 SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i, j);
