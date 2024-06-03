@@ -99,6 +99,24 @@ python $here/test_twopdm.py spatialRDM.0.0.txt pyscf_2RDM.npy 1e-9
 python $here/test_threepdm.py spatial3RDM.0.0.txt pyscf_3RDM.npy 1e-10
 python $here/test_rdm_nelec.py ../integrals/h2co_FCIDUMP_nosymm spatial1RDM.0.0.txt spatialRDM.0.0.txt spatial3RDM.0.0.txt 1e-11
 
+cd $here/hchain_transitionRDM
+printf"...running hchain transition RDM Tests\n"
+python hchain.py > output.dat
+python $here/test_onepdm.py spatial1RDM.0.0.txt pyscf_1RDM00.npy 1.e-6
+python $here/test_onepdm.py spatial1RDM.1.0.txt pyscf_1RDM10.npy 1.e-6
+python $here/test_onepdm.py spatial1RDM.2.0.txt pyscf_1RDM20.npy 1.e-6
+python $here/test_onepdm.py spatial1RDM.1.1.txt pyscf_1RDM11.npy 1.e-6
+python $here/test_onepdm.py spatial1RDM.2.1.txt pyscf_1RDM21.npy 1.e-6
+python $here/test_onepdm.py spatial1RDM.2.2.txt pyscf_1RDM22.npy 1.e-6
+
+python $here/test_twopdm.py spatialRDM.0.0.txt pyscf_2RDM00.npy 1.e-6
+python $here/test_twopdm.py spatialRDM.1.0.txt pyscf_2RDM10.npy 1.e-6
+python $here/test_twopdm.py spatialRDM.2.0.txt pyscf_2RDM20.npy 1.e-6
+python $here/test_twopdm.py spatialRDM.1.1.txt pyscf_2RDM11.npy 1.e-6
+python $here/test_twopdm.py spatialRDM.2.1.txt pyscf_2RDM21.npy 1.e-6
+python $here/test_twopdm.py spatialRDM.2.2.txt pyscf_2RDM22.npy 1.e-6
+
+
 cd $here/lowest_energy_det
 printf "...running test for finding the lowest energy determinants\n"
 printf "        Running tests on Spin=0"
