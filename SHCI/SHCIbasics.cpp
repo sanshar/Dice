@@ -1297,6 +1297,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
                 SHMVecFromMatrix(ci[j], SHMci_j, shciDetsCI2, DetsCISegment2,
                                 regionDetsCI2);
 
+                twoRDM.setZero(); s2RDM.setZero();
                 SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize,
                                     SHMci, SHMci_j, sparseHam.orbDifference, nelec,
                                     schd, i, twoRDM, s2RDM);
@@ -1317,6 +1318,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
                     shciDetsCI2.c_str());
               }
             }
+            twoRDM.setZero(); s2RDM.setZero();
             SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize,
                                  SHMci, SHMci, sparseHam.orbDifference, nelec,
                                  schd, i, twoRDM, s2RDM);
@@ -1324,6 +1326,13 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
             SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2,
                                                  coreEbkp, s2RDM);
             SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i, i);
+
+            MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+            MatrixXx s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
+            SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
+                                    SHMci, SHMci, sparseHam.orbDifference, nelec,
+                                    schd, i, oneRDM, s1RDM);
+            SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i, i);
 
             boost::interprocess::shared_memory_object::remove(
                 shciDetsCI.c_str());
