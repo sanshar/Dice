@@ -1,5 +1,5 @@
 #pragma once
 
 extern "C"{
-    void readStatec(char * fname);
+    void transitionRDMc(char * fname1, char* fname2, int norbs, int nelec);
 };

@@ -17,7 +17,8 @@ LIB_HDF5 = -L$(HDF5)/lib -lhdf5
 
 COMPILE_NUMERIC = no
 
-FLAGS_BASE = -std=c++14 -O3 -g -w -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5)
+FLAGS_BASE = -std=c++14 -O3 -g -w -fPIC -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5)
+#FLAGS_BASE = -std=c++14 -g -w -fPIC -I. -I$(EIGEN) $(INCLUDE_BOOST) $(INCLUDE_HDF5)
 LFLAGS_BASE = $(LIB_BOOST)
 ifeq ($(HAS_AVX2), yes)
 	FLAGS_BASE += -march=core-avx2
@@ -58,7 +59,8 @@ ifneq ($(filter dft node%, $(HOSTNAME)),)
 include dft.mk
 endif
 
-OBJ_VMC = obj/staticVariables.o \
+OBJ_VMC = obj/VMC.o \
+    obj/staticVariables.o \
 	obj/input.o \
 	obj/integral.o\
 	obj/SHCIshm.o \
@@ -91,9 +93,11 @@ OBJ_ICPT= obj/PerturberDependentCode.o \
 	obj/icpt.o \
 	obj/CxMemoryStack.o \
 	obj/CxStorageDevice.o \
-	obj/TensorTranspose.o
+	obj/TensorTranspose.o \
+	obj/ICPT.o
 
-OBJ_GFMC = obj/staticVariables.o \
+OBJ_GFMC = obj/GFMC.o \
+    obj/staticVariables.o \
 	obj/input.o \
 	obj/integral.o\
 	obj/SHCIshm.o \
@@ -111,7 +115,8 @@ OBJ_GFMC = obj/staticVariables.o \
 	obj/sr.o \
 	obj/Correlator.o
 
-OBJ_FCIQMC = obj/staticVariables.o \
+OBJ_FCIQMC = obj/FCIQMC.o \
+    obj/staticVariables.o \
 	obj/input.o \
 	obj/integral.o\
 	obj/SHCIshm.o \
@@ -133,7 +138,8 @@ OBJ_FCIQMC = obj/staticVariables.o \
 	obj/sr.o \
 	obj/evaluateE.o
 
-OBJ_DQMC = obj/staticVariables.o \
+OBJ_DQMC = obj/DQMC.o \
+    obj/staticVariables.o \
 	obj/input.o \
 	obj/integral.o\
 	obj/SHCIshm.o \
@@ -158,7 +164,6 @@ OBJ_DQMC = obj/staticVariables.o \
 	obj/ProjectedMF.o
 
 OBJ_Dice = \
-	obj/SHCI/SHCI.o \
 	obj/SHCI/SHCIbasics.o \
 	obj/SHCI/Determinants.o \
 	obj/SHCI/integral.o \
@@ -233,6 +238,8 @@ obj/%.o: ICPT/%.cpp
 	$(CXX) $(FLAGS_ICPT) -I./ICPT/TensorExpressions/ $(OPT) $(VERSION_FLAGS) -c $< -o $@
 obj/%.o: ICPT/StackArray/%.cpp  
 	$(CXX) $(FLAGS_ICPT) $(OPT) $(VERSION_FLAGS) -c $< -o $@
+obj/%.o: executables/%.cpp  
+	$(CXX) $(FLAGS_QMC) -I./SHCI -I./VMC -I./DQMC -I./FCIQMC -I./GFMC -I./ICPT/StackArray -I./ICPT $(OPT) $(VERSION_FLAGS) -c $< -o $@
 
 # not sure about the status of periodic
 #ALL= bin/VMC bin/GFMC bin/ICPT bin/FCIQMC bin/DQMC
@@ -241,11 +248,14 @@ obj/%.o: ICPT/StackArray/%.cpp
 #endif 
 
 # all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
-all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI alllibs 
+all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI alllibs lib/libSHCIPostProcess.so
 
 alllibs:
 	gcc -O3 -fPIC -fopenmp -shared lib/icmpspt.c -o lib/libicmpspt.so
 	gcc -O3 -fPIC -fopenmp -shared lib/shcitools.c -o lib/libSHCITools.so
+
+lib/libSHCIPostProcess.so: $(OBJ_Dice) obj/SHCI/postprocess.o
+	$(CXX) -shared $(FLAGS_SHCI) $(OPT) -o lib/libSHCIPostProcess.so $(OBJ_Dice) obj/SHCI/postprocess.o $(LFLAGS_SHCI) -I./SHCI
 
 periodic: 
 	cd ./NumericPotential/PeriodicIntegrals/ && $(MAKE) -f Makefile && cp a.out ../../bin/periodic
@@ -253,28 +263,23 @@ periodic:
 bin/libPeriodic.so: bin/libPeriodic.so
 	cd ./NumericPotential/ && $(MAKE) -f Makefile
 
-GFMC: $(OBJ_GFMC) executables/GFMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./GFMC $(OPT) -c executables/GFMC.cpp -o obj/GFMC.o $(VERSION_FLAGS)
-	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/GFMC $(OBJ_GFMC) obj/GFMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
+GFMC: $(OBJ_GFMC) 
+	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/GFMC $(OBJ_GFMC)  $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-ICPT: $(OBJ_ICPT) executables/ICPT.cpp
-	$(CXX) $(FLAGS_ICPT) $(OPT) -c executables/ICPT.cpp -o obj/ICPT.o $(VERSION_FLAGS)
-	$(CXX) $(FLAGS_ICPT) $(OPT) -o bin/ICPT $(OBJ_ICPT) obj/ICPT.o $(LFLAGS_ICPT) $(VERSION_FLAGS)
+ICPT: $(OBJ_ICPT) 
+	$(CXX) $(FLAGS_ICPT) $(OPT) -o bin/ICPT $(OBJ_ICPT)  $(LFLAGS_ICPT) $(VERSION_FLAGS)
 
-VMC: $(OBJ_VMC) executables/VMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./VMC $(OPT) -c executables/VMC.cpp -o obj/VMC.o $(VERSION_FLAGS)
-	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/VMC $(OBJ_VMC) obj/VMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
+VMC: $(OBJ_VMC)
+	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/VMC $(OBJ_VMC) $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-FCIQMC: $(OBJ_FCIQMC) executables/FCIQMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./FCIQMC $(OPT) -c executables/FCIQMC.cpp -o obj/FCIQMC.o $(VERSION_FLAGS)
-	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/FCIQMC $(OBJ_FCIQMC) obj/FCIQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
+FCIQMC: $(OBJ_FCIQMC) 
+	$(CXX) $(FLAGS_QMC) $(OPT) -o bin/FCIQMC $(OBJ_FCIQMC) $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-DQMC: $(OBJ_DQMC) executables/DQMC.cpp
-	$(CXX) $(FLAGS_QMC) -I./DQMC $(OPT) -c executables/DQMC.cpp -o obj/DQMC.o $(VERSION_FLAGS)
-	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/DQMC $(OBJ_DQMC) obj/DQMC.o $(LFLAGS_QMC) $(VERSION_FLAGS)
+DQMC: $(OBJ_DQMC) 
+	$(CXX) $(FLAGS_QMC) $(OPT) -o  bin/DQMC $(OBJ_DQMC) $(LFLAGS_QMC) $(VERSION_FLAGS)
 
-Dice	: $(OBJ_Dice)
-	$(CXX) $(FLAGS_SHCI) $(OPT) -o bin/Dice $(OBJ_Dice) $(LFLAGS_SHCI) -I./SHCI
+Dice	: $(OBJ_Dice) obj/SHCI/SHCI.o
+	$(CXX) $(FLAGS_SHCI) $(OPT) -o bin/Dice $(OBJ_Dice) obj/SHCI/SHCI.o $(LFLAGS_SHCI) -I./SHCI
 
 ZDice2	: $(OBJ_ZDice2)
 	$(CXX) $(FLAGS_ZDICE) $(OPT) -o bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS_ZDICE) -I./SHCI -DComplex

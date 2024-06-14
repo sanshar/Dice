@@ -630,6 +630,64 @@ CItype Hij(Determinant& bra, Determinant& ket, oneInt& I1, twoInt& I2,
   }
 }
 
+//=============================================================================
+void OrbDiff(Determinant& bra, Determinant& ket, size_t& orbDiff) {
+  /*!
+  Calculates the hamiltonian matrix element connecting the two determinants bra
+  and ket.
+
+  :Arguments:
+
+      Determinant& bra:
+          Determinant in bra.
+      Determinant& ket:
+          Determinant in ket.
+      size_t& orbDiff:
+          Number of orbitals with differing occupations.
+  */
+  int cre[200], des[200], ncre = 0, ndes = 0;
+  long u, b, k, one = 1;
+  cre[0] = -1;
+  cre[1] = -1;
+  des[0] = -1;
+  des[1] = -1;
+
+  for (int i = 0; i < Determinant::EffDetLen; i++) {
+    u = bra.repr[i] ^ ket.repr[i];
+    b = u & bra.repr[i];  // the cre bits
+    k = u & ket.repr[i];  // the des bits
+
+    while (b != 0) {
+      int pos = __builtin_ffsl(b);
+      cre[ncre] = pos - 1 + i * 64;
+      ncre++;
+      b &= ~(one << (pos - 1));
+    }
+    while (k != 0) {
+      int pos = __builtin_ffsl(k);
+      des[ndes] = pos - 1 + i * 64;
+      ndes++;
+      k &= ~(one << (pos - 1));
+    }
+  }
+
+  if (ncre == 0) {
+    cout << bra << endl;
+    cout << ket << endl;
+    cout << "Use the function for energy" << endl;
+    exit(0);
+  } else if (ncre == 1) {
+    size_t c0 = cre[0], N = bra.norbs, d0 = des[0];
+    orbDiff = c0 * N + d0;
+    // orbDiff = cre[0]*bra.norbs+des[0];
+  } else if (ncre == 2) {
+    size_t c0 = cre[0], c1 = cre[1], d1 = des[1], N = bra.norbs, d0 = des[0];
+    orbDiff = c1 * N * N * N + d1 * N * N + c0 * N + d0;
+    // orbDiff =
+    // cre[1]*bra.norbs*bra.norbs*bra.norbs+des[1]*bra.norbs*bra.norbs+cre[0]*bra.norbs+des[0];
+  }
+}
+
 double getParityForDiceToAlphaBeta(Determinant& det) {
   double parity = 1.0;
   int nalpha = det.Nalpha();

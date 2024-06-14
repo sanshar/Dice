@@ -82,42 +82,175 @@ double getTime() {
 }
 double startofCalc = getTime();
 
-void readState(char * fname)
+void readStates(char* file1, vector<MatrixXx>& ci1, vector<double>& E01, vector<Determinant>& Dets1)
 {
-    /*
+  std::ifstream ifs(file1, std::ios::binary);
+  boost::archive::binary_iarchive load(ifs);
+
+  int iter;
+  bool converged1;
+
+  load >> iter >> Dets1;  // >>sorted ;
+  load >> ci1;
+  load >> E01;
+  load >> converged1;
+
+  ifs.close();
+}
+
+void mergeDeterminantsAndStates(vector<MatrixXx>& ci1, vector<MatrixXx>& ci2, vector<Determinant>& Dets1, vector<Determinant>& Dets2,
+                                vector<MatrixXx>& mergedCi, vector<Determinant>& mergedDet)
+{
+  std::map<Determinant, std::pair<int, int>> mergedDetsMap;
+  std::map<Determinant, std::pair<int, int>>::iterator it;
+
+  for (int i=0; i<Dets1.size(); i++) {
+    mergedDetsMap[Dets1[i]] = std::pair<int,int>(i, -1);
+  }
+
+  for (int i=0; i<Dets2.size(); i++) {
+    it  =   mergedDetsMap.find(Dets2[i]);
+    if (it == mergedDetsMap.end())
+      mergedDetsMap[Dets2[i]] = std::pair<int, int>(-1, i);
+    else
+      it->second.second = i;
+  }
+
+
+  mergedDet.resize(mergedDetsMap.size());
+  mergedCi.resize(ci1.size()+ci2.size(), MatrixXx::Zero(mergedDetsMap.size(),1));
+
+  //cout << mergedDet.size()<<"  "<<mergedCi.size()<<"  "<<mergedCi[0].size()<<endl;
+
+  int i=0;
+  for (it=mergedDetsMap.begin(); it!=mergedDetsMap.end(); ++it) 
+  {
+    mergedDet[i] = it->first;
+
+    for (int j=0; j<ci1.size(); j++) {
+      if (it->second.first != -1)
+        mergedCi[j](i,0) = ci1[j](it->second.first,0);
+    }
+
+    for (int j=0; j<ci2.size(); j++)
+      if (it->second.second != -1)
+        mergedCi[j+ci1.size()](i,0) = ci2[j](it->second.second,0);
+    i++;
+  }
+
+}
+
+void transitionRDMc(char * fname1, char* fname2, int norbs, int nelec)
+{
+
+  norbs = 2*norbs;
+  Determinant::norbs = norbs;
+  Determinant::Trev = 0;
+  HalfDet::norbs = norbs;      // spin orbitals
+  Determinant::EffDetLen = norbs / 64 + 1;
+  Determinant::initLexicalOrder(nelec);
+
   int proc = 0, nprocs = 1;
 #ifndef SERIAL
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
   MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
   boost::mpi::communicator world;
 #endif
-    */
-   cout << "in here"<<endl;
-   cout << fname<<endl;
-    printf(fname);
+  commrank = proc; commsize = nprocs;
 
-    /*
-    std::ifstream ifs(fname, std::ios::binary);
-    boost::archive::binary_iarchive load(ifs);
+  initSHM();
 
-    int iter;
-    vector<MatrixXx> ci;
-    vector<double> E0;
-    vector<Determinant> Dets;
-    bool converged;
+  char file1[5000], file2[5000];
+  sprintf(file1, "%s/%d-variational.bkp", fname1, commrank);
+  sprintf(file2, "%s/%d-variational.bkp", fname2, commrank);
 
-    load >> iter >> Dets;  // >>sorted ;
-    load >> ci;
-    load >> E0;
-    load >> converged;
+  vector<MatrixXx> ci1, ci2; 
+  vector<double> E01, E02; 
+  vector<Determinant> Dets1, Dets2;
 
-    ifs.close();
+  readStates(file1, ci1, E01, Dets1);
+  cout << "Read "<<ci1.size()<<" states from file 1: "<<file1<<endl;
+  
+  readStates(file2, ci2, E02, Dets2);
+  cout << "Read "<<ci2.size()<<" states from file 2: "<<file2<<endl;
 
-    cout << E0[0]<<endl;
-    */
+  vector<MatrixXx> ci; vector<Determinant> Dets;
+  mergeDeterminantsAndStates(ci1, ci2, Dets1, Dets2, ci, Dets);
+
+  Determinant *SHMDets;
+  SHMVecFromVecs(Dets, SHMDets, shciSortedDets, SortedDetsSegment, regionSortedDets);
+
+  int DetsSize = Dets.size();
+  Dets.clear();
+
+#ifndef SERIAL
+  mpi::broadcast(world, DetsSize, 0);
+#endif
+
+  int nroots = ci.size();
+  SHCImakeHamiltonian::HamHelpers2 helpers2;
+  SHCImakeHamiltonian::SparseHam sparseHam;
+
+  if (proc == 0) {
+    helpers2.PopulateHelpers(SHMDets, DetsSize, 0);
+  }
+  helpers2.MakeSHMHelpers();
+
+  //make the connections
+  SHCImakeHamiltonian::MakeConnectionsfromSMHelpers2(
+      helpers2.AlphaMajorToBetaLen, helpers2.AlphaMajorToBetaSM,
+      helpers2.AlphaMajorToDetSM, helpers2.BetaMajorToAlphaLen,
+      helpers2.BetaMajorToAlphaSM, helpers2.BetaMajorToDetSM,
+      helpers2.SinglesFromAlphaLen, helpers2.SinglesFromAlphaSM,
+      helpers2.SinglesFromBetaLen, helpers2.SinglesFromBetaSM, SHMDets,
+      0, DetsSize, false, sparseHam, norbs, true);
+
+
+  //make a dummy schedule
+  schedule schd;
+  schd.DoSpinRDM = false;
+  schd.prefix.push_back(".");
+  assert(nelec == SHMDets[0].Noccupied());
+
+  pout << "\nCalculating 2-RDM" << endl;
+
+  MatrixXx twoRDM;// = MatrixXx::Zero(norbs * (norbs + 1) / 2,
+                    //                norbs * (norbs + 1) / 2);
+  MatrixXx s2RDM =
+      MatrixXx::Zero((norbs / 2) * norbs / 2, (norbs / 2) * norbs / 2);
+
+
+  for (int i = 0; i < nroots; i++) {
+    CItype *SHMci;
+    SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DetsCISegment,
+                      regionDetsCI);
+
+    for (int j=0; j<i+1; j++) {
+ 
+      CItype *SHMci_j;
+      SHMVecFromMatrix(ci[j], SHMci_j, shciDetsCI2, DetsCISegment2,
+                      regionDetsCI2);
+
+      s2RDM.setZero();
+      SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize,
+                          &ci[i](0,0), &ci[j](0,0), sparseHam.orbDifference, nelec,
+                          schd, i, twoRDM, s2RDM);
+
+      MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+      MatrixXx s1RDM = MatrixXx::Zero(norbs / 2, norbs / 2);
+      SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize,
+                              SHMci, SHMci_j, sparseHam.orbDifference, nelec,
+                              schd, i, oneRDM, s1RDM);
+      SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i, j);
+
+      SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i, j);
+
+      //boost::interprocess::shared_memory_object::remove(
+      //shciDetsCI2.c_str());
+    }
+
+    //boost::interprocess::shared_memory_object::remove(
+    //shciDetsCI.c_str());
+  }  // for i
 }
 
-void readStatec(char * fname)
-{
-    readState(fname);
-}

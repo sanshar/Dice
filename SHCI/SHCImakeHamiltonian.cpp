@@ -349,7 +349,7 @@ void SHCImakeHamiltonian::PopulateHelperLists2(
                         StartIndex, sgn * (i + 1));
       }
     }
-    // printf("Nalpha: %12d,  Nbeta: %12d\n", AlphaN.size(), BetaN.size());
+    //printf("Nalpha: %12d,  Nbeta: %12d\n", AlphaN.size(), BetaN.size());
 
     size_t max = 0, min = 0, avg = 0;
     for (int i = 0; i < AlphaMajorToBeta.size(); i++) {
@@ -713,6 +713,247 @@ void SHCImakeHamiltonian::MakeHfromSMHelpers2(
     }  // i
   }    // ii
 }  // end SHCImakeHamiltonian::MakeHfromSMHelpers2
+
+
+
+//=============================================================================
+void SHCImakeHamiltonian::MakeConnectionsfromSMHelpers2(
+    int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
+    vector<int*>& AlphaMajorToDet, int*& BetaMajorToAlphaLen,
+    vector<int*>& BetaMajorToAlpha, vector<int*>& BetaMajorToDet,
+    int*& SinglesFromAlphaLen, vector<int*>& SinglesFromAlpha,
+    int*& SinglesFromBetaLen, vector<int*>& SinglesFromBeta, Determinant* Dets,
+    int StartIndex, int EndIndex, bool diskio, SparseHam& sparseHam, int Norbs,
+    bool DoRDM) {
+  //-----------------------------------------------------------------------------
+  /*!
+  Make the sparse Hamiltonian "sparseHam" from the Helpers
+
+  :Inputs:
+
+      int* &AlphaMajorToBetaLen:
+          BM_description
+      vector<int*> &AlphaMajorToBeta:
+          BM_description
+      vector<int*> &AlphaMajorToDet:
+          BM_description
+      int* &BetaMajorToAlphaLen:
+          BM_description
+      vector<int*> &BetaMajorToAlpha:
+          BM_description
+      vector<int*> &BetaMajorToDet:
+          BM_description
+      int* &SinglesFromAlphaLen:
+          BM_description
+      vector<int*> &SinglesFromAlpha:
+          BM_description
+      int* &SinglesFromBetaLen:
+          BM_description
+      vector<int*> &SinglesFromBeta:
+          BM_description
+      Determinant* Dets:
+          The determinants of the basis
+      int StartIndex:
+          BM_description
+      int EndIndex:
+          BM_description
+      bool diskio:
+          BM_description
+      SparseHam& sparseHam:
+          The Hamiltonian in sparse form, composed of "Helements", "connections"
+  and "orbDifference" (output) int Norbs: Number of orbitals (unused) oneInt&
+  I1: One-electron tensor of the Hamiltonian twoInt& I2: Two-electron tensor of
+  the Hamiltonian double& coreE: The core energy bool DoRDM: Triggers the
+  calculation of orbital differences
+  */
+  //-----------------------------------------------------------------------------
+  int proc = 0, nprocs = 1;
+#ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+#endif
+  size_t norbs = Norbs;
+  int offSet = 0;
+
+  std::vector<std::vector<int>>& connections = sparseHam.connections;
+  //std::vector<std::vector<CItype>>& Helements = sparseHam.Helements;
+  std::vector<std::vector<size_t>>& orbDifference = sparseHam.orbDifference;
+
+  // diagonal element
+  for (size_t k = StartIndex; k < EndIndex; k++) {
+    if (k % (nprocs) != proc || k < max(StartIndex, offSet)) continue;
+    connections.push_back(vector<int>(1, k));
+    //CItype hij = Dets[k].Energy(I1, I2, coreE);
+    size_t orbDiff;
+    //if (Determinant::Trev != 0)
+    //updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
+    //Helements.push_back(vector<CItype>(1, hij));
+    if (DoRDM) orbDifference.push_back(vector<size_t>(1, 0));
+  }
+
+  // alpha-beta excitation
+  for (int i = 0; i < AlphaMajorToBeta.size(); i++) {
+    for (int ii = 0; ii < AlphaMajorToBetaLen[i]; ii++) {
+      int Astring = i, Bstring = AlphaMajorToBeta[i][ii],
+          DetI = AlphaMajorToDet[i][ii];
+      if ((std::abs(DetI) - 1) % nprocs != proc ||
+          (std::abs(DetI) - 1) < StartIndex || DetI < 0)
+        continue;
+
+      // singles from Astring
+      int maxBToA = BetaMajorToAlpha[Bstring][BetaMajorToAlphaLen[Bstring] - 1];
+      for (int j = 0; j < SinglesFromAlphaLen[Astring]; j++) {
+        int Asingle = SinglesFromAlpha[Astring][j];
+        int index = binarySearch(&BetaMajorToAlpha[Bstring][0], 0,
+                                 BetaMajorToAlphaLen[Bstring] - 1, Asingle);
+        if (index != -1) {
+          int DetJ = BetaMajorToDet[Bstring][index];
+          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+          size_t orbDiff;
+          OrbDiff(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1], orbDiff);
+          //CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
+          //                 I1, I2, coreE, orbDiff);
+          //fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          //Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
+          }
+        }
+      }
+
+      // single Alpha and single Beta
+      for (int j = 0; j < SinglesFromAlphaLen[Astring]; j++) {
+        int Asingle = SinglesFromAlpha[Astring][j];
+
+        int SearchStartIndex = 0, AlphaToBetaLen = AlphaMajorToBetaLen[Asingle],
+            SinglesFromBLen = SinglesFromBetaLen[Bstring];
+        int maxAToB =
+            AlphaMajorToBeta[Asingle][AlphaMajorToBetaLen[Asingle] - 1];
+        for (int k = 0; k < SinglesFromBLen; k++) {
+          int& Bsingle = SinglesFromBeta[Bstring][k];
+
+          if (SearchStartIndex >= AlphaToBetaLen) break;
+
+          int index = SearchStartIndex;
+          for (; index < AlphaToBetaLen &&
+                 AlphaMajorToBeta[Asingle][index] < Bsingle;
+               index++) {
+          }
+
+          SearchStartIndex = index;
+          if (index < AlphaToBetaLen &&
+              AlphaMajorToBeta[Asingle][index] == Bsingle) {
+            int DetJ = AlphaMajorToDet[Asingle][SearchStartIndex];
+            // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
+            // max(offSet, StartIndex)) continue;
+            if (std::abs(DetJ) >= std::abs(DetI)) continue;
+            size_t orbDiff;
+            OrbDiff(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1], orbDiff);
+
+            //CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
+            //                 I1, I2, coreE, orbDiff);
+            //fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+            connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                std::abs(DetJ) - 1);
+            //Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+            if (DoRDM) {
+              orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                  orbDiff);
+            }
+          }  //*itb == Bsingle
+        }    // k 0->SinglesFromBeta
+      }      // j singles fromAlpha
+
+      // singles from Bstring
+      int maxAtoB = AlphaMajorToBeta[Astring][AlphaMajorToBetaLen[Astring] - 1];
+      for (int j = 0; j < SinglesFromBetaLen[Bstring]; j++) {
+        int Bsingle = SinglesFromBeta[Bstring][j];
+
+        // if (Bsingle > maxAtoB) break;
+        int index = binarySearch(&AlphaMajorToBeta[Astring][0], 0,
+                                 AlphaMajorToBetaLen[Astring] - 1, Bsingle);
+
+        if (index != -1) {
+          int DetJ = AlphaMajorToDet[Astring][index];
+          // if (std::abs(DetJ) < StartIndex) continue;
+          // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
+          // max(offSet, StartIndex)) continue;
+          if (std::abs(DetJ) >= std::abs(DetI)) continue;
+
+          size_t orbDiff;
+          OrbDiff(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1], orbDiff);
+          //CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
+          //                 I1, I2, coreE, orbDiff);
+          //fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          //Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
+          }
+        }
+      }
+
+      // double beta excitation
+      for (int j = 0; j < AlphaMajorToBetaLen[i]; j++) {
+        int DetJ = AlphaMajorToDet[i][j];
+        // if (std::abs(DetJ) < StartIndex) continue;
+        // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
+        // max(offSet, StartIndex)) continue;
+        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+
+        Determinant di = Dets[std::abs(DetI) - 1];
+        if (DetJ < 0) di.flipAlphaBeta();
+        if (Dets[std::abs(DetJ) - 1].ExcitationDistance(di) == 2) {
+          size_t orbDiff;
+          OrbDiff(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1], orbDiff);
+          //CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
+          //                 I1, I2, coreE, orbDiff);
+          //fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          //Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
+          }
+        }
+      }
+
+      // double Alpha excitation
+      for (int j = 0; j < BetaMajorToAlphaLen[Bstring]; j++) {
+        int DetJ = BetaMajorToDet[Bstring][j];
+        // if (std::abs(DetJ) < StartIndex) continue;
+        // if (std::abs(DetJ) < max(offSet, StartIndex) && std::abs(DetI) <
+        // max(offSet, StartIndex)) continue;
+        if (std::abs(DetJ) >= std::abs(DetI)) continue;
+
+        Determinant dj = Dets[std::abs(DetI) - 1];
+        if (DetJ < 0) dj.flipAlphaBeta();
+        if (Dets[std::abs(DetJ) - 1].ExcitationDistance(dj) == 2) {
+          size_t orbDiff;
+          OrbDiff(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1], orbDiff);
+          //CItype hij = Hij(Dets[std::abs(DetJ) - 1], Dets[std::abs(DetI) - 1],
+          //                 I1, I2, coreE, orbDiff);
+          //fixForTreversal(Dets, DetI, DetJ, I1, I2, coreE, orbDiff, hij);
+          connections[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+              std::abs(DetJ) - 1);
+          //Helements[(std::abs(DetI) - offSet - 1) / nprocs].push_back(hij);
+          if (DoRDM) {
+            orbDifference[(std::abs(DetI) - offSet - 1) / nprocs].push_back(
+                orbDiff);
+          }
+        }
+      }
+
+    }  // i
+  }    // ii
+}  // end SHCImakeHamiltonian::MakeHfromSMHelpers2
+
 
 //=============================================================================
 void SHCImakeHamiltonian::MakeSMHelpers(

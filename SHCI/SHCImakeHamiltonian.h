@@ -152,6 +152,15 @@ void MakeHfromSMHelpers2(
     int StartIndex, int EndIndex, bool diskio, SparseHam& sparseHam, int Norbs,
     oneInt& I1, twoInt& I2, double& coreE, bool DoRDM);
 
+void MakeConnectionsfromSMHelpers2(
+    int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
+    vector<int*>& AlphaMajorToDet, int*& BetaMajorToAlphaLen,
+    vector<int*>& BetaMajorToAlpha, vector<int*>& BetaMajorToDet,
+    int*& SinglesFromAlphaLen, vector<int*>& SinglesFromAlpha,
+    int*& SinglesFromBetaLen, vector<int*>& SinglesFromBeta, Determinant* Dets,
+    int StartIndex, int EndIndex, bool diskio, SparseHam& sparseHam, int Norbs,
+    bool DoRDM);
+
 void MakeSMHelpers(
     vector<vector<int>>& AlphaMajorToBeta, vector<vector<int>>& AlphaMajorToDet,
     vector<vector<int>>& BetaMajorToAlpha, vector<vector<int>>& BetaMajorToDet,
