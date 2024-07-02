@@ -248,7 +248,7 @@ obj/%.o: executables/%.cpp
 #endif 
 
 # all: VMC GFMC FCIQMC DQMC ICPT Dice ZDice2 ZSHCI
-all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI alllibs lib/libSHCIPostProcess.so
+all: VMC GFMC DQMC ICPT Dice ZDice2 ZSHCI MBE alllibs lib/libSHCIPostProcess.so
 
 alllibs:
 	gcc -O3 -fPIC -fopenmp -shared lib/icmpspt.c -o lib/libicmpspt.so
@@ -280,6 +280,9 @@ DQMC: $(OBJ_DQMC)
 
 Dice	: $(OBJ_Dice) obj/SHCI/SHCI.o
 	$(CXX) $(FLAGS_SHCI) $(OPT) -o bin/Dice $(OBJ_Dice) obj/SHCI/SHCI.o $(LFLAGS_SHCI) -I./SHCI
+
+MBE	: $(OBJ_Dice) obj/SHCI/MBE.o obj/SHCI/SchmidtStates.o
+	$(CXX) $(FLAGS_SHCI) $(OPT) -o bin/MBE $(OBJ_Dice) obj/SHCI/SchmidtStates.o obj/SHCI/MBE.o $(LFLAGS_SHCI) -I./SHCI
 
 ZDice2	: $(OBJ_ZDice2)
 	$(CXX) $(FLAGS_ZDICE) $(OPT) -o bin/ZDice2 $(OBJ_ZDice2) $(LFLAGS_ZDICE) -I./SHCI -DComplex
