@@ -17,7 +17,7 @@ from pyscf.lo import boys, edmiston, iao, ibo, pipek
 
 from scipy.linalg import fractional_matrix_power
 from scipy.stats import ortho_group
-
+from typing import Optional
 from functools import partial
 print = partial(print, flush=True)
 
@@ -265,7 +265,48 @@ def addNoise(mat, isComplex=False):
 
 
 # dice
+def process_dice_onerdm(
+    read_fname: str = "spin1RDM.0.0.txt",
+    write_fname: str = "spin1RDM.mat.txt",
+    ncore: int = 0,
+    norbs: Optional[int] = None,
+) -> None:
+    """Process an active space Dice oneRDM file.
 
+    Args:
+        read_fname: Input filename.
+        write_fname: Output filename.
+        ncore: Number of core orbitals.
+        norbs: Total number of spatial orbitals.
+    """
+    with open(read_fname, "r") as f:
+        lines = f.readlines()
+
+    # Extract the number of active space spin orbitals
+    nact_spin = int(lines[0].strip())
+
+    if norbs is None:
+        norbs_spin = nact_spin + 2 * ncore
+    else:
+        norbs_spin = 2 * norbs
+
+    # Extract the oneRDM
+    onerdm = np.zeros((norbs_spin, norbs_spin))
+
+    # fill up core
+    for i in range(ncore):
+        onerdm[2 * i, 2 * i] = 1.0
+        onerdm[2 * i + 1, 2 * i + 1] = 1.0
+
+    for line in lines[1:]:
+        data = line.strip().split()
+        i = int(data[0]) + 2 * ncore
+        j = int(data[1]) + 2 * ncore
+        onerdm[i, j] = float(data[2])
+        onerdm[j, i] = float(data[2])
+
+    # Write the oneRDM to a new file
+    np.savetxt(write_fname, onerdm, fmt="%.6f")
 
 # reading dets from dice
 def read_dets(fname='dets.bin', ndets=None):
@@ -291,6 +332,54 @@ def read_dets(fname='dets.bin', ndets=None):
             state[tuple(map(tuple, det))] = coeff
 
     return norbs, state, ndetsAll
+
+def write_dets(state: dict, norbs: int, fname: str = "dets.bin") -> None:
+    """Write determinants to a binary file in Dice format.
+
+    Args:
+        state: Dictionary with determinant (tuple of up and down occupation number tuples) keys
+              and coefficient values.
+        norbs: Number of orbitals.
+        fname: Output binary filename.
+
+    The binary format is:
+    - Number of determinants (4 bytes, integer)
+    - Number of orbitals (4 bytes, integer)
+    For each determinant:
+    - Coefficient (8 bytes, double)
+    - Orbital occupations (1 byte per orbital, character):
+      '0' for empty, 'a' for alpha, 'b' for beta, '2' for double
+    """
+    import struct
+
+    ndets = len(state)
+
+    with open(fname, "wb") as f:
+        # Write number of determinants and orbitals
+        f.write(struct.pack("i", ndets))
+        f.write(struct.pack("i", norbs))
+
+        # Write each determinant
+        for det, coeff in state.items():
+            # Write coefficient
+            f.write(struct.pack("d", coeff))
+
+            # Convert occupation numbers to Dice format and write
+            alpha, beta = det
+            for i in range(norbs):
+                if alpha[i] == 0 and beta[i] == 0:
+                    f.write(struct.pack("c", b"0"))
+                elif alpha[i] == 1 and beta[i] == 0:
+                    f.write(struct.pack("c", b"a"))
+                elif alpha[i] == 0 and beta[i] == 1:
+                    f.write(struct.pack("c", b"b"))
+                elif alpha[i] == 1 and beta[i] == 1:
+                    f.write(struct.pack("c", b"2"))
+                else:
+                    raise ValueError(
+                        f"Invalid occupation numbers at orbital {i}: "
+                        f"alpha={alpha[i]}, beta={beta[i]}"
+                    )
 
 def parity(d0, cre, des):
     d = 1.*d0
@@ -1153,7 +1242,7 @@ def run_afqmc_mc(mc,
       nelec = mol.nelec
       nbasis = h1e.shape[-1]
       norb = nbasis
-      norb_core = 0
+      norb_core = int(mc.ncore)
       eri = ao2mo.restore(4, eri, norb)
       chol0 = modified_cholesky(eri, chol_cut)
       nchol = chol0.shape[0]
@@ -1298,7 +1387,7 @@ def run_afqmc_mc(mc,
             print("\nBlocking analysis:", flush=True)
             command = f'''
                         mv samples.dat samples_{n}.dat;
-                        echo afqmc.dat >> afqmc_{n}.dat;
+                        cat afqmc.dat >> afqmc_{n}.dat;
                         rm afqmc.dat -f;
                         mv blocking.tmp blocking_{n}.out;
                         cat blocking_{n}.out
@@ -1835,7 +1924,7 @@ def write_vmc_input(wavefunction_name="jastrowslater",
 
     with open(fname, "w") as outfile:
         outfile.write(json_dump)
-    return
+    return json_input
 
 
 # lattice models
