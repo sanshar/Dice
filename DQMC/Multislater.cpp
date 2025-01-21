@@ -226,7 +226,7 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
         temp[sz] = -cofactors;
@@ -246,7 +246,7 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
         temp[sz] = -cofactors;
@@ -266,10 +266,10 @@ void Multislater::forceBias(std::array<Eigen::MatrixXcd, 2>& psi, Hamiltonian& h
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
-        temp[sz] = cofactors;
+        temp[sz] = -cofactors;
       }
     }
 
@@ -390,7 +390,7 @@ void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, std::array<Eigen:
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
         temp[sz] = -cofactors;
@@ -410,7 +410,7 @@ void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, std::array<Eigen:
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
         temp[sz] = -cofactors;
@@ -430,7 +430,7 @@ void Multislater::oneRDM(std::array<Eigen::MatrixXcd, 2>& psi, std::array<Eigen:
             }
             double parity_pt = ((p + t)%2 == 0) ? 1. : -1.;
             cofactors(p, t) = parity_pt * minorMat.determinant();
-            dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
+            if (p == 0) dets[sz] += greeno[sz](ciExcitations[sz][i][0](p), ciExcitations[sz][i][1](t)) * cofactors(p, t);
           }
         }
         temp[sz] = cofactors;

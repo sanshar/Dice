@@ -39,22 +39,28 @@ void DQMCWalker::prepPropR(std::array<Eigen::MatrixXcd, 2>& ref, Hamiltonian& ha
   // read or calculate rdm for mean field shifts
   matPair green;
   bool readRDM = false;
-  std::string fname = "spinRDM.0.0.txt";
+  std::string fname = "spin1RDM.mat.txt";
   ifstream rdmfile(fname);
   if (rdmfile) readRDM = true;
   rdmfile.close();
   if (readRDM){
-    if (commrank == 0) cout << "Reading RDM from disk for background subtraction\n\n";
-    MatrixXd oneRDM, twoRDM;
-    readSpinRDM("spinRDM.0.0.txt", oneRDM, twoRDM);
+    if (commrank == 0) cout << "Reading RDM from disk for background subtraction\n";
+    MatrixXd oneRDM = MatrixXd::Zero(2*norbs, 2*norbs);
+    readMat(oneRDM, "spin1RDM.mat.txt");
+    // MatrixXd oneRDM, twoRDM;
+    // readSpinRDM("spinRDM.0.0.txt", oneRDM, twoRDM);
     green[0] = MatrixXcd::Zero(norbs, norbs);
     green[1] = MatrixXcd::Zero(norbs, norbs);
+    double n_up = 0., n_dn = 0.;
     for (int i = 0; i < 2*norbs; i++) {
+        if (i%2 == 0) n_up += oneRDM(i, i);
+        else n_dn += oneRDM(i, i);
       for (int j = 0; j < 2*norbs; j++) {
         if (i%2 == 0 && j%2 == 0) green[0](i/2, j/2) = oneRDM(i, j); 
         else if (i%2 == 1 && j%2 == 1) green[1](i/2, j/2) = oneRDM(i, j); 
       }
     }
+    if (commrank == 0) cout << "1RDM traces: N_up = " << n_up << ", N_dn = " << n_dn << endl << endl;
   }
   else {
     matPair refT;
