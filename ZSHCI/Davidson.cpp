@@ -109,7 +109,7 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
 
 
 //=============================================================================
-vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+vector<double> davidson(HmultDirectFCI& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
     /*!
     BM_description
@@ -253,6 +253,8 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       for (int i=0; i<bsize; i++)
         for (int j=i; j<bsize; j++) {
           hsubspace(i,j) = b.col(i).dot(sigma.col(j));
+          hsubspace(j,i) = b.col(j).dot(sigma.col(i));
+
 #ifdef Complex
           hsubspace(j,i) = conj(hsubspace(i,j));
 #else
@@ -270,6 +272,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
       sigma.block(0,0,b.rows(), bsize) = sigma.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
 
       ei = eigensolver.eigenvalues()[convergedRoot];
+      pout << "Energy : "<<eigensolver.eigenvalues() << endl;
       for (int i=0; i<convergedRoot; i++) {
         r = sigma.col(i) - eigensolver.eigenvalues()[i]*b.col(i);
         double error = r.norm();
@@ -335,14 +338,18 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
         precondition(r,diag,ei);
         for (int i=0; i<bsize; i++)
           r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
-
+        pout << "norm of residual " << r.norm() << " subspace size " << bsize << endl;
         if (bsize < maxCopies) {
           b.col(bsize) = r/r.norm();
           bsize++;
         } else {
-          bsize = nroots+3;
-          sigmaSize = nroots+2;
+          bsize = max(nroots+4, int(maxCopies/2));
+          sigmaSize = bsize - 1;
           b.col(bsize-1) = r/r.norm();
+          for (int i = bsize; i<maxCopies; i++) {
+            b.col(i) *= 0.0;
+            sigma.col(i) *= 0.0;
+          }
         }
       } // commrank=0
   } // while
@@ -351,7 +358,7 @@ vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag, int max
 
 
 //=============================================================================
-vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+vector<double> davidsonDirect(HmultDirectFCI& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
 //-----------------------------------------------------------------------------
     /*!
     Davidson, implemented very similarly to as implementeded in Block
@@ -582,7 +589,7 @@ vector<double> davidsonDirect(HmultDirect& H, vector<MatrixXx>& x0, MatrixXx& di
           b.col(bsize) = r/r.norm();
           bsize++;
         } else {
-          bsize = min(nroots+3, maxCopies);
+          bsize = max(nroots+3, maxCopies);
           sigmaSize = bsize-1;
           b.col(bsize-1) = r/r.norm();
         }

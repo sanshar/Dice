@@ -18,11 +18,13 @@
 */
 #include <iostream>
 #include <algorithm>
-#include "integral.h"
-#include "Hmult.h"
+
 #include <Eigen/Dense>
 #include <Eigen/Core>
+
 #include "Determinants.h"
+#include "integral.h"
+
 using namespace std;
 using namespace Eigen;
 

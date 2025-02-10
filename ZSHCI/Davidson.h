@@ -27,6 +27,7 @@
 
 class Hmult2;
 class HmultDirect;
+class HmultDirectFCI;
 using namespace Eigen;
 using namespace std;
 
@@ -34,10 +35,12 @@ void AllocateSHM(vector<MatrixXx>& x0, CItype* &bcol, CItype* &sigmacol);
 
 void precondition(MatrixXx& r, MatrixXx& diag, double& e);
 
-vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag,
-                        int maxCopies, double tol, int& numIter, bool print);
+//vector<double> davidson(Hmult2& H, vector<MatrixXx>& x0, MatrixXx& diag,
+//                        int maxCopies, double tol, int& numIter, bool print);
 
-vector<double> davidsonDirect(HmultDirect& Hdirect, vector<MatrixXx>& x0,
+vector<double> davidson(HmultDirectFCI& H, vector<MatrixXx>& x0, MatrixXx& diag,
+                        int maxCopies, double tol, int& numIter, bool print);
+vector<double> davidsonDirect(HmultDirectFCI& Hdirect, vector<MatrixXx>& x0,
                               MatrixXx& diag, int maxCopies, double tol,
                               int& numIter, bool print);
 
