@@ -48,6 +48,7 @@
 #include "math.h"
 
 #include "communicate.h"
+#include <highfive/H5Easy.hpp>
 
 using namespace std;
 using namespace Eigen;
@@ -712,7 +713,7 @@ double SHCIbasics::DoPerturbativeDeterministic(
         root, Psi1Norm, s2RDM, twoRDM);
     // SHCIrdm::ComputeEnergyFromSpatialRDM(norbs/2, nelec, I1, I2, coreE,
     // s2RDM);
-    SHCIrdm::saveRDM(schd, s2RDM, twoRDM, root);
+    SHCIrdm::saveRDM(schd, twoRDM, root);
 
     if (schd.RdmType == RELAXED) {
       // construct the vector Via x da
@@ -1130,8 +1131,14 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
             }
           }
         }
+	{
+        H5Easy::File chkfile("dice.h5", H5Easy::File::Overwrite);
+        H5Easy::dump(chkfile, "fcimatrix", trial, H5Easy::DumpMode::Overwrite);
+	      H5Easy::dump(chkfile, "core_energy", coreEbkp, H5Easy::DumpMode::Overwrite);
+	      pout << "matrix dumped" << endl;
+	}
         SelfAdjointEigenSolver<MatrixXx> solver(trial);
-	pout << "eigenvalues" << solver.eigenvalues() << endl;
+	      pout << "eigenvalues " << solver.eigenvalues() << endl;
         //solver.compute();
         MatrixXx eigVec = solver.eigenvectors();
         for (int i = 0; i < ci.size(); i++) {
@@ -1210,7 +1217,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //  prevE0(-10.0);
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     if (schd.DavidsonType == DIRECT) {
-      E0 = davidsonDirect(Hdirect, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+      E0 = davidson(Hdirect, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
     }
     else {
       E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
@@ -1250,7 +1257,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     //E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, false);
     if (schd.DavidsonType == DIRECT) {
-      E0 = davidsonDirect(Hdirect, ci, diag, schd.nroots+2, schd.davidsonTol, numIter, schd.outputlevel>0);
+      E0 = davidson(Hdirect, ci, diag, schd.nroots+2, schd.davidsonTol, numIter, schd.outputlevel>0);
     }
     else {
       E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0);
@@ -1297,8 +1304,8 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, SHMci,
                                   SHMci, sparseHam.orbDifference, nelec, schd, i,
                                   oneRDM, s1RDM);
-          //SHCIrdm::save1RDM(schd, s1RDM, oneRDM, i);
-          SHCIrdm::save1RDM_bin(schd, oneRDM, i);
+          if (schd.ReadTxt) SHCIrdm::save1RDM(schd, oneRDM, i);
+          if (schd.ReadBinary) SHCIrdm::save1RDM_bin(schd, oneRDM, i);
         }
       }
 
@@ -1310,21 +1317,20 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           CItype *SHMci;
           SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
 
-          MatrixXx twoRDM;
-          if (schd.DoSpinRDM)
-            twoRDM = MatrixXx::Zero(norbs * norbs, norbs * norbs);
-          MatrixXx s2RDM = MatrixXx::Zero((norbs / 2) * norbs / 2, (norbs / 2) * norbs / 2);
+          MatrixXx twoRDM = MatrixXx::Zero(norbs * norbs, norbs * norbs);
           SHCIrdm::EvaluateRDM(sparseHam.connections, SHMDets, DetsSize, SHMci,
-                               SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM, s2RDM);
+                               SHMci, sparseHam.orbDifference, nelec, schd, i, twoRDM);
           SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreEbkp, twoRDM);
 
-          if (schd.outputlevel > 0) {
-            SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2, coreEbkp, s2RDM);
-          }
+          //if (schd.outputlevel > 0) {
+          //  SHCIrdm::ComputeEnergyFromSpatialRDM(norbs / 2, nelec, I1, I2, coreEbkp, s2RDM);
+          //}
           if (schd.ReadTxt) {
-            SHCIrdm::saveRDM(schd, s2RDM, twoRDM, i);
+            SHCIrdm::saveRDM(schd, twoRDM, i);
           }
-          SHCIrdm::saveRDM_bin(schd, twoRDM, i);
+          if (schd.ReadBinary) {
+            SHCIrdm::saveRDM_bin(schd, twoRDM, i);
+          }
 
           boost::interprocess::shared_memory_object::remove(shciDetsCI.c_str());
         } // for i
