@@ -51,14 +51,17 @@ void makeRDM(int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
              Determinant* Dets, int DetsSize, int Norbs, int nelec,
              CItype* cibra, CItype* ciket, MatrixXx& s2RDM);
 
-void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root1, int root2);
-void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root1, int root2);
-void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
+void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root1, int root2,
+              const std::string& step);
+void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root1, int root2,
+              const std::string& step);
+void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root1, int root2,
+              const std::string& step);
 void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
-              size_t norbs);
-void save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM, int root,
-              int norbs);
-void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
+              size_t norbs, const std::string& step);
+void save4RDM(schedule& schd, MatrixXx& fourRDM, MatrixXx& s4RDM, int root, int norbs,
+              const std::string& step);
+void load3RDM(schedule& schd, MatrixXx& s3RDM, int root, const std::string& step);
 
 void EvaluateRDM(vector<vector<int> >& connections, Determinant* Dets,
                  int DetsSize, CItype* cibra, CItype* ciket,

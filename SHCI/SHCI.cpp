@@ -444,7 +444,7 @@ int main(int argc, char* argv[]) {
     }
     fclose(f);
   }
-  
+
   if (commrank == 0) {
     if (schd.printAllDeterminants) {
       pout << "Printing all determinants"<<endl;
@@ -519,7 +519,7 @@ int main(int argc, char* argv[]) {
 //      prevci(i,0) = prevci(i,0)*abs(maxC)/maxC;
 //  }
 //#endif
-  
+
   // #####################################################################
   // Print the 5 most important determinants and their weights
   // #####################################################################
@@ -550,7 +550,7 @@ int main(int argc, char* argv[]) {
     }
   }  // end root
   pout << std::flush;
- 
+
 
   // #####################################################################
   // RDMs
@@ -618,7 +618,7 @@ int main(int argc, char* argv[]) {
     s3RDM.setZero(norbs * norbs * norbs / 8, norbs * norbs * norbs / 8);
     SHCIrdm::Evaluate3RDM(SHMDets, DetsSize, ciroot, ciroot, nelec, schd, 0,
                           threeRDM, s3RDM);
-    SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
+    SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs, "variational");
   }
 
   // 4RDM
@@ -635,7 +635,7 @@ int main(int argc, char* argv[]) {
                   norbs * norbs * norbs * norbs / 16);
     SHCIrdm::Evaluate4RDM(SHMDets, DetsSize, ciroot, ciroot, nelec, schd, 0,
                           fourRDM, s4RDM);
-    SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
+    SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs, "variational");
   }
 
   // #####################################################################
@@ -795,9 +795,9 @@ root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
 
     if (commrank == 0) {
       MatrixXx s2RDMdisk, twoRDMdisk;
-      SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0);
+      SHCIrdm::loadRDM(schd, s2RDMdisk, twoRDMdisk, 0, 0, "variational");
       s2RDMdisk = s2RDMdisk + s2RDM.adjoint() + s2RDM;
-      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0, 0);
+      SHCIrdm::saveRDM(schd, s2RDMdisk, twoRDMdisk, 0, 0, "perturbative");
     }
 
     // pout << " response ";
