@@ -354,7 +354,7 @@ void SHCIrdm::makeRDM(int *&AlphaMajorToBetaLen,
 
 //=============================================================================
 void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
-                       int root1, int root2) {
+                       int root1, int root2, const std::string &step) {
   /*!
 
     Writes the spatial 1RDM to text.
@@ -367,8 +367,11 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
             Spatial 1RDM.
         MatrixXx& oneRDM:
             Spin 1RDM.
-        int root:
-            Index of wavefunction to save.
+        int root1:
+            Index of wavefunction used to compute the RDM.
+        int root2:
+            Index of wavefunction used to compute the RDM, root2 is different
+            from root1 if saving transition RDMs.
   */
 
   int nSpatOrbs = s1RDM.rows();
@@ -376,8 +379,8 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
 
   if (commrank == 0) {
     char file[5000];
-    sprintf(file, "%s/spatial1RDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
-            root2);
+    sprintf(file, "%s/spatial1RDM.%d.%d.%s.txt", schd.prefix[0].c_str(), root1,
+            root2, step.c_str());
     std::ofstream ofs(file, std::ios::out);
     ofs << nSpatOrbs << endl;
 
@@ -393,8 +396,8 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
 
     if (schd.DoSpinOneRDM) {
       char file2[5000];
-      sprintf(file2, "%s/spin1RDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
-              root2);
+      sprintf(file2, "%s/spin1RDM.%d.%d.%s.txt", schd.prefix[0].c_str(), root1,
+              root2, step.c_str());
       std::ofstream ofs2(file2, std::ios::out);
       ofs2 << norbs << endl;
 
@@ -413,7 +416,7 @@ void SHCIrdm::save1RDM(schedule &schd, MatrixXx &s1RDM, MatrixXx &oneRDM,
 
 //=============================================================================
 void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
-                      int root) {
+                      int root1, int root2, const std::string &step) {
   /*!
 
   Loads the spatial 2RDM and the spinRDM (if the DoSpinRDM keyword was used).
@@ -428,6 +431,8 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
           Spin 2RDM, *changed in this function*.
       int root:
           Index of wavefunction to load.
+      string& step:
+          Step of the calculation, of the corresponding RDMs to load.
 
   */
   int norbs = twoRDM.rows();
@@ -436,8 +441,11 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
   if (schd.DoSpinRDM) {
     if (commrank == 0) {
       char file[5000];
-      sprintf(file, "%s/%d-spinRDM.bkp", schd.prefix[0].c_str(), root);
+      sprintf(file, "%s/%d-%d-spinRDM-%s.bkp", schd.prefix[0].c_str(), root1, root2, step.c_str());
       std::ifstream ifs(file, std::ios::binary);
+      if (!ifs) {
+        throw std::runtime_error("Error opening file: " + std::string(file));
+      }
       boost::archive::binary_iarchive load(ifs);
       load >> twoRDM;
       // ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
@@ -448,8 +456,11 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 
   if (commrank == 0) {
     char file[5000];
-    sprintf(file, "%s/%d-spatialRDM.bkp", schd.prefix[0].c_str(), root);
+    sprintf(file, "%s/%d-%d-spatialRDM-%s.bkp", schd.prefix[0].c_str(), root1, root2, step.c_str());
     std::ifstream ifs(file, std::ios::binary);
+    if (!ifs) {
+      throw std::runtime_error("Error opening file: " + std::string(file));
+    }
     boost::archive::binary_iarchive load(ifs);
     load >> s2RDM;
     // ComputeEnergyFromSpatialRDM(nSpatOrbs, nelec, I1, I2, coreE, s2RDM);
@@ -458,15 +469,18 @@ void SHCIrdm::loadRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
   }
 }
 
-void SHCIrdm::load3RDM(schedule &schd, MatrixXx &s3RDM, int root) {
+void SHCIrdm::load3RDM(schedule &schd, MatrixXx &s3RDM, int root, const std::string &step) {
   // TODO 3RDM is currently only for the spatial 3RDM not spin.
   int nSpatOrbs = pow(s3RDM.rows(), 1 / 3);
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
 
   if (commrank == 0) {
     char file[5000];
-    sprintf(file, "%s/%d-spatial3RDM.bkp", schd.prefix[0].c_str(), root);
+    sprintf(file, "%s/%d-spatial3RDM-%s.bkp", schd.prefix[0].c_str(), root, step.c_str());
     std::ifstream ifs(file, std::ios::binary);
+    if (!ifs) {
+      throw std::runtime_error("Error opening file: " + std::string(file));
+    }
     boost::archive::binary_iarchive load(ifs);
     load >> s3RDM;
   } else {
@@ -476,11 +490,13 @@ void SHCIrdm::load3RDM(schedule &schd, MatrixXx &s3RDM, int root) {
 
 //=============================================================================
 void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
-                      int root1, int root2) {
+                      int root1, int root2, const std::string &step) {
   /*!
   Saves the spatial 2RDM and the spinRDM (if the DoSpinRDM keyword was used).
-  The spatial RDM is saves as "%s/spatialRDM.%d.%d.txt" where %s is the user
-  determined prefix and %d is the root.
+  The spatial RDM is saves as "%s/spatialRDM.%d.%d-%s.txt" where first %s is
+  the user the two %d are the root1 and root2 indices (root1 and root2 are
+  different if saving transition RDMs), and %s is the step of the calculation
+  (e.g. "variational", "perturbative", etc.).
 
   :Arguments:
 
@@ -490,16 +506,19 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
           Spatial 2RDM.
       MatrixXx& twoRDM:
           Spin 2RDM.
-      int root:
+      int root1:
           Index of wavefunction to save.
+      int root2:
+          Index of wavefunction to save. Different from root1 if saving
+          transition RDMs.
 
   */
   int nSpatOrbs = pow(s2RDM.rows(), 0.5);
   if (commrank == 0) {
     {
       char file[5000];
-      sprintf(file, "%s/spatialRDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
-              root2);
+      sprintf(file, "%s/spatialRDM.%d.%d.%s.txt", schd.prefix[0].c_str(), root1,
+              root2, step.c_str());
       std::ofstream ofs(file, std::ios::out);
       ofs << nSpatOrbs << endl;
       for (int n1 = 0; n1 < nSpatOrbs; n1++)
@@ -514,12 +533,13 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
             }
       ofs.close();
     }
-    
+
     if (schd.DoSpinRDM) {
       int norbs = nSpatOrbs * 2;
       char file[5000];
-      sprintf(file, "%s/spinRDM.%d.%d.txt", schd.prefix[0].c_str(), root1,
-              root2);
+      sprintf(file, "%s/spinRDM.%d.%d.%s.txt", schd.prefix[0].c_str(), root1,
+              root2, step.c_str());
+      // Save the spinRDM in a text file
       std::ofstream ofs(file, std::ios::out);
       for (int n1 = 1; n1 < norbs; n1++)
         for (int n2 = 0; n2 < n1; n2++)
@@ -535,7 +555,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 
     if (schd.DoSpinRDM) {
       char file[5000];
-      sprintf(file, "%s/%d-%d-spinRDM.bkp", schd.prefix[0].c_str(), root1, root2);
+      sprintf(file, "%s/%d-%d-spinRDM-%s.bkp", schd.prefix[0].c_str(), root1, root2, step.c_str());
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << twoRDM;
@@ -544,7 +564,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 
     {
       char file[5000];
-      sprintf(file, "%s/%d-%d-spatialRDM.bkp", schd.prefix[0].c_str(), root1, root2);
+      sprintf(file, "%s/%d-%d-spatialRDM-%s.bkp", schd.prefix[0].c_str(), root1, root2, step.c_str());
       std::ofstream ofs(file, std::ios::binary);
       boost::archive::binary_oarchive save(ofs);
       save << s2RDM;
@@ -555,7 +575,7 @@ void SHCIrdm::saveRDM(schedule &schd, MatrixXx &s2RDM, MatrixXx &twoRDM,
 }
 
 void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
-                       int root, size_t norbs) {
+                       int root, size_t norbs, const std::string& step) {
   int nSpatOrbs = norbs / 2;  // pow(s3RDM.rows(),1/3.0);
   int nSpatOrbs2 = nSpatOrbs * nSpatOrbs;
 
@@ -615,7 +635,7 @@ void SHCIrdm::save3RDM(schedule &schd, MatrixXx &threeRDM, MatrixXx &s3RDM,
 }
 
 void SHCIrdm::save4RDM(schedule &schd, MatrixXx &fourRDM, MatrixXx &s4RDM,
-                       int root, int norbs) {
+                       int root, int norbs, const std::string& step) {
   int n = norbs / 2;
   int n2 = n * n;
   int n3 = n2 * n;
