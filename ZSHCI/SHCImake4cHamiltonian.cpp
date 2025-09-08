@@ -1,9 +1,5 @@
 #include "time.h"
 #include "Determinants.h"
-#include "SHCIbasics.h"
-#include "SHCIgetdeterminants.h"
-#include "SHCIsampledeterminants.h"
-#include "SHCIrdm.h"
 #include "SHCISortMpiUtils.h"
 #include "SHCImake4cHamiltonian.h"
 #include "input.h"
@@ -15,6 +11,7 @@
 #include <map>
 #include "Davidson.h"
 #include "boost/format.hpp"
+#include "communicate.h"
 #include <fstream>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/serialization.hpp>
@@ -23,19 +20,71 @@
 #include <boost/serialization/set.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
 #ifndef SERIAL
 #include <boost/mpi/environment.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi.hpp>
 #endif
-#include "communicate.h"
-#include <boost/interprocess/managed_shared_memory.hpp>
 
 using namespace std;
 using namespace Eigen;
 using namespace boost;
 using namespace SHCISortMpiUtils;
 
+void SHCImake4cHamiltonian::SparseHam::makeFCIHamitlonianFromSingles(
+  Determinant* SHMDets, size_t* SHMsingles, schedule& schd,
+  int dets_size, int nelec, int norbs,
+  oneInt& I1, twoInt& I2, double& coreE,bool DoRDM) {
+  int proc = 0, nprocs = 1;
+  #ifndef SERIAL
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
+  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  #endif
+  int nsingles = nelec * (norbs - nelec);
+
+  for (int i = 0; i < dets_size; i++) {
+    if (i%(nprocs)!=proc) continue;
+    connections.push_back(vector<int>(1, i));
+    CItype hij = SHMDets[i].Energy(I1, I2, coreE);
+    Helements.push_back(vector<CItype>(1, hij));
+    if (DoRDM) orbDifference.push_back(vector<size_t>(1, 0));
+    set<size_t> connected;
+    auto det_i = SHMDets[i];
+    connected.insert(det_i.getHash());
+    size_t orbDiff;
+    for (int j = 0; j < nsingles; j++) {
+      auto j_loc = SHMsingles[i*nsingles+j];
+      auto det_j = SHMDets[j_loc];
+      if (j_loc < i) continue;
+      connected.insert(j_loc);
+      auto hij = Hij(det_j, det_i, I1, I2, coreE, orbDiff);
+      if (std::abs(hij) > schd.thresh_hij) {
+        connections.back().push_back(j_loc);
+        Helements.back().push_back(hij);
+        if (DoRDM) orbDifference.back().push_back(orbDiff);
+      }
+    }
+    for (int j = 0; j < nsingles; j++) {
+      auto j_idx = SHMsingles[i*nsingles+j];
+      auto det_j = SHMDets[j_idx];
+      for (int k = 0; k < nsingles; k++) {
+        auto k_idx = SHMsingles[j_idx*nsingles+k];
+        if (k_idx < i) continue;
+        auto det_k = SHMDets[k_idx];
+        if (connected.find(k_idx) != connected.end()) continue;
+        connected.insert(k_idx);
+        auto hij = Hij(det_k, det_i, I1, I2, coreE, orbDiff);
+        if (abs(hij) > schd.thresh_hij) {
+          connections.back().push_back(k_idx);
+          Helements.back().push_back(hij);
+          if (DoRDM) orbDifference.back().push_back(orbDiff);
+        }
+      }
+    }
+  }
+
+}
 void SHCImake4cHamiltonian::HamHelper4c::MakeSHMHelpers() {
   SHCImake4cHamiltonian::MakeSMHelpers(Nminus1, Nminus1ToDet, Nminus1ToDetLen, Nminus1ToDetSM,
     Nminus2, Nminus2ToDet, Nminus2ToDetLen, Nminus2ToDetSM);

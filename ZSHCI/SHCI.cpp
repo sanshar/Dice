@@ -50,9 +50,7 @@
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
-#include "LCC.h"
 #include "SHCIshm.h"
-#include "SOChelper.h"
 #include "communicate.h"
 #include <unistd.h> 
 
@@ -209,26 +207,23 @@ int main(int argc, char* argv[]) {
   std::vector<int> irrep;
   
   if (commrank == 0) Time::print_time("begin_integral");
-  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep, schd.ReadTxt);
+  int integralType = 0;
+  if (schd.ReadTxt)
+    integralType = 1;
+  if (schd.ReadBinary)
+    integralType = 2;
+  if (schd.ReadHDF5)
+    integralType = 3;
+  readIntegrals(schd.integralFile, I2, I1, nelec, norbs, coreE, irrep, integralType);
   if (commrank == 0) Time::print_time("end_integral");
 
   // Check
   if (HFoccupied[0].size() != nelec) {
-    pout << "The number of electrons given in the FCIDUMP should be";
+    pout << "WARNING: The number of electrons given in the FCIDUMP should be";
     pout << " equal to the nocc given in the shci input file." << endl;
-    exit(0);
-  }
-
-  // LCC
-  if (schd.doLCC) {
-    // no nact was given in the input file
-    if (schd.nact == 1000000)
-      schd.nact = norbs - schd.ncore;
-    else if (schd.nact + schd.ncore > norbs) {
-      pout << "core + active orbitals = " << schd.nact + schd.ncore;
-      pout << " greater than orbitals " << norbs << endl;
-      exit(0);
-    }
+    pout << " Changing nelec to nocc." << endl;
+    nelec = HFoccupied[0].size();
+    // exit(0);
   }
 
   // Setup the lexical table for the determinants
@@ -356,7 +351,7 @@ int main(int argc, char* argv[]) {
       efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
       FILE* f = fopen(efile.c_str(), "wb");
       for (int j = 0; j < E0.size(); ++j) {
-        // pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
+        pout << "Writing energy " << E0[j] << "  to file: " << efile << endl;
         fwrite(&E0[j], 1, sizeof(double), f);
       }
       fclose(f);
@@ -535,19 +530,6 @@ int main(int argc, char* argv[]) {
            << endl;
     }
 
-    /*
-    if (schd.quasiQ) {
-      double bkpepsilon2 = schd.epsilon2;
-      schd.epsilon2 = schd.quasiQEpsilon;
-      for (int root=0; root<schd.nroots;root++) {
-        E0[root] += SHCIbasics::DoPerturbativeDeterministic(SHMDets, ci[root],
-                                                            E0[root], I1, I2,
-    I2HBSHM, irrep, schd, coreE, nelec, root, vdVector, Psi1Norm, true);
-        ci[root] = ci[root]/ci[root].norm();
-      }
-      schd.epsilon2 = bkpepsilon2;
-    }
-    */
 
 #ifndef SERIAL
     world.barrier();
@@ -555,63 +537,12 @@ int main(int argc, char* argv[]) {
 
     // SpinRDM
     vector<MatrixXx> spinRDM(3, MatrixXx::Zero(norbs, norbs));
-    // SOC
-#ifdef Complex
-    if (schd.doSOC) {
-      pout << "PERFORMING G-tensor calculations" << endl;
-      
-      // dont do this here, if perturbation theory is switched on
-      if (schd.doGtensor) {
-#ifndef SERIAL
-        mpi::broadcast(world, ci, 0);
-#endif
-        SOChelper::calculateSpinRDM(spinRDM, ci[0], ci[1], SHMDets, DetsSize, norbs, nelec);
-        SOChelper::doGTensor(ci, SHMDets, E0, DetsSize, norbs, nelec, spinRDM);
-        if (commrank != 0) {
-          ci[0].resize(1,1);
-          ci[1].resize(1,1);
-        }
-      }
-    }
-#endif
 
     // TODO Find permanent home for 3RDM
     if (schd.DoOneRDM) {
       pout << "Calculating 1-RDM..." << endl;
       MatrixXx s1RDM;
       CItype* ciroot;
-    }
-
-    // 3RDM
-    if (schd.DoThreeRDM) {
-      pout << "Calculating 3-RDM..." << endl;
-      MatrixXx s3RDM, threeRDM;
-      CItype* ciroot;
-      SHMVecFromMatrix(ci[0], ciroot, shcicMax, cMaxSegment, regioncMax);
-
-      if (schd.DoSpinRDM)
-        threeRDM.setZero(norbs * norbs * norbs, norbs * norbs * norbs);
-      s3RDM.setZero(norbs * norbs * norbs / 8, norbs * norbs * norbs / 8);
-      SHCIrdm::Evaluate3RDM(SHMDets, DetsSize, ciroot, ciroot, nelec, schd, 0,
-                            threeRDM, s3RDM);
-      SHCIrdm::save3RDM(schd, threeRDM, s3RDM, 0, norbs);
-    }
-
-    // 4RDM
-    if (schd.DoFourRDM) {
-      pout << "Calculating 4-RDM..." << endl;
-      MatrixXx s4RDM, fourRDM;
-      CItype* ciroot;
-      SHMVecFromMatrix(ci[0], ciroot, shcicMax, cMaxSegment, regioncMax);
-
-      if (schd.DoSpinRDM)
-        fourRDM.setZero(norbs * norbs * norbs * norbs,
-                        norbs * norbs * norbs * norbs);
-      s4RDM.setZero(norbs * norbs * norbs * norbs / 16,
-                    norbs * norbs * norbs * norbs / 16);
-      SHCIrdm::Evaluate4RDM(SHMDets, DetsSize, ciroot, ciroot, nelec, schd, 0,
-                            fourRDM, s4RDM);
-      SHCIrdm::save4RDM(schd, fourRDM, s4RDM, 0, norbs);
     }
 
     // #####################################################################
@@ -664,21 +595,6 @@ int main(int argc, char* argv[]) {
       }
       fclose(f);
 
-#ifdef Complex
-      //SOChelper::doGTensor(ci, Dets, E0, norbs, nelec, spinRDM);
-#endif
-    } else if (schd.doLCC) {
-      log_pt(schd);
-#ifndef Complex
-      for (int root = 0; root < schd.nroots; root++) {
-        CItype* ciroot;
-        SHMVecFromMatrix(ci[root], ciroot, shcicMax, cMaxSegment, regioncMax);
-        LCC::doLCC(SHMDets, ciroot, DetsSize, E0[root], I1, I2, I2HBSHM, irrep,
-                   schd, coreE, nelec, root);
-      }
-#else
-      pout << " Not for Complex" << endl;
-#endif
     } else if (!schd.stochastic && schd.nblocks == 1) {
       log_pt(schd);
       double ePT = 0.0;
@@ -717,11 +633,9 @@ int main(int argc, char* argv[]) {
         }
         fclose(f);
 
-//        if (schd.doSOC) {
           for (int j = 0; j < E0.size(); j++)
             pout << str(boost::format("State: %3d,  E: %18.10f, dE: %10.2f\n") %
                         j % (ePT[j]) % ((ePT[j] - ePT[0]) * 219470));
-//        }
       }  // end if iter!=0
     } else {
 #ifndef SERIAL
@@ -742,9 +656,5 @@ int main(int argc, char* argv[]) {
     pout << "**************************************************************"
          << endl;
     pout << endl << endl;
-    // std::system("rm -rf /dev/shm* 2>/dev/null");
-
     return 0;
-
-  //}  // end d@symm ?
 }
