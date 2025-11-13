@@ -41,7 +41,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   vector<double> sweep_epsilon;
   int nocc = -1;
 
-  schd.thresh_hij = 1e-10;
+  schd.thresh_hij = 1e-12;
   schd.davidsonTol = 5.e-5;
   schd.davidsonTolLoose = 5.e-5;
   schd.RdmType = RELAXED;
@@ -65,6 +65,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.nroots = 1;
   schd.nPTiter = 10000;
   schd.DoRDM = false;
+  schd.DoTDM = false;
   schd.DoSpinRDM = false;
   schd.quasiQ = false;
   schd.doSOC = false;
@@ -104,7 +105,9 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.DoThreeRDM = false;
   schd.DoFourRDM = false;
 
-  schd.ReadTxt = false;
+  schd.ReadTxt = true;
+  schd.ReadBinary = false;
+  schd.ReadHDF5 = false;
 
   schd.cdfciIter = 0;
   schd.report_interval = 1000;
@@ -242,6 +245,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.writeBestDeterminantsUHF = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "dordm"))
       schd.DoRDM = true;
+    else if (boost::iequals(ArgName, "DoTDM"))
+      schd.DoTDM = true;
     else if (boost::iequals(ArgName, "DoOneRDM"))
       schd.DoOneRDM = true;
     else if (boost::iequals(ArgName, "DoSpinOneRDM"))
@@ -301,6 +306,10 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.DoFourRDM = true;
     else if (boost::iequals(ArgName, "readText"))
       schd.ReadTxt = true;
+    else if (boost::iequals(ArgName, "readBinary"))
+      schd.ReadBinary = true;
+    else if (boost::iequals(ArgName, "readHDF5"))
+      schd.ReadHDF5 = true;
     else if (boost::iequals(ArgName, "schedule")) {
       std::getline(dump, Line);
       cout << Line << endl;

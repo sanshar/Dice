@@ -58,6 +58,7 @@ private:
     & nroots                                  \
     & nPTiter                                 \
     & DoRDM                                   \
+    & DoTDM                                   \
     & DoSpinRDM                               \
     & quasiQ                                  \
     & quasiQEpsilon                           \
@@ -101,6 +102,9 @@ private:
     & double_group                            \
     & restrictionsV                           \
     & restrictionsPT                          \
+    & ReadTxt                                 \
+    & ReadBinary                              \
+    & ReadHDF5                                \
     & jz;                      
   }
 
@@ -129,6 +133,7 @@ public:
   int nroots;
   int nPTiter;
   bool DoRDM;
+  bool DoTDM;
   bool DoSpinRDM;
   bool quasiQ;
   double quasiQEpsilon;
@@ -167,6 +172,8 @@ public:
   bool DoThreeRDM;
   bool DoFourRDM;
   bool ReadTxt;
+  bool ReadBinary;
+  bool ReadHDF5;
   double z_threshold;
   int cdfci_on;
   int cdfciIter;
