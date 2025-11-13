@@ -1257,10 +1257,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     //E0 = davidson(H, X0, diag, subspace, schd.davidsonTol, numIter, false);
     if (schd.DavidsonType == DIRECT) {
-      E0 = davidson(Hdirect, ci, diag, schd.nroots+2, schd.davidsonTol, numIter, schd.outputlevel>0);
+      E0 = davidson(Hdirect, ci, diag, schd.nroots+2, schd.davidsonTol, numIter, schd.outputlevel>0, schd.nroots);
     }
     else {
-      E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0);
+      E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, schd.outputlevel>0, schd.nroots);
     }
       //E0 = davidson(H, ci, diag, subspace, schd.davidsonTol, numIter, false);
     for (int i = 0; i < E0.size(); i++) {
@@ -1303,7 +1303,7 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
           SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
           SHCIrdm::EvaluateOneRDM(sparseHam.connections, SHMDets, DetsSize, SHMci,
                                   SHMci, sparseHam.orbDifference, nelec, schd, i,
-                                  oneRDM, s1RDM);
+                                  oneRDM);
           if (schd.ReadTxt) SHCIrdm::save1RDM(schd, oneRDM, i);
           if (schd.ReadBinary) SHCIrdm::save1RDM_bin(schd, oneRDM, i);
         }
