@@ -22,11 +22,11 @@
 #include "math.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/serialization/vector.hpp>
+#include <highfive/H5Easy.hpp>
 #include "string.h"
 #include <algorithm>
 #include <iomanip>
 #include "math.h"
-#include "boost/format.hpp"
 #include <fstream>
 #ifndef SERIAL
 #include <boost/mpi.hpp>
@@ -46,7 +46,7 @@ bool myfn(CItype i, CItype j) { return std::abs(i) < std::abs(j); }
 
 //=============================================================================
 void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
-                   int &norbs, double &coreE, std::vector<int> &irrep, bool readTxt) {
+                   int &norbs, double &coreE, std::vector<int> &irrep, int integralType) {
 //-----------------------------------------------------------------------------
   /*!
   Read FCIDUMP file and populate "I1, I2, coreE, nelec, norbs, irrep"
@@ -151,14 +151,14 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
   //I2.store = static_cast<double*>(regionInt2.get_address());
   I2.store = static_cast<CItype*>(regionInt2.get_address());
   if (commrank == 0) {
-  if (!readTxt) {  
+  if (integralType==2) {  
     cout << "read binary" << endl;
-  string fcidump_bin = fcidump+".bin";
-  auto dump2 = ifstream(fcidump_bin.c_str(), ios::out | ios::binary);
-  if (!dump2.good()) {
-    pout << "Integral file " << fcidump_bin << " does not exist!" << endl;
-    exit(0);
-  }
+    string fcidump_bin = fcidump+".bin";
+    auto dump2 = ifstream(fcidump_bin.c_str(), ios::out | ios::binary);
+    if (!dump2.good()) {
+      pout << "Integral file " << fcidump_bin << " does not exist!" << endl;
+      exit(0);
+    }
     I1.store.clear();
     I1.store.resize(norbs*norbs, 0.0); I1.norbs = norbs;
     coreE = 0.0;
@@ -203,7 +203,7 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     coreE = coreEtmp.real();
     dump2.close();
   }
-  else {
+  else if (integralType==1) {
       cout << "read text integral " << endl;
     I1.store.clear();
     I1.store.resize(norbs*norbs,0.0); I1.norbs = norbs;
@@ -236,6 +236,13 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
       }
     } // while
     }
+    else if (integralType == 3) {
+      cout << "read integral in hdf5 format" << endl;
+    }
+    else {
+      cout << "integralType not recognized" << endl;
+      exit(0);
+    }
   }
 #ifndef SERIAL
   world.barrier();
@@ -247,19 +254,20 @@ void readIntegrals(string fcidump, twoInt &I2, oneInt &I1, int &nelec,
     I2.Direct = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Direct *= 0.;
     I2.Exchange = Matrix<std::complex<double>,-1,-1>::Zero(norbs, norbs); I2.Exchange *= 0.;
 
-    for (int i=0; i<norbs; i++)
+    for (int i=0; i<norbs; i++) {
       for (int j=0; j<norbs; j++) {
         I2.Direct(i,j) = I2(i,i,j,j);
         I2.Exchange(i,j) = I2(i,j,j,i);
+      }
     }
+    cout << "hehe" << endl;
   } // commrank=0
 
 #ifndef SERIAL
   mpi::broadcast(world, I1, 0);
 
   long intdim = I2memory;
-  long maxint =
-      26843540; // mpi cannot transfer more than these number of doubles
+  long maxint = 26843540; // mpi cannot transfer more than these number of doubles
   long maxIter = intdim / maxint;
 
   world.barrier();

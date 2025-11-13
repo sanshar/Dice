@@ -90,7 +90,6 @@ class twoInt {
     //inline double& operator()(int i, int j, int k, int l) {
     inline CItype& operator()(int i, int j, int k, int l) {
       //For test run, I will store the two integral using <ij|kl> = <ji|lk>
-      //The any complex conjugated relate stuff will not be incorporated for now
       size_t IJ = i*norbs+j, KL = k*norbs+l;
       size_t A = max(IJ, KL), B = min(IJ, KL);
       return store[A*(A+1)/2+B];
@@ -186,6 +185,6 @@ void readIntegrals(
         string fcidump,
         twoInt& I2, oneInt& I1,
         int& nelec, int& norbs, double& coreE,
-        std::vector<int>& irrep, bool readTxt=false);
+        std::vector<int>& irrep, int integralType);
 
 #endif
