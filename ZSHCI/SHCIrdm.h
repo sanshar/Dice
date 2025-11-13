@@ -43,18 +43,12 @@ class StitchDEH;
 };
 
 namespace SHCIrdm {
-void makeRDM(int*& AlphaMajorToBetaLen, vector<int*>& AlphaMajorToBeta,
-             vector<int*>& AlphaMajorToDet, int*& BetaMajorToAlphaLen,
-             vector<int*>& BetaMajorToAlpha, vector<int*>& BetaMajorToDet,
-             int*& SinglesFromAlphaLen, vector<int*>& SinglesFromAlpha,
-             int*& SinglesFromBetaLen, vector<int*>& SinglesFromBeta,
-             Determinant* Dets, int DetsSize, int Norbs, int nelec,
-             CItype* cibra, CItype* ciket, MatrixXx& s2RDM);
-
-void save1RDM(schedule& schd, MatrixXx& s1RDM, MatrixXx& oneRDM, int root);
-void saveRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
+void save1RDM(schedule& schd, MatrixXx& oneRDM, int root);
+void saveRDM(schedule& schd, MatrixXx& twoRDM, int root);
 void save1RDM_bin(schedule& schd, MatrixXx& oneRDM, int root);
 void saveRDM_bin(schedule& schd, MatrixXx& twoRDM, int root);
+void save1RDM_hdf5(schedule& schd, MatrixXx& twoRDM, int root_i, int root_j);
+void saveRDM_hdf5(schedule& schd, MatrixXx& twoRDM, int root);
 void loadRDM(schedule& schd, MatrixXx& s2RDM, MatrixXx& twoRDM, int root);
 void save3RDM(schedule& schd, MatrixXx& threeRDM, MatrixXx& s3RDM, int root,
               size_t norbs);
@@ -65,13 +59,12 @@ void load3RDM(schedule& schd, MatrixXx& s3RDM, int root);
 void EvaluateRDM(vector<vector<int> >& connections, Determinant* Dets,
                  int DetsSize, CItype* cibra, CItype* ciket,
                  vector<vector<size_t> >& orbDifference, int nelec,
-                 schedule& schd, int root, MatrixXx& s2RDM, MatrixXx& twoRDM);
+                 schedule& schd, int root, MatrixXx& twoRDM);
 
 void EvaluateOneRDM(vector<vector<int> >& connections, Determinant* Dets,
                     int DetsSize, CItype* cibra, CItype* ciket,
                     vector<vector<size_t> >& orbDifference, int nelec,
-                    schedule& schd, int root, MatrixXx& oneRDM,
-                    MatrixXx& s1RDM);
+                    schedule& schd, int root, MatrixXx& oneRDM);
 
 void UpdateRDMResponsePerturbativeDeterministic(
     Determinant* Dets, int DetsSize, CItype* ci, double& E0, oneInt& I1,
