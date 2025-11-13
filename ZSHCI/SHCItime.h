@@ -21,10 +21,12 @@
 
 #include <chrono>
 #include <string>
+#include "global.h"
 
 class Time {
  public:
   static void print_time(std::string msg) {
+    if (commrank != 0) return;
     using namespace std::chrono;
     const auto now = std::chrono::high_resolution_clock::now();
     static auto start = now;
