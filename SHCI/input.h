@@ -95,6 +95,8 @@ struct schedule {
     & doLCC                                   \
     & pointGroup                              \
     & spin                                    \
+    & spinPenalty                             \
+    & ssTarget                                \
     & irrep                                   \
     & searchForLowestEnergyDet                \
     & DoSpinOneRDM                            \
@@ -169,6 +171,18 @@ struct schedule {
   bool doLCC;
   string pointGroup;
   int spin;
+  // Strength lambda of the S^2 level-shift penalty applied during the
+  // variational Davidson solve: (H + lambda*(S^2 - ssTarget))|Psi> = E|Psi>.
+  // Zero (the default) disables the penalty entirely and reproduces the
+  // unpenalized Hamiltonian bit-for-bit.
+  //
+  // Note this is deliberately NOT the existing `spin` keyword above, which is
+  // an integer 2*Sz used for reference-determinant selection and is a
+  // different physical quantity.
+  double spinPenalty;
+  // Target value of <S^2> == s(s+1). Negative means "infer from the reference
+  // determinant", i.e. use Sz(Sz+1) for the Sz of the given determinants.
+  double ssTarget;
   string irrep;
   bool searchForLowestEnergyDet;
   bool DoSpinOneRDM;

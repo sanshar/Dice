@@ -29,8 +29,10 @@
 #include "global.h"
 #include "Determinants.h"
 #include <algorithm>
+#include <vector>
 #include "SHCISortMpiUtils.h"
 #include "SHCImakeHamiltonian.h"
+#include "S2Penalty.h"
 
 using namespace Eigen;
 using namespace std;
@@ -46,7 +48,74 @@ namespace SHCISortMpiUtils{
 struct Hmult2 {
   SparseHam& sparseHam;
 
+  // --- Optional S^2 level-shift penalty -----------------------------------
+  // When enabled the operator applied becomes
+  //     H + lambda * (S^2 - ss)        (ss is the lowest spin in this sector)
+  //     H + lambda * (S^2 - ss)^2      (otherwise)
+  // following PySCF's fci.addons.fix_spin_. See S2Penalty::Penalty for why
+  // the two forms are not interchangeable.
+  //
+  // Defaults to disabled, so all existing call sites (CISD.cpp, LCC.cpp,
+  // QDPTSOC.cpp, SHCI.cpp's response solve, VMC/evaluatePT.cpp) keep
+  // compiling and keep their exact previous numerical behaviour.
+  S2Penalty::Penalty penalty;
+
   Hmult2(SparseHam& p_sparseHam) : sparseHam(p_sparseHam) {}
+
+  void enableSpinPenalty(Determinant* pDets, int pDetsSize, int pNorbs,
+                         double lambda, double ss) {
+    penalty.init(pDets, pDetsSize, pNorbs, lambda, ss);
+  }
+
+  bool penaltyActive() const { return penalty.active(); }
+
+  /*!
+  Accumulate the penalty contribution into `out` for the rows this rank owns.
+
+  `owns(i)` must return true exactly for the global rows this rank is
+  responsible for; `numDets` is the global vector length.
+
+  Linear case: one pass, a pure row gather -- no communication.
+
+  Quadratic case: (S^2-ss)^2 x = (S^2-ss)[(S^2-ss)x], so we build the
+  intermediate t = (S^2-ss)x, all-reduce it (the second pass reads t at
+  arbitrary indices, which may be owned by other ranks), then apply the
+  operator again. One extra Allreduce per matvec.
+  */
+  template <typename VecType, typename OwnsFn>
+  void addPenalty(VecType& out, CItype* x, int numDets, OwnsFn owns) {
+    if (!penalty.active()) return;
+    const double lam = penalty.lambda();
+
+    if (!penalty.quadratic()) {
+      for (int i = 0; i < numDets; i++) {
+        if (!owns(i)) continue;
+        out[i] += lam * penalty.shiftedRow(i, x);
+      }
+      return;
+    }
+
+    // --- quadratic: t = (S^2 - ss) x, then apply (S^2 - ss) to t ---
+    std::vector<CItype> t(numDets, CItype(0));
+    for (int i = 0; i < numDets; i++) {
+      if (!owns(i)) continue;
+      t[i] = penalty.shiftedRow(i, x);
+    }
+#ifndef SERIAL
+    // Every rank needs the whole of t for the second pass.
+    MPI_Allreduce(MPI_IN_PLACE, &t[0], numDets,
+#ifdef Complex
+                  MPI_DOUBLE_COMPLEX,
+#else
+                  MPI_DOUBLE,
+#endif
+                  MPI_SUM, MPI_COMM_WORLD);
+#endif
+    for (int i = 0; i < numDets; i++) {
+      if (!owns(i)) continue;
+      out[i] += lam * penalty.shiftedRow(i, &t[0]);
+    }
+  }
 
 //=============================================================================
   void operator()(CItype *x, CItype *y) {
@@ -82,6 +151,10 @@ struct Hmult2 {
           y[i*size+rank] += hij*x[J];
         }
       }
+
+      // S^2 penalty on this rank's owned rows (global row i*size+rank).
+      addPenalty(y, x, numDets,
+                 [&](int i) { return i % size == rank; });
 
       for (int r=0; r<localsize; r++) {
 #ifndef SERIAL
@@ -120,6 +193,12 @@ struct Hmult2 {
 #endif
         }
       }
+
+      // S^2 penalty into this rank's owned rows of ytemp. The MPI_Reduce
+      // below sums across ranks; each global row is owned by exactly one
+      // rank, so the penalty is added once per row -- no double counting.
+      addPenalty(ytemp, x, numDets,
+                 [&](int i) { return i % size == rank; });
 
 
 #ifndef SERIAL
@@ -169,6 +248,49 @@ struct HmultDirect {
   twoInt& I2;
   double& coreE;
   MatrixXx& diag;
+
+  // Optional S^2 level-shift penalty; see S2Penalty::Penalty. Defaults to
+  // disabled so existing behaviour is unchanged.
+  S2Penalty::Penalty penalty;
+
+  void enableSpinPenalty(double lambda, double ss) {
+    penalty.init(Dets, DetsSize, Norbs, lambda, ss);
+  }
+
+  bool penaltyActive() const { return penalty.active(); }
+
+  /*! See Hmult2::addPenalty. This functor partitions by k%nprocs. */
+  void addPenalty(CItype* y, CItype* x, int nprocs, int proc) {
+    if (!penalty.active()) return;
+    const double lam = penalty.lambda();
+
+    if (!penalty.quadratic()) {
+      for (size_t k = StartIndex; k < (size_t)DetsSize; k++) {
+        if (k % nprocs != (size_t)proc) continue;
+        y[k] += lam * penalty.shiftedRow((int)k, x);
+      }
+      return;
+    }
+
+    std::vector<CItype> t(DetsSize, CItype(0));
+    for (size_t k = StartIndex; k < (size_t)DetsSize; k++) {
+      if (k % nprocs != (size_t)proc) continue;
+      t[k] = penalty.shiftedRow((int)k, x);
+    }
+#ifndef SERIAL
+    MPI_Allreduce(MPI_IN_PLACE, &t[0], DetsSize,
+#ifdef Complex
+                  MPI_DOUBLE_COMPLEX,
+#else
+                  MPI_DOUBLE,
+#endif
+                  MPI_SUM, MPI_COMM_WORLD);
+#endif
+    for (size_t k = StartIndex; k < (size_t)DetsSize; k++) {
+      if (k % nprocs != (size_t)proc) continue;
+      y[k] += lam * penalty.shiftedRow((int)k, &t[0]);
+    }
+  }
 
   HmultDirect(
           SHCImakeHamiltonian::HamHelpers2& helpers2,
@@ -256,6 +378,9 @@ struct HmultDirect {
         updateHijForTReversal(hij, Dets[k], Dets[k], I1, I2, coreE, orbDiff);
       y[k] += hij*x[k];
     }
+
+    // S^2 penalty, on this rank's owned rows.
+    addPenalty(y, x, nprocs, proc);
 
     //alpha-beta excitation
     for (int i=0; i<AlphaMajorToBeta.size(); i++) {
