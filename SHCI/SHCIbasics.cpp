@@ -30,6 +30,7 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include <cmath>
 #include "Davidson.h"
 #include "Determinants.h"
 #include "Hmult.h"
@@ -1160,6 +1161,30 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
     Hmult2 H(sparseHam);
     HmultDirect Hdirect(helper2, SHMDets, DetsSize, 0, Norbs, I1, I2, coreE,
                         diag);
+
+    // Optional S^2 level-shift penalty: (H + lambda*(S^2 - ss))|Psi> = E|Psi>.
+    // Enabled on BOTH functors because either may be selected below depending
+    // on schd.DavidsonType; leaving one unpatched would silently drop the
+    // penalty for that path.
+    if (schd.spinPenalty != 0.0) {
+      // A negative ssTarget means "infer from the reference determinant",
+      // i.e. target the lowest spin compatible with this Sz sector.
+      double ss = schd.ssTarget;
+      if (ss < 0.0) {
+        const double sz =
+            0.5 * (SHMDets[0].Nalpha() - SHMDets[0].Nbeta());
+        ss = sz * (sz + 1.0);
+      }
+      H.enableSpinPenalty(SHMDets, DetsSize, Norbs, schd.spinPenalty, ss);
+      Hdirect.enableSpinPenalty(schd.spinPenalty, ss);
+      if (commrank == 0 && iter == 0) {
+        pout << "Applying S^2 penalty: lambda = " << schd.spinPenalty
+             << ", target <S^2> = " << ss
+             << ", form = " << (H.penalty.quadratic() ? "(S^2-ss)^2" : "(S^2-ss)")
+             << endl;
+      }
+    }
+
     if (schd.DavidsonType == DISK) sparseHam.setNbatches(DetsSize);
     int numIter = 0;
 
@@ -1214,6 +1239,76 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci,
       mpi::broadcast(world, E0, 0);
 #endif
       pout << "Exiting variational iterations" << endl;
+
+      // --- Report <S^2>, and undo the penalty shift in the energy ---------
+      //
+      // Two separate things happen here:
+      //
+      //  1. <S^2> is reported for every root. This is useful regardless of
+      //     whether a penalty was applied -- it is the spin-contamination
+      //     diagnostic requested in qiskit-addon-dice-solver#59.
+      //
+      //  2. When a penalty IS active, the Davidson eigenvalue is an
+      //     eigenvalue of (H + lambda*P), not of H. We subtract the penalty
+      //     expectation so the reported energy is the physical electronic
+      //     energy <Psi|H|Psi>. The correction vanishes for a state exactly
+      //     on the target spin, but is large otherwise -- and reporting the
+      //     penalized value would be actively misleading.
+      if (commrank == 0) {
+        std::vector<double> s2vals(E0.size(), 0.0);
+        for (int i = 0; i < (int)E0.size(); i++) {
+          if (ci[i].rows() != DetsSize) continue;
+          const double s2 = S2Penalty::expectation(SHMDets, DetsSize, Norbs,
+                                                   &ci[i](0, 0));
+          s2vals[i] = s2;
+
+          if (schd.spinPenalty != 0.0) {
+            double ssT = schd.ssTarget;
+            if (ssT < 0.0) {
+              const double sz =
+                  0.5 * (SHMDets[0].Nalpha() - SHMDets[0].Nbeta());
+              ssT = sz * (sz + 1.0);
+            }
+            // <P> for the form actually used: (S^2-ss) or (S^2-ss)^2.
+            // For the quadratic form <(S^2-ss)^2> != (<S^2>-ss)^2 in general,
+            // so compute it from the vector rather than from <S^2>.
+            double penExp;
+            if (H.penalty.quadratic()) {
+              double num = 0.0, den = 0.0;
+              std::vector<CItype> t(DetsSize, CItype(0));
+              for (int k = 0; k < DetsSize; k++)
+                t[k] = H.penalty.shiftedRow(k, &ci[i](0, 0));
+              for (int k = 0; k < DetsSize; k++) {
+#ifdef Complex
+                num += std::norm(t[k]);
+                den += std::norm(ci[i](k, 0));
+#else
+                num += t[k] * t[k];
+                den += ci[i](k, 0) * ci[i](k, 0);
+#endif
+              }
+              penExp = (den > 0.0) ? num / den : 0.0;
+            } else {
+              penExp = s2 - ssT;
+            }
+            E0[i] -= schd.spinPenalty * penExp;
+          }
+        }
+
+        for (int i = 0; i < (int)E0.size(); i++) {
+          pout << format("Root %3i  E = %18.10f   <S^2> = %10.6f  (2S+1 = %6.3f)\n") %
+                      i % (E0[i] + coreEbkp) % s2vals[i] %
+                      (std::sqrt(1.0 + 4.0 * std::max(0.0, s2vals[i])));
+        }
+        if (schd.spinPenalty != 0.0) {
+          pout << "  (energies above have the S^2 penalty removed)" << endl;
+        }
+      }
+#ifndef SERIAL
+      mpi::broadcast(world, E0, 0);
+#endif
+      // --------------------------------------------------------------------
+
       if (commrank == 0) {
         Dets.resize(DetsSize);
         for (int i = 0; i < DetsSize; i++) Dets[i] = SHMDets[i];

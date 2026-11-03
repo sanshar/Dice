@@ -107,6 +107,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
 
   schd.pointGroup = "c1";
   schd.spin = -1;  // Default value overridden by HF spin if not specified
+  schd.spinPenalty = 0.0;  // 0 => S^2 penalty disabled
+  schd.ssTarget = -1.0;    // <0 => infer s(s+1) from the reference determinant
   schd.irrep = "None";
   schd.searchForLowestEnergyDet = false;
   schd.DoOneRDM = false;
@@ -333,6 +335,14 @@ void readInput(string input, std::vector<std::vector<int> >& occupied,
       schd.pointGroup = tok[1];
     else if (boost::iequals(ArgName, "spin"))
       schd.spin = atoi(tok[1].c_str());
+
+    // S^2 level-shift penalty. Parsed with atof, not atoi: these are genuine
+    // real numbers (ssTarget = s(s+1) is 0.75 for a doublet) and atoi would
+    // silently truncate them to zero.
+    else if (boost::iequals(ArgName, "spinPenalty"))
+      schd.spinPenalty = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "ssTarget"))
+      schd.ssTarget = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "irrep"))
       schd.irrep = tok[1];
     else if (boost::iequals(ArgName, "searchForLowestEnergyDet"))
