@@ -540,36 +540,40 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
 
     // deserialize
     for (int w = 0; w < walkers.size(); w++) {
-      for (int i = 0; i < matSize; i++) {serialw[i] = saved_walkers[w * matSize + i];
-      cout << serialw[i] << endl;}
+      cout << "deserialize" << endl;
+      for (int i = 0; i < matSize; i++) {
+	serialw[i] = saved_walkers[w * matSize + i];
+      }
       walkers[w].setDet(serialw, overlaps[w]);
       weights[w] = totalCumulativeWeight / commsize / nwalk;
-      cout << walkers[w].trialOverlap << endl;
       walkers[w].overlap(waveLeft);
+      cout << walkers[w].trialOverlap << endl;
     }
 
-    for (int i = 0; i < read_sweeps; i++) {
+    for (int i = 1; i < read_sweeps; i++) {
       totalEnergies(i) = saved_energies[i];
       totalWeights(i) = saved_weights[i];
+      if (commrank == 0) {
       if (i < schd.burnIter) {
         averageNumEql += totalEnergies(i)*totalWeights(i);
         averageDenomEql += totalWeights(i);
         averageEnergyEql = averageNumEql / averageDenomEql;
-        afqmcFile << boost::format(" %5d     %.3e       %.5s     %.5e      %.9e         %7s         %.2e \n") % i % 0.0 % '-' % totalWeights(i) % totalEnergies(i) % '-' % (getTime()-calcInitTime); 
+        afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e         %7s         %.2e \n") % i % (i*nsteps*dt) % eshift % totalWeights(i) % totalEnergies(i) % '-' % (getTime()-calcInitTime); 
         afqmcFile.flush();
       }
       else {
         averageNum += totalEnergies(i)*totalWeights(i);
         averageDenom += totalWeights(i);
         averageEnergy = averageNum / averageDenom;
-        afqmcFile << boost::format(" %5d     %.3e       %.5s     %.5e      %.9e        %.9e        %.2e \n") % i % 0.0 % '-' % totalWeights(i) % totalEnergies(i) % averageEnergy % (getTime() - calcInitTime); 
+        afqmcFile << boost::format(" %5d     %.3e       %.5e     %.5e      %.9e        %.9e        %.2e \n") % i % (i*nsteps*dt) % eshift % totalWeights(i) % totalEnergies(i) % averageEnergy % (getTime() - calcInitTime); 
         afqmcFile.flush();
+      }
       }
     }
     totalWeight = totalCumulativeWeight / commsize;
     MPI_Barrier(MPI_COMM_WORLD);
   }
-  for (int step = 1+nsteps*(measureCounter-1); step < (nsweeps-1) * nsteps+1; step++) {
+  for (int step = 1+nsteps*(measureCounter); step < (nsweeps-1) * nsteps+1; step++) {
     // average before eql
     if (step * dt < 10.) averageEnergy = averageEnergyEql;
 
@@ -724,20 +728,20 @@ void calcMixedEstimatorLongProp(Wavefunction& waveLeft, Wavefunction& waveRight,
           newOverlapsGather[w] = overlapsGather[index];
         }
         int block = step / nsteps;
-        if (block % 100 == 0) {
-          H5Easy::File chkfile("afqmc.h5", H5Easy::File::Overwrite);
-          if (schd.writeWalkers) {
+        if (schd.writeWalkers) {
+          if (block % 100 == 0) {
+            H5Easy::File chkfile("afqmc.h5", H5Easy::File::Overwrite);
             H5Easy::dump(chkfile, "overlaps", newOverlapsGather, H5Easy::DumpMode::Overwrite);
             H5Easy::dump(chkfile, "walkers", newSerialGather, H5Easy::DumpMode::Overwrite);
             H5Easy::dump(chkfile, "totalWeights", totalCumulativeWeight, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "weights", totalWeights, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "energies", totalEnergies, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "nchol", nchol, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "block", block, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "averageEnergy", block, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "eEstimate", eEstimate, H5Easy::DumpMode::Overwrite);
+            H5Easy::dump(chkfile, "eshift", eshift, H5Easy::DumpMode::Overwrite);
           }
-          H5Easy::dump(chkfile, "weights", totalWeights, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "energies", totalEnergies, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "nchol", nchol, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "block", block, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "averageEnergy", block, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "eEstimate", eEstimate, H5Easy::DumpMode::Overwrite);
-          H5Easy::dump(chkfile, "eshift", eshift, H5Easy::DumpMode::Overwrite);
         }
       }
 
