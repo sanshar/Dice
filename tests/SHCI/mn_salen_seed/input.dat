@@ -9,18 +9,18 @@ orbitals ../integrals/mn_salen_FCIDUMP_nosym
 schedule
 0 1e-3
 3 5.e-4
-6 2.5e-4
+6 1e-4
 end
 davidsontol 5.e-5
 dE 1.e-7
-maxiter 9
+maxiter 12
 
 # PT
-epsilon2 1.e-6
-epsilon2large 5.e-6
-sampleN 200
+epsilon2 1.e-10
+epsilon2large 1e-6
+sampleN 1000
 seed 200
-targeterror 2.e-5
+targeterror 1.e-5
 
 # Misc
 noio

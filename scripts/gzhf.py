@@ -7,7 +7,7 @@ import QMCUtils
 from functools import reduce
 
 from pyscf import gto, scf, lib
-import fcidump_rel
+from socutils.tools import fcidump_rel
 #import x2camf_hf
 
 def generate_integrals(mf, norb_core, ncore_frozen, nvirt_frozen, mf_type='g', chol_cut=1e-5):
@@ -44,13 +44,14 @@ def generate_integrals(mf, norb_core, ncore_frozen, nvirt_frozen, mf_type='g', c
     c2 = numpy.vstack(c)
     for i in range(nchol):
         chol_i = chol_vecs[i].reshape(nbasis//2, nbasis//2)
-        if mf_type is 'g':
+        if mf_type == 'g':
             chol_i = scipy.linalg.block_diag(chol_i, chol_i)
             chol[i] = reduce(numpy.dot, (mo_coeff.T.conj(), chol_i, mo_coeff))
-        elif mf_type is 'j':
+        elif mf_type == 'j':
+            mo_coeff2 = np.dot(c2.conj(), mo_coeff)
             chol_i = scipy.linalg.block_diag(chol_i, chol_i)
             chol_i = lib.einsum('ip,pq,qj->ij',c2.T.conj(), chol_i, c2)
-            chol[i] = lib.einsum('ip,pq,qj',mo_coeff.T.conj(), chol_i, mo_coeff)
+            #chol[i] = lib.einsum('ip,pq,qj',mo_coeff2.T.conj(), chol_i, mo_coeff2)
     print(f'nelec:{nelec-ncore_frozen}')
     print(f'nmo:{nmo}')
     print(f'chol.shape{chol.shape}')

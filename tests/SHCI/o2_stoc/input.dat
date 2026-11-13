@@ -11,7 +11,6 @@ schedule
 3	0.00001
 end
 nPTiter 200 
-DoRDM
 noio
 maxiter 9
 targeterror 8e-6

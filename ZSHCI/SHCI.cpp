@@ -558,22 +558,6 @@ int main(int argc, char* argv[]) {
       }
       MatrixXx Heff = MatrixXx::Zero(E0.size(), E0.size());
 
-      /*
-      for (int root1 =0 ;root1<schd.nroots; root1++) {
-        for (int root2=root1+1 ;root2<schd.nroots; root2++) {
-          Heff(root1, root1) = 0.0; Heff(root2, root2) = 0.0; Heff(root1, root2)
-  = 0.0; SHCIbasics::DoPerturbativeDeterministicOffdiagonal(Dets, ci[root1],
-  E0[root1], ci[root2], E0[root2], I1, I2, I2HBSHM, irrep, schd, coreE, nelec,
-  root1, Heff(root1,root1), Heff(root2, root2), Heff(root1, root2), spinRDM);
-  #ifdef Complex
-          Heff(root2, root1) = conj(Heff(root1, root2));
-  #else
-          Heff(root2, root1) = Heff(root1, root2);
-  #endif
-        }
-      }
-      */
-
       for (int root1 = 0; root1 < schd.nroots; root1++)
         Heff(root1, root1) += E0[root1];
 
