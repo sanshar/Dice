@@ -749,10 +749,9 @@ void SHCIrdm::EvaluateOneRDM(vector<vector<int>> &connections,
           0) { // only single excitation
         double sgn = 1.0;
         Dets[i].parity(min(c0, d0), max(c0, d0), sgn);
-        CItype val = sgn * (cibra[connections[i / commsize][j]]) *
-                     localConj::conj(ciket[i]);
-        oneRDM(c0, d0) += (val);
-        oneRDM(d0, c0) += localConj::conj(val);
+        int J = connections[i / commsize][j];
+        oneRDM(c0, d0) += sgn * localConj::conj(cibra[J]) * ciket[i];
+        oneRDM(d0, c0) += sgn * localConj::conj(cibra[i]) * ciket[J];
       }
     }
   }
