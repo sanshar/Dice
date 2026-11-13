@@ -74,7 +74,16 @@ struct SparseHam {
       orbDifference.resize(size);
     }
 
-    // This function is the only one in sparseHam that is modified
+    /*
+    Construct FCI Hamiltonian.
+    It utilizes two single excitaitons to generate the double excitations.
+    */
+    void makeFCIHamitlonianFromSingles(Determinant *SHMDets, size_t *SHMsingles, schedule &schd, int dets_size, int nelec, int norbs, oneInt &I1, twoInt &I2, double &coreE, bool DoRDM);
+
+    /* construct 4c Hamiltonian from N-1 to N map and N-2 to N map;
+        It is the original implementation for HCI in my 2023 paper.
+        I suspect it is a very inefficient way.
+        */
     void makeFromHelper(
             HamHelper4c& helper2, Determinant *SHMDets,
             int startIndex, int endIndex,

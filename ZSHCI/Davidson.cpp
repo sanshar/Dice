@@ -96,9 +96,12 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e) {
     */
 //-----------------------------------------------------------------------------
   for (int i=0; i<r.rows(); i++) {
-    if (abs(e-diag(i,0)) > 1e-12)
-      r(i,0) = r(i,0)/(e-diag(i,0));
-    else
-      r(i,0) = r(i,0)/(e-diag(i,0)-1.e-12);
+    double denominator = e - diag(i,0).real();
+    if (abs(denominator) > 1e-5) {
+      r(i,0) = r(i,0) / denominator;
+    } else {
+      // Avoid division by very small numbers
+      r(i,0) = r(i,0) / double(1e-5);
+    }
   }
 } // end precondition

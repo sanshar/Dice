@@ -109,6 +109,7 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
   schd.ReadBinary = false;
   schd.ReadHDF5 = false;
 
+  schd.pspaceSize = -1; // -1 disables pspace, fall back to full dense diag
   schd.cdfciIter = 0;
   schd.report_interval = 1000;
   schd.z_threshold = 0.0;
@@ -272,6 +273,8 @@ void readInput(string input, std::vector<std::vector<int> >& occupied, schedule&
       schd.thresh_hij = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTol"))
       schd.davidsonTol = atof(tok[1].c_str());
+    else if (boost::iequals(ArgName, "pspaceSize"))
+      schd.pspaceSize = atoi(tok[1].c_str());
     else if (boost::iequals(ArgName, "davidsonTolLoose"))
       schd.davidsonTolLoose = atof(tok[1].c_str());
     else if (boost::iequals(ArgName, "excitation"))

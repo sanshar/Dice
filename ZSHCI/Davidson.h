@@ -25,9 +25,12 @@
 #include <iostream>
 #include <vector>
 #include "boost/format.hpp"
+
+#include "SHCItime.h"
 #include "communicate.h"
 #include "iowrapper.h"
 #include "global.h"
+
 
 using namespace Eigen;
 using namespace std;
@@ -39,7 +42,7 @@ void precondition(MatrixXx& r, MatrixXx& diag, double& e);
 
 //=============================================================================
 template <typename Hmult>
-vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print) {
+vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxCopies, double tol, int& numIter, bool print, int nroots=1) {
 //-----------------------------------------------------------------------------
     /*!
     BM_description
@@ -72,7 +75,7 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
   CItype* bcol, *sigmacol;
   AllocateSHM(x0, bcol, sigmacol);
 
-  int nroots = x0.size();
+  //int nroots = x0.size();
   MatrixXx b;
   if (commrank == 0)
     b=MatrixXx::Zero(x0[0].rows(), maxCopies);
@@ -100,6 +103,7 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
         b.col(i) -= overlap*b.col(j);
       }
       if (b.col(i).norm() <1e-8) {
+        cout << "b.col(" << i << ") is set to random" << endl;
         b.col(i).setRandom();
       }
       for (int j=0; j<i; j++) {
@@ -179,17 +183,13 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
 
 
     if (commrank == 0) {
-      MatrixXx hsubspace(bsize, bsize);hsubspace.setZero(bsize, bsize);
+      cout << "bsize" << bsize << endl;
+      MatrixXx hsubspace(bsize, bsize);
+      hsubspace.setZero(bsize, bsize);
       for (int i=0; i<bsize; i++)
         for (int j=i; j<bsize; j++) {
           hsubspace(i,j) = b.col(i).dot(sigma.col(j));
-          hsubspace(j,i) = b.col(j).dot(sigma.col(i));
-
-#ifdef Complex
           hsubspace(j,i) = conj(hsubspace(i,j));
-#else
-          hsubspace(j,i) = hsubspace(i,j);
-#endif
       }
       SelfAdjointEigenSolver<MatrixXx> eigensolver(hsubspace);
       if (eigensolver.info() != Success) {
@@ -198,22 +198,36 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
         abort();
       }
 
-      b.block(0,0,b.rows(), bsize) = b.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
-      sigma.block(0,0,b.rows(), bsize) = sigma.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
+      // Don't transform b and sigma here - only get eigenvalues
+      // Transformation will be done only during subspace reduction
+      // This reduces numerical instability and computational cost
 
       ei = eigensolver.eigenvalues()[convergedRoot];
-      pout << "Energy : "<<eigensolver.eigenvalues() << endl;
+      
+      // Compute residual in the original basis using Ritz vector
+      MatrixXx ritz_vector = b.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(convergedRoot);
+      MatrixXx sigma_ritz = sigma.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(convergedRoot);
+      
       for (int i=0; i<convergedRoot; i++) {
-        r = sigma.col(i) - eigensolver.eigenvalues()[i]*b.col(i);
+        MatrixXx ritz_i = b.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(i);
+        MatrixXx sigma_i = sigma.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(i);
+        r = sigma_i - eigensolver.eigenvalues()[i]*ritz_i;
         double error = r.norm();
         if (error > tol) {
           convergedRoot = i;
           if (print) pout << "going back to converged root "<<i<<endl;
-          continue;
+          // CRITICAL FIX: Use goto instead of continue to properly restart the main loop
+          goto label1;
         }
       }
+      if (bsize >= maxCopies) {
+        // Subspace reduction: Transform vectors to eigenbasis before reduction
+        pout << "subspace reduction at iter " << numIter << endl;
+        b.block(0,0,b.rows(), bsize) = b.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
+        sigma.block(0,0,b.rows(), bsize) = sigma.block(0,0,b.rows(), bsize)*eigensolver.eigenvectors();
+      }
 
-      r = sigma.col(convergedRoot) - ei*b.col(convergedRoot);
+      r = sigma_ritz - ei*ritz_vector;
       double error = r.norm();
       //if (numIter == 0)
       //if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
@@ -227,7 +241,7 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
       if (hsubspace.rows() == b.rows()) {
         //all root are available
         for (int i=0; i<x0.size(); i++) {
-          x0[i] = b.col(i);
+          x0[i] = b.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(i);
           eroots.push_back(eigensolver.eigenvalues()[i]);
           if (print ) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (i) % eroots[i] );
         }
@@ -246,9 +260,11 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
         convergedRoot++;
         if(print) pout << str(boost::format("#niter:%3d root:%3d -> Energy : %18.10g  \n") %(numIter) % (convergedRoot-1) % ei );
         if (convergedRoot == nroots) {
+      	  pout << convergedRoot << " " << nroots << endl;
           for (int i=0; i<convergedRoot; i++) {
-            x0[i] = b.col(i);
+            x0[i] = b.block(0,0,b.rows(), bsize) * eigensolver.eigenvectors().col(i);
             eroots.push_back(eigensolver.eigenvalues()[i]);
+	          pout << eroots[i] << " " << x0[i](0,0) << endl;
           }
           continueOrReturn = 2;
           goto label1;
@@ -264,22 +280,29 @@ vector<double> davidson(Hmult& H, vector<MatrixXx>& x0, MatrixXx& diag, int maxC
 #endif
       if (continueOrReturn == 2) return eroots;
 
-      if (commrank == 0) {
+      double error = r.norm();
+      if (commrank == 0 && error > tol) {
         precondition(r,diag,ei);
-        for (int i=0; i<bsize; i++)
+        for (int i=0; i<bsize; i++) {
           r = r - (b.col(i).adjoint()*r)(0,0)*b.col(i)/(b.col(i).adjoint()*b.col(i));
-        pout << "norm of residual " << r.norm() << " subspace size " << bsize << endl;
+        }
         if (bsize < maxCopies) {
           b.col(bsize) = r/r.norm();
           bsize++;
         } else {
-          bsize = max(nroots+4, int(maxCopies/2));
-          sigmaSize = bsize - 1;
-          b.col(bsize-1) = r/r.norm();
-          for (int i = bsize; i<maxCopies; i++) {
-            b.col(i) *= 0.0;
-            sigma.col(i) *= 0.0;
+          //int newSize = max(nroots, int(maxCopies/2));
+          pout << "maxCopies" << maxCopies << " nroots " << nroots << endl;
+          // keep the collapsed subspace strictly inside the allocated maxCopies columns
+          int newSize = max(nroots, min(nroots+4, maxCopies-1));
+          for (int i = newSize; i<maxCopies; i++) {
+            b.col(i).setZero();
+            sigma.col(i).setZero();
           }
+          bsize = newSize;
+          // CRITICAL FIX: sigmaSize should match the actual computed sigma vectors
+          sigmaSize = newSize;
+          b.col(bsize) = r/r.norm();
+          bsize++;
         }
       } // commrank=0
   } // while

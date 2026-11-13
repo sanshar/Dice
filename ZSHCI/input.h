@@ -105,7 +105,8 @@ private:
     & ReadTxt                                 \
     & ReadBinary                              \
     & ReadHDF5                                \
-    & jz;                      
+    & jz                                      \
+    & pspaceSize;
   }
 
 public:
@@ -187,6 +188,11 @@ public:
   vector<OccRestrictions> restrictionsV; 
   vector<OccRestrictions> restrictionsPT;
   int jz;
+  // CI.cpp: if > 0, use the first `pspaceSize` determinants in the input
+  // to build a small dense Hamiltonian and dense-diagonalize it for a
+  // Davidson initial guess. If <= 0, fall back to full dense diag on
+  // the entire det list.
+  int pspaceSize;
 };
 
 #endif

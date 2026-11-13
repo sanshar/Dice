@@ -54,7 +54,6 @@ struct HmultDirectFCI {
   twoInt & I2;
   double & coreE;
   MatrixXx & diag;
-  MatrixXx & ham;
 
   HmultDirectFCI(
     Determinant* p_dets_ptr,
@@ -65,8 +64,7 @@ struct HmultDirectFCI {
     oneInt& pI1,
     twoInt& pI2,
     double& pcoreE,
-    MatrixXx & pDiag,
-    MatrixXx & pHam
+    MatrixXx & pDiag
   ) : 
     dets_ptr(p_dets_ptr),
     dets_to_singles_ptr(p_dets_to_singles_ptr),
@@ -76,13 +74,16 @@ struct HmultDirectFCI {
     I1(pI1),
     I2(pI2),
     coreE(pcoreE),
-    diag(pDiag),
-    ham(pHam) {};
+    diag(pDiag) {};
   void operator()(CItype *x, CItype *y) {
     Determinant d0 = dets_ptr[0];
     int nopen = norbs - nelec;
     int nclose = nelec;
     int nsingles = nopen * nclose;
+
+#ifndef SERIAL
+    boost::mpi::communicator world;
+#endif
 
     for (int i=0; i<dets_size; i++) {
       auto idet = i;
@@ -148,8 +149,7 @@ struct Hmult2 {
         CItype hij = sparseHam.Helements[i][j];
         int J = sparseHam.connections[i][j];
         int I = i * size + rank;
-
-	      ytemp[J] += hij * x[I];
+	ytemp[J] += hij * x[I];
 #ifdef Complex
         if (J != I) ytemp[I] += std::conj(hij) * x[J];
 #else 

@@ -1217,10 +1217,10 @@ vector<double> SHCIbasics::DoVariational(vector<MatrixXx> &ci, vector<Determinan
     //  prevE0(-10.0);
     int subspace = DetsSize < schd.nroots * 4 ? DetsSize : schd.nroots * 4;
     if (schd.DavidsonType == DIRECT) {
-      E0 = davidson(Hdirect, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+      E0 = davidson(Hdirect, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0, schd.nroots);
     }
     else {
-      E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
+      E0 = davidson(H, X0, diag, subspace, schd.davidsonTolLoose, numIter, schd.outputlevel>0, schd.nroots);
     }
 
     // update the civector

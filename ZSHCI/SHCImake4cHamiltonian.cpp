@@ -43,10 +43,11 @@ void SHCImake4cHamiltonian::SparseHam::makeFCIHamitlonianFromSingles(
   #endif
   int nsingles = nelec * (norbs - nelec);
 
+  double zero(0.0);
   for (int i = 0; i < dets_size; i++) {
     if (i%(nprocs)!=proc) continue;
     connections.push_back(vector<int>(1, i));
-    CItype hij = SHMDets[i].Energy(I1, I2, coreE);
+    CItype hij = SHMDets[i].Energy(I1, I2, zero);
     Helements.push_back(vector<CItype>(1, hij));
     if (DoRDM) orbDifference.push_back(vector<size_t>(1, 0));
     set<size_t> connected;
@@ -58,7 +59,7 @@ void SHCImake4cHamiltonian::SparseHam::makeFCIHamitlonianFromSingles(
       auto det_j = SHMDets[j_loc];
       if (j_loc < i) continue;
       connected.insert(j_loc);
-      auto hij = Hij(det_j, det_i, I1, I2, coreE, orbDiff);
+      auto hij = Hij(det_j, det_i, I1, I2, zero, orbDiff);
       if (std::abs(hij) > schd.thresh_hij) {
         connections.back().push_back(j_loc);
         Helements.back().push_back(hij);
@@ -74,7 +75,7 @@ void SHCImake4cHamiltonian::SparseHam::makeFCIHamitlonianFromSingles(
         auto det_k = SHMDets[k_idx];
         if (connected.find(k_idx) != connected.end()) continue;
         connected.insert(k_idx);
-        auto hij = Hij(det_k, det_i, I1, I2, coreE, orbDiff);
+        auto hij = Hij(det_k, det_i, I1, I2, zero, orbDiff);
         if (abs(hij) > schd.thresh_hij) {
           connections.back().push_back(k_idx);
           Helements.back().push_back(hij);

@@ -18,6 +18,7 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#define EIGEN_USE_LAPACKE
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <fstream>
@@ -40,6 +41,8 @@
 #include <boost/serialization/vector.hpp>
 #include <cstdlib>
 #include <numeric>
+
+#include "SHCIrdm.h"
 #include "SHCIshm.h"
 #include "SHCItime.h"
 #include "communicate.h"
@@ -60,7 +63,6 @@ Eigen::Matrix<size_t, Eigen::Dynamic, Eigen::Dynamic> Determinant::LexicalOrder;
 
 void gosper_combination(vector<Determinant>& dets, int n, int k) {
     size_t x = (1 << k) - 1;
-    cout << x << endl;
     while (x < (1 << n)) {
         Determinant d;
         d.repr[0] = x;
@@ -159,7 +161,9 @@ int main(int argc, char* argv[]) {
   Determinant::norbs = norbs;  // spin orbitals
   HalfDet::norbs = norbs;      // spin orbitals
   Determinant::EffDetLen = norbs / 64 + 1;
+  cout << "lexical order" << endl;
   Determinant::initLexicalOrder(nelec);
+  cout << "lexical order" << endl;
 
   if (Determinant::EffDetLen > DetLen) {
     pout << "change DetLen in global.h to " << Determinant::EffDetLen
@@ -171,9 +175,10 @@ int main(int argc, char* argv[]) {
   std::vector<int> allorbs;
   for (int i = 0; i < norbs; i++)
     allorbs.push_back(i);
-  twoIntHeatBath I2HB(1.e-10);
-  twoIntHeatBathSHM I2HBSHM(1.e-10);
+  twoIntHeatBath I2HB(1e-12);
+  twoIntHeatBathSHM I2HBSHM(1e-12);
 
+  cout << "I2HB" << endl;
   if (commrank == 0) I2HB.constructClass(allorbs, I2, I1, norbs);
   I2HBSHM.constructClass(norbs, I2HB);
   int num_thrds;
@@ -186,41 +191,33 @@ int main(int argc, char* argv[]) {
   vector<Determinant> Dets;
   
   gosper_combination(Dets, norbs, nelec);
+  cout << "gosper" << endl;
   int dets_size = Dets.size();
   int nclosed = nelec;
   int nopen   = Dets[0].norbs-nclosed;
   int nsingles = nclosed * nopen;
   MatrixXx diag = MatrixXx::Zero(dets_size, 1);
-  MatrixXx hamiltonian(dets_size, dets_size);
-  /*for (auto i=0; i<dets_size; i++) {
-    for (auto j=0; j<nsingles; j++) {
-      if (i==j) {
-        hamiltonian(i, j) = Dets[i].Energy(I1, I2, coreE);
-      } else {
-        auto distance = Dets[i].ExcitationDistance(Dets[j]);
-        size_t orbDiff;
-        if (distance < 3){
-          hamiltonian(i, j) = Hij(Dets[i], Dets[j], I1, I2, coreE, orbDiff);
+  cout << dets_size << " " << nsingles << endl;
+
+  vector<size_t> singles;
+  
+  if (commrank == 0) {
+  singles.resize(dets_size * nsingles);
+    for (auto i=0; i < dets_size; i++) {
+      auto d = Dets[i];
+      CItype hij =Dets[i].Energy(I1, I2, coreE);
+      diag(i, 0) = hij;
+      vector<int> closed(nclosed,0);
+      vector<int> open(nopen,0);
+      d.getOpenClosed(open, closed);
+      
+      for (auto j=0; j<nclosed; j++) {
+        for (auto k=0; k<nopen; k++) {
+          auto d_jk = d;
+          d_jk.setocc(closed[j], false);
+          d_jk.setocc(open[k], true);
+          singles[i*nsingles+j*nopen+k] = d_jk.getHash();
         }
-        else hamiltonian(i, j) = 0.0;
-      }
-    }
-  }*/
-  vector<size_t> singles(dets_size * nsingles);
-  for (auto i=0; i < dets_size; i++) {
-    auto d = Dets[i];
-    CItype hij =Dets[i].Energy(I1, I2, coreE);
-    diag(i, 0) = hij;
-    vector<int> closed(nclosed,0);
-    vector<int> open(nopen,0);
-    d.getOpenClosed(open, closed);
-    
-    for (auto j=0; j<nclosed; j++) {
-      for (auto k=0; k<nopen; k++) {
-        auto d_jk = d;
-        d_jk.setocc(closed[j], false);
-        d_jk.setocc(open[k], true);
-        singles[i*nsingles+j*nopen+k] = d_jk.getHash();
       }
     }
   }
@@ -231,8 +228,9 @@ int main(int argc, char* argv[]) {
   SHMVecFromVecs(Dets, SHMDets, shciDetsCI, DetsCISegment, regionDetsCI);
   SHMVecFromVecs(singles, SHMsingles, shciHelper, hHelpersSegment, regionHelpers);
 
+  Time::print_time("single excitation list constructed");
   size_t orbDiff;
-  for (int i = 0; i < dets_size; i++) {
+  /*for (int i = 0; i < dets_size; i++) {
     auto idet = i;
     auto det_i = SHMDets[i];
     hamiltonian(idet, idet) = det_i.Energy(I1, I2, coreE);
@@ -247,22 +245,98 @@ int main(int argc, char* argv[]) {
         hamiltonian(idet, kdet) = Hij(det_i, det_k, I1, I2, coreE, orbDiff);
       }
     }
+  }*/
+  
+  vector<MatrixXx> X0;
+  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(dets_size, 1));
+
+  if (commrank==0) {
+    cout << "nsingles " << nsingles << " dets_size:" << dets_size << endl;
+    MatrixXx pspace(nsingles+1, nsingles+1);
+    vector<int> pspace_idx(nsingles+1);
+    pspace_idx[0] = 0;
+    for (int i = 1; i < nsingles+1; i++) {
+      pspace_idx[i] = singles[i-1];
+    }
+    for (int i = 0; i < nsingles+1; i++) {
+      for (int j = 0; j < nsingles+1; j++) {
+        if (i == j) {
+          pspace(i, j) = Dets[pspace_idx[i]].Energy(I1, I2, coreE);
+        } else {
+          auto distance = Dets[pspace_idx[i]].ExcitationDistance(Dets[pspace_idx[j]]);
+          size_t orbDiff;
+          if (distance < 3){
+            pspace(i, j) = Hij(Dets[pspace_idx[i]], Dets[pspace_idx[j]], I1, I2, coreE, orbDiff);
+          }
+          else pspace(i, j) = 0.0;
+        }
+      }
+    }
+
+    SelfAdjointEigenSolver<MatrixXx> eigensolver(pspace);
+    pout << eigensolver.eigenvalues() << endl;
+
+    auto eigen_vectors = eigensolver.eigenvectors();
+    for (int i = 0; i < schd.nroots; i++) {
+      ci[i](i,0) = complex<double>{1.0,0.0};
+      //cout << i << " " << dets_size << endl;
+      //for (int i_idx = 0; i_idx < nsingles+1; i_idx++) {
+      //  ci[i](i_idx,0) = eigen_vectors(i_idx, i);
+      //}
+    }
+    Time::print_time("CIS intial guess constructed");
+
+    if (dets_size < 10000) // full diag for 4f systems with 14 spinors 
+    {
+    MatrixXx hamiltonian(dets_size, dets_size);
+    for (auto i=0; i<dets_size; i++) {
+      for (auto j=0; j<dets_size; j++) {
+        if (i==j) {
+          hamiltonian(i, j) = Dets[i].Energy(I1, I2, coreE);
+          cout << Dets[i] << " " << hamiltonian(i,j) << endl;
+        } else {
+          auto distance = Dets[i].ExcitationDistance(Dets[j]);
+          size_t orbDiff;
+          if (distance < 3){
+            hamiltonian(i, j) = Hij(Dets[i], Dets[j], I1, I2, coreE, orbDiff);
+            //cout << Dets[i] << " " << Dets[j] << " " << hamiltonian(i,j) << endl;
+          }
+          else hamiltonian(i, j) = 0.0;
+        }
+      }
+    }
+
+    Time::print_time("construct full Hamiltonian");
+    SelfAdjointEigenSolver<MatrixXx> eigensolver(hamiltonian);
+    Time::print_time("Eigen solve for all eigenvalues");
+    pout << eigensolver.eigenvalues() << endl;
+
+    auto eigen_vectors = eigensolver.eigenvectors();
+    for (int i = 0; i < schd.nroots; i++) {
+        auto vec_i = eigen_vectors.col(i);
+      for (int j = 0; j < dets_size; j++) {
+        ci[i](j, 0) = vec_i[j]; 
+      }
+    }
+    }
+    Time::print_time("Full diagonalization");
   }
-  SelfAdjointEigenSolver<MatrixXx> eigensolver(hamiltonian);
-  pout << eigensolver.eigenvalues() << endl;
+  MPI_Barrier(MPI_COMM_WORLD);
+  mpi::broadcast(world, ci, 0);
 
-  vector<MatrixXx> ci(schd.nroots, MatrixXx::Zero(HFoccupied.size(), 1));
-
-  HmultDirectFCI H(SHMDets, SHMsingles, dets_size, nelec, norbs, I1, I2, coreE, diag, hamiltonian);
-  vector<MatrixXx> X0(schd.nroots, MatrixXx::Zero(dets_size, 1));
+  X0 = ci;
+  //HmultDirectFCI H(SHMDets, SHMsingles, dets_size, nelec, norbs, I1, I2, coreE, diag);
+  SHCImake4cHamiltonian::SparseHam sparse_ham;
+  sparse_ham.makeFCIHamitlonianFromSingles(SHMDets, SHMsingles, schd, dets_size, nelec, norbs, I1, I2, coreE, schd.DoRDM);
+  Hmult2 H(sparse_ham);
+  
+  Time::print_time("Sparse Hamiltonian constructed.");
 
   auto numIter = schd.nroots*100;
-  E0 = davidson(H, X0, diag, schd.nroots*4, schd.davidsonTolLoose, numIter, schd.outputlevel>0);
-  for (int i = 0; i < E0.size(); i++) {
-    pout << format("%4i %4i  %10.2e  %10.2e") % (0) % (i) % schd.epsilon1[0] % dets_size;
-    pout << format("   %18.10f  %9i  %10.2f\n") % (E0[i]) % (numIter) % (getTime() - startofCalc);
+  E0 = davidson(H, ci, diag, max(100, schd.nroots*4), schd.davidsonTol, numIter, schd.outputlevel>0, schd.nroots);
+  for (auto &E : E0) {
+    E += coreE;
   }
-  exit(0);
 #ifndef SERIAL
   mpi::broadcast(world, ci, 0);
 #endif
@@ -278,7 +352,7 @@ int main(int argc, char* argv[]) {
     std::string efile;
     efile = str(boost::format("%s%s") % schd.prefix[0].c_str() % "/shci.e");
     FILE* f = fopen(efile.c_str(), "wb");
-    for (int j = 0; j < E0.size(); ++j) {
+    for (int j = 0; j < schd.nroots; ++j) {
       fwrite(&E0[j], 1, sizeof(double), f);
     }
     fclose(f);
@@ -324,6 +398,9 @@ int main(int argc, char* argv[]) {
     }
   }
   
+  for (int root = 0; root < schd.nroots; root++) {
+    pout << format("State : %3i  Energy = %18.10f") % (root) % E0[root] << endl;
+  }
   // #####################################################################
   // Print the 5 most important determinants and their weights
   // #####################################################################
@@ -331,7 +408,7 @@ int main(int argc, char* argv[]) {
   pout << format("%4s %10s  Determinant string") % ("Det") % ("weight")
        << endl;
   for (int root = 0; root < schd.nroots; root++) {
-    pout << format("State : %3i") % (root) << endl;
+    pout << format("State : %3i  Energy = %18.10f") % (root) % E0[root] << endl;
     MatrixXx prevci = 1. * ci[root];
     int num = max(6, schd.printBestDeterminants);
     for (int i = 0; i < min(num, static_cast<int>(DetsSize)); i++) {
@@ -357,20 +434,12 @@ int main(int argc, char* argv[]) {
       fwrite(&E0[j], 1, sizeof(double), f);
     }
     fclose(f);
-    pout << endl;
-    pout << endl;
-    pout << "**************************************************************"
-         << endl;
-    pout << "Returning without error" << endl;
-    pout << "**************************************************************"
-         << endl;
-    pout << endl << endl;
-  
   }
+ 
   // #####################################################################
   // RDMs
   // #####################################################################
-  if (schd.DoOneRDM) {
+  if (schd.DoRDM) {
     pout << endl;
     pout << endl;
     pout << "**************************************************************"
@@ -378,16 +447,49 @@ int main(int argc, char* argv[]) {
     pout << "RDMs CALCULATIONS" << endl;
     pout << "**************************************************************"
          << endl;
+    for (int i=0; i<schd.nroots; i++) {
+      CItype * SHMci;
+      SHMVecFromMatrix(ci[i], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+      MatrixXx twoRDM = MatrixXx::Zero(norbs*norbs, norbs*norbs);
+      SHCIrdm::EvaluateRDM(sparse_ham.connections, SHMDets, DetsSize, SHMci, SHMci, sparse_ham.orbDifference, nelec, schd, i, twoRDM);
+      pout << "compute energy from rdm" << endl;
+      SHCIrdm::ComputeEnergyFromSpinRDM(norbs, nelec, I1, I2, coreE, twoRDM);
+      if (commrank==0) SHCIrdm::saveRDM_hdf5(schd, twoRDM, i);
+
+      MatrixXx oneRDM = MatrixXx::Zero(norbs, norbs);
+      SHCIrdm::EvaluateOneRDM(sparse_ham.connections, SHMDets, DetsSize, SHMci, SHMci, sparse_ham.orbDifference, nelec, schd, i, oneRDM);
+      SHCIrdm::save1RDM_hdf5(schd, oneRDM, i, i);
+    }
   }
+  if (schd.DoTDM) {
+    pout << endl;
+    pout << "**************************************************************"
+         << endl;
+    pout << "TDMs CALCULATIONS" << endl;
+    pout << "**************************************************************"
+         << endl;
 
-#ifndef SERIAL
-  world.barrier();
-#endif
+    // Rebuild sparse_ham with thresh_hij overridden so that single-excitation
+    // pairs with vanishing Hij (e.g. Kramers partners under symmetry) still
+    // enter connections/orbDifference. Those pairs contribute to the TDM
+    // but get filtered by the production thresh_hij used for Hmult.
+    double saved_thresh = schd.thresh_hij;
+    schd.thresh_hij = -1.0;
+    sparse_ham.clear();
+    sparse_ham.makeFCIHamitlonianFromSingles(
+        SHMDets, SHMsingles, schd, DetsSize, nelec, norbs,
+        I1, I2, coreE, true);
+    schd.thresh_hij = saved_thresh;
 
-  if (schd.DoOneRDM) {
-    pout << "Calculating 1-RDM..." << endl;
-    MatrixXx s1RDM;
-    CItype* ciroot;
+    CItype * SHMci;
+    CItype * ciroot;
+    SHMVecFromMatrix(ci[0], SHMci, shciDetsCI, DavidsonSegment, regionDavidson);
+    for (int i=1; i<schd.nroots; i++) {
+      SHMVecFromMatrix(ci[i], ciroot, shcicMax, cMaxSegment, regioncMax);
+      MatrixXx TRDM = MatrixXx::Zero(norbs, norbs);
+      SHCIrdm::EvaluateOneRDM(sparse_ham.connections, SHMDets, DetsSize, SHMci, ciroot, sparse_ham.orbDifference, nelec, schd, i, TRDM);
+      SHCIrdm::save1RDM_hdf5(schd, TRDM, 0, i);
+    }
   }
 
 #ifndef SERIAL
